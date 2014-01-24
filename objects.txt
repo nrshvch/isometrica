@@ -1,0 +1,134 @@
+Объекты
+  Свет
+    свет падает с права, на лево
+    
+	Маштабы
+		Дорога
+			Ширина дороги с тратуарами = 32пикс
+				Ширина проезжей части = 20пикс 
+				Ширина тротуара с одной стороны = 6пикс
+				
+		Человек
+			высотаа = 7-8пикс
+			Ширина = 4пикс
+			
+		Окно жилого дома, высота = 4пикс
+		
+		Дверной проём
+			высота = 9пикс (или 8рикс если это вдерь в помещение с низкими потолками, например в дом-трейлер)
+			ширина = 4пикс
+			
+		Этаж, высота = 10-11пикс. (но в доме-трейлере это было бы 9пикс)
+		
+		Макс высота здания = 80пикс
+		
+	Здания
+		Муниципальные
+			Мал.гор.дума.
+				http://upload.wikimedia.org/wikipedia/lv/4/41/P%C4%81vilostas_pils%C4%93tas_dome.jpg
+				http://mw2.google.com/mw-panoramio/photos/medium/10336190.jpg
+				http://upload.wikimedia.org/wikipedia/commons/4/4a/Grobi%C5%86as_pils%C4%93tas_dome_2000-06-11.jpg
+				http://www.kegums.lv/upload/parskati/keguma_novada_domes_struktura.jpg
+			Средняя гор. дума
+        http://www.dobele.lv/upload/foto/img_0275_450.jpg
+        http://upload.wikimedia.org/wikipedia/lv/7/79/T%C4%93rvetes_novada_dome.JPG
+        http://mw2.google.com/mw-panoramio/photos/medium/9810901.jpg
+        http://www.vieglicelot.lv/uimg/7156961659102.jpg
+        http://www.vieglicelot.lv/uimg/4899613743308.jpg
+        http://static.panoramio.com/photos/large/30976606.jpg
+        http://www.auce.lv/index.php?cmd=get&cid=20367
+			Большая год. дума
+        http://spoki.tvnet.lv/upload/articles/33/336700/images/_origin_Rigas-Dome-2.jpg
+        http://www.ventspils.lv/resources/web/images/2013/dome/domeseka/500x300xnc/IMG_6418.JPG
+			Ветрянная эл.станция
+			Уголь эл.станция
+			АЭС
+			Водонапорная башня 
+        http://photos.wikimapia.org/p/00/00/66/33/52_big.jpg
+        http://photos.wikimapia.org/p/00/02/20/75/17_full.jpeg
+        http://photos.wikimapia.org/p/00/00/33/05/15_big.jpg
+			Farm mill http://www.homepower.com/sites/default/files/uploads/4_SB_siting.jpg
+			Насосная станция
+		Жилые
+      Shack set
+      Маленький дом(сэт)
+				* http://www.tinyhousedesign.com/wp-content/uploads/2010/10/Taylors-Trailer-House-Front.jpg
+				http://cj-network.org/cj/wp-content/uploads/2011/01/rainbow_house_small.jpg				
+				1х1
+			Небольшой дом(сэт)
+				* http://imganuncios.mitula.net/6728_glenn_dale_rd_glenn_dale_md_20769_glenn_dale_98555311042204810.jpg
+			Дом(сэт)
+				* https://a1.muscache.com/pictures/18582483/large.jpg
+			Просторный дом(сэт)
+				http://www.stroyimdom.ru/wp-content/uploads/2009/10/panel.jpg
+				http://inzhproekt.com/upload/en/catalogue/imgs/175_528_3.jpg
+			Большой дом
+				http://cgrendering.files.wordpress.com/2010/02/tennyson_cam_front_05.jpg
+			Модерный дом(сэт)
+				http://theluxhome.com/wp-content/uploads/2011/03/Private-House-in-Ciutadella-de-Menorca-beautiful-modern-house-design-6.jpg
+				http://flodeau.com/wp-content/uploads/2012/12/Private-House-in-Menorca-by-Dom-Arquitectura-on-flodeau.com-10.jpg
+				http://cdn.homedit.com/wp-content/uploads/2011/11/contemporary-private-house.jpg
+			Старинные жилие дома(сэт)
+        IMG_20130921_164207.jpg
+				http://www.rigaguides.lv/files1/Koka_Riga_1.jpg
+				http://liveriga.com/userfiles/images/galery/feel/pasakumu-kalendars/tirdzini/kalnciema-kvartala-tirdzins-1/132940722751.jpg?w=1024
+				http://www.painteco.eu/userfiles/IMG_9636.JPG
+			Двух-,трёх-этажная хрущевка\старая панелька
+				http://ng58.ru/upload/resize_cache/iblock/393/900_900_1/dxnijsvcopouotmrpc.JPG
+				http://s3.russianrealty.ru/upload/iblock/cbb/cbbaf35f535eeda00ce888d3d5b189c4.jpg
+				http://sochi.move.su/images/planirovki/pics/I-511/I-511.jpg
+				2х1	
+			Высокий панельный дом(сэт)
+				http://maksi-spb.ru/images/stories/raschetokna/606/brejnevka_606.jpg
+				должны как-то соединяться между собой.
+			Старые башни
+				http://upload.wikimedia.org/wikipedia/lv/8/82/%C4%B6engarags_%E2%80%94_%C4%93ka.jpg
+				http://imageshack.us/photo/my-images/43/dsc3190u.jpg/
+			Башни Новостройки(сэт)
+				Башни Panorama plaza, со всем комплексом
+		Эконмические
+      Маленький магазин, ларёк
+      Средний магазин (максима ХХ)
+      Большой магазин (максима ХХХ)
+      Киоск
+      Банк
+      Офисы
+      Офисная башня
+      Торговый центр
+		Индустриальные
+      Лесопилка
+			Старинные заводы(сэт)
+        *красный кирпич IMG_20130921_165653.jpg
+				http://www.citariga.lv/images/agenskalns/agenskalns_b.jpg
+				http://www.mersrags.lv/Vesture/buves/TerpRup_20gadi1%20(1).jpg
+			Старые заводы
+				http://spoki.tvnet.lv/upload/articles/46/462220/images/_origin_Nedzirdeti-fakti--2.jpg
+				http://imageshack.us/photo/my-images/826/dsc4087.jpg/
+				http://upload.wikimedia.org/wikipedia/commons/7/71/Wolfsburg_VW-Werk.jpg
+				http://upload.wikimedia.org/wikipedia/commons/3/30/Garland_Sugar_Factory_-_Utah-Idaho_Sugar_Company_-_general_view_-_Garland_Utah.jpg
+				http://upload.wikimedia.org/wikipedia/commons/5/5b/Gillette_Factory,_Great_West_Road,_Brentford,_20050123.jpg
+				http://images.wisegeek.com/factory.jpg
+				http://static1.businessinsider.com/image/5037de4969bedd1967000004-1200/in-1888-henry-bought-out-his-family-members-and-launched-a-major-factory-along-the-allegheny.jpg
+				http://www.home-designing.com/wp-content/uploads/2011/02/nabisco-biscuit-factory.jpg
+				http://img.dictionary.com/factory-252094-400-230.jpg
+				http://www.makingthemodernworld.org.uk/stories/manufacture_by_machine/01.ST.01/img/IM.0118_zl.jpg
+			Современные заводы
+				http://files.rolanddg.be/Website/Images/News/NEWS_Miyakoda_Factory_20090113.jpg
+				http://image.made-in-china.com/6f3j00DeQtEvbnYRoZ/Factory-Tour.jpg
+				http://image.made-in-china.com/6f3j00TMOaqokfgQbK/Factory-Outlook.jpg
+				http://www.abc.net.au/news/image/4754534-3x2-940x627.jpg
+				http://www.baltic.toyota-forklifts.eu/SiteCollectionImages/About%20TMHx/Factory-Ancenie_280.jpg
+			Фермы(молочные и животные, сэт с полями)
+				http://upload.wikimedia.org/wikipedia/commons/e/e9/Ontario_farm.jpg
+				http://labelme.csail.mit.edu/Images/users/antonio/static_sun_database/f/farm/sun_dlhtxlqvowwrkfdt.jpg
+				http://www.givingtable.org/storage/2013/farmbill2.jpeg?__SQUARESPACE_CACHEVERSION=1371946533426
+				http://upload.wikimedia.org/wikipedia/commons/c/ce/FamilyFarm.jpg
+				http://www.nhmade.com/images/nh_farm_scene.jpg
+  Дороги
+    Грунтовая без тротуаров(сэт)
+    Асфальт, без тротуаров(сэт)
+    Асфальт с тротуарами
+  Деревья
+  Земля
+  Разное
+    сэт стройки

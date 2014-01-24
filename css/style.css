@@ -1,0 +1,568 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+}
+
+@media (min-width: 800px) {
+    .fixedWidth {
+        width: 800px;
+    }
+}
+
+#gameView {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+}
+
+#gameView #topBar {
+    height: 26px;
+    width: 100%;
+    background-color: #333029;
+    border: 1px outset #544f44;
+}
+
+#gameView #topBar .container {
+    height: 24px;
+    margin: 0 auto;
+}
+
+#gameView #topBar .resources {
+    float: left;
+    height: 16px;
+    margin: 4px 0px;
+}
+
+#gameView #topBar #date {
+    height: 24px;
+    float: right;
+    line-height: 24px;
+    white-space: nowrap;
+    margin: 0px 16px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #eee;
+}
+
+#gameView #mainCanvasContainer {
+    position: absolute;
+    bottom: 49px;
+    left: 0px;
+    top: 26px;
+    right: 0px;
+    background: url('../img/dirt.jpg');
+}
+
+#gameView #mainCanvasContainer > canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#gameView #toolBar {
+    position: absolute;
+    height: 49px;
+    bottom: 0px;
+    width: 100%;
+
+    border-bottom: 0px;
+}
+
+#gameView #toolBar > div {
+    margin: 0 auto;
+    height: 48px;
+}
+
+#gameView #toolBar a {
+    display: block;
+    float: left;
+    height: 48px;
+    overflow: hidden;
+    padding: 3px;
+    background-color: #544f44;
+    border: 1px outset #787161;
+    text-align: center;
+    line-height: 30px;
+    color: #fff;
+    font-smooth: never;
+    -webkit-font-smoothing: none;
+}
+
+#gameView #toolBar a:hover {
+    background-color: #5e594c;
+}
+
+#gameView #toolBar a:active {
+    background-color: #5e594c;
+    border: 1px solid #5e594c;
+}
+
+#gameView #toolBar a > img {
+    display: block;
+}
+
+#gameView #toolBar a[disabled] > img {
+    filter: url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\'><filter id=\'grayscale\'><feColorMatrix type=\'matrix\' values=\'0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0 0 0 1 0\'/></filter></svg>#grayscale"); /* Firefox 10+, Firefox on Android */
+    filter: gray; /* IE6-9 */
+    -webkit-filter: grayscale(100%);
+}
+
+#gameView #messageStack {
+    position: absolute;
+    right: 8px;
+    bottom: 49px;
+    width: 200px;
+}
+
+#gameView #messageStack > div {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 4px;
+    background-color: #544f44;
+    border: 1px outset #787161;
+    color: #fff;
+    padding: 4px 8px;
+}
+
+#gameView #messageStack .error {
+    color: red;
+}
+
+@media (max-width: 800px) {
+    .windowView {
+        overflow-y: hidden;
+
+        position: absolute;
+        bottom: 49px;
+        left: 0px;
+        top: 26px;
+        right: 0px;
+    }
+}
+
+@media (min-width: 800px) {
+    .windowView {
+        position: absolute;
+        width: 800px;
+        height: 600px;
+        overflow-y: hidden;
+        top: 50%;
+        left: 50%;
+        margin-left: -400px;
+        margin-top: -300px;
+    }
+}
+
+.windowView > .titleBar {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    height: 24px;
+    right: 24px;
+    background-color: #333029;
+    border: 1px outset #544f44;
+    padding: 0px 8px;
+    line-height: 24px;
+    color: #fff;
+    font-size: 8pt;
+    font-weight: bold;
+}
+
+.windowView > .closeButton {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    height: 24px;
+    width: 24px;
+    background-color: #333029;
+    border: 1px outset #544f44;
+    padding: 0px 8px;
+    line-height: 24px;
+    color: #fff;
+    font-size: 8pt;
+    font-weight: bold;
+}
+
+.windowView > .body {
+    position: absolute;
+    top: 24px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+
+    background-color: #333029;
+    border: 1px outset #544f44;
+}
+
+.windowView > .scroll {
+    position: absolute;
+    right: 0px;
+    top: 24px;
+    bottom: 16px;
+    background-color: #1a1815;
+    width: 16px;
+}
+
+.windowView > .scroll > div {
+    height: 20%;
+    width: 100%;
+    background-color: #3b372f;
+    border: 1px outset #5e594c;
+}
+
+.windowView > .resize {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    bottom: 0px;
+    right: 0px;
+    background-color: #333029;
+    border: 1px outset #544f44;
+}
+
+.buildingClassListItem {
+    float: left;
+    width: 25%;
+    height: 20%;
+    background-color: #544f44;
+    border: 1px outset #787161;
+    cursor: pointer;
+}
+
+.buildingClassListItem:hover {
+    background-color: #5e594c;
+}
+
+.buildingClassListItem:active {
+    background-color: #5e594c;
+    border: 1px solid #5e594c;
+}
+
+.buildingClassListItem > .img {
+    display: -webkit-box;
+    -webkit-box-pack: center;
+    -webkit-box-align: center;
+    height: 60%;
+}
+
+.buildingClassListItem > .name {
+    display: -webkit-box;
+    -webkit-box-pack: center;
+    -webkit-box-align: center;
+    padding: 4px 0px;
+    height: 40%;
+    white-space: nowrap;
+    color: #fff;
+    font-size: 9pt;
+    font-weight: bold;
+    text-align: center;
+    text-transform: lowercase;
+}
+
+.buildingClassListItem > .name:first-letter {
+    text-transform: uppercase;
+}
+
+
+
+
+
+.buildingInfoView {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.buildingInfoView h2 {
+    color: #fff;
+}
+
+.buildingInfoView h2:first-letter {
+    text-transform: uppercase;
+}
+
+.buildingInfoView .button1 {
+    position: absolute;
+    bottom: 0px;
+    width: 50%;
+    right: 0px;
+    margin: 0px;
+    height: 48px;
+    padding: 0px 16px;
+    overflow: hidden;
+    background-color: #544f44;
+    border: 1px outset #787161;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 48px;
+    color: #fff;
+    font-smooth: never;
+    -webkit-font-smoothing: none;
+    cursor: pointer;
+}
+
+.buildingInfoView .button1:hover {
+    background-color: #5e594c;
+}
+
+.buildingInfoView .button1:active {
+    background-color: #5e594c;
+    border: 1px solid #5e594c;
+}
+
+.buildingInfoView .button2 {
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    width: 50%;
+    margin: 0px;
+    height: 48px;
+    padding: 0px 16px;
+    overflow: hidden;
+    background-color: #544f44;
+    border: 1px outset #787161;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 48px;
+    color: #fff;
+    font-smooth: never;
+    -webkit-font-smoothing: none;
+    cursor: pointer;
+}
+
+.buildingInfoView .button2:hover {
+    background-color: #5e594c;
+}
+
+.buildingInfoView .button2:active {
+    background-color: #5e594c;
+    border: 1px solid #5e594c;
+}
+
+.messageView {
+    position: relative;
+    height: 100%;
+}
+
+.messageView .text {
+    display: block;
+    color: #fff;
+    padding: 8px 16px;
+}
+
+.messageView .button {
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    margin: 0px;
+    height: 48px;
+    padding: 0px 16px;
+    overflow: hidden;
+    background-color: #544f44;
+    border: 1px outset #787161;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 48px;
+    color: #fff;
+    font-smooth: never;
+    -webkit-font-smoothing: none;
+    cursor: pointer;
+}
+
+.resourcesBarWidget {
+    display: block;
+    overflow: hidden;
+}
+
+.resourcesBarWidget .items {
+    overflow: auto;
+    margin: -4px -1px -4px -2px;
+}
+
+.resourcesBarWidget .item {
+    width: 42px;
+    position: relative;
+    height: 16px;
+    float: left;
+    margin: 4px 1px 4px 2px;
+}
+
+.resourcesBarWidget .item .value {
+    position: absolute;
+    top: 50%;
+    left: 17px;
+    width: 25px;
+    margin-top: -8px;
+    height: 16px;
+    color: #fff;
+    line-height: 16px;
+    font-size: 8pt;
+    font-weight: bold;
+    overflow: hidden;
+}
+
+.resourcesBarWidget .item .icon {
+    position: absolute;
+    top: 50%;
+    left: 0px;
+    margin-top: -8px;
+    display: block;
+    height: 16px;
+    width: 16px;
+}
+
+@media (min-width: 800px) {
+    .resourcesBarWidget .items {
+        margin: -4px -2px -4px -4px
+    }
+
+    .resourcesBarWidget .item {
+        width: 50px;
+        margin: 4px 2px 4px 4px;
+    }
+
+    .resourcesBarWidget .item .value {
+        left: 20px;
+        width: 30px;
+        font-size: 9pt;
+    }
+}
+
+#cityView {
+    height: 100%;
+    position: relative;
+}
+
+#cityView .content {
+    padding-bottom: 48px;
+    height: 100%;
+}
+
+#cityView .content > div {
+    padding: 8px 16px 8px 16px;
+    height: 100%;
+    overflow: auto;
+
+}
+
+#cityView .row {
+    min-height: 24px;
+    position: relative;
+    overflow: auto;
+    margin-top: 16px;
+    color: #fff;
+    font-size: 9pt;
+}
+
+#cityView .row > .key {
+
+    margin: 4px 0px;
+    width: 30%;
+    float: left;
+}
+
+#cityView .row > .value {
+    width: 70%;
+    float: left;
+    margin: 4px 0px;
+
+}
+
+#cityView .buttons {
+    overflow: auto;
+    position: absolute;
+    bottom: 0px;
+}
+
+#cityView .buttons > * {
+    float: left;
+}
+
+.promptView {
+    height: 100%;
+    position: relative;
+}
+
+.promptView > .content {
+    padding-bottom: 48px;
+    height: 100%;
+}
+
+.promptView > .content > div {
+    padding: 8px 16px 8px 16px;
+    height: 100%;
+    overflow: auto;
+}
+
+.promptView > .content > div .msg {
+    color: #fff;
+    font-size: 9pt;
+}
+
+.promptView > .content > div .input {
+    margin: 16px;
+}
+
+.promptView > .content > div .input input {
+    width: 100%;
+}
+
+.promptView  .buttons {
+    overflow: auto;
+    position: absolute;
+    bottom: 0px;
+    width: 100%;
+}
+
+.promptView .buttons button {
+    float: right;
+    width: 100%;
+}
+
+/* LABORATORY VIEW */
+.labView {}
+
+.labView .labDirection {
+    position: relative;
+    height: 48px;
+}
+
+.labView .labDirection .lvl,
+.labView .labDirection .time,
+.labView .labDirection .cost {
+    line-height: 48px;
+    height: 48px;
+    float: left;
+
+    margin-right: 16px;
+
+    font-size: 12pt;
+    font-weight: bold;
+    color: #fff;
+}
+
+.labView .labDirection .time,
+.labView .labDirection .cost {
+    float: right;
+}
+
+.labView .labDirection .progress {
+    position: absolute;
+    height: 4px;
+    bottom: -8px;
+    width: 100%;
+    background-color: forestgreen;
+}
+
+.labView .labDirection .researchBtn {
+    float: right;
+    height: 48px;
+}

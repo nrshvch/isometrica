@@ -1,0 +1,117 @@
+* {
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin: 0px;
+    padding: 0px;
+    border: 0px;
+}
+
+::-webkit-scrollbar {
+    background-color: #333029;
+    width: 22px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #544f44;
+    border: 1px outset #787161;
+}
+
+.box {
+    background-color: #333029;
+    border: 1px outset #544f44;
+}
+
+.btn, .btn.btn-default {
+    display: inline-block;
+    height: 48px;
+    padding: 0px 16px;
+    background-color: #544f44;
+    border: 1px outset #787161;
+    white-space: nowrap;
+    text-align: center;
+    line-height: 48px;
+    color: #fff;
+    cursor: pointer;
+    outline: none;
+}
+
+.btn:hover, .btn.btn-default:hover {
+    background-color: #5e594c;
+}
+
+.btn:active, .btn.btn-default:active {
+    background-color: #5e594c;
+    border: 1px solid #5e594c;
+}
+
+input[type="text"] {
+    display: inline-block;
+    height: 48px;
+    padding: 0px 16px;
+    background-color: #544f44;
+    border: 1px inset #787161;
+    white-space: nowrap;
+    text-align: left;
+    color: #fff;
+    outline: none;
+}
+
+/* game specific UI list with key-value pairs */
+.layout {
+
+}
+
+.layout.group {
+    margin-top: 16px;
+}
+
+.layout.group > .label {
+    color: #fff;
+    font-size: 9pt;
+    font-weight: bold;
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+    border-bottom: 1px dotted rgba(255,255,255,0.05);
+}
+
+.layout.group > .content {
+    margin: 0px 16px;
+}
+
+.layout.list {
+
+}
+
+.layout.list > .item {
+    padding: 8px 8px;
+    overflow: auto;
+    background-color: rgba(255,255,255,0.05);
+}
+
+.layout.list > .item:nth-child(odd){
+    background-color: rgba(255,255,255,0.025);
+}
+
+.layout.list > .item > .key {
+    color: #fff;
+    font-size: 9pt;
+    float:left;
+}
+
+.layout.list > .item > .value {
+    margin-left: 8px;
+    color: #fff;
+    font-size: 9pt;
+    float:right;
+}
+
+.layout.view > .content {
+    padding-bottom: 48px;
+    height: 100%;
+}
+
+.layout.view > .content > .wrapper {
+    padding: 8px 16px 8px 16px;
+    height: 100%;
+    overflow: auto;
+}
