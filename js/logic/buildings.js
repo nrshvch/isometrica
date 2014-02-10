@@ -169,6 +169,7 @@ define(function (require) {
             y = i % sizeY + baseY;
             this.set(x, y, building);
             this.mark(x, y);
+            //console.log(x,y);
         }
 
         building.addEventListener(building.events.update, this.onBuildingUpdated);

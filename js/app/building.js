@@ -1,86 +1,42 @@
 define(function (require) {
     var engine = require("engine"),
         BuildingState = require("lib/buildingstate"),
-        buildingModels = require("./objectlist"),
-        site = require("./gameObjects/buildingSite"),
         buildingData = require("lib/buildingdata"),
+        BuildingData = require("lib/buildingdata"),
         BuildingClassCode = require("lib/buildingclasscode"),
         BuildingWaypoints = require("lib/buildingwaypoints"),
         BuildingNode = require("./pathfinding/buildingnode"),
-        RoadNode = require("./pathfinding/roadnode");
+        BuildingView = require("./buildingview");
 
     function Building() {
-
+        this.view = new BuildingView();
+        this.view.setBuilding(this);
     }
 
     Building.prototype.gameObject = null;
     Building.prototype.data = null;
+    Building.prototype.staticData = null;
     Building.prototype.tile = null;
+    Building.prototype.node = null;
 
-    Building.prototype.activate = function () {
-        if (!this.gameObject.world) {
-            vkaria.game.logic.world.addGameObject(this.gameObject);
+    Building.prototype.setData = function(data){
+        this.data = data;
+        this.staticData = BuildingData[data.buildingCode];
+        this.tile = vkaria.tilesman.getTile(data.x, data.y).tileScript;
 
+        if(this.node === null){
             if(this.staticData.classCode === BuildingClassCode.road)
                 this.node = new RoadNode(this);
             else
                 this.node = new BuildingNode(this);
         }
-    };
 
-    Building.prototype.setData = function (data) {
-        var mData = this.data;
-        if (mData !== null && mData.buildingCode === data.buildingCode && mData.state === data.state)
-            return;
-
-        this.staticData = buildingData[data.buildingCode];
-
-        this.data = data;
-        this.tile = vkaria.tilesman.getTile(data.x, data.y).tileScript;
-
-        this.setupGameObject();
-
-
-    };
-
-    Building.prototype.setupGameObject = function () {
-        var model,
-            data = this.data,
-            tile = this.tile,
-            g = this.gameObject;
-
-        if (g === null) {
-            g = new engine.GameObject(buildingData[this.data.buildingCode].name);
-
-            var z = tile.gameObject.transform.getPosition()[1] + tile.subpositionZ(data.subPosX, data.subPosY),
-                x = data.x + data.subPosX,
-                y = data.y + data.subPosY,
-                tileSize = engine.config.tileSize;
-
-            g.transform.setPosition(x * tileSize, z, y * tileSize);
-
-            this.gameObject = g;
-        } else {
-            var t = g.transform.children[0];
-            this.gameObject.transform.removeChild(t);
-            t.gameObject.destroy();
-        }
-
-        if (this.data.state != BuildingState.underConstruction)
-            model = new (buildingModels[data.buildingCode])(buildingData[data.buildingCode].name);
-        else
-            model = new site(buildingData[data.buildingCode].size & 0x0F, buildingData[data.buildingCode].size >> 4);
-
-        g.transform.addChild(model.transform);
-
-        return g;
+        this.view.update();
+        this.view.render();
     };
 
     Building.prototype.destroy = function () {
-        if (this.gameObject !== null) {
-            this.gameObject.destroy();
-            this.gameObject = null;
-        }
+        this.view.gameObject.destroy();
     };
 
     Building.prototype.getSideTiles = function () {
@@ -95,7 +51,7 @@ define(function (require) {
             ly = (sData.size >> 4) + 2;
 
         for (var i = 1; i < lx - 1; i++) {
-            tile = tilesman.getTile(x0 + i, y0)
+            tile = tilesman.getTile(x0 + i, y0);
             if (tile !== null) tiles.push(tile);
 
             tile = tilesman.getTile(x0 + i, y0 + ly - 1);
@@ -133,7 +89,7 @@ define(function (require) {
 
         for(var i = 0; i < wpsSource.length; i++){
             var wp = [];
-            engine.glMatrix.vec3.transformMat4(wp, wpsSource[i], this.gameObject.transform.localToWorld);
+            engine.glMatrix.vec3.transformMat4(wp, wpsSource[i], this.view.gameObject.transform.localToWorld);
             wps.push(wp);
         }
 

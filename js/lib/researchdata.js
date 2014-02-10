@@ -24,9 +24,9 @@ define(function (require) {
 
     data[ResearchDirection.housing] = {
         levelItems: [
-            [BuildingCode.house0],
+            [BuildingCode.house2, BuildingCode.house0,BuildingCode.house3,BuildingCode.house4,BuildingCode.house5],
             [BuildingCode.house1],
-            [BuildingCode.house2, BuildingCode.house3],
+            [BuildingCode.house3],
             [BuildingCode.house4, BuildingCode.house5],
         ]
     };

@@ -5,7 +5,8 @@ define(function (require) {
         BuildingClassCode = require("lib/buildingclasscode"),
         Resources = require("lib/resources"),
         ResourceCode = require("lib/resourcecode"),
-        ResearchState = require("lib/researchstate");
+        ResearchState = require("lib/researchstate"),
+        RenderLayer = require("lib/renderlayer");
 
     var buildingData = {};
 
@@ -21,7 +22,18 @@ define(function (require) {
         researchTime: 0,
         researchCost: Resources.zero,
         name: "tree",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 34,
+                pivotY: 53,
+                path: "tree1.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.tree2] = {
@@ -36,7 +48,18 @@ define(function (require) {
         researchTime: 0,
         researchCost: Resources.zero,
         name: "tree",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 34,
+                pivotY: 53,
+                path: "tree2.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.cliff] = {
@@ -51,7 +74,18 @@ define(function (require) {
         researchTime: 0,
         researchCost: Resources.zero,
         name: "cliff",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 24,
+                path: "cliff.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.road] = {
@@ -70,26 +104,23 @@ define(function (require) {
         researchCost: Resources.zero,
         name: "road",
         gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 24,
+                path: "road/x1.png",
+                layer: RenderLayer.roadLayer
+            }
+        ],
         roadGates: [
             [1,0], [0,-1], [-1,0], [0,1]
         ],
         waypoints: {}
     };
 
-    buildingData[BuildingCode.bridge] = {
-        size: 0x11,
-        buildingCode: BuildingCode.bridge,
-        classCode: BuildingClassCode.road,
-        producing: Resources.zero,
-        demanding: Resources.zero,
-        constructionTime: 0,
-        constructionCost: Resources.create({money: 100}),
-        researchState: ResearchState.finished,
-        researchTime: 0,
-        researchCost: Resources.zero,
-        name: "bridge",
-        gather: null
-    };
 
     buildingData[BuildingCode.house0] = {
         size: 0x11,
@@ -111,6 +142,17 @@ define(function (require) {
         researchCost: Resources.zero,
         name: "mobile house",
         gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 23,
+                path: "buildings/house0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ],
         roadGates: [
             [-1,0]//,[0,-1],[1,0],[0,1]
         ]
@@ -138,7 +180,18 @@ define(function (require) {
             money: 200
         }),
         name: "tiny house",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 27,
+                pivotY: 23,
+                path: "buildings/house1.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.house2] = {
@@ -166,7 +219,27 @@ define(function (require) {
             money: 500
         }),
         name: "small residential house",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 31,
+                path: "buildings/house2-2.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 0,
+                y: 0,
+                z: 1,
+                pivotX: 32,
+                pivotY: 26,
+                path: "buildings/house2-1.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.house3] = {
@@ -194,7 +267,28 @@ define(function (require) {
             money: 1500
         }),
         name: "cottage house",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 19,
+                path: "buildings/house3-1.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 1,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 40,
+                path: "buildings/house3-2.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ],
+        smokeSource: [1.25,2.5,0.85]
     };
 
     buildingData[BuildingCode.house4] = {
@@ -222,7 +316,28 @@ define(function (require) {
             money: 1500
         }),
         name: "two story house",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 28,
+                path: "buildings/house4-1.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 0,
+                y: 0,
+                z: 1,
+                pivotX: 32,
+                pivotY: 41,
+                path: "buildings/house4-2.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ],
+        smokeSource: [0.75,3.5,1.25]
     };
 
     buildingData[BuildingCode.house5] = {
@@ -250,7 +365,27 @@ define(function (require) {
             money: 1500
         }),
         name: "house",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 35,
+                path: "buildings/house5-1.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 1,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 31,
+                path: "buildings/house5-2.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
 
@@ -274,7 +409,18 @@ define(function (require) {
         researchTime: 3000,
         researchCost: Resources.zero,
         name: "city hall",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 46,
+                path: "buildings/cityhall.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.farm] = {
@@ -353,7 +499,18 @@ define(function (require) {
         researchTime: 5000,
         researchCost: Resources.create({money: 100}),
         name: "water tower",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 18,
+                pivotY: 64,
+                path: "buildings/watertower.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.waterPump] = {

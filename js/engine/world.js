@@ -81,6 +81,7 @@ define(function (require) {
      * @param {GameObject} gameObject
      */
     p.addGameObject = function (gameObject) {
+        //TODO check if gameObject if already present
         this.gameObjects[this.gameObjectsCount++] = gameObject;
         gameObject.setWorld(this);
 
@@ -117,7 +118,7 @@ define(function (require) {
                 this.addGameObject(child);
             }
         }
-    }
+    };
 
     /**
      * Puts game object in queue to remove.
@@ -184,6 +185,7 @@ define(function (require) {
 
             for (i = 0; i < len; i++) {
                 gameObject = this.removeQueue.pop();
+                gameObject.transform.destroy(); //TODO: refactor this with event.
                 this.gameObjects.splice(this.gameObjects.indexOf(gameObject), 1);
                 this.gameObjectsCount--;
 

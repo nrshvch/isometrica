@@ -5,8 +5,6 @@
 define(function (require) {
     var LogicInterface = require("logicapi"),
         engine = require("engine"),
-    //MainScript = require("./components/MainScript"),
-    //Trolley = require("./gameObjects/Trolley"),
         BuildMan = require("./buildman"),
         TilesMan = require("./tilesman"),
         PathMan = require("./pathfinding/pathman"),
@@ -14,7 +12,8 @@ define(function (require) {
         City = require("./city"),
         PlayerScript = require("./components/playerscript"),
         CameraScript = require("./components/camerascript"),
-        UIManager = require("ui");
+        UIManager = require("ui"),
+        RenderLayer = require("lib/renderlayer");
 
     function Vkaria() {
         // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -51,12 +50,7 @@ define(function (require) {
 
         //TODO there should be renderer layers and logical layers, and tags too
         //configure layers (render layers)
-        vkaria.layers = {};
-        vkaria.layers.groundLayer = 0;
-        vkaria.layers.roadLayer = 1;
-        vkaria.layers.vehiclesLayer = 2;
-        vkaria.layers.buildingsLayer = 3;
-        vkaria.layers.overlayLayer = 4;
+        vkaria.layers = RenderLayer;
         engine.config.layersCount = 5;
         engine.config.depthSortingMask = 12;
 
@@ -122,7 +116,7 @@ define(function (require) {
         setInterval(function () {
 
             var pa = p.findPath();
-
+                               console.log(pa)
             if (pa && pa.length) {
                 var b = new t;
                 vkaria.game.logic.world.addGameObject(b);

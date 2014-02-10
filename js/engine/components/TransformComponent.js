@@ -86,6 +86,11 @@ define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
         child.removeParent();
     }
 
+    p.destroy = function(){
+        if(this.parent !== null)
+            this.parent.removeChild(this);
+    };
+
     /**
      * @param {Transform} parent
      */

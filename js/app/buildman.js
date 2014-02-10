@@ -2,40 +2,13 @@
 define(function (require) {
     var engine = require("engine"),
         ResponseCode = require("lib/responsecode"),
-        objectList = require("./objectlist"),
-        site = require("./gameObjects/buildingSite"),
         BuildingState = require("lib/buildingstate"),
         BuildingClassCode = require("lib/buildingclasscode"),
         TileMessage = require("./gameObjects/tilemessage"),
         Building = require("./building"),
+        Road = require("./road"),
         buildingData = require("lib/buildingdata"),
         EventManager = require("lib/eventmanager");
-
-    var roadSprite = {
-        90001: "road/straight1.png",
-        90010: "road/straight2.png",
-        90011: "road/turn3.png",
-        90100: "road/straight1.png",
-        90101: "road/straight1.png",
-        90110: "road/turn2.png",
-        90111: "road/t2.png",
-        91000: "road/straight2.png",
-        91001: "road/turn1.png",
-        91010: "road/straight2.png",
-        91011: "road/t3.png",
-        91100: "road/turn4.png",
-        91101: "road/t4.png",
-        91110: "road/t1.png",
-        91111: "road/x1.png",
-        1: "road/elevation1.png",
-        2: "road/elevation2.png",
-        3: "road/elevation3.png",
-        4: "road/elevation4.png"
-    };
-
-    var bridgeSprite = {
-
-    };
 
     function Buildman(main) {
         EventManager.call(this);
@@ -48,15 +21,19 @@ define(function (require) {
         this.main = main;
 
         this.onBuildingBuilt = function (sender, building) {
-            var gameObject = self.processSerializedBuilding(building);
-            self.updateRoads(building);
+            self.createBuilding(building);
+        };
+
+        this.onBuildingUpdated = function (sender, building) {
+            self.updateBuilding(building);
+
         };
 
         this.onBuildingRemoved = function (sender, building) {
             self.removeBuilding(building.x, building.y);
-            self.updateRoads(building);
         };
 
+        //Load buildings
         this.onTilesLoaded = function (sender, args) {
             var meta = args.meta;
             vkaria.logicInterface.getBuildingData(meta.x, meta.y, meta.w, meta.h, function (response) {
@@ -64,10 +41,11 @@ define(function (require) {
                     i, l = data.length;
 
                 for (i = 0; i < l; i++)
-                    self.processSerializedBuilding(data[i]);
+                    self.createBuilding(data[i]);
             });
         };
 
+        //Unload buildings
         this.onTilesRemoved = function (sender, response) {
             var x = response.x,
                 y = response.y,
@@ -95,7 +73,7 @@ define(function (require) {
 
         vkaria.logicInterface.addEventListener(ResponseCode.buildingBuilt, this.onBuildingBuilt);
         vkaria.logicInterface.addEventListener(ResponseCode.buildingRemoved, this.onBuildingRemoved);
-        vkaria.logicInterface.addEventListener(ResponseCode.buildingUpdated, this.onBuildingBuilt);
+        vkaria.logicInterface.addEventListener(ResponseCode.buildingUpdated, this.onBuildingUpdated);
     };
 
     Buildman.prototype.getRoad = function (x, y) {
@@ -137,6 +115,8 @@ define(function (require) {
 
         if (this.roadByXY[x] !== undefined && this.roadByXY[x][y] !== undefined)
             delete this.roadByXY[x][y];
+
+        return building;
     };
 
     Buildman.prototype.build = function (buildingCode, x, y, rotate, callback) {
@@ -165,117 +145,71 @@ define(function (require) {
         });
     };
 
-    Buildman.prototype.processSerializedBuilding = function (data) {
+    Buildman.prototype.createBuilding = function (data) {
         var x = data.x,
             y = data.y,
             tile,
             building;
 
-        tile = vkaria.tilesman.getTile(x,y);
+        tile = vkaria.tilesman.getTile(x, y);
 
-        if(!tile)
-            return;
+        if (!tile)
+            return false;
 
-        building = this.getBuilding(x, y);
-
-        var isNew = false;
-        if(building === null){
+        if(buildingData[data.buildingCode].classCode === BuildingClassCode.road){
+            building = new Road();
+        }else
             building = new Building();
-            this.setBuilding(x,y, building);
-
-            if (buildingData[data.buildingCode].classCode === BuildingClassCode.road)
-                this.addRoad(x, y, building);
-
-            isNew = true;
-        }
 
         building.setData(data);
 
-        //will add building to scene
-        building.activate();
+        this.setBuilding(x, y, building);
 
-        if(isNew)
-            this.dispatchEvent(this.events.buildingAdded, this, building);
-
-        if (buildingData[data.buildingCode].classCode === BuildingClassCode.road)
-            this.updateRoads(data);
-
-        return;
-    };
-
-    Buildman.prototype.updateRoads = function (item) {
-        var x = item.x,
-            y = item.y;
-
-        if (this.getRoad(x, y) !== null)
-            this.updateRoad(x, y);
-
-        if (this.getRoad(x + 1, y) !== null)
-            this.updateRoad(x + 1, y);
-
-        if (this.getRoad(x, y + 1) !== null)
-            this.updateRoad(x, y + 1);
-
-        if (this.getRoad(x - 1, y) !== null)
-            this.updateRoad(x - 1, y);
-
-        if (this.getRoad(x, y - 1) !== null)
-            this.updateRoad(x, y - 1);
-    };
-
-    Buildman.prototype.updateRoad = function (x, y) {
-        var tile = vkaria.tilesman.getTile(x, y),
-            slopeId = tile.tileScript.getSlopeId(),
-            road = this.getRoad(x, y).gameObject,
-            ne = this.getRoad(x + 1, y),
-            nw = this.getRoad(x, y + 1),
-            sw = this.getRoad(x - 1, y),
-            se = this.getRoad(x, y - 1),
-            id;
-
-        if (road.name === "road") {
-
-            if (slopeId === 2222) {
-                var a = sw !== null,
-                    b = se !== null,
-                    c = ne !== null,
-                    d = nw !== null;
-
-                id = 90000 + a * 1000 + b * 100 + c * 10 + d;
-
-                if (id === 90000) return;
-            } else if (slopeId === 2233) {
-                id = 1;
-            } else if (slopeId === 2112) {
-                id = 2;
-            } else if (slopeId === 2211) {
-                id = 3;
-            } else if (slopeId === 2332) {
-                id = 4;
-            }
-
-
-            if (road.transform.children[0].gameObject.spriteRenderer)
-                road.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite(roadSprite[id]));
-
-        } else if (road.name === "bridge") {
-            if ((ne !== null && ne.name === "bridge") || (sw !== null && sw.name === "bridge"))
-                road.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("bridge/2.png"));
-            else if ((nw !== null && nw.name === "bridge") || (se !== null && se.name === "bridge"))
-                road.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("bridge/1.png"));
-
-            if (slopeId === 2332)
-                road.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("bridge/ne.png"));
-
-            if (slopeId === 2211)
-                road.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("bridge/nw.png"));
-
-            if (slopeId === 2233)
-                road.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("bridge/se.png"));
-
-            if (slopeId === 2112)
-                road.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("bridge/sw.png"));
+        if(buildingData[data.buildingCode].classCode === BuildingClassCode.road){
+            this.addRoad(x, y, building);
+            this.updateRoads(x, y);
         }
+
+        this.dispatchEvent(this.events.buildingAdded, this, building);
+
+        return building;
+    };
+
+    Buildman.prototype.updateBuilding = function (data) {
+        var x = data.x,
+            y = data.y,
+            tile,
+            building;
+
+        tile = vkaria.tilesman.getTile(x, y);
+
+        if (!tile)
+            return false;
+
+        building = this.getBuilding(x, y);
+        building.setData(data);
+
+        return building;
+    };
+
+    Buildman.prototype.updateRoads = function (x, y) {
+        var buildman = vkaria.buildman,
+            road;
+
+        if ((road = buildman.getRoad(x, y)) !== null)
+            road.updateRoad(x, y);
+
+        if ((road = buildman.getRoad(x + 1, y)) !== null)
+            road.updateRoad(x + 1, y);
+
+        if ((road = buildman.getRoad(x, y + 1)) !== null)
+            road.updateRoad(x, y + 1);
+
+        if ((road = buildman.getRoad(x - 1, y)) !== null)
+            road.updateRoad(x - 1, y);
+
+        if ((road = buildman.getRoad(x, y - 1)) !== null)
+            road.updateRoad(x, y - 1);
     };
 
     return Buildman;
