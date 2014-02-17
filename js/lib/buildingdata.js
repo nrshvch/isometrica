@@ -142,6 +142,7 @@ define(function (require) {
         researchCost: Resources.zero,
         name: "mobile house",
         gather: null,
+        canRotate: true,
         sprites: [
             {
                 x: 0,
@@ -150,6 +151,17 @@ define(function (require) {
                 pivotX: 32,
                 pivotY: 23,
                 path: "buildings/house0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ],
+        spritesRotate: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 23,
+                path: "buildings/house0r.png",
                 layer: RenderLayer.buildingsLayer
             }
         ],
@@ -220,6 +232,7 @@ define(function (require) {
         }),
         name: "small residential house",
         gather: null,
+        canRotate: true,
         sprites: [
             {
                 x: 0,
@@ -237,6 +250,26 @@ define(function (require) {
                 pivotX: 32,
                 pivotY: 26,
                 path: "buildings/house2-1.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ],
+        spritesRotate: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 31,
+                path: "buildings/house2r-2.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 1,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 26,
+                path: "buildings/house2r-1.png",
                 layer: RenderLayer.buildingsLayer
             }
         ]

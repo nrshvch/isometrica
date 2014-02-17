@@ -116,7 +116,6 @@ define(function (require) {
         setInterval(function () {
 
             var pa = p.findPath();
-                               console.log(pa)
             if (pa && pa.length) {
                 var b = new t;
                 vkaria.game.logic.world.addGameObject(b);

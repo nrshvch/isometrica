@@ -24,7 +24,17 @@ define(function (require) {
             var p = this.gameObject.transform.getPosition();
             var d = engine.glMatrix.vec3.subtract([], c, p);
 
-
+            var dir0 = d[0],
+                dir1 = d[2];
+                           //console.log(dir0, dir1);
+            if(dir0 > 0)
+                this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("trolley0.png"));
+            else if(dir0 < 0)
+                this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("trolley2.png"));
+            else if(dir1 > 0)
+                this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("trolley3.png"));
+            else if(dir1 < 0)
+                this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("trolley1.png"));
 
             //console.log(p, engine.glMatrix.vec3.sqrLen(d));
 

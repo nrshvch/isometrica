@@ -32,14 +32,23 @@ define(function (require) {
             //clear old GOs
             var children = this.gameObject.transform.children,
                 len = children.length;
-            for(var i = 0; i < len; i++){
+            for (var i = 0; i < len; i++) {
                 var child = children[i];
                 child.gameObject.destroy();
             }
 
             if (b.data.state === BuildingState.underConstruction) {
-                var sizeX = staticData.size & 0x0F,
+                var sizeX = 0,
+                    sizeY = 0;
+
+                if (this.building.data.rotation) {
+                    sizeX = staticData.size >> 4;
+                    sizeY = staticData.size & 0x0F;
+                } else {
+                    sizeX = staticData.size & 0x0F;
                     sizeY = staticData.size >> 4;
+                }
+
 
                 for (var x = 0; x < sizeX; x++) {
                     for (var y = 0; y < sizeY; y++) {
@@ -47,32 +56,36 @@ define(function (require) {
                             sprite = new engine.SpriteRenderer();
 
                         sprite.layer = RenderLayer.buildingsLayer;
-                        sprite.setSprite(vkaria.sprites.getSprite("site.png")).setPivot(32,24);
+                        sprite.setSprite(vkaria.sprites.getSprite("site.png")).setPivot(32, 24);
 
                         part.addComponent(sprite);
                         this.gameObject.transform.addChild(part.transform);
                         part.transform.translate(x * engine.config.tileSize, 0, y * engine.config.tileSize);
                     }
                 }
-            }else if(b.data.state === BuildingState.ready){
-                if (staticData.sprites) {
-                    var spritesData = staticData.sprites,
-                        len = spritesData.length;
+            } else if (b.data.state === BuildingState.ready) {
+                var spritesData;
 
-                    for (var i = 0; i < len; i++) {
-                        var spriteData = spritesData[i];
+                if (b.data.rotation && staticData.spritesRotate) {
+                    spritesData = staticData.spritesRotate;
+                } else if (staticData.sprites) {
+                    var spritesData = staticData.sprites;
+                }
 
-                        var spriteRenderer = new engine.SpriteRenderer();
-                        spriteRenderer.layer = spriteData.layer;
-                        spriteRenderer.setSprite(vkaria.sprites.getSprite(spriteData.path));
-                        spriteRenderer.pivotX = spriteData.pivotX;
-                        spriteRenderer.pivotY = spriteData.pivotY;
+                var len = spritesData.length;
+                for (var i = 0; i < len; i++) {
+                    var spriteData = spritesData[i];
 
-                        var spriteGO = new engine.GameObject();
-                        spriteGO.addComponent(spriteRenderer);
-                        this.gameObject.transform.addChild(spriteGO.transform);
-                        spriteGO.transform.setLocalPosition(spriteData.x * tileSize, spriteData.y * tileZStep, spriteData.z * tileSize);
-                    }
+                    var spriteRenderer = new engine.SpriteRenderer();
+                    spriteRenderer.layer = spriteData.layer;
+                    spriteRenderer.setSprite(vkaria.sprites.getSprite(spriteData.path));
+                    spriteRenderer.pivotX = spriteData.pivotX;
+                    spriteRenderer.pivotY = spriteData.pivotY;
+
+                    var spriteGO = new engine.GameObject();
+                    spriteGO.addComponent(spriteRenderer);
+                    this.gameObject.transform.addChild(spriteGO.transform);
+                    spriteGO.transform.setLocalPosition(spriteData.x * tileSize, spriteData.y * tileZStep, spriteData.z * tileSize);
                 }
 
                 //add smoke

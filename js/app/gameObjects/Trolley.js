@@ -1,17 +1,19 @@
 define(function (require) {
     var engine = require("engine"),
         TrolleyScript = require("../components/entity"),
-        SmokeSource = require("../components/smokesource");
+        SmokeSource = require("../components/smokesource"),
+        RenderLayer = require("lib/renderlayer");
 
     function Trolley() {
         engine.GameObject.call(this);
 
         var sprite = this.sprite = new engine.SpriteRenderer();
-        sprite.layer = 2;
+        sprite.layer = RenderLayer.vehiclesLayer;
 
-        sprite.setSprite(vkaria.sprites.getSprite("car1.png"));
-        sprite.pivotX = 8;
-        sprite.pivotY = 8;
+        sprite.setSprite(vkaria.sprites.getSprite("trolley0.png"));
+
+        sprite.pivotX = 16;
+        sprite.pivotY = 16;
 
 
         this.addComponent(sprite);

@@ -12,7 +12,6 @@ define(function (require) {
         var self = this;
 
         vkaria.buildman.addEventListener(vkaria.buildman.events.buildingAdded, function(buildman, building){
-            console.log(building);
             if(building.staticData.classCode !== BuildingClassCode.tree)
                 self.addNode(building.node);
         });

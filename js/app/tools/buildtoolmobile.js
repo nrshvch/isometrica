@@ -99,22 +99,34 @@ define(function(require){
         return this;
     };
 
-    Tool.prototype.rotate = false;
+    Tool.prototype._rotate = false;
     Tool.prototype.rotate = function(){
-        this.rotate = !this.rotate;
+        this._rotate = !this._rotate;
 
-        if(!this.rotate){
+        if(!this._rotate){
             this.buildingSizeX = buildingData[this.buildingCode].size & 15;
             this.buildingSizeY = buildingData[this.buildingCode].size >> 4;
         }else{
             this.buildingSizeY = buildingData[this.buildingCode].size & 15;
             this.buildingSizeX = buildingData[this.buildingCode].size >> 4;
         }
+
+        //update highlite
+        if(this.selectedTiles.length === 1){
+            var tile = this.selectedTiles[0];
+            this.tools.highliteArea(
+                tile.x,
+                tile.y,
+                tile.x + this.buildingSizeX - 1,
+                tile.y + this.buildingSizeY - 1,
+                'blue'
+            );
+        }
     };
 
     Tool.prototype.confirm = function(){
         for(var i in this.selectedTiles){
-            vkaria.buildman.build(this.buildingCode, this.selectedTiles[i].x, this.selectedTiles[i].y, this.rotate);
+            vkaria.buildman.build(this.buildingCode, this.selectedTiles[i].x, this.selectedTiles[i].y, this._rotate);
         };
         this.tools.disableHighliters();
         this.dispatchEvent(this.events.receivedConfirmation, this, null);

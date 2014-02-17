@@ -49,6 +49,9 @@ define(function (require) {
             "click a.button.button6": function (e) {
                 this.openWindow(new LabView({mainView: this}), "Laboratory");
             },
+            "click .buttonRotate": function(e){
+                this.tools.currentTool.rotate();
+            },
             "click .buttonCancel": function(e){
                 this.tools.currentTool.cancel();
             },
@@ -114,13 +117,13 @@ define(function (require) {
             /*
             Ok/Cancel tool buttons
              */
-            $(".buttonConfirm, .buttonCancel", this.$el).hide();
+            $(".buttonConfirm, .buttonCancel, .buttonRotate", this.$el).hide();
             var tool = vkaria.tools.tools[ToolCode.builder];
             tool.addEventListener(tool.events.awaitingConfirmation, function(sender, args){
-                $(".buttonConfirm, .buttonCancel", self.$el).show();
+                $(".buttonConfirm, .buttonCancel, .buttonRotate", self.$el).show();
             });
             tool.addEventListener(tool.events.receivedConfirmation, function(sender, args){
-                $(".buttonConfirm, .buttonCancel", self.$el).hide();
+                $(".buttonConfirm, .buttonCancel, .buttonRotate", self.$el).hide();
             });
             var tool = vkaria.tools.tools[ToolCode.tileSelector];
             tool.addEventListener(tool.events.awaitingConfirmation, function(sender, args){

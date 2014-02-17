@@ -1,7 +1,8 @@
 //TODO render only dirty areas of screen
 //TODO each GO could have multiple renderers...
 //TODO ...all scene renderers should be grouped in single array.
-define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./components/SpriteRenderer", "./components/TextRenderer"], function (config, glMatrix, PathRenderer, SpriteRenderer, TextRenderer) {
+define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./components/SpriteRenderer", "./components/TextRenderer",
+"./components/AnimatedSpriteRenderer"], function (config, glMatrix, PathRenderer, SpriteRenderer, TextRenderer, AnimatedSpriteRenderer) {
     function Canvas2dRenderer(graphics) {
         this.graphics = graphics;
         this.layerBuffers = [];
@@ -86,7 +87,7 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
             for (j = 0; j < renderersCount; j++) {
                 renderer = renderers.pop();
 
-                if (renderer.constructor === SpriteRenderer)
+                if (renderer.constructor === SpriteRenderer || renderer.constructor === AnimatedSpriteRenderer)
                     this.renderSprite(renderer, ctx);
                 else if (renderer.constructor === PathRenderer)
                     this.renderPath(renderer, ctx);

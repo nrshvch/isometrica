@@ -21,6 +21,12 @@ define(function (require) {
             sizeY = size >> 4,
             i, l, x, y, tile, slopeId;
 
+        if(rotate){
+            var t = sizeX;
+            sizeX = sizeY;
+            sizeY = t;
+        }
+
         for (i = 0, l = sizeX * sizeY; i < l; i++) {
             x = ((i / sizeY) | 0) + baseX;
             y = i % sizeY + baseY;
@@ -158,7 +164,7 @@ define(function (require) {
             sizeY = data.size >> 4,
             i, x, y, l;
 
-        if(building.rotate){
+        if(building.rotation){
             var t = sizeX;
             sizeX = sizeY;
             sizeY = t;
@@ -206,13 +212,16 @@ define(function (require) {
         }
 
         building = new Building(buildingCode);
-        building.rotate(true);
+        building.rotate(rotate);
         this._build(baseX, baseY, building);
 
         return building;
     };
 
     Buildings.prototype.build = function (buildingCode, baseX, baseY, rotate) {
+        if(!BuildingData[buildingCode].canRotate)
+            rotate = false;
+
         buildTest(this, baseX, baseY, rotate, BuildingData[buildingCode]);
 
         this.removeTrees(baseX, baseY, BuildingData[buildingCode].size, rotate);
