@@ -7,6 +7,7 @@ define(function (require) {
         engine = require("engine"),
         BuildMan = require("./buildman"),
         TilesMan = require("./tilesman"),
+        HiliteMan = require("./hiliteman"),
         PathMan = require("./pathfinding/pathman"),
         Tools = require("./tools/tools"),
         City = require("./city"),
@@ -61,6 +62,7 @@ define(function (require) {
         //init engine
         this.game = new engine.Game();
 
+        this.hiliteMan = new HiliteMan();
         this.buildman = new BuildMan();
         this.tilesman = new TilesMan();
         this.tools = new Tools();

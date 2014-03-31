@@ -27,6 +27,7 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
     p.screenSpaceCulling = function (gameObject, viewport) {
         //primitive culling
         //todo this should be using bounding box
+        //todo this could used worldToViewport instead worldToScreen, and check bounds to fit just [-1,1]
 
         if (gameObject.spriteRenderer !== undefined && gameObject.spriteRenderer.enabled) {
             gameObject.transform.getPosition(bufferVec3);
@@ -272,7 +273,13 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
         //ctx.strokeStyle = bound.color || (bound.color = '#' + ((0xFFFFFF * Math.random()) | 0).toString(16));
         ctx.stroke();
 
-    }
+    };
+
+    p.renderProcedure = function(renderer, layer){
+        glMatrix.vec3.transformMat4(bufferVec3, renderer.gameObject.transform.getPosition(bufferVec3), this.M);
+
+        renderer.procedure(layer, bufferVec3);
+    };
 
     p.renderPath = function (path, ctx) {
         var vec3 = glMatrix.vec3,
@@ -284,20 +291,27 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
         if (points.length < 2)
             return;
 
+
         ctx.beginPath();
-        ctx.lineWidth = path.width;
         vec3.transformMat4(bufferVec3, points[0], M);
         ctx.moveTo(bufferVec3[0], bufferVec3[1]);
         for (i = 1; i < len; i++) {
             vec3.transformMat4(bufferVec3, points[i], M);
             ctx.lineTo(bufferVec3[0], bufferVec3[1]);
-            ctx.moveTo(bufferVec3[0], bufferVec3[1]);
+            //ctx.moveTo(bufferVec3[0], bufferVec3[1]);
         }
         vec3.transformMat4(bufferVec3, points[0], M);
         ctx.lineTo(bufferVec3[0], bufferVec3[1]);
+        //ctx.moveTo(bufferVec3[0], bufferVec3[1]);
+
         ctx.closePath();
-        ctx.strokeStyle = path.color;
-        ctx.stroke();
+        //ctx.lineWidth = path.width;
+        //ctx.strokeStyle = "rgba(0,0,0,0.25)";
+        //ctx.stroke();
+        ctx.fillStyle = path.color;
+        ctx.fill();
+
+
     }
 
     p.renderText = function (renderer, ctx) {

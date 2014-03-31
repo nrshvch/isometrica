@@ -24,11 +24,10 @@ define(function(require){
     Tool.prototype.click = function(screenX, screenY){
         var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
         if (tile){
-            this.tools.highliteTile(tile.tileScript.x, tile.tileScript.y);
+            vkariaApp.hiliteMan.hiliteTile(tile.tileScript.x, tile.tileScript.y);
             this.selectedTile = tile;
             this.dispatchEvent(this.events.awaitingConfirmation, this, null);
         }
-
     };
 
     Tool.prototype.confirm = function(){
@@ -36,12 +35,12 @@ define(function(require){
             this.dispatchEvent(this.events.tileSelected, this, this.selectedTile);
 
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
-        this.tools.disableHighliters();
+        vkariaApp.hiliteMan.disableAll();
     };
 
     Tool.prototype.cancel = function(){
         this.selectedTile = null;
-        this.tools.disableHighliters();
+        vkariaApp.hiliteMan.disableAll();
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
     };
 

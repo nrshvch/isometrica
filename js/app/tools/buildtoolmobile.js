@@ -44,7 +44,7 @@ define(function(require){
             if (this.dragSource !== null) {
                 var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
                 if (tile)
-                    this.tools.highliteArea(this.dragSource.x, this.dragSource.y, this.dragDestination.x, this.dragDestination.y, "blue");
+                    vkariaApp.hiliteMan.hiliteTileArea(this.dragSource.x, this.dragSource.y, this.dragDestination.x, this.dragDestination.y, "blue");
             }
         }
     };
@@ -57,7 +57,7 @@ define(function(require){
 
             if (tile) {
                 //var tiles = this.tiles || (this.tiles = this.tools.gameObject.world.findByName("main").mainScript.tilesManager);
-                this.tools.highliteArea(
+                vkariaApp.hiliteMan.hiliteTileArea(
                     tile.tileScript.x,
                     tile.tileScript.y,
                     tile.tileScript.x + this.buildingSizeX - 1,
@@ -67,7 +67,7 @@ define(function(require){
                 this.selectedTiles = [{x: tile.tileScript.x, y: tile.tileScript.y}];
                 this.dispatchEvent(this.events.awaitingConfirmation, this, null);
             } else
-                this.tools.disableHighliters();
+                vkariaApp.hiliteMan.disableAll();
         }
     };
 
@@ -79,17 +79,17 @@ define(function(require){
 
         this.multiBuild(false);
 
-        //test code
-        /*
-         var pos = this.cameraScript.gameObject.transform.getPosition();
-         var conf = vkaria.config;
-         var x = (pos[0]/conf.tileSize)|0,
-         y = (pos[2]/conf.tileSize)|0;
+        var visibleGOs = vkariaApp.camera.camera.getVisibleGameObjects(),
+            len = visibleGOs.length;
+        for(var i = 0; i < len; i++){
+            var g = visibleGOs[i];
 
-         console.log(x,y);
-         console.log(this.gameObject.world.findByName("main").mainScript.tilesManager.getTile(x,y))
-         this.highliteTile(this.gameObject.world.findByName("main").mainScript.tilesManager.getTile(x,y).tileScript);
-         */
+            if(g.tileScript && g.tileScript.data.resource !== null){
+
+                var hiliter = vkariaApp.hiliteMan.hiliteTile(g.tileScript.x, g.tileScript.y, "rgba(255,0,0,0.5)");
+            }
+        }
+
 
         return this;
     };
@@ -114,7 +114,7 @@ define(function(require){
         //update highlite
         if(this.selectedTiles.length === 1){
             var tile = this.selectedTiles[0];
-            this.tools.highliteArea(
+            vkariaApp.hiliteMan.hiliteTileArea(
                 tile.x,
                 tile.y,
                 tile.x + this.buildingSizeX - 1,
@@ -126,15 +126,15 @@ define(function(require){
 
     Tool.prototype.confirm = function(){
         for(var i in this.selectedTiles){
-            vkaria.buildman.build(this.buildingCode, this.selectedTiles[i].x, this.selectedTiles[i].y, this._rotate);
+            vkariaApp.buildman.build(this.buildingCode, this.selectedTiles[i].x, this.selectedTiles[i].y, this._rotate);
         };
-        this.tools.disableHighliters();
+        vkariaApp.hiliteMan.disableAll();
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
     };
 
     Tool.prototype.cancel = function(){
         this.selectedTiles = [];
-        this.tools.disableHighliters();
+        vkariaApp.hiliteMan.disableAll();
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
     };
 

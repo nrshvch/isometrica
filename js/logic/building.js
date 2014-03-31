@@ -73,12 +73,9 @@ define(function (require) {
         this.timeCreated = this.timeCreated || this.world.now;
         this.createdAt = this.createdAt || this.world.time.now;
 
-        //set canGather flag, so we know if there is resource near
-        //except for wood, because it isn't a resource, but building, that can be removed.
-        //for wood, canGather is always false.
-        if (this.data.gather !== null && this.data.gather !== ResourceCode.wood) {
-            this.canGather = false;
-            this.canGather = tile.tiles.searchSquareRadius(this.x, this.y, 3, this.findResourceTileHandler);
+        //set canGather flag, so we know if there is a resource
+        if (this.data.gather !== null) {
+            this.canGather = (tile.resource === this.data.gather) ||  this.data.gather == ResourceCode.wood;
         }
     };
 
@@ -100,14 +97,13 @@ define(function (require) {
             Resources.add(resourcesBuffer1, resourcesBuffer1, this.data.producing);
 
             //Resources cannot be removed. canGather flag was predefined when building was set.
-            if (this.data.gather !== null && this.canGather)
+            if (this.canGather && this.data.gather !== null)
                 resourcesBuffer1[this.data.gather] += 1;
 
-            /* When gathering wood, it is required to have trees around current building.
-             * But trees can be removed, so we need to check them each time when producing.
-             * */
+            /*
             if (this.data.gather === ResourceCode.wood && this.tile.tiles.searchSquareRadius(this.x, this.y, 3, this.findTreeTileHandler))
                 resourcesBuffer1[this.data.gather] += 1;
+            */
 
             return resourcesBuffer1;
         } else {

@@ -23,6 +23,7 @@ define(["../Component"], function (Component) {
     p.setGameObject = function(gameObject){
         Component.prototype.setGameObject.call(this, gameObject);
         gameObject.spriteRenderer = this;
+        gameObject.renderer = this;
     };
 
     p.setSprite = function(sprite){
@@ -40,6 +41,7 @@ define(["../Component"], function (Component) {
 
     p.unsetGameObject = function(){
         this.gameObject.spriteRenderer = undefined;
+        this.gameObject.renderer = null;
         Component.prototype.unsetGameObject.call(this);
     };
 

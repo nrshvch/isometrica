@@ -1,4 +1,7 @@
-define(['engine'], function (engine) {
+define(function (require) {
+    var engine = require("engine"),
+        renderLayer = require("lib/renderlayer");
+
     function ToolScript() {
 
     }
@@ -11,7 +14,7 @@ define(['engine'], function (engine) {
         var pathRenderer = this.gameObject.addComponent(new engine.PathRenderer());
 
         pathRenderer.enabled = false;
-        pathRenderer.layer = 2;
+        pathRenderer.layer = renderLayer.overlayLayer;
         pathRenderer.color = 0xFFFFFF.toString(16);
         pathRenderer.width = 2;
 
@@ -23,7 +26,7 @@ define(['engine'], function (engine) {
             p3 = new Float32Array([ts / 2, 0, -ts / 2]);
 
         pathRenderer.points = [p0, p1, p2, p3];
-    }
+    };
 
     ToolScript.prototype.setTile = function (tile, color) {
         this.gameObject.pathRenderer.enabled = true;
@@ -48,11 +51,11 @@ define(['engine'], function (engine) {
             points[2][1] = (tile.gridPoints[1] - tile.z) * zStep;
             points[3][1] = (tile.gridPoints[2] - tile.z) * zStep;
         }
-    }
+    };
 
     ToolScript.prototype.disable = function(){
         this.gameObject.pathRenderer.enabled = false;
-    }
+    };
 
     return ToolScript;
 })

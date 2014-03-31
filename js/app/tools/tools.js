@@ -16,11 +16,8 @@ define(function(require){
     function Tools(){
         EventManager.call(this);
 
-        this.highliters = [];
-
         //mask of toolCodes, indicating tools that are disabled
         this.disabledTools = 0;
-
 
         this.tools = Object.create(null);
         this.tools[ToolCode.panner] = new PannerTool(this);
@@ -99,7 +96,6 @@ define(function(require){
         var enabled = (this.disabledTools & (1 << toolCode)) === 0;
 
         if(enabled){
-            this.disableHighliters();
             var tool = this.tools[toolCode];
 
             if(this.currentTool)
@@ -136,62 +132,6 @@ define(function(require){
         }
     };
 
-
-
-
-    Tools.prototype.highliteTile = function (tileX, tileY, color) {
-        var tile = vkariaApp.tilesman.getTile(tileX, tileY).tileScript;
-
-        if (this.highliters.length) {
-            this.highliters[0].setTile(tile, color);
-        } else {
-            var highlite = this.createHighliter();
-            this.highliters.push(highlite);
-            highlite.setTile(tile, color);
-        }
-    };
-
-    Tools.prototype.highliteArea = function (tile1X, tile1Y, tile2X, tile2Y, color) {
-        var tiles = vkariaApp.tilesman,
-            tile1 = tiles.getTile(tile1X, tile1Y).tileScript,
-            tile2 = tiles.getTile(tile2X, tile2Y).tileScript,
-            len = this.highliters.length,
-            highliter, i,
-            x0 = Math.min(tile1.x, tile2.x),
-            y0 = Math.min(tile1.y, tile2.y),
-            x1 = Math.max(tile1.x, tile2.x),
-            y1 = Math.max(tile1.y, tile2.y);
-
-        this.disableHighliters();
-
-        i = 0;
-        for (var x = x0; x <= x1; x++) {
-            for (var y = y0; y <= y1; y++) {
-                var tile = tiles.getTile(x, y).tileScript;
-
-                if (!tile)
-                    continue;
-
-                if (i < len) {
-                    highliter = this.highliters[i];
-                } else {
-                    highliter = this.createHighliter();
-                    this.highliters.push(highliter);
-                }
-
-                highliter.setTile(tile, color);
-
-                i++;
-            }
-        }
-    };
-
-    Tools.prototype.disableHighliters = function () {
-        for (var i = 0; i < this.highliters.length; i++) {
-            this.highliters[i].disable();
-        }
-    };
-
     Tools.prototype.filterTile = function (gameObjects) {
         var r = gameObjects,
             l = r.length;
@@ -201,16 +141,6 @@ define(function(require){
                 return r[i];
 
         return false;
-    };
-
-
-
-    Tools.prototype.createHighliter = function () {
-        var highliteGO = new engine.GameObject();
-        var highlite = new TileHighliteScript();
-        highliteGO.addComponent(highlite);
-        vkaria.game.logic.world.addGameObject(highliteGO);
-        return highlite;
     };
 
     return Tools;

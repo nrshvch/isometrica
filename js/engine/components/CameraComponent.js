@@ -42,6 +42,8 @@ define(["../lib/gl-matrix", "../Component", "../lib/BoundingBox", "../lib/aabb"]
         };
     }
 
+    var vec3Buffer1 = new Float32Array(3);
+
     CameraComponent.prototype = Object.create(Component.prototype);
 
     CameraComponent.prototype.constructor = CameraComponent;
@@ -51,6 +53,8 @@ define(["../lib/gl-matrix", "../Component", "../lib/BoundingBox", "../lib/aabb"]
         viewportSet: 1,
         viewportRemoved: 2
     };
+
+    CameraComponent.prototype.viewport = null;
 
     CameraComponent.prototype.bounds = null;
     CameraComponent.prototype.frustumSize = null;
@@ -120,6 +124,29 @@ define(["../lib/gl-matrix", "../Component", "../lib/BoundingBox", "../lib/aabb"]
     CameraComponent.prototype.getScreenToWorld = function () {
         throw "CameraComponent.getScreenToWorld: not implemented";
     }
+
+    CameraComponent.prototype.getVisibleGameObjects = function(){
+        var r = [];
+        var gs = this.gameObject.world.retrieve(this.gameObject),
+            g = null,
+            len = gs.length,
+            V = this.getWorldToViewport(),
+            vec3 = glMatrix.vec3,
+            pos, viewportPos;
+
+        for(var i = 0; i < len; i++){
+            g = gs[i];
+            if(g.renderer !== null){
+                pos = g.transform.getPosition(vec3Buffer1);
+                viewportPos = vec3.transformMat4(vec3Buffer1, vec3Buffer1, V);
+
+                if(viewportPos[0] >= -1 && viewportPos[0] < 1 && viewportPos[1] >= -1 && viewportPos[1] < 1)
+                    r.push(g);
+            }
+        }
+
+        return r;
+    };
 
     return CameraComponent;
 });

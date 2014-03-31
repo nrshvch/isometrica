@@ -17,10 +17,12 @@ define(["../Component"], function (Component) {
     p.setGameObject = function(gameObject){
         Component.prototype.setGameObject.call(this, gameObject);
         gameObject.textRenderer = this;
+        gameObject.renderer = this;
     };
 
     p.unsetGameObject = function(){
         this.gameObject.textRenderer = undefined;
+        this.gameObject.renderer = null;
         Component.prototype.unsetGameObject.call(this);
     };
 

@@ -36,8 +36,12 @@ define(function (require) {
 
             if (tile.terrainType === TerrainType.water) {
                 throw "Can't build on water!";
-            } else if (tile.tileType === TileType.resource) {
-                throw "Can't build here!"
+            }
+
+            if(buildingData.gather === null && tile.tileType === TileType.resource) {
+                throw "Can't build here!";
+            }else if(buildingData.gather !== null && buildingData.gather !== tile.resource){
+                throw "Wrong resource!";
             }
 
             if (buildingData.classCode === BuildingClassCode.road) {

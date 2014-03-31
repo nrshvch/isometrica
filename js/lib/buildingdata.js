@@ -468,7 +468,18 @@ define(function (require) {
         researchTime: 0,
         researchCost: Resources.zero,
         name: "farm",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
 
@@ -492,7 +503,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 100}),
         name: "small coal plant",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.windTurbine] = {
@@ -512,7 +534,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 100}),
         name: "wind turbine",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.waterTower] = {
@@ -564,7 +597,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 100}),
         name: "water pump station",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.smallMarket] = {
@@ -583,7 +627,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 200}),
         name: "small market",
-        gather: null
+        gather: null,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
 
@@ -602,7 +657,18 @@ define(function (require) {
         researchTime: 0,
         researchCost: Resources.zero,
         name: "lumber mill",
-        gather: ResourceCode.wood
+        gather: ResourceCode.wood,
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.oilRig] = {
@@ -619,7 +685,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 200}),
         gather: ResourceCode.oil,
-        name: "oil rig"
+        name: "oil rig",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.coalMine] = {
@@ -636,7 +713,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 200}),
         gather: ResourceCode.coal,
-        name: "coal mine"
+        name: "coal mine",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.stoneQuarry] = {
@@ -653,7 +741,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 200}),
         gather: ResourceCode.stone,
-        name: "stone quarry"
+        name: "stone quarry",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.uraniumMine] = {
@@ -670,7 +769,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 200}),
         gather: ResourceCode.uranium,
-        name: "uranium mine"
+        name: "uranium mine",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 30,
+                path: "buildings/testbuilding0.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.gasWell] = {
@@ -687,7 +797,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 200}),
         gather: ResourceCode.gas,
-        name: "gas well"
+        name: "gas well",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 21,
+                path: "buildings/testbuilding2.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     buildingData[BuildingCode.ironMine] = {
@@ -704,7 +825,18 @@ define(function (require) {
         researchTime: 10000,
         researchCost: Resources.create({money: 200}),
         gather: ResourceCode.iron,
-        name: "iron mine"
+        name: "iron mine",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 26,
+                path: "buildings/testbuilding1.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
     };
 
     return buildingData;
