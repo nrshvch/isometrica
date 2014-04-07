@@ -1,4 +1,8 @@
-define(["../Component"], function (Component) {
+define(function (require) {
+    var vec3Buffer1 = new Float32Array(3);
+    var Component = require("../Renderer");
+    var glMatrix = require("../lib/gl-matrix");
+
     function TextRenderer() {
         Component.call(this);
     }
@@ -24,6 +28,16 @@ define(["../Component"], function (Component) {
         this.gameObject.textRenderer = undefined;
         this.gameObject.renderer = null;
         Component.prototype.unsetGameObject.call(this);
+    };
+
+    p.render = function(layer, viewportRenderer){
+        glMatrix.vec3.transformMat4(vec3Buffer1, this.gameObject.transform.getPosition(vec3Buffer1), viewportRenderer.M);
+
+        layer.font = this.style;
+        layer.fillStyle = this.color;
+        layer.textAlign = this.align;
+        layer.textBaseline = this.valign;
+        layer.fillText(this.text, vec3Buffer1[0], vec3Buffer1[1]);
     };
 
     return TextRenderer;

@@ -1,4 +1,8 @@
-define(["../Component"], function (Component) {
+define(function (require) {
+    var vec3Buffer1 = new Float32Array(3);
+    var Component = require("../Renderer");
+    var glMatrix = require("../lib/gl-matrix");
+
     function Sprite(sprite) {
         Component.call(this);
 
@@ -43,6 +47,12 @@ define(["../Component"], function (Component) {
         this.gameObject.spriteRenderer = undefined;
         this.gameObject.renderer = null;
         Component.prototype.unsetGameObject.call(this);
+    };
+
+    p.render = function(layer, viewportRenderer){
+        glMatrix.vec3.transformMat4(vec3Buffer1, this.gameObject.transform.getPosition(vec3Buffer1), viewportRenderer.M);
+        var sprite = this.sprite;
+        layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, sprite.width, sprite.height, (vec3Buffer1[0] - this.pivotX) | 0, (vec3Buffer1[1] - this.pivotY) | 0, sprite.width, sprite.height);
     };
 
     return Sprite;

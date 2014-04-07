@@ -9,6 +9,7 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
         for (var i = 0; i < config.layersCount; i++)
             this.layerBuffers[i] = [];
         this.M = [];
+        this.V = [];
     }
 
     var p = Canvas2dRenderer.prototype,
@@ -29,6 +30,15 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
         //todo this should be using bounding box
         //todo this could used worldToViewport instead worldToScreen, and check bounds to fit just [-1,1]
 
+
+        if(gameObject.renderer !== undefined && gameObject.renderer.enabled){
+            gameObject.transform.getPosition(bufferVec3);
+            glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.V);
+
+            if (bufferVec3[0] <= 1 && bufferVec3[0] >= -1 && bufferVec3[1] <= 1 && bufferVec3[1] >= -1)
+                this.layerBuffers[gameObject.renderer.layer].push(gameObject.renderer)
+        }
+                                     /*
         if (gameObject.spriteRenderer !== undefined && gameObject.spriteRenderer.enabled) {
             gameObject.transform.getPosition(bufferVec3);
             glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.M);
@@ -39,23 +49,23 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
 
             if (bufferVec3[0] <= viewport.width && bufferVec3[0] + sprite.sprite.width >= 0 && bufferVec3[1] <= viewport.height && bufferVec3[1] + sprite.sprite.height >= 0)
                 this.layerBuffers[sprite.layer].push(sprite);
-        }
-
+        }                              */
+                        /*
         if (gameObject.pathRenderer !== undefined && gameObject.pathRenderer.enabled) {
             gameObject.transform.getPosition(bufferVec3);
             glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.M);
 
             if (bufferVec3[0] <= viewport.width && bufferVec3[0] >= 0 && bufferVec3[1] <= viewport.height && bufferVec3[1] >= 0)
                 this.layerBuffers[gameObject.pathRenderer.layer].push(gameObject.pathRenderer)
-        }
-
+        }             */
+                          /*
         if (gameObject.textRenderer !== undefined && gameObject.textRenderer.enabled) {
             gameObject.transform.getPosition(bufferVec3);
             glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.M);
 
             if (bufferVec3[0] <= viewport.width && bufferVec3[0] >= 0 && bufferVec3[1] <= viewport.height && bufferVec3[1] >= 0)
                 this.layerBuffers[gameObject.textRenderer.layer].push(gameObject.textRenderer)
-        }
+        }                   */
     };
 
     p.render = function (camera, viewport) {
@@ -66,6 +76,7 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
             i, j, ctx;
 
         this.M = camera.camera.getWorldToScreen();
+        this.V = camera.camera.getWorldToViewport();
 
         viewport.context.clearRect(0, 0, viewport.width, viewport.height);
 
@@ -88,13 +99,15 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
             for (j = 0; j < renderersCount; j++) {
                 renderer = renderers.pop();
 
+                renderer.render(ctx, this);
+                /*
                 if (renderer.constructor === SpriteRenderer || renderer.constructor === AnimatedSpriteRenderer)
                     this.renderSprite(renderer, ctx);
                 else if (renderer.constructor === PathRenderer)
                     this.renderPath(renderer, ctx);
                 else
                     this.renderText(renderer, ctx);
-
+                  */
                 //this.RenderAxis(gameObject);
             }
 
@@ -105,7 +118,7 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
         //this.renderOctreeNode(camera.world.octree.root, viewport.context);
 
     };
-
+                           /*
     //Rounding coordinates with Math.round is slow, but looks better
     //Rounding to lowest with pipe operator is faster, but looks worse
     p.renderSprite = function (renderer, layer) {
@@ -323,6 +336,6 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
         ctx.textBaseline = renderer.valign;
         ctx.fillText(renderer.text, bufferVec3[0], bufferVec3[1]);
     }
-
+              */
     return Canvas2dRenderer;
 });

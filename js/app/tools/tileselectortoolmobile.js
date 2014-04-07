@@ -14,6 +14,7 @@ define(function(require){
     };
 
     Tool.prototype.selectedTile = null;
+    Tool.prototype.selectedToken = null;
 
     Tool.prototype.drag = function(screenX, screenY, dragX, dragY){
         ToolBase.prototype.drag.call(this, screenX, screenY, dragX, dragY);
@@ -24,7 +25,15 @@ define(function(require){
     Tool.prototype.click = function(screenX, screenY){
         var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
         if (tile){
-            vkariaApp.hiliteMan.hiliteTile(tile.tileScript.x, tile.tileScript.y);
+            if(this.selectedToken != null)
+                vkariaApp.hiliteMan.disable(this.selectedToken);
+
+            this.selectedToken = vkariaApp.hiliteMan.hilite({
+                x: tile.tileScript.x,
+                y: tile.tileScript.y,
+                borderColor: "rgba(255,255,255,1)",
+                borderWidth: 2
+            });
             this.selectedTile = tile;
             this.dispatchEvent(this.events.awaitingConfirmation, this, null);
         }
@@ -35,12 +44,13 @@ define(function(require){
             this.dispatchEvent(this.events.tileSelected, this, this.selectedTile);
 
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
-        vkariaApp.hiliteMan.disableAll();
+
+        vkariaApp.hiliteMan.disable();
     };
 
     Tool.prototype.cancel = function(){
         this.selectedTile = null;
-        vkariaApp.hiliteMan.disableAll();
+        vkariaApp.hiliteMan.disable();
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
     };
 
