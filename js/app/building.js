@@ -47,8 +47,8 @@ define(function (require) {
 
         var x0 = mData.x - 1,
             y0 = mData.y - 1,
-            lx = (sData.size & 0x0F) + 2,
-            ly = (sData.size >> 4) + 2;
+            lx = sData.sizeX + 2,
+            ly = sData.sizeY + 2;
 
         for (var i = 1; i < lx - 1; i++) {
             tile = tilesman.getTile(x0 + i, y0);

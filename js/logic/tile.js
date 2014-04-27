@@ -80,6 +80,8 @@ define(function (require) {
         //this.dispatchEvent(this.events.update, this);
     };
 
+    /*
+    //TODO seamless. don't need to store this, tile type info can be obtained from tilesman at any time.
     Tile.prototype.updateType = function (building) {
         //var building = this.world.buildings.build(this, BuildingTypeCode);
         //this.world.
@@ -94,7 +96,7 @@ define(function (require) {
 
         this.dispatchEvent(this.events.update, this);
         return this.tileType;
-    };
+    };*/
 
     return Tile;
 });

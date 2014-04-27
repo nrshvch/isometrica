@@ -54,7 +54,7 @@ define(function (require) {
             this.buildingData = BuildingData[buildingCode];
 
             $(".name", this.el).text(this.buildingData.name);
-            $(".size .value", this.el).text((this.buildingData.size & 0x0F) + "x" + (this.buildingData.size >> 4 ));
+            $(".size .value", this.el).text(this.buildingData.sizeX + "x" + this.buildingData.sizeY);
             $(".ctime .value", this.el).text(this.buildingData.constructionTime / 1000 + "s");
 
             this.ccost.setResources(this.buildingData.constructionCost);

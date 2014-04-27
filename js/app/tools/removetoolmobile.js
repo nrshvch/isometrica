@@ -40,7 +40,7 @@ define(function(require){
 
         if(tile){
             this.dragDestination = tile.tileScript;
-            vkariaApp.hiliteMan.hiliteTileArea(this.dragSource.x, this.dragSource.y, this.dragDestination.x, this.dragDestination.y, "red");
+            //vkariaApp.hiliteMan.hiliteTileArea(this.dragSource.x, this.dragSource.y, this.dragDestination.x, this.dragDestination.y, "red");
         }
     };
 
@@ -52,7 +52,7 @@ define(function(require){
             this.areaX1 = tile.tileScript.x;
             this.areaY1 = tile.tileScript.y;
 
-            vkariaApp.hiliteMan.hiliteTile(tile.tileScript.x, tile.tileScript.y, "red");
+            //vkariaApp.hiliteMan.hiliteTile(tile.tileScript.x, tile.tileScript.y, "red");
 
             this.dispatchEvent(this.events.awaitingConfirmation, this, null);
         }
@@ -71,11 +71,11 @@ define(function(require){
         }
 
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
-        vkariaApp.hiliteMan.disableAll();
+        //vkariaApp.hiliteMan.disableAll();
     };
 
     Tool.prototype.cancel = function(){
-        vkariaApp.hiliteMan.disableAll();
+        //vkariaApp.hiliteMan.disableAll();
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
     };
 

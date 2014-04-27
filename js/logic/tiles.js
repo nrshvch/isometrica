@@ -24,13 +24,13 @@ define(function (require) {
         };
 
         this.onBuildingBuilt = function(building){
-            var tile = building.tile;
-            tile.updateType(building);
+            //var tile = building.tile;
+            //tile.updateType(building);
         };
 
         this.onBuildingRemoved = function(building){
-            var tile = building.tile;
-            tile.updateType(building);
+            //var tile = building.tile;
+            //tile.updateType(building);
         }
     }
 

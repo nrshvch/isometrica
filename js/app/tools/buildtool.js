@@ -82,8 +82,8 @@ define(function(require){
     Tool.prototype.setBuilding = function(buildingCode){
         this.buildingCode = buildingCode;
 
-        this.buildingSizeX = buildingData[buildingCode].size & 15;
-        this.buildingSizeY = buildingData[buildingCode].size >> 4;
+        this.buildingSizeX = buildingData[buildingCode].sizeX;// & 15;
+        this.buildingSizeY = buildingData[buildingCode].sizeY;// >> 4;
 
         this.multiBuild(false);
 

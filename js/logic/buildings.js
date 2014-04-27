@@ -16,9 +16,8 @@ define(function (require) {
         TerrainType = require("lib/terraintype");
 
     function buildTest(buildings, baseX, baseY, rotate, buildingData) {
-        var size = buildingData.size,
-            sizeX = size & 0x0F,
-            sizeY = size >> 4,
+        var sizeX = buildingData.sizeX,
+            sizeY = buildingData.sizeY,
             i, l, x, y, tile, slopeId;
 
         if(rotate){
@@ -163,9 +162,8 @@ define(function (require) {
     Buildings.prototype._build = function(baseX, baseY, building){
         building.setTile(this.world.tiles.get(baseX, baseY));
 
-        var data = building.data,
-            sizeX = data.size & 0x0F,
-            sizeY = data.size >> 4,
+        var sizeX = building.data.sizeX,
+            sizeY = building.data.sizeY,
             i, x, y, l;
 
         if(building.rotation){
@@ -193,8 +191,8 @@ define(function (require) {
     Buildings.prototype.place = function (buildingCode, baseX, baseY, rotate) {
         var data = BuildingData[buildingCode],
             building,
-            sizeX = data.size & 0x0F,
-            sizeY = data.size >> 4,
+            sizeX = data.sizeX,
+            sizeY = data.sizeY,
             i, x, y, l,
             b;
 
@@ -228,7 +226,7 @@ define(function (require) {
 
         buildTest(this, baseX, baseY, rotate, BuildingData[buildingCode]);
 
-        this.removeTrees(baseX, baseY, BuildingData[buildingCode].size, rotate);
+        this.removeTrees(baseX, baseY, BuildingData[buildingCode].sizeX, BuildingData[buildingCode].sizeY, rotate);
 
         var building = this.place(buildingCode, baseX, baseY, rotate);
 
@@ -238,9 +236,8 @@ define(function (require) {
     };
 
     Buildings.prototype.remove = function (building) {
-        var size = building.data.size,
-            sizeX = size & 0x0F,
-            sizeY = size >> 4,
+        var sizeX = building.data.sizeX,
+            sizeY = building.data.sizeY,
             i, l, x, y;
 
         for (i = 0, l = sizeX * sizeY; i < l; i++) {
@@ -280,10 +277,8 @@ define(function (require) {
         return null;
     };
 
-    Buildings.prototype.removeTrees = function (baseX, baseY, size, rotate) {
-        var sizeX = size & 0x0F,
-            sizeY = size >> 4,
-            i, l, x, y, tree;
+    Buildings.prototype.removeTrees = function (baseX, baseY, sizeX, sizeY, rotate) {
+        var i, l, x, y, tree;
 
         if(rotate){
             var t = sizeX;

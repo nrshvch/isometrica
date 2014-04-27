@@ -1,4 +1,5 @@
 //TODO add shack http://en.wikipedia.org/wiki/Shack
+//TODO add oldschool trailer house
 
 define(function (require) {
     var BuildingCode = require("lib/buildingcode"),
@@ -6,12 +7,14 @@ define(function (require) {
         Resources = require("lib/resources"),
         ResourceCode = require("lib/resourcecode"),
         ResearchState = require("lib/researchstate"),
+        TileRatings = require("lib/tileratings"),
         RenderLayer = require("lib/renderlayer");
 
     var buildingData = {};
 
     buildingData[BuildingCode.tree1] = {
-        size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.tree1,
         classCode: BuildingClassCode.tree,
         producing: Resources.zero,
@@ -33,11 +36,19 @@ define(function (require) {
                 path: "tree1.png",
                 layer: RenderLayer.buildingsLayer
             }
-        ]
+        ],
+        effect: TileRatings.create([
+            {
+                key: TileRatings.TileRatingEnum.Ecology,
+                value: 10
+            }
+        ])
     };
 
     buildingData[BuildingCode.tree2] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.tree2,
         classCode: BuildingClassCode.tree,
         producing: Resources.zero,
@@ -59,11 +70,19 @@ define(function (require) {
                 path: "tree2.png",
                 layer: RenderLayer.buildingsLayer
             }
-        ]
+        ],
+        effect: TileRatings.create([
+            {
+                key: TileRatings.TileRatingEnum.Ecology,
+                value: 10
+            }
+        ])
     };
 
     buildingData[BuildingCode.cliff] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.cliff,
         classCode: BuildingClassCode.tree,
         producing: Resources.zero,
@@ -90,6 +109,8 @@ define(function (require) {
 
     buildingData[BuildingCode.road] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.road,
         classCode: BuildingClassCode.road,
         producing: Resources.zero,
@@ -118,12 +139,20 @@ define(function (require) {
         roadGates: [
             [1,0], [0,-1], [-1,0], [0,1]
         ],
-        waypoints: {}
+        waypoints: {},
+        effect: TileRatings.create([
+            {
+                key: TileRatings.TileRatingEnum.Ecology,
+                value: -1
+            }
+        ])
     };
 
 
     buildingData[BuildingCode.house0] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.house0,
         classCode: BuildingClassCode.house,
         producing: Resources.create({
@@ -167,11 +196,23 @@ define(function (require) {
         ],
         roadGates: [
             [-1,0]//,[0,-1],[1,0],[0,1]
-        ]
+        ],
+        effect: TileRatings.create([
+            {
+                key: TileRatings.TileRatingEnum.Crime,
+                value: 1
+            },
+            {
+                key: TileRatings.TileRatingEnum.Ecology,
+                value: -1
+            },
+        ])
     };
 
     buildingData[BuildingCode.house1] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.house1,
         classCode: BuildingClassCode.house,
         producing: Resources.create({
@@ -208,6 +249,8 @@ define(function (require) {
 
     buildingData[BuildingCode.house2] = {
         size: 0x21,
+        sizeX: 1,
+        sizeY: 2,
         buildingCode: BuildingCode.house2,
         classCode: BuildingClassCode.house,
         producing: Resources.create({
@@ -277,6 +320,8 @@ define(function (require) {
 
     buildingData[BuildingCode.house3] = {
         size: 0x12,
+        sizeX: 2,
+        sizeY: 1,
         buildingCode: BuildingCode.house3,
         classCode: BuildingClassCode.house,
         producing: Resources.create({
@@ -326,6 +371,8 @@ define(function (require) {
 
     buildingData[BuildingCode.house4] = {
         size: 0x21,
+        sizeX: 1,
+        sizeY: 2,
         buildingCode: BuildingCode.house4,
         classCode: BuildingClassCode.house,
         producing: Resources.create({
@@ -375,6 +422,8 @@ define(function (require) {
 
     buildingData[BuildingCode.house5] = {
         size: 0x12,
+        sizeX: 2,
+        sizeY: 1,
         buildingCode: BuildingCode.house5,
         classCode: BuildingClassCode.house,
         producing: Resources.create({
@@ -424,6 +473,8 @@ define(function (require) {
 
     buildingData[BuildingCode.cityHall] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.cityHall,
         classCode: BuildingClassCode.municipal,
         producing: Resources.create({
@@ -458,6 +509,8 @@ define(function (require) {
 
     buildingData[BuildingCode.farm] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.farm,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,
@@ -486,6 +539,8 @@ define(function (require) {
 
     buildingData[BuildingCode.smallCoalPlant] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.smallCoalPlant,
         classCode: BuildingClassCode.municipal,
         producing: Resources.create({
@@ -519,6 +574,8 @@ define(function (require) {
 
     buildingData[BuildingCode.windTurbine] = {
         size: 0x33,
+        sizeX: 3,
+        sizeY: 3,
         buildingCode: BuildingCode.windTurbine,
         classCode: BuildingClassCode.municipal,
         producing: Resources.create({
@@ -550,6 +607,8 @@ define(function (require) {
 
     buildingData[BuildingCode.waterTower] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.waterTower,
         classCode: BuildingClassCode.municipal,
         producing: Resources.create({
@@ -581,6 +640,8 @@ define(function (require) {
 
     buildingData[BuildingCode.waterPump] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.waterPump,
         classCode: BuildingClassCode.municipal,
         producing: Resources.create({
@@ -613,6 +674,8 @@ define(function (require) {
 
     buildingData[BuildingCode.smallMarket] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.smallMarket,
         classCode: BuildingClassCode.commerce,
         producing: Resources.create({
@@ -645,6 +708,8 @@ define(function (require) {
     //Gatherers
     buildingData[BuildingCode.lumberMill] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.lumberMill,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,
@@ -673,6 +738,8 @@ define(function (require) {
 
     buildingData[BuildingCode.oilRig] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.oilRig,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,
@@ -701,6 +768,8 @@ define(function (require) {
 
     buildingData[BuildingCode.coalMine] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.coalMine,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,
@@ -729,6 +798,8 @@ define(function (require) {
 
     buildingData[BuildingCode.stoneQuarry] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.stoneQuarry,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,
@@ -757,6 +828,8 @@ define(function (require) {
 
     buildingData[BuildingCode.uraniumMine] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.uraniumMine,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,
@@ -785,6 +858,8 @@ define(function (require) {
 
     buildingData[BuildingCode.gasWell] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.gasWell,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,
@@ -813,6 +888,8 @@ define(function (require) {
 
     buildingData[BuildingCode.ironMine] = {
         size: 0x11,
+        sizeX: 1,
+        sizeY: 1,
         buildingCode: BuildingCode.ironMine,
         classCode: BuildingClassCode.industry,
         producing: Resources.zero,

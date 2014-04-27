@@ -42,11 +42,11 @@ define(function (require) {
                     sizeY = 0;
 
                 if (this.building.data.rotation) {
-                    sizeX = staticData.size >> 4;
-                    sizeY = staticData.size & 0x0F;
+                    sizeX = staticData.sizeX;// >> 4;
+                    sizeY = staticData.sizeY;// & 0x0F;
                 } else {
-                    sizeX = staticData.size & 0x0F;
-                    sizeY = staticData.size >> 4;
+                    sizeX = staticData.sizeX;// & 0x0F;
+                    sizeY = staticData.sizeY;// >> 4;
                 }
 
 

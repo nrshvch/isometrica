@@ -15,7 +15,43 @@ define(function (require) {
     };
 
     Tool.prototype.selectedTiles = [];
-    Tool.prototype.hiliteTokens = null;
+    Tool.prototype.hiliteTokens = [];
+
+    Tool.prototype.hiliteGrid = function(){
+        var visibleGOs = vkariaApp.camera.camera.getVisibleGameObjects(),
+            len = visibleGOs.length;
+        for (var i = 0; i < len; i++) {
+            var g = visibleGOs[i];
+
+            var arg = [];
+
+            if (g.tileScript) {
+                if (g.tileScript.data.resource !== null) {
+                    arg.push({
+                        x: g.tileScript.x,
+                        y: g.tileScript.y,
+                        fillColor: "rgba(127,0,0,0.5)",
+                        borderColor: "rgba(255,0,0,0.5)"
+                    });
+                } else {
+                    arg.push({
+                        x: g.tileScript.x,
+                        y: g.tileScript.y,
+                        borderColor: "rgba(255,255,255,0.5)"
+                    });
+                }
+            }
+
+            vkariaApp.hiliteMan.hilite(arg);
+        }
+    };
+
+    Tool.prototype.disableHiliters = function(){
+        if(this.hiliteTokens != null)  {
+            for(var i = 0; i < this.hiliteTokens.length; i++)
+                vkariaApp.hiliteMan.disable(this.hiliteTokens[i]);
+        }
+    };
 
     Tool.prototype.dragEnd = function (screenX, screenY) {
         if (this.multiBuilder) {
@@ -44,9 +80,7 @@ define(function (require) {
             if (this.dragSource !== null) {
                 var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
                 if (tile) {
-                    if(this.hiliteTokens != null)
-                        for(var i = 0; i < this.hiliteTokens.length; i++)
-                            vkariaApp.hiliteMan.disable(this.hiliteTokens[i]);
+                    this.disableHiliters();
 
                     var x0 = this.dragSource.x,
                         y0 = this.dragSource.y,
@@ -74,9 +108,7 @@ define(function (require) {
             var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
 
             if (tile) {
-                if(this.hilitiTokens != null)
-                    for(var i = 0; i < this.hilitiTokens; i++)
-                        vkariaApp.hiliteMan.disable(this.hilitiTokens[i]);
+                this.disableHiliters();
 
                 //var tiles = this.tiles || (this.tiles = this.tools.gameObject.world.findByName("main").mainScript.tilesManager);
                 var x0 = tile.tileScript.x,
@@ -84,13 +116,13 @@ define(function (require) {
                     w = this.buildingSizeX,
                     h = this.buildingSizeY;
 
-                vkariaApp.hiliteMan.hilite({
+                this.hiliteTokens = [vkariaApp.hiliteMan.hilite({
                     x: x0,
                     y: y0,
                     w: w,
                     h: h,
                     fillColor: "rgba(0,0,127,0.5)"
-                });
+                })];
                 this.selectedTiles = [
                     {x: tile.tileScript.x, y: tile.tileScript.y}
                 ];
@@ -103,39 +135,10 @@ define(function (require) {
     Tool.prototype.setBuilding = function (buildingCode) {
         this.buildingCode = buildingCode;
 
-        this.buildingSizeX = buildingData[buildingCode].size & 15;
-        this.buildingSizeY = buildingData[buildingCode].size >> 4;
+        this.buildingSizeX = buildingData[buildingCode].sizeX;// & 15;
+        this.buildingSizeY = buildingData[buildingCode].sizeY;// >> 4;
 
         this.multiBuild(false);
-
-
-        var visibleGOs = vkariaApp.camera.camera.getVisibleGameObjects(),
-            len = visibleGOs.length;
-        for (var i = 0; i < len; i++) {
-            var g = visibleGOs[i];
-
-            var arg = [];
-
-            if (g.tileScript) {
-                if (g.tileScript.data.resource !== null) {
-                    arg.push({
-                        x: g.tileScript.x,
-                        y: g.tileScript.y,
-                        fillColor: "rgba(127,0,0,0.5)",
-                        borderColor: "rgba(255,0,0,0.5)"
-                    });
-                } else {
-                    arg.push({
-                        x: g.tileScript.x,
-                        y: g.tileScript.y,
-                        borderColor: "rgba(255,255,255,0.5)"
-                    });
-                }
-            }
-
-            vkariaApp.hiliteMan.hilite(arg);
-        }
-
 
         return this;
     };
@@ -147,26 +150,30 @@ define(function (require) {
 
     Tool.prototype._rotate = false;
     Tool.prototype.rotate = function () {
+        if(!buildingData[this.buildingCode].canRotate)
+            return;
+
         this._rotate = !this._rotate;
 
         if (!this._rotate) {
-            this.buildingSizeX = buildingData[this.buildingCode].size & 15;
-            this.buildingSizeY = buildingData[this.buildingCode].size >> 4;
+            this.buildingSizeX = buildingData[this.buildingCode].sizeX;// & 15;
+            this.buildingSizeY = buildingData[this.buildingCode].sizeY;// >> 4;
         } else {
-            this.buildingSizeY = buildingData[this.buildingCode].size & 15;
-            this.buildingSizeX = buildingData[this.buildingCode].size >> 4;
+            this.buildingSizeY = buildingData[this.buildingCode].sizeX;// & 15;
+            this.buildingSizeX = buildingData[this.buildingCode].sizeY;// >> 4;
         }
 
         //update highlite
         if (this.selectedTiles.length === 1) {
             var tile = this.selectedTiles[0];
-            vkariaApp.hiliteMan.hiliteTileArea(
-                tile.x,
-                tile.y,
-                tile.x + this.buildingSizeX - 1,
-                tile.y + this.buildingSizeY - 1,
-                'blue'
-            );
+            this.disableHiliters();
+            this.hiliteTokens = [vkariaApp.hiliteMan.hilite({
+                x: tile.x,
+                y: tile.y,
+                w: this.buildingSizeX,
+                h: this.buildingSizeY,
+                fillColor: "rgba(0,0,127,0.5)"
+            })];
         }
     };
 
@@ -175,14 +182,16 @@ define(function (require) {
             vkariaApp.buildman.build(this.buildingCode, this.selectedTiles[i].x, this.selectedTiles[i].y, this._rotate);
         }
 
-        vkariaApp.hiliteMan.disable();
+        this.disableHiliters();
+        //vkariaApp.hiliteMan.disable();
 
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
     };
 
     Tool.prototype.cancel = function () {
         this.selectedTiles = [];
-        vkariaApp.hiliteMan.disable();
+        this.disableHiliters();
+
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
     };
 
@@ -191,9 +200,11 @@ define(function (require) {
         this.buildingSizeX = 0;
         this.buildingSizeY = 0;
         this.multiBuild(false);
+        this.hiliteGrid();
     };
 
     Tool.prototype.deselect = function () {
+        vkariaApp.hiliteMan.disable();
         this.cancel();
     };
 

@@ -10,7 +10,8 @@ define(function (require) {
         City = require("./city"),
         ResourceCode = require("lib/resourcecode"),
         ResourceMarket = require("./resourceMarket"),
-        VirtualTime = require("./virtualtime");
+        VirtualTime = require("./virtualtime"),
+        RatingsMan = require("./tileratingsmanager");
 
     function World() {
         this.simplex = new Simplex([151, 160, 137, 91, 90, 15,
@@ -45,10 +46,12 @@ define(function (require) {
         this.time = new VirtualTime();
         this.realtime = new Time();
         this.terrain = new Terrain(this);
-        this.buildings = new Buildings(this);
+        this.buildMan = this.buildings = new Buildings(this);
         this.tiles = new Tiles(this);
         //this.city = new City(this);
         this.resourceMarket = new ResourceMarket(this);
+
+        this.ratingsman = new RatingsMan(this);
     }
 
     /**
@@ -73,6 +76,7 @@ define(function (require) {
         this.realtime.start();
         this.time.start();
         this.tiles.init();
+        this.ratingsman.init();
     };
 
     World.prototype.tick = function (now) {
