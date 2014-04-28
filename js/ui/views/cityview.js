@@ -9,6 +9,43 @@ define(function (require) {
 
     var resourcesBuffer1 = Resources.create();
 
+    window.DrawMap = function DrawMap(){
+        var cnv = $("#mapcnv").get(0);
+        var data = vkaria.logicInterface.logic.world.ratingsman;
+        var tiles = vkaria.logicInterface.logic.world.tiles.collection;
+        var ctx = cnv.getContext("2d");
+        var s = vkaria.logicInterface.logic.world.size;
+        var p = cnv.width / s;
+
+        for(var i = 0; i < tiles.length; i++){
+            var tile = tiles[i];
+
+
+
+                                                   /*
+            if(tile.terrainType == 0)
+                ctx.fillStyle = "rgb(0,90,170)";
+            else
+                ctx.fillStyle = "rgb(70,120,40)";
+
+            ctx.fillRect(tile.x * p, (s-tile.y) * p , p,p);
+                                                 */
+
+
+
+            var r = data.getRatings(tile.x, tile.y);
+            if(r){
+                var eco = r.values[5];
+                var k = (eco / 100 * 255)|0;
+                ctx.fillStyle = "rgb("+(255-k)+","+(k)+",0)";
+            }else{
+                ctx.fillStyle = "rgb(255,0,0)";
+            }
+
+            ctx.fillRect(tile.x * p, (s-tile.y) * p , p,p);
+        }
+    }
+
     var CityView = Backbone.View.extend({
         events: {
             "click .renameButton": function () {
@@ -53,6 +90,10 @@ define(function (require) {
             $(".income .value", this.$el).append(this.income.$el);
             $(".maintenance .value", this.$el).append(this.maintenance.$el);
             $(".buildings .value", this.$el).append(this.buildings.$el);
+
+            setTimeout(function(){
+                DrawMap();
+            },1000);
         }
     });
 

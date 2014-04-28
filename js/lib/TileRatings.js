@@ -18,9 +18,11 @@ define(function (require) {
         Ecology : 5
     });
 
+    window.ttt = TileRatingEnum;
+
     var initializeValues = function(map){
         for(var key in TileRatingEnum){
-            map[key] = 0;
+            map[TileRatingEnum[key]] = 0;
         }
     };
 
@@ -38,8 +40,8 @@ define(function (require) {
             mA = a.values,
             mB = b.values;
 
-        for(var key in out){
-            out[key] = a[key] + b[key];
+        for(var key in mOut){
+            mOut[key] = mA[key] + mB[key];
         }
 
         return out;
@@ -50,16 +52,19 @@ define(function (require) {
             mA = a.values,
             mB = b.values;
 
-        for(var key in out){
-            out[key] = a[key] - b[key];
+        for(var key in mOut){
+            mOut[key] = mA[key] - mB[key];
         }
 
         return out;
     };
 
     TileRatings.copy = function(destination, source){
-        for(var key in source){
-            destination[key] = source[key];
+        var dst = destination.values,
+            src = source.values;
+
+        for(var key in src){
+            dst[key] = src[key];
         }
 
         return destination;
@@ -67,11 +72,13 @@ define(function (require) {
 
     TileRatings.create = function(valuePairs){
         var o = new TileRatings();
-        if(Array.isArray(valuePairs)){
-            for(var pair in valuePairs){
-                o[pair.key] = pair.value;
-            }
+        for(var key in valuePairs){
+            var value = valuePairs[key];
+            var enumKey = Enumerator.parse(TileRatingEnum, key);
+            if(enumKey != null)
+                o.values[TileRatingEnum[enumKey]] = value;
         }
+
         return o;
     };
 

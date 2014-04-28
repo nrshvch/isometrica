@@ -133,11 +133,11 @@ define(function (require) {
 
 
                 vkaria.assets.getAsset("/audio/error.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                    resource.data.play();
+                    //resource.data.play();
                 });
             } else {
                 vkaria.assets.getAsset("/audio/blip.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                    resource.data.play();
+                    //resource.data.play();
                 });
             }
 

@@ -37,12 +37,18 @@ define(function (require) {
                 layer: RenderLayer.buildingsLayer
             }
         ],
-        effect: TileRatings.create([
+        effect0: TileRatings.create([
             {
                 key: TileRatings.TileRatingEnum.Ecology,
                 value: 10
             }
-        ])
+        ]),
+        effect: TileRatings.create((function(){
+            var o = {};
+            o[TileRatings.TileRatingEnum.Ecology] = 10;
+            return o;
+        })()),
+        effectRadius: 2
     };
 
     buildingData[BuildingCode.tree2] = {
@@ -71,12 +77,18 @@ define(function (require) {
                 layer: RenderLayer.buildingsLayer
             }
         ],
-        effect: TileRatings.create([
+        effect0: TileRatings.create([
             {
                 key: TileRatings.TileRatingEnum.Ecology,
                 value: 10
             }
-        ])
+        ]),
+        effect: TileRatings.create((function(){
+            var o = {};
+            o[TileRatings.TileRatingEnum.Ecology] = 10;
+            return o;
+        })()),
+        effectRadius: 2
     };
 
     buildingData[BuildingCode.cliff] = {
@@ -140,12 +152,17 @@ define(function (require) {
             [1,0], [0,-1], [-1,0], [0,1]
         ],
         waypoints: {},
-        effect: TileRatings.create([
+        effect0: TileRatings.create([
             {
                 key: TileRatings.TileRatingEnum.Ecology,
                 value: -1
             }
-        ])
+        ]),
+        effect: TileRatings.create((function(){
+            var o = {};
+            o[TileRatings.TileRatingEnum.Ecology] = -1;
+            return o;
+        })())
     };
 
 
@@ -197,7 +214,7 @@ define(function (require) {
         roadGates: [
             [-1,0]//,[0,-1],[1,0],[0,1]
         ],
-        effect: TileRatings.create([
+        effect0: TileRatings.create([
             {
                 key: TileRatings.TileRatingEnum.Crime,
                 value: 1
@@ -206,7 +223,13 @@ define(function (require) {
                 key: TileRatings.TileRatingEnum.Ecology,
                 value: -1
             },
-        ])
+        ])       ,
+        effect: TileRatings.create((function(){
+            var o = {};
+            o[TileRatings.TileRatingEnum.Ecology] = -1;
+            o[TileRatings.TileRatingEnum.Crime] = 1;
+            return o;
+        })())
     };
 
     buildingData[BuildingCode.house1] = {

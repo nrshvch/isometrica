@@ -35,7 +35,7 @@ define(function (require) {
         //it would be good to invent something better then this approach, with smooth slopes  and different landscape
         //UPDATE: now, when world size is limited, we can afford any height values. Because we always can iterate over and smooth them.
 
-        this.size = 512;
+        this.size = 128;
 
         this.events = {
             cityEstablished: 0
@@ -72,10 +72,11 @@ define(function (require) {
 
     World.prototype.start = function () {
         //this.terrain.init();
-        //this.buildings.init();
+
         this.realtime.start();
         this.time.start();
         this.tiles.init();
+        this.buildings.init();
         this.ratingsman.init();
     };
 
@@ -98,8 +99,8 @@ define(function (require) {
             land = 0,
             island = 0;
 
-        x += 440;
-        y += 440;
+        x += 640;
+        y += 700;
 
         land += simplex.noise2D(x / 512, y / 512) / 2; //noisemap of continents
         land += simplex.noise2D(x / 256, y / 256) / 4; //of smaller lands

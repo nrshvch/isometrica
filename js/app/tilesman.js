@@ -234,7 +234,7 @@ define(function (require) {
                     pos = tile.transform.getPosition();
 
                 vkaria.assets.getAsset("/audio/explosion.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                    resource.data.play();
+                    //resource.data.play();
                 });
 
                 var msg = new TileMessage("1$", "red");

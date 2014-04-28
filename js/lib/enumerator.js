@@ -7,12 +7,22 @@ define(function (require) {
         var arr = [];
         var enm = Object.create(null);
 
+        enm['properties'] = {};
+
+        Object.defineProperty(enm, 'properties',{
+           enumerable: false
+        });
+
         //copy values in arr
         for (key in keyValuePairs)
             if (keyValuePairs.hasOwnProperty(key)){
                 arr.push(keyValuePairs[key]);
 
                 enm[key] = keyValuePairs[key];
+                enm.properties[keyValuePairs[key]] = {
+                    name: key,
+                    index: keyValuePairs[key]
+                }
             }
 
         //check duplicate values/indexes
@@ -25,5 +35,28 @@ define(function (require) {
         //return keyValuePairs;
     };
 
+    Enumerator.parse = function(enumerator, value){
+        if(typeof value === "number" || !isNaN(parseInt(value, 10))){
+            if(value in enumerator.properties)
+                return enumerator.properties[value].name;
+        }else if(typeof value === "string"){
+            if(value in enumerator)
+                return value;
+        }
+
+        return null;
+    };
+
     return Enumerator;
 });
+/*
+ var SizeEnum = {
+ SMALL: 1,
+ MEDIUM: 2,
+ LARGE: 3,
+ properties: {
+ 1: {name: "small", value: 1, code: "S"},
+ 2: {name: "medium", value: 2, code: "M"},
+ 3: {name: "large", value: 3, code: "L"}
+ }
+ };*/

@@ -53,6 +53,19 @@ define(function (require) {
         }
     }
 
+    function PlantTrees(buildman){
+        //initalize all tiles
+        for(var i = 0; i < buildman.world.size * buildman.world.size; i++){
+            var x = (i / buildman.world.size) | 0;
+            var y = i - (x * buildman.world.size);
+
+            buildman.plantTree(x,y);
+
+            //buildman.collection[i] = buildman.createTile(x,y);
+            //buildman.fill(x,y);
+        }
+    }
+
     function Buildings(world) {
         EventManager.call(this);
         this.events = {
@@ -80,6 +93,9 @@ define(function (require) {
     Buildings.prototype = Object.create(EventManager.prototype);
 
     Buildings.prototype.init = function () {
+        PlantTrees(this);
+        /*else if(x >= 0 && x < this.world.size && y >= 0 && y < this.world.size)
+         return this.plantTree(x, y);*/
     };
 
     Buildings.prototype.tick = function () {
@@ -115,8 +131,8 @@ define(function (require) {
     Buildings.prototype.get = function (x, y) {
         if (this.check(x, y))
             return this.byId[x * this.world.size + y];
-        else if(x >= 0 && x < this.world.size && y >= 0 && y < this.world.size)
-            return this.plantTree(x, y);
+        /*else if(x >= 0 && x < this.world.size && y >= 0 && y < this.world.size)
+            return this.plantTree(x, y);*/
 
         return null;
     };

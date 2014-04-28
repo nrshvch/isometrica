@@ -47,6 +47,15 @@ define(function (require) {
     Tiles.prototype.init = function(){
         this.world.buildings.addEventListener(this.world.buildings.events.buildingBuilt, this.onBuildingBuilt);
         this.world.buildings.addEventListener(this.world.buildings.events.buildingRemoved, this.onBuildingRemoved);
+
+        //initalize all tiles
+        for(var i = 0; i < this.world.size * this.world.size; i++){
+            var x = (i / this.world.size) | 0;
+            var y = i - (x * this.world.size);
+
+            this.collection[i] = this.createTile(x,y);
+            this.fill(x,y);
+        }
     }
 
     Tiles.prototype.tick = function(){
@@ -69,12 +78,6 @@ define(function (require) {
 
         if(this.checkFill(x, y)){
             return this.collection[index];
-        }else{
-            if(x >= 0 && x < this.world.size && y >= 0 && y < this.world.size){
-                this.collection[index] = this.createTile(x,y);
-                this.fill(x,y);
-                return this.collection[index];
-            }
         }
 
         return null;

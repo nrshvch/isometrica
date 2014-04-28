@@ -126,7 +126,8 @@ define(function (require) {
 
 
 
-        this.gameObject.transform.setPosition(11585, 0, 15609);
+        //this.gameObject.transform.setPosition(11585, 0, 15609);
+        this.gameObject.transform.setPosition(2784.961181640625, 0, 3594.453369140625);
         this.gameObject.transform.rotate(30, 45, 0, "self");
     };
 
