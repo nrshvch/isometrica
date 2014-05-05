@@ -18,6 +18,8 @@ define(['./components/TransformComponent'], function (Transform) {
         }
     }
 
+    function dummy(){};
+
     var p = GameObject.prototype;
 
 
@@ -204,6 +206,7 @@ define(['./components/TransformComponent'], function (Transform) {
             component = components[i];
             if (component.tick !== null)
                 component.tick(time);
+            //(component.tick || dummy)(time); //this sometimes is faster because its one property request less
         }
 
         if (this.removeQueueWaiting) {
