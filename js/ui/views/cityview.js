@@ -5,11 +5,12 @@ define(function (require) {
         Resources = require("lib/resources"),
         ResourcesBarView = require("ui/views/resourcesbarview"),
         ResponseCode = require("lib/responsecode"),
-        BuildingCountView = require("ui/views/buildingcountlistview");
+        BuildingCountView = require("ui/views/buildingcountlistview"),
+        TileRatings = require("lib/tileratings");
 
     var resourcesBuffer1 = Resources.create();
 
-    window.DrawMap = function DrawMap(){
+    window.DrawMap = function DrawMap() {
         var cnv = $("#mapcnv").get(0);
         var data = vkaria.logicInterface.logic.world.ratingsman;
         var tiles = vkaria.logicInterface.logic.world.tiles.collection;
@@ -17,34 +18,43 @@ define(function (require) {
         var s = vkaria.logicInterface.logic.world.size;
         var p = cnv.width / s;
 
-        for(var i = 0; i < tiles.length; i++){
-            var tile = tiles[i];
+        var i = 0, blockSize = 64*64, tile, l = tiles.length;
+        var F = function () {
+            for (var j = 0; j < blockSize; j++) {
+                tile = tiles[i];
+
+                //draw terrain
+                if (tile.resource != null) {
+                    ctx.fillStyle = "rgb(0,0,0)";
+                } else if (tile.terrainType == 0)
+                    ctx.fillStyle = "rgb(0,90,170)";
+                else {
+                    ctx.fillStyle = "rgb(70," + (128 + tile.z * 16) + ",40)";
+                }
+                ctx.fillRect(tile.x * p, (s - tile.y) * p, p, p);
 
 
+                //draw ecology
+                //var r =
+                //if(r){
+                    var eco = data.getRating(tile.x, tile.y, TileRatings.TileRatingEnum.Ecology);
+                    var k = (eco / 100 * 255)|0;
+                    ctx.fillStyle = "rgba("+(255-k)+","+(k)+",0,1)";
+                //}else{
+                 //   ctx.fillStyle = "rgba(255,0,0,1)";
+               // }
 
-                                                   /*
-            if(tile.terrainType == 0)
-                ctx.fillStyle = "rgb(0,90,170)";
-            else
-                ctx.fillStyle = "rgb(70,120,40)";
-
-            ctx.fillRect(tile.x * p, (s-tile.y) * p , p,p);
-                                                 */
+                ctx.fillRect(tile.x * p, (s-tile.y) * p , p,p);
 
 
-
-            var r = data.getRatings(tile.x, tile.y);
-            if(r){
-                var eco = r.values[5];
-                var k = (eco / 100 * 255)|0;
-                ctx.fillStyle = "rgb("+(255-k)+","+(k)+",0)";
-            }else{
-                ctx.fillStyle = "rgb(255,0,0)";
+                if (++i >= l)
+                    break;
             }
-
-            ctx.fillRect(tile.x * p, (s-tile.y) * p , p,p);
-        }
-    }
+            if (i < l - 1)
+                setTimeout(F, 10);
+        };
+        F();
+    };
 
     var CityView = Backbone.View.extend({
         events: {
@@ -78,6 +88,7 @@ define(function (require) {
                 self.maintenance.setResources(data.maintenanceCost);
                 self.name = data.name;
                 $(".name .value", self.$el).text(data.name);
+                $(".population .value", self.$el).text(data.population);
             });
 
             this.render();
@@ -91,9 +102,9 @@ define(function (require) {
             $(".maintenance .value", this.$el).append(this.maintenance.$el);
             $(".buildings .value", this.$el).append(this.buildings.$el);
 
-            setTimeout(function(){
+            setTimeout(function () {
                 DrawMap();
-            },1000);
+            }, 500);
         }
     });
 

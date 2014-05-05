@@ -19,11 +19,16 @@ define(function (require) {
         resourcesBuffer1 = Resources.create();
 
 
-    function Building(buildingCode) {
+    function Building(buildingCode, world) {
         this.id = Building.lastId++;
+
+        this.world = world;
+
 
         EventManager.call(this);
 
+        this.producing = Resources.create();
+        this.demanding = Resources.create();
 
         this.data = buildingData[buildingCode];
 
@@ -37,12 +42,19 @@ define(function (require) {
             var b = tile.getBuilding();
             return b && (b.data.classCode === BuildingClassCode.tree);
         };
+
+        this.onWorldTick = function (sender, args) {
+            self.tick();
+        };
+
+        this.world.eventManager.addEventListener(this.world.events.tick, this.onWorldTick);
     }
 
     Building.lastId = 0;
 
     Building.prototype = Object.create(EventManager.prototype);
 
+    Building.prototype.world = null;
     Building.prototype.id = null;
     Building.prototype.x = null;
     Building.prototype.y = null;
@@ -53,14 +65,16 @@ define(function (require) {
     Building.prototype.rotation = 0;
     Building.prototype.timeCreated = null;  //real time
     Building.prototype.createdAt = null; //game time
-    Building.prototype.condition = 1;
+    //Building.prototype.condition = 1;
     Building.prototype.data = null;
     Building.prototype.canGather = false; //indicates that there is resource vein near to gather from
     Building.prototype.events = {
         update: 0
     };
+    Building.prototype.demanding = null;
+    Building.prototype.producing = null;
 
-    Building.prototype.init = function(){
+    Building.prototype.init = function () {
 
     };
 
@@ -75,7 +89,7 @@ define(function (require) {
 
         //set canGather flag, so we know if there is a resource
         if (this.data.gather !== null) {
-            this.canGather = (tile.resource === this.data.gather) ||  this.data.gather == ResourceCode.wood;
+            this.canGather = (tile.resource === this.data.gather) || this.data.gather == ResourceCode.wood;
         }
     };
 
@@ -84,38 +98,42 @@ define(function (require) {
         this.subPosY = subY;
     };
 
+    Building.prototype.citizenCapacity = function () {
+        var cap = 0;
+
+        if (this.state == BuildingState.ready)
+            cap = this.data.citizenCapacity || 0;
+
+        return cap;
+    };
+
     Building.prototype.rotate = function (value) {
-        if(value !== undefined)
+        if (value !== undefined)
             return this.rotation = value;
         else
             return this.rotation = !this.rotation;
     };
 
     Building.prototype.produce = function () {
+        Resources.copy(this.producing, Resources.zero);
         if (this.state == BuildingState.ready && (this.data.gather !== null || this.data.producing !== Resources.zero)) {
-            Resources.copy(resourcesBuffer1, Resources.zero);
-            Resources.add(resourcesBuffer1, resourcesBuffer1, this.data.producing);
+            Resources.add(this.producing, this.producing, this.data.producing);
 
             //Resources cannot be removed. canGather flag was predefined when building was set.
             if (this.canGather && this.data.gather !== null)
-                resourcesBuffer1[this.data.gather] += 1;
+                this.producing[this.data.gather] += 1;
 
             /*
-            if (this.data.gather === ResourceCode.wood && this.tile.tiles.searchSquareRadius(this.x, this.y, 3, this.findTreeTileHandler))
-                resourcesBuffer1[this.data.gather] += 1;
-            */
-
-            return resourcesBuffer1;
-        } else {
-            return Resources.zero;
+             if (this.data.gather === ResourceCode.wood && this.tile.tiles.searchSquareRadius(this.x, this.y, 3, this.findTreeTileHandler))
+             resourcesBuffer1[this.data.gather] += 1;
+             */
         }
     };
 
     Building.prototype.demand = function () {
+        Resources.copy(this.demanding, this.demanding, Resources.zero);
         if (this.state == BuildingState.ready) {
-            return this.data.demanding;
-        } else {
-            return Resources.zero;
+            Resources.add(this.demanding, this.demanding, this.data.demanding);
         }
     };
 
@@ -125,29 +143,30 @@ define(function (require) {
             this.dispatchEvent(this.events.update, this);
         }
 
-        this.condition -= 0.0000274; //approx. -1% per game year.
+        this.produce();
+        this.demand();
+
+        //this.condition -= 0.0000274; //approx. -1% per game year.
     };
 
-    Building.serialize = function (building) {
+    Building.prototype.onRemove = function () {
+        this.world.eventManager.removeEventListener(this.world.events.tick, this.onWorldTick);
+    };
+
+    Building.prototype.toJSON = function () {
         return {
-            id: building.id,
-            x: building.x,
-            y: building.y,
-            buildingCode: building.data.buildingCode,
-            state: building.state
-        };
+            x: this.tile.x,
+            y: this.tile.y,
+            state: this.state,
+            subPosX: this.subPosX,
+            subPosY: this.subPosY,
+            rotation: this.rotation,
+            buildingCode: this.data.buildingCode
+        }
     };
 
-    Building.deserialize = function (data) {
-        var d = data,
-            b = new Building(d.buildingCode);
+    Building.fromJSON = function(json){
 
-        b.id = d.id;
-        b.x = d.x;
-        b.y = d.y;
-        b.state = d.state;
-
-        return b;
     };
 
     return Building;

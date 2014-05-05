@@ -9,31 +9,33 @@ define(function (require) {
 
     var Enumerator = require("lib/enumerator");
 
-    var TileRatingEnum = Enumerator.create({
+    function TileRatings(){
+        this.values = {};
+        initializeValues(this.values);
+    }
+
+    /**
+     * @enum {number}
+     */
+    TileRatings.TileRatingEnum = {
         Wealth: 0,
         Health: 1,
         Crime: 2,
         Culture: 3,
         Education: 4,
         Ecology : 5
-    });
-
-    window.ttt = TileRatingEnum;
+    };
 
     var initializeValues = function(map){
-        for(var key in TileRatingEnum){
-            map[TileRatingEnum[key]] = 0;
+        for(var key in TileRatings.TileRatingEnum){
+            map[TileRatings.TileRatingEnum[key]] = 0;
         }
     };
 
-    function TileRatings(){
-        this.values = {};
-        initializeValues(this.values);
-    }
-
-    //TileRating.prototype = Object.create(null);
-
-    TileRatings.TileRatingEnum = TileRatingEnum;
+    /**
+     * @type {TileRatingEnum}
+     */
+    //TileRatings.TileRatingEnum = TileRatingEnum;
 
     TileRatings.add = function(out,a,b){
         var mOut = out.values,
@@ -70,19 +72,25 @@ define(function (require) {
         return destination;
     };
 
+    /**
+     * @param [valuePairs]
+     * @returns {TileRatings}
+     */
     TileRatings.create = function(valuePairs){
         var o = new TileRatings();
-        for(var key in valuePairs){
-            var value = valuePairs[key];
-            var enumKey = Enumerator.parse(TileRatingEnum, key);
-            if(enumKey != null)
-                o.values[TileRatingEnum[enumKey]] = value;
+        if(valuePairs !== undefined){
+            for(var key in valuePairs){
+                o.values[key] = valuePairs[key];
+            }
         }
-
         return o;
     };
 
     TileRatings.prototype.values = null;
+
+    TileRatings.prototype.toJSON = function(){
+        return this.values;
+    };
 
     return TileRatings;
 });

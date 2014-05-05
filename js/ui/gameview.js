@@ -76,7 +76,6 @@ define(function (require) {
             var self = this;
 
             this.onCityRename = function(sender, args){
-                console.log("234");
                 self.openWindow(new PromptView({
                     mainView: self,
                     message: "Please give city a name!",
@@ -167,6 +166,8 @@ define(function (require) {
 
             vkaria.logicInterface.addEventListener(ResponseCode.cityUpdate, function (sender,data) {
                 self.resourcesBar.setResources(data.resources);
+                $(".population .val", self.$el).text(data.population);
+                $(".population .cap", self.$el).text(data.maxPopulation);
             });
 
 

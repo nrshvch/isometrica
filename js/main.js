@@ -41,6 +41,6 @@ require.config({
     }
 });
 
-require(["./app/vkaria", "lib/helpers"], function (Vkaria) {
+require(["./app/vkaria", "lib/helpers"], function (Vkaria, helpers) {
     new Vkaria();
 });

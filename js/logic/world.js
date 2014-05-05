@@ -38,7 +38,8 @@ define(function (require) {
         this.size = 128;
 
         this.events = {
-            cityEstablished: 0
+            cityEstablished: 0,
+            tick: 1
         };
 
         this.eventManager = new EventManager();
@@ -87,11 +88,14 @@ define(function (require) {
         this.realtime.tick(now);
 
         this.terrain.tick(now);
-        this.tiles.tick(now);
         this.buildings.tick(now);
 
-        if (this.city)
-            this.city.tick(now);
+        this.eventManager.dispatchEvent(this.events.tick, this, {
+           timeNow: now
+        });
+
+        //if (this.city)
+          //  this.city.tick(now);
     }
 
     World.prototype.gridDistribution = function (x, y) {
@@ -182,8 +186,9 @@ define(function (require) {
     World.prototype.establishCity = function (tile, name) {
         if (!this.city) {
             this.city = new City(this);
-            this.city.setName(name);
-            this.city.setPosition(tile);
+            this.city.world = this;
+            this.city.name = name;
+            this.city.position = tile;
 
             this.eventManager.dispatchEvent(this.events.cityEstablished, this, this.city);
             return this.city;

@@ -37,12 +37,6 @@ define(function (require) {
                 layer: RenderLayer.buildingsLayer
             }
         ],
-        effect0: TileRatings.create([
-            {
-                key: TileRatings.TileRatingEnum.Ecology,
-                value: 10
-            }
-        ]),
         effect: TileRatings.create((function(){
             var o = {};
             o[TileRatings.TileRatingEnum.Ecology] = 10;
@@ -77,12 +71,6 @@ define(function (require) {
                 layer: RenderLayer.buildingsLayer
             }
         ],
-        effect0: TileRatings.create([
-            {
-                key: TileRatings.TileRatingEnum.Ecology,
-                value: 10
-            }
-        ]),
         effect: TileRatings.create((function(){
             var o = {};
             o[TileRatings.TileRatingEnum.Ecology] = 10;
@@ -152,12 +140,6 @@ define(function (require) {
             [1,0], [0,-1], [-1,0], [0,1]
         ],
         waypoints: {},
-        effect0: TileRatings.create([
-            {
-                key: TileRatings.TileRatingEnum.Ecology,
-                value: -1
-            }
-        ]),
         effect: TileRatings.create((function(){
             var o = {};
             o[TileRatings.TileRatingEnum.Ecology] = -1;
@@ -167,17 +149,13 @@ define(function (require) {
 
 
     buildingData[BuildingCode.house0] = {
-        size: 0x11,
         sizeX: 1,
         sizeY: 1,
         buildingCode: BuildingCode.house0,
         classCode: BuildingClassCode.house,
-        producing: Resources.create({
-            money: 1
-        }),
-        demanding: Resources.create({
-            food: 1
-        }),
+        producing: Resources.zero,
+        demanding: Resources.zero,
+        citizenCapacity: 1,
         constructionTime: 3000,
         constructionCost: Resources.create({
             stone: 8,
@@ -214,16 +192,6 @@ define(function (require) {
         roadGates: [
             [-1,0]//,[0,-1],[1,0],[0,1]
         ],
-        effect0: TileRatings.create([
-            {
-                key: TileRatings.TileRatingEnum.Crime,
-                value: 1
-            },
-            {
-                key: TileRatings.TileRatingEnum.Ecology,
-                value: -1
-            },
-        ])       ,
         effect: TileRatings.create((function(){
             var o = {};
             o[TileRatings.TileRatingEnum.Ecology] = -1;
@@ -238,12 +206,9 @@ define(function (require) {
         sizeY: 1,
         buildingCode: BuildingCode.house1,
         classCode: BuildingClassCode.house,
-        producing: Resources.create({
-            money: 2
-        }),
-        demanding: Resources.create({
-            food: 2
-        }),
+        producing: Resources.zero,
+        demanding: Resources.zero,
+        citizenCapacity: 1,
         constructionTime: 3000,
         constructionCost: Resources.create({
             stone: 10,
@@ -284,6 +249,7 @@ define(function (require) {
             electricity: 1,
             water: 1
         }),
+        citizenCapacity: 3,
         constructionTime: 3000,
         constructionCost: Resources.create({
             money: 1000,
@@ -368,6 +334,7 @@ define(function (require) {
             money: 1500
         }),
         name: "cottage house",
+        citizenCapacity: 4,
         gather: null,
         sprites: [
             {
@@ -406,6 +373,7 @@ define(function (require) {
             electricity: 2,
             water: 2
         }),
+        citizenCapacity: 4,
         constructionTime: 5000,
         constructionCost: Resources.create({
             money: 1500,
@@ -419,6 +387,7 @@ define(function (require) {
             money: 1500
         }),
         name: "two story house",
+        citizenCapacity: 6,
         gather: null,
         sprites: [
             {
@@ -457,6 +426,7 @@ define(function (require) {
             electricity: 2,
             water: 2
         }),
+        citizenCapacity: 6,
         constructionTime: 5000,
         constructionCost: Resources.create({
             money: 1500,

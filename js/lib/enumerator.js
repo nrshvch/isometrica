@@ -3,6 +3,11 @@ define(function (require) {
         throw "Use Enumerator.create";
     }
 
+    /**
+     * @param keyValuePairs
+     * @returns {@enum}
+     */
+    /*
     Enumerator.create = function(keyValuePairs){
         var arr = [];
         var enm = Object.create(null);
@@ -33,8 +38,8 @@ define(function (require) {
 
         return enm;
         //return keyValuePairs;
-    };
-
+    };       */
+                          /*
     Enumerator.parse = function(enumerator, value){
         if(typeof value === "number" || !isNaN(parseInt(value, 10))){
             if(value in enumerator.properties)
@@ -42,6 +47,17 @@ define(function (require) {
         }else if(typeof value === "string"){
             if(value in enumerator)
                 return value;
+        }
+
+        return null;
+    };                      */
+
+    Enumerator.parse = function(enumerator, value){
+        if(typeof value === "number" || !isNaN(parseInt(value, 10))){
+            for(var key in enumerator){
+                if(enumerator[key] === value)
+                    return key;
+            }
         }
 
         return null;

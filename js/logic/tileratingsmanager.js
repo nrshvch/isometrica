@@ -24,6 +24,9 @@ define(function (require) {
         };
     }
 
+    var defaultRatings = TileRatings.create();
+    defaultRatings.values[TileRatings.TileRatingEnum.Ecology] = 100;
+
     var initializeRatings = function (self) {
         var all = self._world.buildMan.byId;
         for (var i in all) {
@@ -47,10 +50,14 @@ define(function (require) {
                 var item = affectedTiles[i];
                 var index = item.x + item.y * self._world.size;
 
-                if(self._tilesRatings[index] != undefined)
-                    TileRatings.add(self._tilesRatings[index], self._tilesRatings[index], effect);
-                else
-                    self._tilesRatings[index] = TileRatings.copy(TileRatings.create(), effect);
+                var ratings = null;
+                if(self._tilesRatings[index] == undefined){
+                    ratings = self._tilesRatings[index] = TileRatings.copy(TileRatings.create(), defaultRatings);
+                }else{
+                    ratings = self._tilesRatings[index];
+                }
+
+                TileRatings.add(ratings, ratings, effect);
             }
         }
     };
@@ -127,18 +134,41 @@ define(function (require) {
     ratingsMan.getRatings = function (x, y) {
         var index = x  + this._world.size * y;
         var r = this._tilesRatings[index];
-        if(r !== undefined){
-            var r1 = TileRatings.copy(TileRatings.create(), r);
-            clampRatings(r1);
-            return r1;
+
+        if(r === undefined)
+            r = defaultRatings;
+
+        var r1 = TileRatings.copy(TileRatings.create(), r);
+        clampRatings(r1);
+        return r1;
+    };
+
+    /**
+     * Get specific rating value of tile
+     * @param x {number}
+     * @param y {number}
+     * @param {TileRatings.TileRatingEnum} ratingType
+     * @returns {number}
+     */
+    ratingsMan.getRating = function(x, y, ratingType){
+        var index = x + this._world.size * y;
+        var ratings = this._tilesRatings[index];
+        var rating = 0;
+
+        if(ratings === undefined){
+          rating = defaultRatings.values[ratingType];
+        }else{
+            rating = ratings.values[ratingType];
         }
-        return undefined;
+
+        rating = Math.min(100, Math.max(0, rating));
+        return rating;
     };
 
     function clampRatings(r){
         for(var key in TileRatings.TileRatingEnum){
             var index = TileRatings.TileRatingEnum[key];
-            r[index] = Math.min(100, Math.max(0, r[index]));
+            r.values[index] = Math.min(100, Math.max(0, r.values[index]));
         }
     }
 

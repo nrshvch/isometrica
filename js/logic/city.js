@@ -8,19 +8,36 @@ define(function (require) {
         buildingData = require('lib/buildingdata'),
         Resources = require('lib/resources'),
         EventManager = require('lib/eventmanager'),
-        BuildingResearch = require("./buildingresearch"),
+        /**
+         * @type ErrorCode
+         */
+        ErrorCode = require("lib/errorcode"),
+    //BuildingResearch = require("./buildingresearch"),
         Building = require("./building"),
         Laboratory = require("./laboratory"),
-        ResearchState = require("lib/researchstate");
+    //ResearchState = require("lib/researchstate"),
+        CityStats = require("./citystats"),
+        CityResourceOperations = require("./cityresourceoperations");
+    //TileRatings = require("lib/tileratings");
 
-    var resourceBuffer1 = Resources.create(),
-        resourceBuffer2 = Resources.create(),
-        resourceBuffer3 = Resources.create(),
-        resourceBuffer4 = Resources.create(),
-        dateBuffer1 = new Date(),
-        dateBuffer2 = new Date;
 
-    function City(world) {
+
+    function City(root) {
+        var world = root;
+
+        var self = this;
+
+        window.stats = this.stats = new CityStats(this);
+        this.resourceOperations = new CityResourceOperations(this);
+        this.resourceOperations.addEventListener(this.resourceOperations.events.update, function (sender, args) {
+            self.dispatchEvent(self.events.update, self);
+        });
+
+        root.eventManager.addEventListener(root.events.tick, function (sender, args) {
+            self.stats.CalculateAll();
+            self.dispatchEvent(self.events.update, self);
+        });
+
         EventManager.call(this);
 
         this.events = {
@@ -37,34 +54,8 @@ define(function (require) {
             this.buildingByClass[BuildingCode[key]] = [];
         }
 
-        this.resources = Resources.create({
-            money: 999000,
-            wood: 50,
-            food: 50,
-            stone: 50,
-            iron: 50,
-            coal: 50,
-            electricity: 50,
-            oil: 50,
-            gas: 50,
-            water: 50
-        });
-
-        this.resourceDemand = Resources.create();
-        this.resourceProduce = Resources.create();
-        this.maintenanceCost = Resources.create();
-
-        this.laboratory = new BuildingResearch(this.world);
+        //this.laboratory = new BuildingResearch(this.world);
         this.lab = new Laboratory(this.world);
-
-        var time = world.time;
-        this.resources2 = Resources.clone(this.resources);
-        var self = this;
-        time.eventManager.addEventListener(time.events.newMonth, function (sender, args) {
-            Resources.sub(self.resources2, self.resources, self.resources2)
-            self.resources2 = Resources.copy(self.resources2, self.resources);
-        });
-
 
         var self = this;
         this.onBuildingRemoved = function (building) {
@@ -84,133 +75,53 @@ define(function (require) {
     City.prototype = Object.create(EventManager.prototype);
 
     City.prototype.name = "";
+    City.prototype.world = null;
     City.prototype.cityHall = null;
     City.prototype.buildings = null;
     City.prototype.position = null;
 
-    City.prototype.setPosition = function(tile){
-        this.position = tile;
-    };
-
-    City.prototype.setName = function(name){
-        this.name = name;
-    };
-
-    City.prototype.addMoney = function (amount) {
-        if (validator.isNumber(amount)) {
-            this.resources[Resources.ResourceCode.money] += amount;
-            this.dispatchEvent(this.events.update, this);
-            return true;
-        }
-        return false;
-    };
-
-    City.prototype.subMoney = function (amount) {
-        if (validator.isNumber(amount, 0, this.resources[Resources.ResourceCode.money])) {
-            this.resources[Resources.ResourceCode.money] -= amount;
-            this.dispatchEvent(this.events.update, this);
-            return true;
-        }
-        return false;
-    };
-
-    City.prototype.subResources = function (resources) {
-        Resources.sub(this.resources, this.resources, resources);
-        this.dispatchEvent(this.events.update, this);
-    };
-
-    City.prototype.addResources = function (resources) {
-        Resources.add(this.resources, this.resources, resources);
-        this.dispatchEvent(this.events.update, this);
-    };
-
-    City.prototype.tick = function (now) {
-        this.lab.tick(now);
-
-        var now = this.world.time.now,
-            dateNow = dateBuffer1,
-            dateThen = dateBuffer2;
-
-        dateNow.setTime(now);
-
-        Resources.copy(this.resourceDemand, Resources.zero);
-        Resources.copy(this.resourceProduce, Resources.zero);
-        Resources.copy(this.maintenanceCost, Resources.zero);
-
-        for (var i = 0; i < this.buildings.length; i++) {
-            var building = this.buildings[i];
-            building.tick();
-
-            var produced = building.produce(),
-                demand = building.demand();
-
-            Resources.add(this.resources, this.resources, produced);
-            Resources.sub(this.resources, this.resources, demand);
-
-            Resources.add(this.resourceDemand, this.resourceDemand, demand);
-            Resources.add(this.resourceProduce, this.resourceProduce, produced);
-
-
-            //building maintenance cost
-            //After 10 years of building exploitation it starts to require maintenance costs.
-            //Max.maintenance cost per year is 25% of building construction cost.
-            //Maintenance cost starts from 1% and raises to max in 50 years, after maintenance started.
-            dateThen.setTime(building.createdAt);
-            var dYear = dateNow.getYear() - dateThen.getYear() - 10,
-                percent;
-
-            if (dYear > 0) {
-                if (dYear <= 50) {
-                    percent = 25 * dYear / 50;
-                } else if (dYear > 50) {
-                    percent = 25;
-                }
-
-                //amount of resources to take, daily
-                var n = (percent / 100) / this.world.time.daysInYear;
-
-                Resources.mul(resourceBuffer1, building.data.constructionCost, n);
-                Resources.add(this.maintenanceCost, this.maintenanceCost, resourceBuffer1);
-            }
-
-        }
-        Resources.sub(this.resources, this.resources, this.maintenanceCost);
-        this.dispatchEvent(this.events.update, this);
-    };
 
     City.prototype.clearTile = function (x, y) {
         var tile = this.world.tiles.get(x, y);
         tile.clear();
-        this.subMoney(1);
+        this.resourceOperations.subMoney(1);
         return true;
     };
 
-    City.prototype.build = function (buildingCode, baseTile, rotate) {
-        if (buildingCode === BuildingCode.cityHall && this.cityHall !== null)
-            throw "Only one city hall is allowed!";
 
-        var BuildingType = buildingData[buildingCode],
-            data = BuildingType,
+    City.prototype.buildTest = function (buildingCode, baseTile, rotation) {
+        var result = {
+            success: true,
+            error: ErrorCode.NONE
+        };
+
+        var data = buildingData[buildingCode],
             availableBuildingList = this.lab.getAvailableBuildings();
 
-        if (availableBuildingList.indexOf(buildingCode) === -1)
-            throw "You can't build this!";
+        if (availableBuildingList.indexOf(buildingCode) === -1) {
+            result.success = false;
+            result.error = ErrorCode.BUILDING_NOT_AVAIL;
+        } else if (buildingCode === BuildingCode.cityHall && this.cityHall !== null) {
+            result.success = false;
+            result.error = ErrorCode.CITY_HALL_ALREADY_BUILT;
+        } else if (this.stats.resourcesTotal.some(function (el, ind) {
+            return data.constructionCost[ind] !== 0 && el < data.constructionCost[ind];
+        })) {
+            result.success = false;
+            result.error = ErrorCode.NOT_ENOUGH_RES;
+        }
 
-        var resources = this.resources,
-            enoughResources = Resources.every(data.constructionCost, function (element, index) {
-                if(element === 0)
-                    return true;
-                else
-                    return element <= resources[index];
-            });
+        return result;
+    };
 
+    City.prototype.build = function (buildingCode, baseTile, rotate) {
+        var allow = this.buildTest(buildingCode, baseTile, rotate);
 
-
-        //if (BuildingType.price <= this.resources[Resources.ResourceCode.money]) {
-        if (enoughResources) {
+        if (allow.success) {
+            var data = buildingData[buildingCode];
             var building = this.world.buildings.build(buildingCode, baseTile.x, baseTile.y, rotate);
 
-            this.subResources(data.constructionCost);
+            this.resourceOperations.sub(data.constructionCost);
             this.buildings.push(building);
             this.buildingByClass[data.buildingCode].push(building);
 
@@ -218,9 +129,7 @@ define(function (require) {
                 this.cityHall = building;
 
             return true;
-        } else
-            throw "Not enough resources!";
-
+        }
         return false;
     };
 
@@ -233,35 +142,16 @@ define(function (require) {
 
         if (enoughResources) {
             this.laboratory.research(buildingCode);
-            this.subResources(data.researchCost);
+            this.resourceOperations.sub(data.researchCost);
         } else {
             throw "Not enough resources!";
         }
     };
 
-    City.prototype.buyResource = function (resourceCode, amount) {
-        var cost = this.world.resourceMarket.buyCost(resourceCode, amount);
-
-        if (this.resources[Resources.ResourceCode.money] >= cost) {
-            this.subMoney(cost);
-            return true;
-        } else
-            return false;
-
-    };
-
-    City.prototype.sellResource = function (resourceCode, amount) {
-        var cost = this.world.resourceMarket.sellCost(resourceCode, amount);
-
-        this.addMoney(cost);
-
-        return true;
-    };
-
-    City.prototype.save = function(){
+    City.prototype.save = function () {
         var buildings = [];
 
-        for(var index in this.buildings){
+        for (var index in this.buildings) {
             buildings.push(Building.serialize(this.buildings[index]));
         }
 
@@ -278,14 +168,14 @@ define(function (require) {
         return save;
     };
 
-    City.prototype.load = function(data){
-        this.setName(data.name);
-        this.setPosition(this.world.tiles.get(data.x, data.y));
+    City.prototype.load = function (data) {
+        this.name = data.name;
+        this.position = this.world.tiles.get(data.x, data.y);
         this.timeEstablished = data.timeEstablished;
         this.resources = data.resources;
         this.cityHall = (data.cityHall && this.world.buildings.buildingIdToBuildingMap[data.cityHall.id]) || null;
 
-        for(var index in data.buildings){
+        for (var index in data.buildings) {
             var b = this.world.buildings.buildingIdToBuildingMap[data.buildings[index].id];
 
             this.buildings.push(b);
@@ -293,6 +183,23 @@ define(function (require) {
         }
 
         this.laboratory.load(data.lab);
+    };
+
+    City.prototype.toJSON = function () {
+        var data = {
+            name: this.name,
+            population: this.stats.population,
+            maxPopulation: this.stats.citizenCapacity,
+            ratings: this.stats.ratings.toJSON(),
+            x: this.position.x,
+            y: this.position.y,
+            resources: this.stats.resourcesTotal,
+            resourceProduce: this.stats.resourceProduce,
+            resourceDemand: this.stats.resourceDemand,
+            maintenanceCost: this.stats.maintenanceCost
+        };
+
+        return data;
     };
 
     return City;

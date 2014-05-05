@@ -1,7 +1,8 @@
 define(function (require) {
-    var Enumerator = require("lib/enumerator");
-
-    return Enumerator.create({
+    /**
+     * @enum {number}
+     */
+    return {
         money: 0,
         food: 1,
         water: 2,
@@ -13,5 +14,5 @@ define(function (require) {
         oil: 8,
         gas: 9,
         uranium: 10
-    });
+    };
 });

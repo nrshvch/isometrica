@@ -56,11 +56,23 @@ define(function (require) {
             this.collection[i] = this.createTile(x,y);
             this.fill(x,y);
         }
-    }
+          /*
+        var l = this.world.size * this.world.size;
+        var i = 0;
+        var self = this;
+        var f = function(){
+            var x = (i / self.world.size) | 0;
+            var y = i - (x * self.world.size);
 
-    Tiles.prototype.tick = function(){
+            self.collection[i] = self.createTile(x,y);
+            self.fill(x,y);
 
-    }
+            if(++i < l)
+                setTimeout(f,0);
+        };
+        f();
+        */
+    };
 
     Tiles.prototype.createTile = function(x, y){
         var tile = new Tile(this.world, x, y);

@@ -33,6 +33,15 @@ body {
     margin: 0 auto;
 }
 
+#gameView #topBar .population {
+    float: left;
+    height: 16px;
+    margin: 4px 24px 4px 0px;
+    font-size: 9pt;
+    font-weight: bold;
+    color: #eee;
+}
+
 #gameView #topBar .resources {
     float: left;
     height: 16px;

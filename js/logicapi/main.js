@@ -3,8 +3,6 @@
 define(function (require) {
     var EventManager = require("lib/eventmanager"),
         Logic = require("logic"),
-        mapper = require("./mapper"),
-        serializer = require("./mapper"),
         ResponseCode = require("lib/responsecode"),
         savegame = require("text!testsavegame");
 
@@ -28,23 +26,23 @@ define(function (require) {
 
 
         this.onTileUpdate = function (tile) {
-            self.dispatchEvent(ResponseCode.tileUpdated, serializer.tile(tile));
+            self.dispatchEvent(ResponseCode.tileUpdated, tile.toJSON());
         };
 
         this.onBuildingBuilt = function (building) {
-            self.dispatchEvent(ResponseCode.buildingBuilt, self, serializer.building(building));
+            self.dispatchEvent(ResponseCode.buildingBuilt, self, building.toJSON());
         };
 
         this.onBuildingUpdated = function (building) {
-            self.dispatchEvent(ResponseCode.buildingUpdated,self, serializer.building(building));
+            self.dispatchEvent(ResponseCode.buildingUpdated,self, building.toJSON());
         };
 
         this.onBuildingRemoved = function (building) {
-            self.dispatchEvent(ResponseCode.buildingRemoved, self, serializer.building(building));
+            self.dispatchEvent(ResponseCode.buildingRemoved, self, building.toJSON());
         };
 
         this.onCityUpdate = function (city) {
-            self.dispatchEvent(ResponseCode.cityUpdate, self, serializer.city(city));
+            self.dispatchEvent(ResponseCode.cityUpdate, self, city.toJSON());
         };
 
         this.onResearchStart = function (sender, args) {
@@ -74,7 +72,7 @@ define(function (require) {
 
             city.lab.addEventListener(city.lab.events.buildingInvented, self.onBuildingInvented);
 
-            self.dispatchEvent(ResponseCode.cityEstablished, self, serializer.city(city));
+            self.dispatchEvent(ResponseCode.cityEstablished, self, city.toJSON());
         };
 
 
@@ -116,6 +114,10 @@ define(function (require) {
         w = w || 1;
         h = h || 1;
 
+        var data = this.logic.world.tiles.getRange(x, y, w, h).map(function(val, ind, arr){
+            return val.toJSON();
+        });
+
         if (x !== undefined && y !== undefined)
             callback({
                 meta: {
@@ -125,7 +127,7 @@ define(function (require) {
                     w: w,
                     h: h
                 },
-                data: serializer.tiles(this.logic.world.tiles.getRange(x, y, w, h))
+                data: data
             });
     };
 
@@ -142,6 +144,10 @@ define(function (require) {
         w = w || 1;
         h = h || 1;
 
+        var data = this.logic.world.buildings.getRange(x, y, w, h).map(function(value,index,arr){
+            return value.toJSON();
+        });
+
         if (x !== undefined && y !== undefined)
             callback({
                 meta: {
@@ -151,7 +157,7 @@ define(function (require) {
                     w: w,
                     h: h
                 },
-                data: serializer.buildings(this.logic.world.buildings.getRange(x, y, w, h))
+                data: data
             });
     };
 
@@ -182,7 +188,7 @@ define(function (require) {
         var city = this.logic.world.city;
 
         if (city)
-            callback(serializer.city(city));
+            callback(city.toJSON());
         else
             callback(null);
     };
@@ -190,14 +196,14 @@ define(function (require) {
     Api.prototype.establishCity = function (x, y, name, callback) {
         var tile = this.logic.world.tiles.get(x, y);
         var city = this.logic.world.establishCity(tile, name);
-        callback(serializer.city(city));
+        callback(city.toJSON());
     };
 
     Api.prototype.renameCity = function (name, callback) {
         var city = this.logic.world.city;
         city.name = name;
-        callback(serializer.city(city));
-        this.dispatchEvent(ResponseCode.cityUpdate, this, serializer.city(city));
+        callback(city.toJSON());
+        this.dispatchEvent(ResponseCode.cityUpdate, this, city.toJSON());
     };
 
 
@@ -216,7 +222,7 @@ define(function (require) {
 
     //Resource market
     Api.prototype.buyResource = function (resourceCode, amount) {
-        var r = this.logic.world.city.buyResource(resourceCode, amount);
+        var r = this.logic.world.city.resourceOperations.buyResource(resourceCode, amount);
 
         if (r)
             this.dispatchEvent(ResponseCode.errorMessage, this.logic.world.city, "Not enough resources!");

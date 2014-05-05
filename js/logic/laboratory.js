@@ -63,6 +63,11 @@ define(function (require) {
         this._openItems(ResearchDirection.industry, 0, true);
 
         this.queue = [];
+
+        var self = this;
+        this.world.eventManager.addEventListener(this.world.events.tick, function(sender, args){
+            self.tick(args.timeNow);
+        });
     }
 
     Lab.prototype = Object.create(EventManager.prototype);

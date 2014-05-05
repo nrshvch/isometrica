@@ -36,8 +36,9 @@ define(function (require) {
 
     Tile.prototype = Object.create(EventManager.prototype);
 
-    Tile.prototype.x = null;
-    Tile.prototype.y = null;
+    Tile.prototype.x = -1;
+    Tile.prototype.y = -1;
+    Tile.prototype.z = -1;
     Tile.prototype.gridPoints = null;
     Tile.prototype.terrainType = null;
     Tile.prototype.tileType = null;
@@ -97,6 +98,17 @@ define(function (require) {
         this.dispatchEvent(this.events.update, this);
         return this.tileType;
     };*/
+
+    Tile.prototype.toJSON = function(){
+        return {
+            x: this.x,
+            y: this.y,
+            terrainType: this.terrainType,
+            price: this.getPrice(),
+            gridPoints: this.gridPoints,
+            resource: this.resource
+        }
+    };
 
     return Tile;
 });

@@ -13,6 +13,7 @@ define(function (require) {
         TileType = require("lib/tiletype"),
         EventManager = require("lib/eventmanager"),
         ResourceCode = require("lib/resourcecode"),
+        ErrorCode = require("lib/errorcode"),
         TerrainType = require("lib/terraintype");
 
     function buildTest(buildings, baseX, baseY, rotate, buildingData) {
@@ -229,7 +230,7 @@ define(function (require) {
                 throw "Tile is already taken!";
         }
 
-        building = new Building(buildingCode);
+        building = new Building(buildingCode, this.world);
         building.rotate(rotate);
         this._build(baseX, baseY, building);
 
@@ -240,7 +241,9 @@ define(function (require) {
         if(!BuildingData[buildingCode].canRotate)
             rotate = false;
 
-        buildTest(this, baseX, baseY, rotate, BuildingData[buildingCode]);
+        var data = BuildingData[buildingCode];
+
+        buildTest(this, baseX, baseY, rotate, data);
 
         this.removeTrees(baseX, baseY, BuildingData[buildingCode].sizeX, BuildingData[buildingCode].sizeY, rotate);
 
@@ -255,6 +258,8 @@ define(function (require) {
         var sizeX = building.data.sizeX,
             sizeY = building.data.sizeY,
             i, l, x, y;
+
+        building.onRemove();
 
         for (i = 0, l = sizeX * sizeY; i < l; i++) {
             x = ((i / sizeY) | 0) + building.x;
