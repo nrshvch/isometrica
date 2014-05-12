@@ -6,13 +6,8 @@ require.config({
             main: 'main'
         },
         {
-            name: "logic",
-            location: "logic",
-            main: "main"
-        },
-        {
-            name: "logicapi",
-            location: "logicapi",
+            name: "core",
+            location: "core",
             main: "main"
         },
         {

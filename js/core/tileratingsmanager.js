@@ -6,7 +6,7 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function (require) {
-
+    var Events = require("lib/events");
     var BuildingData = require("lib/buildingdata");
     var TileRatings = require("lib/tileratings");
 
@@ -15,12 +15,12 @@ define(function (require) {
         this._tilesRatings = new Array();
 
         var self = this;
-        this.onBuildingBuilt = function (building) {
-            addRatings(self, building);
+        this.onBuildingBuilt = function (sender, args) {
+            addRatings(self, args);
         };
 
-        this.onBuildingRemoved = function (building) {
-            removeRatings(self, building);
+        this.onBuildingRemoved = function (sender, args) {
+            removeRatings(self, args);
         };
     }
 
@@ -127,8 +127,12 @@ define(function (require) {
 
     ratingsMan.init = function () {
         initializeRatings(this);
-        this._world.buildMan.addEventListener(this._world.buildMan.events.buildingBuilt, this.onBuildingBuilt);
-        this._world.buildMan.addEventListener(this._world.buildMan.events.buildingRemoved, this.onBuildingRemoved);
+        var buildman = this._world.buildings;
+        Events.subscribe(buildman, buildman.events.buildingBuilt, this.onBuildingBuilt,this);
+        Events.subscribe(buildman, buildman.events.buildingBuilt, this.onBuildingRemoved,this);
+
+        //this._world.buildMan.addEventListener(this._world.buildMan.events.buildingBuilt, this.onBuildingBuilt);
+        //this._world.buildMan.addEventListener(this._world.buildMan.events.buildingRemoved, this.onBuildingRemoved);
     };
 
     ratingsMan.getRatings = function (x, y) {

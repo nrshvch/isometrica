@@ -7,26 +7,21 @@
  */
 define(function(require){
     var Resources = require("lib/resources");
-    var EventManager = require("lib/eventmanager");
+    var Events = require("lib/events");
 
     function ResourceOperations(city){
-        EventManager.call(this);
         this.city = city;
         this.resources = city.stats.resourcesTotal;
     }
-
-    ResourceOperations.prototype = Object.create(EventManager.prototype);
-
-    ResourceOperations.prototype.events = {
-        update: 0
-    };
 
     ResourceOperations.prototype.resources = null;
 
     ResourceOperations.prototype.addMoney = function(amount){
         if (helpers.isNumber(amount)) {
             this.resources[Resources.ResourceCode.money] += amount;
-            this.dispatchEvent(this.events.update, this);
+
+            Events.fire(this.city, this.city.events.update, this.city, null);
+
             return true;
         }
         return false;
@@ -35,7 +30,9 @@ define(function(require){
     ResourceOperations.prototype.subMoney = function(amount){
         if (helpers.isNumber(amount, 0, this.resources[Resources.ResourceCode.money])) {
             this.resources[Resources.ResourceCode.money] -= amount;
-            this.dispatchEvent(this.events.update, this);
+
+            Events.fire(this.city, this.city.events.update, this.city, null);
+
             return true;
         }
         return false;
@@ -43,12 +40,12 @@ define(function(require){
 
     ResourceOperations.prototype.add = function(resources){
         Resources.add(this.resources, this.resources, resources);
-        this.dispatchEvent(this.events.update, this);
+        Events.fire(this.city, this.city.events.update, this.city, null);
     };
 
     ResourceOperations.prototype.sub = function(resources){
         Resources.sub(this.resources, this.resources, resources);
-        this.dispatchEvent(this.events.update, this);
+        Events.fire(this.city, this.city.events.update, this.city, null);
     };
 
     ResourceOperations.prototype.buy = function(resourceCode, amount){

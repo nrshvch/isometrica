@@ -10,6 +10,7 @@ define(function (require) {
         Resources = require("lib/resources");
 
     var TAX_MONEY = 1;
+    var MAX_ECO = 100;
 
     var resourceBuffer1 = Resources.create(),
         resourceBuffer2 = Resources.create(),
@@ -49,6 +50,7 @@ define(function (require) {
     CityStats.prototype.CalculateAll = function(){
         calculateCitizenCapacity(this);
         calculateRatings(this);
+        calculatePopulationChangePerTick(this);
         calculateIncomeFromCitizens(this);
         calculateMaintenanceCost(this);
         calculateResourceConsumption(this);
@@ -59,7 +61,7 @@ define(function (require) {
     //PRIVATE
 
     var defaultRatings = TileRatings.create();
-    defaultRatings.values[TileRatings.TileRatingEnum.Ecology] = 100;
+    defaultRatings.values[TileRatings.TileRatingEnum.Ecology] = MAX_ECO;
 
     function calculateBuildingMaintenanceDailyCostPercent(city, building, dateNow) {
         //After 10 years of building exploitation it starts to require maintenance costs.
@@ -94,17 +96,30 @@ define(function (require) {
     }
 
     function calculateRatings(cityStats){
-        TileRatings.copy(cityStats.ratings, defaultRatings);
-        var BuildingsCount = cityStats.city.buildings.length;
+        var tilesCount = 0;
         if (cityStats.city.buildings.length > 0) {
+            TileRatings.copy(cityStats.ratings, TileRatings.zero);
             for (var key in cityStats.city.buildings) {
                 var building = cityStats.city.buildings[key];
-                TileRatings.add(cityStats.ratings, cityStats.ratings, cityStats.city.world.ratingsman.getRatings(building.x, building.y));
+                var sizeX = building.data.sizeX,
+                    sizeY = building.data.sizeY,
+                    baseX = building.x, baseY = building.y, x, y;
+
+                for (var i = 0, l = sizeX * sizeY; i < l; i++) {
+                    tilesCount++;
+
+                    x = ((i / sizeY) | 0) + baseX;
+                    y = i % sizeY + baseY;
+
+                    TileRatings.add(cityStats.ratings, cityStats.ratings, cityStats.city.world.ratingsman.getRatings(x, y));
+                }
             }
         }
-        for(var key in cityStats.ratings.values){
-            cityStats.ratings.values[key] /= BuildingsCount;
-        }
+
+        if(tilesCount > 0)
+            TileRatings.mul(cityStats.ratings, cityStats.ratings, 1 / tilesCount);
+        else
+            TileRatings.copy(cityStats.ratings, defaultRatings);
     }
 
     function calculateIncomeFromCitizens(cityStats) {
@@ -150,27 +165,26 @@ define(function (require) {
     function calculatePopulationChangePerTick(cityStats) {
         var totalCap = cityStats.citizenCapacity;
         var avgEco = cityStats.ratings.values[TileRatings.TileRatingEnum.Ecology];
-        var MAX_ECO = 100;
         var change = 0;
         var cap = totalCap - cityStats.population;
         var citizensLeaveDueBadRatings = cityStats.population * 0.01; //1% of population
         var maxCitizensCanJoin = cap > 0 ? Math.max(1, Math.sqrt(cap)) : 0;
 
         //calculate overralEffect
-        var ecoEffect = avgEco / 50 - 1; // (-1,1)
+        var ecoEffect = avgEco / (MAX_ECO/2) - 1; // (-1,1)
         var ecoWeight = 1;
         var overallEffect = ecoEffect * ecoWeight; // (-1,1)
 
         //if effect is low , citizens leave
         if(overallEffect < 0)              {
             change = citizensLeaveDueBadRatings * overallEffect;
-        }
-        //is effect is high enoguh , citizens join
-        else{
+        }else if(cap < 0){//if capacity is not enough citizens leave by one
+            change = -1;
+        }else{//is effect is high enoguh , citizens join
             change = maxCitizensCanJoin * overallEffect;
         }
 
-        //console.log("AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
+        console.log("CAP:"+cap,"AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
 
         cityStats._population += change;
     }

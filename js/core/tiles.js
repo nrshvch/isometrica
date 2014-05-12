@@ -1,40 +1,19 @@
 define(function (require) {
     var Tile = require("./tile"),
         validator = require('./lib/validator'),
-        EventManager = require("lib/eventmanager");
+        Events = require("lib/events");
 
     function Tiles(world) {
-        EventManager.call(this);
-
-        this.events = {
-            update: 0
-        };
-
         this.world = world;
         this.terrain = world.terrain;
         this.objects = world.objects;
 
+        console.log(world);
         this.fillMap = new Uint8Array((world.size*world.size)/8);
 
         this.collection = new Array(world.size * world.size);
-
-        var self = this;
-        this.onTileUpdate = function(tile){
-            self.dispatchEvent(self.events.update, tile);
-        };
-
-        this.onBuildingBuilt = function(building){
-            //var tile = building.tile;
-            //tile.updateType(building);
-        };
-
-        this.onBuildingRemoved = function(building){
-            //var tile = building.tile;
-            //tile.updateType(building);
-        }
     }
 
-    Tiles.prototype = Object.create(EventManager.prototype);
     Tiles.prototype.constructor = Tiles;
 
     Tiles.prototype.onTileUpdate = null;
@@ -45,9 +24,6 @@ define(function (require) {
     Tiles.prototype.collection = null;
 
     Tiles.prototype.init = function(){
-        this.world.buildings.addEventListener(this.world.buildings.events.buildingBuilt, this.onBuildingBuilt);
-        this.world.buildings.addEventListener(this.world.buildings.events.buildingRemoved, this.onBuildingRemoved);
-
         //initalize all tiles
         for(var i = 0; i < this.world.size * this.world.size; i++){
             var x = (i / this.world.size) | 0;
@@ -56,28 +32,11 @@ define(function (require) {
             this.collection[i] = this.createTile(x,y);
             this.fill(x,y);
         }
-          /*
-        var l = this.world.size * this.world.size;
-        var i = 0;
-        var self = this;
-        var f = function(){
-            var x = (i / self.world.size) | 0;
-            var y = i - (x * self.world.size);
-
-            self.collection[i] = self.createTile(x,y);
-            self.fill(x,y);
-
-            if(++i < l)
-                setTimeout(f,0);
-        };
-        f();
-        */
     };
 
     Tiles.prototype.createTile = function(x, y){
         var tile = new Tile(this.world, x, y);
         tile.id = x * this.world.size + y;
-        tile.addEventListener(tile.events.update, this.onTileUpdate);
         return tile;
     }
 
@@ -97,7 +56,7 @@ define(function (require) {
 
     Tiles.prototype.getRange = function (x0, y0, w, h) {
         var wh = w * h,
-            r = new Array(wh),
+            r = new Array(),
             x, y, i, tile;
 
         for (i = 0; i < wh; i++) {

@@ -21,7 +21,7 @@ define(function (require) {
 
     Building.prototype.setData = function(data){
         this.data = data;
-        this.staticData = BuildingData[data.buildingCode];
+        this.staticData = BuildingData[data.data.buildingCode];
         this.tile = vkaria.tilesman.getTile(data.x, data.y).tileScript;
 
         if(this.node === null){
@@ -81,7 +81,7 @@ define(function (require) {
             gateOut += 1;
 
 
-        var wpsSource = BuildingWaypoints[this.data.buildingCode][gateIn | gateOut << 8],
+        var wpsSource = BuildingWaypoints[this.data.data.buildingCode][gateIn | gateOut << 8],
             wps = [];
 
         if(!wpsSource)

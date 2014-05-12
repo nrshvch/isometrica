@@ -11,7 +11,7 @@ define(function (require) {
         BuildingCode = require("lib/buildingcode"),
         BuildingClassCode = require("lib/buildingclasscode"),
         TileType = require("lib/tiletype"),
-        EventManager = require("lib/eventmanager"),
+        Events = require("lib/events"),
         ResourceCode = require("lib/resourcecode"),
         ErrorCode = require("lib/errorcode"),
         TerrainType = require("lib/terraintype");
@@ -61,42 +61,27 @@ define(function (require) {
             var y = i - (x * buildman.world.size);
 
             buildman.plantTree(x,y);
-
-            //buildman.collection[i] = buildman.createTile(x,y);
-            //buildman.fill(x,y);
         }
     }
 
     function Buildings(world) {
-        EventManager.call(this);
-        this.events = {
-            buildingBuilt: 0,
-            buildingUpdated: 1,
-            buildingRemoved: 2
-        };
-
         this.world = world;
 
         this.buildingIdToBuildingMap = Object.create(null);
 
         this.byId = [];
 
-        var self = this;
-        this.onBuildingUpdated = function (building) {
-            self.dispatchEvent(self.events.buildingUpdated, building);
-        };
-
         this.fillMap = new Uint8Array((world.size * world.size) / 8);
-
-
     }
 
-    Buildings.prototype = Object.create(EventManager.prototype);
+    Buildings.prototype.events = {
+        buildingBuilt: 0,
+        buildingUpdated: 1,
+        buildingRemoved: 2
+    };
 
     Buildings.prototype.init = function () {
         PlantTrees(this);
-        /*else if(x >= 0 && x < this.world.size && y >= 0 && y < this.world.size)
-         return this.plantTree(x, y);*/
     };
 
     Buildings.prototype.tick = function () {
@@ -132,8 +117,6 @@ define(function (require) {
     Buildings.prototype.get = function (x, y) {
         if (this.check(x, y))
             return this.byId[x * this.world.size + y];
-        /*else if(x >= 0 && x < this.world.size && y >= 0 && y < this.world.size)
-            return this.plantTree(x, y);*/
 
         return null;
     };
@@ -167,6 +150,12 @@ define(function (require) {
         return r;
     };
 
+    Buildings.prototype.onBuildingUpdated = function (sender, args, self) {
+        var building = sender;
+        Events.fire(self, self.events.buildingUpdated, this, building);
+        //self.dispatchEvent(self.events.buildingUpdated, building);
+    };
+
     /**
      * Method for registering building instances in map, arrays etc.
      * Is used when loading building from serialized data.
@@ -197,7 +186,8 @@ define(function (require) {
             //console.log(x,y);
         }
 
-        building.addEventListener(building.events.update, this.onBuildingUpdated);
+        Events.subscribe(building, building.events.update, this.onBuildingUpdated, this);
+        //building.addEventListener(building.events.update, this.onBuildingUpdated);
     };
 
     /**
@@ -249,7 +239,8 @@ define(function (require) {
 
         var building = this.place(buildingCode, baseX, baseY, rotate);
 
-        this.dispatchEvent(this.events.buildingBuilt, building);
+        Events.fire(this, this.events.buildingBuilt, this, building);
+        //this.dispatchEvent(this.events.buildingBuilt, building);
 
         return building;
     };
@@ -268,7 +259,11 @@ define(function (require) {
             this.unset(x, y);
         }
 
-        this.dispatchEvent(this.events.buildingRemoved, building);
+
+        //this.dispatchEvent(this.events.buildingRemoved, building);
+        Events.fire(this, this.events.buildingRemoved, this, building);
+
+        return true;
     };
 
     Buildings.prototype.plantTree = function (x, y) {
@@ -361,7 +356,8 @@ define(function (require) {
 
                 var building = this.place(BuildingCode.bridge, x, y);
 
-                this.dispatchEvent(this.events.buildingBuilt, building);
+                //this.dispatchEvent(this.events.buildingBuilt, building);
+                Events.fire(this, this.events.buildingBuilt, this, building);
             }
         } else
             throw "Invalid bridge!"
@@ -372,7 +368,7 @@ define(function (require) {
             buildings = [];
 
         for(var id in this.buildingIdToBuildingMap)
-            buildings.push(Building.serialize(this.buildingIdToBuildingMap[id]));
+            buildings.push(this.buildingIdToBuildingMap[id].toJSON());
 
         data.buildings = buildings;
 
@@ -382,7 +378,7 @@ define(function (require) {
     Buildings.prototype.load = function(buildingsData){
         for(var index in buildingsData.buildings){
             var data = buildingsData.buildings[index],
-                b = Building.deserialize(data);
+                b = Building.fromJSON(data);
 
             this._build(b.x, b.y, b);
         }

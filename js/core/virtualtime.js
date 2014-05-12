@@ -1,5 +1,5 @@
 define(function (require) {
-    var EventManager = require("lib/eventmanager");
+    var Events = require("lib/events");
 
     var millisecondsInDay = 86400000,
         monthNames = [ "January", "February", "March", "April", "May", "June",
@@ -15,7 +15,7 @@ define(function (require) {
         }
     }
 
-    function VirtualTime() {
+    function VirtualTime(world) {
         this.now = 0;
 
         this.day = 1;
@@ -24,28 +24,31 @@ define(function (require) {
         this.monthName = monthNames[0];
         this.daysInYear = 365;
 
-        this.eventManager = new EventManager();
-        this.events = {
-            newDay: 0,
-            newMonth: 1,
-            newYear: 2
-        };
-
         this.prevMonth = 0;
         this.prevYear = 0;
+
+        Events.subscribe(world, world.events.tick, function(sender, args, self){
+            self.tick();
+        },this);
     }
 
+    VirtualTime.prototype.events = {
+        newDay: 0,
+        newMonth: 1,
+        newYear: 2
+    };
+
     VirtualTime.prototype.start = function(){
-      this.eventManager.dispatchEvent(this.events.newYear, this);
-      this.eventManager.dispatchEvent(this.events.newMonth, this);
-      this.eventManager.dispatchEvent(this.events.newDay, this);
+        Events.fire(this,this.events.newYear, this, this.now);
+        Events.fire(this,this.events.newMonth, this, this.now);
+        Events.fire(this,this.events.newDay, this, this.now);
     };
 
     VirtualTime.prototype.setTime = function(now){
         this.now = now;
-        this.eventManager.dispatchEvent(this.events.newYear, this);
-        this.eventManager.dispatchEvent(this.events.newMonth, this);
-        this.eventManager.dispatchEvent(this.events.newDay, this);
+        Events.fire(this,this.events.newYear, this, this.now);
+        Events.fire(this,this.events.newMonth, this, this.now);
+        Events.fire(this,this.events.newDay, this, this.now);
     };
 
     //is supposed to be runned once in a second
@@ -63,15 +66,15 @@ define(function (require) {
         this.monthName = monthNames[this.month - 1];
         this.day = date.getDate();
 
-        this.eventManager.dispatchEvent(this.events.newDay, this);
+        Events.fire(this,this.events.newDay, this, this.now);
 
         if(this.month !== this.prevMonth){
-            this.eventManager.dispatchEvent(this.events.newMonth, this);
+            Events.fire(this,this.events.newMonth, this, this.now);
             this.prevMonth = this.month;
         }
 
         if(this.year !== this.prevYear){
-            this.eventManager.dispatchEvent(this.events.newYear, this);
+            Events.fire(this,this.events.newYear, this, this.now);
             this.prevYear = this.year;
             this.daysInYear = daysInYear(this.year);
         }

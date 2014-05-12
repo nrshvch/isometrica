@@ -2,21 +2,18 @@ define(function (require) {
     var engine = require("engine"),
         global = window,
         EventManager = require("lib/eventmanager"),
+        Events = require("lib/events"),
         Tile = require("./gameObjects/Tile"),
         ResponseCode = require("lib/responsecode"),
         TileMessage = require("./gameObjects/tilemessage");
 
     function Tilesman(mainScript, camera) {
-        EventManager.call(this);
-
         this.chunkSize = vkaria.config.chunkSize;
         //this.chunkSize = 4;
 
         this.events = {
             loadedTiles: 0,
-            removedTiles: 1,
-            loadedTile: 2,
-            removedTile: 3
+            removedTiles: 1
         };
 
         this.chunks = [];
@@ -32,14 +29,14 @@ define(function (require) {
             self.currentChunkX = ((position[0] / global.vkaria.config.tileSize / self.chunkSize) | 0);
             self.currentChunkY = ((position[2] / global.vkaria.config.tileSize / self.chunkSize) | 0);
 
-            if (!self.initializedChunks) {
+            //if (!self.initializedChunks) {
                 self.loadChunks(self.currentChunkX, self.currentChunkY);
-                self.initializedChunks = true;
-            }
+              //  self.initializedChunks = true;
+            //}
         };
 
         this.onPointerUp = function (data) {
-            self.loadChunks();
+            //self.loadChunks();
         };
 
         this.onCameraViewportSet = function (cam) {
@@ -47,37 +44,39 @@ define(function (require) {
         };
 
         this.onTileData = function (response) {
-            var data = response.data,
-                meta = response.meta;
+            setTimeout(function(){
 
-            var item, x, y, tile,
-                len = data.length;
+                var data = response.data,
+                    meta = response.meta;
 
-            for (var i = 0; i < len; i++) {
-                item = data[i];
-                x = item.x;
-                y = item.y;
+                var item, x, y, tile,
+                    len = data.length;
 
-                tile = self.getTile(x, y);
+                for (var i = 0; i < len; i++) {
+                    item = data[i];
+                    x = item.x;
+                    y = item.y;
 
-                //this tile is late, camera moved to another chunk
-                //and current chunk seems to be deleted.
-                //what a waste of traffic.
-                if (!tile)
-                    continue;
+                    tile = self.getTile(x, y);
 
-                tile.tileScript.setData(item);
-                self.dispatchEvent(self.events.loadedTile, self, tile);
-            }
+                    //this tile is late, camera moved to another chunk
+                    //and current chunk seems to be deleted.
+                    //what a waste of traffic.
+                    if (!tile)
+                        continue;
 
-            self.cleanChunks();
+                    tile.tileScript.setData(item);
+                    //self.dispatchEvent(self.events.loadedTile, self, tile);
+                }
+                self.cleanChunks();
 
-            self.dispatchEvent(self.events.loadedTiles, self, response);
+                Events.fireAsync(self, self.events.loadedTiles,self,response);
+            },0);
         };
 
-        this.onTileUpdate = function (tile) {
+        //this.onTileUpdate = function (tile) {
             //todo
-        };
+        //};
     }
 
     var vec3Buffer1 = new Float32Array(3);
@@ -96,7 +95,7 @@ define(function (require) {
 
         cam.transform.addEventListener(cam.transform.events.update, this.onCameraMove);
         cam.camera.addEventListener(cam.camera.events.viewportSet, this.onCameraViewportSet);
-        vkaria.logicInterface.addEventListener(ResponseCode.tileUpdated, this.onTileUpdate);
+        //vkaria.logicInterface.addEventListener(ResponseCode.tileUpdated, this.onTileUpdate);
 
 
         this.onCameraMove(cam.transform);
@@ -135,7 +134,9 @@ define(function (require) {
      * @returns {*}
      */
     Tilesman.prototype.makeChunk = function (cX, cY) {
+        console.time("makeChunk");
         if (!this.getChunk(cX, cY) && cX >= 0 && cY >= 0) {
+            console.time("makeChunk");
             var chunk;
 
             if (this.chunks[cX] == undefined)
@@ -156,7 +157,7 @@ define(function (require) {
                 vkaria.game.logic.world.addGameObject(tile);
                 chunk[i] = tile;
             }
-
+            console.timeEnd("makeChunk");
             return chunk;
         }
         return false;
@@ -178,13 +179,12 @@ define(function (require) {
 
             for (var i = 0; i < len; i++) {
                 chunk[i].destroy();
-                this.dispatchEvent(this.events.removedTile, this, chunk[i]);
             }
 
             this.chunks[cx][cy] = undefined;
         }
 
-        this.dispatchEvent(this.events.removedTiles, this, {
+        Events.fire(this, this.events.removedTiles, this, {
             x: cx * this.chunkSize,
             y: cy * this.chunkSize,
             w: this.chunkSize,

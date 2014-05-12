@@ -18,8 +18,6 @@ define(['./components/TransformComponent'], function (Transform) {
         }
     }
 
-    function dummy(){};
-
     var p = GameObject.prototype;
 
 

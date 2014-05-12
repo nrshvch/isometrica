@@ -10,46 +10,48 @@ define(function () {
     Event.prototype.listeners = null;
     Event.prototype.idMap = null;
 
-    Event.prototype.addListener = function (listener, meta) {
-        var id = this.lastListenerId++;
-        this.idMap[id] = listener;
-        this.idMetaMap[id] = meta;
-        this.listeners.push(id);
+    function addListener (event, listener, meta) {
+        var id = event.lastListenerId++;
+        event.idMap[id] = listener;
+        event.idMetaMap[id] = meta;
+        event.listeners.push(id);
         return id;
-    };
+    }
 
-    Event.prototype.removeListener = function (listenerOrId) {
+    function removeListener (event, listenerOrId) {
         var listener = null, id = -1;
 
         if (typeof listenerOrId === "function") {
             listener = listenerOrId;
-            for (id in this.idMap) {
-                if (this.idMap[id] === listener)
+            for (id in event.idMap) {
+                if (event.idMap[id] === listener){
+                    id = parseInt(id, 10);
                     break;
+                }
             }
         } else {
             id = listenerOrId;
-            listener = this.idMap[id];
+            listener = event.idMap[id];
         }
 
         if (listener !== null && id !== -1) {
-            delete this.idMap[id];
-            delete this.idMetaMap[id];
-            var index = this.listeners.indexOf(id);
+            delete event.idMap[id];
+            delete event.idMetaMap[id];
+            var index = event.listeners.indexOf(id);
             if (index !== -1) {
-                this.listeners[index] = undefined;
+                event.listeners[index] = undefined;
             }
             return true;
         }
 
         return false;
-    };
+    }
 
-    Event.prototype.fire = function (sender, args) {
-        var i = 0, l = this.listeners.length,
-            listeners = this.listeners,
-            idMap = this.idMap,
-            idMetaMap = this.idMetaMap,
+    function fire (event, sender, args) {
+        var i = 0, l = event.listeners.length,
+            listeners = event.listeners,
+            idMap = event.idMap,
+            idMetaMap = event.idMetaMap,
             listener, callback, meta,
             cleanUp = false;
 
@@ -70,7 +72,7 @@ define(function () {
                 if (listeners[i] === undefined)
                     listeners.splice(i, 1);
         }
-    };
+    }
 
     var Events = {
         /**
@@ -88,7 +90,7 @@ define(function () {
             if (obj._events[event] === undefined)
                 obj._events[event] = new Event();
 
-            return obj._events[event].addListener(callback, meta);
+            return addListener(obj._events[event], callback, meta);
         },
         /**
          * Unsubscribe from event of a given object
@@ -99,7 +101,7 @@ define(function () {
          */
         unsubscribe: function (obj, event, idOrListener) {
             if (obj._events !== undefined && obj._events[event] !== undefined) {
-                return obj._events[event].removeListener(idOrListener);
+                return removeListener(obj._events[event], idOrListener);
             }
             return false;
         },
@@ -112,7 +114,14 @@ define(function () {
          */
         fire: function (obj, event, sender, args) {
             if (obj._events !== undefined && obj._events[event] !== undefined) {
-                obj._events[event].fire(sender, args);
+                fire(obj._events[event], sender, args);
+            }
+        },
+        fireAsync: function (obj, event, sender, args){
+            if (obj._events !== undefined && obj._events[event] !== undefined) {
+                setTimeout(function(){
+                    fire(obj._events[event], sender, args);
+                },0);
             }
         }
     };

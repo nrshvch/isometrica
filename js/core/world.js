@@ -2,16 +2,18 @@
 
 define(function (require) {
     var Simplex = require("./vendor/simplex-noise"),
-        EventManager = require("lib/eventmanager"),
-        Time = require("./time"),
+        Events = require("lib/events"),
+        Time = require("lib/time"),
         Tiles = require("./tiles"),
         Terrain = require("./terrain"),
         Buildings = require("./buildings"),
         City = require("./city"),
         ResourceCode = require("lib/resourcecode"),
         ResourceMarket = require("./resourceMarket"),
-        VirtualTime = require("./virtualtime"),
+        VTime = require("./virtualtime"),
         RatingsMan = require("./tileratingsmanager");
+
+    var TICK_DELAY = 1000;
 
     function World() {
         this.simplex = new Simplex([151, 160, 137, 91, 90, 15,
@@ -35,25 +37,24 @@ define(function (require) {
         //it would be good to invent something better then this approach, with smooth slopes  and different landscape
         //UPDATE: now, when world size is limited, we can afford any height values. Because we always can iterate over and smooth them.
 
-        this.size = 128;
-
-        this.events = {
-            cityEstablished: 0,
-            tick: 1
-        };
-
-        this.eventManager = new EventManager();
-
-        this.time = new VirtualTime();
-        this.realtime = new Time();
+        this.time = new VTime(this);
         this.terrain = new Terrain(this);
         this.buildMan = this.buildings = new Buildings(this);
         this.tiles = new Tiles(this);
-        //this.city = new City(this);
         this.resourceMarket = new ResourceMarket(this);
 
         this.ratingsman = new RatingsMan(this);
+
+        var self = this;
+        setInterval(function(){
+            Events.fire(self, self.events.tick, self, null);
+        }, TICK_DELAY);
     }
+
+    World.prototype.events = {
+        cityEstablished: 0,
+        tick: 1
+    };
 
     /**
      * @private
@@ -70,33 +71,16 @@ define(function (require) {
     World.prototype.terrain = null;
     World.prototype.tiles = null;
     World.prototype.buildings = null;
+    World.prototype.size = 128;
 
     World.prototype.start = function () {
         //this.terrain.init();
 
-        this.realtime.start();
         this.time.start();
         this.tiles.init();
         this.buildings.init();
         this.ratingsman.init();
     };
-
-    World.prototype.tick = function (now) {
-        this.now = now;
-
-        this.time.tick(now);
-        this.realtime.tick(now);
-
-        this.terrain.tick(now);
-        this.buildings.tick(now);
-
-        this.eventManager.dispatchEvent(this.events.tick, this, {
-           timeNow: now
-        });
-
-        //if (this.city)
-          //  this.city.tick(now);
-    }
 
     World.prototype.gridDistribution = function (x, y) {
         var simplex = this.simplex,
@@ -120,11 +104,11 @@ define(function (require) {
         island += simplex.noise2D(x / 8, y / 8) / 40;
 
         return Math.floor((0.8 * land + 0.2 * island) * 16);
-    }
+    };
 
     World.prototype.forestDistribution = function (x, y) {
         return this.simplex.noise2D(x, y) > 0;
-    }
+    };
 
     World.prototype.stoneDistribution = function (x, y) {
         var simplex = this.simplex,
@@ -143,6 +127,7 @@ define(function (require) {
         d *= simplex.noise2D(y / 16, x / 16);
         return d * 64 > 40;
     };
+
 
     World.prototype.ironDistribution = function (x, y) {
         var simplex = this.simplex,
@@ -190,7 +175,8 @@ define(function (require) {
             this.city.name = name;
             this.city.position = tile;
 
-            this.eventManager.dispatchEvent(this.events.cityEstablished, this, this.city);
+            Events.fire(this, this.events.cityEstablished, this, this.city);
+            //this.eventManager.dispatchEvent(this.events.cityEstablished, this, this.city);
             return this.city;
         }
         return false;
@@ -222,10 +208,10 @@ define(function (require) {
         if (savedGameState.city) {
             this.city = new City(this);
             this.city.load(savedGameState.city);
-            this.eventManager.dispatchEvent(this.events.cityEstablished, this, this.city);
+            Events.fire(this, this.events.cityEstablished, this, null);
+            //this.eventManager.dispatchEvent(this.events.cityEstablished, this, this.city);
         }
     };
-
 
     return World;
 });

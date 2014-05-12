@@ -8,7 +8,8 @@ define(function (require) {
         Building = require("./building"),
         Road = require("./road"),
         buildingData = require("lib/buildingdata"),
-        EventManager = require("lib/eventmanager");
+        EventManager = require("lib/eventmanager"),
+        Events = require("lib/events");
 
     function Buildman(main) {
         EventManager.call(this);
@@ -68,12 +69,12 @@ define(function (require) {
     Buildman.prototype.start = function () {
         this.tilesman = vkariaApp.tilesman;
 
-        this.tilesman.addEventListener(this.tilesman.events.loadedTiles, this.onTilesLoaded);
-        this.tilesman.addEventListener(this.tilesman.events.removedTiles, this.onTilesRemoved);
+        Events.subscribe(this.tilesman, this.tilesman.events.loadedTiles, this.onTilesLoaded, this);
+        Events.subscribe(this.tilesman, this.tilesman.events.removedTiles, this.onTilesRemoved, this);
 
-        vkaria.logicInterface.addEventListener(ResponseCode.buildingBuilt, this.onBuildingBuilt);
-        vkaria.logicInterface.addEventListener(ResponseCode.buildingRemoved, this.onBuildingRemoved);
-        vkaria.logicInterface.addEventListener(ResponseCode.buildingUpdated, this.onBuildingUpdated);
+        Events.subscribe(vkaria.logicInterface, ResponseCode.buildingBuilt, this.onBuildingBuilt, this);
+        Events.subscribe(vkaria.logicInterface, ResponseCode.buildingUpdated, this.onBuildingUpdated, this);
+        Events.subscribe(vkaria.logicInterface, ResponseCode.buildingRemoved, this.onBuildingRemoved, this);
     };
 
     Buildman.prototype.getRoad = function (x, y) {
@@ -108,7 +109,7 @@ define(function (require) {
         var building;
         if (this.buildingByXY[x] !== undefined && this.buildingByXY[x][y] !== undefined) {
             building = this.buildingByXY[x][y];
-            this.dispatchEvent(this.events.buildingRemoved, this, building);
+            Events.fire(this, this.events.buildingRemoved, this, building);
             building.destroy();
             delete this.buildingByXY[x][y];
         }
@@ -156,7 +157,7 @@ define(function (require) {
         if (!tile)
             return false;
 
-        if(buildingData[data.buildingCode].classCode === BuildingClassCode.road){
+        if(buildingData[data.data.buildingCode].classCode === BuildingClassCode.road){
             building = new Road();
         }else
             building = new Building();
@@ -165,12 +166,12 @@ define(function (require) {
 
         this.setBuilding(x, y, building);
 
-        if(buildingData[data.buildingCode].classCode === BuildingClassCode.road){
+        if(buildingData[data.data.buildingCode].classCode === BuildingClassCode.road){
             this.addRoad(x, y, building);
             this.updateRoads(x, y);
         }
 
-        this.dispatchEvent(this.events.buildingAdded, this, building);
+        Events.fire(this, this.events.buildingAdded, this, building);
 
         return building;
     };

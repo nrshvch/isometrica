@@ -4,21 +4,13 @@ define(function (require) {
     var BuildingCode = require('lib/buildingcode'),
         BuildingClassCode = require("lib/buildingclasscode"),
         BuildingData = require('lib/buildingdata'),
-        EventManager = require("lib/eventmanager"),
+        Events = require("lib/events"),
+        Time = require("lib/time"),
         ResearchState = require("lib/researchstate"),
         ResearchData = require("lib/researchdata"),
         ResearchDirection = require("lib/researchdirection");
 
     function Lab(world) {
-        EventManager.call(this);
-
-        this.events = {
-            researchComplete: 0,
-            researchUpdate: 1,
-            researchStart: 2,
-            buildingInvented: 3
-        };
-
         this.world = world;
 
         this.dirData = {};
@@ -64,21 +56,26 @@ define(function (require) {
 
         this.queue = [];
 
-        var self = this;
-        this.world.eventManager.addEventListener(this.world.events.tick, function(sender, args){
-            self.tick(args.timeNow);
-        });
+
+        Events.subscribe(this.world, this.world.events.tick, function(sender, args, meta){
+            meta.self.tick();
+        }, {self: this});
     }
 
-    Lab.prototype = Object.create(EventManager.prototype);
+    Lab.prototype.events = {
+        researchComplete: 0,
+        researchUpdate: 1,
+        researchStart: 2,
+        buildingInvented: 3
+    };
 
     Lab.prototype._research = function (direction, progress) {
         progress = progress || 0;
         var research = this.dirData[direction];
 
         research.state = ResearchState.running;
-        research.startTime = this.world.now;
-        research.endTime = this.world.now + ( research.time * (1 - progress) );
+        research.startTime = Time.now;
+        research.endTime = Time.now + ( research.time * (1 - progress) );
 
         this.queue.push(research);
     };
@@ -88,7 +85,7 @@ define(function (require) {
 
         if (research.state === ResearchState.available) {
             this._research(direction);
-            this.dispatchEvent(this.events.researchStart, this, research);
+            Events.fire(this,this.events.researchStart, this, research);
         } else if (research.state === ResearchState.running) {
             throw "Research is already going on!";
             //} else if (research.state === ResearchState.finished) {
@@ -98,7 +95,9 @@ define(function (require) {
         }
     };
 
-    Lab.prototype.tick = function (now) {
+    Lab.prototype.tick = function () {
+        var now = Time.now;
+
         if (this.queue.length !== 0) {
             for (var i = 0, l = this.queue.length, research; i < l; i++) {
                 research = this.queue[i];
@@ -117,7 +116,7 @@ define(function (require) {
                     i--;
                     l--;
 
-                    this.dispatchEvent(this.events.researchComplete, this, research);
+                    Events.fire(this,this.events.researchComplete, this, research);
 
                     this._openItems(research.direction, research.level);
                 }else{
@@ -134,7 +133,7 @@ define(function (require) {
 
         for (var key in items) {
             this.researchedItems.push(items[key]);
-            quiet || this.dispatchEvent(this.events.buildingInvented, this, {
+            quiet || Events.fire(this,this.events.buildingInvented, this, {
                 buildingCode: items[key]
             });
         }

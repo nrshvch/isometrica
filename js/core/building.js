@@ -9,9 +9,10 @@ define(function (require) {
     var BuildingCode = require("lib/buildingcode"),
         BuildingState = require("lib/buildingstate"),
         Resources = require("lib/resources"),
-        EventManager = require("lib/eventmanager"),
+        Events = require("lib/events"),
         BuildingClassCode = require("lib/buildingclasscode"),
         buildingData = require("lib/buildingdata"),
+        Time = require("lib/time"),
         ResourceCode = require("lib/resourcecode");
 
     var dateBuffer1 = new Date(),
@@ -24,9 +25,6 @@ define(function (require) {
 
         this.world = world;
 
-
-        EventManager.call(this);
-
         this.producing = Resources.create();
         this.demanding = Resources.create();
 
@@ -34,25 +32,10 @@ define(function (require) {
 
         this.state = this.data.constructionTime === 0 ? BuildingState.ready : BuildingState.underConstruction;
 
-        var self = this;
-        this.findResourceTileHandler = function (tile) {
-            return tile.resource === self.data.gather;
-        };
-        this.findTreeTileHandler = function (tile) {
-            var b = tile.getBuilding();
-            return b && (b.data.classCode === BuildingClassCode.tree);
-        };
-
-        this.onWorldTick = function (sender, args) {
-            self.tick();
-        };
-
-        this.world.eventManager.addEventListener(this.world.events.tick, this.onWorldTick);
+        this.tickSubscriptionId = Events.subscribe(this.world, this.world.events.tick, this.onTick, this);
     }
 
     Building.lastId = 0;
-
-    Building.prototype = Object.create(EventManager.prototype);
 
     Building.prototype.world = null;
     Building.prototype.id = null;
@@ -84,7 +67,7 @@ define(function (require) {
         this.x = tile.x;
         this.y = tile.y;
 
-        this.timeCreated = this.timeCreated || this.world.now;
+        this.timeCreated = this.timeCreated || Time.now;
         this.createdAt = this.createdAt || this.world.time.now;
 
         //set canGather flag, so we know if there is a resource
@@ -122,11 +105,6 @@ define(function (require) {
             //Resources cannot be removed. canGather flag was predefined when building was set.
             if (this.canGather && this.data.gather !== null)
                 this.producing[this.data.gather] += 1;
-
-            /*
-             if (this.data.gather === ResourceCode.wood && this.tile.tiles.searchSquareRadius(this.x, this.y, 3, this.findTreeTileHandler))
-             resourcesBuffer1[this.data.gather] += 1;
-             */
         }
     };
 
@@ -137,20 +115,22 @@ define(function (require) {
         }
     };
 
+    Building.prototype.onTick = function(sender, args, self){
+        self.tick();
+    };
+
     Building.prototype.tick = function () {
-        if (this.state === BuildingState.underConstruction && this.timeCreated + this.data.constructionTime <= this.world.now) {
+        if (this.state === BuildingState.underConstruction && this.timeCreated + this.data.constructionTime <= Time.now) {
             this.state = BuildingState.ready;
-            this.dispatchEvent(this.events.update, this);
+            Events.fire(this, this.events.update, this, null);
         }
 
         this.produce();
         this.demand();
-
-        //this.condition -= 0.0000274; //approx. -1% per game year.
     };
 
     Building.prototype.onRemove = function () {
-        this.world.eventManager.removeEventListener(this.world.events.tick, this.onWorldTick);
+        Events.unsubscribe(this.world, this.world.events.tick, this.tickSubscriptionId);
     };
 
     Building.prototype.toJSON = function () {

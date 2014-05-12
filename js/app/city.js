@@ -59,14 +59,12 @@ define(function (require) {
         };
 
         this.onBuildingBuilt = function (sender, building) {
-            self.buildingsByClass[BuildingData[building.buildingCode].classCode].push(building);
+            self.buildingsByClass[BuildingData[building.data.buildingCode].classCode].push(building);
             self.buildings.push(building);
         };
 
         this.onBuildingRemoved = function (sender, building) {
-            console.log(building)
-
-            var arr = self.buildingsByClass[BuildingData[building.buildingCode].classCode];
+            var arr = self.buildingsByClass[BuildingData[building.data.buildingCode].classCode];
             arr.splice(arr.indexOf(building), 1);
 
             self.buildings.splice(self.buildings.indexOf(building));

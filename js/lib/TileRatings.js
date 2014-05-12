@@ -7,8 +7,6 @@
  */
 define(function (require) {
 
-    var Enumerator = require("lib/enumerator");
-
     function TileRatings(){
         this.values = {};
         initializeValues(this.values);
@@ -32,11 +30,6 @@ define(function (require) {
         }
     };
 
-    /**
-     * @type {TileRatingEnum}
-     */
-    //TileRatings.TileRatingEnum = TileRatingEnum;
-
     TileRatings.add = function(out,a,b){
         var mOut = out.values,
             mA = a.values,
@@ -56,6 +49,17 @@ define(function (require) {
 
         for(var key in mOut){
             mOut[key] = mA[key] - mB[key];
+        }
+
+        return out;
+    };
+
+    TileRatings.mul = function(out,a,number){
+        var mOut = out.values,
+            mA = a.values;
+
+        for(var key in mOut){
+            mOut[key] = mA[key] * number;
         }
 
         return out;
@@ -85,6 +89,8 @@ define(function (require) {
         }
         return o;
     };
+
+    TileRatings.zero = TileRatings.create();
 
     TileRatings.prototype.values = null;
 

@@ -3,7 +3,7 @@
 //TODO path finding using waypoints on tiles.
 
 define(function (require) {
-    var LogicInterface = require("logicapi"),
+    var Core = require("core"),
         engine = require("engine"),
         BuildMan = require("./buildman"),
         TilesMan = require("./tilesman"),
@@ -33,7 +33,7 @@ define(function (require) {
         window.vkariaApp = window.vkaria = this;
 
         //start game logic
-        this.logicInterface = new LogicInterface();
+        this.logicInterface = new Core.CoreInterface();
 
         this.config = {
             tileSize: 45.255,

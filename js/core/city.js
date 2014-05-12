@@ -6,43 +6,25 @@ define(function (require) {
     var validator = require('./lib/validator'),
         BuildingCode = require('lib/buildingcode'),
         buildingData = require('lib/buildingdata'),
-        Resources = require('lib/resources'),
-        EventManager = require('lib/eventmanager'),
-        /**
-         * @type ErrorCode
-         */
+        Events = require("lib/events"),
         ErrorCode = require("lib/errorcode"),
-    //BuildingResearch = require("./buildingresearch"),
-        Building = require("./building"),
         Laboratory = require("./laboratory"),
-    //ResearchState = require("lib/researchstate"),
         CityStats = require("./citystats"),
         CityResourceOperations = require("./cityresourceoperations");
-    //TileRatings = require("lib/tileratings");
 
 
 
     function City(root) {
         var world = root;
 
-        var self = this;
-
-        window.stats = this.stats = new CityStats(this);
+        this.stats = new CityStats(this);
         this.resourceOperations = new CityResourceOperations(this);
-        this.resourceOperations.addEventListener(this.resourceOperations.events.update, function (sender, args) {
-            self.dispatchEvent(self.events.update, self);
-        });
 
-        root.eventManager.addEventListener(root.events.tick, function (sender, args) {
+        Events.subscribe(root, root.events.tick, function(sender, args, meta){
+            var self = meta.self;
             self.stats.CalculateAll();
-            self.dispatchEvent(self.events.update, self);
-        });
-
-        EventManager.call(this);
-
-        this.events = {
-            update: 0
-        };
+            Events.fire(self, self.events.update, self, self);
+        }, {self: this});
 
         this.timeEstablished = world.time.milliseconds;
 
@@ -54,11 +36,10 @@ define(function (require) {
             this.buildingByClass[BuildingCode[key]] = [];
         }
 
-        //this.laboratory = new BuildingResearch(this.world);
         this.lab = new Laboratory(this.world);
 
         var self = this;
-        this.onBuildingRemoved = function (building) {
+        this.onBuildingRemoved = function (buildman, building) {
             var index = self.buildings.indexOf(building);
             if (index >= 0) {
                 self.buildings.splice(index, 1);
@@ -69,11 +50,14 @@ define(function (require) {
             }
         };
 
-        this.world.buildings.addEventListener(this.world.buildings.events.buildingRemoved, this.onBuildingRemoved);
+        var buildman = this.world.buildings;
+        Events.subscribe(buildman, buildman.events.buildingRemoved, this.onBuildingRemoved,this);
+        //this.world.buildings.addEventListener(this.world.buildings.events.buildingRemoved, this.onBuildingRemoved);
     }
 
-    City.prototype = Object.create(EventManager.prototype);
-
+    City.prototype.events = {
+        update: 0
+    };
     City.prototype.name = "";
     City.prototype.world = null;
     City.prototype.cityHall = null;
@@ -152,7 +136,7 @@ define(function (require) {
         var buildings = [];
 
         for (var index in this.buildings) {
-            buildings.push(Building.serialize(this.buildings[index]));
+            buildings.push(this.buildings[index].toJSON());
         }
 
         var save = {
@@ -161,10 +145,10 @@ define(function (require) {
             y: this.position.y,
             timeEstablished: this.timeEstablished,
             resources: this.resources,
-            cityHall: (this.cityHall && Building.serialize(this.cityHall)) || null,
+            cityHall: (this.cityHall && this.cityHall.toJSON()) || null,
             buildings: buildings,
             laboratory: this.lab.save()
-        }
+        };
         return save;
     };
 

@@ -20,7 +20,7 @@ define(function (require) {
 
     Road.prototype.setData = function(data){
         this.data = data;
-        this.staticData = BuildingData[data.buildingCode];
+        this.staticData = BuildingData[data.data.buildingCode];
         this.tile = vkaria.tilesman.getTile(data.x, data.y).tileScript;
 
         if(this.node === null)
