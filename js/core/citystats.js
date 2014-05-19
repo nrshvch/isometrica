@@ -134,7 +134,7 @@ define(function (require) {
     }
 
     function calculateResourceProduction(cityStats){
-        Resources.copy(cityStats.resourceDemand, Resources.zero);
+        Resources.copy(cityStats.resourceProduce, Resources.zero);
 
         for (var i = 0; i < cityStats.city.buildings.length; i++)
             Resources.add(cityStats.resourceProduce, cityStats.resourceProduce, cityStats.city.buildings[i].producing);
@@ -184,7 +184,7 @@ define(function (require) {
             change = maxCitizensCanJoin * overallEffect;
         }
 
-        console.log("CAP:"+cap,"AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
+        //console.log("CAP:"+cap,"AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
 
         cityStats._population += change;
     }

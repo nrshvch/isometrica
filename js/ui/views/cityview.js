@@ -12,10 +12,10 @@ define(function (require) {
 
     window.DrawMap = function DrawMap() {
         var cnv = $("#mapcnv").get(0);
-        var data = vkaria.logicInterface.logic.world.ratingsman;
-        var tiles = vkaria.logicInterface.logic.world.tiles.collection;
+        var data = vkaria.logicInterface.world.ratingsman;
+        var tiles = vkaria.logicInterface.world.tiles.collection;
         var ctx = cnv.getContext("2d");
-        var s = vkaria.logicInterface.logic.world.size;
+        var s = vkaria.logicInterface.world.size;
         var p = cnv.width / s;
 
         var i = 0, blockSize = 64*64, tile, l = tiles.length;
