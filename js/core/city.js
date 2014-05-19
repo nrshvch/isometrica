@@ -66,14 +66,13 @@ define(function (require) {
 
 
     City.prototype.clearTile = function (x, y) {
-        var tile = this.world.tiles.get(x, y);
-        tile.clear();
+        this.world.buildings.remove(x,y);
         this.resourceOperations.subMoney(1);
         return true;
     };
 
 
-    City.prototype.buildTest = function (buildingCode, baseTile, rotation) {
+    City.prototype.buildTest = function (buildingCode, x,y, rotated) {
         var result = {
             success: true,
             error: ErrorCode.NONE
@@ -98,23 +97,26 @@ define(function (require) {
         return result;
     };
 
-    City.prototype.build = function (buildingCode, baseTile, rotate) {
-        var allow = this.buildTest(buildingCode, baseTile, rotate);
+    City.prototype.build = function (buildingCode, baseX, baseY, rotate, onSuccess, onError) {
+        var test = this.buildTest(buildingCode, baseX, baseY, rotate);
+        var self = this;
 
-        if (allow.success) {
+        if (test.success) {
             var data = buildingData[buildingCode];
-            var building = this.world.buildings.build(buildingCode, baseTile.x, baseTile.y, rotate);
+            this.world.buildings.build(buildingCode, baseX, baseY, rotate, function(building){
 
-            this.resourceOperations.sub(data.constructionCost);
-            this.buildings.push(building);
-            this.buildingByClass[data.buildingCode].push(building);
+                self.resourceOperations.sub(data.constructionCost);
+                self.buildings.push(building);
+                self.buildingByClass[data.buildingCode].push(building);
 
-            if (building.data.buildingCode === BuildingCode.cityHall)
-                this.cityHall = building;
+                if (building.data.buildingCode === BuildingCode.cityHall)
+                    self.cityHall = building;
 
-            return true;
+                onSuccess(building);
+            }, onError);
+        }else{
+            onError(test.error);
         }
-        return false;
     };
 
     City.prototype.research = function (buildingCode) {

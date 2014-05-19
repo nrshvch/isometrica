@@ -32,7 +32,8 @@ define(function (require) {
 
         this.state = this.data.constructionTime === 0 ? BuildingState.ready : BuildingState.underConstruction;
 
-        this.tickSubscriptionId = Events.subscribe(this.world, this.world.events.tick, this.onTick, this);
+        if(this.data.classCode !== BuildingClassCode.tree)
+            this.tickSubscriptionId = Events.subscribe(this.world, this.world.events.tick, this.onTick, this);
     }
 
     Building.lastId = 0;
@@ -109,7 +110,7 @@ define(function (require) {
     };
 
     Building.prototype.demand = function () {
-        Resources.copy(this.demanding, this.demanding, Resources.zero);
+        Resources.copy(this.demanding, Resources.zero);
         if (this.state == BuildingState.ready) {
             Resources.add(this.demanding, this.demanding, this.data.demanding);
         }

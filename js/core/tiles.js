@@ -1,14 +1,11 @@
 define(function (require) {
-    var Tile = require("./tile"),
-        validator = require('./lib/validator'),
-        Events = require("lib/events");
+    var Tile = require("./tile");
 
     function Tiles(world) {
         this.world = world;
         this.terrain = world.terrain;
         this.objects = world.objects;
 
-        console.log(world);
         this.fillMap = new Uint8Array((world.size*world.size)/8);
 
         this.collection = new Array(world.size * world.size);

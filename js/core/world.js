@@ -5,7 +5,7 @@ define(function (require) {
         Events = require("lib/events"),
         Time = require("lib/time"),
         Tiles = require("./tiles"),
-        Terrain = require("./terrain"),
+        Terrain = require("./grid"),
         Buildings = require("./buildings"),
         City = require("./city"),
         ResourceCode = require("lib/resourcecode"),

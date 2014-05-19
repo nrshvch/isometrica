@@ -11,6 +11,9 @@ define(function () {
     Event.prototype.idMap = null;
 
     function addListener (event, listener, meta) {
+        if(typeof listener !== "function")
+            throw "Event handler should be a function";
+
         var id = event.lastListenerId++;
         event.idMap[id] = listener;
         event.idMetaMap[id] = meta;

@@ -9,7 +9,9 @@ define(function (require) {
         Road = require("./road"),
         buildingData = require("lib/buildingdata"),
         EventManager = require("lib/eventmanager"),
-        Events = require("lib/events");
+        Events = require("lib/events"),
+        ErrorCode = require("lib/errorcode"),
+        Enumerator = require("lib/enumerator");
 
     function Buildman(main) {
         EventManager.call(this);
@@ -120,29 +122,30 @@ define(function (require) {
         return building;
     };
 
-    Buildman.prototype.build = function (buildingCode, x, y, rotate, callback) {
+    Buildman.prototype.build = function (buildingCode, x, y, rotate, onSuccess, onError) {
         var self = this;
 
-        vkaria.logicInterface.build(buildingCode, x, y, rotate, function (data) {
+        vkaria.logicInterface.build(buildingCode, x, y, rotate, function (building) {
+            vkaria.assets.getAsset("/audio/blip.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
+                //resource.data.play();
+            });
+
+            onSuccess && onSuccess();
+        }, function (error) {
             var tile = vkaria.tilesman.getTile(x, y),
                 pos = tile.transform.getPosition();
 
-            if (!data.success) {
-                var msg = new TileMessage(data.error, "red");
-                msg.transform.setPosition(pos[0], pos[1], pos[2]);
-                vkaria.game.logic.world.addGameObject(msg);
+
+            var msg = new TileMessage(Enumerator.parse(ErrorCode, error), "red");
+            msg.transform.setPosition(pos[0], pos[1], pos[2]);
+            vkaria.game.logic.world.addGameObject(msg);
 
 
-                vkaria.assets.getAsset("/audio/error.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                    //resource.data.play();
-                });
-            } else {
-                vkaria.assets.getAsset("/audio/blip.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                    //resource.data.play();
-                });
-            }
+            vkaria.assets.getAsset("/audio/error.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
+                //resource.data.play();
+            });
 
-            callback && callback(data);
+            onError && onError();
         });
     };
 
@@ -157,16 +160,16 @@ define(function (require) {
         if (!tile)
             return false;
 
-        if(buildingData[data.data.buildingCode].classCode === BuildingClassCode.road){
+        if (buildingData[data.data.buildingCode].classCode === BuildingClassCode.road) {
             building = new Road();
-        }else
+        } else
             building = new Building();
 
         building.setData(data);
 
         this.setBuilding(x, y, building);
 
-        if(buildingData[data.data.buildingCode].classCode === BuildingClassCode.road){
+        if (buildingData[data.data.buildingCode].classCode === BuildingClassCode.road) {
             this.addRoad(x, y, building);
             this.updateRoads(x, y);
         }

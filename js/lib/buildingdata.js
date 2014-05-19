@@ -153,8 +153,14 @@ define(function (require) {
         sizeY: 1,
         buildingCode: BuildingCode.house0,
         classCode: BuildingClassCode.house,
-        producing: Resources.zero,
-        demanding: Resources.zero,
+        producing: Resources.create({
+            stone: 1,
+            wood: 1,
+            iron: 1
+        }),
+        demanding: Resources.create({
+            water: 1
+        }),
         citizenCapacity: 1,
         constructionTime: 3000,
         constructionCost: Resources.create({

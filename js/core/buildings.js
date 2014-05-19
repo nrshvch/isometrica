@@ -16,51 +16,122 @@ define(function (require) {
         ErrorCode = require("lib/errorcode"),
         TerrainType = require("lib/terraintype");
 
-    function buildTest(buildings, baseX, baseY, rotate, buildingData) {
-        var sizeX = buildingData.sizeX,
-            sizeY = buildingData.sizeY,
+    function buildTest(self, buildingCode, baseX, baseY, rotated) {
+        var result = {
+                success: true,
+                error: ErrorCode.NONE
+            },
+            data = BuildingData[buildingCode],
+            sizeX = rotated ? data.sizeY : data.sizeX,
+            sizeY = rotated ? data.sizeX : data.sizeY,
             i, l, x, y, tile, slopeId;
 
-        if(rotate){
-            var t = sizeX;
-            sizeX = sizeY;
-            sizeY = t;
+        for (i = 0, l = sizeX * sizeY; i < l; i++) {
+            y = ((i / sizeX) | 0);
+            x = i - y * sizeX;
+
+            x += baseX;
+            y += baseY;
+
+            tile = self.world.tiles.get(x, y);
+            slopeId = tile.getSlopeId();
+
+            if (tile.terrainType === TerrainType.water) {
+                result.error = ErrorCode.CANT_BUILD_ON_WATER;
+            } else if (data.gather === null && tile.resource !== null) {
+                result.error = ErrorCode.CANT_BUILD_HERE;
+            } else if (data.gather !== null && data.gather !== tile.resource) {
+                result.error = ErrorCode.WRONG_RESOURCE_TILE;
+            } else if (data.classCode === BuildingClassCode.road && slopeId !== 2222 && slopeId !== 2112 && slopeId !== 2211 && slopeId !== 2233 && slopeId !== 2332) {
+                result.error = ErrorCode.LAND_NOT_SUITABLE;
+            } else if (data.classCode !== BuildingClassCode.tree && slopeId != 2222) {
+                result.error = ErrorCode.FLAT_LAND_REQUIRED;
+            } else if (self.get(x, y) !== null && self.get(x,y).data.classCode !== BuildingClassCode.tree) {
+                result.error = ErrorCode.TILE_TAKEN;
+            }
+
+            if (result.error !== ErrorCode.NONE) {
+                result.success = false;
+                break;
+            }
         }
+
+        return result;
+    }
+
+    function onBuildingUpdated(sender, args, self) {
+        var building = sender;
+        Events.fire(self, self.events.buildingUpdated, self, building);
+    }
+
+    /**
+     * Method for registering building instances in map, arrays etc.
+     * Is used when loading building from serialized data.
+     *
+     * @param baseX
+     * @param baseY
+     * @param building
+     * @private
+     */
+    function build(self, baseX, baseY, building) {
+        building.setTile(self.world.tiles.get(baseX, baseY));
+
+        var sizeX = building.rotation ? building.data.sizeY : building.data.sizeX,
+            sizeY = building.rotation ? building.data.sizeX : building.data.sizeY,
+            i, x, y, l;
 
         for (i = 0, l = sizeX * sizeY; i < l; i++) {
             x = ((i / sizeY) | 0) + baseX;
             y = i % sizeY + baseY;
-
-            tile = buildings.world.tiles.get(x, y);
-            slopeId = tile.getSlopeId();
-
-            if (tile.terrainType === TerrainType.water) {
-                throw "Can't build on water!";
-            }
-
-            if(buildingData.gather === null && tile.tileType === TileType.resource) {
-                throw "Can't build here!";
-            }else if(buildingData.gather !== null && buildingData.gather !== tile.resource){
-                throw "Wrong resource!";
-            }
-
-            if (buildingData.classCode === BuildingClassCode.road) {
-                if (slopeId !== 2222 && slopeId !== 2112 && slopeId !== 2211 && slopeId !== 2233 && slopeId !== 2332)
-                    throw "Land not suitable!";
-            } else if (buildingData.classCode !== BuildingClassCode.tree) {
-                if (slopeId !== 2222)
-                    throw "Flat land required!";
-            }
+            self.set(x, y, building);
+            self.mark(x, y);
         }
+
+        Events.subscribe(building, building.events.update, onBuildingUpdated, self);
     }
 
-    function PlantTrees(buildman){
+    /**
+     * @param self this
+     * @param buildingCode
+     * @param baseX
+     * @param baseY
+     * @returns {Building}
+     */
+    function place(self, buildingCode, baseX, baseY, rotate) {
+        var data = BuildingData[buildingCode],
+            building,
+            sizeX = rotate ? data.sizeY : data.sizeX,
+            sizeY = rotate ? data.sizeX : data.sizeY,
+            i, x, y, l,
+            b;
+
+        /*
+         //check all covered tiles
+         for (i = 0, l = sizeX * sizeY; i < l; i++) {
+         x = ((i / sizeY) | 0) + baseX;
+         y = i % sizeY + baseY;
+
+         b = self.get(x, y);
+
+         if (b !== undefined && b !== null)
+         throw "Tile is already taken!";
+         }
+         */
+
+        building = new Building(buildingCode, self.world);
+        building.rotate(rotate);
+        build(self, baseX, baseY, building);
+
+        return building;
+    }
+
+    function PlantTrees(buildman) {
         //initalize all tiles
-        for(var i = 0; i < buildman.world.size * buildman.world.size; i++){
+        for (var i = 0; i < buildman.world.size * buildman.world.size; i++) {
             var x = (i / buildman.world.size) | 0;
             var y = i - (x * buildman.world.size);
 
-            buildman.plantTree(x,y);
+            buildman.plantTree(x, y);
         }
     }
 
@@ -84,14 +155,7 @@ define(function (require) {
         PlantTrees(this);
     };
 
-    Buildings.prototype.tick = function () {
-    };
-
-    Buildings.prototype.getByTile = function (tile) {
-        return this.get(tile.x, tile.y);
-    };
-
-    Buildings.prototype.check = function (x, y) {
+    Buildings.prototype.fillTest = function (x, y) {
         var n = x * this.world.size + y,
             index = n >> 3,
             offset = n - (index << 3);
@@ -107,15 +171,8 @@ define(function (require) {
         return this.fillMap[index] |= 1 << offset;
     };
 
-    Buildings.prototype._get = function (x, y) {
-        if (this.check(x, y))
-            return this.byId[x * this.world.size + y];
-
-        return null;
-    };
-
     Buildings.prototype.get = function (x, y) {
-        if (this.check(x, y))
+        if (this.fillTest(x, y))
             return this.byId[x * this.world.size + y];
 
         return null;
@@ -150,120 +207,54 @@ define(function (require) {
         return r;
     };
 
-    Buildings.prototype.onBuildingUpdated = function (sender, args, self) {
-        var building = sender;
-        Events.fire(self, self.events.buildingUpdated, this, building);
-        //self.dispatchEvent(self.events.buildingUpdated, building);
+
+
+    Buildings.prototype.build = function (buildingCode, baseX, baseY, rotated, onSuccess, onError) {
+        if (!BuildingData[buildingCode].canRotate)
+            rotated = false;
+
+        var test = buildTest(this, buildingCode, baseX, baseY, rotated);
+
+        if (test.success) {
+            var data = BuildingData[buildingCode];
+            var sizeX = rotated ? data.sizeY : data.sizeX;
+            var sizeY = rotated ? data.sizeX : data.sizeY;
+
+            this.removeTrees(baseX, baseY, sizeX, sizeY);
+
+            var building = place(this, buildingCode, baseX, baseY, rotated);
+
+            onSuccess(building);
+
+            Events.fire(this, this.events.buildingBuilt, this, building);
+        } else {
+            onError(test.error);
+        }
     };
 
-    /**
-     * Method for registering building instances in map, arrays etc.
-     * Is used when loading building from serialized data.
-     *
-     * @param baseX
-     * @param baseY
-     * @param building
-     * @private
-     */
-    Buildings.prototype._build = function(baseX, baseY, building){
-        building.setTile(this.world.tiles.get(baseX, baseY));
+    Buildings.prototype.remove = function (x, y) {
+        var building = this.get(x, y);
+        if (building != null) {
+            var sizeX = building.data.sizeX,
+                sizeY = building.data.sizeY,
+                i, l, x, y;
 
-        var sizeX = building.data.sizeX,
-            sizeY = building.data.sizeY,
-            i, x, y, l;
+            building.onRemove();
 
-        if(building.rotation){
-            var t = sizeX;
-            sizeX = sizeY;
-            sizeY = t;
+            for (i = 0, l = sizeX * sizeY; i < l; i++) {
+                x = ((i / sizeY) | 0) + building.x;
+                y = i % sizeY + building.y;
+
+                this.unset(x, y);
+            }
+
+
+            //this.dispatchEvent(this.events.buildingRemoved, building);
+            Events.fire(this, this.events.buildingRemoved, this, building);
+
+            return true;
         }
-
-        for (i = 0, l = sizeX * sizeY; i < l; i++) {
-            x = ((i / sizeY) | 0) + baseX;
-            y = i % sizeY + baseY;
-            this.set(x, y, building);
-            this.mark(x, y);
-            //console.log(x,y);
-        }
-
-        Events.subscribe(building, building.events.update, this.onBuildingUpdated, this);
-        //building.addEventListener(building.events.update, this.onBuildingUpdated);
-    };
-
-    /**
-     * @param baseTile
-     * @param buildingCode
-     * @returns {Building}
-     */
-    Buildings.prototype.place = function (buildingCode, baseX, baseY, rotate) {
-        var data = BuildingData[buildingCode],
-            building,
-            sizeX = data.sizeX,
-            sizeY = data.sizeY,
-            i, x, y, l,
-            b;
-
-        if(rotate){
-            var t = sizeX;
-            sizeX = sizeY;
-            sizeY = t;
-        }
-
-        //check all covered tiles
-        for (i = 0, l = sizeX * sizeY; i < l; i++) {
-            x = ((i / sizeY) | 0) + baseX;
-            y = i % sizeY + baseY;
-
-            b = this._get(x, y);
-
-            if (b !== undefined && b !== null)
-                throw "Tile is already taken!";
-        }
-
-        building = new Building(buildingCode, this.world);
-        building.rotate(rotate);
-        this._build(baseX, baseY, building);
-
-        return building;
-    };
-
-    Buildings.prototype.build = function (buildingCode, baseX, baseY, rotate) {
-        if(!BuildingData[buildingCode].canRotate)
-            rotate = false;
-
-        var data = BuildingData[buildingCode];
-
-        buildTest(this, baseX, baseY, rotate, data);
-
-        this.removeTrees(baseX, baseY, BuildingData[buildingCode].sizeX, BuildingData[buildingCode].sizeY, rotate);
-
-        var building = this.place(buildingCode, baseX, baseY, rotate);
-
-        Events.fire(this, this.events.buildingBuilt, this, building);
-        //this.dispatchEvent(this.events.buildingBuilt, building);
-
-        return building;
-    };
-
-    Buildings.prototype.remove = function (building) {
-        var sizeX = building.data.sizeX,
-            sizeY = building.data.sizeY,
-            i, l, x, y;
-
-        building.onRemove();
-
-        for (i = 0, l = sizeX * sizeY; i < l; i++) {
-            x = ((i / sizeY) | 0) + building.x;
-            y = i % sizeY + building.y;
-
-            this.unset(x, y);
-        }
-
-
-        //this.dispatchEvent(this.events.buildingRemoved, building);
-        Events.fire(this, this.events.buildingRemoved, this, building);
-
-        return true;
+        return false;
     };
 
     Buildings.prototype.plantTree = function (x, y) {
@@ -276,7 +267,7 @@ define(function (require) {
             tile = world.tiles.get(x, y);
             if (tile.terrainType !== TerrainType.water && tile.terrainType !== TerrainType.shore && tile.resource === null) {
                 var simplex = world.simplex,
-                    building = this.place(([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(tile.x * 2, tile.y * 2))], tile.x, tile.y, false);
+                    building = place(this, ([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(tile.x * 2, tile.y * 2))], tile.x, tile.y, false);
 
                 building.setSubPosition(simplex.noise2D(tile.y / 2, tile.x / 2) / 4, simplex.noise2D(tile.x / 2, tile.y / 2) / 4);
 
@@ -285,7 +276,7 @@ define(function (require) {
         } else if (world.oilDistribution(x, y)) {
             tile = world.tiles.get(x, y);
             if (tile.terrainType !== TerrainType.water && tile.getSlopeId() === 2222) {
-                building = this.place(BuildingCode.cliff, tile.x, tile.y, false);
+                building = place(this, BuildingCode.cliff, tile.x, tile.y, false);
 
                 return building;
             }
@@ -293,81 +284,25 @@ define(function (require) {
         return null;
     };
 
-    Buildings.prototype.removeTrees = function (baseX, baseY, sizeX, sizeY, rotate) {
+    Buildings.prototype.removeTrees = function (baseX, baseY, sizeX, sizeY) {
         var i, l, x, y, tree;
-
-        if(rotate){
-            var t = sizeX;
-            sizeX = sizeY;
-            sizeY = t;
-        }
-
 
         for (i = 0, l = sizeX * sizeY; i < l; i++) {
             x = ((i / sizeY) | 0) + baseX;
             y = i % sizeY + baseY;
 
-            tree = this._get(x, y);
+            tree = this.get(x, y);
 
             if (tree !== undefined && tree !== null && tree.data.classCode === BuildingClassCode.tree)
-                this.remove(tree);
+                this.remove(x,y);
         }
     };
 
-    Buildings.prototype.buildBridge = function (x0, y0, x1, y1) {
-        var sx = Math.min(x0, x1),
-            sy = Math.min(y0, y1),
-            dx = Math.max(x0, x1),
-            dy = Math.max(y0, y1);
-
-
-        var tile0 = this.world.tiles.get(sx, sy),
-            tile1 = this.world.tiles.get(dx, dy);
-
-
-        var len = (dx - sx) * (y0 === y1 && x0 !== x1) + (dy - sy) * (y0 !== y1 && x0 === x1);
-
-        if (tile0.z !== tile1.z || len === 0
-            || (tile0.getSlopeId() !== 2112 && tile0.getSlopeId() !== 2211 && tile0.getSlopeId() !== 2233 && tile0.getSlopeId() !== 2332)
-            || (tile1.getSlopeId() !== 2112 && tile1.getSlopeId() !== 2211 && tile1.getSlopeId() !== 2233 && tile1.getSlopeId() !== 2332)
-            )
-            throw "Invalid bridge";
-
-        var valid = true;
-
-        for (var i = 0; i <= len; i++) {
-            var x = sx + i * (y0 === y1 && x0 !== x1),
-                y = sy + i * (y0 !== y1 && x0 === x1);
-
-            var tile = this.world.tiles.get(x, y);
-
-            var b = this._get(x,y);
-
-
-            valid &= !(tile.z !== tile0.z || (i !== 0 && i !== len && tile.getSlopeId() !== 2222) || (this._get(x,y) !== null && b.data.classCode !== BuildingClassCode.tree));
-        }
-
-        if (valid) {
-            for (var i = 0; i <= len; i++) {
-                var x = sx + i * (y0 === y1 && x0 !== x1),
-                    y = sy + i * (y0 !== y1 && x0 === x1);
-
-                this.removeTrees(x, y, 0x11);
-
-                var building = this.place(BuildingCode.bridge, x, y);
-
-                //this.dispatchEvent(this.events.buildingBuilt, building);
-                Events.fire(this, this.events.buildingBuilt, this, building);
-            }
-        } else
-            throw "Invalid bridge!"
-    };
-
-    Buildings.prototype.save = function(){
+    Buildings.prototype.save = function () {
         var data = {},
             buildings = [];
 
-        for(var id in this.buildingIdToBuildingMap)
+        for (var id in this.buildingIdToBuildingMap)
             buildings.push(this.buildingIdToBuildingMap[id].toJSON());
 
         data.buildings = buildings;
@@ -375,8 +310,8 @@ define(function (require) {
         return data;
     };
 
-    Buildings.prototype.load = function(buildingsData){
-        for(var index in buildingsData.buildings){
+    Buildings.prototype.load = function (buildingsData) {
+        for (var index in buildingsData.buildings) {
             var data = buildingsData.buildings[index],
                 b = Building.fromJSON(data);
 

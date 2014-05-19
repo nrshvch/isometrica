@@ -95,7 +95,6 @@ define(function (require) {
 
 
         var data = this.world.tiles.getRange(x, y, w, h);
-        console.log(data.length);
         if (x !== undefined && y !== undefined)
             callback({
                 meta: {
@@ -135,16 +134,8 @@ define(function (require) {
             });
     };
 
-    CoreInterface.prototype.build = function (buildingCode, x, y, rotate, callback) {
-        var tile = this.world.tiles.get(x, y),
-            success, error = "";
-
-        success = this.world.city.build(buildingCode, tile, rotate);
-
-        callback({
-            success: success,
-            error: error
-        });
+    CoreInterface.prototype.build = function (buildingCode, x, y, rotated, onSuccess, onError) {
+        this.world.city.build(buildingCode, x, y, rotated, onSuccess, onError);
     };
 
 

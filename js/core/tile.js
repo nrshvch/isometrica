@@ -1,4 +1,5 @@
 //TODO tile type could be mask.
+//TODO slopeId could be int where each gridPoint height is stored in two bits
 
 define(function (require) {
     var Events = require("lib/events");
@@ -29,7 +30,7 @@ define(function (require) {
             }
         }
 
-        this.tileType = this.resource !== null ? TileType.resource : TileType.clear;
+        //this.tileType = this.resource !== null ? TileType.resource : TileType.clear;
     }
 
     Tile.prototype.x = -1;
@@ -37,14 +38,10 @@ define(function (require) {
     Tile.prototype.z = -1;
     Tile.prototype.gridPoints = null;
     Tile.prototype.terrainType = null;
-    Tile.prototype.tileType = null;
+    //Tile.prototype.tileType = null;
 
     Tile.prototype.init = function () {
 
-    };
-
-    Tile.prototype.getBuilding = function () {
-        return this.world.buildings.getByTile(this)
     };
 
     Tile.prototype.getSlopeId = function () {
@@ -52,12 +49,6 @@ define(function (require) {
         var gridPoints = this.gridPoints,
             z0 = gridPoints[2];
         return 2000 + (gridPoints[3] - z0 + 2) * 100 + (gridPoints[1] - z0 + 2) * 10 + (gridPoints[0] - z0 + 2);
-    };
-
-    Tile.prototype.clear = function () {
-        var b = this.getBuilding();
-        if (b)
-            this.world.buildings.remove(b);
     };
 
     Tile.prototype.toJSON = function(){
