@@ -1,84 +1,20 @@
-//TODO cache terrain Z values
+/**
+ * Created with JetBrains WebStorm.
+ * User: User
+ * Date: 19.05.14
+ * Time: 12:58
+ * To change this template use File | Settings | File Templates.
+ */
+define(function(require){
+    function getMapData(terrain){
+        var world = terrain.world;
+        var result = new Uint8Array(world.size*world.size);
 
-define(['lib/terraintype'], function (TileType) {
-    function Terrain(world) {
-        this.world = world;
-        this.gridPoints = [];
+        return result;
     }
 
-    Terrain.prototype.init = function () {
-
+    function generateTile(terrain, x, y){
+        var tile = new Tile(x,y);
+        var tree = new Building("");
     }
-
-    Terrain.prototype.tick = function () {
-
-    }
-
-    Terrain.prototype.getGridPoints = function (x, y) {
-        return [
-            this.getGridPoint(x, y), //s
-            this.getGridPoint(x+1, y), //e
-            this.getGridPoint(x, y+1), //w
-            this.getGridPoint(x+1, y+1), //n
-        ]
-    }
-
-    Terrain.prototype.getGridPoint = function (x, y) {
-        var gp = this.gridPoints[x * this.world.size + y];
-
-        if (gp) {
-            console.log(gp)
-            return gp;
-        }
-
-        return this.world.gridDistribution(x, y);
-    }
-
-    Terrain.prototype.setGridPoint = function (x, y, z) {
-        var ngps = this.getNeighbourGridPoints(x, y),
-            gp;
-
-        for (var i = 0; i < 8; i++) {
-            gp = ngps[i];
-
-            if (Math.abs(gp - z) >= 1)
-                return;
-        }
-
-        this.gridPoints[x * this.world.size + y] = z;
-    }
-
-    Terrain.prototype.getNeighbourGridPoints = function (x, y) {
-        return [
-            this.getGridPoint(x - 1, y - 1),
-            this.getGridPoint(x - 1, y),
-            this.getGridPoint(x - 1, y + 1),
-            this.getGridPoint(x, y - 1),
-            this.getGridPoint(x, y + 1),
-            this.getGridPoint(x + 1, y - 1),
-            this.getGridPoint(x + 1, y),
-            this.getGridPoint(x + 1, y + 1)
-        ]
-    }
-
-    Terrain.prototype.getTerrainType = function (x, y) {
-        var gps = this.getGridPoints(x, y);
-        if (gps[0] <= 0 && gps[1] <= 0 && gps[2] <= 0 && gps[3] <= 0)
-            return TileType.water;
-        else if(gps[0] <= 0 || gps[1] <= 0 || gps[2] <= 0 || gps[3] <= 0)
-            return TileType.shore;
-        else
-            return TileType.grass;
-
-    };
-
-    Terrain.prototype.save = function(){
-        return null;
-    };
-
-    Terrain.prototype.load = function(savedGameState){
-        return true;
-    };
-
-    return Terrain;
-})
+});
