@@ -53,7 +53,8 @@ define(function (require) {
         //configure layers (render layers)
         vkaria.layers = RenderLayer;
         engine.config.layersCount = 5;
-        engine.config.depthSortingMask = 12;
+        engine.config.noLayerDepthSortingMask = 3;
+        engine.config.noLayerClearMask = 0;
 
         //assets
         this.assets = new engine.AssetManager();
@@ -73,6 +74,7 @@ define(function (require) {
         //preload assets and, when done, start game
         var self = this;
 
+        //todo: use promises
         //прелоадинг ресурсов не нужен, т.к. идея прелоадинга идёт в разрез с идеей того, чтобы загружать ресурсы по мере необходимисти, а не все сразу.
         //Try to load spritesheet. If it is not available, then start game anyway, it will then use sprites each separately.
         //FF won't run game before any resource is ready. Empty "new Image()" shim is not helpful.

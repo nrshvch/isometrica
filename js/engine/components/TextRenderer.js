@@ -1,6 +1,6 @@
 define(function (require) {
     var vec3Buffer1 = new Float32Array(3);
-    var Component = require("../Renderer");
+    var Component = require("./Renderer");
     var glMatrix = require("../lib/gl-matrix");
 
     function TextRenderer() {

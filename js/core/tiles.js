@@ -33,7 +33,8 @@ define(function (require) {
 
     Tiles.prototype.createTile = function(x, y){
         var tile = new Tile(this.world, x, y);
-        tile.id = x * this.world.size + y;
+        //tile.id = x * this.world.size + y;
+        tile.id = y << 16 ^ x;
         return tile;
     }
 

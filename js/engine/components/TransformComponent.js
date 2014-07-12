@@ -1,4 +1,9 @@
-define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
+define(function (require) {
+    var Component = require("../Component");
+    var glMatrix = require("../lib/gl-matrix");
+    var mat4 = glMatrix.mat4;
+    var vec3 = glMatrix.vec3;
+
     /**
      * Create Transform component.
      * Every component has a game object.
@@ -43,6 +48,36 @@ define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
             self.dirtyW = true;
         }
     }
+
+    function getLocalToWorld(self){
+        if (self.dirtyL === true) {
+            if (self.parent === null) {
+                glMatrix.mat4.copy(self.localToWorld, self.local);
+            } else {
+                glMatrix.mat4.multiply(self.localToWorld, getLocalToWorld(self.parent), self.local)
+            }
+            self.dirtyL = false;
+        }
+
+        return self.localToWorld;
+    }
+
+    function getPosition(transform, out){
+        if (out === undefined)
+            out = [];
+
+        var m = getLocalToWorld(transform);
+
+        out[0] = m[12];
+        out[1] = m[13];
+        out[2] = m[14];
+
+        return out;
+    }
+
+    Transform.getPosition = getPosition;
+
+    Transform.getLocalToWorld = getLocalToWorld;
 
     var p = Transform.prototype = Object.create(Component.prototype),
         bufferVec3 = new Float32Array([0, 0, 0]),
@@ -129,11 +164,11 @@ define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
         bufferVec3[2] = z;
 
         if (relativeTo === "world") {
-            glMatrix.mat4.identity(bufferMat4);
-            glMatrix.mat4.translate(bufferMat4, bufferMat4, bufferVec3);
-            glMatrix.mat4.multiply(this.local, bufferMat4, this.local);
+            mat4.identity(bufferMat4);
+            mat4.translate(bufferMat4, bufferMat4, bufferVec3);
+            mat4.multiply(this.local, bufferMat4, this.local);
         } else
-            glMatrix.mat4.translate(this.local, this.local, bufferVec3);
+            mat4.translate(this.local, this.local, bufferVec3);
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
@@ -165,12 +200,15 @@ define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
         this.dispatchEvent(this.events.update, this);
     }
 
+
+    
     p.getLocalToWorld = function () {
+        //return getLocalToWorld(this);
         if (this.dirtyL === true) {
             if (this.parent === null) {
                 glMatrix.mat4.copy(this.localToWorld, this.local);
             } else {
-                glMatrix.mat4.multiply(this.localToWorld, this.parent.getLocalToWorld(), this.local)
+                glMatrix.mat4.multiply(this.localToWorld, getLocalToWorld(this.parent), this.local)
             }
             this.dirtyL = false;
         }
@@ -180,7 +218,7 @@ define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
 
     p.getWorldToLocal = function () {
         if(this.dirtyW === true){
-            glMatrix.mat4.invert(this.worldToLocal, this.getLocalToWorld());
+            glMatrix.mat4.invert(this.worldToLocal, getLocalToWorld(this));
             this.dirtyW = false;
         }
         return this.worldToLocal;
@@ -190,7 +228,7 @@ define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
         if (out === undefined)
             out = [];
 
-        var m = this.getLocalToWorld();
+        var m = getLocalToWorld(this);
 
         out[0] = m[12];
         out[1] = m[13];
@@ -228,7 +266,7 @@ define(["../Component", "../lib/gl-matrix"], function (Component, glMatrix) {
 
         //transform given world position into local position
         if (this.parent !== null)
-            glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.parent.getWorldToLocal());
+            vec3.transformMat4(bufferVec3, bufferVec3, this.parent.getWorldToLocal());
 
         //set local position for local transform
         this.local[12] = bufferVec3[0];

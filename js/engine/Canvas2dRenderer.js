@@ -1,8 +1,11 @@
 //TODO render only dirty areas of screen
 //TODO each GO could have multiple renderers...
 //TODO ...all scene renderers should be grouped in single array.
-define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./components/SpriteRenderer", "./components/TextRenderer",
-"./components/AnimatedSpriteRenderer"], function (config, glMatrix, PathRenderer, SpriteRenderer, TextRenderer, AnimatedSpriteRenderer) {
+define(function (require) {
+    var config = require("./config");
+    var glMatrix = require("./lib/gl-matrix");
+    var Transform = require("./components/TransformComponent");
+
     function Canvas2dRenderer(graphics) {
         this.graphics = graphics;
         this.layerBuffers = [];
@@ -17,56 +20,63 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
         buffer2Vec3 = new Float32Array([0, 0, 0]),
         bufferMat4 = new Float32Array(16),
         depthSort = function (a, b) {
-            a.gameObject.transform.getPosition(bufferVec3);
+            //a.gameObject.transform.getPosition(bufferVec3);
+            Transform.getPosition(a.gameObject.transform, bufferVec3);
             a = bufferVec3[0] - bufferVec3[1] + bufferVec3[2];
-            b.gameObject.transform.getPosition(bufferVec3);
+            //b.gameObject.transform.getPosition(bufferVec3);
+            Transform.getPosition(b.gameObject.transform, bufferVec3);
             return a - (bufferVec3[0] - bufferVec3[1] + bufferVec3[2]);
         };
 
-    p.graphics = null;
+    function render(self, camera, viewport) {
+        var gameObjects = camera.world.retrieve(camera),
+            gameObjectsCount = gameObjects.length,
+            layersCount = config.layersCount,
+            renderer, renderers, renderersCount,
+            i, j, ctx;
 
-    p.screenSpaceCulling = function (gameObject, viewport) {
-        //primitive culling
-        //todo this should be using bounding box
-        //todo this could used worldToViewport instead worldToScreen, and check bounds to fit just [-1,1]
+        self.M = camera.camera.getWorldToScreen();
+        self.V = camera.camera.getWorldToViewport();
 
+        viewport.context.clearRect(0, 0, viewport.width, viewport.height);
 
-        if(gameObject.renderer !== undefined && gameObject.renderer.enabled){
-            gameObject.transform.getPosition(bufferVec3);
-            glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.V);
-
-            if (bufferVec3[0] <= 1 && bufferVec3[0] >= -1 && bufferVec3[1] <= 1 && bufferVec3[1] >= -1)
-                this.layerBuffers[gameObject.renderer.layer].push(gameObject.renderer)
+        for (i = 0; i < gameObjectsCount; i++){
+            var go = gameObjects[i];
+            if(go.renderer !== undefined && go.renderer.enabled && go.renderer.cullingTest(viewport, self))
+                self.layerBuffers[go.renderer.layer].push(go.renderer)
         }
-                                     /*
-        if (gameObject.spriteRenderer !== undefined && gameObject.spriteRenderer.enabled) {
-            gameObject.transform.getPosition(bufferVec3);
-            glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.M);
 
-            var sprite = gameObject.spriteRenderer;
-            bufferVec3[0] -= sprite.pivotX;
-            bufferVec3[1] -= sprite.pivotY;
+        for (i = 0; i < layersCount; i++) {
+            ctx = viewport.layers[i];
 
-            if (bufferVec3[0] <= viewport.width && bufferVec3[0] + sprite.sprite.width >= 0 && bufferVec3[1] <= viewport.height && bufferVec3[1] + sprite.sprite.height >= 0)
-                this.layerBuffers[sprite.layer].push(sprite);
-        }                              */
-                        /*
-        if (gameObject.pathRenderer !== undefined && gameObject.pathRenderer.enabled) {
-            gameObject.transform.getPosition(bufferVec3);
-            glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.M);
+            if(~config.noLayerClearMask & 1<<i){
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
 
-            if (bufferVec3[0] <= viewport.width && bufferVec3[0] >= 0 && bufferVec3[1] <= viewport.height && bufferVec3[1] >= 0)
-                this.layerBuffers[gameObject.pathRenderer.layer].push(gameObject.pathRenderer)
-        }             */
-                          /*
-        if (gameObject.textRenderer !== undefined && gameObject.textRenderer.enabled) {
-            gameObject.transform.getPosition(bufferVec3);
-            glMatrix.vec3.transformMat4(bufferVec3, bufferVec3, this.M);
+            renderers = self.layerBuffers[i];
+            renderersCount = renderers.length;
 
-            if (bufferVec3[0] <= viewport.width && bufferVec3[0] >= 0 && bufferVec3[1] <= viewport.height && bufferVec3[1] >= 0)
-                this.layerBuffers[gameObject.textRenderer.layer].push(gameObject.textRenderer)
-        }                   */
+            if (~config.noLayerDepthSortingMask & 1 << i) {
+                renderers.sort(depthSort);
+            }
+
+            for (j = 0; j < renderersCount; j++) {
+                renderer = renderers.pop();
+
+                renderer.render(ctx, self, viewport);
+            }
+
+            viewport.context.drawImage(ctx.canvas, 0, 0);
+        }
+
+        //if (config.renderOctree && config.useOctree && camera.world.octree.root !== null)
+        //self.renderOctreeNode(camera.world.octree.root, viewport.context);
+
     };
+
+    Canvas2dRenderer.render = render;
+
+    p.graphics = null;
 
     p.render = function (camera, viewport) {
         var gameObjects = camera.world.retrieve(camera),
@@ -80,13 +90,14 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
 
         viewport.context.clearRect(0, 0, viewport.width, viewport.height);
 
-        for (i = 0; i < gameObjectsCount; i++)
-            this.screenSpaceCulling(gameObjects[i], viewport);
+        for (i = 0; i < gameObjectsCount; i++){
+            var go = gameObjects[i];
+            if(go.renderer !== undefined && go.renderer.enabled && go.renderer.cullingTest(viewport, this))
+                this.layerBuffers[go.renderer.layer].push(go.renderer)
+        }
 
         for (i = 0; i < layersCount; i++) {
             ctx = viewport.layers[i];
-
-            ctx.imageSmoothingEnabled = false;//hack. because it doesn't work when set in Viewport, when layers are created.
 
             ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             renderers = this.layerBuffers[i];
@@ -99,16 +110,7 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
             for (j = 0; j < renderersCount; j++) {
                 renderer = renderers.pop();
 
-                renderer.render(ctx, this);
-                /*
-                if (renderer.constructor === SpriteRenderer || renderer.constructor === AnimatedSpriteRenderer)
-                    this.renderSprite(renderer, ctx);
-                else if (renderer.constructor === PathRenderer)
-                    this.renderPath(renderer, ctx);
-                else
-                    this.renderText(renderer, ctx);
-                  */
-                //this.RenderAxis(gameObject);
+                renderer.render(ctx, this, viewport);
             }
 
             viewport.context.drawImage(ctx.canvas, 0, 0);
@@ -119,17 +121,6 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
 
     };
                            /*
-    //Rounding coordinates with Math.round is slow, but looks better
-    //Rounding to lowest with pipe operator is faster, but looks worse
-    p.renderSprite = function (renderer, layer) {
-        glMatrix.vec3.transformMat4(bufferVec3, renderer.gameObject.transform.getPosition(bufferVec3), this.M);
-        var sprite = renderer.sprite;
-
-
-
-        //layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, sprite.width, sprite.height, Math.round(bufferVec3[0] - renderer.pivotX), Math.round(bufferVec3[1] - renderer.pivotY), sprite.width, sprite.height);
-        layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, sprite.width, sprite.height, (bufferVec3[0] - renderer.pivotX) | 0, (bufferVec3[1] - renderer.pivotY) | 0, sprite.width, sprite.height);
-    }
 
     p.renderAxis = function (gameObject, ctx) {
         var W = gameObject.transform.getLocalToWorld(),
@@ -288,54 +279,7 @@ define(["./config", "./lib/gl-matrix", "./components/PathRenderer", "./component
 
     };
 
-    p.renderProcedure = function(renderer, layer){
-        glMatrix.vec3.transformMat4(bufferVec3, renderer.gameObject.transform.getPosition(bufferVec3), this.M);
 
-        renderer.procedure(layer, bufferVec3);
-    };
-
-    p.renderPath = function (path, ctx) {
-        var vec3 = glMatrix.vec3,
-            points = path.points,
-            len = points.length,
-            M = glMatrix.mat4.mul(bufferMat4, this.M, path.gameObject.transform.getLocalToWorld()),
-            i;
-
-        if (points.length < 2)
-            return;
-
-
-        ctx.beginPath();
-        vec3.transformMat4(bufferVec3, points[0], M);
-        ctx.moveTo(bufferVec3[0], bufferVec3[1]);
-        for (i = 1; i < len; i++) {
-            vec3.transformMat4(bufferVec3, points[i], M);
-            ctx.lineTo(bufferVec3[0], bufferVec3[1]);
-            //ctx.moveTo(bufferVec3[0], bufferVec3[1]);
-        }
-        vec3.transformMat4(bufferVec3, points[0], M);
-        ctx.lineTo(bufferVec3[0], bufferVec3[1]);
-        //ctx.moveTo(bufferVec3[0], bufferVec3[1]);
-
-        ctx.closePath();
-        //ctx.lineWidth = path.width;
-        //ctx.strokeStyle = "rgba(0,0,0,0.25)";
-        //ctx.stroke();
-        ctx.fillStyle = path.color;
-        ctx.fill();
-
-
-    }
-
-    p.renderText = function (renderer, ctx) {
-        glMatrix.vec3.transformMat4(bufferVec3, renderer.gameObject.transform.getPosition(bufferVec3), this.M);
-
-        ctx.font = renderer.style;
-        ctx.fillStyle = renderer.color;
-        ctx.textAlign = renderer.align;
-        ctx.textBaseline = renderer.valign;
-        ctx.fillText(renderer.text, bufferVec3[0], bufferVec3[1]);
-    }
               */
     return Canvas2dRenderer;
 });

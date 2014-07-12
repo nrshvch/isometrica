@@ -46,18 +46,22 @@ define(["./Viewport", "./Canvas2dRenderer"], function (Viewport, Renderer) {
         if(this.started)
             viewport.start();
         return viewport;
-    }
+    };
 
     /**
      * @return {void}
      */
     p.render = function(){
         var viewports = this.viewports,
-            viewportsCount = viewports.length;
+            viewportsCount = viewports.length,
+            viewport = null;
+
         for(var i = 0; i < viewportsCount; i++){
-            viewports[i].render();
+            viewport = viewports[i];
+            if(viewport.camera !== null)
+                Renderer.render(this.renderer, viewport.camera, viewports[i]);
         }
-    }
+    };
 
     return Graphics;
 });

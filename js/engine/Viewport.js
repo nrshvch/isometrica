@@ -19,6 +19,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             pointerout: 6
         }
 
+        this.camera = null;
         this.canvas = canvas || document.createElement('canvas');
         this.context = this.canvas.getContext("2d");
         this.context.imageSmoothingEnabled = false;
@@ -172,14 +173,6 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
     p.start = function(){
         this.setSize(this.canvas.offsetWidth, this.canvas.offsetHeight);
     }
-
-    /**
-     * @return {*}
-     */
-    p.render = function () {
-        if(this.camera !== null)
-            this.graphics.renderer.render(this.camera, this);
-    };
 
     /**
      * @param {int[]} size Vector2. Size of the viewport
