@@ -157,6 +157,7 @@ define(function (require) {
             sprite.setSprite(vkaria.sprites.getSprite(water["2222"]));
         }
 
+        /*
         if (data.resource === ResourceCode.coal) {
             sprite.setSprite(vkaria.sprites.getSprite(resourcetile["coal"]));
         } else if (data.resource === ResourceCode.iron) {
@@ -166,6 +167,7 @@ define(function (require) {
         } else if (data.resource === ResourceCode.oil) {
             sprite.setSprite(vkaria.sprites.getSprite(resourcetile["oil"]));
         }
+        */
 
         transform.setPosition(
             this.x * engine.config.tileSize,

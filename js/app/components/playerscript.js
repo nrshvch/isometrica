@@ -6,7 +6,7 @@ define(function (require) {
 
         //TODO camera script should provide position update events. in game XY coords
         this.onCameraMove = function(sender, args){
-            console.log("save position", sender.getPosition());
+            //console.log("save position", sender.getPosition());
         };
     }
 

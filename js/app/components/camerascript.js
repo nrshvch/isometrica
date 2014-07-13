@@ -218,15 +218,17 @@ define(function (require) {
                     //detailed test
                     tmpctx.clearRect(0, 0, w, h);
                     tmpctx.drawImage(spriteImage.sourceImage, spriteImage.offsetX, spriteImage.offsetY, w, h, 0, 0, w, h);
-                    if (tmpctx.getImageData(x - x0, y - y0, 1, 1).data[3] > 0)
+                    if (tmpctx.getImageData(x - x0, y - y0, 1, 1).data[3] > 0) {
                         result.push(gameObject);
+                    }
                 }
             } else if (text !== undefined && text.enabled) {
                 x0 = vec3Buffer1[0];
                 y0 = vec3Buffer1[1];
 
-                if (x >= x0 - 20 && x <= x0 + 20 && y >= y0 - 20 && y <= y0 + 20)
+                if (x >= x0 - 20 && x <= x0 + 20 && y >= y0 - 20 && y <= y0 + 20) {
                     result.push(gameObject);
+                }
             }
         }
 

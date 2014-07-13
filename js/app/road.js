@@ -21,7 +21,7 @@ define(function (require) {
     Road.prototype.setData = function(data){
         this.data = data;
         this.staticData = BuildingData[data.data.buildingCode];
-        this.tile = vkaria.tilesman.getTile(data.x, data.y).tileScript;
+        //this.tile = vkaria.terrain.getTile(data.x, data.y).tileScript;
 
         if(this.node === null)
             this.node = new RoadNode(this);
@@ -31,10 +31,9 @@ define(function (require) {
     };
 
     Road.prototype.updateRoad = function () {
-        var tile = this.tile,
-            x = tile.x,
-            y = tile.y,
-            slopeId = tile.getSlopeId(),
+        var x = this.data.x,
+            y = this.data.y,
+            slopeId = vkaria.core.world.terrain.calcSlopeId(x,y),
             buildman = vkaria.buildman,
             ne = buildman.getRoad(x + 1, y),
             nw = buildman.getRoad(x, y + 1),

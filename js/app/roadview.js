@@ -68,11 +68,12 @@ define(function (require) {
 
             //position gameObject
             var data = b.data,
-                z = b.tile.gameObject.transform.getPosition()[1] + b.tile.subpositionZ(data.subPosX, data.subPosY),
+                //z = b.tile.gameObject.transform.getPosition()[1] + b.tile.subpositionZ(data.subPosX, data.subPosY),
                 x = data.x + data.subPosX,
-                y = data.y + data.subPosY;
+                y = data.y + data.subPosY,
+                z = vkaria.terrain.getHeight(x,y);
 
-            this.gameObject.transform.setPosition(x * tileSize, z, y * tileSize);
+            this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
         }
     };
 

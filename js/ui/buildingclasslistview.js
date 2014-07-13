@@ -49,7 +49,7 @@ define(function (require) {
                 self = this,
                 availableCategs = {};
 
-            vkaria.logicInterface.getAvailableBuildings(function (arrayOfCodes) {
+            var arrayOfCodes = vkaria.core.world.city.lab.getAvailableBuildings();
                 //make map of visible categs
                 for (i in arrayOfCodes) {
                     var bcode = arrayOfCodes[i];
@@ -71,7 +71,6 @@ define(function (require) {
                         self.$el.append(item);
                     }
                 }
-            });
         }
     });
 

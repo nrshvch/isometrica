@@ -24,7 +24,7 @@ define(function (require) {
             data = BuildingData[buildingCode],
             sizeX = rotated ? data.sizeY : data.sizeX,
             sizeY = rotated ? data.sizeX : data.sizeY,
-            i, l, x, y, tile, slopeId;
+            i, l, x, y, tile, slopeId, terrain, terrainType, resource;
 
         for (i = 0, l = sizeX * sizeY; i < l; i++) {
             y = ((i / sizeX) | 0);
@@ -33,20 +33,23 @@ define(function (require) {
             x += baseX;
             y += baseY;
 
-            tile = self.world.tiles.get(x, y);
-            slopeId = tile.getSlopeId();
+            //tile = self.world.tiles.get(x, y);
+            terrain = self.world.terrain;
+            slopeId = terrain.calcSlopeId(x, y);//tile.getSlopeId();
+            terrainType = terrain.getTerrainType(x,y);
+            resource = terrain.getResource(x,y);
 
-            if (tile.terrainType === TerrainType.water) {
+            if (terrainType === TerrainType.water) {
                 result.error = ErrorCode.CANT_BUILD_ON_WATER;
-            } else if (data.gather === null && tile.resource !== null) {
+            } else if (data.gather === null && resource) {
                 result.error = ErrorCode.CANT_BUILD_HERE;
-            } else if (data.gather !== null && data.gather !== tile.resource) {
+            } else if (data.gather !== null && data.gather !== resource) {
                 result.error = ErrorCode.WRONG_RESOURCE_TILE;
             } else if (data.classCode === BuildingClassCode.road && slopeId !== 2222 && slopeId !== 2112 && slopeId !== 2211 && slopeId !== 2233 && slopeId !== 2332) {
                 result.error = ErrorCode.LAND_NOT_SUITABLE;
             } else if (data.classCode !== BuildingClassCode.tree && slopeId != 2222) {
                 result.error = ErrorCode.FLAT_LAND_REQUIRED;
-            } else if (self.get(x, y) !== null && self.get(x,y).data.classCode !== BuildingClassCode.tree) {
+            } else if (self.get(x, y) !== null && self.get(x, y).data.classCode !== BuildingClassCode.tree) {
                 result.error = ErrorCode.TILE_TAKEN;
             }
 
@@ -74,7 +77,7 @@ define(function (require) {
      * @private
      */
     function build(self, baseX, baseY, building) {
-        building.setTile(self.world.tiles.get(baseX, baseY));
+        building.setPosition(baseX, baseY);
 
         var sizeX = building.rotation ? building.data.sizeY : building.data.sizeX,
             sizeY = building.rotation ? building.data.sizeX : building.data.sizeY,
@@ -125,16 +128,6 @@ define(function (require) {
         return building;
     }
 
-    function PlantTrees(buildman) {
-        //initalize all tiles
-        for (var i = 0; i < buildman.world.size * buildman.world.size; i++) {
-            var x = (i / buildman.world.size) | 0;
-            var y = i - (x * buildman.world.size);
-
-            buildman.plantTree(x, y);
-        }
-    }
-
     function Buildings(world) {
         this.world = world;
 
@@ -149,10 +142,6 @@ define(function (require) {
         buildingBuilt: 0,
         buildingUpdated: 1,
         buildingRemoved: 2
-    };
-
-    Buildings.prototype.init = function () {
-        PlantTrees(this);
     };
 
     Buildings.prototype.fillTest = function (x, y) {
@@ -208,7 +197,6 @@ define(function (require) {
     };
 
 
-
     Buildings.prototype.build = function (buildingCode, baseX, baseY, rotated, onSuccess, onError) {
         if (!BuildingData[buildingCode].canRotate)
             rotated = false;
@@ -257,33 +245,6 @@ define(function (require) {
         return false;
     };
 
-    Buildings.prototype.plantTree = function (x, y) {
-        //return null;
-        var world = this.world,
-            tile, building;
-
-
-        if (world.terrain.getTerrainType(x, y) !== TerrainType.water && world.forestDistribution(x, y)) {
-            tile = world.tiles.get(x, y);
-            if (tile.terrainType !== TerrainType.water && tile.terrainType !== TerrainType.shore && tile.resource === null) {
-                var simplex = world.simplex,
-                    building = place(this, ([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(tile.x * 2, tile.y * 2))], tile.x, tile.y, false);
-
-                building.setSubPosition(simplex.noise2D(tile.y / 2, tile.x / 2) / 4, simplex.noise2D(tile.x / 2, tile.y / 2) / 4);
-
-                return building;
-            }
-        } else if (world.oilDistribution(x, y)) {
-            tile = world.tiles.get(x, y);
-            if (tile.terrainType !== TerrainType.water && tile.getSlopeId() === 2222) {
-                building = place(this, BuildingCode.cliff, tile.x, tile.y, false);
-
-                return building;
-            }
-        }
-        return null;
-    };
-
     Buildings.prototype.removeTrees = function (baseX, baseY, sizeX, sizeY) {
         var i, l, x, y, tree;
 
@@ -294,7 +255,7 @@ define(function (require) {
             tree = this.get(x, y);
 
             if (tree !== undefined && tree !== null && tree.data.classCode === BuildingClassCode.tree)
-                this.remove(x,y);
+                this.remove(x, y);
         }
     };
 
@@ -320,6 +281,9 @@ define(function (require) {
         return this;
     };
 
+    Buildings.prototype.place = function(bcode,x,y,rot){
+        return place(this,bcode,x,y,rot);
+    };
 
     return Buildings;
 });

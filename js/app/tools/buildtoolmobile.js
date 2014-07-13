@@ -25,18 +25,20 @@ define(function (require) {
 
             var arg = [];
 
-            if (g.tileScript) {
-                if (g.tileScript.data.resource !== null) {
+            if (g.layer == 1) {
+                var coord = vkaria.terrain.getCoordinates(g);
+                var res = vkaria.core.world.terrain.getResource(coord.x, coord.y);
+                if (res) {
                     arg.push({
-                        x: g.tileScript.x,
-                        y: g.tileScript.y,
+                        x: coord.x,
+                        y: coord.y,
                         fillColor: "rgba(127,0,0,0.5)",
                         borderColor: "rgba(255,0,0,0.5)"
                     });
                 } else {
                     arg.push({
-                        x: g.tileScript.x,
-                        y: g.tileScript.y,
+                        x: coord.x,
+                        y: coord.y,
                         borderColor: "rgba(255,255,255,0.5)"
                     });
                 }
@@ -110,9 +112,11 @@ define(function (require) {
             if (tile) {
                 this.disableHiliters();
 
+                var c = vkaria.terrain.getCoordinates(tile);
+
                 //var tiles = this.tiles || (this.tiles = this.tools.gameObject.world.findByName("main").mainScript.tilesManager);
-                var x0 = tile.tileScript.x,
-                    y0 = tile.tileScript.y,
+                var x0 = c.x,
+                    y0 = c.y,
                     w = this.buildingSizeX,
                     h = this.buildingSizeY;
 
@@ -124,7 +128,7 @@ define(function (require) {
                     fillColor: "rgba(0,0,127,0.5)"
                 })];
                 this.selectedTiles = [
-                    {x: tile.tileScript.x, y: tile.tileScript.y}
+                    {x: c.x, y: c.y}
                 ];
                 this.dispatchEvent(this.events.awaitingConfirmation, this, null);
             } else

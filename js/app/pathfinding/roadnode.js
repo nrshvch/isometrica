@@ -13,8 +13,8 @@ define(function (require) {
     RoadNode.prototype.getConnectableNodes = function () {
         var result = [];
 
-        var x = this.building.tile.x,
-            y = this.building.tile.y,
+        var x = this.building.data.x,
+            y = this.building.data.y,
             buildman = vkaria.buildman,
             building;
 

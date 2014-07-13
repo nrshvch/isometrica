@@ -30,11 +30,12 @@ define(function (require) {
             self.currentChunkY = ((position[2] / global.vkaria.config.tileSize / self.chunkSize) | 0);
 
             //if (!self.initializedChunks) {
-                self.loadChunks(self.currentChunkX, self.currentChunkY);
+                self.loadChunks2(self.currentChunkX, self.currentChunkY);
               //  self.initializedChunks = true;
             //}
         };
 
+        /*
         this.onPointerUp = function (data) {
             //self.loadChunks();
         };
@@ -42,6 +43,7 @@ define(function (require) {
         this.onCameraViewportSet = function (cam) {
             cam.viewport.addEventListener(cam.viewport.events.pointerup, self.onPointerUp);
         };
+        */
 
         this.onTileData = function (response) {
             setTimeout(function(){
@@ -88,13 +90,12 @@ define(function (require) {
     Tilesman.prototype.chunkSize = 24;// default (24 * ((window.innerWidth * window.innerHeight)/1852800))|0;
     Tilesman.prototype.currentChunkX = 0;
     Tilesman.prototype.currentChunkY = 0;
-    Tilesman.prototype.initializedChunks = false;
 
     Tilesman.prototype.start = function(){
         var cam = vkaria.game.logic.world.findByName("mainCamera");
 
         cam.transform.addEventListener(cam.transform.events.update, this.onCameraMove);
-        cam.camera.addEventListener(cam.camera.events.viewportSet, this.onCameraViewportSet);
+        //cam.camera.addEventListener(cam.camera.events.viewportSet, this.onCameraViewportSet);
         //vkaria.logicInterface.addEventListener(ResponseCode.tileUpdated, this.onTileUpdate);
 
 
@@ -127,6 +128,33 @@ define(function (require) {
         }
     };
 
+    Tilesman.prototype.loadChunks2 = function (centerX, centerY) {
+
+        console.log("Load chunks");
+
+        centerX = centerX || this.currentChunkX;
+        centerY = centerY || this.currentChunkY;
+
+        for (var i = 0; i < 9; i++) {
+            var x = (i / 3) | 0,
+                y = i - x * 3,
+                cx = centerX + x - 1,
+                cy = centerY + y - 1;
+
+            if (this.getChunk(cx, cy) === false && cx >= 0 && cy >= 0) {
+                this.makeChunk(cx, cy);
+                vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
+                var s = this;
+                Events.fireAsync(s, s.events.loadedTiles,s,{
+                    meta: {
+                        x: cx * s.chunkSize, y: cy * s.chunkSize, w: s.chunkSize, h: s.chunkSize
+                    }
+                });
+                this.cleanChunks();
+            }
+        }
+    };
+
     /**
      * Will create chunk of blank tiles
      * @param cX
@@ -134,17 +162,18 @@ define(function (require) {
      * @returns {*}
      */
     Tilesman.prototype.makeChunk = function (cX, cY) {
-        console.time("makeChunk");
+        //console.time("makeChunk");
         if (!this.getChunk(cX, cY) && cX >= 0 && cY >= 0) {
-            console.time("makeChunk");
+            //console.time("makeChunk");
             var chunk;
 
             if (this.chunks[cX] == undefined)
                 this.chunks[cX] = [];
 
-            var l = this.chunkSize * this.chunkSize;
-            chunk = this.chunks[cX][cY] = new Array(l);
-
+            //var l = this.chunkSize * this.chunkSize;
+            chunk = this.chunks[cX][cY] = true;
+            //chunk = this.chunks[cX][cY] = new Array(l);
+            /*
             for (var i = 0; i < l; i++) {
                 var x0 = (i / this.chunkSize) | 0,
                     y0 = i - x0 * this.chunkSize,
@@ -158,6 +187,7 @@ define(function (require) {
                 chunk[i] = tile;
             }
             console.timeEnd("makeChunk");
+            */
             return chunk;
         }
         return false;
@@ -174,13 +204,14 @@ define(function (require) {
         var chunk = this.getChunk(cx, cy);
 
         if (chunk !== false) {
+            /*
             var chunk = this.chunks[cx][cy],
                 len = chunk.length;
 
             for (var i = 0; i < len; i++) {
                 chunk[i].destroy();
             }
-
+            */
             this.chunks[cx][cy] = undefined;
         }
 
@@ -207,6 +238,7 @@ define(function (require) {
             for (cy = 0; cy < chunks[cx].length; cy++) {
                 if (chunks[cx][cy] !== undefined && (Math.abs(cx - this.currentChunkX) > 1 || Math.abs(cy - this.currentChunkY) > 1)) {
                     this.removeChunk(cx, cy);
+                    vkaria.terrain.clear(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
                 }
             }
         }

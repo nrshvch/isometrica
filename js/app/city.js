@@ -36,16 +36,18 @@ define(function (require) {
                 vkaria.tools.disableAll();
                 vkaria.tools.enableTool(ToolCode.tileSelector);
                 var tool = vkaria.tools.tools[ToolCode.tileSelector];
-                var handler = function (tool, tile) {
+                var handler = function (tool, crds) {
                     tool.removeEventListener(tool.events.tileSelected, handler);
-                    vkaria.logicInterface.establishCity(tile.tileScript.x, tile.tileScript.y, "Unnamed", function(data){
+                    var data = vkaria.core.world.establishCity(crds.x, crds.y, "Unnamed");
+
+                    //vkaria.logicInterface.establishCity(crds.x, crds.y, "Unnamed", function(data){
                         self.setData(data);
 
                         vkaria.tools.enableAll();
                         vkaria.tools.selectTool(ToolCode.panner);
 
                         self.rename();
-                    });
+                    //});
                 };
                 tool.addEventListener(tool.events.tileSelected, handler);
                 vkaria.tools.selectTool(ToolCode.tileSelector);
@@ -89,7 +91,8 @@ define(function (require) {
         vkaria.logicInterface.addEventListener(ResponseCode.buildingBuilt, this.onBuildingBuilt);
         vkaria.logicInterface.addEventListener(ResponseCode.buildingRemoved, this.onBuildingRemoved);
 
-        vkaria.logicInterface.getCityData(this.onCityData);
+        //vkaria.logicInterface.getCityData(this.onCityData);
+        this.onCityData(vkaria.core.world.city);
     };
 
     City.prototype.setData = function (data) {
@@ -109,7 +112,7 @@ define(function (require) {
             vkaria.game.logic.world.addGameObject(this.label);
         }
 
-        var tile = vkaria.tilesman.getTile(this.data.x, this.data.y);
+        var tile = vkaria.terrain.getTile(this.data.x, this.data.y);
         this.label.transform.setPosition(tile.transform.getPosition()[0], tile.transform.getPosition()[1], tile.transform.getPosition()[2]);
         this.label.textRenderer.text = this.data.name;
     };
@@ -136,9 +139,12 @@ define(function (require) {
 
     City.prototype.inputName = function(name){
         var self = this;
-        vkaria.logicInterface.renameCity(name, function(citydata){
-            self.setData(citydata);
-        });
+
+        vkaria.core.world.city.name = name;
+        self.setData(vkaria.core.world.city);
+        //vkaria.logicInterface.renameCity(name, function(citydata){
+          //  self.setData(citydata);
+        //});
     };
 
     return City;

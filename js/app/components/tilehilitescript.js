@@ -9,8 +9,7 @@ define(function(require){
 
     Script.prototype.setHiliteData = function(hiliteData){
         var r = this.gameObject.renderer,
-            t = this.gameObject.transform,
-            tilesman = vkariaApp.tilesman;
+            t = this.gameObject.transform;
 
         r.x = hiliteData.x;
         r.y = hiliteData.y;
@@ -20,24 +19,25 @@ define(function(require){
         if(hiliteData.borderWidth !== undefined)
             r.borderWidth = hiliteData.borderWidth;
 
-        var tile = tilesman.getTile(r.x, r.y);
+        var tile = vkaria.terrain.getTile(r.x, r.y);
         var pos = tile.transform.getPosition();
         t.setPosition(pos[0], pos[1], pos[2]);
 
-        tile = tile.tileScript;
+        var type = vkaria.core.world.terrain.getTerrainType(r.x, r.y);
+        var gps = vkaria.core.world.terrain.getGridPoints(r.x, r.y);
 
         var zStep = vkaria.config.tileZStep;
 
-        if (tile.type === 0) {
+        if (type === 0) {
             r.points[0][1] = 0;
             r.points[1][1] = 0;
             r.points[2][1] = 0;
             r.points[3][1] = 0;
         } else {
-            r.points[0][1] = (tile.gridPoints[3] - tile.z) * zStep;
-            r.points[1][1] = (tile.gridPoints[0] - tile.z) * zStep;
-            r.points[2][1] = (tile.gridPoints[1] - tile.z) * zStep;
-            r.points[3][1] = (tile.gridPoints[2] - tile.z) * zStep;
+            r.points[0][1] = (gps[3] - gps[2]) * zStep;
+            r.points[1][1] = (gps[0] - gps[2]) * zStep;
+            r.points[2][1] = (gps[1] - gps[2]) * zStep;
+            r.points[3][1] = (gps[2] - gps[2]) * zStep;
         }
     };
 

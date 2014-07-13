@@ -16,13 +16,13 @@ define(function (require) {
     Building.prototype.gameObject = null;
     Building.prototype.data = null;
     Building.prototype.staticData = null;
-    Building.prototype.tile = null;
     Building.prototype.node = null;
 
     Building.prototype.setData = function(data){
         this.data = data;
         this.staticData = BuildingData[data.data.buildingCode];
-        this.tile = vkaria.tilesman.getTile(data.x, data.y).tileScript;
+        //this.tile = vkaria.tilesman.getTile(data.x, data.y);
+
 
         if(this.node === null){
             if(this.staticData.classCode === BuildingClassCode.road)

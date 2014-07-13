@@ -7,6 +7,8 @@ define(function (require) {
         World = require("./world"),
         savegame = require("text!testsavegame");
 
+    var Core = namespace("Vkaria.Core");
+
     function CoreInterface() {
         this.world = new World();
 
@@ -31,7 +33,7 @@ define(function (require) {
     CoreInterface.prototype = Object.create(EventManager.prototype);
 
     //region Event handlers
-    function onTimeAdvance (sender, args, self) {
+    function onTimeAdvance(sender, args, self) {
         Events.fireAsync(self, ResponseCode.timeAdvanced, self, {
             day: sender.day,
             month: sender.month,
@@ -40,40 +42,42 @@ define(function (require) {
         });
     }
 
-    function onBuildingBuilt (sender, building, self) {
+    function onBuildingBuilt(sender, building, self) {
         Events.fireAsync(self, ResponseCode.buildingBuilt, self, building);
     }
 
-    function onBuildingUpdated (sender, building, self) {
+    function onBuildingUpdated(sender, building, self) {
         Events.fireAsync(self, ResponseCode.buildingUpdated, self, building);
     }
 
-    function onBuildingRemoved (sender, building, self) {
+    function onBuildingRemoved(sender, building, self) {
         Events.fireAsync(self, ResponseCode.buildingRemoved, self, building);
     }
 
-    function onCityUpdate (sender, args, self) {
+    function onCityUpdate(sender, args, self) {
         var city = sender;
         Events.fireAsync(self, ResponseCode.cityUpdate, self, city.toJSON());
     }
 
-    function onResearchStart (sender, args, self) {
+    function onResearchStart(sender, args, self) {
         Events.fireAsync(self, ResponseCode.researchStart, self, args);
     }
 
-    function onResearchComplete (sender, args, self) {
+    function onResearchComplete(sender, args, self) {
         Events.fireAsync(self, ResponseCode.researchStart, self, args);
         Events.fireAsync(self, ResponseCode.message, self, {
             text: "test test test"
         });
     }
 
-    function onBuildingInvented (sender, args, self) {
+    function onBuildingInvented(sender, args, self) {
         Events.fireAsync(self, ResponseCode.buildingInvented, self, args);
     }
+
     //endregion
 
     CoreInterface.prototype.start = function () {
+
         this.world.start();
 
         var save = localStorage.saveGame;
@@ -89,111 +93,22 @@ define(function (require) {
         }, 30000);
     };
 
-    CoreInterface.prototype.getTileData = function (x, y, w, h, callback) {
-        w = w || 1;
-        h = h || 1;
-
-
-        var data = this.world.tiles.getRange(x, y, w, h);
-        if (x !== undefined && y !== undefined)
-            callback({
-                meta: {
-                    type: "range",
-                    x: x,
-                    y: y,
-                    w: w,
-                    h: h
-                },
-                data: data
-            });
-    };
-
     CoreInterface.prototype.clearTile = function (x, y, callback) {
+        throw "OBSOLETE";
         callback(this.world.city.clearTile(x, y));
     };
 
-
-
-
-    //Buildings
-    CoreInterface.prototype.getBuildingData = function (x, y, w, h, callback) {
-        w = w || 1;
-        h = h || 1;
-
-        var data = this.world.buildings.getRange(x, y, w, h);
-        if (x !== undefined && y !== undefined)
-            callback({
-                meta: {
-                    type: "range",
-                    x: x,
-                    y: y,
-                    w: w,
-                    h: h
-                },
-                data: data
-            });
-    };
-
-    CoreInterface.prototype.build = function (buildingCode, x, y, rotated, onSuccess, onError) {
-        this.world.city.build(buildingCode, x, y, rotated, onSuccess, onError);
-    };
-
-
-
-
-
-    //City
-    CoreInterface.prototype.getCityData = function (callback) {
-        var city = this.world.city;
-
-        if (city)
-            callback(city.toJSON());
-        else
-            callback(null);
-    };
-
-    CoreInterface.prototype.establishCity = function (x, y, name, callback) {
-        var tile = this.world.tiles.get(x, y);
-        var city = this.world.establishCity(tile, name);
-        callback(city.toJSON());
-    };
-
-    CoreInterface.prototype.renameCity = function (name, callback) {
-        var city = this.world.city;
-        city.name = name;
-        callback(city.toJSON());
-        Events.fireAsync(self, ResponseCode.cityUpdate, this, city.toJSON());
-    };
-
-
-    //Laboratory
-    CoreInterface.prototype.getAvailableBuildings = function (callback) {
-        callback(this.world.city.lab.getAvailableBuildings());
-    };
-
     CoreInterface.prototype.research = function (directionCode, callback) {
+        throw "OBSOLETE";
         callback(this.world.city.lab.research(directionCode));
     };
 
     CoreInterface.prototype.getResearchData = function (callback) {
+        throw "OBSOLETE";
         callback(this.world.city.lab.getResearchData());
     };
 
-    //Resource market
-    CoreInterface.prototype.buyResource = function (resourceCode, amount) {
-        var r = this.world.city.resourceOperations.buyResource(resourceCode, amount);
-
-        if (r)
-            Events.fireAsync(self, ResponseCode.errorMessage, this.world.city, "Not enough resources!");
-    };
-
-    CoreInterface.prototype.sellResource = function (resourceCode, amount) {
-        this.world.city.sellResource(resourceCode, amount);
-    };
-
-    var Vkaria = window.Vkaria = window.Vkaria || {};
-    var Core = Vkaria.Core = Vkaria.Core || {};
     Core.CoreInterface = CoreInterface;
 
-    return CoreInterface;
+    return Core.CoreInterface;
 });

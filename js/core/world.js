@@ -4,13 +4,13 @@ define(function (require) {
     var Simplex = require("./vendor/simplex-noise"),
         Events = require("lib/events"),
         Time = require("lib/time"),
-        Tiles = require("./tiles"),
         Terrain = require("./grid"),
         Buildings = require("./buildings"),
         City = require("./city"),
         ResourceCode = require("lib/resourcecode"),
         ResourceMarket = require("./resourceMarket"),
         VTime = require("./virtualtime"),
+        AmbientService = require("./ambient"),
         RatingsMan = require("./tileratingsmanager");
 
     var TICK_DELAY = 1000;
@@ -40,8 +40,8 @@ define(function (require) {
         this.time = new VTime(this);
         this.terrain = new Terrain(this);
         this.buildMan = this.buildings = new Buildings(this);
-        this.tiles = new Tiles(this);
         this.resourceMarket = new ResourceMarket(this);
+        this.ambientService = new AmbientService(this);
 
         this.ratingsman = new RatingsMan(this);
 
@@ -69,7 +69,6 @@ define(function (require) {
     World.prototype.now = null;
 
     World.prototype.terrain = null;
-    World.prototype.tiles = null;
     World.prototype.buildings = null;
     World.prototype.size = 128;
 
@@ -77,34 +76,11 @@ define(function (require) {
         //this.terrain.init();
 
         this.time.start();
-        this.tiles.init();
-        this.buildings.init();
         this.ratingsman.init();
+        this.ambientService.init();
     };
 
-    World.prototype.gridDistribution = function (x, y) {
-        var simplex = this.simplex,
-            land = 0,
-            island = 0;
 
-        x += 640;
-        y += 700;
-
-        land += simplex.noise2D(x / 512, y / 512) / 2; //noisemap of continents
-        land += simplex.noise2D(x / 256, y / 256) / 4; //of smaller lands
-        land += simplex.noise2D(x / 128, y / 128) / 8;  //...
-        land += simplex.noise2D(x / 64, y / 64) / 16; //...
-        land += simplex.noise2D(x / 32, y / 32) / 32; //...
-        land += simplex.noise2D(x / 16, y / 16) / 64; //...
-        land += simplex.noise2D(x / 8, y / 8) / 64; //smallest details
-
-        island += simplex.noise2D(x / 64, y / 64) / 10;
-        island += simplex.noise2D(x / 32, y / 32) / 20;
-        island += simplex.noise2D(x / 16, y / 16) / 40;
-        island += simplex.noise2D(x / 8, y / 8) / 40;
-
-        return Math.floor((0.8 * land + 0.2 * island) * 16);
-    };
 
     World.prototype.forestDistribution = function (x, y) {
         return this.simplex.noise2D(x, y) > 0;
@@ -168,12 +144,13 @@ define(function (require) {
             return null;
     };
 
-    World.prototype.establishCity = function (tile, name) {
+    World.prototype.establishCity = function (x,y, name) {
         if (!this.city) {
             this.city = new City(this);
             this.city.world = this;
             this.city.name = name;
-            this.city.position = tile;
+            this.city.x = x;
+            this.city.y = y;
 
             Events.fire(this, this.events.cityEstablished, this, this.city);
             //this.eventManager.dispatchEvent(this.events.cityEstablished, this, this.city);

@@ -99,11 +99,12 @@ define(function (require) {
 
             //position gameObject
             var data = this.building.data,
-                z = this.building.tile.gameObject.transform.getPosition()[1] + this.building.tile.subpositionZ(data.subPosX, data.subPosY),
+                //this.building.tile.gameObject.transform.getPosition()[1] + this.building.tile.subpositionZ(data.subPosX, data.subPosY),
                 x = data.x + data.subPosX,
-                y = data.y + data.subPosY;
+                y = data.y + data.subPosY,
+                z = vkaria.terrain.getHeight(x,y);
 
-            this.gameObject.transform.setPosition(x * tileSize, z, y * tileSize);
+            this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
         }
     };
 

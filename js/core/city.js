@@ -143,8 +143,8 @@ define(function (require) {
 
         var save = {
             name: this.name,
-            x: this.position.x,
-            y: this.position.y,
+            x: this.x,
+            y: this.y,
             timeEstablished: this.timeEstablished,
             resources: this.resources,
             cityHall: (this.cityHall && this.cityHall.toJSON()) || null,
@@ -177,8 +177,8 @@ define(function (require) {
             population: this.stats.population,
             maxPopulation: this.stats.citizenCapacity,
             ratings: this.stats.ratings.toJSON(),
-            x: this.position.x,
-            y: this.position.y,
+            x: this.x,
+            y: this.y,
             resources: this.stats.resourcesTotal,
             resourceProduce: this.stats.resourceProduce,
             resourceDemand: this.stats.resourceDemand,

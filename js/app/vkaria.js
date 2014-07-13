@@ -14,7 +14,8 @@ define(function (require) {
         PlayerScript = require("./components/playerscript"),
         CameraScript = require("./components/camerascript"),
         UIManager = require("ui"),
-        RenderLayer = require("lib/renderlayer");
+        RenderLayer = require("lib/renderlayer"),
+        Terrain = require("./terrain");
 
     function Vkaria() {
         // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -33,7 +34,8 @@ define(function (require) {
         window.vkariaApp = window.vkaria = this;
 
         //start game logic
-        this.logicInterface = new Core.CoreInterface();
+        this.logicInterface = new Core.CoreInterface();   //rename to core
+        this.core = this.logicInterface;
 
         this.config = {
             tileSize: 45.255,
@@ -69,6 +71,7 @@ define(function (require) {
         this.tools = new Tools();
         this.uiMgr = new UIManager();
         this.city = new City();
+        this.terrain = new Terrain();
         window.p = this.pathman = new PathMan();
 
         //preload assets and, when done, start game
@@ -101,7 +104,7 @@ define(function (require) {
         this.camera.addComponent(new PlayerScript());
         this.game.logic.world.addGameObject(this.camera);
 
-        this.logicInterface.start();
+        this.logicInterface.start(); //rename to core
 
         this.game.run();
 

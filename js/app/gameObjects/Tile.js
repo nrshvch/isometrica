@@ -13,5 +13,7 @@ define(["engine", '../components/TileScript'], function (engine, TileScript) {
 
     Tile.prototype = Object.create(engine.GameObject.prototype);
 
+    Tile.prototype.layer = 1;
+
     return Tile;
 });

@@ -1,84 +1,159 @@
 //TODO cache terrain Z values
 
-define(['lib/terraintype'], function (TileType) {
-    function Terrain(world) {
-        this.world = world;
-        this.gridPoints = [];
-    }
+define(function (require) {
+    var ResourceCode = require("lib/resourcecode");
+    var TerrainType = require('lib/terraintype');
+    var Simplex = require("./vendor/simplex-noise");
 
-    Terrain.prototype.init = function () {
+    //Vkaria.Core.Terrain.CalcSlope(gridpoints)
 
-    }
+    var Core = namespace("Vkaria.Core");
 
-    Terrain.prototype.tick = function () {
+        var simplex = new Simplex([151, 160, 137, 91, 90, 15,
+            131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
+            190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33,
+            88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166,
+            77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244,
+            102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196,
+            135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123,
+            5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42,
+            223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9,
+            129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228,
+            251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107,
+            49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254,
+            138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180]);
 
-    }
+        function calcZ(x, y) {
+            var land = 0,
+                island = 0;
 
-    Terrain.prototype.getGridPoints = function (x, y) {
-        return [
-            this.getGridPoint(x, y), //s
-            this.getGridPoint(x+1, y), //e
-            this.getGridPoint(x, y+1), //w
-            this.getGridPoint(x+1, y+1), //n
-        ]
-    }
+            x += 640;
+            y += 700;
 
-    Terrain.prototype.getGridPoint = function (x, y) {
-        var gp = this.gridPoints[x * this.world.size + y];
+            land += simplex.noise2D(x / 512, y / 512) / 2; //noisemap of continents
+            land += simplex.noise2D(x / 256, y / 256) / 4; //of smaller lands
+            land += simplex.noise2D(x / 128, y / 128) / 8;  //...
+            land += simplex.noise2D(x / 64, y / 64) / 16; //...
+            land += simplex.noise2D(x / 32, y / 32) / 32; //...
+            land += simplex.noise2D(x / 16, y / 16) / 64; //...
+            land += simplex.noise2D(x / 8, y / 8) / 64; //smallest details
 
-        if (gp) {
-            console.log(gp)
+            island += simplex.noise2D(x / 64, y / 64) / 10;
+            island += simplex.noise2D(x / 32, y / 32) / 20;
+            island += simplex.noise2D(x / 16, y / 16) / 40;
+            island += simplex.noise2D(x / 8, y / 8) / 40;
+
+            return Math.floor((0.8 * land + 0.2 * island) * 16);
+        }
+
+    /**
+     *
+     * @param n {number} north tile grid point z value
+     * @param e {number} east tile grid point z value
+     * @param s {number} south tile grid point z value
+     * @param w {number} west tile grid point z value
+     * @returns {number}
+     */
+        function slopeType(n, e, s, w){
+            return 2000 + (n - w + 2) * 100 + (e - w + 2) * 10 + (s - w + 2);
+        }
+
+        function Terrain(world) {
+            this.world = world;
+            this.gridPoints = [];
+        }
+
+        Core.Terrain = Terrain;
+        Core.Terrain.slopeType = slopeType;
+
+        Terrain.prototype.getGridPoints = function (x, y) {
+            return [
+                this.getGridPointHeight(x, y), //s
+                this.getGridPointHeight(x + 1, y), //e
+                this.getGridPointHeight(x, y + 1), //w
+                this.getGridPointHeight(x + 1, y + 1), //n
+            ]
+        };
+
+        Terrain.prototype.getAreaGrid = function (x0, y0, w, l) {
+            var result = [];
+
+            var x1 = x0 + w;
+            var y1 = y0 + l;
+
+            for (var x = x0; x <= x1; x++) {
+                for (var y = y0; y <= y1; y++) {
+                    result.push(this.getGridPointHeight(x, y));
+                }
+            }
+
+            return result;
+        };
+
+        Terrain.prototype.getTerrainTypes = function (x0, y0, w, l) {
+            var result = [];
+
+            var x1 = x0 + w;
+            var y1 = y0 + l;
+
+            for (var x = x0; x < x1; x++) {
+                for (var y = y0; y < y1; y++) {
+                    result.push(this.getTerrainType(x, y));
+                }
+            }
+
+            return result;
+        };
+
+        Terrain.prototype.getGridPointHeight = function (x, y) {
+            var index = y << 16 ^ x;
+            var gp = this.gridPoints[index];
+
+            if (gp === undefined) {
+                gp = this.gridPoints[index] = calcZ(x, y);
+            }
+
             return gp;
-        }
+        };
 
-        return this.world.gridDistribution(x, y);
-    }
+        Terrain.prototype.getTerrainType = function (x, y) {
+            var gps = this.getGridPoints(x, y);
+            if (gps[0] <= 0 && gps[1] <= 0 && gps[2] <= 0 && gps[3] <= 0)
+                return TerrainType.water;
+            else if (gps[0] <= 0 || gps[1] <= 0 || gps[2] <= 0 || gps[3] <= 0)
+                return TerrainType.shore;
+            else
+                return TerrainType.grass;
 
-    Terrain.prototype.setGridPoint = function (x, y, z) {
-        var ngps = this.getNeighbourGridPoints(x, y),
-            gp;
+        };
 
-        for (var i = 0; i < 8; i++) {
-            gp = ngps[i];
+        //TODO slopeId could be int where each gridPoint height is stored in two bits
+        //TODO: If each point z pos would be relative to lowest point, instead of x0-y0 point, then each point could be described in 0-2 int.
+        Terrain.prototype.calcSlopeId = function (x, y) {
+            var terrainType = this.getTerrainType(x, y);
 
-            if (Math.abs(gp - z) >= 1)
-                return;
-        }
+            if (terrainType === TerrainType.water) return 2222;
 
-        this.gridPoints[x * this.world.size + y] = z;
-    }
+            var z0 = this.getGridPointHeight(x, y + 1),//gridPoints[2];
+                z1 = this.getGridPointHeight(x + 1, y + 1),//gridPoints[3];
+                z2 = this.getGridPointHeight(x + 1, y),//gridPoints[1];
+                z3 = this.getGridPointHeight(x, y);//gridPoints[0];
 
-    Terrain.prototype.getNeighbourGridPoints = function (x, y) {
-        return [
-            this.getGridPoint(x - 1, y - 1),
-            this.getGridPoint(x - 1, y),
-            this.getGridPoint(x - 1, y + 1),
-            this.getGridPoint(x, y - 1),
-            this.getGridPoint(x, y + 1),
-            this.getGridPoint(x + 1, y - 1),
-            this.getGridPoint(x + 1, y),
-            this.getGridPoint(x + 1, y + 1)
-        ]
-    }
+            return 2000 + (z1 - z0 + 2) * 100 + (z2 - z0 + 2) * 10 + (z3 - z0 + 2);
+        };
 
-    Terrain.prototype.getTerrainType = function (x, y) {
-        var gps = this.getGridPoints(x, y);
-        if (gps[0] <= 0 && gps[1] <= 0 && gps[2] <= 0 && gps[3] <= 0)
-            return TileType.water;
-        else if(gps[0] <= 0 || gps[1] <= 0 || gps[2] <= 0 || gps[3] <= 0)
-            return TileType.shore;
-        else
-            return TileType.grass;
+        Terrain.prototype.getResource = function (x, y) {
+            if (this.calcSlopeId() === 2222) {
+                var r = this.world.resourceDistribution(x, y);
 
-    };
+                if (r === ResourceCode.oil && this.getTerrainType(x, y) === TerrainType.water) {
+                    return ResourceCode.oil;
+                } else if (r !== ResourceCode.none && r !== ResourceCode.oil && this.getTerrainType(x, y) !== TerrainType.water) {
+                    return r;
+                }
+            }
+            return null;
+        };
 
-    Terrain.prototype.save = function(){
-        return null;
-    };
-
-    Terrain.prototype.load = function(savedGameState){
-        return true;
-    };
-
-    return Terrain;
-})
+        return Terrain;
+});

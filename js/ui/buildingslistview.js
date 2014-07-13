@@ -47,7 +47,7 @@ define(function (require) {
 
             var self = this;
 
-            vkaria.logicInterface.getAvailableBuildings(function(response){
+            var response = vkaria.core.world.city.lab.getAvailableBuildings();
                 for(key in BuildingData){
                     data = BuildingData[key];
 
@@ -62,7 +62,6 @@ define(function (require) {
                         self.$el.append(item);
                     }
                 }
-            });
         }
     });
 

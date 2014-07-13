@@ -137,7 +137,7 @@ define(function(require){
             l = r.length;
 
         for (var i = 0; i < l; i++)
-            if (r[i].tileScript !== undefined)
+            if (r[i].layer === 1)
                 return r[i];
 
         return false;

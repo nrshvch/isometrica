@@ -42,9 +42,9 @@ define(function (require) {
 
     BuildingNode.prototype.connect = function (node) {
         if (node.road === true) {
-            var tile = node.building.tile,
-                x = tile.x,
-                y = tile.y;
+            var data = node.building.data,
+                x = data.x,
+                y = data.y;
 
             var sData = this.building.staticData;
             var data = this.building.data;
@@ -72,10 +72,10 @@ define(function (require) {
 
         var h = node.building;
 
-        var x = h.tile.x,
-            y = h.tile.y,
-            bx = this.building.tile.x,
-            by = this.building.tile.y,
+        var x = h.data.x,
+            y = h.data.y,
+            bx = this.building.data.x,
+            by = this.building.data.y,
             gates = this.building.staticData.roadGates;
 
         for(var i = 0; i < gates.length; i++){

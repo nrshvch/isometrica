@@ -39,13 +39,15 @@ define(function (require) {
         //Load buildings
         this.onTilesLoaded = function (sender, args) {
             var meta = args.meta;
-            vkaria.logicInterface.getBuildingData(meta.x, meta.y, meta.w, meta.h, function (response) {
-                var data = response.data,
+            ;
+            //vkaria.logicInterface.getBuildingData(meta.x, meta.y, meta.w, meta.h, function (response) {
+                //var data = response.data,
+                var data = vkaria.core.world.buildings.getRange(meta.x, meta.y, meta.w, meta.h),
                     i, l = data.length;
 
                 for (i = 0; i < l; i++)
                     self.createBuilding(data[i]);
-            });
+            //});
         };
 
         //Unload buildings
@@ -125,14 +127,14 @@ define(function (require) {
     Buildman.prototype.build = function (buildingCode, x, y, rotate, onSuccess, onError) {
         var self = this;
 
-        vkaria.logicInterface.build(buildingCode, x, y, rotate, function (building) {
+        vkaria.core.world.city.build(buildingCode, x, y, rotate, function (building) {
             vkaria.assets.getAsset("/audio/blip.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
                 //resource.data.play();
             });
 
             onSuccess && onSuccess();
         }, function (error) {
-            var tile = vkaria.tilesman.getTile(x, y),
+            var tile = vkaria.terrain.getTile(x, y),
                 pos = tile.transform.getPosition();
 
 
@@ -155,7 +157,7 @@ define(function (require) {
             tile,
             building;
 
-        tile = vkaria.tilesman.getTile(x, y);
+        tile = vkaria.terrain.getTile(x, y);
 
         if (!tile)
             return false;
@@ -185,7 +187,7 @@ define(function (require) {
             tile,
             building;
 
-        tile = vkaria.tilesman.getTile(x, y);
+        tile = vkaria.terrain.getTile(x, y);
 
         if (!tile)
             return false;

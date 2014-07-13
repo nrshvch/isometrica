@@ -62,19 +62,20 @@ define(function (require) {
 
     };
 
-    Building.prototype.setTile = function (tile) {
-        this.world = tile.world;
-        this.tile = tile;
-        this.x = tile.x;
-        this.y = tile.y;
+    Building.prototype.setPosition = function (x,y) {
+        //this.world = tile.world;
+        this.x = x;
+        this.y = y;
 
         this.timeCreated = this.timeCreated || Time.now;
         this.createdAt = this.createdAt || this.world.time.now;
 
         //set canGather flag, so we know if there is a resource
+        /*
         if (this.data.gather !== null) {
             this.canGather = (tile.resource === this.data.gather) || this.data.gather == ResourceCode.wood;
         }
+        */
     };
 
     Building.prototype.setSubPosition = function (subX, subY) {
@@ -136,8 +137,8 @@ define(function (require) {
 
     Building.prototype.toJSON = function () {
         return {
-            x: this.tile.x,
-            y: this.tile.y,
+            x: this.x,
+            y: this.y,
             state: this.state,
             subPosX: this.subPosX,
             subPosY: this.subPosY,
