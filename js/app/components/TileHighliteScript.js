@@ -46,9 +46,9 @@ define(function (require) {
             points[2][1] = 0;
             points[3][1] = 0;
         } else {
-            points[0][1] = (tile.gridPoints[3] - tile.z) * zStep;
-            points[1][1] = (tile.gridPoints[0] - tile.z) * zStep;
-            points[2][1] = (tile.gridPoints[1] - tile.z) * zStep;
+            points[0][1] = (tile.gridPoints[0] - tile.z) * zStep;
+            points[1][1] = (tile.gridPoints[1] - tile.z) * zStep;
+            points[2][1] = (tile.gridPoints[3] - tile.z) * zStep;
             points[3][1] = (tile.gridPoints[2] - tile.z) * zStep;
         }
     };
@@ -57,5 +57,5 @@ define(function (require) {
         this.gameObject.pathRenderer.enabled = false;
     };
 
-    return ToolScript;
+    //return ToolScript;
 })

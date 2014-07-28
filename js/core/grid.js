@@ -46,17 +46,6 @@ define(function (require) {
             return Math.floor((0.8 * land + 0.2 * island) * 16);
         }
 
-    /**
-     *
-     * @param n {number} north tile grid point z value
-     * @param e {number} east tile grid point z value
-     * @param s {number} south tile grid point z value
-     * @param w {number} west tile grid point z value
-     * @returns {number}
-     */
-        function slopeType(n, e, s, w){
-            return 2000 + (n - w + 2) * 100 + (e - w + 2) * 10 + (s - w + 2);
-        }
 
         function Terrain(world) {
             this.world = world;
@@ -64,7 +53,6 @@ define(function (require) {
         }
 
         Core.Terrain = Terrain;
-        Core.Terrain.slopeType = slopeType;
 
         Terrain.prototype.getGridPoints = function (x, y) {
             return [
@@ -133,13 +121,23 @@ define(function (require) {
             var terrainType = this.getTerrainType(x, y);
 
             if (terrainType === TerrainType.water) return 2222;
+            //if (terrainType === TerrainType.water) return 0;
 
-            var z0 = this.getGridPointHeight(x, y + 1),//gridPoints[2];
-                z1 = this.getGridPointHeight(x + 1, y + 1),//gridPoints[3];
-                z2 = this.getGridPointHeight(x + 1, y),//gridPoints[1];
-                z3 = this.getGridPointHeight(x, y);//gridPoints[0];
+            var z0 = this.getGridPointHeight(x, y),
+                z1 = this.getGridPointHeight(x + 1, y),
+                z2 = this.getGridPointHeight(x, y + 1),
+                z3 = this.getGridPointHeight(x + 1, y + 1);
 
             return 2000 + (z1 - z0 + 2) * 100 + (z2 - z0 + 2) * 10 + (z3 - z0 + 2);
+
+            var baseZ = Math.min(z0,z1,z2,z3);
+
+            z0 -= baseZ;
+            z1 -= baseZ;
+            z2 -= baseZ;
+            z3 -= baseZ;
+
+            return z3 << 6 ^ z2 << 4 ^ z1 << 2 ^ z0;
         };
 
         Terrain.prototype.getResource = function (x, y) {
@@ -153,6 +151,17 @@ define(function (require) {
                 }
             }
             return null;
+        };
+
+        Terrain.prototype.convertToCoordinates = function(index){
+            return {
+                x: index & 0xFFFF,
+                y: index >>> 16
+            }
+        };
+
+        Terrain.prototype.convertToIndex = function(x,y){
+            return y << 16 ^ x;
         };
 
         return Terrain;

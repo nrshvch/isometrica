@@ -2,6 +2,7 @@
 * that way same components would be accessible anytime & from one place
 * TODO Tick should be event. Not method.
 * TODO ..ooor we can create collection of updatable components right when GO is added, doing update == null check just once.
+* TODO rename to "scene"
 */
 
 define(function (require) {
@@ -81,7 +82,7 @@ define(function (require) {
      * @param {GameObject} gameObject
      */
     p.addGameObject = function (gameObject) {
-        //TODO check if gameObject if already present
+        //TODO check if gameObject is already present
         this.gameObjects[this.gameObjectsCount++] = gameObject;
         gameObject.setWorld(this);
 

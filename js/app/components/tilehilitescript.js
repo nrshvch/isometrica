@@ -34,10 +34,10 @@ define(function(require){
             r.points[2][1] = 0;
             r.points[3][1] = 0;
         } else {
-            r.points[0][1] = (gps[3] - gps[2]) * zStep;
-            r.points[1][1] = (gps[0] - gps[2]) * zStep;
-            r.points[2][1] = (gps[1] - gps[2]) * zStep;
-            r.points[3][1] = (gps[2] - gps[2]) * zStep;
+            r.points[0][1] = (gps[0] - gps[2]) * zStep;
+            r.points[1][1] = (gps[2] - gps[2]) * zStep;
+            r.points[2][1] = (gps[3] - gps[2]) * zStep;
+            r.points[3][1] = (gps[1] - gps[2]) * zStep;
         }
     };
 

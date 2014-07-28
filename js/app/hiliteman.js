@@ -75,13 +75,17 @@ define(function (require) {
         return r;
     };
 
-    HiliteMan.prototype.hilite = function(hiliteData){
-        if(Array.isArray(hiliteData))
-            return this._hiliteMany(hiliteData);
-        else if(hiliteData.w !== undefined && hiliteData.h !== undefined)
-            return this._hiliteArea(hiliteData);
+    /**
+     * @param params {Object} Contains x, y and optional w, l, fill and stroke colors.
+     * @returns {*}
+     */
+    HiliteMan.prototype.hilite = function(params){
+        if(Array.isArray(params))
+            return this._hiliteMany(params);
+        else if(params.w !== undefined && params.h !== undefined)
+            return this._hiliteArea(params);
         else
-            return this._hiliteOne(hiliteData);
+            return this._hiliteOne(params);
     };
 
     HiliteMan.prototype.disable = function(tokenData){

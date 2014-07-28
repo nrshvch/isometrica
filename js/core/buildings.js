@@ -24,7 +24,7 @@ define(function (require) {
             data = BuildingData[buildingCode],
             sizeX = rotated ? data.sizeY : data.sizeX,
             sizeY = rotated ? data.sizeX : data.sizeY,
-            i, l, x, y, tile, slopeId, terrain, terrainType, resource;
+            i, l, x, y, slopeId, terrain, terrainType, resource;
 
         for (i = 0, l = sizeX * sizeY; i < l; i++) {
             y = ((i / sizeX) | 0);
@@ -47,7 +47,7 @@ define(function (require) {
                 result.error = ErrorCode.WRONG_RESOURCE_TILE;
             } else if (data.classCode === BuildingClassCode.road && slopeId !== 2222 && slopeId !== 2112 && slopeId !== 2211 && slopeId !== 2233 && slopeId !== 2332) {
                 result.error = ErrorCode.LAND_NOT_SUITABLE;
-            } else if (data.classCode !== BuildingClassCode.tree && slopeId != 2222) {
+            } else if (data.classCode !== BuildingClassCode.tree && data.classCode !== BuildingClassCode.road && slopeId != 2222) {
                 result.error = ErrorCode.FLAT_LAND_REQUIRED;
             } else if (self.get(x, y) !== null && self.get(x, y).data.classCode !== BuildingClassCode.tree) {
                 result.error = ErrorCode.TILE_TAKEN;

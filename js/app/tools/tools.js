@@ -6,9 +6,6 @@ define(function(require){
         TileHighliteScript = require("../components/TileHighliteScript"),
         ToolCode = require("lib/toolcode"),
         PannerTool = require("./pannertool"),
-        TileSelectorTool = require("./tileselectortool"),
-        RemoveTool = require("./removetool"),
-        BuildTool = require("./buildtool"),
         BuildToolMobile = require("./buildtoolmobile"),
         TileSelectorToolMobile = require("./tileselectortoolmobile"),
         RemoveToolMobile = require("./removetoolmobile");
@@ -141,6 +138,17 @@ define(function(require){
                 return r[i];
 
         return false;
+    };
+
+    Tools.prototype.pickTile = function(screenX, screenY) {
+        var tile = this.filterTile(this.cameraScript.pickGameObject(screenX, screenY));
+        if(tile){
+            var coords = vkaria.terrain.getCoordinates(tile);
+
+            if(coords)
+                return coords;
+        }
+        return null;
     };
 
     return Tools;

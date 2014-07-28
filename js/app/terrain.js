@@ -86,15 +86,32 @@ define(function(require){
         }
     };
 
+    /**
+     * this will calculate slope id starting from most-left point and goings clock-wise
+     * @param self
+     * @param x
+     * @param y
+     * @returns {number}
+     */
+    function calcSpriteCode(self, x,y){
+        var terrain = vkaria.core.world.terrain;
+        var terrainType = terrain.getTerrainType(x, y);
+
+        if (terrainType === TerrainType.water) return 2222;
+
+        var z0 = terrain.getGridPointHeight(x, y + 1),//gridPoints[2];
+            z1 = terrain.getGridPointHeight(x + 1, y + 1),//gridPoints[3];
+            z2 = terrain.getGridPointHeight(x + 1, y),//gridPoints[1];
+            z3 = terrain.getGridPointHeight(x, y);//gridPoints[0];
+
+        return 2000 + (z1 - z0 + 2) * 100 + (z2 - z0 + 2) * 10 + (z3 - z0 + 2);
+    }
+
     Terrain.prototype.draw = function(x0,y0,w,l){
         var coreTerrain = vkaria.core.world.terrain;
 
         var x1 = x0 + w,
             y1 = y0 + l;
-
-        //var gridpoints = coreTerrain.getAreaGrid(x0,y0,w,l);
-
-
 
         for(var x = x0; x < x1; x++){
             for(var y = y0; y < y1; y++){
@@ -104,15 +121,15 @@ define(function(require){
 
                     var gps = coreTerrain.getGridPoints(x,y);
 
-
-                    var slope = coreTerrain.calcSlopeId(x,y);
+                    //var slope = coreTerrain.calcSlopeId(x,y);
+                    var slope = calcSpriteCode(this, x,y);
                     var type = coreTerrain.getTerrainType(x,y);
                     var sprite = null;
 
                     var z = 0;
 
                     if(type !== TerrainType.water)
-                        z = gps[2];
+                        z = gps[2]; //2 is west, most left gridpoint, it should be gps[0], but sprites are drawn with pivot point being most left gridpoint
 
                     t.transform.setPosition(
                             x * vkaria.config.tileSize,
@@ -137,8 +154,15 @@ define(function(require){
         }
     };
 
+    /**
+     * DEPRECATED
+     * @deprecated
+     * @param x
+     * @param y
+     * @returns {*}
+     */
     Terrain.prototype.getHeight = function(x,y){
-        return vkaria.core.world.terrain.getGridPoints(x,y)[2];
+        return vkaria.core.world.terrain.getGridPoints(x,y)[1];
     };
 
     Terrain.prototype.getTile = function(x,y){

@@ -13,47 +13,47 @@ define(function (require) {
     window.DrawMap = function DrawMap() {
         var cnv = $("#mapcnv").get(0);
         var data = vkaria.logicInterface.world.ratingsman;
-        var tiles = vkaria.logicInterface.world.tiles.collection;
+        //var tiles = vkaria.logicInterface.world.tiles.collection;
+
         var ctx = cnv.getContext("2d");
         var s = vkaria.logicInterface.world.size;
         var p = cnv.width / s;
 
-        var i = 0, blockSize = 64*64, tile, l = tiles.length;
-        var F = function () {
+        var i = 0, blockSize = 64*64;
+
+        var routine = function(state){
+            state.i = state.i | 0;
+            var terrain = isometrica.core.world.terrain;
+
             for (var j = 0; j < blockSize; j++) {
-                tile = tiles[i];
+                var crd = terrain.convertToCoordinates(state.i);
+                var x = crd.x;
+                var y = crd.y;
+                var z = terrain.getGridPointHeight(x,y);
+                var ttype = terrain.getTerrainType(x,y);
+                var resource = terrain.getResource(x,y);
 
                 //draw terrain
-                if (tile.resource != null) {
+                if (resource != null) {
                     ctx.fillStyle = "rgb(0,0,0)";
-                } else if (tile.terrainType == 0)
+                } else if (ttype == 0)
                     ctx.fillStyle = "rgb(0,90,170)";
                 else {
-                    ctx.fillStyle = "rgb(70," + (128 + tile.z * 16) + ",40)";
+                    ctx.fillStyle = "rgb(70," + (128 + z * 16) + ",40)";
                 }
-                ctx.fillRect(tile.x * p, (s - tile.y) * p, p, p);
+                ctx.fillRect(x * p, (s - y) * p, p, p);
 
+                var eco = data.getRating(x, y, TileRatings.TileRatingEnum.Ecology);
+                var k = (eco / 100 * 255)|0;
+                ctx.fillStyle = "rgba("+(255-k)+","+(k)+",0,1)";
 
-                //draw ecology
-                //var r =
-                //if(r){
-                    var eco = data.getRating(tile.x, tile.y, TileRatings.TileRatingEnum.Ecology);
-                    var k = (eco / 100 * 255)|0;
-                    ctx.fillStyle = "rgba("+(255-k)+","+(k)+",0,1)";
-                //}else{
-                 //   ctx.fillStyle = "rgba(255,0,0,1)";
-               // }
+                ctx.fillRect(x * p, (s-y) * p , p,p);
 
-                ctx.fillRect(tile.x * p, (s-tile.y) * p , p,p);
-
-
-                if (++i >= l)
-                    break;
+                state.i++
             }
-            if (i < l - 1)
-                setTimeout(F, 10);
-        };
-        F();
+        }
+
+        //Isometrica.Engine.Coroutine.startCoroutine(routine);
     };
 
     var CityView = Backbone.View.extend({

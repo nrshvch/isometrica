@@ -212,5 +212,5 @@ define(function (require) {
         return ((i1 * suby + i2 * (1 - suby)) - this.z) * engine.config.tileZStep;
     };
 
-    return TileScript;
+    //return TileScript;
 });

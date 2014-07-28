@@ -1,3 +1,5 @@
+//TODO rename. There no logic in game engine. This may be renamed to "scene".
+
 define(function(require) {
     var Time = require("./time"),
         World = require("./world"),
@@ -40,8 +42,8 @@ define(function(require) {
      * @return {void}
      */
     p.tick = function () {
-        var now = Date.now(), i = 0;
-        var frameTime = now - this.time.now,
+        var now = Date.now();
+        var frameTime = Math.min(1000, now - this.time.now),
             dtime, dt = this.time.dt;
 
         while (frameTime >= dt) {
@@ -49,11 +51,12 @@ define(function(require) {
             this.time.now += dt;
             this.time.time += dt;
             this.world.tick(this.time);
-
-            if (i++ > 200) {
-                break;
-            }
         }
+    };
+
+    p.tick = function(){
+        this.time.tick();
+        this.world.tick(this.time);
     };
 
     return Logic;

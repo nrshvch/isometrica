@@ -24,7 +24,8 @@ define([
     './SpriteManager',
     './components/TextRenderer',
     './components/AnimatedSpriteRenderer',
-    './components/Renderer'
+    './components/Renderer',
+    './coroutine'
 ], function (config, Game, GameObject, Component, Camera, CameraComponent, TransformComponent, SpriteRenderer, glMatrix, AssetManager, SpriteManager, TextRenderer, AnimatedSpriteRenderer, Renderer) {
     return window.scaliaEngine = {
         config: config,

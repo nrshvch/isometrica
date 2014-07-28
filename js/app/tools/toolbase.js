@@ -12,9 +12,9 @@ define(function(require){
     Tool.prototype.dragDestination = null;
 
     Tool.prototype.dragStart = function(screenX, screenY){
-        var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
+        var tile = this.tools.pickTile(screenX, screenY);
         if(tile)
-            this.dragSource = tile.tileScript;
+            this.dragSource = tile;
     };
 
     Tool.prototype.dragEnd = function(screenX ,screenY){
@@ -22,10 +22,9 @@ define(function(require){
     };
 
     Tool.prototype.drag = function(screenX, screenY, dragX, dragY){
-        var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
-
+        var tile = this.tools.pickTile(screenX, screenY);
         if(tile)
-            this.dragDestination = tile.tileScript;
+            this.dragDestination = tile;
     };
 
     Tool.prototype.move = function(screenX, screenY){

@@ -4,7 +4,6 @@ define(function (require) {
 
     function Tool(tools) {
         ToolBase.call(this, tools);
-        window.tool = this;
     }
 
     Tool.prototype = Object.create(ToolBase.prototype);
@@ -20,6 +19,7 @@ define(function (require) {
     Tool.prototype.hiliteGrid = function(){
         var visibleGOs = vkariaApp.camera.camera.getVisibleGameObjects(),
             len = visibleGOs.length;
+
         for (var i = 0; i < len; i++) {
             var g = visibleGOs[i];
 
@@ -80,7 +80,7 @@ define(function (require) {
 
         if (this.multiBuilder) {
             if (this.dragSource !== null) {
-                var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
+                var tile = this.tools.pickTile(screenX, screenY);
                 if (tile) {
                     this.disableHiliters();
 
@@ -107,16 +107,14 @@ define(function (require) {
         ToolBase.prototype.move.call(this, screenX, screenY);
 
         if (!this.dragSource) {
-            var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
+            var tile = this.tools.pickTile(screenX, screenY);
 
             if (tile) {
                 this.disableHiliters();
 
-                var c = vkaria.terrain.getCoordinates(tile);
-
                 //var tiles = this.tiles || (this.tiles = this.tools.gameObject.world.findByName("main").mainScript.tilesManager);
-                var x0 = c.x,
-                    y0 = c.y,
+                var x0 = tile.x,
+                    y0 = tile.y,
                     w = this.buildingSizeX,
                     h = this.buildingSizeY;
 
@@ -128,7 +126,7 @@ define(function (require) {
                     fillColor: "rgba(0,0,127,0.5)"
                 })];
                 this.selectedTiles = [
-                    {x: c.x, y: c.y}
+                    tile
                 ];
                 this.dispatchEvent(this.events.awaitingConfirmation, this, null);
             } else

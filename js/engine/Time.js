@@ -24,5 +24,10 @@ define(function () {
      */
     p.dt = 60;
 
+    p.tick = function(){
+        this.time += this.dt;
+        this.now += this.dt;
+    };
+
     return Time;
 });

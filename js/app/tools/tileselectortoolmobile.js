@@ -14,8 +14,6 @@ define(function(require){
     };
 
     Tool.prototype.selectedTile = null;
-    Tool.prototype.selectedTileX = -1;
-    Tool.prototype.selectedTileY = -1;
     Tool.prototype.selectedToken = null;
 
     Tool.prototype.drag = function(screenX, screenY, dragX, dragY){
@@ -25,31 +23,25 @@ define(function(require){
     };
 
     Tool.prototype.click = function(screenX, screenY){
-        var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
+        var tile = this.tools.pickTile(screenX, screenY);
         if (tile){
             if(this.selectedToken != null)
                 vkariaApp.hiliteMan.disable(this.selectedToken);
 
-            var crds = vkaria.terrain.getCoordinates(tile);
-
             this.selectedToken = vkariaApp.hiliteMan.hilite({
-                x: crds.x,
-                y: crds.y,
+                x: tile.x,
+                y: tile.y,
                 borderColor: "rgba(255,255,255,1)",
                 borderWidth: 2
             });
-            this.selectedTileX = crds.x;
-            this.selectedTileY = crds.y;
+            this.selectedTile = tile;
             this.dispatchEvent(this.events.awaitingConfirmation, this, null);
         }
     };
 
     Tool.prototype.confirm = function(){
-        if(this.selectedTileX !== -1 && this.selectedTileY !== -1)
-            this.dispatchEvent(this.events.tileSelected, this, {
-                x: this.selectedTileX,
-                y: this.selectedTileY
-            });
+        if(this.selectedTile !== null)
+            this.dispatchEvent(this.events.tileSelected, this, this.selectedTile);
 
         this.dispatchEvent(this.events.receivedConfirmation, this, null);
 

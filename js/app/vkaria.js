@@ -31,7 +31,7 @@ define(function (require) {
 
 
         //register itself in global namespace
-        window.vkariaApp = window.vkaria = this;
+        window.isometrica = window.vkariaApp = window.vkaria = this;
 
         //start game logic
         this.logicInterface = new Core.CoreInterface();   //rename to core

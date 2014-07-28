@@ -1,5 +1,7 @@
-define(["engine", '../components/TileScript'], function (engine, TileScript) {
-    function Tile(x, y) {
+define(function(require){
+    var engine = require("engine");
+
+    function Tile() {
         engine.GameObject.call(this, "tile");
 
         var renderer = new engine.SpriteRenderer();
@@ -8,7 +10,6 @@ define(["engine", '../components/TileScript'], function (engine, TileScript) {
         renderer.layer = vkaria.layers.groundLayer;
 
         this.addComponent(renderer);
-        this.addComponent(new TileScript(x, y));
     }
 
     Tile.prototype = Object.create(engine.GameObject.prototype);

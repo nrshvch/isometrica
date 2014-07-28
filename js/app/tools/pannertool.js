@@ -12,7 +12,7 @@ define(function(require){
     };
 
     Tool.prototype.dragStart = function(screenX, screenY){
-        var tile = this.tools.filterTile(this.tools.cameraScript.pickGameObject(screenX, screenY));
+        var tile = this.tools.pickTile(screenX, screenY);
         if(tile)
             this.dragSource = this.tools.tileScript;
     };
