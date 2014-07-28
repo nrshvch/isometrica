@@ -1,5 +1,6 @@
 define(function (require) {
     var engine = require("engine"),
+        glMatrix = require("vendor/gl-matrix"),
         BuildingState = require("lib/buildingstate"),
         buildingData = require("lib/buildingdata"),
         BuildingData = require("lib/buildingdata"),
@@ -89,7 +90,7 @@ define(function (require) {
 
         for(var i = 0; i < wpsSource.length; i++){
             var wp = [];
-            engine.glMatrix.vec3.transformMat4(wp, wpsSource[i], this.view.gameObject.transform.localToWorld);
+            glMatrix.vec3.transformMat4(wp, wpsSource[i], this.view.gameObject.transform.localToWorld);
             wps.push(wp);
         }
 

@@ -7,7 +7,7 @@ define(function (require) {
         World = require("./world"),
         savegame = require("text!testsavegame");
 
-    var Core = namespace("Vkaria.Core");
+    var Core = namespace("Isometrica.Core");
 
     function CoreInterface() {
         this.world = new World();

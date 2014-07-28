@@ -11,6 +11,8 @@
 define(function (require) {
         var Resource = require("./resource");
 
+        namespace("Isometrica.Engine").AssetManager = AssetManager;
+
         function AssetManager() {
             this.assets = {};
         }

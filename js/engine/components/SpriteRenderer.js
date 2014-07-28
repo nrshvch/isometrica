@@ -2,8 +2,10 @@ define(function (require) {
     var vec3Buffer1 = new Float32Array(3);
     var Component = require("./Renderer");
     var Transform = require("./TransformComponent");
-    var glMatrix = require("../lib/gl-matrix");
+    var glMatrix = require("../../vendor/gl-matrix");
     var Vec3 = glMatrix.vec3;
+
+    namespace("Isometrica.Engine").SpriteRenderer = Sprite;
 
     function Sprite(sprite) {
         Component.call(this);

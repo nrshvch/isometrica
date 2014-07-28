@@ -4,16 +4,15 @@ define(function (require) {
     var Simplex = require("./vendor/simplex-noise"),
         Events = require("lib/events"),
         Time = require("lib/time"),
-        Terrain = require("./grid"),
+        Terrain = require("./terrain"),
         Buildings = require("./buildings"),
         City = require("./city"),
         ResourceCode = require("lib/resourcecode"),
         ResourceMarket = require("./resourceMarket"),
         VTime = require("./virtualtime"),
         AmbientService = require("./ambient"),
-        RatingsMan = require("./tileratingsmanager");
-
-    var TICK_DELAY = 1000;
+        RatingsMan = require("./tileratingsmanager"),
+        Config = require("./config");
 
     function World() {
         this.simplex = new Simplex([151, 160, 137, 91, 90, 15,
@@ -48,7 +47,7 @@ define(function (require) {
         var self = this;
         setInterval(function(){
             Events.fire(self, self.events.tick, self, null);
-        }, TICK_DELAY);
+        }, Config.tickDelay);
     }
 
     World.prototype.events = {

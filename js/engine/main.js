@@ -10,37 +10,21 @@ window.requestAnimFrame = (function () {
         };
 })();
 
-define([
-    './config',
-    './Game',
-    './GameObject',
-    './Component',
-    './gameObjects/Camera',
-    './components/CameraComponent',
-    './components/TransformComponent',
-    './components/SpriteRenderer',
-    './lib/gl-matrix',
-    './lib/assetmanager/assetmanager',
-    './SpriteManager',
-    './components/TextRenderer',
-    './components/AnimatedSpriteRenderer',
-    './components/Renderer',
-    './coroutine'
-], function (config, Game, GameObject, Component, Camera, CameraComponent, TransformComponent, SpriteRenderer, glMatrix, AssetManager, SpriteManager, TextRenderer, AnimatedSpriteRenderer, Renderer) {
-    return window.scaliaEngine = {
-        config: config,
-        Game: Game,
-        GameObject: GameObject,
-        Component: Component,
-        Renderer: Renderer,
-        Camera: Camera,
-        CameraComponent: CameraComponent,
-        TransformComponent: TransformComponent,
-        SpriteRenderer: SpriteRenderer,
-        glMatrix: glMatrix,
-        AssetManager: AssetManager,
-        TextRenderer: TextRenderer,
-        SpriteManager: SpriteManager,
-        AnimatedSpriteRenderer: AnimatedSpriteRenderer,
-    };
+define(function(require){
+    var Config = require("./config");
+    var Game = require("./game");
+    var GameObject = require("./gameobject");
+    var Component = require("./component");
+    var Camera = require("./gameobjects/camera");
+    var CameraComponent = require("./components/cameracomponent");
+    var TransformComponent = require("./components/transformcomponent");
+    var SpriteRenderer = require("./components/spriterenderer");
+    var AssetManager = require("./lib/assetmanager/assetmanager");
+    var SpriteManager = require("./spritemanager");
+    var TextRenderer = require("./components/textrenderer");
+    var AnimaterSpriteRenderer = require("./components/animatedspriterenderer");
+    var Renderer = require("./components/renderer");
+    var Coroutine = require("./coroutine");
+
+    return namespace("Isometrica.Engine");
 });

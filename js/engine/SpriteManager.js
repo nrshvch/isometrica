@@ -2,10 +2,14 @@
  * This class provides api to work with sprites, spritesheets etc;
  */
 define(function (require) {
+    namespace("Isometrica.Engine").SpriteManager = SpriteMgr;
+
     function SpriteMgr(assetMgr) {
         this.assets = assetMgr;
         this.frames = {};
     }
+
+
 
     SpriteMgr.Sprite = function Sprite() {
         this.offsetX = 0;

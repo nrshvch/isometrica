@@ -7,7 +7,7 @@
  */
 define(function (require) {
     var engine = require("engine"),
-        glMatrix = engine.glMatrix;
+        glMatrix = require("vendor/gl-matrix");
 
     var vec3Buffer1 = new Float32Array(3),
         mat4Buffer1 = new Float32Array(16);

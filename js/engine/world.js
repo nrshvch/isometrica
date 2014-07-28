@@ -152,6 +152,11 @@ define(function (require) {
         return this.gameObjects.slice(0);
     };
 
+    p.run = function(){
+        this.awake();
+        this.start();
+    };
+
     /**
      * Runs awake methods of all components.
      * NOTICE! If some gameObject or component are being added in awake,

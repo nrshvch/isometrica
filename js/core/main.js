@@ -1,4 +1,4 @@
 define(function (require) {
     require("./coreinterface");
-    return Vkaria.Core;
+    return namespace("Isometrica.Core");
 });

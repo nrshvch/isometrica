@@ -1,5 +1,8 @@
 define(function (require) {
     var EventManager = require("lib/eventmanager");
+
+    namespace("Isometrica.Engine").Component = Component;
+
     /**
      * @constructor
      */

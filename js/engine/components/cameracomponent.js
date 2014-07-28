@@ -1,4 +1,10 @@
-define(["../lib/gl-matrix", "../Component", "../lib/BoundingBox", "../lib/aabb"], function (glMatrix, Component, BoundingBox, AABB) {
+define(function(require){
+    var Component = require("../Component");
+    var BoundingBox = require("../lib/BoundingBox");
+    var AABB = require("../lib/aabb");
+    var glMatrix = require("../../vendor/gl-matrix");
+
+    namespace("Isometrica.Engine").CameraComponent = CameraComponent;
 
     /**
      * @constructor

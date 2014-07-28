@@ -1,7 +1,13 @@
-define({
-    noLayerDepthSortingMask: 0,
-    noLayerClearMask: 0,
-    layersCount: 1,
-    useOctree: false,
-    renderOctree: false
+define(function(require) {
+    var Engine = namespace("Isometrica.Engine");
+
+    Engine.Config = {
+        noLayerDepthSortingMask: 0,
+        noLayerClearMask: 0,
+        layersCount: 1,
+        useOctree: false,
+        renderOctree: false
+    };
+
+    return Engine.Config;
 });

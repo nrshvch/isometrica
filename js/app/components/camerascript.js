@@ -1,5 +1,6 @@
 define(function (require) {
     var engine = require("engine");
+    var glMatrix = require("vendor/gl-matrix")
 
     function CameraScript() {
         engine.Component.call(this);
@@ -178,7 +179,7 @@ define(function (require) {
     };
 
     CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
-        var vec3 = engine.glMatrix.vec3,
+        var vec3 = glMatrix.vec3,
             gameObjects = this.gameObject.world.retrieve(this.gameObject),
             len = gameObjects.length,
             gameObject,

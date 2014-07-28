@@ -9,6 +9,7 @@ define(function (require) {
     var engine = require("engine"),
         RenderLayer = require("lib/renderlayer"),
         SmokeSource = require("app/components/smokesource"),
+        Config = require("./config");
         BuildingState = require("lib/buildingstate");
 
     function BuildingView() {
@@ -26,8 +27,8 @@ define(function (require) {
         var b = this.building;
         if (b !== null && b.staticData !== null) {
             var staticData = b.staticData,
-                tileSize = engine.config.tileSize,
-                tileZStep = engine.config.tileZStep;
+                tileSize = Config.tileSize,
+                tileZStep = Config.tileZStep;
 
             //clear old GOs
             var children = this.gameObject.transform.children,

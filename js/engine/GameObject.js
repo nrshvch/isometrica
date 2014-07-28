@@ -1,4 +1,8 @@
-define(['./components/TransformComponent'], function (Transform) {
+define(function (require) {
+    var Transform = require("./components/TransformComponent");
+
+    namespace("Isometrica.Engine").GameObject = GameObject;
+
     /**
      * Base object
      * @constructor
@@ -17,6 +21,8 @@ define(['./components/TransformComponent'], function (Transform) {
             self.tick();
         }
     }
+
+
 
     var p = GameObject.prototype;
 

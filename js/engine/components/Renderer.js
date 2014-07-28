@@ -8,8 +8,10 @@
 define(function (require) {
     var Component = require("./../Component");
     var vec3Buffer1 = new Float32Array(3);
-    var glMatrix = require("../lib/gl-matrix");
+    var glMatrix = require("../../vendor/gl-matrix");
     var Vec3 = glMatrix.vec3;
+
+    namespace("Isometrica.Engine").Renderer = Renderer;
 
     function Renderer(){
         Component.call(this);

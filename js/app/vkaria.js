@@ -15,7 +15,9 @@ define(function (require) {
         CameraScript = require("./components/camerascript"),
         UIManager = require("ui"),
         RenderLayer = require("lib/renderlayer"),
-        Terrain = require("./terrain");
+        Terrain = require("./terrain"),
+        Config = require("./config");
+
 
     function Vkaria() {
         // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -37,26 +39,21 @@ define(function (require) {
         this.logicInterface = new Core.CoreInterface();   //rename to core
         this.core = this.logicInterface;
 
-        this.config = {
-            tileSize: 45.255,
-            tileZStep: 9.238,
-            //chunkSize: (window.matchMedia("handheld").matches ? 8 : 24)
-            chunkSize: (window.matchMedia("(max-width: 800px)").matches ? 8 : 24)
-        };
+        this.config = Config;
 
         //alert(window.matchMedia("(max-width: 800px)").matches)
         //DO NOT USE engine.config for game-specific use! USE vkaria.config instead.
         //entries below are left for compatibility purposes, temporally.
         //custom config entries
-        engine.config["tileSize"] = 45.255;
-        engine.config["tileZStep"] = 9.238;
+        //engine.config["tileSize"] = 45.255;
+        //engine.config["tileZStep"] = 9.238;
 
         //TODO there should be renderer layers and logical layers, and tags too
         //configure layers (render layers)
         vkaria.layers = RenderLayer;
-        engine.config.layersCount = 5;
-        engine.config.noLayerDepthSortingMask = 3;
-        engine.config.noLayerClearMask = 0;
+        engine.Config.layersCount = 5;
+        engine.Config.noLayerDepthSortingMask = 3;
+        engine.Config.noLayerClearMask = 0;
 
         //assets
         this.assets = new engine.AssetManager();
@@ -102,7 +99,7 @@ define(function (require) {
         this.camera = new engine.Camera("mainCamera");
         this.camera.addComponent(new CameraScript());
         this.camera.addComponent(new PlayerScript());
-        this.game.logic.world.addGameObject(this.camera);
+        this.game.scene.addGameObject(this.camera);
 
         this.logicInterface.start(); //rename to core
 

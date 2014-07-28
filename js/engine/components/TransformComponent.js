@@ -1,8 +1,10 @@
 define(function (require) {
     var Component = require("../Component");
-    var glMatrix = require("../lib/gl-matrix");
+    var glMatrix = require("../../vendor/gl-matrix");
     var mat4 = glMatrix.mat4;
     var vec3 = glMatrix.vec3;
+
+    namespace("Isometrica.Engine").TransformComponent = Transform;
 
     /**
      * Create Transform component.

@@ -1,29 +1,44 @@
-define(["./Logic", "./Graphics"], function (Logic, Graphics) {
+define(function (require) {
+    var Graphics = require("./graphics");
+    var Time = require("./time");
+    var Scene = require("./world");
+
+    var Engine = namespace("Isometrica.Engine");
+
     /**
      * @constructor
      */
     function Game() {
-        this.logic = new Logic(this);
+        this.scene = new Scene(this);
         this.graphics = new Graphics(this);
+        this.time = new Time();
+
+        this.logic = {world:this.scene};
 
         var self = this,
-            logic = this.logic,
+            time = this.time,
+            scene = this.scene,
             graphics = this.graphics;
 
         this.tick = function(){
-            logic.tick();
+            time.tick();
+            scene.tick(time);
             graphics.render();
 
             requestAnimFrame(self.tick);
         }
     }
 
+    Engine.Game = Game;
+
     var p = Game.prototype;
+
+    p.time = null;
 
     /**
      * @type {Logic}
      */
-    p.logic = null;
+    p.scene = null;
 
     /**
      * @type {Graphics}
@@ -34,17 +49,10 @@ define(["./Logic", "./Graphics"], function (Logic, Graphics) {
      * @type {void}
      */
     p.run = function () {
-        this.logic.start();
+        this.scene.run();
         this.graphics.start();
         this.tick();
-    }
-
-    p.rafHandler = null;
-
-    /**
-     * @type {void}
-     */
-    //p.mainLoop =
+    };
 
     return Game;
 });
