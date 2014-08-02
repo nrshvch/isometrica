@@ -39,7 +39,7 @@ define(function (require) {
         //Load buildings
         this.onTilesLoaded = function (sender, args) {
             var meta = args.meta;
-            ;
+
             //vkaria.logicInterface.getBuildingData(meta.x, meta.y, meta.w, meta.h, function (response) {
                 //var data = response.data,
                 var data = vkaria.core.world.buildings.getRange(meta.x, meta.y, meta.w, meta.h),
@@ -113,7 +113,7 @@ define(function (require) {
         var building;
         if (this.buildingByXY[x] !== undefined && this.buildingByXY[x][y] !== undefined) {
             building = this.buildingByXY[x][y];
-            Events.fire(this, this.events.buildingRemoved, this, building);
+            Events.fire(this, this.events.buildingRemoved, building);
             building.destroy();
             delete this.buildingByXY[x][y];
         }
@@ -176,7 +176,7 @@ define(function (require) {
             this.updateRoads(x, y);
         }
 
-        Events.fire(this, this.events.buildingAdded, this, building);
+        Events.fire(this, this.events.buildingAdded, building);
 
         return building;
     };

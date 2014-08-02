@@ -32,7 +32,7 @@ define(function(require){
 
     Tool.prototype.click = function(screenX, screenY){
         var gos = this.tools.cameraScript.pickGameObject(screenX, screenY);
-        this.dispatchEvent(this.events.clicked, this, gos);
+        this.dispatchEvent(this.events.clicked, gos);
     };
 
     return Tool;

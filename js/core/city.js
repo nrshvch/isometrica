@@ -10,9 +10,12 @@ define(function (require) {
         ErrorCode = require("lib/errorcode"),
         Laboratory = require("./laboratory"),
         CityStats = require("./citystats"),
+        Terrain = require("./terrain"),
         CityResourceOperations = require("./cityresourceoperations");
 
+    var BuildingData = buildingData;
 
+    namespace("Isometrica.Core").City = City;
 
     function City(root) {
         var world = root;
@@ -20,11 +23,7 @@ define(function (require) {
         this.stats = new CityStats(this);
         this.resourceOperations = new CityResourceOperations(this);
 
-        Events.subscribe(root, root.events.tick, function(sender, args, meta){
-            var self = meta.self;
-            self.stats.CalculateAll();
-            Events.fire(self, self.events.update, self, self);
-        }, {self: this});
+        Events.subscribe(root, root.events.tick, this.onTick, {self: this});
 
         this.timeEstablished = world.time.milliseconds;
 
@@ -58,12 +57,18 @@ define(function (require) {
     City.prototype.events = {
         update: 0
     };
+
     City.prototype.name = "";
     City.prototype.world = null;
     City.prototype.cityHall = null;
     City.prototype.buildings = null;
     City.prototype.position = null;
 
+    City.prototype.onTick = function(sender, args, meta){
+        var self = meta.self;
+        self.stats.CalculateAll();
+        Events.fire(self, self.events.update, self);
+    };
 
     City.prototype.clearTile = function (x, y) {
         this.world.buildings.remove(x,y);
@@ -186,6 +191,39 @@ define(function (require) {
         };
 
         return data;
+    };
+
+    //Area
+    function calcCityTerritory(buildings, outArray){
+        var index, iter;
+
+        for(var i = 0, l = buildings.length; i < l; i++){
+            iter = buildings[i].occupiedTiles();
+            while((index = iter.next()) !== -1)
+                outArray.push(index);
+        }
+        return outArray;
+    }
+
+    function calcCityInfluenceArea(self, buildings, outObj){
+        //get array of influences
+        var building;
+        var influences = [];
+        for(var i = 0, l = buildings.length; i < l; i++){
+            building = buildings[i];
+            var iter = building.occupiedTiles(), index;
+            var radius = BuildingData[building.buildingCode].influenceRadius | 20;
+            while((index = iter.next()) !== -1) {
+                influences[index] = radius;
+            }
+        }
+
+        self.world.influenceMap.setInfluenceArea(self.name, influences);
+        return self.world.influenceMap.getInfluenceArea(self.name);
+    }
+
+    City.prototype.getInfluenceArea = function(){
+        return calcCityInfluenceArea(this, this.buildings);
     };
 
     return City;

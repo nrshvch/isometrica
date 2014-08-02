@@ -5,7 +5,6 @@ define(function (require) {
         BuildingClassCode = require("lib/buildingclasscode"),
         BuildingData = require('lib/buildingdata'),
         Events = require("lib/events"),
-        Time = require("lib/time"),
         ResearchState = require("lib/researchstate"),
         ResearchData = require("lib/researchdata"),
         ResearchDirection = require("lib/researchdirection");
@@ -74,8 +73,8 @@ define(function (require) {
         var research = this.dirData[direction];
 
         research.state = ResearchState.running;
-        research.startTime = Time.now;
-        research.endTime = Time.now + ( research.time * (1 - progress) );
+        research.startTime = Date.now();
+        research.endTime = Date.now() + ( research.time * (1 - progress) );
 
         this.queue.push(research);
     };
@@ -85,7 +84,7 @@ define(function (require) {
 
         if (research.state === ResearchState.available) {
             this._research(direction);
-            Events.fire(this,this.events.researchStart, this, research);
+            Events.fire(this,this.events.researchStart, research);
         } else if (research.state === ResearchState.running) {
             throw "Research is already going on!";
             //} else if (research.state === ResearchState.finished) {
@@ -96,7 +95,7 @@ define(function (require) {
     };
 
     Lab.prototype.tick = function () {
-        var now = Time.now;
+        var now = Date.now();
 
         if (this.queue.length !== 0) {
             for (var i = 0, l = this.queue.length, research; i < l; i++) {
@@ -116,7 +115,7 @@ define(function (require) {
                     i--;
                     l--;
 
-                    Events.fire(this,this.events.researchComplete, this, research);
+                    Events.fire(this,this.events.researchComplete, research);
 
                     this._openItems(research.direction, research.level);
                 }else{
@@ -133,7 +132,7 @@ define(function (require) {
 
         for (var key in items) {
             this.researchedItems.push(items[key]);
-            quiet || Events.fire(this,this.events.buildingInvented, this, {
+            quiet || Events.fire(this,this.events.buildingInvented, {
                 buildingCode: items[key]
             });
         }

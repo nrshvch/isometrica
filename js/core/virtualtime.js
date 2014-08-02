@@ -39,16 +39,16 @@ define(function (require) {
     };
 
     VirtualTime.prototype.start = function(){
-        Events.fire(this,this.events.newYear, this, this.now);
-        Events.fire(this,this.events.newMonth, this, this.now);
-        Events.fire(this,this.events.newDay, this, this.now);
+        Events.fire(this,this.events.newYear, this.now);
+        Events.fire(this,this.events.newMonth, this.now);
+        Events.fire(this,this.events.newDay, this.now);
     };
 
     VirtualTime.prototype.setTime = function(now){
         this.now = now;
-        Events.fire(this,this.events.newYear, this, this.now);
-        Events.fire(this,this.events.newMonth, this, this.now);
-        Events.fire(this,this.events.newDay, this, this.now);
+        Events.fire(this,this.events.newYear, this.now);
+        Events.fire(this,this.events.newMonth, this.now);
+        Events.fire(this,this.events.newDay, this.now);
     };
 
     //is supposed to be runned once in a second
@@ -66,15 +66,15 @@ define(function (require) {
         this.monthName = monthNames[this.month - 1];
         this.day = date.getDate();
 
-        Events.fire(this,this.events.newDay, this, this.now);
+        Events.fire(this,this.events.newDay, this.now);
 
         if(this.month !== this.prevMonth){
-            Events.fire(this,this.events.newMonth, this, this.now);
+            Events.fire(this,this.events.newMonth, this.now);
             this.prevMonth = this.month;
         }
 
         if(this.year !== this.prevYear){
-            Events.fire(this,this.events.newYear, this, this.now);
+            Events.fire(this,this.events.newYear, this.now);
             this.prevYear = this.year;
             this.daysInYear = daysInYear(this.year);
         }

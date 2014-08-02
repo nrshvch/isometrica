@@ -1,9 +1,10 @@
 /**
  * Created by User on 13.07.2014.
  */
-define(function(require){
+define(function (require) {
     var Tile = require("./gameObjects/tile");
     var TerrainType = require('lib/terraintype');
+    var Config = require("./config");
 
     var grass = {
         2222: 'grass/2222.png',
@@ -53,34 +54,34 @@ define(function(require){
         2222: "water/2222.png"
     };
 
-    function Terrain(){
+    function Terrain() {
         this.tiles = [];
         this.gos = [];
         this.pool = [];
     }
 
-    function CreateTile(self){
-        if(self.pool.length>0) {
+    function CreateTile(self) {
+        if (self.pool.length > 0) {
             return self.pool.pop();
-        }else {
+        } else {
             return new Tile();
         }
     }
 
-    Terrain.prototype.clear = function(x0,y0,w,l){
+    Terrain.prototype.clear = function (x0, y0, w, l) {
         var x1 = x0 + w,
             y1 = y0 + l;
 
-        for(var x = x0; x < x1; x++){
-            for(var y = y0; y < y1; y++){
+        for (var x = x0; x < x1; x++) {
+            for (var y = y0; y < y1; y++) {
                 var index = y << 16 ^ x;
                 var tile = this.tiles[index];
-                if(tile) {
-                   //tile.destroy();
+                if (tile) {
+                    //tile.destroy();
                     vkaria.game.logic.world.removeGameObject(tile);
                     this.pool.push(tile);
                     delete this.tiles[index];
-                    delete this.gos[t.instanceId];
+                    delete this.gos[tile.instanceId];
                 }
             }
         }
@@ -93,7 +94,7 @@ define(function(require){
      * @param y
      * @returns {number}
      */
-    function calcSpriteCode(self, x,y){
+    function calcSpriteCode(self, x, y) {
         var terrain = vkaria.core.world.terrain;
         var terrainType = terrain.getTerrainType(x, y);
 
@@ -107,52 +108,113 @@ define(function(require){
         return 2000 + (z1 - z0 + 2) * 100 + (z2 - z0 + 2) * 10 + (z3 - z0 + 2);
     }
 
-    Terrain.prototype.draw = function(x0,y0,w,l){
+    var routine = function (iter,self) {
+        var i = 0;
+        while (i++ < 128) {
+
+            var index = iter.next();
+
+            if (index === -1)
+                return -1;
+
+            var coreTerrain = vkaria.core.world.terrain;
+
+            var x = index & 0xffff;
+            var y = index >>> 16;
+
+            if (!self.tiles[index]) {
+                var t = CreateTile(self);
+
+                var gps = coreTerrain.getGridPoints(x, y);
+
+                //var slope = coreTerrain.calcSlopeId(x,y);
+                var slope = calcSpriteCode(self, x, y);
+                var type = coreTerrain.getTerrainType(x, y);
+                var sprite = null;
+
+                var z = 0;
+
+                if (type !== TerrainType.water)
+                    z = gps[2]; //2 is west, most left gridpoint, it should be gps[0], but sprites are drawn with pivot point being most left gridpoint
+
+                t.transform.setPosition(
+                        x * Config.tileSize,
+                        z * Config.tileZStep,
+                        y * Config.tileSize
+                );
+
+                if (type === TerrainType.grass)
+                    sprite = vkaria.sprites.getSprite(grass[slope.toString()]);
+                else if (type === TerrainType.shore)
+                    sprite = vkaria.sprites.getSprite(shore[slope.toString()]);
+                else
+                    sprite = vkaria.sprites.getSprite(water["2222"]);
+
+                t.renderer.setSprite(sprite);
+                vkaria.game.logic.world.addGameObject(t);
+
+                self.tiles[index] = t;
+                self.gos[t.instanceId] = index;
+            }
+        }
+
+        return 0;
+    };
+
+    Terrain.prototype.draw0 = function (x0, y0, w, l) {
+        var iter = new Isometrica.Core.Terrain.TerrainIterator(x0, y0, w, l);
+
+        Isometrica.Engine.Coroutine.startCoroutine(routine, iter, this);
+
+    };
+
+    Terrain.prototype.draw = function (x0, y0, w, l) {
         var coreTerrain = vkaria.core.world.terrain;
 
-        var x1 = x0 + w,
-            y1 = y0 + l;
+        var iter = new Isometrica.Core.Terrain.TerrainIterator(x0, y0, w, l);
+        var index;
 
-        for(var x = x0; x < x1; x++){
-            for(var y = y0; y < y1; y++){
-                var index = y << 16 ^ x;
-                if(!this.tiles[index]) {
-                    var t = CreateTile(this);
+        while ((index = iter.next()) !== -1) {
+            var x = index & 0xffff;
+            var y = index >>> 16;
 
-                    var gps = coreTerrain.getGridPoints(x,y);
+            if (!this.tiles[index]) {
+                var t = CreateTile(this);
 
-                    //var slope = coreTerrain.calcSlopeId(x,y);
-                    var slope = calcSpriteCode(this, x,y);
-                    var type = coreTerrain.getTerrainType(x,y);
-                    var sprite = null;
+                var gps = coreTerrain.getGridPoints(x, y);
 
-                    var z = 0;
+                //var slope = coreTerrain.calcSlopeId(x,y);
+                var slope = calcSpriteCode(this, x, y);
+                var type = coreTerrain.getTerrainType(x, y);
+                var sprite = null;
 
-                    if(type !== TerrainType.water)
-                        z = gps[2]; //2 is west, most left gridpoint, it should be gps[0], but sprites are drawn with pivot point being most left gridpoint
+                var z = 0;
 
-                    t.transform.setPosition(
-                            x * vkaria.config.tileSize,
-                            z * vkaria.config.tileZStep,
-                            y * vkaria.config.tileSize
-                    );
+                if (type !== TerrainType.water)
+                    z = gps[2]; //2 is west, most left gridpoint, it should be gps[0], but sprites are drawn with pivot point being most left gridpoint
 
-                    if(type === TerrainType.grass)
-                        sprite = vkaria.sprites.getSprite(grass[slope.toString()]);
-                    else if(type === TerrainType.shore)
-                        sprite = vkaria.sprites.getSprite(shore[slope.toString()]);
-                    else
-                        sprite = vkaria.sprites.getSprite(water["2222"]);
+                t.transform.setPosition(
+                        x * Config.tileSize,
+                        z * Config.tileZStep,
+                        y * Config.tileSize
+                );
 
-                    t.renderer.setSprite(sprite);
-                    vkaria.game.logic.world.addGameObject(t);
+                if (type === TerrainType.grass)
+                    sprite = vkaria.sprites.getSprite(grass[slope.toString()]);
+                else if (type === TerrainType.shore)
+                    sprite = vkaria.sprites.getSprite(shore[slope.toString()]);
+                else
+                    sprite = vkaria.sprites.getSprite(water["2222"]);
 
-                    this.tiles[index] = t;
-                    this.gos[t.instanceId] = index;
-                }
+                t.renderer.setSprite(sprite);
+                vkaria.game.logic.world.addGameObject(t);
+
+                this.tiles[index] = t;
+                this.gos[t.instanceId] = index;
             }
         }
     };
+
 
     /**
      * DEPRECATED
@@ -161,13 +223,13 @@ define(function(require){
      * @param y
      * @returns {*}
      */
-    Terrain.prototype.getHeight = function(x,y){
-        return vkaria.core.world.terrain.getGridPoints(x,y)[1];
+    Terrain.prototype.getHeight = function (x, y) {
+        return vkaria.core.world.terrain.getGridPoints(x, y)[1];
     };
 
-    Terrain.prototype.getTile = function(x,y){
-        var t = this.tiles[y<<16^x];
-        if(t != undefined)
+    Terrain.prototype.getTile = function (x, y) {
+        var t = this.tiles[y << 16 ^ x];
+        if (t != undefined)
             return t;
         else
             return null;
@@ -176,9 +238,9 @@ define(function(require){
     /**
      * Find tile coordinates by gameObject
      */
-    Terrain.prototype.getCoordinates = function(go){
+    Terrain.prototype.getCoordinates = function (go) {
         var g = this.gos[go.instanceId];
-        if(g !== undefined){
+        if (g !== undefined) {
             return {
                 x: g & 0xFFFF,
                 y: g >>> 16

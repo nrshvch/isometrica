@@ -96,16 +96,17 @@ define(function (require) {
     }
 
     function calculateRatings(cityStats){
-        var tilesCount = 0;
+        var tilesCount = 0, building, sizeX, sizeY, baseX, baseY, x, y, i, l;
         if (cityStats.city.buildings.length > 0) {
             TileRatings.copy(cityStats.ratings, TileRatings.zero);
             for (var key in cityStats.city.buildings) {
-                var building = cityStats.city.buildings[key];
-                var sizeX = building.data.sizeX,
-                    sizeY = building.data.sizeY,
-                    baseX = building.x, baseY = building.y, x, y;
+                building = cityStats.city.buildings[key];
+                sizeX = building.data.sizeX;
+                sizeY = building.data.sizeY;
+                baseX = building.x;
+                baseY = building.y;
 
-                for (var i = 0, l = sizeX * sizeY; i < l; i++) {
+                for (i = 0, l = sizeX * sizeY; i < l; i++) {
                     tilesCount++;
 
                     x = ((i / sizeY) | 0) + baseX;

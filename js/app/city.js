@@ -57,7 +57,7 @@ define(function (require) {
 
         this.onCityUpdate = function (sender, cityData) {
             self.setData(cityData);
-            self.dispatchEvent(self.events.resourcesUpdate, this, cityData.resources);
+            self.dispatchEvent(self.events.resourcesUpdate, cityData.resources);
         };
 
         this.onBuildingBuilt = function (sender, building) {
@@ -134,7 +134,7 @@ define(function (require) {
     };
 
     City.prototype.rename = function(){
-        this.dispatchEvent(this.events.nameRequired, this, null);
+        this.dispatchEvent(this.events.nameRequired, this);
     };
 
     City.prototype.inputName = function(name){

@@ -555,7 +555,7 @@ vec2.transformMat3 = function(out, a, m) {
  * @returns {vec2} out
  */
 vec2.transformMat4 = function(out, a, m) {
-    var x = a[0], 
+    var x = a[0],
         y = a[1];
     out[0] = m[0] * x + m[4] * y + m[12];
     out[1] = m[1] * x + m[5] * y + m[13];

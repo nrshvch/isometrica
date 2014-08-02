@@ -72,7 +72,7 @@ define(function (require) {
                 }
                 self.cleanChunks();
 
-                Events.fireAsync(self, self.events.loadedTiles,self,response);
+                Events.fire(self, self.events.loadedTiles,response);
             },0);
         };
 
@@ -141,17 +141,19 @@ define(function (require) {
                 cx = centerX + x - 1,
                 cy = centerY + y - 1;
 
+
             if (this.getChunk(cx, cy) === false && cx >= 0 && cy >= 0) {
                 this.makeChunk(cx, cy);
                 vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
                 var s = this;
-                Events.fireAsync(s, s.events.loadedTiles,s,{
+                Events.fire(s, s.events.loadedTiles,{
                     meta: {
                         x: cx * s.chunkSize, y: cy * s.chunkSize, w: s.chunkSize, h: s.chunkSize
                     }
                 });
                 this.cleanChunks();
             }
+
         }
     };
 
@@ -215,7 +217,7 @@ define(function (require) {
             this.chunks[cx][cy] = undefined;
         }
 
-        Events.fire(this, this.events.removedTiles, this, {
+        Events.fire(this, this.events.removedTiles, {
             x: cx * this.chunkSize,
             y: cy * this.chunkSize,
             w: this.chunkSize,

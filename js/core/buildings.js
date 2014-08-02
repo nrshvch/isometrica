@@ -64,7 +64,7 @@ define(function (require) {
 
     function onBuildingUpdated(sender, args, self) {
         var building = sender;
-        Events.fire(self, self.events.buildingUpdated, self, building);
+        Events.fire(self, self.events.buildingUpdated, building);
     }
 
     /**
@@ -214,7 +214,7 @@ define(function (require) {
 
             onSuccess(building);
 
-            Events.fire(this, this.events.buildingBuilt, this, building);
+            Events.fire(this, this.events.buildingBuilt, building);
         } else {
             onError(test.error);
         }
@@ -238,7 +238,7 @@ define(function (require) {
 
 
             //this.dispatchEvent(this.events.buildingRemoved, building);
-            Events.fire(this, this.events.buildingRemoved, this, building);
+            Events.fire(this, this.events.buildingRemoved, building);
 
             return true;
         }

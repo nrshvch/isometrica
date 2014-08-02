@@ -41,13 +41,6 @@ define(function (require) {
 
         this.config = Config;
 
-        //alert(window.matchMedia("(max-width: 800px)").matches)
-        //DO NOT USE engine.config for game-specific use! USE vkaria.config instead.
-        //entries below are left for compatibility purposes, temporally.
-        //custom config entries
-        //engine.config["tileSize"] = 45.255;
-        //engine.config["tileZStep"] = 9.238;
-
         //TODO there should be renderer layers and logical layers, and tags too
         //configure layers (render layers)
         vkaria.layers = RenderLayer;
@@ -115,7 +108,7 @@ define(function (require) {
 
         this.uiMgr.start();
 
-
+          /*
         window.t = require("./gameObjects/Trolley");
         setInterval(function () {
 
@@ -127,6 +120,7 @@ define(function (require) {
                 b.entity.setPath(pa);
             }
         }, 1000);
+        */
 
     };
 

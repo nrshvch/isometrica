@@ -68,7 +68,7 @@ define(function (require) {
                     for (var y = y0; y <= y1; y++)
                         this.selectedTiles.push({x: x, y: y});
 
-                this.dispatchEvent(this.events.awaitingConfirmation, this, null);
+                this.dispatchEvent(this.events.awaitingConfirmation, this);
             }
         }
 
@@ -128,7 +128,7 @@ define(function (require) {
                 this.selectedTiles = [
                     tile
                 ];
-                this.dispatchEvent(this.events.awaitingConfirmation, this, null);
+                this.dispatchEvent(this.events.awaitingConfirmation, this);
             } else
                 vkariaApp.hiliteMan.disableAll();
         }
@@ -187,14 +187,14 @@ define(function (require) {
         this.disableHiliters();
         //vkariaApp.hiliteMan.disable();
 
-        this.dispatchEvent(this.events.receivedConfirmation, this, null);
+        this.dispatchEvent(this.events.receivedConfirmation, this);
     };
 
     Tool.prototype.cancel = function () {
         this.selectedTiles = [];
         this.disableHiliters();
 
-        this.dispatchEvent(this.events.receivedConfirmation, this, null);
+        this.dispatchEvent(this.events.receivedConfirmation, this);
     };
 
     Tool.prototype.select = function () {

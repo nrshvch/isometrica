@@ -21,11 +21,11 @@ define(function (require) {
             graphics = this.graphics;
 
         this.tick = function(){
+            requestAnimFrame(self.tick);
+
             time.tick();
             scene.tick(time);
             graphics.render();
-
-            requestAnimFrame(self.tick);
         }
     }
 

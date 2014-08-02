@@ -3,7 +3,6 @@
 define(function (require) {
     var Simplex = require("./vendor/simplex-noise"),
         Events = require("lib/events"),
-        Time = require("lib/time"),
         Terrain = require("./terrain"),
         Buildings = require("./buildings"),
         City = require("./city"),
@@ -12,7 +11,8 @@ define(function (require) {
         VTime = require("./virtualtime"),
         AmbientService = require("./ambient"),
         RatingsMan = require("./tileratingsmanager"),
-        Config = require("./config");
+        Config = require("./config"),
+        InfluenceMap = require("./influencemap");
 
     function World() {
         this.simplex = new Simplex([151, 160, 137, 91, 90, 15,
@@ -43,6 +43,8 @@ define(function (require) {
         this.ambientService = new AmbientService(this);
 
         this.ratingsman = new RatingsMan(this);
+
+        this.influenceMap = new InfluenceMap(this);
 
         var self = this;
         setInterval(function(){

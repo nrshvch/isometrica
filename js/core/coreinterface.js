@@ -24,7 +24,7 @@ define(function (require) {
             Events.subscribe(city.lab, city.lab.events.researchStart, onResearchStart, self);
             Events.subscribe(city.lab, city.lab.events.buildingInvented, onBuildingInvented, self);
 
-            Events.fire(self, ResponseCode.cityEstablished, self, city.toJSON());
+            Events.fire(self, ResponseCode.cityEstablished, city.toJSON());
         }, this);
     }
 
@@ -34,7 +34,7 @@ define(function (require) {
 
     //region Event handlers
     function onTimeAdvance(sender, args, self) {
-        Events.fireAsync(self, ResponseCode.timeAdvanced, self, {
+        Events.fire(self, ResponseCode.timeAdvanced, {
             day: sender.day,
             month: sender.month,
             monthName: sender.monthName,
@@ -43,35 +43,35 @@ define(function (require) {
     }
 
     function onBuildingBuilt(sender, building, self) {
-        Events.fireAsync(self, ResponseCode.buildingBuilt, self, building);
+        Events.fire(self, ResponseCode.buildingBuilt, building);
     }
 
     function onBuildingUpdated(sender, building, self) {
-        Events.fireAsync(self, ResponseCode.buildingUpdated, self, building);
+        Events.fire(self, ResponseCode.buildingUpdated, building);
     }
 
     function onBuildingRemoved(sender, building, self) {
-        Events.fireAsync(self, ResponseCode.buildingRemoved, self, building);
+        Events.fire(self, ResponseCode.buildingRemoved, building);
     }
 
     function onCityUpdate(sender, args, self) {
         var city = sender;
-        Events.fireAsync(self, ResponseCode.cityUpdate, self, city.toJSON());
+        Events.fire(self, ResponseCode.cityUpdate, city.toJSON());
     }
 
     function onResearchStart(sender, args, self) {
-        Events.fireAsync(self, ResponseCode.researchStart, self, args);
+        Events.fire(self, ResponseCode.researchStart, args);
     }
 
     function onResearchComplete(sender, args, self) {
-        Events.fireAsync(self, ResponseCode.researchStart, self, args);
-        Events.fireAsync(self, ResponseCode.message, self, {
+        Events.fire(self, ResponseCode.researchStart, args);
+        Events.fire(self, ResponseCode.message, {
             text: "test test test"
         });
     }
 
     function onBuildingInvented(sender, args, self) {
-        Events.fireAsync(self, ResponseCode.buildingInvented, self, args);
+        Events.fire(self, ResponseCode.buildingInvented, args);
     }
 
     //endregion
@@ -80,7 +80,7 @@ define(function (require) {
 
         this.world.start();
 
-        var save = localStorage.saveGame;
+        //var save = localStorage.saveGame;
 
         // if(save)
         //  this.world.load(JSON.parse(save));
@@ -88,9 +88,11 @@ define(function (require) {
         //save each 30secs
         var world = this.world;
         var self = this;
+        /*
         setInterval(function () {
             localStorage.saveGame = JSON.stringify(world.save());
         }, 30000);
+        */
     };
 
     CoreInterface.prototype.clearTile = function (x, y, callback) {

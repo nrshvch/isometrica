@@ -4,20 +4,20 @@
 define(function(require){
     var Coroutine = namespace("Isometrica.Engine.Coroutine");
 
-    function CoroutineIterator(routine, args){
-        this.next = function(){
-            return routine(args);
-        }
-    }
-
     var coroutineId = 0;
     var coroutines = {};
 
-    Coroutine.startCoroutine = function(routine, args){
-        var coroutine = new CoroutineIterator(routine, args);
+    /**
+     *
+     * @param routine
+     * @param {...*} Optional parameters that will be passed to routine
+     * @returns {number}
+     */
+    Coroutine.startCoroutine = function(routine){
         var cid = coroutineId++;
+        var args = Array.prototype.slice.call(arguments,1);
         var timerHandler = function(){
-            var delay = coroutine.next();
+            var delay = routine.apply(this,args);
             if(delay >= 0)
                 coroutines[cid] = setTimeout(timerHandler,delay);
         };

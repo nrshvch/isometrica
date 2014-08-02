@@ -1,5 +1,6 @@
 define(function (require) {
     var engine = require("engine");
+    var glMatrix = require("vendor/gl-matrix");
 
     function Component() {
         engine.Component.call(this);
@@ -22,7 +23,7 @@ define(function (require) {
 
             var c = this.path[this.currentTarget];
             var p = this.gameObject.transform.getPosition();
-            var d = engine.glMatrix.vec3.subtract([], c, p);
+            var d = glMatrix.vec3.subtract([], c, p);
 
             var dir0 = d[0],
                 dir1 = d[2];
@@ -38,10 +39,10 @@ define(function (require) {
 
             //console.log(p, engine.glMatrix.vec3.sqrLen(d));
 
-            if (engine.glMatrix.vec3.sqrLen(d) > 1) {
+            if (glMatrix.vec3.sqrLen(d) > 1) {
 
-                engine.glMatrix.vec3.normalize(d, d);
-                engine.glMatrix.vec3.scale(d,d,2);
+                glMatrix.vec3.normalize(d, d);
+                glMatrix.vec3.scale(d,d,2);
 
                 this.gameObject.transform.translate(d[0], d[1], d[2], "world");
             } else {

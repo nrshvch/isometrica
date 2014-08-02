@@ -27,7 +27,7 @@ define(function (require) {
                 for (var y = y0; y <= y1; y++)
                     this.selectedTiles.push({x: x, y: y});
 
-            this.dispatchEvent(this.events.awaitingConfirmation, this, null);
+            this.dispatchEvent(this.events.awaitingConfirmation, this);
         }
 
         ToolBase.prototype.dragEnd.call(this, screenX, screenY);
@@ -75,7 +75,7 @@ define(function (require) {
                 borderWidth: 2
             })];
 
-            this.dispatchEvent(this.events.awaitingConfirmation, this, null);
+            this.dispatchEvent(this.events.awaitingConfirmation, this);
         }
     };
 
@@ -90,14 +90,14 @@ define(function (require) {
         this.selectedTiles = [];
         this.disableHiliters();
 
-        this.dispatchEvent(this.events.receivedConfirmation, this, null);
+        this.dispatchEvent(this.events.receivedConfirmation, this);
     };
 
     Tool.prototype.cancel = function () {
         this.selectedTiles = [];
         this.disableHiliters();
 
-        this.dispatchEvent(this.events.receivedConfirmation, this, null);
+        this.dispatchEvent(this.events.receivedConfirmation, this);
     };
 
     Tool.prototype.deselect = function () {

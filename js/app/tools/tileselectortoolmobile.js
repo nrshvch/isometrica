@@ -35,15 +35,15 @@ define(function(require){
                 borderWidth: 2
             });
             this.selectedTile = tile;
-            this.dispatchEvent(this.events.awaitingConfirmation, this, null);
+            this.dispatchEvent(this.events.awaitingConfirmation, this);
         }
     };
 
     Tool.prototype.confirm = function(){
         if(this.selectedTile !== null)
-            this.dispatchEvent(this.events.tileSelected, this, this.selectedTile);
+            this.dispatchEvent(this.events.tileSelected, this.selectedTile);
 
-        this.dispatchEvent(this.events.receivedConfirmation, this, null);
+        this.dispatchEvent(this.events.receivedConfirmation, this);
 
         vkariaApp.hiliteMan.disable();
     };
@@ -51,7 +51,7 @@ define(function(require){
     Tool.prototype.cancel = function(){
         this.selectedTile = null;
         vkariaApp.hiliteMan.disable();
-        this.dispatchEvent(this.events.receivedConfirmation, this, null);
+        this.dispatchEvent(this.events.receivedConfirmation, this);
     };
 
     Tool.prototype.deselect = function(){

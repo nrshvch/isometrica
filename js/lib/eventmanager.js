@@ -13,8 +13,8 @@ define(function (require) {
         return Events.subscribe(this, eventCode, callback, null);
     }
 
-    p.dispatchEvent = function (eventCode, sender, eventArgs) {
-        Events.fire(this, eventCode, sender, eventArgs);
+    p.dispatchEvent = function (eventCode, eventArgs) {
+        Events.fire(this, eventCode, eventArgs);
     }
 
     p.removeEventListener = function (eventCode, callback) {

@@ -61,7 +61,7 @@ define(function (require) {
 
                         part.addComponent(sprite);
                         this.gameObject.transform.addChild(part.transform);
-                        part.transform.translate(x * engine.config.tileSize, 0, y * engine.config.tileSize);
+                        part.transform.translate(x * Config.tileSize, 0, y * Config.tileSize);
                     }
                 }
             } else if (b.data.state === BuildingState.ready) {

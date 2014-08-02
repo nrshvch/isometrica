@@ -149,7 +149,7 @@ define(function (require) {
             }
             return items;
         }
-        return this.gameObjects.slice(0);
+        return this.gameObjects;//.slice(0); //slice(0) pollutes heap and does a sawtooth with GC
     };
 
     p.run = function(){

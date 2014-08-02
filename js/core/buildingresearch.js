@@ -42,8 +42,8 @@ define(function (require) {
             research.state = ResearchState.running;
             research.startTime = this.world.now;
             this.queue.push(research);
-            this.dispatchEvent(this.events.researchUpdate, this, this.info[buildingCode]);
-            this.dispatchEvent(this.events.researchStart, this, this.info[buildingCode]);
+            this.dispatchEvent(this.events.researchUpdate, this.info[buildingCode]);
+            this.dispatchEvent(this.events.researchStart, this.info[buildingCode]);
             return true;
         }
         return false;
@@ -68,7 +68,7 @@ define(function (require) {
                     i--;
                     l--;
 
-                    this.dispatchEvent(this.events.researchComplete, this, this.info[research.buildingCode]);
+                    this.dispatchEvent(this.events.researchComplete, this.info[research.buildingCode]);
                 }
             }
         }

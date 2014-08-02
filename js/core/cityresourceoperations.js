@@ -20,7 +20,7 @@ define(function(require){
         if (helpers.isNumber(amount)) {
             this.resources[Resources.ResourceCode.money] += amount;
 
-            Events.fire(this.city, this.city.events.update, this.city, null);
+            Events.fire(this.city, this.city.events.update, null);
 
             return true;
         }
@@ -31,7 +31,7 @@ define(function(require){
         if (helpers.isNumber(amount, 0, this.resources[Resources.ResourceCode.money])) {
             this.resources[Resources.ResourceCode.money] -= amount;
 
-            Events.fire(this.city, this.city.events.update, this.city, null);
+            Events.fire(this.city, this.city.events.update, null);
 
             return true;
         }
@@ -40,12 +40,12 @@ define(function(require){
 
     ResourceOperations.prototype.add = function(resources){
         Resources.add(this.resources, this.resources, resources);
-        Events.fire(this.city, this.city.events.update, this.city, null);
+        Events.fire(this.city, this.city.events.update, null);
     };
 
     ResourceOperations.prototype.sub = function(resources){
         Resources.sub(this.resources, this.resources, resources);
-        Events.fire(this.city, this.city.events.update, this.city, null);
+        Events.fire(this.city, this.city.events.update, null);
     };
 
     ResourceOperations.prototype.buy = function(resourceCode, amount){

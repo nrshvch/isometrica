@@ -29,11 +29,13 @@ define(function (require) {
         };
 
     function render(self, camera, viewport) {
+        viewport.context.fillRect(0,0,100,100);
+
         var gameObjects = camera.world.retrieve(camera),
             gameObjectsCount = gameObjects.length,
             layersCount = config.layersCount,
             renderer, renderers, renderersCount,
-            i, j, ctx;
+            i, j, ctx, go;
 
         self.M = camera.camera.getWorldToScreen();
         self.V = camera.camera.getWorldToViewport();
@@ -41,9 +43,10 @@ define(function (require) {
         viewport.context.clearRect(0, 0, viewport.width, viewport.height);
 
         for (i = 0; i < gameObjectsCount; i++){
-            var go = gameObjects[i];
-            if(go.renderer !== undefined && go.renderer.enabled && go.renderer.cullingTest(viewport, self))
+            go = gameObjects[i];
+            if(go.renderer !== undefined && go.renderer.enabled && go.renderer.cullingTest(viewport, self)) {
                 self.layerBuffers[go.renderer.layer].push(go.renderer)
+            }
         }
 
         for (i = 0; i < layersCount; i++) {
@@ -78,6 +81,7 @@ define(function (require) {
 
     p.graphics = null;
 
+    /*
     p.render = function (camera, viewport) {
         var gameObjects = camera.world.retrieve(camera),
             gameObjectsCount = gameObjects.length,
@@ -120,6 +124,7 @@ define(function (require) {
         //this.renderOctreeNode(camera.world.octree.root, viewport.context);
 
     };
+    */
                            /*
 
     p.renderAxis = function (gameObject, ctx) {

@@ -109,12 +109,12 @@ define(function(require){
 
     Tools.prototype.disableTool = function (toolCode) {
         this.disabledTools |= 1 << toolCode;
-        this.dispatchEvent(this.events.toolDisabled, this, toolCode);
+        this.dispatchEvent(this.events.toolDisabled, toolCode);
     };
 
     Tools.prototype.enableTool = function (toolCode) {
         this.disabledTools &= ~(1 << toolCode);
-        this.dispatchEvent(this.events.toolEnabled, this, toolCode);
+        this.dispatchEvent(this.events.toolEnabled, toolCode);
     };
 
     Tools.prototype.disableAll = function(){

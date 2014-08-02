@@ -7,7 +7,30 @@ define(function (require) {
 
     //Vkaria.Core.Terrain.CalcSlope(gridpoints)
 
-    var Core = namespace("Isometrica.Core");
+    function TerrainIterator(x0, y0, w, l) {
+        this.x0 = x0;
+        this.y0 = y0;
+        this.w = w;
+        this.l = l;
+        this.count = w * l;
+        this.i = 0;
+    }
+
+    TerrainIterator.prototype.next = function(){
+        var i = this.i++;
+
+        if(i >= this.count)
+            return -1;
+
+        var w = this.w;
+        var y = (i / w) | 0;
+        var x = i - y*w;
+
+        return (this.y0 + y) << 16 ^ (this.x0 + x);
+    };
+
+    namespace("Isometrica.Core").Terrain = Terrain;
+    Terrain.TerrainIterator = TerrainIterator;
 
         var simplex = new Simplex([151, 160, 137, 91, 90, 15,
             131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
@@ -52,7 +75,6 @@ define(function (require) {
             this.gridPoints = [];
         }
 
-        Core.Terrain = Terrain;
 
         Terrain.prototype.getGridPoints = function (x, y) {
             return [
@@ -153,15 +175,16 @@ define(function (require) {
             return null;
         };
 
-        Terrain.prototype.convertToCoordinates = function(index){
-            return {
-                x: index & 0xFFFF,
-                y: index >>> 16
-            }
+        Terrain.convertToIndex = function(x,y){
+            return y << 16 ^ x;
         };
 
-        Terrain.prototype.convertToIndex = function(x,y){
-            return y << 16 ^ x;
+        Terrain.extractX = function(index){
+            return index & 0xFFFF;
+        };
+
+        Terrain.extractY = function(index){
+             return index >>> 16;
         };
 
         return Terrain;

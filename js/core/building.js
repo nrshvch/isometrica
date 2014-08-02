@@ -12,13 +12,10 @@ define(function (require) {
         Events = require("lib/events"),
         BuildingClassCode = require("lib/buildingclasscode"),
         buildingData = require("lib/buildingdata"),
-        Time = require("lib/time"),
-        ResourceCode = require("lib/resourcecode");
+        ResourceCode = require("lib/resourcecode"),
+        Terrain = require("./terrain");
 
-    var dateBuffer1 = new Date(),
-        dateBuffer2 = new Date(),
-        resourcesBuffer1 = Resources.create();
-
+    var BuildingData = buildingData;
 
     function Building(buildingCode, world) {
         this.id = Building.lastId++;
@@ -29,6 +26,7 @@ define(function (require) {
         this.demanding = Resources.create();
 
         this.data = buildingData[buildingCode];
+        this.buildingCode = buildingCode;
 
         this.state = this.data.constructionTime === 0 ? BuildingState.ready : BuildingState.underConstruction;
 
@@ -38,6 +36,7 @@ define(function (require) {
 
     Building.lastId = 0;
 
+    Building.prototype.buildingCode = -1;
     Building.prototype.world = null;
     Building.prototype.id = null;
     Building.prototype.x = null;
@@ -49,9 +48,7 @@ define(function (require) {
     Building.prototype.rotation = 0;
     Building.prototype.timeCreated = null;  //real time
     Building.prototype.createdAt = null; //game time
-    //Building.prototype.condition = 1;
     Building.prototype.data = null;
-    Building.prototype.canGather = false; //indicates that there is resource vein near to gather from
     Building.prototype.events = {
         update: 0
     };
@@ -67,15 +64,8 @@ define(function (require) {
         this.x = x;
         this.y = y;
 
-        this.timeCreated = this.timeCreated || Time.now;
+        this.timeCreated = this.timeCreated || Date.now();
         this.createdAt = this.createdAt || this.world.time.now;
-
-        //set canGather flag, so we know if there is a resource
-        /*
-        if (this.data.gather !== null) {
-            this.canGather = (tile.resource === this.data.gather) || this.data.gather == ResourceCode.wood;
-        }
-        */
     };
 
     Building.prototype.setSubPosition = function (subX, subY) {
@@ -122,9 +112,9 @@ define(function (require) {
     };
 
     Building.prototype.tick = function () {
-        if (this.state === BuildingState.underConstruction && this.timeCreated + this.data.constructionTime <= Time.now) {
+        if (this.state === BuildingState.underConstruction && this.timeCreated + this.data.constructionTime <= Date.now()) {
             this.state = BuildingState.ready;
-            Events.fire(this, this.events.update, this, null);
+            Events.fire(this, this.events.update, null);
         }
 
         this.produce();
@@ -133,6 +123,16 @@ define(function (require) {
 
     Building.prototype.onRemove = function () {
         Events.unsubscribe(this.world, this.world.events.tick, this.tickSubscriptionId);
+    };
+
+    /**
+     *
+     * @returns {Iterator}
+     */
+    Building.prototype.occupiedTiles = function(){
+        var data = BuildingData[this.buildingCode];
+
+        return new Terrain.TerrainIterator(this.x, this.y, data.sizeX, data.sizeY);
     };
 
     Building.prototype.toJSON = function () {

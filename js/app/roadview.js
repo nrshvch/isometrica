@@ -9,7 +9,8 @@ define(function (require) {
     var engine = require("engine"),
         RenderLayer = require("lib/renderlayer"),
         SmokeSource = require("app/components/smokesource"),
-        BuildingState = require("lib/buildingstate");
+        BuildingState = require("lib/buildingstate"),
+        Config = require("./config");
 
 
     var roadSprite = {
@@ -50,8 +51,8 @@ define(function (require) {
 
         if (b !== null && b.staticData !== null) {
             var staticData = b.staticData,
-                tileSize = engine.config.tileSize,
-                tileZStep = engine.config.tileZStep;
+                tileSize = Config.tileSize,
+                tileZStep = Config.tileZStep;
 
             //
             if(this.gameObject.transform.children.length === 0){
