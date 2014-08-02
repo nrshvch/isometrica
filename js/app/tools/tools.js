@@ -29,23 +29,23 @@ define(function(require){
 
         var self = this;
 
-        this.onInputMove = function (e) {
+        this.onInputMove = function (sender, e) {
             self.move(e.gameViewportX, e.gameViewportY);
         };
 
-        this.onInputClick = function (e) {
+        this.onInputClick = function (sender, e) {
             self.click(e.gameViewportX, e.gameViewportY);
         };
 
-        this.onInputDragStart = function (e) {
+        this.onInputDragStart = function (sender, e) {
             self.dragStart(e.gameViewportX, e.gameViewportY);
         };
 
-        this.onInputDragEnd = function (e) {
+        this.onInputDragEnd = function (sender, e) {
             self.dragEnd(e.gameViewportX, e.gameViewportY);
         };
 
-        this.onInputDrag = function (param) {
+        this.onInputDrag = function (sender, param) {
             self.drag(param.e.gameViewportX, param.e.gameViewportY, param.dx, param.dy);
         }
     }

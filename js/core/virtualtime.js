@@ -33,6 +33,7 @@ define(function (require) {
     }
 
     VirtualTime.prototype.events = {
+        advance: 3,
         newDay: 0,
         newMonth: 1,
         newYear: 2
@@ -65,6 +66,8 @@ define(function (require) {
         this.month = date.getMonth() + 1;
         this.monthName = monthNames[this.month - 1];
         this.day = date.getDate();
+
+        Events.fire(this,this.events.advance, this);
 
         Events.fire(this,this.events.newDay, this.now);
 

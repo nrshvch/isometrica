@@ -1,24 +1,16 @@
 //TODO when viewport canvas is scaled the image becomes blurry. CSS3 imageRendering works, but not for Webkit.
 // http://jsfiddle.net/VAXrL/21/ this fiddle show if browser supports it somehow.
 // http://phrogz.net/tmp/canvas_image_zoom.html
-define(['lib/eventmanager', './config'], function (EventManager, config) {
+define(function (require) {
+    var Events = require("lib/events");
+    var config = require("./config");
+
     /**
      * @param {Graphics} graphics
      * @param {HTMLCanvasElement} canvas @optional
      * @constructor
      */
     function Viewport(graphics, canvas) {
-        EventManager.call(this);
-        this.events = {
-            update: 0,
-            resize: 1,
-            pointerdown: 2,
-            pointerup: 3,
-            pointermove: 4,
-            poiterin: 5,
-            pointerout: 6
-        }
-
         this.camera = null;
         this.canvas = canvas || document.createElement('canvas');
         this.context = this.canvas.getContext("2d");
@@ -49,7 +41,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportX = e.pageX - viewportBoundingRect.left;
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
-            viewport.dispatchEvent(viewport.events.pointerdown, e);
+            Events.fire(viewport, viewport.events.pointerdown, e);
             e.preventDefault();
         });
 
@@ -58,7 +50,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportX = e.pageX - viewportBoundingRect.left;
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
-            viewport.dispatchEvent(viewport.events.pointerup, e);
+            Events.fire(viewport, viewport.events.pointerup, e);
             e.preventDefault();
         });
 
@@ -67,7 +59,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportX = e.pageX - viewportBoundingRect.left;
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
-            viewport.dispatchEvent(viewport.events.pointermove, e);
+            Events.fire(viewport, viewport.events.pointermove, e);
             e.preventDefault();
         });
 
@@ -76,7 +68,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportX = e.pageX - viewportBoundingRect.left;
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
-            viewport.dispatchEvent(viewport.events.pointerin, e);
+            Events.fire(viewport, viewport.events.pointerin, e);
             e.preventDefault();
         });
 
@@ -85,7 +77,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportX = e.pageX - viewportBoundingRect.left;
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
-            viewport.dispatchEvent(viewport.events.pointerout, e);
+            Events.fire(viewport, viewport.events.pointerout, e);
             e.preventDefault();
         });
 
@@ -100,7 +92,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
 
-            viewport.dispatchEvent(viewport.events.pointerdown, e);
+            Events.fire(viewport, viewport.events.pointerdown, e);
         });
 
         this.canvas.addEventListener("touchmove", function(e){
@@ -112,7 +104,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
 
-            viewport.dispatchEvent(viewport.events.pointermove, e);
+            Events.fire(viewport, viewport.events.pointermove, e);
         });
 
         this.canvas.addEventListener("touchend", function(e){
@@ -123,7 +115,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportX = e.pageX - viewportBoundingRect.left;
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
-            viewport.dispatchEvent(viewport.events.pointerup, e);
+            Events.fire(viewport, viewport.events.pointerup, e);
         });
 
         this.canvas.addEventListener("touchleave", function(e){
@@ -134,12 +126,22 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             e.gameViewportX = e.pageX - viewportBoundingRect.left;
             e.gameViewportY = e.pageY - viewportBoundingRect.top;
 
-            viewport.dispatchEvent(viewport.events.pointerout, e);
+            Events.fire(viewport, viewport.events.pointerout, e);
             e.preventDefault();
         });
     }
 
-    var p = Viewport.prototype = Object.create(EventManager.prototype);
+    var p = Viewport.prototype;
+
+    p.events = {
+        update: 0,
+        resize: 1,
+        pointerdown: 2,
+        pointerup: 3,
+        pointermove: 4,
+        pointerin: 5,
+        pointerout: 6
+    };
 
     /**
      * @type {int[]}
@@ -198,7 +200,7 @@ define(['lib/eventmanager', './config'], function (EventManager, config) {
             ctx.canvas.height = height;
         }
 
-        this.dispatchEvent(this.events.resize, this);
+        Events.fire(this, this.events.resize, this);
 
         return this;
     };

@@ -153,7 +153,7 @@ define(function (require) {
             this.city.x = x;
             this.city.y = y;
 
-            Events.fire(this, this.events.cityEstablished, this, this.city);
+            Events.fire(this, this.events.cityEstablished, this.city);
             //this.eventManager.dispatchEvent(this.events.cityEstablished, this, this.city);
             return this.city;
         }

@@ -14,11 +14,11 @@ define(function (require) {
 
         var buildings = this.world.buildings;
 
-        Events.subscribe(this.world.time, this.world.time.events.newDay, onTimeAdvance, this);
+        Events.subscribe(this.world.time, this.world.time.events.advance, onTimeAdvance, this);
         Events.subscribe(buildings, buildings.events.buildingBuilt, onBuildingBuilt, this);
         Events.subscribe(buildings, buildings.events.buildingUpdated, onBuildingUpdated, this);
         Events.subscribe(buildings, buildings.events.buildingRemoved, onBuildingRemoved, this);
-        Events.subscribe(this.world, this.world.events.cityEstablished, function (world, city, self) {
+        Events.subscribe(this.world, this.world.events.cityEstablished, function (sender, city, self) {
             Events.subscribe(city, city.events.update, onCityUpdate, self);
             Events.subscribe(city.lab, city.lab.events.researchComplete, onResearchComplete, self);
             Events.subscribe(city.lab, city.lab.events.researchStart, onResearchStart, self);
@@ -33,12 +33,12 @@ define(function (require) {
     CoreInterface.prototype = Object.create(EventManager.prototype);
 
     //region Event handlers
-    function onTimeAdvance(sender, args, self) {
+    function onTimeAdvance(sender, vtime, self) {
         Events.fire(self, ResponseCode.timeAdvanced, {
-            day: sender.day,
-            month: sender.month,
-            monthName: sender.monthName,
-            year: sender.year
+            day: vtime.day,
+            month: vtime.month,
+            monthName: vtime.monthName,
+            year: vtime.year
         });
     }
 
@@ -55,7 +55,7 @@ define(function (require) {
     }
 
     function onCityUpdate(sender, args, self) {
-        var city = sender;
+        var city = args;
         Events.fire(self, ResponseCode.cityUpdate, city.toJSON());
     }
 

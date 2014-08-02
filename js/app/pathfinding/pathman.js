@@ -11,12 +11,12 @@ define(function (require) {
     Pathman.prototype.start = function () {
         var self = this;
 
-        vkaria.buildman.addEventListener(vkaria.buildman.events.buildingAdded, function(buildman, building){
+        vkaria.buildman.addEventListener(vkaria.buildman.events.buildingAdded, function(sender, building){
             if(building.staticData.classCode !== BuildingClassCode.tree)
                 self.addNode(building.node);
         });
 
-        vkaria.buildman.addEventListener(vkaria.buildman.events.buildingRemoved, function(buildman, building){
+        vkaria.buildman.addEventListener(vkaria.buildman.events.buildingRemoved, function(sender, building){
             if(building.staticData.classCode !== BuildingClassCode.tree)
                 self.removeNode(building.node);
         });

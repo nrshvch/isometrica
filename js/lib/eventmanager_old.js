@@ -34,7 +34,7 @@ define(function () {
         for (var i = 0, listener; i < listenersNumber; i++) {
             listener = listeners[i];
             if (listener !== undefined)
-                listener(sender, eventArgs);
+                listener(eventArgs);
             else
                 cleanUp = true;
         }

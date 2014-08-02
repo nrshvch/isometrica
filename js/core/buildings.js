@@ -63,7 +63,7 @@ define(function (require) {
     }
 
     function onBuildingUpdated(sender, args, self) {
-        var building = sender;
+        var building = args;
         Events.fire(self, self.events.buildingUpdated, building);
     }
 

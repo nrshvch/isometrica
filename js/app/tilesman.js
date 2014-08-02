@@ -45,7 +45,7 @@ define(function (require) {
         };
         */
 
-        this.onTileData = function (response) {
+        this.onTileData = function (sender, response) {
             setTimeout(function(){
 
                 var data = response.data,

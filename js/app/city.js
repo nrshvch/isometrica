@@ -26,7 +26,7 @@ define(function (require) {
 
         this.buildings = [];
 
-        this.onCityData = function (data) {
+        this.onCityData = function (sender, data) {
             if (data) {
                 this.setData(data);
 
@@ -36,7 +36,7 @@ define(function (require) {
                 vkaria.tools.disableAll();
                 vkaria.tools.enableTool(ToolCode.tileSelector);
                 var tool = vkaria.tools.tools[ToolCode.tileSelector];
-                var handler = function (tool, crds) {
+                var handler = function (sender, crds) {
                     tool.removeEventListener(tool.events.tileSelected, handler);
                     var data = vkaria.core.world.establishCity(crds.x, crds.y, "Unnamed");
 

@@ -25,7 +25,7 @@ define(function (require) {
 
             //when some new building is invented, we need to update classes
             var self = this;
-            this.onBuildingInvented = function (sender, args) {
+            this.onBuildingInvented = function (args) {
                 self.setupClasses();
             };
             vkaria.logicInterface.addEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);

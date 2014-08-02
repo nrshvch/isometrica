@@ -82,7 +82,7 @@ define(function (require) {
                     placeholder: "City name",
                     value: "My City",
                     callback: function (value) {
-                        sender.inputName(value);
+                        args.inputName(value);
                     }
                 }), "Input");
             };
@@ -164,7 +164,7 @@ define(function (require) {
                 }
             });
 
-            vkaria.logicInterface.addEventListener(ResponseCode.cityUpdate, function (sender,data) {
+            vkaria.logicInterface.addEventListener(ResponseCode.cityUpdate, function (sender, data) {
                 self.resourcesBar.setResources(data.resources);
                 $(".population .val", self.$el).text(data.population);
                 $(".population .cap", self.$el).text(data.maxPopulation);

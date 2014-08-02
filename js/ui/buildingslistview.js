@@ -22,7 +22,7 @@ define(function (require) {
 
 
             //when some new building is invented, reload list of buildings
-            this.onBuildingInvented = function(sender, args){
+            this.onBuildingInvented = function(args){
                 self.setBuildingClass(self.buildingClassCode);
             };
 

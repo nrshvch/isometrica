@@ -5,7 +5,7 @@ define(function (require) {
         engine.Component.call(this);
 
         //TODO camera script should provide position update events. in game XY coords
-        this.onCameraMove = function(sender, args){
+        this.onCameraMove = function(args){
             //console.log("save position", sender.getPosition());
         };
     }

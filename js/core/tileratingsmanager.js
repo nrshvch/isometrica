@@ -62,7 +62,7 @@ define(function (require) {
         }
     };
 
-    var getAffectedTiles = function(self, building){
+    var getAffectedTiles = function(sender, self, building){
         if(building === undefined)
             return null;
 
@@ -128,8 +128,8 @@ define(function (require) {
     ratingsMan.init = function () {
         initializeRatings(this);
         var buildman = this._world.buildings;
-        Events.subscribe(buildman, buildman.events.buildingBuilt, this.onBuildingBuilt,this);
-        Events.subscribe(buildman, buildman.events.buildingBuilt, this.onBuildingRemoved,this);
+        Events.on(buildman, buildman.events.buildingBuilt, this.onBuildingBuilt,this);
+        Events.on(buildman, buildman.events.buildingBuilt, this.onBuildingRemoved,this);
 
         //this._world.buildMan.addEventListener(this._world.buildMan.events.buildingBuilt, this.onBuildingBuilt);
         //this._world.buildMan.addEventListener(this._world.buildMan.events.buildingRemoved, this.onBuildingRemoved);

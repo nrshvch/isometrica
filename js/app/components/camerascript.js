@@ -1,6 +1,7 @@
 define(function (require) {
     var engine = require("engine");
-    var glMatrix = require("vendor/gl-matrix")
+    var glMatrix = require("vendor/gl-matrix");
+    var Events = require("lib/events");
 
     function CameraScript() {
         engine.Component.call(this);
@@ -21,14 +22,14 @@ define(function (require) {
 
         //These handlers take standard mouse\pointer events and transform them into game specific events like drag/click
 
-        this.onPointerDown = function (e) {
+        this.onPointerDown = function (sender, e) {
             lastPointerDownEvent = e;
             lastPointerPos = [e.gameViewportX, e.gameViewportY];
             moveLen = [0, 0];
             isDrag = false;
         };
 
-        this.onPointerUp = function (e) {
+        this.onPointerUp = function (sender, e) {
             if (lastPointerPos !== null) {
                 if (isDrag) {
                     self.dispatchEvent(self.events.inputDragEnd, e);
@@ -42,7 +43,7 @@ define(function (require) {
             }
         };
 
-        this.onPointerMove = function (e) {
+        this.onPointerMove = function (sender, e) {
             if (lastPointerPos !== null) {
                 var x = e.gameViewportX - lastPointerPos[0],
                     y = e.gameViewportY - lastPointerPos[1];
@@ -65,7 +66,7 @@ define(function (require) {
             self.dispatchEvent(self.events.inputMove, e);
         }
 
-        this.onPointerOut = function (e) {
+        this.onPointerOut = function (sender, e) {
             if (lastPointerPos !== null) {
                 moveLen = null;
                 lastPointerPos = null;
@@ -100,20 +101,16 @@ define(function (require) {
     CameraScript.prototype.panSens = 1;
 
     CameraScript.prototype.awake = function () {
-        console.log("camera awake")
-
-
-
         var camera = this.gameObject.camera,
             self = this;
 
         camera.addEventListener(camera.events.viewportSet, function (camera) {
             var viewport = camera.viewport;
 
-            viewport.addEventListener(viewport.events.pointerdown, self.onPointerDown);
-            viewport.addEventListener(viewport.events.pointerup, self.onPointerUp);
-            viewport.addEventListener(viewport.events.pointermove, self.onPointerMove);
-            viewport.addEventListener(viewport.events.pointerout, self.onPointerOut);
+            Events.on(viewport, viewport.events.pointerdown, self.onPointerDown);
+            Events.on(viewport, viewport.events.pointerup, self.onPointerUp);
+            Events.on(viewport, viewport.events.pointermove, self.onPointerMove);
+            Events.on(viewport, viewport.events.pointerout, self.onPointerOut);
         });
 
         camera.addEventListener(camera.events.viewportRemoved, function (camera) {

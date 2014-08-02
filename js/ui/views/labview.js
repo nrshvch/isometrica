@@ -37,11 +37,11 @@ define(function (require) {
 
             var api = vkaria.logicInterface;
 
-            api.addEventListener(ResponseCode.researchStart, function (sender, response) {
+            api.addEventListener(ResponseCode.researchStart, function (response) {
                 self._dirData[response.direction] = response;
             });
 
-            api.addEventListener(ResponseCode.researchComplete, function (sender, response) {
+            api.addEventListener(ResponseCode.researchComplete, function (response) {
                 self._dirData[response.direction] = response;
                 self._update();
             });

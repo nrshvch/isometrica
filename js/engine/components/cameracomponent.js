@@ -3,6 +3,7 @@ define(function(require){
     var BoundingBox = require("../lib/BoundingBox");
     var AABB = require("../lib/aabb");
     var glMatrix = require("../../vendor/gl-matrix");
+    var Events = require("lib/events");
 
     namespace("Isometrica.Engine").CameraComponent = CameraComponent;
 
@@ -95,8 +96,7 @@ define(function(require){
 
         this.setup(viewport.width, viewport.height, 100);
 
-        var cam = this;
-        this.viewport.addEventListener(this.viewport.events.resize, this.viewportResizeEventHandler);
+        Events.on(this.viewport, this.viewport.events.resize, this.viewportResizeEventHandler);
 
         this.dispatchEvent(this.events.viewportSet, this);
     }

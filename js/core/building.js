@@ -114,7 +114,7 @@ define(function (require) {
     Building.prototype.tick = function () {
         if (this.state === BuildingState.underConstruction && this.timeCreated + this.data.constructionTime <= Date.now()) {
             this.state = BuildingState.ready;
-            Events.fire(this, this.events.update, null);
+            Events.fire(this, this.events.update, this);
         }
 
         this.produce();

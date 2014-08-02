@@ -1,11 +1,12 @@
 define(function () {
 
+    var lastId = 0;
+
     function Event() {
         this.idMap = {};
         this.listeners = [];
     }
 
-    Event.prototype.lastListenerId = 0;
     Event.prototype.listeners = null;
     Event.prototype.idMap = null;
 
@@ -13,7 +14,7 @@ define(function () {
         if (typeof listener !== "function")
             throw "Event handler should be a function";
 
-        var id = event.lastListenerId++;
+        var id = lastId++;
         event.idMap[id] = {
             listener: listener,
             meta: meta
@@ -48,7 +49,7 @@ define(function () {
         return false;
     }
 
-    function fire(event, sender, args) {
+    function fire(sender, event, args) {
         var i, l = event.listeners.length,
             listeners = event.listeners,
             idMap = event.idMap,
@@ -77,7 +78,6 @@ define(function () {
     var Events = {}
 
     /**
-     * @deprecated
      * Subscribe to event of a given object
      * @param obj {object}
      * @param event {string|number} Event id
@@ -85,7 +85,7 @@ define(function () {
      * @param meta {object} Data that will be passed to callback
      * @returns {number} Subscription id
      */
-    Events.subscribe = function (obj, event, callback, meta) {
+    Events.on = Events.addListener = function (obj, event, callback, meta) {
         if (obj._events === undefined)
             obj._events = {};
 
@@ -96,14 +96,13 @@ define(function () {
     };
 
     /**
-     * @deprecated
      * Unsubscribe from event of a given object
      * @param obj {object}
      * @param event {string|number} Event id
      * @param idOrListener {number|function} Subscription id or handler
      * @returns {boolean}
      */
-    Events.unsubscribe = function (obj, event, idOrListener) {
+    Events.off = Events.removeListener = function (obj, event, idOrListener) {
         if (obj._events !== undefined && obj._events[event] !== undefined) {
             return removeListener(obj._events[event], idOrListener);
         }
@@ -120,14 +119,20 @@ define(function () {
      */
     Events.fire = function (obj, event, args) {
         if (obj._events !== undefined && obj._events[event] !== undefined) {
-            fire(obj._events[event], obj, args);
+            fire(obj, obj._events[event], args);
         }
     };
 
-    Events.on = Events.subscribe;
-    Events.addListener = Events.subscribe;
-    Events.removeListener = Events.unsubscribe;
-    Events.emit = Events.fire;
+    /**
+     * @deprecated
+     * @type {addListener|*}
+     */
+    Events.subscribe = Events.on;
+    /**
+     * @deprecated
+     * @type {removeListener|*}
+     */
+    Events.unsubscribe = Events.off;
 
     return Events;
 });
