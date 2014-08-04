@@ -1,4 +1,5 @@
 define(function(require) {
+    var namespace = require("namespace");
     var Engine = namespace("Isometrica.Engine");
 
     Engine.Config = {

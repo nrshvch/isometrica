@@ -1,9 +1,8 @@
-//TODO: Realizovatj vsjo toljko na eventah bilo owibkoj. Nado operaciji s kolbekami, na takije slu4aji kogda naprimer nado getCityData.
-//TODO message bus. ResponseCode.message event for message. But for e.g. researchComplete use default event.
 define(function (require) {
-    var EventManager = require("lib/eventmanager"),
-        Events = require("lib/events"),
-        ResponseCode = require("lib/responsecode"),
+    var namespace = require("namespace");
+    var EventManager = require("events"),
+        Events = require("events"),
+        ResponseCode = require("core/responsecode"),
         World = require("./world"),
         savegame = require("text!testsavegame");
 

@@ -1,10 +1,10 @@
 //TODO think about making research based on direction, instead of researching individual buildings
 
 define(function (require) {
-    var BuildingCode = require('lib/buildingcode'),
-        BuildingData = require('lib/buildingdata'),
-        EventManager = require("lib/eventmanager"),
-        ResearchState = require("lib/researchstate");
+    var BuildingCode = require('core/buildingcode'),
+        BuildingData = require('./buildingdata'),
+        EventManager = require("events"),
+        ResearchState = require("core/researchstate");
 
     function BuildingResearch(world) {
         EventManager.call(this);

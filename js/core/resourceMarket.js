@@ -1,5 +1,5 @@
 define(function(require){
-    var Resources = require("lib/resources");
+    var Resources = require("core/resources");
 
     function Market(city){
         this.city = city;

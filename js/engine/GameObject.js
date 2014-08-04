@@ -1,6 +1,6 @@
 define(function (require) {
     var Transform = require("./components/TransformComponent");
-
+    var namespace = require("namespace");
     namespace("Isometrica.Engine").GameObject = GameObject;
 
     /**

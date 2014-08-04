@@ -3,8 +3,8 @@ define(function (require) {
     var Backbone = require("backbone"),
         templateText = require("text!templates/laboratoryviewtemplate.html"),
         template = $.parseHTML(templateText),
-        ResponseCode = require("lib/responsecode"),
-        ResearchState = require("lib/researchstate"),
+        ResponseCode = require("core/responsecode"),
+        ResearchState = require("core/researchstate"),
         ResourcesBarView = require("ui/views/resourcesbarview");
 
     var FormatTimeLeft = function(msInput){
@@ -35,7 +35,7 @@ define(function (require) {
 
             var self = this;
 
-            var api = vkaria.logicInterface;
+            var api = vkaria.core;
 
             api.addEventListener(ResponseCode.researchStart, function (response) {
                 self._dirData[response.direction] = response;
@@ -60,7 +60,7 @@ define(function (require) {
         },
         beginResearch: function (e) {
             var code = $(e.target).attr("researchCode");
-            vkaria.logicInterface.research(code, function (response) {
+            vkaria.core.research(code, function (response) {
                 console.log(response);
             });
         },

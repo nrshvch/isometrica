@@ -6,9 +6,9 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function (require) {
-    var Events = require("lib/events");
-    var BuildingData = require("lib/buildingdata");
-    var TileRatings = require("lib/tileratings");
+    var Events = require("events");
+    var BuildingData = require("./buildingdata");
+    var TileRatings = require("./tileratings");
 
     function RatingsMan(world) {
         this._world = world;

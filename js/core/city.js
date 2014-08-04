@@ -3,11 +3,12 @@
 //TODO what about culture? This would make a purpose to build "special" buildings, like churches, museums.
 
 define(function (require) {
+    var namespace = require("namespace");
     var validator = require('./lib/validator'),
-        BuildingCode = require('lib/buildingcode'),
-        buildingData = require('lib/buildingdata'),
-        Events = require("lib/events"),
-        ErrorCode = require("lib/errorcode"),
+        BuildingCode = require('core/buildingcode'),
+        buildingData = require('./buildingdata'),
+        Events = require("events"),
+        ErrorCode = require("core/errorcode"),
         Laboratory = require("./laboratory"),
         CityStats = require("./citystats"),
         Terrain = require("./terrain"),

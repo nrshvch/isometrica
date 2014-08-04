@@ -1,11 +1,10 @@
 define(function (require) {
-    var template = require("text!templates/categoriesview.html"),
-        itemTemplate = require("text!templates/buildingclasslistitem.html"),
+    var Core = require("core");
+    var itemTemplate = require("text!templates/buildingclasslistitem.html"),
         BuildingsListView = require("ui/buildingslistview"),
-        BuildingData = require("lib/buildingdata"),
-        BuildingClassCode = require("lib/buildingclasscode"),
-        BuildingClassData = require("lib/buildingclassdata"),
-        ResponseCode = require("lib/responsecode");
+        BuildingData = Core.BuildingData,
+        BuildingClassData = require("core/buildingclassdata"),
+        ResponseCode = require("core/responsecode");
 
     var BuildingClassListView = Backbone.View.extend({
         events: {
@@ -28,12 +27,12 @@ define(function (require) {
             this.onBuildingInvented = function (args) {
                 self.setupClasses();
             };
-            vkaria.logicInterface.addEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
+            vkaria.core.addEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
 
             this.render();
         },
         remove: function () {
-            vkaria.logicInterface.removeEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
+            vkaria.core.removeEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
             Backbone.View.prototype.remove.call(this);
         },
         render: function () {

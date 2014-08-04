@@ -6,13 +6,11 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function (require) {
-    var BuildingCode = require("lib/buildingcode"),
-        BuildingState = require("lib/buildingstate"),
-        Resources = require("lib/resources"),
-        Events = require("lib/events"),
-        BuildingClassCode = require("lib/buildingclasscode"),
-        buildingData = require("lib/buildingdata"),
-        ResourceCode = require("lib/resourcecode"),
+    var BuildingState = require("core/buildingstate"),
+        Resources = require("core/resources"),
+        Events = require("events"),
+        BuildingClassCode = require("core/buildingclasscode"),
+        buildingData = require("./buildingdata"),
         Terrain = require("./terrain");
 
     var BuildingData = buildingData;

@@ -2,6 +2,7 @@
  * This class provides api to work with sprites, spritesheets etc;
  */
 define(function (require) {
+    var namespace = require("namespace");
     namespace("Isometrica.Engine").SpriteManager = SpriteMgr;
 
     function SpriteMgr(assetMgr) {

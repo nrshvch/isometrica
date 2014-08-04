@@ -2,21 +2,22 @@ define(function (require) {
     var Backbone = require("backbone"),
         templateText = require("text!templates/cityviewtemplate.html"),
         template = $.parseHTML(templateText),
-        Resources = require("lib/resources"),
+        Resources = require("core/resources"),
         ResourcesBarView = require("ui/views/resourcesbarview"),
-        ResponseCode = require("lib/responsecode"),
+        ResponseCode = require("core/responsecode"),
         BuildingCountView = require("ui/views/buildingcountlistview"),
-        TileRatings = require("lib/tileratings");
+        Core = require("core"),
+        TileRatings = Core.TileRatings;
 
     var resourcesBuffer1 = Resources.create();
 
     window.DrawMap = function DrawMap() {
         var cnv = $("#mapcnv").get(0);
-        var data = vkaria.logicInterface.world.ratingsman;
-        //var tiles = vkaria.logicInterface.world.tiles.collection;
+        var data = vkaria.core.world.ratingsman;
+        //var tiles = vkaria.core.world.tiles.collection;
 
         var ctx = cnv.getContext("2d");
-        var s = vkaria.logicInterface.world.size;
+        var s = vkaria.core.world.size;
         var p = cnv.width / s;
 
         var i = 0, blockSize = 64*64;
@@ -78,7 +79,7 @@ define(function (require) {
             this.buildings.setData(vkaria.city.getBuildingCountList());
 
             var self = this;
-            vkaria.logicInterface.addEventListener(ResponseCode.cityUpdate, function (sender, data) {
+            vkaria.core.addEventListener(ResponseCode.cityUpdate, function (sender, data) {
                 self.resourcesBar.setResources(data.resources);
                 self.produce.setResources(data.resourceProduce);
                 self.demand.setResources(data.resourceDemand);

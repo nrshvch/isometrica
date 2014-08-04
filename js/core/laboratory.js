@@ -1,13 +1,10 @@
 //TODO время изучения и прогресс должны хранится в таком формате, чтобы можно было бзе проблем начать изучать из сэйвгэйма
 
 define(function (require) {
-    var BuildingCode = require('lib/buildingcode'),
-        BuildingClassCode = require("lib/buildingclasscode"),
-        BuildingData = require('lib/buildingdata'),
-        Events = require("lib/events"),
-        ResearchState = require("lib/researchstate"),
-        ResearchData = require("lib/researchdata"),
-        ResearchDirection = require("lib/researchdirection");
+    var Events = require("events"),
+        ResearchState = require("core/researchstate"),
+        ResearchData = require("core/researchdata"),
+        ResearchDirection = require("core/researchdirection");
 
     function Lab(world) {
         this.world = world;

@@ -1,4 +1,5 @@
 define(function (require) {
+    var namespace = require("namespace");
     var SpriteRenderer = require("./SpriteRenderer");
 
     namespace("Isometrica.Engine").AnimatedSpriteRenderer = AnimatedSprite;

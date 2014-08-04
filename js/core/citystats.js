@@ -6,8 +6,8 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function (require) {
-    var TileRatings = require("lib/tileratings"),
-        Resources = require("lib/resources");
+    var TileRatings = require("./tileratings"),
+        Resources = require("core/resources");
 
     var TAX_MONEY = 1;
     var MAX_ECO = 100;

@@ -2,7 +2,7 @@ define(function (require) {
     require("backbone");
 
     var templateText = require("text!templates/resourcesbar.html"),
-        ResourceCode = require("lib/resourcecode"),
+        ResourceCode = require("core/resourcecode"),
         template = $.parseHTML(templateText),
         itemTemplate = $(".item", template),
         Numeral = require("numeral");

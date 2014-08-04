@@ -3,10 +3,7 @@ define(function (require) {
         templateText = require("text!templates/buildingcountlistview.html"),
         template = $($.parseHTML(templateText)),
         itemTemplate = $(".item", template),
-        BuildingCode = require("lib/buildingcode"),
-        BuildingData = require("lib/buildingdata"),
-        BuildingClassCode = require("lib/buildingclasscode"),
-        BuildingClassData = require("lib/buildingclassdata");
+        BuildingClassData = require("core/buildingclassdata");
 
     template.empty(); //remove item template from view template
 

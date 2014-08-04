@@ -2,6 +2,7 @@
  * Created by User on 28.07.2014.
  */
 define(function(require){
+    var namespace = require("namespace");
     var Coroutine = namespace("Isometrica.Engine.Coroutine");
 
     var coroutineId = 0;

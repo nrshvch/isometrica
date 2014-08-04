@@ -1,4 +1,5 @@
 define(function (require) {
+    var namespace = require("namespace");
     var Graphics = require("./graphics");
     var Time = require("./time");
     var Scene = require("./world");

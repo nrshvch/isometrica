@@ -2,11 +2,11 @@
 
 define(function (require) {
     var Simplex = require("./vendor/simplex-noise"),
-        Events = require("lib/events"),
+        Events = require("events"),
         Terrain = require("./terrain"),
         Buildings = require("./buildings"),
         City = require("./city"),
-        ResourceCode = require("lib/resourcecode"),
+        ResourceCode = require("core/resourcecode"),
         ResourceMarket = require("./resourceMarket"),
         VTime = require("./virtualtime"),
         AmbientService = require("./ambient"),

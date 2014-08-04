@@ -1,7 +1,8 @@
 define(function (require) {
+    var namespace = require("namespace");
     var vec3Buffer1 = new Float32Array(3);
     var Component = require("./Renderer");
-    var glMatrix = require("../../vendor/gl-matrix");
+    var glMatrix = require("../vendor/gl-matrix");
 
     namespace("Isometrica.Engine").TextRenderer = TextRenderer;
 

@@ -1,4 +1,5 @@
 define(function (require) {
+    var namespace = require("namespace");
     var GameObject = require("../gameobject");
     var CameraComponent = require("../components/cameracomponent");
 

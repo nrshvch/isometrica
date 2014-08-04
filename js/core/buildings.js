@@ -6,15 +6,12 @@
 //Try instancing only one tree and each time, when tile is requested put that instance in tile. Kinda singleton tree))
 
 define(function (require) {
-    var BuildingData = require("lib/buildingdata"),
+    var BuildingData = require("./buildingdata"),
         Building = require("./building"),
-        BuildingCode = require("lib/buildingcode"),
-        BuildingClassCode = require("lib/buildingclasscode"),
-        TileType = require("lib/tiletype"),
-        Events = require("lib/events"),
-        ResourceCode = require("lib/resourcecode"),
-        ErrorCode = require("lib/errorcode"),
-        TerrainType = require("lib/terraintype");
+        BuildingClassCode = require("core/buildingclasscode"),
+        Events = require("events"),
+        ErrorCode = require("core/errorcode"),
+        TerrainType = require("./terraintype");
 
     function buildTest(self, buildingCode, baseX, baseY, rotated) {
         var result = {

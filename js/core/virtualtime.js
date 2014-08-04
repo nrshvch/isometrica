@@ -1,5 +1,5 @@
 define(function (require) {
-    var Events = require("lib/events");
+    var Events = require("events");
 
     var millisecondsInDay = 86400000,
         monthNames = [ "January", "February", "March", "April", "May", "June",

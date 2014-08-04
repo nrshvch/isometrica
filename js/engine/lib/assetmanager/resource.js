@@ -3,7 +3,7 @@
  * It allows to download blob,image,audio,json or text files using xhr, and use progress events of xhr requests.
  */
 define(function (require) {
-    var EventManager = require("lib/eventmanager");
+    var EventManager = require("events");
 
     function Resource(path, type) {
         EventManager.call(this);

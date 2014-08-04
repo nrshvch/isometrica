@@ -3,7 +3,7 @@
 //TODO ...all scene renderers should be grouped in single array.
 define(function (require) {
     var config = require("./config");
-    var glMatrix = require("./../vendor/gl-matrix");
+    var glMatrix = require("./vendor/gl-matrix");
     var Transform = require("./components/TransformComponent");
 
     function Canvas2dRenderer(graphics) {

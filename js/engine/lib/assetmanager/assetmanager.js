@@ -9,6 +9,7 @@
  * and release unneeded. It is upon programmer to decide whenever to release resources and which resources to load.
  */
 define(function (require) {
+        var namespace = require("namespace");
         var Resource = require("./resource");
 
         namespace("Isometrica.Engine").AssetManager = AssetManager;

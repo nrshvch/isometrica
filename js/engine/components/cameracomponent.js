@@ -1,9 +1,10 @@
 define(function(require){
+    var namespace = require("namespace");
     var Component = require("../Component");
     var BoundingBox = require("../lib/BoundingBox");
     var AABB = require("../lib/aabb");
-    var glMatrix = require("../../vendor/gl-matrix");
-    var Events = require("lib/events");
+    var glMatrix = require("../vendor/gl-matrix");
+    var Events = require("events");
 
     namespace("Isometrica.Engine").CameraComponent = CameraComponent;
 

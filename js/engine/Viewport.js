@@ -2,7 +2,7 @@
 // http://jsfiddle.net/VAXrL/21/ this fiddle show if browser supports it somehow.
 // http://phrogz.net/tmp/canvas_image_zoom.html
 define(function (require) {
-    var Events = require("lib/events");
+    var Events = require("events");
     var config = require("./config");
 
     /**

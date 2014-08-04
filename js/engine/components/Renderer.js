@@ -6,9 +6,10 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function (require) {
+    var namespace = require("namespace");
     var Component = require("./../Component");
     var vec3Buffer1 = new Float32Array(3);
-    var glMatrix = require("../../vendor/gl-matrix");
+    var glMatrix = require("../vendor/gl-matrix");
     var Vec3 = glMatrix.vec3;
 
     namespace("Isometrica.Engine").Renderer = Renderer;

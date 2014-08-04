@@ -3,13 +3,12 @@
 
 define(function (require) {
     var Backbone = require("backbone");
-
+    var Core = require("core");
     var template = require("text!templates/buildinginfoview.html"),
-        BuildingData = require("lib/buildingdata"),
-        ResponseCode = require("lib/responsecode"),
-        ResearchState = require("lib/researchstate"),
+        BuildingData = Core.BuildingData,
         ResourcesBarView = require("ui/views/resourcesbarview"),
-        ToolCode = require("lib/toolcode");
+        Client = require("client"),
+        ToolCode = Client.ToolCode;
 
     var BuildingInfoView = Backbone.View.extend({
         events: {

@@ -1,8 +1,9 @@
 //TODO cache terrain Z values
 
 define(function (require) {
-    var ResourceCode = require("lib/resourcecode");
-    var TerrainType = require('lib/terraintype');
+    var namespace = require("namespace");
+    var ResourceCode = require("core/resourcecode");
+    var TerrainType = require('./terraintype');
     var Simplex = require("./vendor/simplex-noise");
 
     //Vkaria.Core.Terrain.CalcSlope(gridpoints)

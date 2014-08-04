@@ -10,13 +10,12 @@ define(function (require) {
         CityView = require("ui/views/cityview"),
         PromptView = require("ui/views/promptview"),
         LabView = require("ui/views/labview"),
-        BuildingData = require("lib/buildingdata"),
-        ResponseCode = require("lib/responsecode"),
-        ResourceCode = require("lib/resourcecode"),
-        ToolCode = require("lib/toolcode"),
-        Numeral = require("numeral"),
-        ResearchState = require("lib/researchstate");
+        ResponseCode = require("core/responsecode"),
+        ResourceCode = require("core/resourcecode"),
+        Client = require("client"),
+        Numeral = require("numeral");
 
+    var ToolCode = Client.ToolCode;
 
     var GameView = Backbone.View.extend({
         events: {
@@ -156,7 +155,7 @@ define(function (require) {
 
 
 
-            vkaria.logicInterface.addEventListener(ResponseCode.timeAdvanced, function (sender, args) {
+            vkaria.core.addEventListener(ResponseCode.timeAdvanced, function (sender, args) {
                 if (window.matchMedia("(min-width: 800px)").matches) {
                     $("#date", self.$el).text(Numeral(args.day).format('0o') + " " + args.monthName + ", year " + args.year);
                 } else {
@@ -164,7 +163,7 @@ define(function (require) {
                 }
             });
 
-            vkaria.logicInterface.addEventListener(ResponseCode.cityUpdate, function (sender, data) {
+            vkaria.core.addEventListener(ResponseCode.cityUpdate, function (sender, data) {
                 self.resourcesBar.setResources(data.resources);
                 $(".population .val", self.$el).text(data.population);
                 $(".population .cap", self.$el).text(data.maxPopulation);
@@ -176,11 +175,11 @@ define(function (require) {
 
 
 
-            vkaria.logicInterface.addEventListener(ResponseCode.errorMessage, function (sender, text) {
+            vkaria.core.addEventListener(ResponseCode.errorMessage, function (sender, text) {
                 self.displayMessage(text, true);
             });
 
-            vkaria.logicInterface.addEventListener(ResponseCode.message, function (sender, args) {
+            vkaria.core.addEventListener(ResponseCode.message, function (sender, args) {
                 self.displayMessage(args.text);
             });
 

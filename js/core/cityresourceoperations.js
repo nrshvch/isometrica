@@ -6,8 +6,8 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function(require){
-    var Resources = require("lib/resources");
-    var Events = require("lib/events");
+    var Resources = require("core/resources");
+    var Events = require("events");
 
     function ResourceOperations(city){
         this.city = city;

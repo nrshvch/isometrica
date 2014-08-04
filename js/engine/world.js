@@ -7,7 +7,7 @@
 
 define(function (require) {
     var Octree = require('./lib/Octree'),
-        EventManager = require("lib/eventmanager");
+        EventManager = require("events");
 
     /**
      * @param {Logic} logic

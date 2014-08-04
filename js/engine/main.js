@@ -12,6 +12,8 @@ window.requestAnimFrame = (function () {
 })();
 
 define(function(require){
+    var namespace = require("namespace");
+
     var Config = require("./config");
     var Game = require("./game");
     var GameObject = require("./gameobject");
