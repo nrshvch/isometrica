@@ -8,6 +8,7 @@
 define(function(require){
     var Resources = require("core/resources");
     var Events = require("events");
+    var helpers = require("helpers");
 
     function ResourceOperations(city){
         this.city = city;

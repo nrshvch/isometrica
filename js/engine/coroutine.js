@@ -8,6 +8,11 @@ define(function(require){
     var coroutineId = 0;
     var coroutines = {};
 
+    /*
+    Routine is a function that return a number, that indicates how long the delay should be, before executing routine next time,
+    if -1 is returned, routine won't be called again.
+     */
+
     /**
      *
      * @param routine

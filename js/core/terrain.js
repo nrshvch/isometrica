@@ -47,9 +47,12 @@ define(function (require) {
             49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254,
             138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180]);
 
-        function calcZ(x, y) {
+        function calcZ(index) {
             var land = 0,
                 island = 0;
+
+            var x = Terrain.extractX(index);
+            var y = Terrain.extractY(index);
 
             x += 640;
             y += 700;
@@ -116,12 +119,17 @@ define(function (require) {
             return result;
         };
 
-        Terrain.prototype.getGridPointHeight = function (x, y) {
-            var index = y << 16 ^ x;
+        Terrain.prototype.getGridPointHeight = function (indexOrX, y) {
+            var index = indexOrX;
+            var x = indexOrX;
+
+            if(arguments.length === 2)
+                index = y << 16 ^ x;
+
             var gp = this.gridPoints[index];
 
             if (gp === undefined) {
-                gp = this.gridPoints[index] = calcZ(x, y);
+                gp = this.gridPoints[index] = calcZ(index);
             }
 
             return gp;

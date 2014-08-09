@@ -39,7 +39,7 @@ define(function (require) {
         //TODO there should be renderer layers and logical layers, and tags too
         //configure layers (render layers)
         vkaria.layers = RenderLayer;
-        engine.Config.layersCount = 5;
+        engine.Config.layersCount = Object.keys(RenderLayer).length;
         engine.Config.noLayerDepthSortingMask = 3;
         engine.Config.noLayerClearMask = 0;
 

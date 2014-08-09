@@ -59,31 +59,32 @@ define(function (require) {
 
     var getPos = Transform.getPosition;
 
-    p.cullingTest = function (viewport, viewportRenderer) {
-        var buffer = this.buf;
+    p.cullingTest = function (viewport, viewportRenderer, self) {
+        var buffer = self.buf;
 
-        this.gameObject.transform.getPosition(buffer);
-        //getPos(this.gameObject.transform, vec3Buffer1);
+        //self.gameObject.transform.getPosition(buffer);
+        getPos(self.gameObject.transform, buffer);
 
         Vec3.transformMat4(buffer, buffer, viewportRenderer.M);
 
-        var sprite = this.sprite;
-        var x0 = (buffer[0] - this.pivotX) | 0;
-        var y0 = (buffer[1] - this.pivotY) | 0;
+        var sprite = self.sprite;
+        var x0 = (buffer[0] - self.pivotX) | 0;
+        var y0 = (buffer[1] - self.pivotY) | 0;
 
         return x0 <= viewport.width && x0 + sprite.width >= 0 && y0 <= viewport.height && y0 + sprite.height >= 0;
     };
 
-    p.render = function (layer, viewportRenderer, viewport) {
-        var buffer = this.buf;
+    p.render = function (layer, viewportRenderer, viewport, self) {
+        var buffer = self.buf;
 
-        this.gameObject.transform.getPosition(buffer);
+        //self.gameObject.transform.getPosition(buffer);
+        getPos(self.gameObject.transform, buffer);
         Vec3.transformMat4(buffer, buffer, viewportRenderer.M);
 
-        var sprite = this.sprite;
+        var sprite = self.sprite;
         var w = sprite.width;
         var h = sprite.height;
-        layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - this.pivotX) | 0, (buffer[1] - this.pivotY) | 0, w, h);
+        layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
     };
 
     return Sprite;

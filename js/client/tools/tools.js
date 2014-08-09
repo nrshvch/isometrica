@@ -3,7 +3,6 @@
 define(function(require){
     var engine = require("engine"),
         EventManager = require("events"),
-        TileHighliteScript = require("../components/TileHighliteScript"),
         ToolCode = require("./toolcode"),
         PannerTool = require("./pannertool"),
         BuildToolMobile = require("./buildtoolmobile"),

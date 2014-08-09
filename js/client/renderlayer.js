@@ -7,8 +7,9 @@
  */
 define({
     groundLayer: 0,
-    roadLayer: 1,
-    vehiclesLayer: 2,
-    buildingsLayer: 3,
-    overlayLayer: 4
+    groundDrawLayer: 1,
+    roadLayer: 2,
+    vehiclesLayer: 3,
+    buildingsLayer: 4,
+    overlayLayer: 5
 })

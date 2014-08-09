@@ -21,10 +21,12 @@ define(function (require) {
     function City(root) {
         var world = root;
 
+        this.id = 1;
+
         this.stats = new CityStats(this);
         this.resourceOperations = new CityResourceOperations(this);
 
-        Events.subscribe(root, root.events.tick, this.onTick, {self: this});
+        Events.on(root, root.events.tick, this.onTick, {self: this});
 
         this.timeEstablished = world.time.milliseconds;
 
@@ -51,12 +53,33 @@ define(function (require) {
         };
 
         var buildman = this.world.buildings;
-        Events.subscribe(buildman, buildman.events.buildingRemoved, this.onBuildingRemoved,this);
+        Events.off(buildman, buildman.events.buildingRemoved, this.onBuildingRemoved,this);
         //this.world.buildings.addEventListener(this.world.buildings.events.buildingRemoved, this.onBuildingRemoved);
     }
 
+    function isInsideCityBorders(city, x0, y0, w, l){
+        var inside = true;
+        var iterator = new Terrain.TerrainIterator(x0,y0,w,l);
+        var area = city.getInfluenceArea();
+        while(true){
+            var tile = iterator.next();
+            if(tile === -1)
+                break;
+            //var x = Terrain.extractX(tile);
+            //var y = Terrain.extractY(tile);
+
+            if(area[tile] === undefined){
+                inside = false;
+                break;
+            }
+        }
+        return inside;
+    }
+
     City.prototype.events = {
-        update: 0
+        update: 0,
+        buildingBuilt: 1,
+        buildingRemoved: 2
     };
 
     City.prototype.name = "";
@@ -93,6 +116,9 @@ define(function (require) {
         } else if (buildingCode === BuildingCode.cityHall && this.cityHall !== null) {
             result.success = false;
             result.error = ErrorCode.CITY_HALL_ALREADY_BUILT;
+        } else if(!isInsideCityBorders(this,x,y,data.sizeX,data.sizeY)) {
+            result.success = false;
+            result.error = ErrorCode.CANT_BUILD_HERE;
         } else if (this.stats.resourcesTotal.some(function (el, ind) {
             return data.constructionCost[ind] !== 0 && el < data.constructionCost[ind];
         })) {
@@ -119,6 +145,8 @@ define(function (require) {
                     self.cityHall = building;
 
                 onSuccess(building);
+
+                Events.fire(self, self.events.buildingBuilt, building);
             }, onError);
         }else{
             onError(test.error);
@@ -194,6 +222,10 @@ define(function (require) {
         return data;
     };
 
+    City.prototype.getBuildings = function(){
+        return this.buildings;
+    };
+
     //Area
     function calcCityTerritory(buildings, outArray){
         var index, iter;
@@ -206,25 +238,9 @@ define(function (require) {
         return outArray;
     }
 
-    function calcCityInfluenceArea(self, buildings, outObj){
-        //get array of influences
-        var building;
-        var influences = [];
-        for(var i = 0, l = buildings.length; i < l; i++){
-            building = buildings[i];
-            var iter = building.occupiedTiles(), index;
-            var radius = BuildingData[building.buildingCode].influenceRadius | 20;
-            while((index = iter.next()) !== -1) {
-                influences[index] = radius;
-            }
-        }
-
-        self.world.influenceMap.setInfluenceArea(self.name, influences);
-        return self.world.influenceMap.getInfluenceArea(self.name);
-    }
-
     City.prototype.getInfluenceArea = function(){
-        return calcCityInfluenceArea(this, this.buildings);
+        var r = this.world.influenceMap.getInfluenceArea(this.id);
+        return r;
     };
 
     return City;

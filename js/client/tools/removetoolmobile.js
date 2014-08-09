@@ -53,10 +53,9 @@ define(function (require) {
                     y: y0,
                     w: w,
                     h: h,
-                    fillColor: "rgba(127,0,0,0.5)",
-                    borderColor: "rgba(255,0,0,0.5)",
+                    fillColor: "rgba(127,0,0,0.4)",
+                    borderColor: "rgba(255,0,0,0.4)",
                     borderWidth: 2
-
                 });
             }
         }
@@ -70,8 +69,8 @@ define(function (require) {
             this.hiliteTokens = [vkaria.hiliteMan.hilite({
                 x: tile.x,
                 y: tile.y,
-                fillColor: "rgba(127,0,0,0.5)",
-                borderColor: "rgba(255,0,0,0.5)",
+                fillColor: "rgba(127,0,0,0.4)",
+                borderColor: "rgba(255,0,0,0.4)",
                 borderWidth: 2
             })];
 

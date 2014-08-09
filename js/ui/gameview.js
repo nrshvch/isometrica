@@ -185,11 +185,12 @@ define(function (require) {
 
 
 
-
+            /*
             this.openWindow(new MessageView({
                 mainView: this,
                 text: "Welcome! This is some (demo|prototype|whatever) city building game I made in a free time. \n Have fun building your small town! \n First you need to specify where your city will be located, and then you'll be able to put some buildings and roads!"
             }), "Welcome!");
+            */
         },
         openWindow: function (view, title) {
             if (this.window !== null)

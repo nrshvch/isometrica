@@ -39,7 +39,9 @@ define(function (require) {
             x1 = x0 + hiliteAreaData.w - 1,
             y1 = y0 + hiliteAreaData.h - 1,
             fill = hiliteAreaData.fillColor,
-            border = hiliteAreaData.borderColor;
+            border = hiliteAreaData.borderColor
+            borderWidth = hiliteAreaData.borderWidth;
+
 
             x0 = Math.min(x0, x1);
             y0 = Math.min(y0, y1);
@@ -54,7 +56,8 @@ define(function (require) {
                     x: i,
                     y: j,
                     fillColor: fill,
-                    borderColor: border
+                    borderColor: border,
+                    borderWidth: borderWidth
                 });
             }
         }

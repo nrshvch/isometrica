@@ -35,7 +35,7 @@ define(function (require) {
             gameObjectsCount = gameObjects.length,
             layersCount = config.layersCount,
             renderer, renderers, renderersCount,
-            i, j, ctx, go;
+            i, j, ctx;
 
         self.M = camera.camera.getWorldToScreen();
         self.V = camera.camera.getWorldToViewport();
@@ -43,9 +43,9 @@ define(function (require) {
         viewport.context.clearRect(0, 0, viewport.width, viewport.height);
 
         for (i = 0; i < gameObjectsCount; i++){
-            go = gameObjects[i];
-            if(go.renderer !== undefined && go.renderer.enabled && go.renderer.cullingTest(viewport, self)) {
-                self.layerBuffers[go.renderer.layer].push(go.renderer)
+            renderer = gameObjects[i].renderer;
+            if(renderer !== undefined && renderer.enabled && renderer.cullingTest(viewport, self, renderer)) {
+                self.layerBuffers[renderer.layer].push(renderer)
             }
         }
 
@@ -66,7 +66,7 @@ define(function (require) {
             for (j = 0; j < renderersCount; j++) {
                 renderer = renderers.pop();
 
-                renderer.render(ctx, self, viewport);
+                renderer.render(ctx, self, viewport, renderer);
             }
 
             viewport.context.drawImage(ctx.canvas, 0, 0);

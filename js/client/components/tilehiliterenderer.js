@@ -49,6 +49,7 @@ define(function (require) {
         layer.lineTo(vec3Buffer1[0], vec3Buffer1[1]);
         layer.closePath();
 
+        layer.save();
         if(this.borderColor !== undefined){
             layer.strokeStyle = this.borderColor;
             layer.lineWidth = this.borderWidth;
@@ -59,6 +60,7 @@ define(function (require) {
             layer.fillStyle = this.fillColor;
             layer.fill();
         }
+        layer.restore();
     };
 
     return Renderer;

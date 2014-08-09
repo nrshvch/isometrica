@@ -33,16 +33,17 @@ define(function (require) {
                     arg.push({
                         x: coord.x,
                         y: coord.y,
-                        fillColor: "rgba(127,0,0,0.5)",
-                        borderColor: "rgba(255,0,0,0.5)"
+                        fillColor: "rgba(127,0,0,0.4)",
+                        borderColor: "rgba(255,0,0,0.4)",
+                        borderWidth: 2
                     });
-                } else {
+                }/* else {
                     arg.push({
                         x: coord.x,
                         y: coord.y,
                         borderColor: "rgba(255,255,255,0.5)"
                     });
-                }
+                }                                         */
             }
 
             vkariaApp.hiliteMan.hilite(arg);
@@ -97,7 +98,9 @@ define(function (require) {
                         y: y0,
                         w: w,
                         h: h,
-                        fillColor: "rgba(0,0,127,0.5)"
+                        fillColor: "rgba(0,0,127,0.4)",
+                        borderColor: "rgba(0,0,255,0.4)",
+                        borderWidth: 2
                     });
                 }
             }
@@ -124,7 +127,9 @@ define(function (require) {
                     y: y0,
                     w: w,
                     h: h,
-                    fillColor: "rgba(0,0,127,0.5)"
+                    fillColor: "rgba(0,0,127,0.4)",
+                    borderColor: "rgba(0,0,255,0.4)",
+                    borderWidth: 2
                 })];
                 this.selectedTiles = [
                     tile
@@ -175,7 +180,9 @@ define(function (require) {
                 y: tile.y,
                 w: this.buildingSizeX,
                 h: this.buildingSizeY,
-                fillColor: "rgba(0,0,127,0.5)"
+                fillColor: "rgba(0,0,127,0.4)",
+                borderColor: "rgba(0,0,255,0.4)",
+                borderWidth: 2
             })];
         }
     };

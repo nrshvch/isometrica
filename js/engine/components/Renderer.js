@@ -27,7 +27,18 @@ define(function (require) {
         return vec3Buffer1[0] <= 1 && vec3Buffer1[0] >= -1 && vec3Buffer1[1] <= 1 && vec3Buffer1[1] >= -1;
     };
 
-    Renderer.prototype.render = null;
+    Renderer.prototype.render = function(layer,viewportRenderer,viewport){
+        this.gameObject.transform.getPosition(vec3Buffer1);
+        Vec3.transformMat4(vec3Buffer1, vec3Buffer1, viewportRenderer.V);
+
+        glMatrix.vec3.transformMat4(vec3Buffer1, this.gameObject.transform.getPosition(vec3Buffer1), viewportRenderer.M);
+
+        layer.font = "normal 12px arial";
+        layer.fillStyle = "red"
+        layer.textAlign = "center";
+        layer.textBaseline = "middle";
+        layer.fillText("EMPTY RENDERER", vec3Buffer1[0], vec3Buffer1[1]);
+    };
     Renderer.prototype.layer = 0;
 
     Renderer.prototype.setGameObject = function(gameObject){

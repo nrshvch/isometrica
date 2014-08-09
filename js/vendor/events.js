@@ -1,4 +1,4 @@
-define(function () {
+(function () {
 
     var lastId = 0;
     //subscriptions
@@ -25,11 +25,11 @@ define(function () {
             throw "Event handler should be a function";
 
         var id = lastId++;
-        subs[id] = {
+        event.push(subs[id] = {
+            id: id,
             listener: listener,
             meta: meta
-        };
-        event.push(id);
+        });
         return id;
     }
 
@@ -47,11 +47,13 @@ define(function () {
         var event = obj._events[eventType];
 
         var id = -1;
+        var sub;
 
         if (typeof listenerOrId === "function") {
             for(var i = 0, l = event.length; i < l; i++){
-                id = event[i];
-                if (id !== undefined && subs[id].listener === listenerOrId) {
+                sub = event[i];
+                if (sub !== undefined && sub.listener === listenerOrId) {
+                    id = sub.id;
                     break;
                 }
             }
@@ -60,11 +62,11 @@ define(function () {
         }
 
         if (id !== -1) {
-            delete subs[id];
-            var index = event.indexOf(id);
+            var index = event.indexOf(subs[id]);
             if (index !== -1) {
                 event[index] = undefined;
             }
+            delete subs[id];
             return true;
         }
 
@@ -85,14 +87,13 @@ define(function () {
         var listeners = obj._events[eventType];
 
         var i, l = listeners.length,
-            id, subscription,
+            subscription,
             cleanUp = false;
 
         for (i = 0; i < l; i++) {
-            id = listeners[i];
+            subscription = listeners[i];
 
-            if (id !== undefined) {
-                subscription = subs[id];
+            if (subscription !== undefined) {
                 subscription.listener(obj, args, subscription.meta);
             } else {
                 cleanUp = true;
@@ -143,4 +144,4 @@ define(function () {
     window.Events = Events;
 
     return Events;
-});
+}).call(this);
