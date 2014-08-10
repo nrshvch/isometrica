@@ -43,6 +43,7 @@ define(function (require) {
         var self = this;
         this.onBuildingRemoved = function (buildman, building) {
             var index = self.buildings.indexOf(building);
+
             if (index >= 0) {
                 self.buildings.splice(index, 1);
 
@@ -60,7 +61,7 @@ define(function (require) {
     function isInsideCityBorders(city, x0, y0, w, l){
         var inside = true;
         var iterator = new Terrain.TerrainIterator(x0,y0,w,l);
-        var area = city.getInfluenceArea();
+        var area = city.getInfluenceAreaData();
         while(true){
             var tile = iterator.next();
             if(tile === -1)
@@ -97,6 +98,7 @@ define(function (require) {
     City.prototype.clearTile = function (x, y) {
         this.world.buildings.remove(x,y);
         this.resourceOperations.subMoney(1);
+
         return true;
     };
 
@@ -240,6 +242,11 @@ define(function (require) {
 
     City.prototype.getInfluenceArea = function(){
         var r = this.world.influenceMap.getInfluenceArea(this.id);
+        return r;
+    };
+
+    City.prototype.getInfluenceAreaData = function(){
+        var r = this.world.influenceMap.getInfluenceAreaData(this.id);
         return r;
     };
 

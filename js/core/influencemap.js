@@ -31,6 +31,9 @@ define(function (require) {
 
     function onUpdate(city, args, self){
         console.log("influence zone update");
+
+        self.map = {};//clear all
+
         calcCityInfluenceArea(self, city);
     }
 
@@ -125,7 +128,7 @@ define(function (require) {
         Events.fire(this,this.events.areaChange, city);
     };
 
-    InfluenceMap.prototype.getInfluenceArea = function(city){
+    InfluenceMap.prototype.getInfluenceAreaData = function(city){
         var ret = [];
         for(var index in this.map){
             var cell = this.map[index];
@@ -133,6 +136,19 @@ define(function (require) {
 
             if(influence){
                 ret[index] = influence.value;
+            }
+        }
+        return ret;
+    };
+
+    InfluenceMap.prototype.getInfluenceArea = function(city){
+        var ret = [];
+        for(var index in this.map){
+            var cell = this.map[index];
+            var influence = cell.influences[city];
+
+            if(influence){
+                ret.push(index);
             }
         }
         return ret;

@@ -8,93 +8,104 @@ define(function (require) {
     var Core = require("core");
     var Config = require("../config");
     var Terrain = Core.Terrain;
-    var Layers = require("../renderlayer");
+    var RenderLayer = require("../renderlayer");
 
     var float32Buffer = new Float32Array(3);
+    var dash = [4];
 
-    function calcpoints(city){
+    //region funcs
+    function calculateBorderPoints(city) {
+        var a, b, c, d, i, len, idx;
         var tiles = city.getInfluenceArea();
-
-        var edges = {};
-
-        var yIndexUnit = Terrain.convertToIndex(0,1);
-        var index,p0,p1,p2,p3;
+        var yIndexUnit = Terrain.convertToIndex(0, 1);
+        var edges = {}, paths = [];
 
         //process every tile and add perimeter edges;
         //if edges are overlaping and are of opposite direction,
         //then these edges are internal, and should be deleted;
-        for(var key in tiles){
-            index = parseInt(key,10);
+        len = tiles.length;
+        for(i = 0; i < len; i++){
+            idx = parseInt(tiles[i], 10);
 
-            p0 = index; // x,y
-            p1 = index + 1; // x+1,y
-            p2 = index + yIndexUnit + 1; // x+1,y+1
-            p3 = index + yIndexUnit; // x,y+1
+            a = idx; // x,y
+            b = idx + 1; // x+1,y
+            c = idx + yIndexUnit + 1; // x+1,y+1
+            d = idx + yIndexUnit; // x,y+1
 
-            edges[p0] = edges[p0] || [];
-            edges[p1] = edges[p1] || [];
-            edges[p2] = edges[p2] || [];
-            edges[p3] = edges[p3] || [];
+            edges[a] = edges[a] || {};
+            edges[b] = edges[b] || {};
+            edges[c] = edges[c] || {};
+            edges[d] = edges[d] || {};
 
-            if(!edges[p1][p0])
-                edges[p0][p1] = true;
+            if (edges[b][a] === undefined)
+                edges[a][b] = {
+                    from: a,
+                    to: b,
+                    revised: false
+                };
             else
-                edges[p1][p0] = false;
+                delete edges[b][a];
 
-            if(!edges[p2][p1])
-                edges[p1][p2] = true;
+            if (edges[c][b] === undefined)
+                edges[b][c] = {
+                    from: b,
+                    to: c,
+                    revised: false
+                };
             else
-                edges[p2][p1] = false;
+                delete edges[c][b];
 
-            if(!edges[p3][p2])
-                edges[p2][p3] = true;
+            if (edges[d][c] === undefined)
+                edges[c][d] = {
+                    from: c,
+                    to: d,
+                    revised: false
+                };
             else
-                edges[p3][p2] = false;
+                delete edges[d][c];
 
-            if(!edges[p0][p3])
-                edges[p3][p0] = true;
+            if (edges[a][d] === undefined)
+                edges[d][a] = {
+                    from: d,
+                    to: a,
+                    revised: false
+                };
             else
-                edges[p0][p3] = false;
+                delete edges[a][d];
         }
-
-
-        //convert to 1d array
-        var plain = [];
-        var map = [];
-        var from,to;
-        for(var key in edges){
-            from = parseInt(key, 10);
-            var r = edges[from];
-
-            //remove records of internal edges
-            if(!(r[index+1] || r[index+yIndexUnit] || r[index-1] || r[index-yIndexUnit]))
-                delete edges[key];
-
-            for(var j in r){
-                if (r[j]) {
-                    to = parseInt(j,10);
-
-                    var o = {
-                        from: from,
-                        to: to,
-                        revised: false
-                    };
-                    map[from] = map[from] || [];
-                    map[from][to] = o;
-                    plain.push(o);
-                }
-            }
-        }
-
 
         //make paths
-        var paths = [];
-        for(var i = 0; i < plain.length; i++){
-            var head = plain[i];
-            if(!head.revised){
-                var arr = [];
-                paths.push(arr);
-                path(map,arr,head);
+        for (i in edges) {
+            len = edges[i];
+            i = parseInt(i, 10);
+
+            a = len[i + 1];
+            b = len[i - 1];
+            c = len[i + yIndexUnit];
+            d = len[i - yIndexUnit];
+
+            if (a !== undefined && !a.revised) {
+                len = [];
+                paths.push(len);
+                path(edges, len, a);
+            }
+
+            if (b !== undefined && !b.revised) {
+                len = [];
+                paths.push(len);
+                path(edges, len, b);
+            }
+
+            if (c !== undefined && !c.revised) {
+                len = [];
+                paths.push(len);
+                path(edges, len, c);
+            }
+
+            if (d !== undefined && !d.revised) {
+                len = [];
+                paths.push(len);
+                path(edges, len, d);
             }
         }
 
@@ -104,60 +115,72 @@ define(function (require) {
         return paths;
     }
 
-    function path(map,arr,pair){
-        var index = pair.from;
+    function path(map, arr, pair) {
+        var a, b, c, d, e, f, g,
+            yIndexUnit = Terrain.convertToIndex(0, 1);
+
+        e = Config.tileSize;
+        f = Config.tileZStep;
+        g = pair.from;
 
         pair.revised = true;
 
-        var x = Terrain.extractX(index);
-        var z = Terrain.extractY(index);
-        var y = isometrica.core.world.terrain.getGridPointHeight(index);
+        a = Terrain.extractX(g);
+        b = isometrica.core.world.terrain.getGridPointHeight(g);
+        c = Terrain.extractY(g);
 
-        x *= Config.tileSize;
-        z *= Config.tileSize;
-        y *= Config.tileZStep;
+        a = a * e - e / 2;
+        b = b * f;
+        c = c * e - e / 2;
 
-        x -= Config.tileSize / 2;
-        z -= Config.tileSize / 2;
+        arr.push([a, b, c]);
 
-        arr.push([x,y,z]);
+        e = null;
+        f = pair.to;
+        g = map[f];
+        if (g !== undefined) {
+            a = g[f + 1];
+            b = g[f - 1];
+            c = g[f + yIndexUnit];
+            d = g[f - yIndexUnit];
 
-        var next = null;
-        if(map[pair.to] !== undefined){
-            for(var dir in map[pair.to]){
-                if(!map[pair.to][dir].revised){
-                    next = map[pair.to][dir];
-                    break;
-                }
+            if (a !== undefined && !a.revised) {
+                e = a;
+            }else if(b !== undefined && !b.revised){
+                e = b;
+            }else if(c !== undefined && !c.revised){
+                e = c;
+            }else if(d !== undefined && !d.revised){
+                e = d;
             }
         }
 
-        if(next != null)
-            path(map,arr,next);
+        if (e !== null)
+            path(map, arr, e);
     }
 
-    function simplify(paths){
+    function simplify(paths) {
         var path, curr, prev, next,
-            jl,il = paths.length,
+            jl, il = paths.length,
             buf = [];
 
-        for(var i = 0; i < il; i++){
+        for (var i = 0; i < il; i++) {
             path = paths[i];
             jl = path.length;
 
             prev = next = undefined;
-            for(var j = 0; j < jl; j++){
+            for (var j = 0; j < jl; j++) {
                 curr = path[j];
-                next = path[j+1];
-                prev = path[j-1];
+                next = path[j + 1];
+                prev = path[j - 1];
 
-                if(next && prev){
-                    Vec3.sub(buf,prev,next);
+                if (next && prev) {
+                    Vec3.sub(buf, prev, next);
 
-                    if((buf[0] === 0 && buf[1] === 0 && buf[2] !== 0) ||
-                       (buf[0] !== 0 && buf[1] === 0 && buf[2] === 0) ||
-                       (buf[0] === 0 && buf[1] !== 0 && buf[2] === 0)){
-                        path.splice(j,1);
+                    if ((buf[0] === 0 && buf[1] === 0 && buf[2] !== 0) ||
+                        (buf[0] !== 0 && buf[1] === 0 && buf[2] === 0) ||
+                        (buf[0] === 0 && buf[1] !== 0 && buf[2] === 0)) {
+                        path.splice(j, 1);
                         j--;
                         jl--;
                     }
@@ -166,16 +189,9 @@ define(function (require) {
         }
     }
 
-    function onAreaChange(sender, args, meta){
-        var self = meta;
-        var city = isometrica.core.world.city;
-        if(city)
-            lerpBorder(self,calcpoints(city));
-    }
-
-    function lerp(r, from, to, c){
+    function lerp(r, from, to, c) {
         var il = from.length;
-        for(var i = 0; i < il; i++) {
+        for (var i = 0; i < il; i++) {
             var jl = from[i].length;
             for (var j = 0; j < jl; j++) {
                 Vec3.lerp(r[i][j], from[i][j], to[i][j], c);
@@ -184,7 +200,7 @@ define(function (require) {
         }
     }
 
-    function lerpBorder(self, to){
+    function lerpBorder(self, to) {
         self.points = to;
         return;
 
@@ -193,18 +209,20 @@ define(function (require) {
         var old = self.points;
 
         //if no points, then lerp from city center
-        if(old.length === 0){
-           old.push([[self.city.x * Config.tileSize, 0,self.city.y * Config.tileSize]]);
+        if (old.length === 0) {
+            old.push([
+                [self.city.x * Config.tileSize, 0, self.city.y * Config.tileSize]
+            ]);
         }
 
         //put all new border points on old border
-        for(var ii = 0; ii < from.length; ii++) {
+        for (var ii = 0; ii < from.length; ii++) {
             var f = from[ii];
 
             for (var i = 0; i < f.length; i++) {
                 var p = null;
 
-                for(var jj = 0; jj < old.length; jj++) {
+                for (var jj = 0; jj < old.length; jj++) {
                     var o = old[jj];
                     for (var j = 0; j < o.length; j++) {
                         if (p === null || Vec3.distance(o[j], f[i]) < Vec3.distance(p, f[i]))
@@ -219,43 +237,58 @@ define(function (require) {
         var curr = JSON.parse(JSON.stringify(from));
 
 
-
         var c = 0;
-        Engine.Coroutine.startCoroutine(function(){
-            lerp(curr,from,to,c);
-            c+=0.1;
+        Engine.Coroutine.startCoroutine(function () {
+            lerp(curr, from, to, c);
+            c += 0.1;
             self.points = curr;
-            if(c<1)
+            if (c < 1)
                 return 0.1;
             else
                 return -1;
         });
     }
 
-    function CityBorderRenderer() {
-        this.layer = Layers.groundDrawLayer;
+    //endregion
 
-        var city = this.city = isometrica.core.world.city;
-        if(city === undefined)
-            throw "City is undefined";
-        //array of vectors in world space
-        this.points = [];//calcpoints(city);//
-        lerpBorder(this,calcpoints(city));
+    //region event handlers
+    function onAreaChange(sender, args, meta) {
+        var self = meta;
+        var city = isometrica.core.world.city;
+        if (city)
+            self.points = calculateBorderPoints(city);
+    }
+
+    //endregion
+
+    /**
+     *
+     * @constructor
+     */
+    function CityBorderRenderer() {
+        this.layer = RenderLayer.groundDrawLayer;
+        this.city = isometrica.core.world.city;
 
         var inflmap = isometrica.core.world.influenceMap;
         Events.on(inflmap, inflmap.events.areaChange, onAreaChange, this);
-
-        this.min = [0,0,0];
-        this.max = [1000,1000,1000]
     }
 
     CityBorderRenderer.prototype = Object.create(Engine.Renderer.prototype);
 
-    //TODO this could check just four min,max points
-    CityBorderRenderer.prototype.cullingTest = function(viewport,vprender){
+    /**
+     * Array of arrays of border points
+     * @type {[][]}
+     */
+    CityBorderRenderer.prototype.points = null;
+
+    CityBorderRenderer.prototype.start = function () {
+        this.points = calculateBorderPoints(this.city);
+    };
+
+    CityBorderRenderer.prototype.cullingTest = function (viewport, vprender) {
         var buffer = float32Buffer;
         var points = this.points;
-        for(var ii = 0; ii < points.length; ii++) {
+        for (var ii = 0; ii < points.length; ii++) {
             var l = points[ii].length;
             for (var i = 0; i < l; i++) {
                 Vec3.transformMat4(buffer, points[ii][i], vprender.V);
@@ -266,15 +299,14 @@ define(function (require) {
         return false;
     };
 
-    var dash = [4];
     CityBorderRenderer.prototype.render = function (ctx, viewportrenderer, viewport, me) {
-        var pps = this.points,p,ppsl = pps.length;
-        var ps,l;
+        var pps = this.points, ppsl = pps.length;
+        var ps, l;
         var m = viewportrenderer.M;
         var buffer = float32Buffer;
 
         ctx.beginPath();
-        for(var u = 0; u < ppsl; u++) {
+        for (var u = 0; u < ppsl; u++) {
             ps = pps[u];
             l = ps.length;
 
