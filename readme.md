@@ -1,6 +1,6 @@
 # Free to play city building game
 
-![Isometrica](https://bitbucket.org/narushevich/vkaria/raw/6cb997160d2af472df6ca3c8da771141264d8f64/Isometrica.png)
+![Isometrica](https://bytebucket.org/narushevich/isometrica/raw/3535026b32776c0c03e34cfc7b45bac6057af04b/misc/Isometrica.png?token=9b2997aa55a4fdf051fdf8087f176057fb890e46)
 
 ### About
 This is a JavaScript based city building game with retro graphics. 
