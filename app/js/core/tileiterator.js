@@ -1,5 +1,6 @@
 define(/** @lends TileIterator */ function(require){
     var Namespace = require("namespace");
+    var Terrain = require("./terrain");
 
     var Core = Namespace("Isometrica.Core");
 
@@ -13,10 +14,23 @@ define(/** @lends TileIterator */ function(require){
      * @param x0
      * @param y0
      * @param w
-     * @param l
+     * @param l [number]
      * @constructor
      */
-    function TileIterator(x0, y0, w, l) {
+    function TileIterator(tile_Or_x0, w_or_y0, l_w, l) {
+        var x0,y0, w;
+
+        if(arguments.length === 3){
+            x0 = Terrain.extractX(tile_Or_x0);
+            y0 = Terrain.extractY(tile_Or_x0);
+            w = w_or_y0;
+            l = l_w;
+        }else{
+            x0 = tile_Or_x0;
+            y0 = w_or_y0;
+            w = l_w;
+        }
+
         TileIterator.setup(this, x0, y0, w, l);
     }
 

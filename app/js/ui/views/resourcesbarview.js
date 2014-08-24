@@ -1,9 +1,12 @@
 define(function (require) {
     require("backbone");
 
-    var templateText = require("text!templates/resourcesbar.html"),
-        ResourceCode = require("core/resourcecode"),
-        template = $.parseHTML(templateText),
+    var templateText = require("text!templates/resourcesbar.html");
+    /**
+     * @type {ResourceCode}
+     */
+    var ResourceCode = require("core/resourcecode");
+    var template = $.parseHTML(templateText),
         itemTemplate = $(".item", template),
         Numeral = require("numeral");
 
@@ -12,7 +15,7 @@ define(function (require) {
     var View = Backbone.View.extend({
         initialize: function (options) {
             this.render();
-            if(options){
+            if (options) {
                 options.resources && this.setResources(options.resources);
                 this.hideZeros = options.hideZeros || false;
                 this.hideMask = options.hideMask || 0;
@@ -23,15 +26,17 @@ define(function (require) {
             this.setElement(node);
         },
         setResources: function (resources) {
-            for (var key in ResourceCode) {
-                var index = ResourceCode[key];
+            var key, index;
+            for (var name in ResourceCode) {
+                key = ResourceCode[name];
+                index = View.ResourceIndex[key];
 
-                if (this.hideMask & 1 << index || (this.hideZeros && resources[index] === 0))
+                if (this.hideMask & 1 << index || (this.hideZeros && resources[key] === 0))
                     continue;
 
                 if (this._nodeMask & 1 << index) {
-                    $(".value", this[key]).text(Numeral(resources[index]).format("0a"));
-                    $(this[key]).attr("title", Math.round(resources[index])+" "+key);
+                    $(".value", this[key]).text(Numeral(resources[key]).format("0a"));
+                    $(this[key]).attr("title", Math.round(resources[key]) + " " + key);
                 } else {
                     this._nodeMask |= 1 << index;
 
@@ -39,8 +44,8 @@ define(function (require) {
                     tmpl.addClass(key);
                     this[key] = tmpl;
 
-                    $(".value", tmpl).text(Numeral(resources[index]).format("0a"));
-                    $(tmpl).attr("title", Math.round(resources[index])+" "+key);
+                    $(".value", tmpl).text(Numeral(resources[key]).format("0a"));
+                    $(tmpl).attr("title", Math.round(resources[key]) + " " + key);
                     $(".icon", tmpl).attr("src", "img/" + key + "_icon_16.png");
 
                     $(".items", this.$el).append(tmpl);
@@ -52,6 +57,19 @@ define(function (require) {
         _nodeMask: 0,
         hideZeros: false
     });
+
+    var idxs = {};
+    idxs[ResourceCode.money] = 0;
+    idxs[ResourceCode.food] = 1;
+    idxs[ResourceCode.water] = 2;
+    idxs[ResourceCode.electricity] = 3;
+    idxs[ResourceCode.oil] = 4;
+    idxs[ResourceCode.wood] = 5;
+    idxs[ResourceCode.stone] = 6;
+    idxs[ResourceCode.iron] = 7;
+    idxs[ResourceCode.glass] = 8;
+
+    View.ResourceIndex = idxs;
 
     return View;
 });

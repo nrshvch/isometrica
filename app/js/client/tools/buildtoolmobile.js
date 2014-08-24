@@ -31,11 +31,20 @@ define(function (require) {
                 var x = Core.Terrain.extractX(coord);
                 var y = Core.Terrain.extractY(coord);
                 var res = vkaria.core.world.terrain.getResource(x, y);
+                var ResourceCode = Core.ResourceCode;
                 if (res) {
+                    var color;
+                    if(res === ResourceCode.stone)
+                        color = "gray";
+                    else if(res === ResourceCode.iron)
+                        color  = "orange";
+                    else
+                        color  = "black";
+
                     arg.push({
                         x: x,
                         y: y,
-                        fillColor: "rgba(127,0,0,0.4)",
+                        fillColor: color,
                         borderColor: "rgba(255,0,0,0.4)",
                         borderWidth: 2
                     });

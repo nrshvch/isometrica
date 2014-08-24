@@ -6,30 +6,28 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function (require) {
-    var TileRatings = require("./tileratings"),
-        Resources = require("core/resources");
+    var TileRatings = require("../tileratings"),
+        Resources = require("../resources"),
+        Events = require("events"),
+        BuildingData = require("../buildingdata");
 
     var TAX_MONEY = 1;
     var MAX_ECO = 100;
+    var AREA_TILE_COST_PER_TURN = 0.025;
 
-    var resourceBuffer1 = Resources.create(),
-        resourceBuffer2 = Resources.create(),
-        resourceBuffer3 = Resources.create(),
-        resourceBuffer4 = Resources.create(),
-        dateBuffer1 = new Date(),
-        dateBuffer2 = new Date;
+    var resourceBuffer1 = {};
 
-    function CityStats(city){
+    function CityStats(city) {
         this.city = city;
         this.ratings = TileRatings.create();
-        this.resourceDemand = Resources.create();
-        this.resourceProduce = Resources.create();
-        this.resourcesTotal = Resources.create();
-        this.maintenanceCost = Resources.create();
-
-        this.resourcesTotal[Resources.ResourceCode.money] = 100;
-        this.resourcesTotal[Resources.ResourceCode.stone] = 100;
-        this.resourcesTotal[Resources.ResourceCode.wood] = 100;
+        this.resourceDemand = {};
+        this.resourceProduce = {};
+        this.resourcesTotal = {
+            money: 10000,
+            stone: 100,
+            wood: 100
+        };
+        this.maintenanceCost = {};
     }
 
     CityStats.prototype.city = null;
@@ -38,6 +36,7 @@ define(function (require) {
     CityStats.prototype.resourcesTotal = null;
     CityStats.prototype.maintenanceCost = null;
     CityStats.prototype.incomeFromTaxes = null;
+    CityStats.prototype.areaCost = 0;
     CityStats.prototype.ratings = null;
     CityStats.prototype._population = 0;
     Object.defineProperty(CityStats.prototype, "population", {
@@ -47,7 +46,21 @@ define(function (require) {
     });
     CityStats.prototype.citizenCapacity = 0;
 
-    CityStats.prototype.CalculateAll = function(){
+    CityStats.prototype.events = {
+        update: 0
+    };
+
+    CityStats.prototype.init = function () {
+        var world = this.city.world;
+        Events.on(world, world.events.tick, onWorldTick, this);
+    };
+
+    function onWorldTick(sender, args, self) {
+        self.CalculateAll();
+        Events.fire(self, self.events.update);
+    }
+
+    CityStats.prototype.CalculateAll = function () {
         calculateCitizenCapacity(this);
         calculateRatings(this);
         calculatePopulationChangePerTick(this);
@@ -55,8 +68,11 @@ define(function (require) {
         calculateMaintenanceCost(this);
         calculateResourceConsumption(this);
         calculateResourceProduction(this);
-        calculateResources(this);
+        calculateAreaCost(this);
+        //calculateResources(this);
     };
+
+
 
     //PRIVATE
 
@@ -88,21 +104,27 @@ define(function (require) {
 
     function calculateCitizenCapacity(cityStats) {
         var r = 0;
-        for (var key in cityStats.city.buildings) {
-            var building = cityStats.city.buildings[key];
+        var buildings = cityStats.city.cityBuildings.getBuildings();
+        for (var key in buildings) {
+            var building = buildings[key];
             r += building.citizenCapacity();
         }
         cityStats.citizenCapacity = r;
     }
 
-    function calculateRatings(cityStats){
+    function calculateRatings(cityStats) {
         var tilesCount = 0, building, sizeX, sizeY, baseX, baseY, x, y, i, l;
-        if (cityStats.city.buildings.length > 0) {
+        var buildings = cityStats.city.cityBuildings.getBuildings(),
+            l = buildings.length,
+            data;
+
+        if (l > 0) {
             TileRatings.copy(cityStats.ratings, TileRatings.zero);
-            for (var key in cityStats.city.buildings) {
-                building = cityStats.city.buildings[key];
-                sizeX = building.data.sizeX;
-                sizeY = building.data.sizeY;
+            for (var key in buildings) {
+                building = buildings[key];
+                data = BuildingData[building.buildingCode];
+                sizeX = data.sizeX;
+                sizeY = data.sizeY;
                 baseX = building.x;
                 baseY = building.y;
 
@@ -117,7 +139,7 @@ define(function (require) {
             }
         }
 
-        if(tilesCount > 0)
+        if (tilesCount > 0)
             TileRatings.mul(cityStats.ratings, cityStats.ratings, 1 / tilesCount);
         else
             TileRatings.copy(cityStats.ratings, defaultRatings);
@@ -128,39 +150,54 @@ define(function (require) {
     }
 
     function calculateResourceConsumption(cityStats) {
-        Resources.copy(cityStats.resourceDemand, Resources.zero);
+        Resources.clear(cityStats.resourceDemand);
 
-        for (var i = 0; i < cityStats.city.buildings.length; i++)
-            Resources.add(cityStats.resourceDemand, cityStats.resourceDemand, cityStats.city.buildings[i].demanding);
+        var buildings = cityStats.city.cityBuildings.getBuildings(),
+            l = buildings.length;
+
+        for (var i = 0; i < l; i++)
+            Resources.add(cityStats.resourceDemand, cityStats.resourceDemand, buildings[i]);
     }
 
-    function calculateResourceProduction(cityStats){
-        Resources.copy(cityStats.resourceProduce, Resources.zero);
-
-        for (var i = 0; i < cityStats.city.buildings.length; i++)
-            Resources.add(cityStats.resourceProduce, cityStats.resourceProduce, cityStats.city.buildings[i].producing);
+    function calculateResourceProduction(self) {
+        Resources.clear(self.resourceProduce);
+        var buildings = self.city.cityBuildings.getBuildings();
+        var l = buildings.length;
+        for (var i = 0; i < l; i++) {
+            Resources.add(self.resourceProduce, self.resourceProduce, buildings[i].producing);
+        }
     }
 
-    function calculateMaintenanceCost(cityStats){
+    function calculateMaintenanceCost(cityStats) {
         var dateNow = new Date();
         dateNow.setTime(cityStats.city.world.time.now);
 
-        Resources.copy(cityStats.maintenanceCost, Resources.zero);
+        Resources.clear(cityStats.maintenanceCost);
 
-        for (var i = 0, l = cityStats.city.buildings.length; i < l; i++){
-            var building = cityStats.city.buildings[i];
+        var buildings = cityStats.city.cityBuildings.getBuildings();
+        var l = buildings.length;
+
+        for (var i = 0; i < l; i++) {
+            var building = buildings[i];
+            var data = BuildingData[building.buildingCode];
 
             var maintenanceCostN = calculateBuildingMaintenanceDailyCostPercent(cityStats.city, building, dateNow);
-            Resources.mul(resourceBuffer1, building.data.constructionCost, maintenanceCostN);
+            Resources.mul(resourceBuffer1, data.constructionCost, maintenanceCostN);
             Resources.add(cityStats.maintenanceCost, cityStats.maintenanceCost, resourceBuffer1);
         }
     }
 
-    function calculateResources(cityStats){
+    function calculateAreaCost(self) {
+        var area = self.city.area.getInfluenceArea();
+        var n = area.length;
+        self.areaCost = n * AREA_TILE_COST_PER_TURN;
+    }
+
+    function calculateResources(cityStats) {
         Resources.add(cityStats.resourcesTotal, cityStats.resourcesTotal, cityStats.resourceProduce);
         Resources.sub(cityStats.resourcesTotal, cityStats.resourcesTotal, cityStats.resourceDemand);
-        Resources.add(cityStats.resourcesTotal, cityStats.resourcesTotal, cityStats.maintenanceCost);
-        Resources.add(cityStats.resourcesTotal, cityStats.resourcesTotal, Resources.create({money: cityStats.incomeFromTaxes}));
+        Resources.sub(cityStats.resourcesTotal, cityStats.resourcesTotal, cityStats.maintenanceCost);
+        Resources.add(cityStats.resourcesTotal, cityStats.resourcesTotal, Resources.create({money: cityStats.incomeFromTaxes - cityStats.areaCost}));
     }
 
     function calculatePopulationChangePerTick(cityStats) {
@@ -172,16 +209,16 @@ define(function (require) {
         var maxCitizensCanJoin = cap > 0 ? Math.max(1, Math.sqrt(cap)) : 0;
 
         //calculate overralEffect
-        var ecoEffect = avgEco / (MAX_ECO/2) - 1; // (-1,1)
+        var ecoEffect = avgEco / (MAX_ECO / 2) - 1; // (-1,1)
         var ecoWeight = 1;
         var overallEffect = ecoEffect * ecoWeight; // (-1,1)
 
         //if effect is low , citizens leave
-        if(overallEffect < 0)              {
+        if (overallEffect < 0) {
             change = citizensLeaveDueBadRatings * overallEffect;
-        }else if(cap < 0){//if capacity is not enough citizens leave by one
+        } else if (cap < 0) {//if capacity is not enough citizens leave by one
             change = -1;
-        }else{//is effect is high enoguh , citizens join
+        } else {//if effect is high enough , citizens join
             change = maxCitizensCanJoin * overallEffect;
         }
 

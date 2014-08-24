@@ -12,6 +12,7 @@ define(function (require) {
         Events = require("events"),
         ErrorCode = require("core/errorcode"),
         Enumerator = require("enumeration");
+    var Terrain = Core.Terrain;
 
     function Buildman(main) {
         EventManager.call(this);
@@ -115,7 +116,10 @@ define(function (require) {
             building = this.buildingByXY[x][y];
             Events.fire(this, this.events.buildingRemoved, building);
             building.destroy();
-            vkaria.core.world.buildings.release(building.data);
+
+            if(!building.data.permanent)
+                building.data.dispose();
+
             delete this.buildingByXY[x][y];
         }
 
@@ -128,7 +132,7 @@ define(function (require) {
     Buildman.prototype.build = function (buildingCode, x, y, rotate, onSuccess, onError) {
         var self = this;
 
-        vkaria.core.world.city.build(buildingCode, x, y, rotate, function (building) {
+        vkaria.core.world.city.buildings.buildBuilding(buildingCode, x, y, rotate, function (building) {
             //vkaria.assets.getAsset("/audio/blip.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
                 //resource.data.play();
             //});
@@ -153,8 +157,8 @@ define(function (require) {
     };
 
     Buildman.prototype.createBuilding = function (data) {
-        var x = data.x,
-            y = data.y,
+        var x = Terrain.extractX(data.tile),
+            y = Terrain.extractY(data.tile),
             tile,
             building;
 
@@ -163,7 +167,7 @@ define(function (require) {
         if (!tile)
             return false;
 
-        if (buildingData[data.data.buildingCode].classCode === BuildingClassCode.road) {
+        if (buildingData[data.buildingCode].classCode === BuildingClassCode.road) {
             building = new Road();
         } else
             building = new Building();
@@ -172,7 +176,7 @@ define(function (require) {
 
         this.setBuilding(x, y, building);
 
-        if (buildingData[data.data.buildingCode].classCode === BuildingClassCode.road) {
+        if (buildingData[data.buildingCode].classCode === BuildingClassCode.road) {
             this.addRoad(x, y, building);
             this.updateRoads(x, y);
         }
@@ -183,8 +187,8 @@ define(function (require) {
     };
 
     Buildman.prototype.updateBuilding = function (data) {
-        var x = data.x,
-            y = data.y,
+        var x = Terrain.extractX(data.tile),
+            y = Terrain.extractY(data.tile),
             tile,
             building;
 

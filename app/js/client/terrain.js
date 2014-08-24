@@ -6,6 +6,7 @@ define(function (require) {
     var Tile = require("./gameObjects/tile");
     var TerrainType = Core.TerrainType;
     var Config = require("./config");
+    var TileIterator = Core.TileIterator;
 
     var grass = {
         2222: 'grass/2222.png',
@@ -70,7 +71,7 @@ define(function (require) {
     }
 
     Terrain.prototype.clear = function (x0, y0, w, l) {
-        var iter = new Core.Terrain.TerrainIterator(x0,y0,w,l);
+        var iter = new TileIterator(x0,y0,w,l);
         var tile, index, tiles = this.tiles, pool = this.pool, gos = this.gos,
             world = vkaria.game.logic.world;
         while(true){
@@ -163,7 +164,7 @@ define(function (require) {
     };
 
     Terrain.prototype.draw0 = function (x0, y0, w, l) {
-        var iter = new Isometrica.Core.Terrain.TerrainIterator(x0, y0, w, l);
+        var iter = new TileIterator(x0, y0, w, l);
 
         Isometrica.Engine.Coroutine.startCoroutine(routine, iter, this);
 
@@ -172,7 +173,7 @@ define(function (require) {
     Terrain.prototype.draw = function (x0, y0, w, l) {
         var coreTerrain = vkaria.core.world.terrain;
 
-        var iter = new Isometrica.Core.Terrain.TerrainIterator(x0, y0, w, l);
+        var iter = new TileIterator(x0, y0, w, l);
         var tiles = this.tiles,
             index, x, y, z, t, slope, type, sprite, gps, gos = this.gos;
 

@@ -13,6 +13,7 @@ define(function (require) {
         RatingsMan = require("./tileratingsmanager"),
         Config = require("./config"),
         InfluenceMap = require("./influencemap");
+    var TileParamsMan = require("./world/tileparamsmanager");
 
     function World() {
         this.simplex = new Simplex([151, 160, 137, 91, 90, 15,
@@ -41,7 +42,7 @@ define(function (require) {
         this.buildMan = this.buildings = new Buildings(this);
         this.resourceMarket = new ResourceMarket(this);
         this.ambient = this.ambientService = new AmbientService(this);
-
+        this.tileParams = new TileParamsMan(this);
 
         this.ratingsman = new RatingsMan(this);
 
@@ -117,8 +118,6 @@ define(function (require) {
     World.prototype.resourceDistribution = function (x, y) {
         if (this.stoneDistribution(x, y))
             return ResourceCode.stone;
-        else if (this.coalDistribution(x, y))
-            return ResourceCode.coal;
         else if (this.ironDistribution(x, y))
             return ResourceCode.iron;
         else if (this.oilDistribution(x, y))
@@ -169,6 +168,10 @@ define(function (require) {
             this.city.load(savedGameState.city);
             Events.fire(this, this.events.cityEstablished, this, null);
         }
+    };
+
+    World.prototype.getCity = function(id){
+        return this.city;
     };
 
     return World;

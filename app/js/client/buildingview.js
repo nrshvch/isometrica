@@ -10,7 +10,10 @@ define(function (require) {
         RenderLayer = require("client/renderlayer"),
         SmokeSource = require("./components/smokesource"),
         Config = require("./config"),
-        BuildingState = require("core/buildingstate");
+        BuildingState = require("core/buildingstate"),
+        Core = require("core");
+
+    var Terrain = Core.Terrain;
 
     function BuildingView() {
         this.gameObject = new engine.GameObject("building");
@@ -38,7 +41,7 @@ define(function (require) {
                 child.gameObject.destroy();
             }
 
-            if (b.data.state === BuildingState.underConstruction) {
+            if (b.data.getState() === BuildingState.underConstruction) {
                 var sizeX = 0,
                     sizeY = 0;
 
@@ -64,7 +67,7 @@ define(function (require) {
                         part.transform.translate(x * Config.tileSize, 0, y * Config.tileSize);
                     }
                 }
-            } else if (b.data.state === BuildingState.ready) {
+            } else if (b.data.getState() === BuildingState.ready) {
                 var spritesData;
 
                 if (b.data.rotation && staticData.spritesRotate) {
@@ -101,9 +104,9 @@ define(function (require) {
             //position gameObject
             var data = this.building.data,
                 //this.building.tile.gameObject.transform.getPosition()[1] + this.building.tile.subpositionZ(data.subPosX, data.subPosY),
-                x = data.x + data.subPosX,
-                y = data.y + data.subPosY,
-                z = vkaria.terrain.getHeight(x,y);
+                x = Terrain.extractX(data.tile),// + data.subPosX,
+                y = Terrain.extractY(data.tile),// + data.subPosY,
+                z = vkaria.core.world.terrain.getGridPointHeight(x+1, y);
 
             this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
         }

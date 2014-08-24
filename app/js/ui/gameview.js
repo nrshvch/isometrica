@@ -63,10 +63,10 @@ define(function (require) {
 
             this.resourcesBar = new ResourcesBarView();
             var mask = 0;
-            mask |= 1 << ResourceCode.money;
-            mask |= 1 << ResourceCode.food;
-            mask |= 1 << ResourceCode.water;
-            mask |= 1 << ResourceCode.electricity;
+            mask |= 1 << ResourcesBarView.ResourceIndex[ResourceCode.money];
+            mask |= 1 << ResourcesBarView.ResourceIndex[ResourceCode.food];
+            mask |= 1 << ResourcesBarView.ResourceIndex[ResourceCode.water];
+            mask |= 1 << ResourcesBarView.ResourceIndex[ResourceCode.electricity];
             this.resourcesBar.hideMask = ~mask;
 
             this.window = null;
@@ -97,7 +97,17 @@ define(function (require) {
             var camera = vkaria.game.logic.world.findByName("mainCamera");
             viewport.setCamera(camera).setSize(viewport.canvas.offsetWidth, viewport.canvas.offsetHeight);
 
+            var zoom = 1;
 
+            document.addEventListener("keyup", function(e,a,b){
+                if(e.which === 109) {
+                    zoom += 0.1;
+                    viewport.setSize(viewport.canvas.offsetWidth * zoom, viewport.canvas.offsetHeight * zoom);
+                }else if(e.which === 107) {
+                    zoom -= 0.1;
+                    viewport.setSize(viewport.canvas.offsetWidth * zoom, viewport.canvas.offsetHeight * zoom);
+                }
+            });
 
             vkaria.city.addEventListener(vkaria.city.events.nameRequired, this.onCityRename);
 

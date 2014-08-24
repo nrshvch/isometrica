@@ -41,7 +41,7 @@ define(function (require) {
         if(building == undefined)
             return;
 
-        var data = BuildingData[building.data.buildingCode],
+        var data = BuildingData[building.buildingCode],
             effect = data.effect,
             affectedTiles = getAffectedTiles(self, building);
 
@@ -101,7 +101,7 @@ define(function (require) {
 
     var removeRatings = function (self, building) {
         var affected = getAffectedTiles(self, building);
-        var effect = BuildingData[building.data.buildingCode].effect;
+        var effect = BuildingData[building.buildingCode].effect;
 
         if(affected !== null && effect !== undefined){
             for(var i = 0; i < affected.length; i++){

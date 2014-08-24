@@ -9,6 +9,7 @@ define(function (require) {
         BuildingWaypoints = require("client/buildingwaypoints"),
         RoadNode = require("./pathfinding/roadnode"),
         RoadView = require("./roadview");
+    var Terrain = Core.Terrain;
 
     function Road() {
         this.view = new RoadView();
@@ -21,7 +22,7 @@ define(function (require) {
 
     Road.prototype.setData = function(data){
         this.data = data;
-        this.staticData = BuildingData[data.data.buildingCode];
+        this.staticData = BuildingData[data.buildingCode];
         //this.tile = vkaria.terrain.getTile(data.x, data.y).tileScript;
 
         if(this.node === null)
@@ -32,8 +33,8 @@ define(function (require) {
     };
 
     Road.prototype.updateRoad = function () {
-        var x = this.data.x,
-            y = this.data.y,
+        var x = Terrain.extractX(this.data.tile),
+            y = Terrain.extractY(this.data.tile),
             slopeId = vkaria.core.world.terrain.calcSlopeId(x,y),
             buildman = vkaria.buildman,
             ne = buildman.getRoad(x + 1, y),

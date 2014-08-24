@@ -8,7 +8,9 @@
 define(function (require) {
     var engine = require("engine"),
         RenderLayer = require("client/renderlayer"),
-        Config = require("./config");
+        Config = require("./config"),
+        Core = require("core");
+    var Terrain = Core.Terrain;
 
 
     var roadSprite = {
@@ -68,9 +70,9 @@ define(function (require) {
             //position gameObject
             var data = b.data,
                 //z = b.tile.gameObject.transform.getPosition()[1] + b.tile.subpositionZ(data.subPosX, data.subPosY),
-                x = data.x + data.subPosX,
-                y = data.y + data.subPosY,
-                z = vkaria.terrain.getHeight(x,y);
+                x = Terrain.extractX(data.tile),// + data.subPosX,
+                y = Terrain.extractY(data.tile),// + data.subPosY,
+                z = vkaria.core.world.terrain.getGridPointHeight(x+1, y);
 
             this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
         }

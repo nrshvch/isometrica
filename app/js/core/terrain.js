@@ -5,14 +5,14 @@ define(function (require) {
     var ResourceCode = require("core/resourcecode");
     var TerrainType = require('./terraintype');
     var Simplex = require("./vendor/simplex-noise");
-    var TileIterator = require("./tileiterator");
+    //var TileIterator = require("./tileiterator");
 
     namespace("Isometrica.Core").Terrain = Terrain;
 
     /**
      * @type {TileIterator}
      */
-    Terrain.TileIterator = Terrain.TerrainIterator = TileIterator;
+    //Terrain.TileIterator = Terrain.TerrainIterator = TileIterator;
 
     var simplex = new Simplex([151, 160, 137, 91, 90, 15,
         131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,

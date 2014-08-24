@@ -5,6 +5,7 @@ define(function (require) {
     var Terrain = require("./terrain");
     var Events = require("events");
     var BuildingData = require("./buildingdata");
+    var TileRadialIterator = require("./tileiteratorradial");
 
     function InfluenceMap(world){
         this.map = {};
@@ -21,100 +22,6 @@ define(function (require) {
      * @type {World}
      */
     InfluenceMap.prototype.world = null;
-
-    function onCityEstablished(world, city, self){
-        Events.on(city, city.events.buildingBuilt, onUpdate, self);
-        Events.on(city, city.events.buildingRemoved, onUpdate, self);
-
-        onUpdate(city,null,self);
-    }
-
-    function onUpdate(city, args, self){
-        console.log("influence zone update");
-
-        self.map = {};//clear all
-
-        calcCityInfluenceArea(self, city);
-    }
-
-    function calcCityInfluenceArea(self, city){
-        //get array of influences
-        var buildings = city.getBuildings();
-        var building;
-        var influences = [];
-        for(var i = 0, l = buildings.length; i < l; i++){
-            building = buildings[i];
-            var iter = building.occupiedTiles(), index;
-            var radius = BuildingData[building.buildingCode].influenceRadius | 1;
-            while((index = iter.next()) !== -1) {
-                influences[index] = radius;
-            }
-        }
-
-        //add city origin
-        influences[Terrain.convertToIndex(city.x,city.y)] = 3;
-
-        self.setInfluenceArea(city.id, influences);
-        //return self.world.influenceMap.getInfluenceArea(self.name);
-    }
-
-    /**
-     * Claim your right to own this cell
-     * @param map
-     * @param city
-     * @param index
-     * @param value
-     */
-    function setInfluence(map, city, index, value){
-        if(!map[index])
-            map[index] = {
-                count: 0,
-                influences: {}
-            };
-
-        var cell = map[index];
-
-        if(!cell.influences[city]) {
-            cell.influences[city] = {
-                order: cell.count++,
-                value: value
-            }
-        }else{
-            cell.influences[city].value += value;
-        }
-    }
-
-    /**
-     * calculate influence area of single source.
-     * @param xy
-     * @param influenceRadius
-     * @constructor
-     */
-    function calcInfluenceArea(xy,influenceRadius){
-        var x = Terrain.extractX(xy);
-        var y = Terrain.extractY(xy);
-        var r = [];
-        var iter = new Terrain.TerrainIterator(x - influenceRadius, y - influenceRadius, 1 + influenceRadius * 2, 1 + influenceRadius * 2);
-        var index;
-
-        while((index = iter.next()) !== -1){
-            var _x = Terrain.extractX(index);
-            var _y = Terrain.extractY(index);
-            var d = Math.sqrt(Math.pow(_x-x, 2) + Math.pow(_y-y,2));
-
-            if(d > influenceRadius)continue;
-            var value = influenceRadius + 1 - d;
-            r.push({
-                x: _x,
-                y: _y,
-                value: value,
-                index: index
-            });
-
-        }
-
-        return r;
-    }
 
     InfluenceMap.prototype.setInfluenceArea = function(city, influenceSources){
         for(var index in influenceSources){
@@ -153,6 +60,106 @@ define(function (require) {
         }
         return ret;
     };
+
+    InfluenceMap.prototype.getTileOwner = function(tile){
+        var pretenders = this.map[tile];
+        if(pretenders !== undefined)
+            pretenders = pretenders.influences;
+
+        var best = null;
+        for(var cityId in pretenders){
+            var pretender = pretenders[cityId];
+            if(best === null || best.value < pretender.value || (best.value === pretender.value && best.order < pretender.order))
+                best = pretender;
+        }
+        return (best !== null && best.city) || -1;
+    };
+
+    function onCityEstablished(world, city, self){
+        Events.on(city.cityBuildings, city.cityBuildings.events.new, onUpdate, self);
+        Events.on(city.cityBuildings, city.cityBuildings.events.remove, onUpdate, self);
+
+        onUpdate(city.cityBuildings,null,self);
+    }
+
+    function onUpdate(cityBuildings, args, self){
+        self.map = {};//clear all
+
+        calcCityInfluenceArea(self, cityBuildings);
+    }
+
+    function calcCityInfluenceArea(self, cityBuildings){
+        //get array of influences
+        var buildings = cityBuildings.getBuildings();
+        var city = cityBuildings.city;
+        var building;
+        var influences = [];
+        for(var i = 0, l = buildings.length; i < l; i++){
+            building = buildings[i];
+            var iter = building.occupiedTiles(), index;
+            var radius = BuildingData[building.buildingCode].influenceRadius | 1;
+            while((index = iter.next()) !== -1) {
+                influences[index] = radius;
+            }
+        }
+
+        //add city origin
+        influences[Terrain.convertToIndex(city.x,city.y)] = 3;
+
+        self.setInfluenceArea(city.id, influences);
+        //return self.world.influenceMap.getInfluenceArea(self.name);
+    }
+
+    /**
+     * Claim your right to own this cell
+     * @param map
+     * @param city
+     * @param index
+     * @param value
+     */
+    function setInfluence(map, city, index, value){
+        if(!map[index])
+            map[index] = {
+                count: 0,
+                influences: {}
+            };
+
+        var cell = map[index];
+
+        if(!cell.influences[city]) {
+            cell.influences[city] = {
+                city: city,
+                order: cell.count++,
+                value: value
+            }
+        }else{
+            cell.influences[city].value += value;
+        }
+    }
+
+    /**
+     * calculate influence area of single source.
+     * @param xy
+     * @param influenceRadius
+     * @constructor
+     */
+    function calcInfluenceArea(xy,influenceRadius){
+        var r = [];
+        var iter = new TileRadialIterator(xy, influenceRadius);
+        var tile;
+
+        while(!iter.done){
+            tile = TileRadialIterator.next(iter);
+            r.push({
+                x: Terrain.extractX(tile),
+                y: Terrain.extractY(tile),
+                value: 1,
+                index: tile
+            });
+        }
+
+        return r;
+    }
 
     return InfluenceMap;
 });

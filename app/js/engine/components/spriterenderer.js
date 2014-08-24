@@ -36,6 +36,7 @@ define(function (require) {
         Component.prototype.setGameObject.call(this, gameObject);
         gameObject.spriteRenderer = this;
         gameObject.renderer = this;
+        this.opacity = 1;
     };
 
     p.setSprite = function (sprite) {
@@ -74,17 +75,32 @@ define(function (require) {
         return x0 <= viewport.width && x0 + sprite.width >= 0 && y0 <= viewport.height && y0 + sprite.height >= 0;
     };
 
+    var transformMat4 = function(out, a, m) {
+        var x = a[0], y = a[1], z = a[2];
+        out[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
+        out[1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+        return out;
+    };
+
     p.render = function (layer, viewportRenderer, viewport, self) {
         var buffer = self.buf;
 
         //self.gameObject.transform.getPosition(buffer);
         getPos(self.gameObject.transform, buffer);
-        Vec3.transformMat4(buffer, buffer, viewportRenderer.M);
+        transformMat4(buffer, buffer, viewportRenderer.M);
 
         var sprite = self.sprite;
         var w = sprite.width;
         var h = sprite.height;
-        layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
+
+        if(self.opacity !== 1) {
+            layer.save();
+            layer.globalAlpha = self.opacity;
+
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
+            layer.restore();
+        }else
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
     };
 
     return Sprite;

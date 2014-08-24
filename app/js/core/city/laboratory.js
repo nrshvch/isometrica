@@ -2,9 +2,11 @@
 
 define(function (require) {
     var Events = require("events"),
-        ResearchState = require("core/researchstate"),
-        ResearchData = require("core/researchdata"),
-        ResearchDirection = require("core/researchdirection");
+        ResearchState = require("../researchstate"),
+        ResearchData = require("../researchdata"),
+        ResearchDirection = require("../researchdirection"),
+        BuildingData = require("../buildingdata");
+
 
     function Lab(world) {
         this.world = world;
@@ -125,6 +127,8 @@ define(function (require) {
     Lab.prototype._openItems = function (direction, level, quiet) {
         quiet = quiet || false;
         var data = ResearchData[direction];
+        if(data === undefined || data.levelItems === undefined || data.levelItems[level] === undefined)
+            return false;
         var items = data.levelItems[level];
 
         for (var key in items) {
@@ -164,6 +168,19 @@ define(function (require) {
             if (m.state === ResearchState.running) {
                 this._research(m.level + 1, m.progress);
             }
+        }
+    };
+
+    Lab.prototype.research = function (buildingCode) {
+        var data = BuildingData[buildingCode],
+            resources = this._city.stats,
+            enoughResources = resources.hasMoreThan(data.researchCost);
+
+        if (enoughResources) {
+            this.research(buildingCode);
+            this._city.resourceOperations.sub(data.researchCost);
+        } else {
+            throw "Not enough resources!";
         }
     };
 

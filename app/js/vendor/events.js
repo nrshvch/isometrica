@@ -10,9 +10,10 @@
      * @param event {string|number} Event id
      * @param callback {function}
      * @param meta {object} Data that will be passed to callback
+     * @param once {boolean}
      * @returns {number} Subscription id
      */
-    function addListener(obj, eventType, listener, meta) {
+    function addListener(obj, eventType, listener, meta, once) {
         if (obj._events === undefined)
             obj._events = {};
 
@@ -28,9 +29,14 @@
         event.push(subs[id] = {
             id: id,
             listener: listener,
-            meta: meta
+            meta: meta,
+            once: once || false
         });
         return id;
+    }
+
+    function once(obj, eventType, listener, meta) {
+        return addListener(obj, eventType, listener, meta, true);
     }
 
     /**
@@ -41,7 +47,7 @@
      * @returns {boolean}
      */
     function removeListener(obj, eventType, listenerOrId) {
-        if(obj._events === undefined || obj._events[eventType] === undefined)
+        if (obj._events === undefined || obj._events[eventType] === undefined)
             return false;
 
         var event = obj._events[eventType];
@@ -50,7 +56,7 @@
         var sub;
 
         if (typeof listenerOrId === "function") {
-            for(var i = 0, l = event.length; i < l; i++){
+            for (var i = 0, l = event.length; i < l; i++) {
                 sub = event[i];
                 if (sub !== undefined && sub.listener === listenerOrId) {
                     id = sub.id;
@@ -81,7 +87,7 @@
      * @param args {object} Event arguments that will be passed to callback
      */
     function fire(obj, eventType, args) {
-        if(obj._events === undefined || obj._events[eventType] === undefined)
+        if (obj._events === undefined || obj._events[eventType] === undefined)
             return;
 
         var listeners = obj._events[eventType];
@@ -94,6 +100,9 @@
             subscription = listeners[i];
 
             if (subscription !== undefined) {
+                if(subscription.once)
+                    removeListener(obj, eventType, subscription.id);
+
                 subscription.listener(obj, args, subscription.meta);
             } else {
                 cleanUp = true;
@@ -112,6 +121,8 @@
 
     Events.addListener = Events.on = addListener;
 
+    Events.once = once;
+
     Events.removeListener = Events.off = removeListener;
 
     Events.emit = Events.fire = fire;
@@ -127,18 +138,23 @@
      */
     Events.unsubscribe = Events.off;
 
-    function EventEmmiter(){}
+    function EventEmmiter() {
+    }
 
-    EventEmmiter.prototype.addEventListener = EventEmmiter.prototype.addListener = function(event, listener, meta){
+    EventEmmiter.prototype.addEventListener = EventEmmiter.prototype.addListener = function (event, listener, meta) {
         return addListener(this, event, listener, meta);
     };
 
-    EventEmmiter.prototype.removeEventListener = EventEmmiter.prototype.removeListener = function(event, listenerOrId){
+    EventEmmiter.prototype.removeEventListener = EventEmmiter.prototype.removeListener = function (event, listenerOrId) {
         return removeListener(this, event, listenerOrId);
     };
 
-    EventEmmiter.prototype.dispatchEvent = EventEmmiter.prototype.emit = function(event, args){
+    EventEmmiter.prototype.dispatchEvent = EventEmmiter.prototype.emit = function (event, args) {
         return fire(this, event, args);
+    };
+
+    EventEmmiter.prototype.once = function (event, listener, meta) {
+        return addListener(this, event, listener, meta, true);
     };
 
     this.Events = Events;

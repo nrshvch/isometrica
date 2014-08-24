@@ -6,7 +6,7 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function(require){
-    var Resources = require("core/resources");
+    var Resources = require("../resources");
     var Events = require("events");
     var helpers = require("helpers");
 

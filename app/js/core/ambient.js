@@ -57,13 +57,14 @@ define(function (require) {
         if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null && hasTree(x, y)) {
             code = ([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(x * 2, y * 2))];
 
-            subX = simplex.noise2D(y / 2, x / 2) / 4;
-            subY = simplex.noise2D(x / 2, y / 2) / 4;
+            //subX = simplex.noise2D(y / 2, x / 2) / 4;
+            //subY = simplex.noise2D(x / 2, y / 2) / 4;
 
             tree = ObjectPool.borrowObject(this.treesPool);
-            tree.init(this.root, code);
-            tree.setPosition(Terrain.extractX(tileIdx), Terrain.extractY(tileIdx));
-            tree.setSubPosition(subX, subY);
+            tree.init(this.root, code, tileIdx);
+            tree.permanent = false;
+            //tree.setPosition(Terrain.extractX(tileIdx), Terrain.extractY(tileIdx));
+            //tree.setSubPosition(subX, subY);
 
             return tree;
         }

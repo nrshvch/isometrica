@@ -16,7 +16,7 @@ define(function (require) {
     //region funcs
     function calculateBorderPoints(city) {
         var a, b, c, d, i, len, idx;
-        var tiles = city.getInfluenceArea();
+        var tiles = city.area.getInfluenceArea();
         var yIndexUnit = Terrain.convertToIndex(0, 1);
         var edges = {}, paths = [];
 
@@ -162,10 +162,11 @@ define(function (require) {
     function simplify(paths) {
         var path, curr, prev, next,
             jl, il = paths.length,
-            buf = [];
+            buf = [], newpath, a, b, c;
 
         for (var i = 0; i < il; i++) {
             path = paths[i];
+            newpath = [];
             jl = path.length;
 
             prev = next = undefined;
@@ -177,15 +178,20 @@ define(function (require) {
                 if (next && prev) {
                     Vec3.sub(buf, prev, next);
 
-                    if ((buf[0] === 0 && buf[1] === 0 && buf[2] !== 0) ||
-                        (buf[0] !== 0 && buf[1] === 0 && buf[2] === 0) ||
-                        (buf[0] === 0 && buf[1] !== 0 && buf[2] === 0)) {
-                        path.splice(j, 1);
-                        j--;
-                        jl--;
-                    }
+                    a = buf[0];
+                    b = buf[1];
+                    c = buf[2];
+
+                    if ((a === 0 && b === 0 && c !== 0) ||
+                        (a !== 0 && b === 0 && c === 0) ||
+                        (a === 0 && b !== 0 && c === 0))
+                            continue;
                 }
+
+                newpath.push(curr);
             }
+
+            paths[i] = newpath;
         }
     }
 
