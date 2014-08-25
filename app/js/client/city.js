@@ -13,10 +13,6 @@ define(function (require) {
 
         var self = this;
 
-        this.positionX = x;
-        this.positionY = y;
-
-        this.buildingsByClass = {};
         this.buildingsByClass = {};
 
         //init buildingsByClass
@@ -60,7 +56,7 @@ define(function (require) {
             self.setData(cityData);
             self.dispatchEvent(self.events.resourcesUpdate, cityData.resources);
         };
-
+                    /*
         this.onBuildingBuilt = function (sender, building) {
             self.buildingsByClass[BuildingData[building.buildingCode].classCode].push(building);
             self.buildings.push(building);
@@ -72,7 +68,7 @@ define(function (require) {
 
             self.buildings.splice(self.buildings.indexOf(building));
         };
-
+                      */
 
     }
 
@@ -89,8 +85,8 @@ define(function (require) {
 
     City.prototype.start = function () {
         vkaria.core.addEventListener(ResponseCode.cityUpdate, this.onCityUpdate);
-        vkaria.core.addEventListener(ResponseCode.buildingBuilt, this.onBuildingBuilt);
-        vkaria.core.addEventListener(ResponseCode.buildingRemoved, this.onBuildingRemoved);
+        //vkaria.core.addEventListener(ResponseCode.buildingBuilt, this.onBuildingBuilt);
+        //vkaria.core.addEventListener(ResponseCode.buildingRemoved, this.onBuildingRemoved);
 
         //vkaria.core.getCityData(this.onCityData);
         this.onCityData(vkaria.core.world.city);

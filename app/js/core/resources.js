@@ -28,23 +28,40 @@ define(function(require){
         var va,vb,key;
         for(var name in ResourceCode) {
             key = ResourceCode[name];
-            va = a[key];
-            vb = b[key];
-            out[key] = (va !== undefined && vb !== undefined && va + vb) || va || vb || 0;
+            va = a[key] || 0;
+            vb = b[key] || 0;
+            va = va + vb;
+            if(va !== 0 || out[key] !== undefined)
+                out[key] = va;
         }
 
         return out;
     };
 
     Resources.sub = function(out, a, b){
+
         var va,vb,key;
         for(var name in ResourceCode) {
             key = ResourceCode[name];
             va = a[key] || 0;
             vb = b[key] || 0;
-            out[key] = va - vb;
+            va = va + vb;
+            if(va !== 0 || out[key] !== undefined)
+                out[key] = va;
         }
 
+        return out;
+    };
+
+    Resources.addOne = function(out, res, resCode, amount){
+        var a = res[resCode] || 0;
+        out[resCode] = a + amount;
+        return out;
+    };
+
+    Resources.subOne = function(out, res, resCode, amount){
+        var a = res[resCode] || 0;
+        out[resCode] = a - amount;
         return out;
     };
 
@@ -87,8 +104,6 @@ define(function(require){
                 input[key] = 0;
         }
     };
-
-    //Resources.zero = Resources.create();
 
     return Resources;
 });

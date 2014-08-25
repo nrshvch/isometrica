@@ -3,6 +3,7 @@
  */
 define(function(require){
     var Resources = require("../resources");
+    var Resource = require("../resourcecode");
 
     /**
      * @param city {City}
@@ -34,6 +35,14 @@ define(function(require){
 
     CityResources.prototype.sub = function(resources){
         Resources.sub(this._resources, this._resources, resources);
+    };
+
+    CityResources.prototype.addMoney = function(amount){
+        Resources.addOne(this._resources, this._resources, Resource.money, amount);
+    };
+
+    CityResources.prototype.subMoney = function(amount){
+        Resources.subOne(this._resources, this._resources, Resource.money, amount);
     };
 
     CityResources.prototype.hasMoreThan = function (resReq) {

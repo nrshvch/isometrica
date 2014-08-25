@@ -34,21 +34,23 @@ define(function (require) {
         };
 
         this.onBuildingRemoved = function (sender, building) {
-            self.removeBuilding(building.x, building.y);
+            var x = Terrain.extractX(building.tile);
+            var y = Terrain.extractY(building.tile);
+            self.removeBuilding(x, y);
         };
 
         //Load buildings
         this.onTilesLoaded = function (sender, args) {
             var meta = args.meta;
 
-            //vkaria.core.getBuildingData(meta.x, meta.y, meta.w, meta.h, function (response) {
-                //var data = response.data,
-                var data = vkaria.core.world.buildings.getRange(meta.x, meta.y, meta.w, meta.h),
-                    i, l = data.length;
+            var buildings = vkaria.core.world.buildings;
+            var iter = buildings.getRange(meta.x, meta.y, meta.w, meta.h);
+            var model;
+            while (!iter.done) {
+                model = iter.next();
+                self.createBuilding(model);
+            }
 
-                for (i = 0; i < l; i++)
-                    self.createBuilding(data[i]);
-            //});
         };
 
         //Unload buildings
@@ -73,9 +75,16 @@ define(function (require) {
 
     Buildman.prototype.start = function () {
         this.tilesman = vkariaApp.tilesman;
+        var coreTerrain = this.main.core.world.terrain;
 
         Events.subscribe(this.tilesman, this.tilesman.events.loadedTiles, this.onTilesLoaded, this);
         Events.subscribe(this.tilesman, this.tilesman.events.removedTiles, this.onTilesRemoved, this);
+
+        Events.on(coreTerrain, coreTerrain.events.tileCleared, function (sender, args, self) {
+            var x = Terrain.extractX(args);
+            var y = Terrain.extractY(args);
+            self.removeBuilding(x, y);
+        }, this);
 
         Events.subscribe(vkaria.core, ResponseCode.buildingBuilt, this.onBuildingBuilt, this);
         Events.subscribe(vkaria.core, ResponseCode.buildingUpdated, this.onBuildingUpdated, this);
@@ -117,7 +126,7 @@ define(function (require) {
             Events.fire(this, this.events.buildingRemoved, building);
             building.destroy();
 
-            if(!building.data.permanent)
+            if (!building.data.permanent)
                 building.data.dispose();
 
             delete this.buildingByXY[x][y];
@@ -134,7 +143,7 @@ define(function (require) {
 
         vkaria.core.world.city.buildings.buildBuilding(buildingCode, x, y, rotate, function (building) {
             //vkaria.assets.getAsset("/audio/blip.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                //resource.data.play();
+            //resource.data.play();
             //});
 
             onSuccess && onSuccess();
@@ -149,16 +158,16 @@ define(function (require) {
 
 
             //vkaria.assets.getAsset("/audio/error.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                //resource.data.play();
+            //resource.data.play();
             //});
 
             onError && onError();
         });
     };
 
-    Buildman.prototype.createBuilding = function (data) {
-        var x = Terrain.extractX(data.tile),
-            y = Terrain.extractY(data.tile),
+    Buildman.prototype.createBuilding = function (model) {
+        var x = Terrain.extractX(model.tile),
+            y = Terrain.extractY(model.tile),
             tile,
             building;
 
@@ -172,7 +181,7 @@ define(function (require) {
         } else
             building = new Building();
 
-        building.setData(data);
+        building.setData(model);
 
         this.setBuilding(x, y, building);
 

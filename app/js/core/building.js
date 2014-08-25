@@ -57,7 +57,6 @@ define(function (require) {
     Building.prototype.tile = null;
     Building.prototype._state = BuildingState.none;
     Building.prototype.rotation = 0;
-    Building.prototype.timeCreated = null;  //real time
     Building.prototype.createdAt = null; //game time
     Building.prototype.demanding = null;
     Building.prototype.producing = null;
@@ -68,15 +67,26 @@ define(function (require) {
     Building.prototype.init = function (world, code, tile, rot) {
         this.world = world;
         this.tile = tile;
-        this.timeCreated = this.timeCreated || Date.now();
         this.createdAt = this.createdAt || this.world.time.now;
         this.rotation = rot || false;
         this.buildingCode = code;
+        var data = this.data = BuildingData[code];
 
-        var data = BuildingData[code];
+        if(data.constructionTime === 0){
+            this._state = BuildingState.ready;
+        }else{
+            this._state = BuildingState.underConstruction;
 
-        this._state = data.constructionTime === 0 ? BuildingState.ready : BuildingState.underConstruction;
-        updateEffectOnTileParams(this);
+            updateEffectOnTileParams(this);
+
+            var self = this;
+            setTimeout(function(){
+                self._state = BuildingState.ready;
+                updateEffectOnTileParams(self);
+                Events.fire(self, events.update, self);
+                Events.fire(self, events.stateChange, self._state);
+            }, data.constructionTime);
+        }
 
         if (data.classCode !== BuildingClassCode.tree) {
             Events.once(this, "dispose", onDispose, Events.on(this.world, this.world.events.tick, onTick, this));
@@ -221,15 +231,6 @@ define(function (require) {
 
     function onTick(sender, args, self) {
         self.getCity();
-
-        var data = BuildingData[self.buildingCode];
-
-        if (self._state === BuildingState.underConstruction && self.timeCreated + data.constructionTime <= Date.now()) {
-            self._state = BuildingState.ready;
-            updateEffectOnTileParams(self);
-            Events.fire(self, events.update, self);
-            Events.fire(self, events.stateChange, self._state);
-        }
 
         produce(self);
         demand(self);

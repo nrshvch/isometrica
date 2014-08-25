@@ -51,7 +51,7 @@ define(function (require) {
         this.game = new engine.Game();
 
         this.hiliteMan = new HiliteMan();
-        this.buildman = new BuildMan();
+        this.buildman = new BuildMan(this);
         this.tilesman = new TilesMan();
         this.tools = new Tools();
         this.city = new City();

@@ -5,9 +5,14 @@ define(function (require) {
     var ResourceCode = require("core/resourcecode");
     var TerrainType = require('./terraintype');
     var Simplex = require("./vendor/simplex-noise");
+    var Events = require("events");
     //var TileIterator = require("./tileiterator");
 
     namespace("Isometrica.Core").Terrain = Terrain;
+
+    var events = {
+        tileCleared: 0
+    };
 
     /**
      * @type {TileIterator}
@@ -65,6 +70,7 @@ define(function (require) {
         this.gridPoints = [];
     }
 
+    Terrain.prototype.events = events;
 
     Terrain.prototype.getGridPoints = function (x, y) {
         return [
@@ -193,6 +199,10 @@ define(function (require) {
             }
         }
         return null;
+    };
+
+    Terrain.prototype.clearTile = function(idx){
+        Events.fire(this, events.tileCleared, idx);
     };
 
     Terrain.convertToIndex = function (x, y) {

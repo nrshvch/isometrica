@@ -10,6 +10,6 @@ define(function(require){
         tileZStep: 9.238,
         //chunkSize: (window.matchMedia("handheld").matches ? 8 : 24)
         chunkSize: (window.matchMedia("(max-width: 800px)").matches ? 8 : 24),
-        //chunkSize: 1
+        //chunkSize: 2
     };
 });

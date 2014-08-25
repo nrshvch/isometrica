@@ -3,6 +3,10 @@
  */
 define(function (require) {
     var TileIterator = require("../tileiterator");
+    var Resource = require("../resourcecode");
+    var Resources = require("../resources");
+
+    var AREA_TILE_COST_PER_TURN = 0.025;
 
     function Area(city) {
         this._city = city;
@@ -33,6 +37,15 @@ define(function (require) {
         return this._city.world.influenceMap.getInfluenceAreaData(this._city.id);
     };
 
+    Area.prototype.init = function(){
+        var world = this._city.world;
+        Events.on(world, world.events.tick, onTick, this);
+    };
+
+    Area.prototype.getAreaCost = function(){
+        return calculateAreaCost(this);
+    };
+
     function isInsideCityBorders(self, x0, y0, w, l) {
         var city = self._city;
 
@@ -56,6 +69,18 @@ define(function (require) {
             }
         }
         return inside;
+    }
+
+    function calculateAreaCost(self) {
+        var area = self.getInfluenceArea();
+        var n = area.length;
+        self.areaCost = n * AREA_TILE_COST_PER_TURN;
+    }
+
+    function onTick(sender, args, self){
+        var money = {};
+        money[Resource.money] = calculateAreaCost(self);
+        self._city.resourcesModule.sub(money);
     }
 
     return Area;

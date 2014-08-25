@@ -16,7 +16,6 @@ define(function (require) {
      */
     var ResearchState = require("core/researchstate");
     var RenderLayer = require("client/renderlayer");
-    var TileRatings = require("./tileratings");
     /**
      * @type {GatherReq}
      */
@@ -147,11 +146,6 @@ define(function (require) {
             [0, 1]
         ],
         waypoints: {},
-        effect: TileRatings.create((function () {
-            var o = {};
-            o[TileRatings.TileRatingEnum.Ecology] = -1;
-            return o;
-        })()),
         tileEffect: {
             eco: -1,
             crime: 1
@@ -209,12 +203,11 @@ define(function (require) {
         roadGates: [
             [-1, 0]//,[0,-1],[1,0],[0,1]
         ],
-        effect: TileRatings.create((function () {
-            var o = {};
-            o[TileRatings.TileRatingEnum.Ecology] = -1;
-            o[TileRatings.TileRatingEnum.Crime] = 1;
-            return o;
-        })())
+        tileEffect: {
+            "eco": -10,
+            "crime": 1
+        },
+        tileEffectRadius: 2
     };
 
     buildingData[BuildingCode.house1] = {

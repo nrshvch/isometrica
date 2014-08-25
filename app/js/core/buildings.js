@@ -24,143 +24,18 @@ define(function (require) {
     var Terrain = require("./terrain"),
         TerrainType = require("./terraintype");
     var TileIterator = require("./tileiterator");
+    var TileIteratorAction = require("./tileiteratoraction");
     /**
      * @type {BuildingPositioning}
      */
     var BuildingPositioning = require("./buildingpositioning");
 
-    var tileIterator = new TileIterator(0, 0, 1, 1);
-
     var events = {
         buildingBuilt: 0,
         buildingUpdated: 1,
         buildingRemoved: 2,
-        buildingStateChange: 3,
+        buildingStateChange: 3
     };
-
-    function Buildings(world) {
-        this.world = world;
-        this.buildings = Object.create(null);
-        this.byTile = Object.create(null);
-    }
-
-    Buildings.events = Buildings.prototype.events = events;
-
-    Buildings.prototype.get = function (idx, y) {
-        if (arguments.length === 2)
-            idx = Terrain.convertToIndex(idx, y);
-
-        var b = this.byTile[idx];
-
-        if (b === undefined)
-            b = this.world.ambient.getTree(idx);
-
-        return b;
-    };
-
-    Buildings.prototype.getRange = function (x0, y0, w, h) {
-        tileIterator = new TileIterator(x0, y0, w, h);
-        var b, r = [];
-
-        while (!tileIterator.done) {
-            b = this.get(TileIterator.next(tileIterator));
-            if (b)
-                r.push(b);
-        }
-
-        return r;
-    };
-
-    Buildings.prototype.build = function (buildingCode, baseX, baseY, rotated, onSuccess, onError) {
-        if (!BuildingData[buildingCode].canRotate)
-            rotated = false;
-
-        var test = buildTest(this, buildingCode, baseX, baseY, rotated);
-
-        if (test.success) {
-            var data = BuildingData[buildingCode];
-            var sizeX = rotated ? data.sizeY : data.sizeX;
-            var sizeY = rotated ? data.sizeX : data.sizeY;
-
-            removeTrees(this, baseX, baseY, sizeX, sizeY);
-
-            var building = new Building();
-            building.init(this.world, buildingCode, Terrain.convertToIndex(baseX, baseY), rotated);
-            build(this, building);
-
-            onSuccess(building);
-
-            Events.fire(this, this.events.buildingBuilt, building);
-        } else {
-            onError(test.error);
-        }
-    };
-
-    Buildings.prototype.remove = function (idx, y) {
-        var w, l, tileIterator, idx2, x;
-
-        if (arguments.length === 2)
-            idx = Terrain.convertToIndex(idx, y);
-
-        var building = this.get(idx);
-        var data = BuildingData[building.buildingCode];
-
-        if (building != null) {
-            w = data.sizeX;
-            l = data.sizeY;
-
-            building.dispose();
-
-            if (w > 1 || l > 1) {
-                tileIterator = new Terrain.TileIterator(idx, w, l);
-
-                while (!tileIterator.done) {
-                    idx2 = TileIterator.next(tileIterator);
-
-                    unset(this, idx2);
-                }
-            } else {
-                unset(this, idx);
-            }
-
-            Events.fire(this, this.events.buildingRemoved, building);
-
-            return true;
-        }
-        return false;
-    };
-
-    function removeTrees(self, baseX, baseY, sizeX, sizeY) {
-        var b, idx;
-
-        var tileIterator = new TileIterator(baseX, baseY, sizeX, sizeY);
-
-        while (!tileIterator.done) {
-            idx = TileIterator.next(tileIterator);
-            b = self.get(idx);
-
-            if (b !== undefined && b !== null && BuildingData[b.buildingCode].classCode === BuildingClassCode.tree)
-                self.remove(idx);
-        }
-
-    }
-
-    function set(self, idx, building) {
-        self.buildings[building.id] = building;
-        self.byTile[idx] = building;
-        return building;
-    }
-
-    function unset(self, idx, y) {
-        if (arguments.length === 2)
-            idx = Terrain.convertToIndex(idx, y);
-
-        var building = self.byTile[idx];
-        if (building !== undefined && building !== null) {
-            self.byTile[idx] = null;
-            delete self.buildings[building.id];
-        }
-    }
 
     /**
      *
@@ -214,6 +89,12 @@ define(function (require) {
         return result;
     }
 
+    function onTileCleared(terrain, tile, self){
+        var building = self.byTile[tile];
+        if(building !== null && building !== undefined)
+            remove(self, building);
+    }
+
     function onBuildingUpdated(sender, args, self) {
         var building = args;
         Events.fire(self, self.events.buildingUpdated, building);
@@ -223,9 +104,16 @@ define(function (require) {
         Events.fire(self, events.buildingStateChange, building);
     }
 
-    function onBuildingDispose(building, args, self) {
-        Events.off(building, Building.events.stateChange, sub1);
-        Events.off(building, Building.events.update, sub2);
+    function onBuildingDispose(building, args, meta) {
+        Events.off(building, Building.events.stateChange, meta[0]);
+        Events.off(building, Building.events.update, meta[1]);
+    }
+
+    function removeTree(self, tile) {
+        var tree;
+        tree = self.byTile[tile];
+        if (tree !== undefined && tree !== null && tree.data.classCode === BuildingClassCode.tree)
+            remove(self, tree);
     }
 
     /**
@@ -238,21 +126,106 @@ define(function (require) {
      * @private
      */
     function build(self, building) {
-        var rotation = building.rotation;
-        var data = BuildingData[building.buildingCode];
-        var sizeX = rotation ? data.sizeY : data.sizeX,
-            sizeY = rotation ? data.sizeX : data.sizeY,
-            tile, iter = new TileIterator(building.tile, sizeX, sizeY);
+        var tile, iter = building.occupiedTiles();
+
+        self.buildings[building.id] = building;
 
         while (!iter.done) {
             tile = TileIterator.next(iter);
-            set(self, tile, building);
+            removeTree(self, tile);
+            self.byTile[tile] = building;
         }
 
         var sub1 = Events.on(building, Building.events.stateChange, onBuildingStateChange, self);
         var sub2 = Events.on(building, Building.events.update, onBuildingUpdated, self);
         Events.once(building, "dispose", onBuildingDispose, [sub1, sub2]);
     }
+
+    function remove(self, building) {
+        var tile, occupiedTiles, id = building.id;
+
+        if (building !== null && building !== undefined) {
+            occupiedTiles = building.occupiedTiles();
+
+            while(!occupiedTiles.done){
+                tile = TileIterator.next(occupiedTiles);
+                self.byTile[tile] = null;
+            }
+
+            delete self.buildings[id];
+
+            building.dispose();
+
+            Events.fire(self, self.events.buildingRemoved, id);
+
+            return true;
+        }
+        return false;
+    }
+
+    function getRangerIteratorAction(tile, self){
+        return self.get(tile);
+    }
+
+    /**
+     * @class Buildings
+     * @param world {World}
+     * @constructor
+     */
+    function Buildings(world) {
+        this.world = world;
+        this.buildings = Object.create(null);
+        this.byTile = Object.create(null);
+    }
+
+    Buildings.prototype.events = events;
+
+    Buildings.prototype.init = function(){
+        var terrain = this.world.terrain;
+        Events.on(terrain, terrain.events.tileCleared, onTileCleared, this);
+    };
+
+    Buildings.prototype.get = function (idx, y) {
+        if (arguments.length === 2)
+            idx = Terrain.convertToIndex(idx, y);
+
+        var b = this.byTile[idx];
+
+        if (b === undefined)
+            b = this.world.ambient.getTree(idx);
+
+        return b;
+    };
+
+    /**
+     * @param x0
+     * @param y0
+     * @param w
+     * @param h
+     * @returns {Iterator}
+     */
+    Buildings.prototype.getRange = function (x0, y0, w, h) {
+        return new TileIteratorAction(Terrain.convertToIndex(x0,y0), w, h, getRangerIteratorAction, this);
+    };
+
+    Buildings.prototype.build = function (buildingCode, baseX, baseY, rotated, onSuccess, onError) {
+        if (!BuildingData[buildingCode].canRotate)
+            rotated = false;
+
+        var test = buildTest(this, buildingCode, baseX, baseY, rotated);
+
+        if (test.success) {
+            var building = new Building();
+            building.init(this.world, buildingCode, Terrain.convertToIndex(baseX, baseY), rotated);
+            build(this, building);
+
+            onSuccess(building);
+
+            Events.fire(this, this.events.buildingBuilt, building);
+        } else {
+            onError(test.error);
+        }
+    };
 
     return Buildings;
 });

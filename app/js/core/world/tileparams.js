@@ -6,8 +6,7 @@ define(function(require){
 
     var TileParams = {};
 
-    var defaults = {};
-    defaults[TileParam.Ecology] = 100;
+    TileParams.maxValue = 100;
 
     /**
      * @param values
@@ -26,6 +25,7 @@ define(function(require){
             key = TileParam[name];
             va = a[key];
             vb = b[key];
+
             out[key] = (va !== undefined && vb !== undefined && va + vb) || va || vb || 0;
         }
 
@@ -82,14 +82,6 @@ define(function(require){
             if(input[key] !== undefined)
                 input[key] = 0;
         }
-    };
-
-    TileParams.get = function(params, param){
-        return params[param] || defaults[param] || 0;
-    };
-
-    TileParams.set = function(params, param, value){
-        return params[param] = value;
     };
 
     return TileParams;

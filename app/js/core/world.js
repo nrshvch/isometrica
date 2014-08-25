@@ -10,7 +10,6 @@ define(function (require) {
         ResourceMarket = require("./resourceMarket"),
         VTime = require("./virtualtime"),
         AmbientService = require("./ambient"),
-        RatingsMan = require("./tileratingsmanager"),
         Config = require("./config"),
         InfluenceMap = require("./influencemap");
     var TileParamsMan = require("./world/tileparamsmanager");
@@ -39,12 +38,12 @@ define(function (require) {
 
         this.time = new VTime(this);
         this.terrain = new Terrain(this);
-        this.buildMan = this.buildings = new Buildings(this);
+        this.buildingsModule = this.buildMan = this.buildings = new Buildings(this);
         this.resourceMarket = new ResourceMarket(this);
         this.ambient = this.ambientService = new AmbientService(this);
         this.tileParams = new TileParamsMan(this);
 
-        this.ratingsman = new RatingsMan(this);
+        //this.ratingsman = new RatingsMan(this);
 
         this.influenceMap = new InfluenceMap(this);
 
@@ -79,7 +78,8 @@ define(function (require) {
         //this.terrain.init();
 
         this.time.start();
-        this.ratingsman.init();
+        this.buildingsModule.init();
+        //this.ratingsman.init();
     };
 
     World.prototype.stoneDistribution = function (x, y) {

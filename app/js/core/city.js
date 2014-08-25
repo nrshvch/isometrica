@@ -4,10 +4,12 @@ define(function (require) {
         Events = require("events"),
         Laboratory = require("./city/laboratory"),
         CityStats = require("./city/citystats"),
-        CityResourceOperations = require("./city/cityresourceoperations"),
         Area = require("./city/area"),
         CityBuildings = require("./city/citybuildings"),
         CityResources = require("./city/cityresources");
+    var CityTilesParams = require("./city/citytilesparams");
+    var CityPopulation = require("./city/citypopulation");
+    var Terrain = require("./terrain");
 
     namespace("Isometrica.Core").City = City;
 
@@ -17,14 +19,17 @@ define(function (require) {
 
         this.timeEstablished = world.time.milliseconds;
 
-        this.area = new Area(this);
-        this.resources = new CityResources(this);
-        this.stats = new CityStats(this);
-        this.resourceOperations = new CityResourceOperations(this);
-        this.lab = new Laboratory(this.world);
-        this.buildings = this.cityBuildings = new CityBuildings(this);
+        this.area = this.areaModule = new Area(this);
+        this.tilesParams = this.tileParamsModule = new CityTilesParams(this);
+        this.resourcesModule = this.resources = new CityResources(this);
+        this.statsModule = new CityStats(this);
+        this.populationModule = new CityPopulation(this);
+        this.lab = this.laboratoryModule = new Laboratory(this.world);
+        this.buildings = this.cityBuildings = this.buildingsModule = new CityBuildings(this);
 
-        this.stats.init();
+        this.statsModule.init();
+        this.populationModule.init();
+        this.areaModule.init();
 
         Events.on(world, world.events.tick, this.onTick, {self: this});
     }
@@ -36,11 +41,6 @@ define(function (require) {
     City.prototype.name = "";
     City.prototype.world = null;
     City.prototype.cityHall = null;
-    /**
-     * @deprecated
-     */
-    City.prototype.buildings = null;
-    City.prototype.cityBuildings = null;
     City.prototype.position = null;
 
     City.prototype.onTick = function(sender, args, meta){
@@ -49,8 +49,9 @@ define(function (require) {
     };
 
     City.prototype.clearTile = function (x, y) {
-        this.world.buildings.remove(x,y);
-        this.resourceOperations.subMoney(1);
+        //this.world.buildings.remove(x,y);
+        this.world.terrain.clearTile(Terrain.convertToIndex(x,y));
+        this.resourcesModule.subMoney(1);
 
         return true;
     };
@@ -95,15 +96,14 @@ define(function (require) {
     City.prototype.toJSON = function () {
         var data = {
             name: this.name,
-            population: this.stats.population,
-            maxPopulation: this.stats.citizenCapacity,
-            ratings: this.stats.ratings.toJSON(),
+            population: this.populationModule.getPopulation(),
+            maxPopulation: this.populationModule.getCapacity(),
             x: this.x,
             y: this.y,
             resources: this.resources.getResources(),
-            resourceProduce: this.stats.resourceProduce,
-            resourceDemand: this.stats.resourceDemand,
-            maintenanceCost: this.stats.maintenanceCost
+            resourceProduce: this.statsModule.getCityResourceProduce(),
+            resourceDemand: this.statsModule.getCityResourceDemand(),
+            maintenanceCost: this.statsModule.getCityBuildingMaintenanceCost()
         };
 
         return data;

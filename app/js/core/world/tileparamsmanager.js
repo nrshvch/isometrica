@@ -5,6 +5,14 @@ define(function(require){
     var TileParams = require("./tileparams");
     var TileParam = require("./tileparam");
 
+    var MAX_PARAM_VAL = 100;
+
+    var defaults = {};
+    Object.defineProperty(defaults, TileParam.Ecology, {
+        value: MAX_PARAM_VAL,
+        writable: false,
+        enumerable: true
+    });
 
     /**
      * @class TileParamsMan
@@ -29,6 +37,8 @@ define(function(require){
          */
         this._tileRecords = {};
     }
+
+    TileParamsMan.MAX_PARAM_VAL = MAX_PARAM_VAL;
 
     /**
      * @param self {TileParamsMan}
@@ -94,7 +104,7 @@ define(function(require){
      * @returns {*|null}
      */
     TileParamsMan.get = function(self, tile){
-        return self._map[tile] || {};
+        return self._map[tile] || defaults;
     };
 
     TileParamsMan.prototype.add = function(key, tilesParams){
@@ -119,8 +129,11 @@ define(function(require){
 
         for(var key in tileRecs){
             recParams = tileRecs[key];
-            mapParams = mapParams || {};
+            mapParams = mapParams || TileParams.clone(defaults);
             TileParams.add(mapParams, mapParams, recParams);
+
+            for(var param in mapParams)
+                mapParams[param] = Math.min(MAX_PARAM_VAL, Math.max(0, mapParams[param]));
         }
 
         if(mapParams !== undefined)

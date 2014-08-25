@@ -6,45 +6,23 @@
  * To change this template use File | Settings | File Templates.
  */
 define(function (require) {
-    var TileRatings = require("../tileratings"),
-        Resources = require("../resources"),
+    var Resources = require("../resources"),
         Events = require("events"),
         BuildingData = require("../buildingdata");
-
-    var TAX_MONEY = 1;
-    var MAX_ECO = 100;
-    var AREA_TILE_COST_PER_TURN = 0.025;
 
     var resourceBuffer1 = {};
 
     function CityStats(city) {
         this.city = city;
-        this.ratings = TileRatings.create();
         this.resourceDemand = {};
         this.resourceProduce = {};
-        this.resourcesTotal = {
-            money: 10000,
-            stone: 100,
-            wood: 100
-        };
         this.maintenanceCost = {};
     }
 
     CityStats.prototype.city = null;
     CityStats.prototype.resourceDemand = null;
     CityStats.prototype.resourceProduce = null;
-    CityStats.prototype.resourcesTotal = null;
     CityStats.prototype.maintenanceCost = null;
-    CityStats.prototype.incomeFromTaxes = null;
-    CityStats.prototype.areaCost = 0;
-    CityStats.prototype.ratings = null;
-    CityStats.prototype._population = 0;
-    Object.defineProperty(CityStats.prototype, "population", {
-        get: function () {
-            return Math.max(this._population | 0, 0);
-        }
-    });
-    CityStats.prototype.citizenCapacity = 0;
 
     CityStats.prototype.events = {
         update: 0
@@ -55,29 +33,23 @@ define(function (require) {
         Events.on(world, world.events.tick, onWorldTick, this);
     };
 
+    CityStats.prototype.getCityResourceDemand = function(){
+        return calculateResourceConsumption(this);
+    };
+
+    CityStats.prototype.getCityResourceProduce = function(){
+        return calculateResourceProduction(this);
+    };
+
+    CityStats.prototype.getCityBuildingMaintenanceCost = function(){
+        return calculateMaintenanceCost(this);
+    };
+
     function onWorldTick(sender, args, self) {
-        self.CalculateAll();
         Events.fire(self, self.events.update);
     }
 
-    CityStats.prototype.CalculateAll = function () {
-        calculateCitizenCapacity(this);
-        calculateRatings(this);
-        calculatePopulationChangePerTick(this);
-        calculateIncomeFromCitizens(this);
-        calculateMaintenanceCost(this);
-        calculateResourceConsumption(this);
-        calculateResourceProduction(this);
-        calculateAreaCost(this);
-        //calculateResources(this);
-    };
-
-
-
     //PRIVATE
-
-    var defaultRatings = TileRatings.create();
-    defaultRatings.values[TileRatings.TileRatingEnum.Ecology] = MAX_ECO;
 
     function calculateBuildingMaintenanceDailyCostPercent(city, building, dateNow) {
         //After 10 years of building exploitation it starts to require maintenance costs.
@@ -102,53 +74,6 @@ define(function (require) {
         return r;
     }
 
-    function calculateCitizenCapacity(cityStats) {
-        var r = 0;
-        var buildings = cityStats.city.cityBuildings.getBuildings();
-        for (var key in buildings) {
-            var building = buildings[key];
-            r += building.citizenCapacity();
-        }
-        cityStats.citizenCapacity = r;
-    }
-
-    function calculateRatings(cityStats) {
-        var tilesCount = 0, building, sizeX, sizeY, baseX, baseY, x, y, i, l;
-        var buildings = cityStats.city.cityBuildings.getBuildings(),
-            l = buildings.length,
-            data;
-
-        if (l > 0) {
-            TileRatings.copy(cityStats.ratings, TileRatings.zero);
-            for (var key in buildings) {
-                building = buildings[key];
-                data = BuildingData[building.buildingCode];
-                sizeX = data.sizeX;
-                sizeY = data.sizeY;
-                baseX = building.x;
-                baseY = building.y;
-
-                for (i = 0, l = sizeX * sizeY; i < l; i++) {
-                    tilesCount++;
-
-                    x = ((i / sizeY) | 0) + baseX;
-                    y = i % sizeY + baseY;
-
-                    TileRatings.add(cityStats.ratings, cityStats.ratings, cityStats.city.world.ratingsman.getRatings(x, y));
-                }
-            }
-        }
-
-        if (tilesCount > 0)
-            TileRatings.mul(cityStats.ratings, cityStats.ratings, 1 / tilesCount);
-        else
-            TileRatings.copy(cityStats.ratings, defaultRatings);
-    }
-
-    function calculateIncomeFromCitizens(cityStats) {
-        cityStats.incomeFromTaxes = TAX_MONEY * cityStats.population
-    }
-
     function calculateResourceConsumption(cityStats) {
         Resources.clear(cityStats.resourceDemand);
 
@@ -157,6 +82,8 @@ define(function (require) {
 
         for (var i = 0; i < l; i++)
             Resources.add(cityStats.resourceDemand, cityStats.resourceDemand, buildings[i]);
+
+        return cityStats.resourceDemand;
     }
 
     function calculateResourceProduction(self) {
@@ -166,6 +93,8 @@ define(function (require) {
         for (var i = 0; i < l; i++) {
             Resources.add(self.resourceProduce, self.resourceProduce, buildings[i].producing);
         }
+
+        return self.resourceProduce;
     }
 
     function calculateMaintenanceCost(cityStats) {
@@ -185,46 +114,8 @@ define(function (require) {
             Resources.mul(resourceBuffer1, data.constructionCost, maintenanceCostN);
             Resources.add(cityStats.maintenanceCost, cityStats.maintenanceCost, resourceBuffer1);
         }
-    }
 
-    function calculateAreaCost(self) {
-        var area = self.city.area.getInfluenceArea();
-        var n = area.length;
-        self.areaCost = n * AREA_TILE_COST_PER_TURN;
-    }
-
-    function calculateResources(cityStats) {
-        Resources.add(cityStats.resourcesTotal, cityStats.resourcesTotal, cityStats.resourceProduce);
-        Resources.sub(cityStats.resourcesTotal, cityStats.resourcesTotal, cityStats.resourceDemand);
-        Resources.sub(cityStats.resourcesTotal, cityStats.resourcesTotal, cityStats.maintenanceCost);
-        Resources.add(cityStats.resourcesTotal, cityStats.resourcesTotal, Resources.create({money: cityStats.incomeFromTaxes - cityStats.areaCost}));
-    }
-
-    function calculatePopulationChangePerTick(cityStats) {
-        var totalCap = cityStats.citizenCapacity;
-        var avgEco = cityStats.ratings.values[TileRatings.TileRatingEnum.Ecology];
-        var change = 0;
-        var cap = totalCap - cityStats.population;
-        var citizensLeaveDueBadRatings = cityStats.population * 0.01; //1% of population
-        var maxCitizensCanJoin = cap > 0 ? Math.max(1, Math.sqrt(cap)) : 0;
-
-        //calculate overralEffect
-        var ecoEffect = avgEco / (MAX_ECO / 2) - 1; // (-1,1)
-        var ecoWeight = 1;
-        var overallEffect = ecoEffect * ecoWeight; // (-1,1)
-
-        //if effect is low , citizens leave
-        if (overallEffect < 0) {
-            change = citizensLeaveDueBadRatings * overallEffect;
-        } else if (cap < 0) {//if capacity is not enough citizens leave by one
-            change = -1;
-        } else {//if effect is high enough , citizens join
-            change = maxCitizensCanJoin * overallEffect;
-        }
-
-        //console.log("CAP:"+cap,"AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
-
-        cityStats._population += change;
+        return cityStats.maintenanceCost;
     }
 
     return CityStats;

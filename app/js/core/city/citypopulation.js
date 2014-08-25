@@ -2,12 +2,16 @@
  * Created by User on 21.08.2014.
  */
 define(function(require){
-    var Events = require("Events");
+    var Events = require("events");
     /**
      * @type {TileParam}
      */
-    var TileParam = require("./tileparam");
-    var TileParams = require("./tileparams");
+    var TileParam = require("../world/tileparam");
+    var TileParams = require("../world/tileparams");
+    var Resource = require("../resourcecode");
+    var TileParamsMan = require("../world/tileparamsmanager");
+    var MAX_PARAM_VAL = TileParamsMan.MAX_PARAM_VAL;
+    var TAX_MONEY = 1;
 
 
     /**
@@ -16,7 +20,8 @@ define(function(require){
      */
     function CityPopulation(city){
         this.city = city;
-        this.population = 0;
+        this._population = 0;
+        this._capacity = 0;
     }
 
     CityPopulation.prototype.init = function(){
@@ -25,8 +30,22 @@ define(function(require){
         Events.on(world, world.events.tick, onTick, this);
     };
 
-    function onTick(world, args, self){
+    CityPopulation.prototype.getCapacity = function(){
+        return calculateCapacity(this);
+    };
 
+    CityPopulation.prototype.getPopulation = function(){
+        return Math.max(this._population | 0, 0);
+    };
+
+    CityPopulation.prototype.getTaxIncomeAmount = function(){
+        return TAX_MONEY * this.getPopulation();
+    };
+
+    function onTick(world, args, self){
+        populationChangePerTick(self);
+
+        payTaxes(self);
     }
 
     function calculateCapacity(self){
@@ -40,15 +59,16 @@ define(function(require){
     }
 
     function populationChangePerTick(self) {
+        var pop = self.getPopulation();
         var totalCap = calculateCapacity(self);
-        var avgEco = avgEco(self);
+        var avgEco = self.city.tilesParams.avgEco();
         var change = 0;
-        var cap = totalCap - self.population;
-        var citizensLeaveDueBadRatings = self.population * 0.01; //1% of population
+        var cap = totalCap - pop;
+        var citizensLeaveDueBadRatings = pop * 0.01; //1% of population
         var maxCitizensCanJoin = cap > 0 ? Math.max(1, Math.sqrt(cap)) : 0;
 
         //calculate overralEffect
-        var ecoEffect = avgEco / (MAX_ECO / 2) - 1; // (-1,1)
+        var ecoEffect = avgEco / (MAX_PARAM_VAL / 2) - 1; // (-1,1)
         var ecoWeight = 1;
         var overallEffect = ecoEffect * ecoWeight; // (-1,1)
 
@@ -63,23 +83,13 @@ define(function(require){
 
         //console.log("CAP:"+cap,"AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
 
-        cityStats._population += change;
+        self._population += change;
     }
 
-    function avgEco(self){
-        var area = self.city.area.getInfluenceArea(),
-            t,
-            tileParamsMan = self.city.world.tileParamsMan,
-            params, eco, ecosum = 0, i = 0;
-
-        for(var key in area){
-            t = area[key];
-            params = tileParamsMan.get(t);
-            eco = TileParams.get(params, TileParam.Ecology);
-            ecosum += eco;
-        }
-
-        return (i > 0 && ecosum / i) || -1;
+    function payTaxes(self){
+        var money = {};
+        money[Resource.money] = self.getTaxIncomeAmount();
+        self.city.resourcesModule.add(money);
     }
 
     return CityPopulation;
