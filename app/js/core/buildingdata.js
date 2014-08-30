@@ -42,9 +42,6 @@ define(function (require) {
         demanding: {},
         constructionTime: 0,
         constructionCost: {},
-        researchState: ResearchState.available,
-        researchTime: 0,
-        researchCost: {},
         name: "tree",
         sprites: [
             {
@@ -68,9 +65,6 @@ define(function (require) {
         demanding: {},
         constructionTime: 0,
         constructionCost: {},
-        researchState: ResearchState.available,
-        researchTime: 0,
-        researchCost: {},
         name: "tree",
         sprites: [
             {
@@ -124,9 +118,6 @@ define(function (require) {
             stone: 1,
             money: 1
         },
-        researchState: ResearchState.finished,
-        researchTime: 0,
-        researchCost: {},
         name: "road",
         sprites: [
             {
@@ -173,9 +164,6 @@ define(function (require) {
             stone: 8,
             wood: 8
         },
-        researchState: ResearchState.finished,
-        researchTime: 0,
-        researchCost: {},
         name: "mobile house",
         canRotate: true,
         sprites: [
@@ -224,11 +212,6 @@ define(function (require) {
             wood: 10,
             money: 10
         },
-        researchState: ResearchState.available,
-        researchTime: 2000,
-        researchCost: {
-            money: 200
-        },
         researchLevel: 1,
         researchDirection: ResearchDirection.housing,
         name: "tiny house",
@@ -265,11 +248,6 @@ define(function (require) {
             wood: 100,
             stone: 100,
             iron: 100
-        },
-        researchState: ResearchState.available,
-        researchTime: 5000,
-        researchCost: {
-            money: 500
         },
         name: "small residential house",
         canRotate: true,
@@ -335,11 +313,6 @@ define(function (require) {
             stone: 50,
             iron: 150
         },
-        researchState: ResearchState.available,
-        researchTime: 10000,
-        researchCost: {
-            money: 1500
-        },
         name: "cottage house",
         citizenCapacity: 4,
         sprites: [
@@ -385,11 +358,6 @@ define(function (require) {
             wood: 50,
             stone: 150,
             iron: 150
-        },
-        researchState: ResearchState.finished,
-        researchTime: 10000,
-        researchCost: {
-            money: 1500
         },
         name: "two story house",
         citizenCapacity: 6,
@@ -437,11 +405,6 @@ define(function (require) {
             stone: 150,
             iron: 150
         },
-        researchState: ResearchState.finished,
-        researchTime: 10000,
-        researchCost: {
-            money: 1500
-        },
         name: "house",
         sprites: [
             {
@@ -483,9 +446,6 @@ define(function (require) {
             stone: 20,
             wood: 20
         },
-        researchState: ResearchState.finished,
-        researchTime: 3000,
-        researchCost: {},
         name: "city hall",
         sprites: [
             {
@@ -509,9 +469,6 @@ define(function (require) {
         demanding: {},
         constructionTime: 3000,
         constructionCost: {},
-        researchState: ResearchState.available,
-        researchTime: 0,
-        researchCost: {},
         name: "farm",
         requirement: GatherReq.inGrassLand,
         sprites: [
@@ -543,9 +500,6 @@ define(function (require) {
             money: 50,
             iron: 50
         },
-        researchState: ResearchState.finished,
-        researchTime: 10000,
-        researchCost: {money: 100},
         name: "wind turbine",
         sprites: [
             {
@@ -576,9 +530,6 @@ define(function (require) {
             money: 50,
             stone: 50
         },
-        researchState: ResearchState.finished,
-        researchTime: 5000,
-        researchCost: {money: 100},
         name: "water tower",
         sprites: [
             {
@@ -610,9 +561,6 @@ define(function (require) {
             stone: 40,
             iron: 40
         },
-        researchState: ResearchState.available,
-        researchTime: 10000,
-        researchCost: {money: 100},
         name: "water pump station",
         sprites: [
             {
@@ -640,9 +588,6 @@ define(function (require) {
         constructionCost: {
             money: 50
         },
-        researchState: ResearchState.available,
-        researchTime: 10000,
-        researchCost: {money: 200},
         name: "small market",
         sprites: [
             {
@@ -672,9 +617,6 @@ define(function (require) {
         constructionCost: {
             money: 100
         },
-        researchState: ResearchState.finished,
-        researchTime: 0,
-        researchCost: {},
         name: "lumber mill",
         requirement: GatherReq.nearTree,
         sprites: [
@@ -705,9 +647,6 @@ define(function (require) {
         constructionCost: {
             money: 100
         },
-        researchState: ResearchState.finished,
-        researchTime: 10000,
-        researchCost: {money: 200},
         requirement: GatherReq.oilTile,
         name: "oil rig",
         sprites: [
@@ -738,9 +677,6 @@ define(function (require) {
         constructionCost: {
             money: 100
         },
-        researchState: ResearchState.finished,
-        researchTime: 10000,
-        researchCost: {money: 200},
         requirement: GatherReq.stoneTile,
         name: "stone quarry",
         sprites: [
@@ -771,9 +707,6 @@ define(function (require) {
         constructionCost: {
             money: 100
         },
-        researchState: ResearchState.finished,
-        researchTime: 10000,
-        researchCost: {money: 200},
         requirement: GatherReq.ironTile,
         name: "iron mine",
         sprites: [

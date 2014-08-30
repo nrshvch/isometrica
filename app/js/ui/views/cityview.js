@@ -4,7 +4,6 @@ define(function (require) {
         template = $.parseHTML(templateText),
         Resources = require("core/resources"),
         ResourcesBarView = require("ui/views/resourcesbarview"),
-        ResponseCode = require("core/responsecode"),
         BuildingCountView = require("ui/views/buildingcountlistview"),
         Core = require("core"),
         TileRatings = Core.TileRatings;
@@ -79,18 +78,24 @@ define(function (require) {
             this.buildings.setData(vkaria.city.getBuildingCountList());
 
             var self = this;
-            vkaria.core.addEventListener(ResponseCode.cityUpdate, function (sender, data) {
-                self.resourcesBar.setResources(data.resources);
-                self.produce.setResources(data.resourceProduce);
-                self.demand.setResources(data.resourceDemand);
-                Resources.sub(resourcesBuffer1, data.resourceProduce, data.resourceDemand);
-                Resources.sub(resourcesBuffer1, resourcesBuffer1, data.maintenanceCost);
-                self.income.setResources(resourcesBuffer1);
-                self.maintenance.setResources(data.maintenanceCost);
-                self.name = data.name;
-                $(".name .value", self.$el).text(data.name);
-                $(".population .value", self.$el).text(data.population);
-            });
+            var core = vkaria.core;
+
+            if(core.city){
+                var city = core.city;
+                Events.on(city, city.events.update, function (sender, data) {
+                    self.resourcesBar.setResources(data.resources);
+                    self.produce.setResources(data.resourceProduce);
+                    self.demand.setResources(data.resourceDemand);
+                    Resources.sub(resourcesBuffer1, data.resourceProduce, data.resourceDemand);
+                    Resources.sub(resourcesBuffer1, resourcesBuffer1, data.maintenanceCost);
+                    self.income.setResources(resourcesBuffer1);
+                    self.maintenance.setResources(data.maintenanceCost);
+                    self.name = data.name;
+                    $(".name .value", self.$el).text(data.name);
+                    $(".population .value", self.$el).text(data.population);
+                });
+            }
+
 
             this.render();
         },

@@ -5,6 +5,10 @@ define(function(require){
     var Resources = require("../resources");
     var Resource = require("../resourcecode");
 
+    var namespace = require("namespace");
+    var CityService = namespace("Isometrica.Core.CityService");
+    CityService.Resource = CityResources;
+
     /**
      * @param city {City}
      * @constructor

@@ -15,7 +15,7 @@ define(function (require) {
         }
     }
 
-    function VirtualTime(world) {
+    function VTime(world) {
         this.now = 0;
 
         this.day = 1;
@@ -32,20 +32,20 @@ define(function (require) {
         },this);
     }
 
-    VirtualTime.prototype.events = {
+    var events = VTime.events = VTime.prototype.events = {
         advance: 3,
         newDay: 0,
         newMonth: 1,
         newYear: 2
     };
 
-    VirtualTime.prototype.start = function(){
+    VTime.prototype.start = function(){
         Events.fire(this,this.events.newYear, this.now);
         Events.fire(this,this.events.newMonth, this.now);
         Events.fire(this,this.events.newDay, this.now);
     };
 
-    VirtualTime.prototype.setTime = function(now){
+    VTime.prototype.setTime = function(now){
         this.now = now;
         Events.fire(this,this.events.newYear, this.now);
         Events.fire(this,this.events.newMonth, this.now);
@@ -53,11 +53,11 @@ define(function (require) {
     };
 
     //is supposed to be runned once in a second
-    VirtualTime.prototype.tick = function () {
+    VTime.prototype.tick = function () {
         this.advance();
     };
 
-    VirtualTime.prototype.advance = function () {
+    VTime.prototype.advance = function () {
         this.now += millisecondsInDay;
 
         var date = new Date(this.now);
@@ -83,18 +83,18 @@ define(function (require) {
         }
     };
 
-    VirtualTime.prototype.toString = function(){
+    VTime.prototype.toString = function(){
         return "D" + this.day + "M" + this.month + "Y" + this.year;
     };
 
-    VirtualTime.prototype.save = function(){
+    VTime.prototype.save = function(){
         return this.now;
     };
 
-    VirtualTime.prototype.load = function(now){
+    VTime.prototype.load = function(now){
         this.setTime(now);
         return true;
     };
 
-    return VirtualTime;
+    return VTime;
 });

@@ -4,6 +4,10 @@
 define(function(require){
     var TileParam = require("../world/tileparam");
 
+    var namespace = require("namespace");
+    var CityService = namespace("Isometrica.Core.CityService");
+    CityService.TileParams = CityTilesParams;
+
     function CityTilesParams(city){
         this.city = city;
     }

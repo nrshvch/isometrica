@@ -10,8 +10,10 @@ define(function(require){
         RemoveToolMobile = require("./removetoolmobile");
     var Core = require("core");
 
-    function Tools(){
+    function Tools(client){
         EventManager.call(this);
+
+        this.root = client;
 
         //mask of toolCodes, indicating tools that are disabled
         this.disabledTools = 0;

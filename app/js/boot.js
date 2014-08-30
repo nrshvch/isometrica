@@ -13,7 +13,7 @@ define(function(require){
 
         console.log("Init core")
 
-        var core = new Core.CoreInterface();
+        var core = new Core.Logic();
         core.start();
 
         console.log("Core ready")

@@ -2,13 +2,12 @@
  * Created by User on 13.07.2014.
  */
 define(function (require) {
-    var Simplex = require("./vendor/simplex-noise");
+    var Simplex = require("simplex-noise");
     var TerrainType = require("./terraintype");
     var BuildingCode = require("./buildingcode");
-    var Building = require("./building");
+    var BuildingService = require("./buildings");
     var Terrain = require("./terrain");
     var Events = require("events");
-    var ObjectPool = require("object-pool");
 
     var simplex = new Simplex([151, 160, 137, 91, 90, 15,
         131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
@@ -24,8 +23,12 @@ define(function (require) {
         49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254,
         138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180]);
 
-    function hasTree(x, y) {
-        return simplex.noise2D(x, y) > 0;
+    var events = {
+        onTreeRemove: 0
+    };
+
+    function hasTree(self, tile) {
+        return self._usedTiles[tile] === undefined && simplex.noise2D(Terrain.extractX(tile), Terrain.extractY(tile)) > 0;
     }
 
     function rareDistribution(x, y) {
@@ -33,9 +36,31 @@ define(function (require) {
             return simplex.noise2D(y / 8, x / 8) * 64 > 50;
     }
 
+    function onTileCleared(terrainman, tile, self) {
+        var has = hasTree(self, tile);
+        self._usedTiles[tile] = true;
+        if (has)
+            Events.fire(self, events.onTreeRemove, tile);
+    }
+
+    function onConstructionBuilt(buildman, building, self) {
+        var tiles = building.occupiedTiles(),
+            tile, has;
+
+        while (!tiles.done) {
+            tile = tiles.next();
+            has = hasTree(self, tile);
+
+            self._usedTiles[tile] = true;
+
+            if (has)
+                Events.fire(self, events.onTreeRemove, tile);
+        }
+    }
+
     function Ambient(root) {
         this.root = root;
-        this.treesPool = new ObjectPool(Building);
+        this._usedTiles = {};
     }
 
     /**
@@ -43,33 +68,30 @@ define(function (require) {
      * @param tileIdx
      * @returns {Building|null}
      */
-    Ambient.prototype.getTree = function (tileIdx) {
+    Ambient.prototype.getTree = function (tile) {
         var world = this.root,
             terrain = world.terrain,
-            terrainType = terrain.getTerrainType(tileIdx),
-            resource = terrain.getResource(tileIdx),
-            simplex = world.simplex,
-            x = Terrain.extractX(tileIdx),
-            y = Terrain.extractY(tileIdx),
-            subX, subY,
-            code, tree;
+            terrainType = terrain.getTerrainType(tile),
+            resource = terrain.getResource(tile),
+            simplex = world.simplex;
 
-        if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null && hasTree(x, y)) {
-            code = ([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(x * 2, y * 2))];
-
-            //subX = simplex.noise2D(y / 2, x / 2) / 4;
-            //subY = simplex.noise2D(x / 2, y / 2) / 4;
-
-            tree = ObjectPool.borrowObject(this.treesPool);
-            tree.init(this.root, code, tileIdx);
-            tree.permanent = false;
-            //tree.setPosition(Terrain.extractX(tileIdx), Terrain.extractY(tileIdx));
-            //tree.setSubPosition(subX, subY);
-
-            return tree;
-        }
+        if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null && hasTree(self, tile))
+            return ([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(1, tile))];
 
         return null;
+    };
+
+    Ambient.prototype.hasTree = function (tile) {
+        return hasTree(this, tile);
+    };
+
+    Ambient.prototype.init = function () {
+        var world = this.root;
+        var terrain = world.terrain;
+        var buildman = world.buildingService;
+
+        Events.on(terrain, Terrain.events.tileCleared, onTileCleared, this);
+        Events.on(buildman, BuildingService.events.buildingBuilt, onConstructionBuilt, this);
     };
 
     return Ambient;

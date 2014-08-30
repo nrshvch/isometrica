@@ -30,6 +30,11 @@ define(function (require) {
      */
     var BuildingPositioning = require("./buildingpositioning");
 
+    var Namespace = require("namespace");
+
+    var Core = Namespace("Isometrica.Core");
+    Core.ConstructionService = Buildings;
+
     var events = {
         buildingBuilt: 0,
         buildingUpdated: 1,
@@ -40,23 +45,16 @@ define(function (require) {
     /**
      *
      * @param {Buildings} self
-     * @param {number} buildingCode
-     * @param {number} baseX
-     * @param {number} baseY
-     * @param {boolean} rotated
-     * @returns {{success: boolean, error: *}}
+     * @returns {number}
      */
-    function buildTest(self, buildingCode, baseX, baseY, rotated) {
-        var result = {
-                success: true,
-                error: ErrorCode.NONE
-            },
-            data = BuildingData[buildingCode],
+    function buildTest(self, code, tile, rotation) {
+        var rotated = rotation,
+            data = BuildingData[code],
             positioning = data.positioning || BuildingPositioning.flat,
             sizeX = rotated ? data.sizeY : data.sizeX,
             sizeY = rotated ? data.sizeX : data.sizeY,
-            slopeId, terrain, terrainType, resource, tile,
-            tileIterator = new TileIterator(baseX, baseY, sizeX, sizeY);
+            slopeId, terrain, terrainType, resource,
+            tileIterator = new TileIterator(tile, sizeX, sizeY);
 
         while (!tileIterator.done) {
             tile = TileIterator.next(tileIterator);
@@ -66,47 +64,37 @@ define(function (require) {
             terrainType = terrain.getTerrainType(tile);
             resource = terrain.getResource(tile);
 
-            if (terrainType === TerrainType.water) {
-                result.error = ErrorCode.CANT_BUILD_ON_WATER;
-            } else if (positioning === BuildingPositioning.flat && resource !== null) {
-                result.error = ErrorCode.CANT_BUILD_HERE;
-            } else if (positioning === BuildingPositioning.resource && resource !== data.resource) {
-                result.error = ErrorCode.WRONG_RESOURCE_TILE;
-            } else if (data.classCode === BuildingClassCode.road && slopeId !== 2222 && slopeId !== 2112 && slopeId !== 2211 && slopeId !== 2233 && slopeId !== 2332) {
-                result.error = ErrorCode.LAND_NOT_SUITABLE;
-            } else if (data.classCode !== BuildingClassCode.tree && data.classCode !== BuildingClassCode.road && slopeId != 2222) {
-                result.error = ErrorCode.FLAT_LAND_REQUIRED;
-            } else if (self.get(tile) !== null && BuildingData[self.get(tile).buildingCode].classCode !== BuildingClassCode.tree) {
-                result.error = ErrorCode.TILE_TAKEN;
-            }
-
-            if (result.error !== ErrorCode.NONE) {
-                result.success = false;
-                break;
-            }
+            if (terrainType === TerrainType.water)
+                return ErrorCode.CANT_BUILD_ON_WATER;
+            else if (positioning === BuildingPositioning.flat && resource !== null)
+                return ErrorCode.CANT_BUILD_HERE;
+            else if (positioning === BuildingPositioning.resource && resource !== data.resource)
+                return ErrorCode.WRONG_RESOURCE_TILE;
+            else if (data.classCode === BuildingClassCode.road && slopeId !== 2222 && slopeId !== 2112 && slopeId !== 2211 && slopeId !== 2233 && slopeId !== 2332)
+                return ErrorCode.LAND_NOT_SUITABLE;
+            else if (data.classCode !== BuildingClassCode.tree && data.classCode !== BuildingClassCode.road && slopeId != 2222)
+                return ErrorCode.FLAT_LAND_REQUIRED;
+            else if (self.get(tile) !== null && BuildingData[self.get(tile).buildingCode].classCode !== BuildingClassCode.tree)
+                return ErrorCode.TILE_TAKEN;
         }
 
-        return result;
+        return ErrorCode.NONE;
     }
 
-    function onTileCleared(terrain, tile, self){
+    function onTileCleared(terrain, tile, self) {
         var building = self.byTile[tile];
-        if(building !== null && building !== undefined)
+        if (building !== null && building !== undefined)
             remove(self, building);
     }
 
-    function onBuildingUpdated(sender, args, self) {
-        var building = args;
-        Events.fire(self, self.events.buildingUpdated, building);
-    }
-
     function onBuildingStateChange(building, state, self) {
+        Events.fire(self, self.events.buildingUpdated, building);
         Events.fire(self, events.buildingStateChange, building);
     }
 
     function onBuildingDispose(building, args, meta) {
         Events.off(building, Building.events.stateChange, meta[0]);
-        Events.off(building, Building.events.update, meta[1]);
+        //Events.off(building, Building.events.update, meta[1]);
     }
 
     function removeTree(self, tile) {
@@ -116,38 +104,13 @@ define(function (require) {
             remove(self, tree);
     }
 
-    /**
-     * Method for registering building instances in map, arrays etc.
-     * Is used when loading building from serialized data.
-     *
-     * @param baseX
-     * @param baseY
-     * @param building
-     * @private
-     */
-    function build(self, building) {
-        var tile, iter = building.occupiedTiles();
-
-        self.buildings[building.id] = building;
-
-        while (!iter.done) {
-            tile = TileIterator.next(iter);
-            removeTree(self, tile);
-            self.byTile[tile] = building;
-        }
-
-        var sub1 = Events.on(building, Building.events.stateChange, onBuildingStateChange, self);
-        var sub2 = Events.on(building, Building.events.update, onBuildingUpdated, self);
-        Events.once(building, "dispose", onBuildingDispose, [sub1, sub2]);
-    }
-
     function remove(self, building) {
         var tile, occupiedTiles, id = building.id;
 
         if (building !== null && building !== undefined) {
             occupiedTiles = building.occupiedTiles();
 
-            while(!occupiedTiles.done){
+            while (!occupiedTiles.done) {
                 tile = TileIterator.next(occupiedTiles);
                 self.byTile[tile] = null;
             }
@@ -163,7 +126,7 @@ define(function (require) {
         return false;
     }
 
-    function getRangerIteratorAction(tile, self){
+    function getRangerIteratorAction(tile, self) {
         return self.get(tile);
     }
 
@@ -178,23 +141,20 @@ define(function (require) {
         this.byTile = Object.create(null);
     }
 
+    Buildings.events = events;
+
     Buildings.prototype.events = events;
 
-    Buildings.prototype.init = function(){
+    Buildings.prototype.init = function () {
         var terrain = this.world.terrain;
-        Events.on(terrain, terrain.events.tileCleared, onTileCleared, this);
+        Events.on(terrain, Terrain.events.tileCleared, onTileCleared, this);
     };
 
     Buildings.prototype.get = function (idx, y) {
         if (arguments.length === 2)
             idx = Terrain.convertToIndex(idx, y);
 
-        var b = this.byTile[idx];
-
-        if (b === undefined)
-            b = this.world.ambient.getTree(idx);
-
-        return b;
+        return this.byTile[idx] || null;
     };
 
     /**
@@ -205,26 +165,29 @@ define(function (require) {
      * @returns {Iterator}
      */
     Buildings.prototype.getRange = function (x0, y0, w, h) {
-        return new TileIteratorAction(Terrain.convertToIndex(x0,y0), w, h, getRangerIteratorAction, this);
+        return new TileIteratorAction(Terrain.convertToIndex(x0, y0), w, h, getRangerIteratorAction, this);
     };
 
-    Buildings.prototype.build = function (buildingCode, baseX, baseY, rotated, onSuccess, onError) {
-        if (!BuildingData[buildingCode].canRotate)
-            rotated = false;
+    Buildings.prototype.build = function (building) {
+        var tile, iter = building.occupiedTiles();
 
-        var test = buildTest(this, buildingCode, baseX, baseY, rotated);
+        this.buildings[building.id] = building;
 
-        if (test.success) {
-            var building = new Building();
-            building.init(this.world, buildingCode, Terrain.convertToIndex(baseX, baseY), rotated);
-            build(this, building);
-
-            onSuccess(building);
-
-            Events.fire(this, this.events.buildingBuilt, building);
-        } else {
-            onError(test.error);
+        while (!iter.done) {
+            tile = TileIterator.next(iter);
+            removeTree(this, tile);
+            this.byTile[tile] = building;
         }
+
+        var sub1 = Events.on(building, Building.events.stateChange, onBuildingStateChange, this);
+
+        Events.once(building, "dispose", onBuildingDispose, [sub1]);
+
+        Events.fire(this, events.buildingBuilt, building);
+    };
+
+    Buildings.prototype.test = function (code, tile, rotation) {
+        return buildTest(this, code, tile, rotation);
     };
 
     return Buildings;

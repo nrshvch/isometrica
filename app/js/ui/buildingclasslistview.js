@@ -3,8 +3,8 @@ define(function (require) {
     var itemTemplate = require("text!templates/buildingclasslistitem.html"),
         BuildingsListView = require("ui/buildingslistview"),
         BuildingData = Core.BuildingData,
-        BuildingClassData = require("core/buildingclassdata"),
-        ResponseCode = require("core/responsecode");
+        BuildingClassData = require("core/buildingclassdata");
+    var Events = require("events");
 
     var BuildingClassListView = Backbone.View.extend({
         events: {
@@ -27,12 +27,12 @@ define(function (require) {
             this.onBuildingInvented = function (args) {
                 self.setupClasses();
             };
-            vkaria.core.addEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
+            //vkaria.core.addEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
 
             this.render();
         },
         remove: function () {
-            vkaria.core.removeEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
+            //vkaria.core.removeEventListener(ResponseCode.buildingInvented, this.onBuildingInvented);
             Backbone.View.prototype.remove.call(this);
         },
         render: function () {

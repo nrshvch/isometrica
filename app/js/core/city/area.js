@@ -4,7 +4,11 @@
 define(function (require) {
     var TileIterator = require("../tileiterator");
     var Resource = require("../resourcecode");
-    var Resources = require("../resources");
+    var Terrain = require("../terrain");
+
+    var namespace = require("namespace");
+    var CityService = namespace("Isometrica.Core.CityService");
+    CityService.Area = Area;
 
     var AREA_TILE_COST_PER_TURN = 0.025;
 
@@ -25,7 +29,18 @@ define(function (require) {
      * @param l {number}
      * @returns {boolean}
      */
-    Area.prototype.contains = function (x0, y0, w, l) {
+    Area.prototype.contains = function (a,b,c,d) {
+        var x0, y0, w, l;
+
+        if(arguments.length === 2) {
+            x0 = Terrain.extractX(a);
+            y0 = Terrain.extractY(a);
+            w  = Terrain.extractX(b);
+            l = Terrain.extractX(b);
+        }else{
+            x0 = a; y0 = b; w = c; l = d;
+        }
+
         return isInsideCityBorders(this, x0, y0, w, l);
     };
 

@@ -6,10 +6,13 @@ define(function(require){
     /**
      * @type {TileParam}
      */
-    var TileParam = require("../world/tileparam");
-    var TileParams = require("../world/tileparams");
     var Resource = require("../resourcecode");
     var TileParamsMan = require("../world/tileparamsmanager");
+
+    var namespace = require("namespace");
+    var CityService = namespace("Isometrica.Core.CityService");
+    CityService.Population = CityPopulation;
+
     var MAX_PARAM_VAL = TileParamsMan.MAX_PARAM_VAL;
     var TAX_MONEY = 1;
 
@@ -21,7 +24,6 @@ define(function(require){
     function CityPopulation(city){
         this.city = city;
         this._population = 0;
-        this._capacity = 0;
     }
 
     CityPopulation.prototype.init = function(){

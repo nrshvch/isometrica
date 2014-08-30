@@ -8,10 +8,6 @@
 define(function (require) {
     var BuildingState = require("core/buildingstate");
     var Resources = require("core/resources");
-    /**
-     * @type {ResourceCode}
-     */
-    var ResourceCode = require("./resourcecode");
     var Events = require("events");
     /**
      * @type {BuildingClassCode}
@@ -33,62 +29,42 @@ define(function (require) {
     var GatherReq = require("./gatherreq");
     var Terrain = require("./terrain");
 
-    var buildingData = BuildingData;
+    var Construction = require("./construction");
 
     var events = {
-        update: 0,
-        stateChange: 1,
+        stateChange: 0
     };
 
-    function Building(buildingCode, world) {
-        this.id = Building.lastId++
+    function Building() {
+        Construction.constructor(this);
+
         this.producing = {};
         this.demanding = {};
-
-        if (buildingCode !== undefined && world !== undefined)
-            this.init(world, buildingCode);
     }
 
-    Building.lastId = 0;
+    Building.events = events;
 
-    Building.prototype.buildingCode = -1;
-    Building.prototype.world = null;
-    Building.prototype.id = null;
-    Building.prototype.tile = null;
-    Building.prototype._state = BuildingState.none;
-    Building.prototype.rotation = 0;
+    Building.prototype = Object.create(Construction.prototype);
+    Building.prototype.constructor = Building;
+
     Building.prototype.createdAt = null; //game time
     Building.prototype.demanding = null;
     Building.prototype.producing = null;
     Building.prototype.permanent = true;
+    /**
+     * @deprecated
+     * @type {{stateChange: number}}
+     */
+    Building.prototype.events = events;
 
-    Building.events = Building.prototype.events = events;
+    Building.prototype.init = function(world, code, tile, rot){
+        Construction.init(this, world, code, tile, rot);
 
-    Building.prototype.init = function (world, code, tile, rot) {
-        this.world = world;
-        this.tile = tile;
         this.createdAt = this.createdAt || this.world.time.now;
-        this.rotation = rot || false;
-        this.buildingCode = code;
-        var data = this.data = BuildingData[code];
 
-        if(data.constructionTime === 0){
-            this._state = BuildingState.ready;
-        }else{
-            this._state = BuildingState.underConstruction;
+        Events.on(this, Construction.events.stateChange, onStateChange, this);
 
-            updateEffectOnTileParams(this);
-
-            var self = this;
-            setTimeout(function(){
-                self._state = BuildingState.ready;
-                updateEffectOnTileParams(self);
-                Events.fire(self, events.update, self);
-                Events.fire(self, events.stateChange, self._state);
-            }, data.constructionTime);
-        }
-
-        if (data.classCode !== BuildingClassCode.tree) {
+        if (this.data.classCode !== BuildingClassCode.tree) {
             Events.once(this, "dispose", onDispose, Events.on(this.world, this.world.events.tick, onTick, this));
         }
     };
@@ -105,46 +81,6 @@ define(function (require) {
             cap = data.citizenCapacity || 0;
 
         return cap;
-    };
-
-    /**
-     *
-     * @returns {Iterator}
-     */
-    Building.prototype.occupiedTiles = function () {
-        var data = BuildingData[this.buildingCode];
-
-        return new TileIterator(this.tile, data.sizeX, data.sizeY);
-    };
-
-    Building.prototype.getCity = function(){
-        var world = this.world, city = null,
-            cityId = world.influenceMap.getTileOwner(this.tile);
-
-        if (cityId !== -1)
-            city = world.getCity(cityId);
-
-        return city;
-    };
-
-    Building.prototype.getState = function(){
-        return this._state;
-    };
-
-    Building.prototype.toJSON = function () {
-        return {
-            x: this.x,
-            y: this.y,
-            state: this._state,
-            subPosX: this.subPosX,
-            subPosY: this.subPosY,
-            rotation: this.rotation,
-            buildingCode: this.buildingCode
-        }
-    };
-
-    Building.fromJSON = function (json) {
-
     };
 
     function onDispose(self, args, tickSubscriptionId) {
@@ -175,7 +111,10 @@ define(function (require) {
             while (!iter.done) {
                 var tile = iter.next();
                 var b = world.buildings.get(tile);
-                if (b !== null) {
+
+                if(b === undefined && world.envService.hasTree(tile))
+                    return true;
+                else if (b !== null) {
                     var d = BuildingData[b.buildingCode];
                     if (d.classCode === BuildingClassCode.tree)
                         return true;
@@ -234,6 +173,10 @@ define(function (require) {
 
         produce(self);
         demand(self);
+    }
+
+    function onStateChange(sender, args, self){
+        updateEffectOnTileParams(self);
     }
 
     function produce(self) {

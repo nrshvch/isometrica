@@ -10,6 +10,10 @@ define(function (require) {
         Events = require("events"),
         BuildingData = require("../buildingdata");
 
+    var namespace = require("namespace");
+    var CityService = namespace("Isometrica.Core.CityService");
+    CityService.Stats = CityStats;
+
     var resourceBuffer1 = {};
 
     function CityStats(city) {

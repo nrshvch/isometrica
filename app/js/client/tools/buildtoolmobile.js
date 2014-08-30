@@ -2,6 +2,9 @@ define(function (require) {
     var Core = require("core");
     var ToolBase = require("./toolbase"),
         buildingData = Core.BuildingData;
+    var BuildingClassCode = Core.BuildingClassCode;
+
+    var Terrain = Core.Terrain;
 
     function Tool(tools) {
         ToolBase.call(this, tools);
@@ -200,12 +203,37 @@ define(function (require) {
 
     Tool.prototype.confirm = function () {
         for (var i in this.selectedTiles) {
-            vkariaApp.buildman.build(this.buildingCode, this.selectedTiles[i].x, this.selectedTiles[i].y, this._rotate);
+            var tile = Terrain.convertToIndex(this.selectedTiles[i].x, this.selectedTiles[i].y);
+            this.tools.root.core.city.buildingsService.buildBuilding(this.buildingCode, tile, this._rotate);
         }
 
         this.disableHiliters();
-        //vkariaApp.hiliteMan.disable();
+        this.dispatchEvent(this.events.receivedConfirmation, this);
 
+        return;
+
+
+        var data = buildingData[this.buildingCode];
+
+        if(data.classCode === BuildingClassCode.road){
+            var t0 = Number.MAX_SAFE_INTEGER, t1 = 0;
+
+            for(var i in this.selectedTiles){
+                var t = this.selectedTiles[i];
+                var idx = Terrain.convertToIndex(t.x, t.y);
+                t0 = Math.min(idx, t0);
+                t1 = Math.max(idx, t1);
+            }
+
+            this.tools.root.core.city.buildingsService.buildRoad(this.buildingCode, t0, t1);
+        }else {
+            for (var i in this.selectedTiles) {
+                var tile = Terrain.convertToIndex(this.selectedTiles[i].x, this.selectedTiles[i].y);
+                this.tools.root.core.city.buildingsService.buildBuilding(this.buildingCode, tile, this._rotate);
+            }
+        }
+
+        this.disableHiliters();
         this.dispatchEvent(this.events.receivedConfirmation, this);
     };
 

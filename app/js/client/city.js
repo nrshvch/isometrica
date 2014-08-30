@@ -2,11 +2,10 @@ define(function (require) {
     var Core = require("core");
     var engine = require("engine"),
         EventManager = require("events"),
-        ResponseCode = require("core/responsecode"),
-        BuildingData = Core.BuildingData,
         BuildingClassCode = require("core/buildingclasscode"),
         CityLabel = require("./gameObjects/citylabel"),
-        ToolCode = require("./tools/toolcode");
+        ToolCode = require("./tools/toolcode"),
+        Events = require("events");
 
     function City(x, y) {
         EventManager.call(this);
@@ -56,20 +55,6 @@ define(function (require) {
             self.setData(cityData);
             self.dispatchEvent(self.events.resourcesUpdate, cityData.resources);
         };
-                    /*
-        this.onBuildingBuilt = function (sender, building) {
-            self.buildingsByClass[BuildingData[building.buildingCode].classCode].push(building);
-            self.buildings.push(building);
-        };
-
-        this.onBuildingRemoved = function (sender, building) {
-            var arr = self.buildingsByClass[BuildingData[building.buildingCode].classCode];
-            arr.splice(arr.indexOf(building), 1);
-
-            self.buildings.splice(self.buildings.indexOf(building));
-        };
-                      */
-
     }
 
     City.prototype = Object.create(EventManager.prototype);
@@ -84,11 +69,12 @@ define(function (require) {
     };
 
     City.prototype.start = function () {
-        vkaria.core.addEventListener(ResponseCode.cityUpdate, this.onCityUpdate);
-        //vkaria.core.addEventListener(ResponseCode.buildingBuilt, this.onBuildingBuilt);
-        //vkaria.core.addEventListener(ResponseCode.buildingRemoved, this.onBuildingRemoved);
+        var core = vkaria.core;
 
-        //vkaria.core.getCityData(this.onCityData);
+        Events.once(core.world, core.world.events.cityEstablished, function (sender, city, self) {
+            Events.on(city, city.events.update, self.onCityUpdate, self);
+        }, this);
+
         this.onCityData(vkaria.core.world.city);
     };
 

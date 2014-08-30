@@ -10,10 +10,11 @@ define(function (require) {
         CityView = require("ui/views/cityview"),
         PromptView = require("ui/views/promptview"),
         LabView = require("ui/views/labview"),
-        ResponseCode = require("core/responsecode"),
         ResourceCode = require("core/resourcecode"),
         Client = require("client"),
         Numeral = require("numeral");
+    var Events = require("events");
+    var Core = require("core");
 
     var ToolCode = Client.ToolCode;
 
@@ -48,13 +49,13 @@ define(function (require) {
             "click a.button.button6": function (e) {
                 this.openWindow(new LabView({mainView: this}), "Laboratory");
             },
-            "click .buttonRotate": function(e){
+            "click .buttonRotate": function (e) {
                 this.tools.currentTool.rotate();
             },
-            "click .buttonCancel": function(e){
+            "click .buttonCancel": function (e) {
                 this.tools.currentTool.cancel();
             },
-            "click .buttonConfirm": function(e){
+            "click .buttonConfirm": function (e) {
                 this.tools.currentTool.confirm();
             }
         },
@@ -74,7 +75,7 @@ define(function (require) {
 
             var self = this;
 
-            this.onCityRename = function(sender, args){
+            this.onCityRename = function (sender, args) {
                 self.openWindow(new PromptView({
                     mainView: self,
                     message: "Please give city a name!",
@@ -99,11 +100,11 @@ define(function (require) {
 
             var zoom = 1;
 
-            document.addEventListener("keyup", function(e,a,b){
-                if(e.which === 109) {
+            document.addEventListener("keyup", function (e, a, b) {
+                if (e.which === 109) {
                     zoom += 0.1;
                     viewport.setSize(viewport.canvas.offsetWidth * zoom, viewport.canvas.offsetHeight * zoom);
-                }else if(e.which === 107) {
+                } else if (e.which === 107) {
                     zoom -= 0.1;
                     viewport.setSize(viewport.canvas.offsetWidth * zoom, viewport.canvas.offsetHeight * zoom);
                 }
@@ -112,39 +113,37 @@ define(function (require) {
             vkaria.city.addEventListener(vkaria.city.events.nameRequired, this.onCityRename);
 
 
-
-
             //TOOLS
             this.setupButtonState();
-            vkaria.tools.addEventListener(vkaria.tools.events.toolEnabled, function(sender, args){
+            vkaria.tools.addEventListener(vkaria.tools.events.toolEnabled, function (sender, args) {
                 self.setupButtonState();
             });
-            vkaria.tools.addEventListener(vkaria.tools.events.toolDisabled, function(sender, args){
+            vkaria.tools.addEventListener(vkaria.tools.events.toolDisabled, function (sender, args) {
                 self.setupButtonState();
             });
             /*
-            Ok/Cancel tool buttons
+             Ok/Cancel tool buttons
              */
             $(".buttonConfirm, .buttonCancel, .buttonRotate", this.$el).hide();
             var tool = vkaria.tools.tools[ToolCode.builder];
-            tool.addEventListener(tool.events.awaitingConfirmation, function(sender, args){
+            tool.addEventListener(tool.events.awaitingConfirmation, function (sender, args) {
                 $(".buttonConfirm, .buttonCancel, .buttonRotate", self.$el).show();
             });
-            tool.addEventListener(tool.events.receivedConfirmation, function(sender, args){
+            tool.addEventListener(tool.events.receivedConfirmation, function (sender, args) {
                 $(".buttonConfirm, .buttonCancel, .buttonRotate", self.$el).hide();
             });
             var tool = vkaria.tools.tools[ToolCode.tileSelector];
-            tool.addEventListener(tool.events.awaitingConfirmation, function(sender, args){
+            tool.addEventListener(tool.events.awaitingConfirmation, function (sender, args) {
                 $(".buttonConfirm, .buttonCancel", self.$el).show();
             });
-            tool.addEventListener(tool.events.receivedConfirmation, function(sender, args){
+            tool.addEventListener(tool.events.receivedConfirmation, function (sender, args) {
                 $(".buttonConfirm, .buttonCancel", self.$el).hide();
             });
             var tool = vkaria.tools.tools[ToolCode.remover];
-            tool.addEventListener(tool.events.awaitingConfirmation, function(sender, args){
+            tool.addEventListener(tool.events.awaitingConfirmation, function (sender, args) {
                 $(".buttonConfirm, .buttonCancel", self.$el).show();
             });
-            tool.addEventListener(tool.events.receivedConfirmation, function(sender, args){
+            tool.addEventListener(tool.events.receivedConfirmation, function (sender, args) {
                 $(".buttonConfirm, .buttonCancel", self.$el).hide();
             });
             /* end */
@@ -160,47 +159,41 @@ define(function (require) {
                     }));
             });
 
+            var core = vkaria.core;
 
-
-
-
-
-            vkaria.core.addEventListener(ResponseCode.timeAdvanced, function (sender, args) {
+            Events.on(core.time, core.time.events.advance, function (sender, args, self) {
                 if (window.matchMedia("(min-width: 800px)").matches) {
                     $("#date", self.$el).text(Numeral(args.day).format('0o') + " " + args.monthName + ", year " + args.year);
                 } else {
                     $("#date", self.$el).text(args.day + " / " + args.month + " / " + args.year);
                 }
-            });
+            }, this);
 
-            vkaria.core.addEventListener(ResponseCode.cityUpdate, function (sender, data) {
-                self.resourcesBar.setResources(data.resources);
-                $(".population .val", self.$el).text(data.population);
-                $(".population .cap", self.$el).text(data.maxPopulation);
-            });
+            Events.once(core, Core.Logic.events.cityEstablished, function (sender, city, self) {
+                Events.on(city, Core.City.events.update, function (sender, data) {
+                    self.resourcesBar.setResources(city.resourcesService.getResources());
+                    $(".population .val", self.$el).text(city.populationService.getPopulation());
+                    $(".population .cap", self.$el).text(city.populationService.getCapacity());
+                });
+            }, this);
 
-
-
-
-
-
-
-            vkaria.core.addEventListener(ResponseCode.errorMessage, function (sender, text) {
+            /*
+            Events.on(core, .addEventListener(ResponseCode.errorMessage, function (sender, text) {
                 self.displayMessage(text, true);
             });
 
             vkaria.core.addEventListener(ResponseCode.message, function (sender, args) {
                 self.displayMessage(args.text);
             });
-
+            */
 
 
             /*
-            this.openWindow(new MessageView({
-                mainView: this,
-                text: "Welcome! This is some (demo|prototype|whatever) city building game I made in a free time. \n Have fun building your small town! \n First you need to specify where your city will be located, and then you'll be able to put some buildings and roads!"
-            }), "Welcome!");
-            */
+             this.openWindow(new MessageView({
+             mainView: this,
+             text: "Welcome! This is some (demo|prototype|whatever) city building game I made in a free time. \n Have fun building your small town! \n First you need to specify where your city will be located, and then you'll be able to put some buildings and roads!"
+             }), "Welcome!");
+             */
         },
         openWindow: function (view, title) {
             if (this.window !== null)
@@ -225,7 +218,7 @@ define(function (require) {
                 $(el).remove();
             }, 5000);
         },
-        setupButtonState: function(){
+        setupButtonState: function () {
             if (vkaria.tools.disabledTools & (1 << ToolCode.builder))
                 $(".button3, .button4", this.$el).attr("disabled", true);
             else

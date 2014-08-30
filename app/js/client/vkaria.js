@@ -53,7 +53,7 @@ define(function (require) {
         this.hiliteMan = new HiliteMan();
         this.buildman = new BuildMan(this);
         this.tilesman = new TilesMan();
-        this.tools = new Tools();
+        this.tools = new Tools(this);
         this.city = new City();
         this.terrain = new Terrain();
         window.p = this.pathman = new PathMan();

@@ -3,7 +3,6 @@ define(function (require) {
     var Backbone = require("backbone"),
         templateText = require("text!templates/laboratoryviewtemplate.html"),
         template = $.parseHTML(templateText),
-        ResponseCode = require("core/responsecode"),
         ResearchState = require("core/researchstate"),
         ResourcesBarView = require("ui/views/resourcesbarview");
 

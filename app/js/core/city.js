@@ -1,8 +1,7 @@
 define(function (require) {
     var namespace = require("namespace");
-    var validator = require('./lib/validator'),
-        Events = require("events"),
-        Laboratory = require("./city/laboratory"),
+    var Events = require("events");
+    var Laboratory = require("./city/laboratory"),
         CityStats = require("./city/citystats"),
         Area = require("./city/area"),
         CityBuildings = require("./city/citybuildings"),
@@ -11,30 +10,32 @@ define(function (require) {
     var CityPopulation = require("./city/citypopulation");
     var Terrain = require("./terrain");
 
-    namespace("Isometrica.Core").City = City;
+    var Core = namespace("Isometrica.Core");
+
+    Core.City = City;
 
     function City(world) {
-        this.world = world;
+        this.root = this.world = world;
         this.id = 1;
 
         this.timeEstablished = world.time.milliseconds;
 
-        this.area = this.areaModule = new Area(this);
-        this.tilesParams = this.tileParamsModule = new CityTilesParams(this);
-        this.resourcesModule = this.resources = new CityResources(this);
-        this.statsModule = new CityStats(this);
-        this.populationModule = new CityPopulation(this);
-        this.lab = this.laboratoryModule = new Laboratory(this.world);
-        this.buildings = this.cityBuildings = this.buildingsModule = new CityBuildings(this);
+        this.area = this.areaService = new Area(this);
+        this.tilesParams = this.tileParamsService = new CityTilesParams(this);
+        this.resourcesModule = this.resources = this.resourcesService = new CityResources(this);
+        this.statsModule = this.statsService = new CityStats(this);
+        this.populationModule = this.populationService = new CityPopulation(this);
+        this.lab = this.laboratoryService = new Laboratory(this);
+        this.buildings = this.cityBuildings = this.buildingsService = new CityBuildings(this);
 
-        this.statsModule.init();
-        this.populationModule.init();
-        this.areaModule.init();
+        this.statsService.init();
+        this.populationService.init();
+        this.areaService.init();
 
         Events.on(world, world.events.tick, this.onTick, {self: this});
     }
 
-    City.prototype.events = {
+    var events = City.events = City.prototype.events = {
         update: 0
     };
 
@@ -43,20 +44,20 @@ define(function (require) {
     City.prototype.cityHall = null;
     City.prototype.position = null;
 
-    City.prototype.onTick = function(sender, args, meta){
+    City.prototype.onTick = function (sender, args, meta) {
         var self = meta.self;
         Events.fire(self, self.events.update, self);
     };
 
     City.prototype.clearTile = function (x, y) {
         //this.world.buildings.remove(x,y);
-        this.world.terrain.clearTile(Terrain.convertToIndex(x,y));
+        this.world.terrain.clearTile(Terrain.convertToIndex(x, y));
         this.resourcesModule.subMoney(1);
 
         return true;
     };
 
-     City.prototype.save = function () {
+    City.prototype.save = function () {
         var buildings = [];
 
         for (var index in this.buildings) {

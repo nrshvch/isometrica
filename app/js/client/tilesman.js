@@ -4,6 +4,7 @@ define(function (require) {
         EventManager = require("events"),
         Events = require("events"),
         Tile = require("./gameObjects/Tile"),
+        Core = require("core"),
         TileMessage = require("./gameObjects/tilemessage");
 
     function Tilesman(mainScript, camera) {
@@ -28,56 +29,8 @@ define(function (require) {
             self.currentChunkX = ((position[0] / Config.tileSize / Config.chunkSize) | 0);
             self.currentChunkY = ((position[2] / Config.tileSize / Config.chunkSize) | 0);
 
-            //if (!self.initializedChunks) {
-                self.loadChunks2(self.currentChunkX, self.currentChunkY);
-              //  self.initializedChunks = true;
-            //}
+            self.loadChunks2(self.currentChunkX, self.currentChunkY);
         };
-
-        /*
-        this.onPointerUp = function (data) {
-            //self.loadChunks();
-        };
-
-        this.onCameraViewportSet = function (cam) {
-            cam.viewport.addEventListener(cam.viewport.events.pointerup, self.onPointerUp);
-        };
-        */
-
-        this.onTileData = function (sender, response) {
-            setTimeout(function(){
-
-                var data = response.data,
-                    meta = response.meta;
-
-                var item, x, y, tile,
-                    len = data.length;
-
-                for (var i = 0; i < len; i++) {
-                    item = data[i];
-                    x = item.x;
-                    y = item.y;
-
-                    tile = self.getTile(x, y);
-
-                    //this tile is late, camera moved to another chunk
-                    //and current chunk seems to be deleted.
-                    //what a waste of traffic.
-                    if (!tile)
-                        continue;
-
-                    tile.tileScript.setData(item);
-                    //self.dispatchEvent(self.events.loadedTile, self, tile);
-                }
-                self.cleanChunks();
-
-                Events.fire(self, self.events.loadedTiles,response);
-            },0);
-        };
-
-        //this.onTileUpdate = function (tile) {
-            //todo
-        //};
     }
 
     var vec3Buffer1 = new Float32Array(3);
@@ -90,28 +43,23 @@ define(function (require) {
     Tilesman.prototype.currentChunkX = 0;
     Tilesman.prototype.currentChunkY = 0;
 
-    Tilesman.prototype.start = function(){
+    Tilesman.prototype.start = function () {
         var cam = vkaria.game.logic.world.findByName("mainCamera");
 
         cam.transform.addEventListener(cam.transform.events.update, this.onCameraMove);
-        //cam.camera.addEventListener(cam.camera.events.viewportSet, this.onCameraViewportSet);
-        //vkaria.core.addEventListener(ResponseCode.tileUpdated, this.onTileUpdate);
-
+        Events.on(vkaria.core.terrain, Core.Terrain.events.gridUpdate, function (terrain, args, self) {
+            console.log(111);
+            self.updateChunks();
+        }, this);
 
         this.onCameraMove(cam.transform);
     };
 
-    /**
-     * Load 8 chunks around chunk where camera is focused. Skip already loaded.
-     * @param centerX
-     * @param centerY
-     */
-    Tilesman.prototype.loadChunks = function (centerX, centerY) {
+    Tilesman.prototype.updateChunks = function () {
+        var centerX = this.currentChunkX;
+        var centerY = this.currentChunkY;
 
-        console.log("Load chunks");
 
-        centerX = centerX || this.currentChunkX;
-        centerY = centerY || this.currentChunkY;
 
         for (var i = 0; i < 9; i++) {
             var x = (i / 3) | 0,
@@ -119,11 +67,8 @@ define(function (require) {
                 cx = centerX + x - 1,
                 cy = centerY + y - 1;
 
-
-            if (this.getChunk(cx, cy) === false && cx >= 0 && cy >= 0) {
-                this.makeChunk(cx, cy);
-                vkaria.core.getTileData(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize, this.onTileData);
-            }
+            vkaria.terrain.clear(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
+            vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
         }
     };
 
@@ -145,7 +90,7 @@ define(function (require) {
                 this.makeChunk(cx, cy);
                 vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
                 var s = this;
-                Events.fire(s, s.events.loadedTiles,{
+                Events.fire(s, s.events.loadedTiles, {
                     meta: {
                         x: cx * s.chunkSize, y: cy * s.chunkSize, w: s.chunkSize, h: s.chunkSize
                     }
@@ -171,24 +116,8 @@ define(function (require) {
             if (this.chunks[cX] == undefined)
                 this.chunks[cX] = [];
 
-            //var l = this.chunkSize * this.chunkSize;
             chunk = this.chunks[cX][cY] = true;
-            //chunk = this.chunks[cX][cY] = new Array(l);
-            /*
-            for (var i = 0; i < l; i++) {
-                var x0 = (i / this.chunkSize) | 0,
-                    y0 = i - x0 * this.chunkSize,
-                    x = x0 + cX * this.chunkSize,
-                    y = y0 + cY * this.chunkSize,
-                    tile;
 
-                tile = new Tile(x, y);
-                tile.tileScript.tiles = this;
-                vkaria.game.logic.world.addGameObject(tile);
-                chunk[i] = tile;
-            }
-            console.timeEnd("makeChunk");
-            */
             return chunk;
         }
         return false;
@@ -205,14 +134,7 @@ define(function (require) {
         var chunk = this.getChunk(cx, cy);
 
         if (chunk !== false) {
-            /*
-            var chunk = this.chunks[cx][cy],
-                len = chunk.length;
 
-            for (var i = 0; i < len; i++) {
-                chunk[i].destroy();
-            }
-            */
             this.chunks[cx][cy] = undefined;
         }
 
@@ -224,7 +146,6 @@ define(function (require) {
         });
     };
 
-    //FIX bug, when you scroll to the edge of the map, and then scroll back, chunks act buggy.
     /**
      * Remove old chunks around current position, remove those that are outside of 3x3 area of current chunks.
      */
@@ -259,9 +180,9 @@ define(function (require) {
         }
     };
 
-    Tilesman.prototype.clearTile = function(x,y){
+    Tilesman.prototype.clearTile = function (x, y) {
         var self = this;
-        vkaria.core.clearTile(x, y, function(data,data2){
+        vkaria.core.clearTile(x, y, function (data, data2) {
             if (data) {
                 var tile = self.getTile(x, y),
                     pos = tile.transform.getPosition();

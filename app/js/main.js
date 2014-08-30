@@ -36,7 +36,8 @@ require.config({
         binaryheap: './js/vendor/binaryheap',
         namespace: './js/vendor/namespace',
         text: 'bower_components/requirejs-text/text',
-        "gl-matrix": "bower_components/gl-matrix/dist/gl-matrix"
+        "gl-matrix": "bower_components/gl-matrix/dist/gl-matrix",
+        "simplex-noise": "./js/vendor/simplex-noise"
     },
     shim: {
         'underscore': {

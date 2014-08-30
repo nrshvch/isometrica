@@ -17,20 +17,25 @@ define(/** @lends TileIterator */ function(require){
      * @param l [number]
      * @constructor
      */
-    function TileIterator(tile_Or_x0, w_or_y0, l_w, l) {
-        var x0,y0, w;
+    function TileIterator(a, b, c, d) {
+        var x0,y0, w, l;
 
-        if(arguments.length === 3){
-            x0 = Terrain.extractX(tile_Or_x0);
-            y0 = Terrain.extractY(tile_Or_x0);
-            w = w_or_y0;
-            l = l_w;
+        if(arguments.length === 2){
+            x0 = Terrain.extractX(a);
+            y0 = Terrain.extractY(a);
+            w = Terrain.extractX(b) - x0;
+            l = Terrain.extractY(b) - y0;
+        }else if(arguments.length === 3){
+            x0 = Terrain.extractX(a);
+            y0 = Terrain.extractY(a);
+            w = b;
+            l = c;
         }else{
-            x0 = tile_Or_x0;
-            y0 = w_or_y0;
-            w = l_w;
+            x0 = a;
+            y0 = b;
+            w = c;
+            l = d;
         }
-
         TileIterator.setup(this, x0, y0, w, l);
     }
 

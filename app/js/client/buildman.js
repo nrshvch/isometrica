@@ -2,12 +2,10 @@
 define(function (require) {
     var Core = require("core");
     var engine = require("engine"),
-        ResponseCode = require("core/responsecode"),
         BuildingClassCode = require("core/buildingclasscode"),
         TileMessage = require("./gameObjects/tilemessage"),
         Building = require("./building"),
         Road = require("./road"),
-        buildingData = Core.BuildingData,
         EventManager = require("events"),
         Events = require("events"),
         ErrorCode = require("core/errorcode"),
@@ -48,7 +46,8 @@ define(function (require) {
             var model;
             while (!iter.done) {
                 model = iter.next();
-                self.createBuilding(model);
+                if (model !== null && model !== undefined)
+                    self.createBuilding(model);
             }
 
         };
@@ -80,15 +79,18 @@ define(function (require) {
         Events.subscribe(this.tilesman, this.tilesman.events.loadedTiles, this.onTilesLoaded, this);
         Events.subscribe(this.tilesman, this.tilesman.events.removedTiles, this.onTilesRemoved, this);
 
-        Events.on(coreTerrain, coreTerrain.events.tileCleared, function (sender, args, self) {
+        Events.on(coreTerrain, Terrain.events.tileCleared, function (sender, args, self) {
             var x = Terrain.extractX(args);
             var y = Terrain.extractY(args);
             self.removeBuilding(x, y);
         }, this);
 
-        Events.subscribe(vkaria.core, ResponseCode.buildingBuilt, this.onBuildingBuilt, this);
-        Events.subscribe(vkaria.core, ResponseCode.buildingUpdated, this.onBuildingUpdated, this);
-        Events.subscribe(vkaria.core, ResponseCode.buildingRemoved, this.onBuildingRemoved, this);
+        var bSrvEv = Core.ConstructionService.events;
+        var bSrv = this.main.core.world.buildingService;
+
+        Events.on(bSrv, bSrvEv.buildingBuilt, this.onBuildingBuilt, this);
+        Events.on(bSrv, bSrvEv.buildingUpdated, this.onBuildingUpdated, this);
+        Events.on(bSrv, bSrvEv.buildingRemoved, this.onBuildingRemoved, this);
     };
 
     Buildman.prototype.getRoad = function (x, y) {
@@ -138,33 +140,6 @@ define(function (require) {
         return building;
     };
 
-    Buildman.prototype.build = function (buildingCode, x, y, rotate, onSuccess, onError) {
-        var self = this;
-
-        vkaria.core.world.city.buildings.buildBuilding(buildingCode, x, y, rotate, function (building) {
-            //vkaria.assets.getAsset("/audio/blip.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-            //resource.data.play();
-            //});
-
-            onSuccess && onSuccess();
-        }, function (error) {
-            var tile = vkaria.terrain.getTile(x, y),
-                pos = tile.transform.getPosition();
-
-
-            var msg = new TileMessage(Enumerator.parse(ErrorCode, error), "red");
-            msg.transform.setPosition(pos[0], pos[1], pos[2]);
-            vkaria.game.logic.world.addGameObject(msg);
-
-
-            //vkaria.assets.getAsset("/audio/error.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-            //resource.data.play();
-            //});
-
-            onError && onError();
-        });
-    };
-
     Buildman.prototype.createBuilding = function (model) {
         var x = Terrain.extractX(model.tile),
             y = Terrain.extractY(model.tile),
@@ -176,7 +151,7 @@ define(function (require) {
         if (!tile)
             return false;
 
-        if (buildingData[data.buildingCode].classCode === BuildingClassCode.road) {
+        if (model.data.classCode === BuildingClassCode.road) {
             building = new Road();
         } else
             building = new Building();
@@ -185,7 +160,7 @@ define(function (require) {
 
         this.setBuilding(x, y, building);
 
-        if (buildingData[data.buildingCode].classCode === BuildingClassCode.road) {
+        if (model.data.classCode === BuildingClassCode.road) {
             this.addRoad(x, y, building);
             this.updateRoads(x, y);
         }
