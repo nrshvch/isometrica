@@ -77,7 +77,6 @@ define(function (require) {
         var data = BuildingData[code];
         var iter = new TileIterator(tile0, tile1);
         var bs = [];
-        console.log(Terrain.extractX(tile0), Terrain.extractY(tile0), Terrain.extractX(tile1), Terrain.extractY(tile1));
         while(!iter.done){
             var tile = TileIterator.next(iter);
             var errorCode = buildTest(this, code, tile);

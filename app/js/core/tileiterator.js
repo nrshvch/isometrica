@@ -1,8 +1,10 @@
 define(/** @lends TileIterator */ function(require){
     var Namespace = require("namespace");
     var Terrain = require("./terrain");
-
+    var TerrainDY = Terrain.dy;
     var Core = Namespace("Isometrica.Core");
+
+    var tileOne = TerrainDY + 1;
 
     /**
      * @type {TileIterator}
@@ -17,54 +19,38 @@ define(/** @lends TileIterator */ function(require){
      * @param l [number]
      * @constructor
      */
-    function TileIterator(a, b, c, d) {
-        var x0,y0, w, l;
-
-        if(arguments.length === 2){
-            x0 = Terrain.extractX(a);
-            y0 = Terrain.extractY(a);
-            w = Terrain.extractX(b) - x0;
-            l = Terrain.extractY(b) - y0;
-        }else if(arguments.length === 3){
-            x0 = Terrain.extractX(a);
-            y0 = Terrain.extractY(a);
-            w = b;
-            l = c;
-        }else{
-            x0 = a;
-            y0 = b;
-            w = c;
-            l = d;
-        }
-        TileIterator.setup(this, x0, y0, w, l);
+    function TileIterator(tile0, tile1) {
+        if(arguments.length > 2)throw "invalid args";
+        TileIterator.setup(this, tile0, tile1);
     }
 
+    TileIterator.prototype = Object.create(null);
+
     TileIterator.next = function(iterator){
-        if(iterator.done)
+        if(iterator.done === true)
             return -1;
 
         var i = iterator.i++;
 
-        if (i === iterator.count - 1)
-            iterator.done = true;
-
         var w = iterator.w;
         var y = (i / w) | 0;
         var x = i - y * w;
+        var tile = iterator.tile0 + x + y * TerrainDY;
 
-        return (iterator.y0 + y) << 16 ^ (iterator.x0 + x);
+        if(tile === iterator.tile1)
+            iterator.done = true;
+
+        return tile;
     };
 
     TileIterator.reset = function(iterator){
         iterator.i = 0;
     };
 
-    TileIterator.setup = function(iterator, x0, y0, w, l){
-        iterator.x0 = x0;
-        iterator.y0 = y0;
-        iterator.w = w;
-        iterator.l = l;
-        iterator.count = w * l;
+    TileIterator.setup = function(iterator, tile0, tile1){
+        iterator.tile0 = tile0;
+        iterator.tile1 = tile1;
+        iterator.w = Terrain.extractX(tile1 - tile0 + tileOne);
         iterator.i = 0;
         iterator.done = false;
     };
@@ -80,8 +66,8 @@ define(/** @lends TileIterator */ function(require){
         return TileIterator.reset(this);
     };
 
-    TileIterator.prototype.setup = function (x0, y0, w, l) {
-        return TileIterator.setup(x0, y0, w, l);
+    TileIterator.prototype.setup = function (tile0, tile1) {
+        return TileIterator.setup(this, tile0, tile1);
     };
 
     return TileIterator;

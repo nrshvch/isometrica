@@ -140,6 +140,42 @@ define(function (require) {
         return ok;
     }
 
+    //A = x,y, B = x+1,y, C = x,y+1, D = x+1,y+1
+    var A = 0x1, B = 0x100, C = 0x10000, D = 0x1000000;
+    var SlopeType = {
+        FLAT: 0,
+
+        A: A,
+        B: B,
+        C: C,
+        D: D,
+
+        A_STEEP: 0x2 | B | C,
+        B_STEEP: 0x200 | A | D,
+        C_STEEP: 0x20000 | A | D,
+        D_STEEP: 0x2000000 | B | C,
+
+        AB: A | B,
+        AC: A | C,
+        BD: D | B,
+        CD: D | C,
+        AD: A | D,
+        BC: B | C,
+
+        ABC: A | B | C,
+        ABD: A | B | D,
+        ACD: C | D | A,
+        BCD: C | B | D,
+    };
+
+    function isSlope(slope){
+        return slope !== SlopeType.FLAT;
+    }
+
+    function isSlopeSmooth(slope){
+        return slope === SlopeType.AB || slope === SlopeType.AC || slope === SlopeType.CD || slope === SlopeType.BD;
+    }
+
     /**
      *
      * @param idx {number}
@@ -159,6 +195,8 @@ define(function (require) {
         this.world = world;
         this.gridPoints = [];
     }
+
+    Terrain.SlopeType = SlopeType;
 
     Terrain.convertToIndex = function (x, y) {
         return y << 16 ^ x;
@@ -181,21 +219,6 @@ define(function (require) {
 
     Terrain.prototype.edit = function (idx, z) {
         return edit(this, idx, z);
-    };
-
-    /**
-     * @depreceted
-     * @param x
-     * @param y
-     * @returns {*[]}
-     */
-    Terrain.prototype.getGridPoints = function (x, y) {
-        return [
-            this.getGridPointHeight(x, y), //s
-            this.getGridPointHeight(x + 1, y), //e
-            this.getGridPointHeight(x, y + 1), //w
-            this.getGridPointHeight(x + 1, y + 1), //n
-        ]
     };
 
     Terrain.prototype.getAreaGrid = function (x0, y0, w, l) {
@@ -245,6 +268,26 @@ define(function (require) {
         return gp;
     };
 
+    Terrain.prototype.getHeight = function(x,y){
+        var subx = x % (x | 0);
+        var suby = y % (y | 0);
+
+        //normalize the values, because
+        //interpolation is done for 0 - 1 interval
+        //subx += 0.5;
+        //suby += 0.5;
+
+        //bilinear interpolation
+        var x00 = this.getGridPointHeight(x,y),
+            x01 = this.getGridPointHeight(x+1,y),
+            x10 = this.getGridPointHeight(x,y+1),
+            x11 = this.getGridPointHeight(x+1,y+1),
+            i1 = x00 * (1 - subx) + x01 * subx,
+            i2 = x10 * (1 - subx) + x11 * subx;
+
+        return i1 * suby + i2 * (1 - suby);
+    };
+
     Terrain.prototype.getTerrainType = function (idxOrX, y) {
         var idx, a, b, c, d;
 
@@ -270,7 +313,7 @@ define(function (require) {
 
     //TODO slopeId could be int where each gridPoint height is stored in two bits
     //TODO: If each point z pos would be relative to lowest point, instead of x0-y0 point, then each point could be described in 0-2 int.
-    Terrain.prototype.calcSlopeId = function (idx, y) {
+    /*Terrain.prototype.calcSlopeId = function (idx, y) {
         var x = idx;
         if (arguments.length === 1) {
             x = Terrain.extractX(idx);
@@ -279,7 +322,6 @@ define(function (require) {
         var terrainType = this.getTerrainType(x, y);
 
         if (terrainType === TerrainType.water) return 2222;
-        //if (terrainType === TerrainType.water) return 0;
 
         var z0 = this.getGridPointHeight(x, y),
             z1 = this.getGridPointHeight(x + 1, y),
@@ -287,15 +329,38 @@ define(function (require) {
             z3 = this.getGridPointHeight(x + 1, y + 1);
 
         return 2000 + (z1 - z0 + 2) * 100 + (z2 - z0 + 2) * 10 + (z3 - z0 + 2);
+    };
+    */
+
+    Terrain.prototype.tileSlope = function(tile){
+        //slope id is calculated from tile point heights relative to lowest.
+
+        var z0 = this.getGridPointHeight(tile),
+            z1 = this.getGridPointHeight(tile + 1),
+            z2 = this.getGridPointHeight(tile + dy),
+            z3 = this.getGridPointHeight(tile + dy + 1);
 
         var baseZ = Math.min(z0, z1, z2, z3);
-
         z0 -= baseZ;
         z1 -= baseZ;
         z2 -= baseZ;
         z3 -= baseZ;
 
-        return z3 << 6 ^ z2 << 4 ^ z1 << 2 ^ z0;
+        return z3 << 24 ^ z2 << 16 ^ z1 << 8 ^ z0;
+    };
+
+    Terrain.prototype.tilePoints = function(tile){
+        var z0 = this.getGridPointHeight(x, y),
+            z1 = this.getGridPointHeight(x + 1, y),
+            z2 = this.getGridPointHeight(x, y + 1),
+            z3 = this.getGridPointHeight(x + 1, y + 1);
+
+        //height is 0-255 (8 bits);
+        //0-7 bits: x y height
+        //8-15 bits: x+1 y height
+        //16-23 bits: x y+1 height
+        //24-32 bits: x+1 y+1 height
+        return z3 << 24 ^ z2 << 16 ^ z1 << 8 ^ z0;
     };
 
     Terrain.prototype.resourceDistribution = function (x, y) {
@@ -318,7 +383,7 @@ define(function (require) {
         } else
             x = idxOrX;
 
-        if (this.calcSlopeId(x, y) === 2222) {
+        if (!isSlope(this.tileSlope(Terrain.convertToIndex(x,y)))) {
             var r = this.resourceDistribution(x, y);
 
             if (r === ResourceCode.oil && this.getTerrainType(x, y) === TerrainType.water) {
@@ -333,6 +398,9 @@ define(function (require) {
     Terrain.prototype.clearTile = function (idx) {
         Events.fire(this, events.tileCleared, idx);
     };
+
+    Terrain.isSlope = isSlope;
+    Terrain.isSlopeSmooth = isSlopeSmooth;
 
     return Terrain;
 });

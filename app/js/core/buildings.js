@@ -54,13 +54,14 @@ define(function (require) {
             sizeX = rotated ? data.sizeY : data.sizeX,
             sizeY = rotated ? data.sizeX : data.sizeY,
             slopeId, terrain, terrainType, resource,
-            tileIterator = new TileIterator(tile, sizeX, sizeY);
+            tile1 = tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy,
+            tileIterator = new TileIterator(tile, tile1);
 
         while (!tileIterator.done) {
             tile = TileIterator.next(tileIterator);
 
             terrain = self.world.terrain;
-            slopeId = terrain.calcSlopeId(tile);
+            slopeId = terrain.tileSlope(tile);
             terrainType = terrain.getTerrainType(tile);
             resource = terrain.getResource(tile);
 
@@ -70,12 +71,15 @@ define(function (require) {
                 return ErrorCode.CANT_BUILD_HERE;
             else if (positioning === BuildingPositioning.resource && resource !== data.resource)
                 return ErrorCode.WRONG_RESOURCE_TILE;
-            else if (data.classCode === BuildingClassCode.road && slopeId !== 2222 && slopeId !== 2112 && slopeId !== 2211 && slopeId !== 2233 && slopeId !== 2332)
+            else if (data.classCode === BuildingClassCode.road && Terrain.isSlope(slopeId) && !Terrain.isSlopeSmooth(slopeId))
                 return ErrorCode.LAND_NOT_SUITABLE;
-            else if (data.classCode !== BuildingClassCode.tree && data.classCode !== BuildingClassCode.road && slopeId != 2222)
+            else if (data.classCode !== BuildingClassCode.tree && data.classCode !== BuildingClassCode.road && Terrain.isSlope(slopeId))
                 return ErrorCode.FLAT_LAND_REQUIRED;
-            else if (self.get(tile) !== null && BuildingData[self.get(tile).buildingCode].classCode !== BuildingClassCode.tree)
-                return ErrorCode.TILE_TAKEN;
+            else {
+                var b = self.get(tile);
+                if (b !== null && BuildingData[b.buildingCode].classCode !== BuildingClassCode.tree)
+                    return ErrorCode.TILE_TAKEN;
+            }
         }
 
         return ErrorCode.NONE;
@@ -165,7 +169,9 @@ define(function (require) {
      * @returns {Iterator}
      */
     Buildings.prototype.getRange = function (x0, y0, w, h) {
-        return new TileIteratorAction(Terrain.convertToIndex(x0, y0), w, h, getRangerIteratorAction, this);
+        var tile0 = Terrain.convertToIndex(x0,y0);
+        var tile1 = Terrain.convertToIndex(x0+w-1, y0+h-1);
+        return new TileIteratorAction(tile0, tile1, getRangerIteratorAction, this);
     };
 
     Buildings.prototype.build = function (building) {

@@ -74,7 +74,7 @@ define(function (require) {
      * @returns {TileIterator}
      */
     Construction.prototype.occupiedTiles = function () {
-        return new TileIterator(this.tile, this.tile + this.data.sizeX + this.data.sizeY * Terrain.dy);
+        return new TileIterator(this.tile, this.tile + (this.data.sizeX - 1) + (this.data.sizeY - 1) * Terrain.dy);
     };
 
     return Construction;

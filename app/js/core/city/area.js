@@ -73,7 +73,9 @@ define(function (require) {
         }
 
         var inside = true;
-        var iterator = new TileIterator(x0, y0, w, l);
+        var tile1 = Terrain.convertToIndex(x0,y0);
+        var tile0 = Terrain.convertToIndex(x0+w-1, y0+l-1);
+        var iterator = new TileIterator(tile0, tile1);
         var area = city.world.influenceMap.getInfluenceAreaData(city.id);
         while (!iterator.done) {
             var tile = iterator.next();

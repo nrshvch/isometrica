@@ -26,8 +26,16 @@ define(function(require){
         t.setPosition(pos[0], pos[1], pos[2]);
 
         var type = vkaria.core.world.terrain.getTerrainType(r.x, r.y);
-        var gps = vkaria.core.world.terrain.getGridPoints(r.x, r.y);
+        //var gps = vkaria.core.world.terrain.getGridPoints(r.x, r.y);
 
+        var terrain = vkaria.core.world.terrain;
+
+        var gps = [
+            terrain.getGridPointHeight(r.x, r.y),
+            terrain.getGridPointHeight(r.x + 1, r.y),
+            terrain.getGridPointHeight(r.x, r.y + 1),
+            terrain.getGridPointHeight(r.x + 1, r.y + 1),
+        ];
         var zStep = Config.tileZStep;
 
         if (type === 0) {

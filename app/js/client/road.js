@@ -10,6 +10,7 @@ define(function (require) {
         RoadNode = require("./pathfinding/roadnode"),
         RoadView = require("./roadview");
     var Terrain = Core.Terrain;
+    var Enumeration = require("enumeration");
 
     function Road() {
         this.view = new RoadView();
@@ -35,7 +36,7 @@ define(function (require) {
     Road.prototype.updateRoad = function () {
         var x = Terrain.extractX(this.data.tile),
             y = Terrain.extractY(this.data.tile),
-            slopeId = vkaria.core.world.terrain.calcSlopeId(x,y),
+            slopeId = vkaria.core.world.terrain.tileSlope(this.data.tile),
             buildman = vkaria.buildman,
             ne = buildman.getRoad(x + 1, y),
             nw = buildman.getRoad(x, y + 1),
@@ -43,7 +44,7 @@ define(function (require) {
             se = buildman.getRoad(x, y - 1),
             id;
 
-        if (slopeId === 2222) {
+        if (!Terrain.isSlope(slopeId)) {
             var a = sw !== null,
                 b = se !== null,
                 c = ne !== null,
@@ -52,13 +53,13 @@ define(function (require) {
             id = 90000 + a * 1000 + b * 100 + c * 10 + d;
 
             if (id === 90000) return;
-        } else if (slopeId === 2233) {
+        } else if (slopeId === Terrain.SlopeType.AB) {
             id = 1;
-        } else if (slopeId === 2112) {
+        } else if (slopeId === Terrain.SlopeType.AC) {
             id = 2;
-        } else if (slopeId === 2211) {
+        } else if (slopeId === Terrain.SlopeType.CD) {
             id = 3;
-        } else if (slopeId === 2332) {
+        } else if (slopeId === Terrain.SlopeType.BD) {
             id = 4;
         }
 

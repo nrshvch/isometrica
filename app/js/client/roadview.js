@@ -69,10 +69,9 @@ define(function (require) {
 
             //position gameObject
             var data = b.data,
-                //z = b.tile.gameObject.transform.getPosition()[1] + b.tile.subpositionZ(data.subPosX, data.subPosY),
                 x = Terrain.extractX(data.tile),// + data.subPosX,
                 y = Terrain.extractY(data.tile),// + data.subPosY,
-                z = vkaria.core.world.terrain.getGridPointHeight(x+1, y);
+                z = vkaria.core.world.terrain.getHeight(x + 0.5, y + 0.5);
 
             this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
         }

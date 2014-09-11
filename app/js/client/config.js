@@ -9,7 +9,6 @@ define(function(require){
         tileSize: 45.255,
         tileZStep: 9.238,
         //chunkSize: (window.matchMedia("handheld").matches ? 8 : 24)
-        chunkSize: (window.matchMedia("(max-width: 800px)").matches ? 8 : 24),
-        //chunkSize: 4
+        chunkSize: (window.matchMedia("(max-width: 800px)").matches ? 8 : 24)
     };
 });

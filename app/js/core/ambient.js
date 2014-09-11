@@ -8,6 +8,10 @@ define(function (require) {
     var BuildingService = require("./buildings");
     var Terrain = require("./terrain");
     var Events = require("events");
+    var namespace = require("namespace");
+
+    var Core = namespace("Isometrica.Core");
+    Core.EnvService = Ambient;
 
     var simplex = new Simplex([151, 160, 137, 91, 90, 15,
         131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23,
@@ -24,7 +28,7 @@ define(function (require) {
         138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180]);
 
     var events = {
-        onTreeRemove: 0
+        treeRemove: 0
     };
 
     function hasTree(self, tile) {
@@ -40,7 +44,7 @@ define(function (require) {
         var has = hasTree(self, tile);
         self._usedTiles[tile] = true;
         if (has)
-            Events.fire(self, events.onTreeRemove, tile);
+            Events.fire(self, events.treeRemove, tile);
     }
 
     function onConstructionBuilt(buildman, building, self) {
@@ -54,7 +58,7 @@ define(function (require) {
             self._usedTiles[tile] = true;
 
             if (has)
-                Events.fire(self, events.onTreeRemove, tile);
+                Events.fire(self, events.treeRemove, tile);
         }
     }
 
@@ -62,6 +66,8 @@ define(function (require) {
         this.root = root;
         this._usedTiles = {};
     }
+
+    Ambient.events = events;
 
     /**
      *
@@ -72,10 +78,9 @@ define(function (require) {
         var world = this.root,
             terrain = world.terrain,
             terrainType = terrain.getTerrainType(tile),
-            resource = terrain.getResource(tile),
-            simplex = world.simplex;
+            resource = terrain.getResource(tile);
 
-        if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null && hasTree(self, tile))
+        if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null && hasTree(this, tile))
             return ([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(1, tile))];
 
         return null;

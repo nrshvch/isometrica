@@ -3,13 +3,10 @@ define(function (require) {
     var Core = require("core");
     var engine = require("engine"),
         BuildingClassCode = require("core/buildingclasscode"),
-        TileMessage = require("./gameObjects/tilemessage"),
         Building = require("./building"),
         Road = require("./road"),
         EventManager = require("events"),
-        Events = require("events"),
-        ErrorCode = require("core/errorcode"),
-        Enumerator = require("enumeration");
+        Events = require("events");
     var Terrain = Core.Terrain;
 
     function Buildman(main) {
@@ -69,7 +66,9 @@ define(function (require) {
 
     Buildman.prototype.events = {
         buildingAdded: 0,
-        buildingRemoved: 1
+        buildingRemoved: 1,
+        buildingAdd: 0,
+        buildingRemove: 1
     };
 
     Buildman.prototype.start = function () {

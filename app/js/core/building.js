@@ -51,10 +51,6 @@ define(function (require) {
     Building.prototype.demanding = null;
     Building.prototype.producing = null;
     Building.prototype.permanent = true;
-    /**
-     * @deprecated
-     * @type {{stateChange: number}}
-     */
     Building.prototype.events = events;
 
     Building.prototype.init = function(world, code, tile, rot){

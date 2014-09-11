@@ -50,7 +50,8 @@ define(function (require) {
 
             var arrayOfCodes = vkaria.core.world.city.lab.getAvailableBuildings();
                 //make map of visible categs
-                for (i in arrayOfCodes) {
+                for (var i in arrayOfCodes) {
+
                     var bcode = arrayOfCodes[i];
                     var classCode = BuildingData[bcode].classCode;
                     if (!availableCategs[classCode])

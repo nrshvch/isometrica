@@ -1,25 +1,23 @@
 define(function (require) {
     var engine = require("engine"),
         Config = require("./config"),
-        EventManager = require("events"),
         Events = require("events"),
         Tile = require("./gameObjects/Tile"),
-        Core = require("core"),
-        TileMessage = require("./gameObjects/tilemessage");
+        Core = require("core");
 
-    function Tilesman(mainScript, camera) {
+    var events = {
+        tileLoad: 0,
+        tileRemove: 1
+    };
+
+    function Tilesman(root) {
         this.chunkSize = Config.chunkSize;
-        //this.chunkSize = 4;
 
-        this.events = {
-            loadedTiles: 0,
-            removedTiles: 1
-        };
+        this.events = events;
+        this.events["loadedTiles"] = 0;
+        this.events["removedTiles"] = 1;
 
         this.chunks = [];
-
-        this.main = mainScript;
-        this.mainCamera = camera;
 
         var self = this;
 
@@ -33,9 +31,10 @@ define(function (require) {
         };
     }
 
+    Tilesman.events = events;
+
     var vec3Buffer1 = new Float32Array(3);
 
-    Tilesman.prototype = Object.create(EventManager.prototype);
     Tilesman.prototype.constructor = Tilesman;
 
     Tilesman.prototype.mainCamera = null;
@@ -48,7 +47,6 @@ define(function (require) {
 
         cam.transform.addEventListener(cam.transform.events.update, this.onCameraMove);
         Events.on(vkaria.core.terrain, Core.Terrain.events.gridUpdate, function (terrain, args, self) {
-            console.log(111);
             self.updateChunks();
         }, this);
 
@@ -59,8 +57,6 @@ define(function (require) {
         var centerX = this.currentChunkX;
         var centerY = this.currentChunkY;
 
-
-
         for (var i = 0; i < 9; i++) {
             var x = (i / 3) | 0,
                 y = i - x * 3,
@@ -70,6 +66,21 @@ define(function (require) {
             vkaria.terrain.clear(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
             vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
         }
+    };
+
+    Tilesman.prototype.getCurrentChunks = function(){
+        var centerX = this.currentChunkX;
+        var centerY = this.currentChunkY;
+        var r = [];
+        for (var i = 0; i < 9; i++) {
+            var x = (i / 3) | 0,
+                y = i - x * 3,
+                cx = centerX + x - 1,
+                cy = centerY + y - 1;
+
+            r.push({x: cx * this.chunkSize, y: cy * this.chunkSize});
+        }
+        return r;
     };
 
     Tilesman.prototype.loadChunks2 = function (centerX, centerY) {
@@ -88,13 +99,13 @@ define(function (require) {
 
             if (this.getChunk(cx, cy) === false && cx >= 0 && cy >= 0) {
                 this.makeChunk(cx, cy);
-                vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
                 var s = this;
-                Events.fire(s, s.events.loadedTiles, {
+                Events.fire(s, events.tileLoad, {
                     meta: {
                         x: cx * s.chunkSize, y: cy * s.chunkSize, w: s.chunkSize, h: s.chunkSize
                     }
                 });
+                vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
                 this.cleanChunks();
             }
 
@@ -108,7 +119,6 @@ define(function (require) {
      * @returns {*}
      */
     Tilesman.prototype.makeChunk = function (cX, cY) {
-        //console.time("makeChunk");
         if (!this.getChunk(cX, cY) && cX >= 0 && cY >= 0) {
             //console.time("makeChunk");
             var chunk;
@@ -166,36 +176,6 @@ define(function (require) {
         }
 
 
-    };
-
-    Tilesman.prototype.getTile = function (x, y) {
-        var cx = (x / this.chunkSize) | 0,
-            cy = (y / this.chunkSize) | 0,
-            chunk = this.getChunk(cx, cy);
-
-        if (chunk) {
-            return chunk[this.chunkSize * (x - cx * this.chunkSize) + (y - cy * this.chunkSize)];
-        } else {
-            return null;
-        }
-    };
-
-    Tilesman.prototype.clearTile = function (x, y) {
-        var self = this;
-        vkaria.core.clearTile(x, y, function (data, data2) {
-            if (data) {
-                var tile = self.getTile(x, y),
-                    pos = tile.transform.getPosition();
-
-                vkaria.assets.getAsset("/audio/explosion.wav", vkaria.assets.constructor.Resource.ResourceTypeEnum.audio).done(function (resource) {
-                    //resource.data.play();
-                });
-
-                var msg = new TileMessage("1$", "red");
-                msg.transform.setPosition(pos[0], pos[1], pos[2]);
-                vkaria.game.logic.world.addGameObject(msg);
-            }
-        });
     };
 
     return Tilesman;

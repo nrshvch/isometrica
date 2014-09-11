@@ -7,6 +7,8 @@ define(function (require) {
     var TerrainType = Core.TerrainType;
     var Config = require("./config");
     var TileIterator = Core.TileIterator;
+    var Events = require("events");
+    var CoreTerrain = Core.Terrain;
 
     var grass = {
         2222: 'grass/2222.png',
@@ -56,11 +58,7 @@ define(function (require) {
         2222: "water/2222.png"
     };
 
-    function Terrain() {
-        this.tiles = [];
-        this.gos = [];
-        this.pool = [];
-    }
+    var events = {};
 
     function CreateTile(self) {
         if (self.pool.length > 0) {
@@ -70,8 +68,22 @@ define(function (require) {
         }
     }
 
+    function Terrain(root) {
+        this.tiles = [];
+        this.gos = [];
+        this.pool = [];
+        this.root = root;
+    }
+
+    Terrain.events = events;
+
+    Terrain.prototype.init = function(){
+    };
+
     Terrain.prototype.clear = function (x0, y0, w, l) {
-        var iter = new TileIterator(x0,y0,w,l);
+        var tile0 = CoreTerrain.convertToIndex(x0, y0);
+        var tile1 = CoreTerrain.convertToIndex(x0 + w - 1, y0 + l - 1);
+        var iter = new TileIterator(tile0, tile1);
         var tile, index, tiles = this.tiles, pool = this.pool, gos = this.gos,
             world = vkaria.game.logic.world;
         while(true){
@@ -127,7 +139,15 @@ define(function (require) {
             if (!self.tiles[index]) {
                 var t = CreateTile(self);
 
-                var gps = coreTerrain.getGridPoints(x, y);
+                //var gps = coreTerrain.getGridPoints(x, y);
+                var terrain = vkaria.core.world.terrain;
+
+                var gps = [
+                    terrain.getGridPointHeight(x, y),
+                    terrain.getGridPointHeight(x + 1, y),
+                    terrain.getGridPointHeight(x, y + 1),
+                    terrain.getGridPointHeight(x + 1, y + 1),
+                ];
 
                 //var slope = coreTerrain.calcSlopeId(x,y);
                 var slope = calcSpriteCode(self, x, y);
@@ -173,7 +193,9 @@ define(function (require) {
     Terrain.prototype.draw = function (x0, y0, w, l) {
         var coreTerrain = vkaria.core.world.terrain;
 
-        var iter = new TileIterator(x0, y0, w, l);
+        var tile0 = CoreTerrain.convertToIndex(x0, y0);
+        var tile1 = CoreTerrain.convertToIndex(x0 + w - 1, y0 + l - 1);
+        var iter = new TileIterator(tile0, tile1);
         var tiles = this.tiles,
             index, x, y, z, t, slope, type, sprite, gps, gos = this.gos;
 
@@ -184,7 +206,14 @@ define(function (require) {
             if (!tiles[index]) {
                 t = CreateTile(this);
 
-                gps = coreTerrain.getGridPoints(x, y);
+                var terrain = vkaria.core.world.terrain;
+
+                var gps = [
+                    terrain.getGridPointHeight(x, y),
+                    terrain.getGridPointHeight(x + 1, y),
+                    terrain.getGridPointHeight(x, y + 1),
+                    terrain.getGridPointHeight(x + 1, y + 1),
+                ];
 
                 //var slope = coreTerrain.calcSlopeId(x,y);
                 slope = calcSpriteCode(this, x, y);
@@ -216,18 +245,6 @@ define(function (require) {
                 gos[t.instanceId] = index;
             }
         }
-    };
-
-
-    /**
-     * DEPRECATED
-     * @deprecated
-     * @param x
-     * @param y
-     * @returns {*}
-     */
-    Terrain.prototype.getHeight = function (x, y) {
-        return vkaria.core.world.terrain.getGridPoints(x, y)[1];
     };
 
     Terrain.prototype.getTile = function (x, y) {

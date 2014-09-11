@@ -1,10 +1,7 @@
-define(/** @lends TileIteratorAction */ function(require){
+define(/** @lends TileIteratorAction */ function (require) {
     var Namespace = require("namespace");
-    var Terrain = require("./terrain");
-
+    var TileIterator = require("./tileiterator");
     var Core = Namespace("Isometrica.Core");
-
-    var dy = Terrain.dy;
 
     /**
      * @type {TileIteratorAction}
@@ -19,50 +16,26 @@ define(/** @lends TileIteratorAction */ function(require){
      * @param l [number]
      * @constructor
      */
-    function TileIteratorAction(tile, w, l, f, args) {
-        TileIteratorAction.setup(this, tile, w, l, f, args);
+    function TileIteratorAction(tile0, tile1, f, args) {
+        TileIteratorAction.setup(this, tile0, tile1, f, args);
     }
 
-    TileIteratorAction.next = function(iterator){
-        if(iterator.done)
-            return -1;
-
-        var i = iterator.i++;
-
-        if (i === iterator.count - 1)
-            iterator.done = true;
-
-        var w = iterator.w;
-        var y = (i / w) | 0;
-        var x = i - y * w;
-        return iterator.f(iterator.tile + y * dy + x, iterator.args);
+    TileIteratorAction.next = function (iterator) {
+        var tile = TileIterator.next(iterator);
+        return iterator.f(tile, iterator.args);
     };
 
-    TileIteratorAction.reset = function(iterator){
-        iterator.i = 0;
+    TileIteratorAction.reset = function (iterator) {
+        TileIterator.reset(iterator);
     };
 
-    TileIteratorAction.setup = function(iterator, tile, w, l, f, args){
-        iterator.tile = tile;
+    TileIteratorAction.setup = function (iterator, tile0, tile1, f, args) {
+        TileIterator.setup(iterator, tile0, tile1);
         iterator.f = f;
-        iterator.w = w;
-        iterator.l = l;
-        iterator.count = w * l;
-        iterator.i = 0;
-        iterator.done = false;
         iterator.args = args;
     };
 
-
-
-
-    TileIteratorAction.prototype.next = function () {
-        return TileIteratorAction.next(this);
-    };
-
-    TileIteratorAction.prototype.reset = function () {
-        return TileIteratorAction.reset(this);
-    };
+    TileIteratorAction.prototype = Object.create(TileIterator.prototype);
 
     TileIteratorAction.prototype.setup = function (tile, w, l, f, args) {
         return TileIteratorAction.setup(tile, w, l, f, args);

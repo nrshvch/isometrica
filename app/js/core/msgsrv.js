@@ -4,6 +4,8 @@
 define(function (require) {
     var Events = require("events");
     var Namespace = require("namespace");
+    var Enumeration = require("enumeration");
+    var Terrain = require("./terrain");
 
     var Core = Namespace("Isometrica.Core");
 
@@ -30,6 +32,8 @@ define(function (require) {
     MessagingService.events = events;
 
     MessagingService.prototype.sendMessage = function(type, text){
+        console.log(Enumeration.parse(MessageType, type), text);
+
         Events.fire(this, events.message, {
             type: type,
             text: text
@@ -37,6 +41,8 @@ define(function (require) {
     };
 
     MessagingService.prototype.sendTileMessage = function(tile, type, text){
+        console.log("x: "+Terrain.extractX(tile)+"; y: "+Terrain.extractY(tile), Enumeration.parse(MessageType, type), text);
+
         Events.fire(this, events.tileMessage, {
             tile: tile,
             type: type,

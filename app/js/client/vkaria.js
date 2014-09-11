@@ -16,6 +16,8 @@ define(function (require) {
         //UIManager = require("ui"),
         RenderLayer = require("client/renderlayer"),
         Terrain = require("./terrain");
+    var EnvMan = require("./envman");
+    var ChunkMan = require("./chunkman");
 
 
     function Vkaria(core, callback) {
@@ -52,10 +54,13 @@ define(function (require) {
 
         this.hiliteMan = new HiliteMan();
         this.buildman = new BuildMan(this);
-        this.tilesman = new TilesMan();
+        this.tilesman = new TilesMan(this);
         this.tools = new Tools(this);
         this.city = new City();
-        this.terrain = new Terrain();
+        this.terrain = new Terrain(this);
+        this.envman = new EnvMan(this);
+        this.chunkman = new ChunkMan(this);
+
         window.p = this.pathman = new PathMan();
 
         //preload assets and, when done, start game
@@ -101,6 +106,9 @@ define(function (require) {
         this.tilesman.start();
         this.tools.start();
         this.city.start();
+        this.terrain.init();
+        this.chunkman.init();
+        this.envman.init();
 
 
 
@@ -124,6 +132,9 @@ define(function (require) {
      */
     Vkaria.prototype.game = null;
 
+    Vkaria.prototype.goto = function(x,y){
+      return this.camera.transform;
+    };
+
     return Vkaria;
-})
-;
+});
