@@ -81,7 +81,7 @@ define(function (require) {
     function calculateResourceConsumption(cityStats) {
         Resources.clear(cityStats.resourceDemand);
 
-        var buildings = cityStats.city.cityBuildings.getBuildings(),
+        var buildings = cityStats.city.buildingService.getBuildings(),
             l = buildings.length;
 
         for (var i = 0; i < l; i++)
@@ -92,7 +92,7 @@ define(function (require) {
 
     function calculateResourceProduction(self) {
         Resources.clear(self.resourceProduce);
-        var buildings = self.city.cityBuildings.getBuildings();
+        var buildings = self.city.buildingService.getBuildings();
         var l = buildings.length;
         for (var i = 0; i < l; i++) {
             Resources.add(self.resourceProduce, self.resourceProduce, buildings[i].producing);
@@ -107,7 +107,7 @@ define(function (require) {
 
         Resources.clear(cityStats.maintenanceCost);
 
-        var buildings = cityStats.city.cityBuildings.getBuildings();
+        var buildings = cityStats.city.buildingService.getBuildings();
         var l = buildings.length;
 
         for (var i = 0; i < l; i++) {

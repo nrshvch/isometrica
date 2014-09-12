@@ -129,7 +129,7 @@ define(function (require) {
             return ErrorCode.CITY_HALL_ALREADY_BUILT;
         else if (!city.area.contains(tile, Terrain.convertToIndex(data.sizeX, data.sizeY)))
             return ErrorCode.CANT_BUILD_HERE;
-        else if (!city.resources.hasMoreThan(data.constructionCost))
+        else if (!city.resources.hasEnough(data.constructionCost))
             return ErrorCode.NOT_ENOUGH_RES;
 
         return ErrorCode.NONE;

@@ -1,5 +1,6 @@
 define(function (require) {
     var ToolBase = require("./toolbase");
+    var Core = require("core");
 
     function Tool(tools) {
         ToolBase.call(this, tools);
@@ -73,7 +74,7 @@ define(function (require) {
                 borderColor: "rgba(255,0,0,0.4)",
                 borderWidth: 2
             })];
-
+            this.selectedTiles = [{x: tile.x, y: tile.y}];
             this.dispatchEvent(this.events.awaitingConfirmation, this);
         }
     };
@@ -83,7 +84,7 @@ define(function (require) {
             var x = this.selectedTiles[i].x;
             var y = this.selectedTiles[i].y;
 
-            vkaria.core.world.city.clearTile(x,y);
+            vkaria.core.world.city.clearTile(Core.Terrain.convertToIndex(x,y));
         }
 
         this.selectedTiles = [];

@@ -41,23 +41,35 @@ define(function(require){
         Resources.sub(this._resources, this._resources, resources);
     };
 
+    CityResources.prototype.addResource = function(resource, amount){
+        Resources.addOne(this._resources, this._resources, resource, amount);
+    };
+
+    CityResources.prototype.subResource = function(resource, amount){
+        Resources.subOne(this._resources, this._resources, resource, amount);
+    };
+
     CityResources.prototype.addMoney = function(amount){
-        Resources.addOne(this._resources, this._resources, Resource.money, amount);
+        this.addResource(Resource.money, amount);
     };
 
     CityResources.prototype.subMoney = function(amount){
-        Resources.subOne(this._resources, this._resources, Resource.money, amount);
+        this.subResource(Resource.money, amount);
     };
 
-    CityResources.prototype.hasMoreThan = function (resReq) {
-        return Resources.every(resReq, hasMoreThanCheck, this);
+    CityResources.prototype.hasEnoughResource = function(resource, amount){
+        return this._resources[resource] >= amount;
+    };
+
+    CityResources.prototype.hasEnough = function(resReq){
+        return Resources.every(resReq, hasEnoughCheck, this);
     };
 
     CityResources.prototype.getResources = function(){
         return this._resources;
     };
 
-    function hasMoreThanCheck(key, value, self) {
+    function hasEnoughCheck(key, value, self){
         return self._resources[key] >= value;
     }
 

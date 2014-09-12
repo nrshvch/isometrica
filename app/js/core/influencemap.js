@@ -11,7 +11,7 @@ define(function (require) {
         this.map = {};
         this.world = world;
 
-        Events.on(this.world, this.world.events.cityEstablished, onCityEstablished, this);
+        //Events.on(this.world, this.world.events.cityEstablished, onCityEstablished, this);
     }
 
     InfluenceMap.prototype.events = {
@@ -75,11 +75,18 @@ define(function (require) {
         return (best !== null && best.city) || -1;
     };
 
-    function onCityEstablished(world, city, self){
-        Events.on(city.cityBuildings, city.cityBuildings.events.new, onUpdate, self);
-        Events.on(city.cityBuildings, city.cityBuildings.events.remove, onUpdate, self);
+    InfluenceMap.prototype.registerCity = function(city){
+        Events.on(city.buildingService, city.buildingService.events.new, onUpdate, this);
+        Events.on(city.buildingService, city.buildingService.events.remove, onUpdate, this);
 
-        onUpdate(city.cityBuildings,null,self);
+        onUpdate(city.buildingService,null,this);
+    };
+
+    function onCityEstablished(world, city, self){
+        Events.on(city.buildingService, city.buildingService.events.new, onUpdate, self);
+        Events.on(city.buildingService, city.buildingService.events.remove, onUpdate, self);
+
+        onUpdate(city.buildingService,null,self);
     }
 
     function onUpdate(cityBuildings, args, self){
@@ -104,7 +111,7 @@ define(function (require) {
         }
 
         //add city origin
-        influences[Terrain.convertToIndex(city.x,city.y)] = 3;
+        influences[city.tile()] = 3;
 
         self.setInfluenceArea(city.id, influences);
         //return self.world.influenceMap.getInfluenceArea(self.name);

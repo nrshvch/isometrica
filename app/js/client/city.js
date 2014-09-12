@@ -34,7 +34,7 @@ define(function (require) {
                 var tool = vkaria.tools.tools[ToolCode.tileSelector];
                 var handler = function (sender, crds) {
                     tool.removeEventListener(tool.events.tileSelected, handler);
-                    var data = vkaria.core.world.establishCity(crds.x, crds.y, "Unnamed");
+                    var data = vkaria.core.world.establishCity(Core.Terrain.convertToIndex(crds.x, crds.y), "Unnamed");
 
                     //vkaria.core.establishCity(crds.x, crds.y, "Unnamed", function(data){
                         self.setData(data);
@@ -83,7 +83,7 @@ define(function (require) {
 
         this.data = data;
 
-        if (!mOldData || mOldData.name !== data.name)
+        if (!mOldData || mOldData.name() !== data.name())
             this.setupLabel();
 
         this.resources = data.resources;
@@ -95,9 +95,9 @@ define(function (require) {
             vkaria.game.logic.world.addGameObject(this.label);
         }
 
-        var tile = vkaria.terrain.getTile(this.data.x, this.data.y);
+        var tile = vkaria.terrain.getTile(this.data.tile());
         this.label.transform.setPosition(tile.transform.getPosition()[0], tile.transform.getPosition()[1], tile.transform.getPosition()[2]);
-        this.label.textRenderer.text = this.data.name;
+        this.label.textRenderer.text = this.data.name();
     };
 
     City.prototype.getBuildingCountList = function () {
@@ -123,7 +123,7 @@ define(function (require) {
     City.prototype.inputName = function(name){
         var self = this;
 
-        vkaria.core.world.city.name = name;
+        vkaria.core.world.city.name(name);
         self.setData(vkaria.core.world.city);
         //vkaria.core.renameCity(name, function(citydata){
           //  self.setData(citydata);

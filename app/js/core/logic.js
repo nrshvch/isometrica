@@ -25,7 +25,7 @@ define(function (require) {
         this.tileParams = new TileParamsMan(this);
         this.marketService = new MarketService(this);
 
-        this.influenceMap = new InfluenceMap(this);
+        this.influenceMap = this.areaService = new InfluenceMap(this);
 
         var self = this;
         setInterval(function () {
@@ -35,6 +35,7 @@ define(function (require) {
 
     var events = Logic.events = Logic.prototype.events = {
         cityEstablished: 0,
+        cityNew: 0,
         tick: 1
     };
 
@@ -55,16 +56,13 @@ define(function (require) {
     };
 
 
-    Logic.prototype.establishCity = function (x, y, name) {
-        if (!this.city) {
-            this.city = new City(this);
-            this.city.world = this;
-            this.city.name = name;
-            this.city.x = x;
-            this.city.y = y;
-
-            Events.fire(this, events.cityEstablished, this.city);
-            return this.city;
+    Logic.prototype.establishCity = function (tile, name) {
+        if (this.city === undefined && !Terrain.isSlope(this.terrain.tileSlope(tile))) {
+            var city = new City(this, tile);
+            city.name(name);
+            this.city = city;
+            Events.fire(this, events.cityNew, city);
+            return city;
         }
         return false;
     };

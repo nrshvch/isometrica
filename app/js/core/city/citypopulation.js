@@ -52,7 +52,7 @@ define(function(require){
 
     function calculateCapacity(self){
         var r = 0;
-        var buildings = self.city.cityBuildings.getBuildings();
+        var buildings = self.city.buildingService.getBuildings();
         for (var key in buildings) {
             var building = buildings[key];
             r += building.citizenCapacity();

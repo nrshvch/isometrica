@@ -247,8 +247,15 @@ define(function (require) {
         }
     };
 
-    Terrain.prototype.getTile = function (x, y) {
-        var idx = Core.Terrain.convertToIndex(x,y);
+    Terrain.prototype.getTile = function (idx_or_x, y) {
+        var idx;
+
+        if(arguments.length === 2){
+            idx = Core.Terrain.convertToIndex(idx_or_x,y);
+        }else{
+            idx = idx_or_x;
+        }
+
         var t = this.tiles[idx];
 
         return t !== undefined && t || null;

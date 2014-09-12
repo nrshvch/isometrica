@@ -8,103 +8,97 @@ define(function (require) {
         CityResources = require("./city/cityresources");
     var CityTilesParams = require("./city/citytilesparams");
     var CityPopulation = require("./city/citypopulation");
-    var Terrain = require("./terrain");
+    var Resource = require("./resourcecode");
+    var BuildingCode = require("./buildingcode");
 
     var Core = namespace("Isometrica.Core");
 
     Core.City = City;
 
-    function City(world) {
+    var events = City.events = City.prototype.events = {
+        update: 0,
+        rename: 1
+    };
+
+    function City(world, tile) {
         this.root = this.world = world;
         this.id = 1;
-
+        this._tile = tile;
         this.timeEstablished = world.time.milliseconds;
 
         this.area = this.areaService = new Area(this);
         this.tilesParams = this.tileParamsService = new CityTilesParams(this);
         this.resourcesModule = this.resources = this.resourcesService = new CityResources(this);
-        this.statsModule = this.statsService = new CityStats(this);
-        this.populationModule = this.populationService = new CityPopulation(this);
+        this.statsService = new CityStats(this);
+        this.populationService = new CityPopulation(this);
         this.lab = this.laboratoryService = new Laboratory(this);
-        this.buildings = this.cityBuildings = this.buildingsService = new CityBuildings(this);
+        this.buildings = this.buildingService = new CityBuildings(this);
+
+        //register city in influence map
+        this.root.areaService.registerCity(this);
 
         this.statsService.init();
         this.populationService.init();
         this.areaService.init();
 
         Events.on(world, world.events.tick, this.onTick, {self: this});
+
+        this.buildingService.buildBuilding(BuildingCode.cityHall, tile);
     }
 
-    var events = City.events = City.prototype.events = {
-        update: 0
-    };
+    City.events = events;
 
-    City.prototype.name = "";
+    City.prototype._name = "";
     City.prototype.world = null;
-    City.prototype.cityHall = null;
-    City.prototype.position = null;
+    City.prototype._tile = -1;
 
     City.prototype.onTick = function (sender, args, meta) {
         var self = meta.self;
         Events.fire(self, self.events.update, self);
     };
 
-    City.prototype.clearTile = function (x, y) {
-        //this.world.buildings.remove(x,y);
-        this.world.terrain.clearTile(Terrain.convertToIndex(x, y));
-        this.resourcesModule.subMoney(1);
+    City.prototype.clearTile = function (tile) {
+        if(this.areaService.contains(tile)) {
+            var cost = 100;
 
-        return true;
-    };
-
-    City.prototype.save = function () {
-        var buildings = [];
-
-        for (var index in this.buildings) {
-            buildings.push(this.buildings[index].toJSON());
+            if(this.resourcesService.hasEnoughResource(Resource.money, cost)) {
+                this.world.terrain.clearTile(tile);
+                this.resourcesModule.subResource(Resource.money, cost);
+                return true;
+            }
         }
-
-        var save = {
-            name: this.name,
-            x: this.x,
-            y: this.y,
-            timeEstablished: this.timeEstablished,
-            resources: this.resources,
-            cityHall: (this.cityHall && this.cityHall.toJSON()) || null,
-            buildings: buildings,
-            laboratory: this.lab.save()
-        };
-        return save;
+        return false;
     };
 
-    City.prototype.load = function (data) {
-        this.name = data.name;
-        this.position = this.world.tiles.get(data.x, data.y);
-        this.timeEstablished = data.timeEstablished;
-        this.resources = data.resources;
-        this.cityHall = (data.cityHall && this.world.buildings.buildingIdToBuildingMap[data.cityHall.id]) || null;
-
-        for (var index in data.buildings) {
-            var b = this.world.buildings.buildingIdToBuildingMap[data.buildings[index].id];
-
-            this.buildings.push(b);
-            this.buildingByClass[b.data.buildingCode].push(b);
+    City.prototype.name = function(value) {
+        if (value !== undefined) {
+            this._name = value;
+            Events.fire(this, events.rename, value);
+            return value;
         }
-
-        this.laboratory.load(data.lab);
+        return this._name;
     };
 
+    City.prototype.tile = function(value){
+        if(value !== undefined)
+            return this._tile = value;
+        return this._tile;
+    };
+
+    /**
+     * @deprecated
+     * @returns {{name: *, population: *, maxPopulation: *, x: *, y: *, resources: *, resourceProduce: *, resourceDemand: *, maintenanceCost: *}}
+     */
     City.prototype.toJSON = function () {
         var data = {
-            name: this.name,
-            population: this.populationModule.getPopulation(),
-            maxPopulation: this.populationModule.getCapacity(),
-            x: this.x,
-            y: this.y,
+            name: this.name(),
+            population: this.populationService.getPopulation(),
+            maxPopulation: this.populationService.getCapacity(),
+            tile: this.tile(),
             resources: this.resources.getResources(),
-            resourceProduce: this.statsModule.getCityResourceProduce(),
-            resourceDemand: this.statsModule.getCityResourceDemand(),
-            maintenanceCost: this.statsModule.getCityBuildingMaintenanceCost()
+            resourceProduce: this.statsService.getCityResourceProduce(),
+            resourceDemand: this.statsService.getCityResourceDemand(),
+            maintenanceCost: this.statsService.getCityBuildingMaintenanceCost()
         };
 
         return data;
