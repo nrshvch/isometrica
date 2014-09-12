@@ -35,7 +35,7 @@ define(function (require) {
         this.buildings = this.buildingService = new CityBuildings(this);
 
         //register city in influence map
-        this.root.areaService.registerCity(this);
+        //this.root.areaService.registerCity(this);
 
         this.statsService.init();
         this.populationService.init();
@@ -43,7 +43,7 @@ define(function (require) {
 
         Events.on(world, world.events.tick, this.onTick, {self: this});
 
-        this.buildingService.buildBuilding(BuildingCode.cityHall, tile);
+
     }
 
     City.events = events;
@@ -51,6 +51,10 @@ define(function (require) {
     City.prototype._name = "";
     City.prototype.world = null;
     City.prototype._tile = -1;
+
+    City.prototype.init = function(){
+        this.buildingService.buildBuilding(BuildingCode.cityHall, this.tile());
+    };
 
     City.prototype.onTick = function (sender, args, meta) {
         var self = meta.self;

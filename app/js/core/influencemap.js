@@ -11,7 +11,7 @@ define(function (require) {
         this.map = {};
         this.world = world;
 
-        //Events.on(this.world, this.world.events.cityEstablished, onCityEstablished, this);
+        Events.on(this.world, this.world.events.cityEstablished, onCityEstablished, this);
     }
 
     InfluenceMap.prototype.events = {

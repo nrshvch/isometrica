@@ -62,6 +62,7 @@ define(function (require) {
             city.name(name);
             this.city = city;
             Events.fire(this, events.cityNew, city);
+            city.init();
             return city;
         }
         return false;
