@@ -1,5 +1,8 @@
 define(function(require){
     var ToolBase = require("./toolbase");
+    var Events = require("events");
+    var Core = require("core");
+    var Terrain = Core.Terrain;
 
     function Tool(tools){
         ToolBase.call(this, tools);
@@ -13,7 +16,9 @@ define(function(require){
         receivedConfirmation: 3
     };
 
-    Tool.prototype.selectedTile = null;
+    Tool.prototype.onTileSelect = null;
+
+    Tool.prototype.selectedTile = -1;
     Tool.prototype.selectedToken = null;
 
     Tool.prototype.drag = function(screenX, screenY, dragX, dragY){
@@ -24,13 +29,18 @@ define(function(require){
 
     Tool.prototype.click = function(screenX, screenY){
         var tile = this.tools.pickTile(screenX, screenY);
-        if (tile){
+        if(tile)
+            tile = Terrain.convertToIndex(tile.x, tile.y);
+        else
+            tile = -1;
+
+        if (tile !== -1){
             if(this.selectedToken != null)
                 vkariaApp.hiliteMan.disable(this.selectedToken);
 
             this.selectedToken = vkariaApp.hiliteMan.hilite({
-                x: tile.x,
-                y: tile.y,
+                x: Terrain.extractX(tile),
+                y: Terrain.extractY(tile),
                 borderColor: "rgba(255,255,255,1)",
                 borderWidth: 2
             });
@@ -40,12 +50,15 @@ define(function(require){
     };
 
     Tool.prototype.confirm = function(){
-        if(this.selectedTile !== null)
-            this.dispatchEvent(this.events.tileSelected, this.selectedTile);
+        if(this.selectedTile !== -1 && this.onTileSelect !== null) {
+            var result = this.onTileSelect(this.selectedTile);
 
-        this.dispatchEvent(this.events.receivedConfirmation, this);
-
-        vkariaApp.hiliteMan.disable();
+            if(result) {
+                Events.fire(this, this.events.tileSelected, this.selectedTile);
+                Events.fire(this, this.events.receivedConfirmation, this);
+                vkariaApp.hiliteMan.disable();
+            }
+        }
     };
 
     Tool.prototype.cancel = function(){

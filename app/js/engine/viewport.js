@@ -129,6 +129,8 @@ define(function (require) {
             Events.fire(viewport, viewport.events.pointerout, e);
             e.preventDefault();
         });
+
+
     }
 
     var p = Viewport.prototype;

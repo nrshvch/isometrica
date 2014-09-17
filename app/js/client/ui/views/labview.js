@@ -4,7 +4,7 @@ define(function (require) {
         templateText = require("text!templates/laboratoryviewtemplate.html"),
         template = $.parseHTML(templateText),
         ResearchState = require("core/researchstate"),
-        ResourcesBarView = require("ui/views/resourcesbarview");
+        ResourcesBarView = require("./resourcesbarview");
 
     var FormatTimeLeft = function(msInput){
         var ms, s, min, h;

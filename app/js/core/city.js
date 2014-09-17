@@ -10,10 +10,13 @@ define(function (require) {
     var CityPopulation = require("./city/citypopulation");
     var Resource = require("./resourcecode");
     var BuildingCode = require("./buildingcode");
+    var Terrain = require("./terrain");
 
     var Core = namespace("Isometrica.Core");
 
     Core.City = City;
+
+    var id = 0;
 
     var events = City.events = City.prototype.events = {
         update: 0,
@@ -22,7 +25,7 @@ define(function (require) {
 
     function City(world, tile) {
         this.root = this.world = world;
-        this.id = 1;
+        this._id = id++;
         this._tile = tile;
         this.timeEstablished = world.time.milliseconds;
 
@@ -74,6 +77,10 @@ define(function (require) {
         return false;
     };
 
+    City.prototype.id = function(){
+        return this._id;
+    };
+
     City.prototype.name = function(value) {
         if (value !== undefined) {
             this._name = value;
@@ -106,6 +113,19 @@ define(function (require) {
         };
 
         return data;
+    };
+
+    City.canEstablish = function(world, tile){
+        return !Terrain.isSlope(world.terrain.tileSlope(tile));
+    };
+
+    City.establish = function(world, tile, name) {
+        if(!City.canEstablish(world, tile))
+            return null;
+
+        var city = new City(world, tile);
+        city.name(name);
+        return city;
     };
 
     return City;

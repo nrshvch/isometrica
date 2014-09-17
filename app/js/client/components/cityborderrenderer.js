@@ -9,6 +9,7 @@ define(function (require) {
     var Config = require("../config");
     var Terrain = Core.Terrain;
     var RenderLayer = require("../renderlayer");
+    var Events = require("events");
 
     var float32Buffer = new Float32Array(3);
     var dash = [4];
@@ -258,9 +259,8 @@ define(function (require) {
     //endregion
 
     //region event handlers
-    function onAreaChange(sender, args, meta) {
-        var self = meta;
-        var city = isometrica.core.world.city;
+    function onAreaChange(sender, args, self) {
+        var city = self.city;
         if (city)
             self.points = calculateBorderPoints(city);
     }
@@ -271,11 +271,10 @@ define(function (require) {
      *
      * @constructor
      */
-    function CityBorderRenderer() {
+    function CityBorderRenderer(city) {
         this.layer = RenderLayer.groundDrawLayer;
-        this.city = isometrica.core.world.city;
-
-        var inflmap = isometrica.core.world.influenceMap;
+        this.city = city;
+        var inflmap = city.root.areaService;
         Events.on(inflmap, inflmap.events.areaChange, onAreaChange, this);
     }
 

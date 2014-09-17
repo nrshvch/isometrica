@@ -1,7 +1,7 @@
 define(function (require) {
     var Core = require("core");
     var itemTemplate = require("text!templates/buildingclasslistitem.html"),
-        BuildingInfoView = require("ui/buildinginfoview"),
+        BuildingInfoView = require("./buildinginfoview"),
         BuildingData = Core.BuildingData;
 
     var BuildingsListView = Backbone.View.extend({

@@ -1,5 +1,5 @@
 define(function (require) {
-    var WindowView = require("ui/windowview");
+    var WindowView = require("./windowview");
 
     function WindowMgr(ui, rootElement){
         this.ui = ui;

@@ -6,9 +6,8 @@ define(function (require) {
     var Core = require("core");
     var template = require("text!templates/buildinginfoview.html"),
         BuildingData = Core.BuildingData,
-        ResourcesBarView = require("ui/views/resourcesbarview"),
-        Client = require("client"),
-        ToolCode = Client.ToolCode;
+        ResourcesBarView = require("./views/resourcesbarview"),
+        ToolCode = require("../tools/toolcode");
 
     var BuildingInfoView = Backbone.View.extend({
         events: {

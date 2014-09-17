@@ -10,15 +10,14 @@ define(function (require) {
         HiliteMan = require("./hiliteman"),
         PathMan = require("./pathfinding/pathman"),
         Tools = require("./tools/tools"),
-        City = require("./city"),
         PlayerScript = require("./components/playerscript"),
         CameraScript = require("./components/camerascript"),
-        //UIManager = require("ui"),
         RenderLayer = require("client/renderlayer"),
         Terrain = require("./terrain");
     var EnvMan = require("./envman");
     var ChunkMan = require("./chunkman");
-
+    var Cityman = require("./cityman");
+    var UI = require("./ui/ui");
 
     function Vkaria(core, callback) {
         // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -56,10 +55,11 @@ define(function (require) {
         this.buildman = new BuildMan(this);
         this.tilesman = new TilesMan(this);
         this.tools = new Tools(this);
-        this.city = new City();
         this.terrain = new Terrain(this);
         this.envman = new EnvMan(this);
         this.chunkman = new ChunkMan(this);
+        this.cityman = new Cityman(this);
+        this.ui = new UI(this);
 
         window.p = this.pathman = new PathMan();
 
@@ -70,23 +70,19 @@ define(function (require) {
         //прелоадинг ресурсов не нужен, т.к. идея прелоадинга идёт в разрез с идеей того, чтобы загружать ресурсы по мере необходимисти, а не все сразу.
         //Try to load spritesheet. If it is not available, then start game anyway, it will then use sprites each separately.
         //FF won't run game before any resource is ready. Empty "new Image()" shim is not helpful.
-        this.assets.getAsset("assets/stone.png", engine.AssetManager.Resource.ResourceTypeEnum.image).done(function () {
-            self.assets.getAsset("assets/coal.png", engine.AssetManager.Resource.ResourceTypeEnum.image).done(function () {
-                self.assets.getAsset("assets/atlas.json", engine.AssetManager.Resource.ResourceTypeEnum.json).done(function (resourceJSON) {
-                    if (resourceJSON.state === resourceJSON.constructor.ResourceStateEnum.ready) {
-                        self.sprites.frames = resourceJSON.data.frames;
+        this.assets.getAsset("assets/atlas.json", engine.AssetManager.Resource.ResourceTypeEnum.json).done(function (resourceJSON) {
+            if (resourceJSON.state === resourceJSON.constructor.ResourceStateEnum.ready) {
+                self.sprites.frames = resourceJSON.data.frames;
 
-                        self.assets.getAsset("assets/atlas.png", engine.AssetManager.Resource.ResourceTypeEnum.image).done(function (resourceImage) {
-                            self.sprites.atlas = resourceImage.data;
-                            self.start();
-                            callback && callback();
-                        });
-                    } else {
-                        self.start();
-                        callback && callback();
-                    }
+                self.assets.getAsset("assets/atlas.png", engine.AssetManager.Resource.ResourceTypeEnum.image).done(function (resourceImage) {
+                    self.sprites.atlas = resourceImage.data;
+                    self.start();
+                    callback && callback();
                 });
-            });
+            } else {
+                self.start();
+                callback && callback();
+            }
         });
     }
 
@@ -96,20 +92,17 @@ define(function (require) {
         this.camera.addComponent(new PlayerScript());
         this.game.scene.addGameObject(this.camera);
 
-
-
         this.game.run();
 
         this.pathman.start();
-
         this.buildman.start();
         this.tilesman.start();
         this.tools.start();
-        this.city.start();
         this.terrain.init();
         this.chunkman.init();
         this.envman.init();
-
+        this.cityman.init();
+        this.ui.start();
 
 
         window.t = require("./gameObjects/Trolley");
@@ -123,7 +116,6 @@ define(function (require) {
                 b.entity.setPath(pa);
             }
         }, 1000);
-
     };
 
     /**
@@ -131,10 +123,6 @@ define(function (require) {
      * @type {Game}
      */
     Vkaria.prototype.game = null;
-
-    Vkaria.prototype.goto = function(x,y){
-      return this.camera.transform;
-    };
 
     return Vkaria;
 });

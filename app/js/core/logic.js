@@ -2,7 +2,6 @@ define(function (require) {
     var Events = require("events"),
         Terrain = require("./terrain"),
         Buildings = require("./buildings"),
-        City = require("./city"),
         VTime = require("./vtime"),
         EnvService = require("./ambient"),
         Config = require("./config"),
@@ -10,6 +9,7 @@ define(function (require) {
     var TileParamsMan = require("./world/tileparamsmanager");
     var MarketService = require("./world/marketsrv");
     var MessagingService = require("./msgsrv");
+    var CityService = require("./citysrv");
     var namespace = require("namespace");
 
     namespace("Isometrica.Core").Logic = Logic;
@@ -24,6 +24,7 @@ define(function (require) {
         this.envService = new EnvService(this);
         this.tileParams = new TileParamsMan(this);
         this.marketService = new MarketService(this);
+        this.cities = new CityService(this);
 
         this.influenceMap = this.areaService = new InfluenceMap(this);
 
@@ -34,8 +35,6 @@ define(function (require) {
     }
 
     var events = Logic.events = Logic.prototype.events = {
-        cityEstablished: 0,
-        cityNew: 0,
         tick: 1
     };
 
@@ -53,23 +52,7 @@ define(function (require) {
         this.buildingService.init();
         this.envService.init();
         this.marketService.init();
-    };
-
-
-    Logic.prototype.establishCity = function (tile, name) {
-        if (this.city === undefined && !Terrain.isSlope(this.terrain.tileSlope(tile))) {
-            var city = new City(this, tile);
-            city.name(name);
-            this.city = city;
-            Events.fire(this, events.cityNew, city);
-            city.init();
-            return city;
-        }
-        return false;
-    };
-
-    Logic.prototype.getCity = function(id){
-        return this.city;
+        this.cities.init();
     };
 
     return Logic;

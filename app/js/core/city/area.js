@@ -45,11 +45,11 @@ define(function (require) {
     };
 
     Area.prototype.getInfluenceArea = function(){
-        return this._city.world.influenceMap.getInfluenceArea(this._city.id);
+        return this._city.world.influenceMap.getInfluenceArea(this._city.id());
     };
 
     Area.prototype.getInfluenceAreaData = function(){
-        return this._city.world.influenceMap.getInfluenceAreaData(this._city.id);
+        return this._city.world.influenceMap.getInfluenceAreaData(this._city.id());
     };
 
     Area.prototype.init = function(){
@@ -76,7 +76,7 @@ define(function (require) {
         var tile1 = Terrain.convertToIndex(x0,y0);
         var tile0 = Terrain.convertToIndex(x0+w-1, y0+l-1);
         var iterator = new TileIterator(tile0, tile1);
-        var area = city.world.influenceMap.getInfluenceAreaData(city.id);
+        var area = city.world.influenceMap.getInfluenceAreaData(city.id());
         while (!iterator.done) {
             var tile = iterator.next();
 

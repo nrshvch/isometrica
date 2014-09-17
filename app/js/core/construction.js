@@ -64,7 +64,7 @@ define(function (require) {
             cityId = world.influenceMap.getTileOwner(this.tile);
 
         if (cityId !== -1)
-            city = world.getCity(cityId);
+            city = world.cities.getCity(cityId);
 
         return city;
     };

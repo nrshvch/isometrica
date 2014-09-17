@@ -268,5 +268,17 @@ define(function (require) {
         return this.gos[go.instanceId] || -1;
     };
 
+    Terrain.prototype.tileXPos = function(tile){
+        return CoreTerrain.extractX(tile) * Config.tileSize;
+    };
+
+    Terrain.prototype.tileZPos = function(tile){
+        return CoreTerrain.extractY(tile) * Config.tileSize;
+    };
+
+    Terrain.prototype.tileYPos = function(tile){
+        return this.root.core.terrain.getGridPointHeight(tile) * Config.tileZStep;
+    };
+
     return Terrain;
 });

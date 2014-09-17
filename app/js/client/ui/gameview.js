@@ -3,20 +3,20 @@ define(function (require) {
     var Backbone = require("backbone");
 
     var template = require("text!templates/gameview.html"),
-        WindowView = require("ui/windowview"),
-        ResourcesBarView = require("ui/views/resourcesbarview"),
-        CategoriesView = require("ui/buildingclasslistview"),
-        MessageView = require("ui/messageview"),
-        CityView = require("ui/views/cityview"),
-        PromptView = require("ui/views/promptview"),
-        LabView = require("ui/views/labview"),
+        WindowView = require("./windowview"),
+        ResourcesBarView = require("./views/resourcesbarview"),
+        CategoriesView = require("./buildingclasslistview"),
+        MessageView = require("./messageview"),
+        CityView = require("./views/cityview"),
+        PromptView = require("./views/promptview"),
+        LabView = require("./views/labview"),
         ResourceCode = require("core/resourcecode"),
-        Client = require("client"),
         Numeral = require("numeral");
-    var Events = require("events");
     var Core = require("core");
+    var Events = require("events");
+    var ViewportView = require("./views/viewportview");
 
-    var ToolCode = Client.ToolCode;
+    var ToolCode = require("../tools/toolcode");
 
     var GameView = Backbone.View.extend({
         events: {
@@ -42,10 +42,6 @@ define(function (require) {
                 if (!$(e.currentTarget).attr("disabled"))
                     this.tools.selectTool(ToolCode.builder).setBuilding(4).multiBuild(true);
             },
-            "click a.button.button5": function (e) {
-                if (!$(e.currentTarget).attr("disabled"))
-                    this.tools.selectTool(ToolCode.bridgeBuilder).setBuilding(4).multiBuild(true);
-            },
             "click a.button.button6": function (e) {
                 this.openWindow(new LabView({mainView: this}), "Laboratory");
             },
@@ -59,9 +55,21 @@ define(function (require) {
                 this.tools.currentTool.confirm();
             }
         },
-        initialize: function () {
-            this.tools = vkaria.tools;
+        initialize: function (options) {
+            this.ui = options.ui;
 
+            this.setElement($.parseHTML(template));
+
+            //render viewport canvas
+            var vpView = new ViewportView({
+                ui: this.ui
+            });
+
+            $("#mainCanvasContainer", this.el).append(vpView.el);
+            this.vpView = vpView;
+
+            this.tools = vkaria.tools;
+            this.client = vkaria;
             this.resourcesBar = new ResourcesBarView();
             var mask = 0;
             mask |= 1 << ResourcesBarView.ResourceIndex[ResourceCode.money];
@@ -71,47 +79,16 @@ define(function (require) {
             this.resourcesBar.hideMask = ~mask;
 
             this.window = null;
+            $(".resources", this.$el).append(this.resourcesBar.$el);
             this.render();
-
-            var self = this;
-
-            this.onCityRename = function (sender, args) {
-                self.openWindow(new PromptView({
-                    mainView: self,
-                    message: "Please give city a name!",
-                    placeholder: "City name",
-                    value: "My City",
-                    callback: function (value) {
-                        args.inputName(value);
-                    }
-                }), "Input");
-            };
         },
         render: function () {
-            this.setElement($.parseHTML(template));
-            $(".resources", this.$el).append(this.resourcesBar.$el);
+
+
+
         },
         start: function () {
             var self = this;
-
-            var viewport = vkaria.game.graphics.createViewport(document.getElementById("mainCanvas"));
-            var camera = vkaria.game.logic.world.findByName("mainCamera");
-            viewport.setCamera(camera).setSize(viewport.canvas.offsetWidth, viewport.canvas.offsetHeight);
-
-            var zoom = 1;
-
-            document.addEventListener("keyup", function (e, a, b) {
-                if (e.which === 109) {
-                    zoom += 0.1;
-                    viewport.setSize(viewport.canvas.offsetWidth * zoom, viewport.canvas.offsetHeight * zoom);
-                } else if (e.which === 107) {
-                    zoom -= 0.1;
-                    viewport.setSize(viewport.canvas.offsetWidth * zoom, viewport.canvas.offsetHeight * zoom);
-                }
-            });
-
-            vkaria.city.addEventListener(vkaria.city.events.nameRequired, this.onCityRename);
-
 
             //TOOLS
             this.setupButtonState();
@@ -169,7 +146,7 @@ define(function (require) {
                 }
             }, this);
 
-            Events.once(core, Core.Logic.events.cityEstablished, function (sender, city, self) {
+            Events.on(core.cities, Core.CityService.events.cityNew, function (sender, city, self) {
                 Events.on(city, Core.City.events.update, function (sender, data) {
                     self.resourcesBar.setResources(city.resourcesService.getResources());
                     $(".population .val", self.$el).text(city.populationService.getPopulation());
@@ -177,23 +154,8 @@ define(function (require) {
                 });
             }, this);
 
-            /*
-            Events.on(core, .addEventListener(ResponseCode.errorMessage, function (sender, text) {
-                self.displayMessage(text, true);
-            });
-
-            vkaria.core.addEventListener(ResponseCode.message, function (sender, args) {
-                self.displayMessage(args.text);
-            });
-            */
-
-
-            /*
-             this.openWindow(new MessageView({
-             mainView: this,
-             text: "Welcome! This is some (demo|prototype|whatever) city building game I made in a free time. \n Have fun building your small town! \n First you need to specify where your city will be located, and then you'll be able to put some buildings and roads!"
-             }), "Welcome!");
-             */
+            //we need to call it manually as DOM element doesnt detect itself if it was added to DOM tree.
+            this.vpView.updateSize();
         },
         openWindow: function (view, title) {
             if (this.window !== null)

@@ -204,7 +204,7 @@ define(function (require) {
     Tool.prototype.confirm = function () {
         for (var i in this.selectedTiles) {
             var tile = Terrain.convertToIndex(this.selectedTiles[i].x, this.selectedTiles[i].y);
-            this.tools.root.core.city.buildingService.buildBuilding(this.buildingCode, tile, this._rotate);
+            this.tools.root.core.cities.getCity(0).buildingService.buildBuilding(this.buildingCode, tile, this._rotate);
         }
 
         this.disableHiliters();
@@ -229,7 +229,7 @@ define(function (require) {
         }else {
             for (var i in this.selectedTiles) {
                 var tile = Terrain.convertToIndex(this.selectedTiles[i].x, this.selectedTiles[i].y);
-                this.tools.root.core.city.buildingService.buildBuilding(this.buildingCode, tile, this._rotate);
+                this.tools.root.core.cities.getCity(0).buildingService.buildBuilding(this.buildingCode, tile, this._rotate);
             }
         }
 

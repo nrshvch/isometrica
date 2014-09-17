@@ -84,7 +84,7 @@ define(function (require) {
             var x = this.selectedTiles[i].x;
             var y = this.selectedTiles[i].y;
 
-            vkaria.core.world.city.clearTile(Core.Terrain.convertToIndex(x,y));
+            vkaria.core.cities.getCity(0).clearTile(Core.Terrain.convertToIndex(x,y));
         }
 
         this.selectedTiles = [];

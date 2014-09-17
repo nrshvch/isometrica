@@ -1,7 +1,7 @@
 define(function (require) {
     var Core = require("core");
     var itemTemplate = require("text!templates/buildingclasslistitem.html"),
-        BuildingsListView = require("ui/buildingslistview"),
+        BuildingsListView = require("./buildingslistview"),
         BuildingData = Core.BuildingData,
         BuildingClassData = require("core/buildingclassdata");
     var Events = require("events");

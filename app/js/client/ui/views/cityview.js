@@ -3,8 +3,8 @@ define(function (require) {
         templateText = require("text!templates/cityviewtemplate.html"),
         template = $.parseHTML(templateText),
         Resources = require("core/resources"),
-        ResourcesBarView = require("ui/views/resourcesbarview"),
-        BuildingCountView = require("ui/views/buildingcountlistview"),
+        ResourcesBarView = require("./resourcesbarview"),
+        BuildingCountView = require("./buildingcountlistview"),
         Core = require("core"),
         TileRatings = Core.TileRatings;
 
