@@ -1,0 +1,93 @@
+.city-view {
+    .tab-content {
+          &:extend(.ui-block);
+
+          &:not(:first-child):not(:last-child) {
+            border-left-width: 0;
+            border-right-width: 0;
+          }
+
+          &:first-child {
+            border-right-width: 0;
+          }
+
+          &:last-child {
+            border-left-width: 0;
+          }
+
+          overflow-y: scroll;
+    }
+
+    .map-tab-content {
+
+        overflow-y: auto;
+        height: 100%;
+
+        & > .map-tab-content-container {
+            padding: 2%;
+            height: 100%;
+
+            & > .map-container {
+                &:extend(.ui-block-inset);
+
+                background-color: #fff;
+
+                &:after {
+                    content: "";
+                    display: block;
+                    padding-top: 100%;
+                }
+            }
+
+            & > .map-buttons {
+                .map-button {
+                    .ui-button;
+                    float: left;
+                    padding: 2%;
+                    margin: 0 2% 2% 0;
+                }
+
+                margin-top: 2%;
+            }
+        }
+    }
+
+    .info-tab-content {
+
+        .bird-eye-container {
+            &:extend(.ui-block-inset);
+
+            width: 40%;
+            margin: 2%;
+            background-color: #fff;
+
+            &:after {
+                content: "";
+                display: block;
+                padding-top: 100%;
+            }
+        }
+
+        .info-container {
+            position: absolute;
+            margin: 2% 2% 0 0;
+            width: 54%;
+            right: 0%;
+            top: 0%;
+
+            line-height: 1.4;
+        }
+
+    .hr {
+      margin: 2%;
+    }
+
+    .res-cnt {
+      margin: 2%;
+
+      .res-list {
+        margin-top: 2%;
+      };
+    }
+  }
+}

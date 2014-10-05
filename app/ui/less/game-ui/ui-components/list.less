@@ -1,0 +1,34 @@
+.ui-list {
+  & > .item {
+    @dark: darken(@ui-color, 10%);
+    @light: lighten(@ui-color, 10%);
+
+    background-color: @light;
+    padding: 8px;
+
+    overflow: auto;
+
+    &:nth-child(even){
+      background-color: @dark;
+    }
+
+    .key, .val {
+      float: left;
+      text-align: left;
+    }
+
+    .key {
+      width: 35%;
+    }
+
+    .val {
+      width: 100%;
+    }
+
+    .key + .val {
+      width: 65%;
+      float: right;
+      text-align: right;
+    }
+  }
+}

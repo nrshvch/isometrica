@@ -1,0 +1,39 @@
+.world-view {
+  @import "./buttons-64.less";
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .btns {
+    position: absolute;
+    bottom: 0%;
+    left: 0%;
+    right: 0%;
+    top: 90%;
+    font-size: 0;
+    pointer-events: none;
+
+    .slot {
+      height: 100%;
+      width: 20%;
+      float: left;
+      display: block;
+      text-align: center;
+
+      &:extend(.middle-position all);
+
+      .btn {
+        &:extend(.pixelated);
+
+        vertical-align: middle;
+        display: inline-block;
+        height: 80%;
+        cursor: pointer;
+        pointer-events: all;
+      }
+    }
+  }
+}

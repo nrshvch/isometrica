@@ -1,0 +1,155 @@
+// main: main.less
+.ui-window {
+  display: table;
+
+  height: 100%;
+  width: 100%;
+
+  @tabs-height: 48px;
+  @buttons-height: 64px;
+
+  & > .row {
+    display: table-row;
+
+    &.body {
+      height: 100%;
+    }
+
+    & > .cell {
+      display: table-cell;
+      position: relative;
+
+      & > .tabs {
+        height: @tabs-height;
+        overflow-x: hidden;
+        position: relative;
+
+        .tabs-middle-container {
+          position: absolute;
+          top: 10%;
+          bottom: 10%;
+          left: 0;
+          right: 0;
+          white-space: nowrap;
+          font-size: 0;
+
+          .tab:extend(.ui-tab all) {
+
+            display: inline-block;
+            height: 100%;
+            margin: 0 4px;
+            padding: 0 16px;
+            font-size: 10pt;
+
+            &:extend(.middle-position all);
+
+            .box-shadow;
+          }
+        }
+      }
+
+      & > .body {
+        position: absolute;
+        top:0; left:0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+
+        .tab-content {
+          @duration: .33s;
+
+          position: absolute;
+          height: 100%;
+          width: 100%;
+          top: 0;
+          left: -100%;
+          transition: left @duration,opacity 0s @duration;
+          opacity: 0;
+
+          &.active~.tab-content {
+            left: 100%;
+          }
+
+          &.active {
+            opacity: 1;
+            left: 0;
+            transition: left @duration, opacity 0s 0s;
+          }
+        }
+      }
+
+      & > .buttons {
+        height: @buttons-height;
+
+        overflow: hidden;
+
+        & > .button:extend(.middle-position all) {
+          float: left;
+          width: 20%;
+          height: 100%;
+          font-size: 0;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          display: block;
+
+          .icon:extend(.pixelated) {
+            vertical-align: middle;
+            display: inline-block;
+            height: 50%;
+            max-width: 25%;
+
+          }
+          .text {
+            display: inline-block;
+            vertical-align: middle;
+            font-size: 10pt;
+          }
+
+        }
+
+        &.count-5 {
+          .button {
+            width: 20%;
+
+            .text {
+              font-size: 6pt;
+            }
+          }
+
+        }
+        &.count-4 {
+          .button {
+            width: 25%;
+
+            .text {
+              font-size: 7pt;
+            }
+          }
+
+        }
+        &.count-3 {
+          .button {
+            width: 34%;
+
+          }
+          .button + .button {
+            width: 33%;
+          }
+
+        }
+        &.count-2 {
+          .button {
+            width: 50%;
+          }
+
+        }
+        &.count-1 {
+          .button {
+            width: 100%;
+          }
+        }
+      }
+    }
+  }
+}

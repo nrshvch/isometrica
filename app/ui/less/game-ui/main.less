@@ -1,0 +1,41 @@
+@import "./ui-components/main.less";
+
+.game-ui {
+    @import "./icons-40.less";
+    @import "./building-view.less";
+    @import "./world-view.less";
+    @import "./building-category-list-view.less";
+    @import "./building-list-view.less";
+    @import "./city-info-view.less";
+    @import "./top-bar.less";
+    @import "./icon-val-bar.less";
+
+    height: 100%;
+    background-image: data-uri("./img/ui-bg.png");
+
+    font-family: "8bit";
+    font-size: 1em;
+    color: #fff;
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.4);
+
+    .game-view {
+        height: 100%;
+        width: 100%;
+        display: table;
+
+        & > div {
+          display: table-row;
+        }
+
+        & > div > .head-slot,
+        & > div > .body-slot {
+          display: table-cell;
+          position: relative;
+        }
+
+        & > div > .body-slot {
+            height: 100%;
+        }
+    }
+
+}

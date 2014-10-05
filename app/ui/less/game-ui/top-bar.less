@@ -1,0 +1,76 @@
+.top-bar {
+    height: 24px;
+    position: relative;
+
+    .box-shadow;
+
+    &:extend(.ui-block);
+
+    .city-name {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        color: transparent;
+        text-shadow: 1px 0px 0px rgba(255,255,255,0.4), 0px -1px 0px rgba(0,0,0,0.4);
+
+        &:extend(.middle-position all);
+    }
+
+    .left {
+        float: left;
+        height: 100%;
+        width: 100%;
+        position: absolute;
+
+        .section {
+            float: left;
+            padding-left: 1%;
+        }
+    }
+
+    .right {
+        position: absolute;
+        float: right;
+        height: 100%;
+        width: 100%;
+
+        .section {
+            float: right;
+            padding-right: 1%;
+        }
+    }
+
+    .section {
+        float: left;
+        height: 100%;
+        font-size: 0;
+        white-space: nowrap;
+
+        &:extend(.middle-position all);
+
+        .icon {
+            display: inline-block;
+            height: 80%;
+            vertical-align: middle;
+
+            &:extend(.pixelated);
+
+            img {
+                display: block;
+                height: 100%;
+            }
+        }
+
+        .text {
+            &:extend(.middle-position all);
+
+            padding-left: 1%;
+
+            display: inline-block;
+            height: 100%;
+            font-size: 8pt;
+            vertical-align: middle;
+        }
+    }
+}
