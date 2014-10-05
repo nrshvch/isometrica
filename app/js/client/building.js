@@ -9,7 +9,8 @@ define(function (require) {
         BuildingNode = require("./pathfinding/buildingnode"),
         BuildingView = require("./buildingview");
 
-    function Building() {
+    function Building(root) {
+        this.root = root;
         this.view = new BuildingView();
         this.view.setBuilding(this);
     }
@@ -40,36 +41,6 @@ define(function (require) {
         this.view.gameObject.destroy();
     };
 
-    Building.prototype.getSideTiles = function () {
-        var mData = this.data,
-            sData = buildingData[mData.buildingCode],
-            tilesman = vkaria.tilesman,
-            tiles = [], tile;
-
-        var x0 = mData.x - 1,
-            y0 = mData.y - 1,
-            lx = sData.sizeX + 2,
-            ly = sData.sizeY + 2;
-
-        for (var i = 1; i < lx - 1; i++) {
-            tile = tilesman.getTile(x0 + i, y0);
-            if (tile !== null) tiles.push(tile);
-
-            tile = tilesman.getTile(x0 + i, y0 + ly - 1);
-            if (tile !== null) tiles.push(tile);
-        }
-
-        for (var j = 1; j < ly - 1; j++) {
-            tile = tilesman.getTile(x0, y0 + j);
-            if (tile !== null) tiles.push(tile);
-
-            tile = tilesman.getTile(x0 + lx - 1, y0 + j);
-            if (tile !== null) tiles.push(tile);
-        }
-
-        return tiles;
-    };
-
     Building.prototype.getPath = function(gateIn, gateOut){
         if(gateIn === null || gateIn === undefined)
             gateIn = 0;
@@ -95,6 +66,10 @@ define(function (require) {
         }
 
         return wps;
+    };
+
+    Building.prototype.model = function(){
+        return this.data;
     };
 
     return Building;

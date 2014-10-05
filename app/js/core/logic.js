@@ -20,7 +20,7 @@ define(function (require) {
         this.messagingService = new MessagingService(this);
         this.time = new VTime(this);
         this.terrain = new Terrain(this);
-        this.buildingService = this.buildings = new Buildings(this);
+        this.buildingService = this.constructionService = this.buildings = new Buildings(this);
         this.envService = new EnvService(this);
         this.tileParams = new TileParamsMan(this);
         this.marketService = new MarketService(this);

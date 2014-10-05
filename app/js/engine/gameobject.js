@@ -3,26 +3,25 @@ define(function (require) {
     var namespace = require("namespace");
     namespace("Isometrica.Engine").GameObject = GameObject;
 
+    function init(instance, name) {
+        instance.instanceId = GameObject.prototype.instanceId++;
+        instance.components = [];
+        instance.transform = instance.addComponent(new Transform());
+
+        instance.removeQueue = [];
+
+        instance.name = name || "gameObject";
+    }
+
     /**
      * Base object
      * @constructor
      */
     function GameObject(name) {
-        this.instanceId = GameObject.prototype.instanceId++;
-        this.components = [];
-        this.transform = this.addComponent(new Transform());
-
-        this.removeQueue = [];
-
-        this.name = name || "gameObject";
-
-        var self = this;
-        this.update = function () {
-            self.tick();
-        }
+        init(this, name);
     }
 
-
+    GameObject.init = init;
 
     var p = GameObject.prototype;
 

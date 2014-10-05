@@ -7,7 +7,8 @@ define(function(require){
         PannerTool = require("./pannertool"),
         BuildToolMobile = require("./buildtoolmobile"),
         TileSelectorToolMobile = require("./tileselectortoolmobile"),
-        RemoveToolMobile = require("./removetoolmobile");
+        RemoveToolMobile = require("./removetoolmobile"),
+        RenderLayer = require("../renderlayer");
     var Core = require("core");
 
     function Tools(client){
@@ -136,7 +137,7 @@ define(function(require){
             l = r.length;
 
         for (var i = 0; i < l; i++)
-            if (r[i].layer === 1)
+            if (r[i].layer === RenderLayer.groundLayer)
                 return r[i];
 
         return false;

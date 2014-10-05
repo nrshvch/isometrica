@@ -11,30 +11,25 @@ define(function (require) {
     var TileIterator = Core.TileIterator;
     var CoreTerrain = Core.Terrain;
     var Chunkman = require("./chunkman");
+    var Pool = require("object-pool");
+    var Tree = require("./gameObjects/tree");
 
     function plantTree(self, tile, treeCode) {
-        //BEGIN CREATE TREE GO
-        var go = new Engine.GameObject("tree");
+        var go = Pool.borrowObject(self.pool);
 
         var spriteData = BuildingData[treeCode].sprites[0];
-        var spriteRenderer = new Engine.SpriteRenderer();
-        spriteRenderer.layer = spriteData.layer;
-        spriteRenderer.setSprite(vkaria.sprites.getSprite(spriteData.path));
-        spriteRenderer.pivotX = spriteData.pivotX;
-        spriteRenderer.pivotY = spriteData.pivotY;
+        var renderer = go.renderer;
+        renderer.setSprite(self.root.sprites.getSprite(spriteData.path));
+        renderer.pivotX = spriteData.pivotX;
+        renderer.pivotY = spriteData.pivotY;
 
-        var spriteGO = new Engine.GameObject();
-        spriteGO.addComponent(spriteRenderer);
-        go.transform.addChild(spriteGO.transform);
-        spriteGO.transform.setLocalPosition(spriteData.x * Config.tileSize, spriteData.y * Config.tileZStep, spriteData.z * Config.tileSize);
+        var x = CoreTerrain.extractX(tile),
+            y = CoreTerrain.extractY(tile),
+            z = self.root.core.terrain.getGridPointHeight(x + 1, y);
 
-        var x = CoreTerrain.extractX(tile),// + data.subPosX,
-            y = CoreTerrain.extractY(tile),// + data.subPosY,
-            z = vkaria.core.world.terrain.getGridPointHeight(x + 1, y);
         go.transform.setPosition(x * Config.tileSize, z * Config.tileZStep, y * Config.tileSize);
 
-        vkaria.game.logic.world.addGameObject(go);
-        //END CREATE TREE GO
+        self.root.game.scene.addGameObject(go);
 
         self._trees[tile] = go;
     }
@@ -43,7 +38,8 @@ define(function (require) {
         var go = self._trees[tile];
         if (go !== undefined) {
             delete self._trees[tile];
-            vkaria.game.logic.world.removeGameObject(go);
+            Pool.returnObject(self.pool, go);
+            self.root.game.scene.removeGameObject(go);
         }
     }
 
@@ -85,6 +81,7 @@ define(function (require) {
     function EnvMan(root) {
         this.root = root;
         this._trees = {};
+        this.pool = new Pool(Tree);
     }
 
     EnvMan.prototype.init = function () {
@@ -97,7 +94,7 @@ define(function (require) {
         }
 
         Events.on(this.root.chunkman, Chunkman.events.chunkLoad, onChunkLoad, this);
-        Events.on(this.root.chunkman, Chunkman.events.chunkRemove, onChunkRemove, this);
+        Events.on(this.root.chunkman, Chunkman.events.chunkUnload, onChunkRemove, this);
 
         Events.on(this.core.envService, Core.EnvService.events.treeRemove,onTreeRemove, this);
     };

@@ -123,15 +123,11 @@ define(function (require) {
 
             building.dispose();
 
-            Events.fire(self, self.events.buildingRemoved, id);
+            Events.fire(self, self.events.buildingRemoved, building);
 
             return true;
         }
         return false;
-    }
-
-    function getRangerIteratorAction(tile, self) {
-        return self.get(tile);
     }
 
     /**
@@ -159,19 +155,6 @@ define(function (require) {
             idx = Terrain.convertToIndex(idx, y);
 
         return this.byTile[idx] || null;
-    };
-
-    /**
-     * @param x0
-     * @param y0
-     * @param w
-     * @param h
-     * @returns {Iterator}
-     */
-    Buildings.prototype.getRange = function (x0, y0, w, h) {
-        var tile0 = Terrain.convertToIndex(x0,y0);
-        var tile1 = Terrain.convertToIndex(x0+w-1, y0+h-1);
-        return new TileIteratorAction(tile0, tile1, getRangerIteratorAction, this);
     };
 
     Buildings.prototype.build = function (building) {

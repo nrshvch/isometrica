@@ -17,9 +17,9 @@ define(function (require) {
     var EnvMan = require("./envman");
     var ChunkMan = require("./chunkman");
     var Cityman = require("./cityman");
-    var UI = require("./ui/ui");
+    var Roadman = require("./roadman");
 
-    function Vkaria(core, callback) {
+    function Vkaria(core, ui, callback) {
         // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
         // It means, that when point goes about 1px by X, it moves 1/2 pixel by Y.
         // We can calculate camera angle around X axis like this: Math.asin(1/2)*180/Math.PI = 30deg, where 1/2 is our
@@ -36,6 +36,7 @@ define(function (require) {
 
         //start game logic
         this.core = core;//new Core.CoreInterface();   //rename to core
+        this.ui = ui;
 
         //TODO there should be renderer layers and logical layers, and tags too
         //configure layers (render layers)
@@ -59,7 +60,7 @@ define(function (require) {
         this.envman = new EnvMan(this);
         this.chunkman = new ChunkMan(this);
         this.cityman = new Cityman(this);
-        this.ui = new UI(this);
+        this.roadman = new Roadman(this);
 
         window.p = this.pathman = new PathMan();
 
@@ -102,7 +103,7 @@ define(function (require) {
         this.chunkman.init();
         this.envman.init();
         this.cityman.init();
-        this.ui.start();
+        this.roadman.init();
 
 
         window.t = require("./gameObjects/Trolley");

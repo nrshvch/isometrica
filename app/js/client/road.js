@@ -2,17 +2,14 @@ define(function (require) {
     var Core = require("core");
     var engine = require("engine"),
         Building = require("./building"),
-        BuildingState = require("core/buildingstate"),
         buildingData = Core.BuildingData,
         BuildingData = buildingData,
-        BuildingClassCode = require("core/buildingclasscode"),
-        BuildingWaypoints = require("client/buildingwaypoints"),
         RoadNode = require("./pathfinding/roadnode"),
         RoadView = require("./roadview");
     var Terrain = Core.Terrain;
-    var Enumeration = require("enumeration");
 
-    function Road() {
+    function Road(root) {
+        this.root = root;
         this.view = new RoadView();
         this.view.setRoad(this);
     }
@@ -33,15 +30,14 @@ define(function (require) {
         this.view.render();
     };
 
-    Road.prototype.updateRoad = function () {
-        var x = Terrain.extractX(this.data.tile),
-            y = Terrain.extractY(this.data.tile),
-            slopeId = vkaria.core.world.terrain.tileSlope(this.data.tile),
-            buildman = vkaria.buildman,
-            ne = buildman.getRoad(x + 1, y),
-            nw = buildman.getRoad(x, y + 1),
-            sw = buildman.getRoad(x - 1, y),
-            se = buildman.getRoad(x, y - 1),
+    Road.prototype.updateProfile = function () {
+        var tile = this.data.tile,
+            slopeId = this.root.core.terrain.tileSlope(tile),
+            buildman = this.root.roadman,
+            ne = buildman.getRoad(tile + 1),
+            nw = buildman.getRoad(tile + Terrain.dy),
+            sw = buildman.getRoad(tile - 1),
+            se = buildman.getRoad(tile - Terrain.dy),
             id;
 
         if (!Terrain.isSlope(slopeId)) {

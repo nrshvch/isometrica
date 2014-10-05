@@ -7,10 +7,12 @@ define(function (require) {
     var TilesMan = require("./tilesman");
     var Config = require("./config");
     var Terrain = Core.Terrain;
+    var Events = require("events");
 
     var events = {
         chunkLoad: 0,
-        chunkRemove: 1
+        chunkRemove: 1,
+        chunkUnload: 1
     };
 
     function onChunkLoad(sender, args, self){
@@ -37,7 +39,7 @@ define(function (require) {
         this._chunks = {};
         this.root = root;
     }
-    
+
     Chunkman.events = events;
 
     Chunkman.prototype.init = function(){

@@ -145,6 +145,8 @@ define(function (require) {
         pointerout: 6
     };
 
+    p._active = true;
+
     /**
      * @type {int[]}
      */
@@ -213,6 +215,18 @@ define(function (require) {
         this.camera.camera.setViewport(this);
 
         return this;
+    };
+
+    /**
+     *
+     * @param val
+     * @returns {boolean|*}
+     */
+    p.active = function(val){
+      if(val === undefined)
+        return this._active;
+
+        this._active = !!val;
     };
 
     return Viewport;

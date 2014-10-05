@@ -58,7 +58,7 @@ define(["./Viewport", "./Canvas2dRenderer"], function (Viewport, Renderer) {
 
         for(var i = 0; i < viewportsCount; i++){
             viewport = viewports[i];
-            if(viewport.camera !== null)
+            if(viewport.active() === true && viewport.camera !== null)
                 Renderer.render(this.renderer, viewport.camera, viewports[i]);
         }
     };
