@@ -9,6 +9,7 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks("grunt-gm");
     grunt.loadNpmTasks("grunt-contrib-imagemin");
+    grunt.loadNpmTasks("grunt-contrib-uglify");
 
     grunt.initConfig({
         optimize: "none",//"uglify2",
@@ -204,6 +205,27 @@ module.exports = function (grunt) {
               }]
           }
         },
+        uglify: {
+          dist: {
+              mangle: true,
+              compress: {
+                  sequences: true,
+                  dead_code: true,
+                  conditionals: true,
+                  booleans: true,
+                  unused: true,
+                  if_return: true,
+                  join_vars: true,
+                  drop_console: true
+              },
+              files: [{
+                  expand: true,
+                  cwd: "dist",
+                  src: ["**/*.js"],
+                  dest: "dist"
+              }]
+          }
+        },
         'template': {
             'dist': {
                 'options': {
@@ -259,7 +281,7 @@ module.exports = function (grunt) {
 
     // Default task(s).
     grunt.registerTask('default', ['watch']);
-    grunt.registerTask('build', ["clean:dist", 'requirejs', "template:dist", "sprite:dist", "less:dist", "copy", "imagemin:dist"]);
+    grunt.registerTask('build', ["clean:dist", 'requirejs', "template:dist", "sprite:dist", "less:dist", "uglify:dist","copy", "imagemin:dist"]);
     grunt.registerTask("icons", ["clean:tmp", "gm:icons", "sprite:css-icons"]);
 
 };

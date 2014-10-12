@@ -1,0 +1,98 @@
+    @back-x: 0px;
+    @back-y: 0px;
+    @back-offset-x: 0px;
+    @back-offset-y: 0px;
+    @back-width: 64px;
+    @back-height: 64px;
+    @back-total-width: 64px;
+    @back-total-height: 512px;
+    @back-image: '../sprites/icons.png';
+    @back: 0px 0px 0px 0 64px 64 64px 512 '../sprites/icons.png';
+    @bulldozer-x: 0px;
+    @bulldozer-y: 64px;
+    @bulldozer-offset-x: 0px;
+    @bulldozer-offset-y: -64px;
+    @bulldozer-width: 64px;
+    @bulldozer-height: 64px;
+    @bulldozer-total-width: 64px;
+    @bulldozer-total-height: 512px;
+    @bulldozer-image: '../sprites/icons.png';
+    @bulldozer: 0px 64px 0px -64 64px 64 64px 512 '../sprites/icons.png';
+    @citizen-x: 0px;
+    @citizen-y: 128px;
+    @citizen-offset-x: 0px;
+    @citizen-offset-y: -128px;
+    @citizen-width: 64px;
+    @citizen-height: 64px;
+    @citizen-total-width: 64px;
+    @citizen-total-height: 512px;
+    @citizen-image: '../sprites/icons.png';
+    @citizen: 0px 128px 0px -128 64px 64 64px 512 '../sprites/icons.png';
+    @clock-x: 0px;
+    @clock-y: 192px;
+    @clock-offset-x: 0px;
+    @clock-offset-y: -192px;
+    @clock-width: 64px;
+    @clock-height: 64px;
+    @clock-total-width: 64px;
+    @clock-total-height: 512px;
+    @clock-image: '../sprites/icons.png';
+    @clock: 0px 192px 0px -192 64px 64 64px 512 '../sprites/icons.png';
+    @coin-x: 0px;
+    @coin-y: 256px;
+    @coin-offset-x: 0px;
+    @coin-offset-y: -256px;
+    @coin-width: 64px;
+    @coin-height: 64px;
+    @coin-total-width: 64px;
+    @coin-total-height: 512px;
+    @coin-image: '../sprites/icons.png';
+    @coin: 0px 256px 0px -256 64px 64 64px 512 '../sprites/icons.png';
+    @cross-x: 0px;
+    @cross-y: 320px;
+    @cross-offset-x: 0px;
+    @cross-offset-y: -320px;
+    @cross-width: 64px;
+    @cross-height: 64px;
+    @cross-total-width: 64px;
+    @cross-total-height: 512px;
+    @cross-image: '../sprites/icons.png';
+    @cross: 0px 320px 0px -320 64px 64 64px 512 '../sprites/icons.png';
+    @gear-x: 0px;
+    @gear-y: 384px;
+    @gear-offset-x: 0px;
+    @gear-offset-y: -384px;
+    @gear-width: 64px;
+    @gear-height: 64px;
+    @gear-total-width: 64px;
+    @gear-total-height: 512px;
+    @gear-image: '../sprites/icons.png';
+    @gear: 0px 384px 0px -384 64px 64 64px 512 '../sprites/icons.png';
+    @tick-x: 0px;
+    @tick-y: 448px;
+    @tick-offset-x: 0px;
+    @tick-offset-y: -448px;
+    @tick-width: 64px;
+    @tick-height: 64px;
+    @tick-total-width: 64px;
+    @tick-total-height: 512px;
+    @tick-image: '../sprites/icons.png';
+    @tick: 0px 448px 0px -448 64px 64 64px 512 '../sprites/icons.png';
+
+    .sprite-position(@sprite) {
+    @offset-y: ~`parseInt("@{sprite}".split(', ')[1],10)`;
+    @height: ~`parseInt("@{sprite}".split(', ')[5],10)`;
+    @total-height: ~`parseInt("@{sprite}".split(', ')[7],10)`;
+    @y: @offset-y / ( @total-height - @height ) * 100;
+    background-position: 0  0%+@y;
+    }
+
+    .sprite-image(@sprite) {
+    @sprite-image: ~`"@{sprite}".split(', ')[8].slice(1, -2)`;
+    background-image: url(@sprite-image);
+    }
+
+    .sprite(@sprite) {
+    .sprite-image(@sprite);
+    .sprite-position(@sprite);
+    }
