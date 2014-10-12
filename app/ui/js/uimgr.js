@@ -3,11 +3,9 @@ define(function (require) {
     var GameScreen = require("./gamescreen");
     var $ = require("jquery");
     var Events = require("events");
-    var Core = require("core");
-    var Client = require("client");
 
     var events = {
-        ready: 0,
+        ready: 0
     };
 
     function UIManager() {
@@ -24,9 +22,23 @@ define(function (require) {
 
     UIManager.prototype._gameScreen = null;
 
-    UIManager.prototype.startGame = function (callback) {
-        this.gameCore = new Core.Logic();
-        this.gameClient = new Client.Vkaria(this.gameCore, this, callback);
+    UIManager.prototype.game = function (callback) {
+        var self = this;
+        if(this._core && this._client){
+            callback(this._core, this._client);
+            return;
+        }
+        requirejs(["client/main"], function(Vkaria) {
+            var Vkaria = Vkaria.Vkaria;
+            var Core = Isometrica.Core;
+            var core = self._core = new Core.Logic();
+            var client = self._client = new Vkaria(core, self);
+
+            core.start();
+            client.run(function(){
+                callback(core, client);
+            });
+        });
     };
 
     UIManager.prototype.gameScreen = function () {
@@ -42,24 +54,20 @@ define(function (require) {
 
         switch(name){
             case "game":
-                var gs = this.gameScreen();
-                this.rootNode.append(gs.view.el);
-                gs.init();
-                return gs;
+                this.rootNode.append(this.gameScreen().view.el);
                 break;
         }
     };
 
-    /*
-     UIManager.prototype.showPrompt = function(text, val, action){
-     this.view.openWindow(new PromptView({
-     mainView: this.view,
-     message: text,
-     placeholder: "",
-     value: val,
-     callback: action
-     }), "Input");
-     };
-     */
+    UIManager.prototype.back = function(){
+        window.history.back();
+    };
+
+    UIManager.prototype.navigate = function(uri){
+        this.router.navigate(uri, {
+            trigger: true
+        });
+    };
+
     return UIManager;
 });

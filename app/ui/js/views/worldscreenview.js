@@ -62,14 +62,22 @@ define(function (require) {
     };
 
     function setBtn(self, index, icon, f){
-        var state = self.state;
+        var state = self._state;
         var btn = state[index] || (state[index] = {});
         btn.icon = icon;
         btn.action = f;
     }
 
     function unsetBtn(self, index){
-        delete self.state[index];
+        delete self._state[index];
+    }
+
+    function unsetBtns(self){
+        unsetBtn(self, 0);
+        unsetBtn(self, 1);
+        unsetBtn(self, 2);
+        unsetBtn(self, 3);
+        unsetBtn(self, 4);
     }
 
     function renderBtns(self){
@@ -78,7 +86,7 @@ define(function (require) {
         //reset
         $btns.removeClass().addClass("btn").off("click");
 
-        var state = self.state;
+        var state = self._state;
         for(var key in state){
             var btn = state[key];
             if(btn !== undefined){
@@ -94,62 +102,45 @@ define(function (require) {
             this.controller = options.controller;
             this.setElement(template());
 
-            this.state = {};
-            this.history = [];
-
-            this.showMainButtons();
+            this._state = {};
         },
         getCanvas: function () {
             return $("#mainCanvas", this.el);
         },
-        save: function(){
-            var copy = $.extend(true, {}, this.state);
-            this.history.push(copy);
-        },
-        back: function(){
-            if(this.history.length > 1) {
-                this.history.pop();
-                this.state = this.history[this.history.length - 1];
-                renderBtns(this);
-            }
-        },
         showMainButtons: function(){
             var view = this;
+            unsetBtns(this);
             setBtn(this, 0, "back-icon", function(){
-               view.back();
+               view.controller.ui.back();
             });
-            setBtn(this, 1, "citizen-icon", function(){
-                view.showBuildButtons();
+            setBtn(this, 1, "bulldozer-icon", function(){
+                view.controller.ui.navigate("game/world/build");
             });
-            unsetBtn(this, 2);
-            unsetBtn(this, 3);
-            unsetBtn(this, 4);
-
-            this.save();
 
            renderBtns(this);
         },
         showBuildButtons: function(){
             var view = this;
-
-            setBtn(this, 1, "clock-icon", function(){
-                view.showActionBtns();
+            unsetBtns(this);
+            setBtn(this, 0, "back-icon", function(){
+                view.controller.ui.back();
             });
-            unsetBtn(this, 2);
-            unsetBtn(this, 3);
-            unsetBtn(this, 4);
-
-            this.save();
+            setBtn(this, 1, "face-icon", function(){
+                view.controller.ui.navigate("game/buildings");
+            });
+            setBtn(this, 2, "coin-icon", function(){
+               view.controller.ui.navigate("game/build/road");
+            });
 
             renderBtns(this);
         },
         showActionBtns: function(){
+            unsetBtns(this);
+
             var view = this;
             setBtn(this, 0, "back-icon", function(){
                 view.back();
             });
-            unsetBtn(this, 1);
-            unsetBtn(this, 2);
             setBtn(this, 3, "tick-icon", function(){
                 view.showMainButtons();
             });
@@ -157,7 +148,6 @@ define(function (require) {
                 view.showBuildButtons();
             });
             renderBtns(this);
-            this.save();
         }
     });
 

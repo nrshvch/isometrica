@@ -6,16 +6,50 @@ define(function (require) {
             this.ui = options.ui;
         },
         routes: {
-            "": "default",
-            "(game(/world))": "default",
-            "game/buildings": "buildings"
+            "game/build/:id": "build",
+            "game/buildings": "catalogue",
+            "game/buildings/:cat": "category",
+            "game/buildings/:cat/:id" : "building",
+            "(game)(/world)(/:nav)": "world",
         },
-        default: function(){
-            this.ui.show("game").show("world").show("main");
+        world: function(nav){
+            this.ui.show("game");
+            this.ui.gameScreen().init(function(gs){
+                gs.show("world");
+                gs.worldScreen().show(nav || "main");
+            });
         },
-        buildings: function(){
-            this.ui.show("game").show("buildings");
+        catalogue: function(){
+            this.ui.show("game");
+            this.ui.gameScreen().init(function(gs){
+                gs.show("catalogue");
+            });
+        },
+        category: function(catId){
+            this.ui.show("game");
+            this.ui.gameScreen().init(function(gs) {
+                gs.show("category").show(catId);
+            });
         }
+        /*
+        default: function(){
+            this.world();
+        },
+        buildings: function(cat, id){
+            this.ui.show("game");
+            this.ui.game().show("buildings");
+            //this.ui.game().buildings().show(cat, id);
+            //this.ui.game().show("buildings");
+            //this.ui.show("game");
+            //this.ui.show("game").show("buildings").show(cat, id);
+            //this.ui.show("game", ["buildings",cat,id]);
+        },
+        build: function(id){
+
+        },
+        world: function(nav){
+            var world = this.ui.show("game").show("world").show(nav || "main");
+        }*/
     });
 
     return Router;

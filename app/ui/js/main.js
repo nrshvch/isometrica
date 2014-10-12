@@ -1,3 +1,4 @@
-define(function(require){
-  return require("./uimgr");
+define(function (require) {
+    var UIManager = require("./uimgr");
+    return UIManager;
 });
