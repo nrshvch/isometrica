@@ -211,30 +211,6 @@ define(function (require) {
         this.dispatchEvent(this.events.receivedConfirmation, this);
 
         return;
-
-
-        var data = buildingData[this.buildingCode];
-
-        if(data.classCode === BuildingClassCode.road){
-            var t0 = Number.MAX_SAFE_INTEGER, t1 = 0;
-
-            for(var i in this.selectedTiles){
-                var t = this.selectedTiles[i];
-                var idx = Terrain.convertToIndex(t.x, t.y);
-                t0 = Math.min(idx, t0);
-                t1 = Math.max(idx, t1);
-            }
-
-            this.tools.root.core.city.buildingService.buildRoad(this.buildingCode, t0, t1);
-        }else {
-            for (var i in this.selectedTiles) {
-                var tile = Terrain.convertToIndex(this.selectedTiles[i].x, this.selectedTiles[i].y);
-                this.tools.root.core.cities.getCity(0).buildingService.buildBuilding(this.buildingCode, tile, this._rotate);
-            }
-        }
-
-        this.disableHiliters();
-        this.dispatchEvent(this.events.receivedConfirmation, this);
     };
 
     Tool.prototype.cancel = function () {

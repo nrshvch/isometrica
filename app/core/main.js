@@ -1,12 +1,15 @@
 define(function (require) {
     var namespace = require("namespace");
 
+    require("data/data"); //for sake of compatibility
+    require("data/buildingclasscode"); //for sake of compatibility
+    require("data/buildingclassdata"); //for sake of compatibility
     require("./logic");
     require("./terraintype");
     require("./ambient");
     require("./building");
-    require("./buildingclasscode");
-    require("./buildingclassdata");
+    //require("data/buildingclasscode");
+    //require("./buildingclassdata");
     require("./buildingcode");
     require("./buildingpositioning");
     require("./buildings");

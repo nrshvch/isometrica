@@ -2,13 +2,14 @@
 
 .game-ui {
   @import "./icons/icons.less";
-  @import "./building-view.less";
-  @import "./world-view.less";
-  @import "./building-category-list-view.less";
-  @import "./building-list-view.less";
-  @import "./city-info-view.less";
-  @import "./top-bar.less";
   @import "./icon-val-bar.less";
+  @import "../../modules/world/less/main.less";
+  @import "../../modules/catalogue/less/main.less";
+  @import "../../modules/city/less/main.less";
+  @import "../../modules/topbar/less/main.less";
+  @import "../../modules/gamescreen/less/main.less";
+  @import "../../modules/splash/less/main.less";
+  @import "../../modules/prompt/less/main.less";
 
   height: 100%;
   background-image: data-uri("../img/ui-bg.png");
@@ -18,31 +19,6 @@
   color: #fff;
   text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.4);
 
-  .game-view {
-    height: 100%;
-    width: 100%;
-    display: table;
-
-    & > .row {
-      display: table-row;
-    }
-
-    & > .row > .cell {
-      display: table-cell;
-      position: relative;
-    }
-
-    & > .row > .cell.flex {
-      height: 100%;
-    }
-
-    & > .row > .cell > .body-slot {
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      right: 0;
-    }
-  }
+  line-height: 1.5;
 
 }

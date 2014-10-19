@@ -1,6 +1,7 @@
 define(function(require) {
     require("config");
-    requirejs(["ui/uimgr"], function(UI){
+    requirejs(["ui/js/main"], function(UI){
         var ui = new UI();
+        ui.init();
     });
 });

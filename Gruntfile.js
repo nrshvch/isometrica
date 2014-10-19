@@ -33,8 +33,8 @@ module.exports = function (grunt) {
                 options: {
                     optimize: "<%= optimize %>",
                     baseUrl: "./app",
-                    name: "ui/uimgr",
-                    out: "./dist/ui/js/uimgr.js",
+                    name: "ui/js/main",
+                    out: "./dist/ui/js/main.js",
                     mainConfigFile: 'app/js/config.js',
                     preserveLicenseComments: false
                 }
@@ -52,17 +52,13 @@ module.exports = function (grunt) {
         },
         less: {
             dev: {
-                options: {
-                    compress: true,
-                    yuicompress: true,
-                    optimization: 2
-                },
                 files: {
                     "./app/ui/css/main.css": "./app/ui/less/main.less"
                 }
             },
             dist: {
                 options: {
+                    cleancss: true,
                     compress: true,
                     yuicompress: true,
                     optimization: 2
@@ -78,12 +74,12 @@ module.exports = function (grunt) {
                     namespace: "Templates",
                     amd: true,
                     processName: function (filePath) {
-                        var file = filePath.replace(/.*\/(\w+)\.hbs/, '$1');
+                        var file = filePath.replace(/\.\/app\/ui\/modules\/(.*)\/templates\/(\w+)\.hbs/, '$1/$2');
                         return file;
                     }
                 },
                 files: {
-                    "./app/ui/js/templates.js": "./app/ui/templates/*.hbs"
+                    "./app/ui/js/templates.js": "./app/ui/**/*.hbs"
                 }
             }
         },
@@ -254,15 +250,15 @@ module.exports = function (grunt) {
             }
         },
         watch: {
-            styles: {
-                files: ['./app/ui/less/**/*.less'], // which files to watch
+            less: {
+                files: ['./app/ui/**/*.less'], // which files to watch
                 tasks: ['less:dev'],
                 options: {
                     nospawn: true
                 }
             },
             templates: {
-                files: "./app/ui/templates/*.hbs",
+                files: "./app/ui/modules/*/templates/*.hbs",
                 tasks: 'handlebars',
                 options: {
                     nospawn: true

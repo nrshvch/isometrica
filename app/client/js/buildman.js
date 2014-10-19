@@ -2,7 +2,7 @@
 define(function (require) {
     var Core = require("core/main");
     var engine = require("engine/main"),
-        BuildingClassCode = require("core/buildingclasscode"),
+        BuildingClassCode = require("data/buildingclasscode"),
         Building = require("./building"),
         Road = require("./road"),
         EventManager = require("events"),
@@ -12,6 +12,7 @@ define(function (require) {
     var TileIterator = Core.TileIterator;
     var Terrain = Core.Terrain;
     var ConstructionService = Core.ConstructionService;
+    var ToolCode = require("./tools/toolcode");
 
     function getBuilding(self, tile) {
         var x = Terrain.extractX(tile);
@@ -157,6 +158,39 @@ define(function (require) {
             tile = tile_or_x;
 
         return getBuilding(this, tile);
+    };
+
+    Buildman.prototype.build = function (code) {
+        var root = this.root;
+
+        var tools = root.tools;
+        tools.enableTool(ToolCode.builder);
+        var tool = tools.tools[ToolCode.builder];
+
+        root.ui.gameScreen().worldScreen().showHint("Pick a tile!");
+
+        var controls = root.ui.gameScreen().showActionControls();
+        var rotation = true;
+        controls.onRotate = function () {
+            rotation = !rotation;
+        };
+        controls.onSubmit = function () {
+            for (var i in tool.selectedTiles) {
+                var t = tool.selectedTiles[i];
+                var tile = Terrain.convertToIndex(t.x, t.y);
+                root.core.cities.getCity(0).buildingService.buildBuilding(code, tile, rotation);
+            }
+            tools.selectTool(ToolCode.panner);
+            root.ui.gameScreen().showWorld();
+            root.ui.gameScreen().worldScreen().hideHint();
+        };
+        controls.onDiscard = function () {
+            tools.selectTool(ToolCode.panner);
+            root.ui.gameScreen().showWorld();
+            root.ui.gameScreen().worldScreen().hideHint();
+        };
+        tools.selectTool(ToolCode.builder);
+        tool.setBuilding(code);
     };
 
 

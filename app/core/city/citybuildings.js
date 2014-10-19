@@ -4,7 +4,7 @@
 define(function (require) {
     var Events = require("events");
     var BuildingCode = require("../buildingcode");
-    var BuildingData = require("../buildingdata");
+    var BuildingData = require("data/data");
     var ErrorCode = require("../errorcode");
     var Building = require("../building");
     var Terrain = require("../terrain");

@@ -4,7 +4,7 @@
 define(function (require) {
     var Terrain = require("./terrain");
     var Events = require("events");
-    var BuildingData = require("./buildingdata");
+    var BuildingData = require("data/data");
     var TileRadialIterator = require("./tileiteratorradial");
     var CityService = require("./citysrv");
 

@@ -7,12 +7,12 @@
 
 define(function (require) {
     var Events = require("events");
-    var BuildingData = require("./buildingdata"),
+    var BuildingData = require("data/data"),
         Building = require("./building");
     /**
      * @type {BuildingClassCode}
      */
-    var BuildingClassCode = require("./buildingclasscode");
+    var BuildingClassCode = require("data/buildingclasscode");
 
     /**
      * @type {ErrorCode}

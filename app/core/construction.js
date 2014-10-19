@@ -2,7 +2,7 @@
  * Created by denis on 8/27/14.
  */
 define(function (require) {
-    var ConstructionData = require("./buildingdata");
+    var ConstructionData = require("data/data");
     var TileIterator = require("./tileiterator");
     var Terrain = require("./terrain");
     var ConstructionState = require("./buildingstate");

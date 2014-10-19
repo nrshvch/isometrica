@@ -3,7 +3,8 @@ define(function (require) {
         baseUrl: "./",
         enforceDefine: true,
         paths: {
-            ui: "ui/js",
+            data: "data",
+            ui: "ui",
             client: "client/js",
             core: "core",
             engine: "engine",
@@ -13,6 +14,7 @@ define(function (require) {
         },
         map: {
             "*": {
+                "ui/main":"ui/js/main", //for sake of compatibility
                 "jquery": "bower_components/jquery/dist/jquery",
                 underscore: 'bower_components/underscore/underscore',
                 backbone: 'bower_components/backbone/backbone',
@@ -26,7 +28,8 @@ define(function (require) {
                 enumeration: 'vendor/enumeration',
                 eventmanager: 'vendor/eventmanager',
                 binaryheap: 'vendor/binaryheap',
-                namespace: 'vendor/namespace'
+                namespace: 'vendor/namespace',
+                "reactive-property": 'vendor/reactive-property'
             }
         },
         shim: {
@@ -49,6 +52,10 @@ define(function (require) {
             },
             'bower_components/handlebars/handlebars.min': {
                 exports: 'Handlebars'
+            },
+            "vendor/reactive-property":{
+                deps: ["events"],
+                exports: "ReactiveProperty"
             }
         }
     });

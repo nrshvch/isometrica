@@ -4,7 +4,7 @@ define(function (require) {
     var Events = require("events"),
         ResearchState = require("../researchstate"),
         Direction = require("../researchdirection"),
-        BuildingData = require("../buildingdata"),
+        BuildingData = require("data/data"),
         VTime = require("../vtime");
 
     var namespace = require("namespace");

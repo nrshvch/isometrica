@@ -1,0 +1,12 @@
+-only one research can be active a time
+-researching are available with first research center
+-each next research center allows one more simultaneous research, max 4
+-clicking on research center, open research window
+-researhc window is a tab inside city window
+-restore grid hiliter
+-grid hiliter renderer : first draw vertical lines, then horizontal
+-ui map renderer can draw simplified map at first
+-smooth(async) map scroll with inertion
+-generated buildings, with variable floor number
+-save game into localstorage
+

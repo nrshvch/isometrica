@@ -1,0 +1,92 @@
+.world-view {
+  @import "../../../less/game-ui/icons/icons";
+
+  @-webkit-keyframes redPulse {
+    from {
+      color: white;
+    }
+    25% {
+      color: #ffaaaa;
+    }
+    50% {
+      color: #aaffaa;
+    }
+    75% {
+      color: #aaaaff
+    }
+  }
+  @keyframes redPulse {
+    from {
+      color: white;
+    }
+    25% {
+      color: #ffaaaa;
+    }
+    50% {
+      color: #aaffaa;
+    }
+    75% {
+      color: #aaaaff
+    }
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hint-pos {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 50%;
+    text-align: center;
+    pointer-events: none;
+    font-size: 0;
+
+    &:extend(.middle-position all);
+
+    & > .hint {
+      display: inline-block;
+      font-size: 12pt;
+      animation-duration: 2s;
+      animation-iteration-count: infinite;
+      animation-name: redPulse;
+      -webkit-animation-duration: 2s;
+      -webkit-animation-iteration-count: infinite;
+      -webkit-animation-name: redPulse;
+    }
+  }
+
+  .btns {
+    position: absolute;
+    bottom: 0%;
+    left: 0%;
+    right: 0%;
+    top: 90%;
+    font-size: 0;
+    pointer-events: none;
+
+    .slot {
+      height: 100%;
+      width: 20%;
+      float: left;
+      display: block;
+      text-align: center;
+
+      &:extend(.middle-position all);
+
+      .btn {
+        &:extend(.pixelated);
+
+        vertical-align: middle;
+        display: inline-block;
+        height: 80%;
+        cursor: pointer;
+        pointer-events: all;
+      }
+    }
+  }
+}

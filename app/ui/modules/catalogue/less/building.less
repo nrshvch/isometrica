@@ -1,0 +1,54 @@
+// main: ./main.less
+.building-view {
+  & > .row > .cell > .body {
+    .eye {
+      .ui-block-inset;
+
+      margin: 2%;
+      width: 40%;
+      position: relative;
+      background-color: #fff;
+
+      &:after {
+        content: "";
+        display: block;
+        padding-bottom: 100%;
+      }
+
+      & > img,
+      & > .img {
+        display: block;
+        position: absolute;
+        background-repeat: no-repeat;
+        background-size: contain;
+        background-position: center center;
+        width: 92%;
+        height: 92%;
+        margin: 4%;
+
+        &:extend(.pixelated);
+      }
+    }
+
+    .params {
+      position: absolute;
+      top: 0%;
+      right: 2%;
+      width: 54%;
+      margin-top: 2%;
+      line-height: 1.4;
+
+      & > div {
+        display: inline-block;
+        &:first-letter {
+          text-transform: capitalize;
+        }
+      }
+    }
+
+    .info {
+      margin: 2%;
+    }
+  }
+
+}

@@ -1,0 +1,26 @@
+.game-view {
+  height: 100%;
+  width: 100%;
+  display: table;
+
+  & > .row {
+    display: table-row;
+  }
+
+  & > .row > .cell {
+    display: table-cell;
+    position: relative;
+  }
+
+  & > .row > .cell.flex {
+    height: 100%;
+  }
+
+  & > .row > .cell > .body-slot {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+  }
+}

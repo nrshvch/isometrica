@@ -29,7 +29,7 @@ define(function (require) {
                 var entrance = entrances[i];
                 var x = entrance[0] + data.x;
                 var y = entrance[1] + data.y;
-                var road = vkaria.buildman.getRoad(x, y);
+                var road = vkaria.roadman.getRoad(x, y);
 
                 if (road !== null) {
                     r.push(road.node);

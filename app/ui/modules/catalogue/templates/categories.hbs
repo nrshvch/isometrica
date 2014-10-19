@@ -1,0 +1,36 @@
+<div class="building-cats ui-list-window">
+    <div class="row body">
+        <div class="cell">
+            <div class="body items">
+                {{#.}}
+                    <div class="item ui-block">
+                        <a href="#catalogue/{{ code }}" class="body">
+                            <div class="cat-image">
+                                <div class="cat-img" style="background-image: url(ui/img/categories/{{code}}.png)"></div>
+                            </div>
+                            <div class="cat-name">
+                                {{ displayName }}
+                            </div>
+                        </a>
+                    </div>
+                {{/.}}
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="cell">
+            <div class="buttons count-2">
+                <a href="javascript:window.history.back();" class="button ui-button">
+                    <img class="icon back-icon" src='ui/img/onebyone.gif'/>
+
+                    <div class="text">Return</div>
+                </a>
+                <a href="javascript:void(0)" class="button ui-button">
+                    <img class="icon coin-icon" src='ui/img/onebyone.gif'/>
+
+                    <div class="text">Close</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

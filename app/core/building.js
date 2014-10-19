@@ -12,8 +12,8 @@ define(function (require) {
     /**
      * @type {BuildingClassCode}
      */
-    var BuildingClassCode = require("core/buildingclasscode");
-    var BuildingData = require("./buildingdata");
+    var BuildingClassCode = require("data/buildingclasscode");
+    var BuildingData = require("data/data");
     var TileIterator = require("./tileiterator");
     /**
      * @type {TileIteratorRadial}

@@ -29,9 +29,13 @@ define(function(require){
 
     Tool.prototype.click = function(screenX, screenY){
         var tile = this.tools.pickTile(screenX, screenY);
+
         if(tile)
             tile = Terrain.convertToIndex(tile.x, tile.y);
         else
+            tile = -1;
+
+        if(this.tileValidator !== undefined && !this.tileValidator(tile))
             tile = -1;
 
         if (tile !== -1){
@@ -47,6 +51,7 @@ define(function(require){
             this.selectedTile = tile;
             this.dispatchEvent(this.events.awaitingConfirmation, this);
         }
+        this.selectedTile = tile;
     };
 
     Tool.prototype.confirm = function(){

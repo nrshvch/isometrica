@@ -64,7 +64,7 @@ define(function (require) {
         this.pathman = new PathMan();
     }
 
-    Vkaria.prototype.run = function(callback){
+    Vkaria.prototype.prepare = function(callback){
         //preload assets and, when done, start game
         var self = this;
 
@@ -78,11 +78,11 @@ define(function (require) {
 
                 self.assets.getAsset("gfx/spritesheet.png", engine.AssetManager.Resource.ResourceTypeEnum.image).done(function (resourceImage) {
                     self.sprites.atlas = resourceImage.data;
-                    self.start();
+                    //self.start();
                     callback && callback();
                 });
             } else {
-                self.start();
+                //self.start();
                 callback && callback();
             }
         });
@@ -95,7 +95,9 @@ define(function (require) {
         this.game.scene.addGameObject(this.camera);
 
         this.game.run();
+    };
 
+    Vkaria.prototype.startServices = function(){
         this.pathman.start();
         this.buildman.start();
         this.tilesman.start();
