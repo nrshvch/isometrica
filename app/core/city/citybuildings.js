@@ -3,8 +3,8 @@
  */
 define(function (require) {
     var Events = require("events");
-    var BuildingCode = require("../buildingcode");
-    var BuildingData = require("data/data");
+    var BuildingCode = require("data/buildingcode");
+    var BuildingData = require("data/buildings");
     var ErrorCode = require("../errorcode");
     var Building = require("../building");
     var Terrain = require("../terrain");

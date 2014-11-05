@@ -8,7 +8,7 @@
 define(function (require) {
     var Resources = require("../resources"),
         Events = require("events"),
-        BuildingData = require("data/data");
+        BuildingData = require("data/buildings");
 
     var namespace = require("namespace");
     var CityService = namespace("Isometrica.Core.CityService");

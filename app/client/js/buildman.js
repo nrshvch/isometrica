@@ -2,7 +2,7 @@
 define(function (require) {
     var Core = require("core/main");
     var engine = require("engine/main"),
-        BuildingClassCode = require("data/buildingclasscode"),
+        BuildingClassCode = require("data/classcode"),
         Building = require("./building"),
         Road = require("./road"),
         EventManager = require("events"),
@@ -12,7 +12,7 @@ define(function (require) {
     var TileIterator = Core.TileIterator;
     var Terrain = Core.Terrain;
     var ConstructionService = Core.ConstructionService;
-    var ToolCode = require("./tools/toolcode");
+    var AreaSelector = require("./areaselector");
 
     function getBuilding(self, tile) {
         var x = Terrain.extractX(tile);
@@ -160,39 +160,120 @@ define(function (require) {
         return getBuilding(this, tile);
     };
 
+    Buildman.prototype.destroy = function () {
+        var root = this.root;
+
+        //show hint
+        root.ui.gameScreen().worldScreen().showHint("Pick a tile that you want to clear!");
+
+        //lock cam
+        root.camera.cameraScript.lock(true);
+
+        //draw red grid
+        var tokens = [];
+        var ts = new AreaSelector(this.root);
+        var sub = Events.on(ts, AreaSelector.events.change, function(a,b,c) {
+            root.hiliteMan.disable(tokens);
+            tokens = root.hiliteMan.hilite({
+                tile0: ts.tile0(),
+                tile1: ts.tile1(),
+                fillColor: "rgba(127,0,0,0.4)",
+                borderColor: "rgba(255,0,0,0.4)",
+                borderWidth: 2
+            });
+        });
+
+        //bind ui
+        var controls = root.ui.gameScreen().showActionControls();
+        controls.onSubmit = function () {
+            var iter = ts.selectedTiles(),
+                tile;
+            if (iter !== null)
+                while (!iter.done) {
+                    tile = iter.next();
+                    root.core.cities.getCity(0).clearTile(tile);
+                }
+
+            //release resources
+            ts.dispose();
+            root.hiliteMan.disable(tokens);
+            Events.off(ts, AreaSelector.events.change, sub);
+
+            root.ui.gameScreen().showWorld();
+            root.ui.gameScreen().worldScreen().hideHint();
+            root.camera.cameraScript.lock(false);
+        };
+        controls.onDiscard = function () {
+            //release resources
+            ts.dispose();
+            root.hiliteMan.disable(tokens);
+            Events.off(ts, AreaSelector.events.change, sub);
+
+            root.ui.gameScreen().showWorld();
+            root.ui.gameScreen().worldScreen().hideHint();
+            root.camera.cameraScript.lock(false);
+        };
+    };
+
+
     Buildman.prototype.build = function (code) {
         var root = this.root;
 
-        var tools = root.tools;
-        tools.enableTool(ToolCode.builder);
-        var tool = tools.tools[ToolCode.builder];
-
+        //show hint
         root.ui.gameScreen().worldScreen().showHint("Pick a tile!");
 
+        //lock cam
+        root.camera.cameraScript.lock(true);
+
+        //draw blue grid
+        var tokens = [];
+        var ts = new AreaSelector(this.root);
+        var sub = Events.on(ts, AreaSelector.events.change, function(a,b,c) {
+            root.hiliteMan.disable(tokens);
+            tokens = root.hiliteMan.hilite({
+                tile0: ts.tile0(),
+                tile1: ts.tile1(),
+                fillColor: "rgba(0,0,127,0.4)",
+                borderColor: "rgba(0,0,255,0.4)",
+                borderWidth: 2
+            });
+        });
+
+        //bind ui
         var controls = root.ui.gameScreen().showActionControls();
         var rotation = true;
         controls.onRotate = function () {
             rotation = !rotation;
         };
         controls.onSubmit = function () {
-            for (var i in tool.selectedTiles) {
-                var t = tool.selectedTiles[i];
-                var tile = Terrain.convertToIndex(t.x, t.y);
-                root.core.cities.getCity(0).buildingService.buildBuilding(code, tile, rotation);
-            }
-            tools.selectTool(ToolCode.panner);
+            var iter = ts.selectedTiles(),
+                tile;
+            if (iter !== null)
+                while (!iter.done) {
+                    tile = iter.next();
+                    root.core.cities.getCity(0).buildingService.buildBuilding(code, tile, rotation);
+                }
+
+            //release resources
+            ts.dispose();
+            root.hiliteMan.disable(tokens);
+            Events.off(ts, AreaSelector.events.change, sub);
+
             root.ui.gameScreen().showWorld();
             root.ui.gameScreen().worldScreen().hideHint();
+            root.camera.cameraScript.lock(false);
         };
         controls.onDiscard = function () {
-            tools.selectTool(ToolCode.panner);
+            //release resources
+            ts.dispose();
+            root.hiliteMan.disable(tokens);
+            Events.off(ts, AreaSelector.events.change, sub);
+
             root.ui.gameScreen().showWorld();
             root.ui.gameScreen().worldScreen().hideHint();
+            root.camera.cameraScript.lock(false);
         };
-        tools.selectTool(ToolCode.builder);
-        tool.setBuilding(code);
     };
-
 
     return Buildman;
 });

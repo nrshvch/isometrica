@@ -4,7 +4,7 @@ define(function (require) {
         glMatrix = require("./vendor/gl-matrix"),
         buildingData = Core.BuildingData,
         BuildingData = buildingData,
-        BuildingClassCode = require("data/buildingclasscode"),
+        BuildingClassCode = require("data/classcode"),
         BuildingWaypoints = require("client/buildingwaypoints"),
         BuildingNode = require("./pathfinding/buildingnode"),
         BuildingView = require("./buildingview");

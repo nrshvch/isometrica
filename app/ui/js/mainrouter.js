@@ -8,19 +8,29 @@ define(function (require) {
         routes: {
             "build/:id": "build",
             "catalogue(/:cat)(/:id)" : "catalogue",
-            "(world)(/:nav)": "world"
+            "city(/:id)(/:tab)" : "city",
+            "(world)(/:nav)": "world",
+            "destroy" : "destroy"
         },
-        build: function(bid){
+        build: function(){
             this.ui.show("game");
             this.ui.gameScreen().execute("build", arguments);
         },
-        world: function(nav){
+        world: function(){
             this.ui.show("game");
             this.ui.gameScreen().execute("world", arguments);
         },
-        catalogue: function(catId, buildingId){
+        catalogue: function(){
             this.ui.show("game");
             this.ui.gameScreen().execute("catalogue", arguments);
+        },
+        destroy: function(){
+            this.ui.show("game");
+            this.ui.gameScreen().execute("destroy");
+        },
+        city: function(){
+            this.ui.show("game");
+            this.ui.gameScreen().execute("city", arguments)
         }
     });
 

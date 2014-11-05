@@ -7,7 +7,9 @@ define(function (require) {
     var Events = require("events");
     var CityLabel = require("./gameObjects/citylabel");
     var Config = require("./config");
-    var ToolCode = require("./tools/toolcode");
+    var TileSelector = require("./tileselector");
+    var WorldCamera = require("./components/camerascript");
+    var CityComponent = require("./components/city");
 
     function addCityGO(self, city) {
         var gos = self._cityGOs;
@@ -19,10 +21,7 @@ define(function (require) {
         var go = new CityLabel(city);
         self.root.game.scene.addGameObject(go);
 
-        gos[tile] = {
-            city: city,
-            go: go
-        };
+        gos[tile] = go;
 
         return gos[tile];
     }
@@ -34,8 +33,8 @@ define(function (require) {
         var y = self.root.terrain.tileYPos(tile);
         var z = self.root.terrain.tileZPos(tile);
 
-        go.go.transform.setPosition(x, y, z);
-        go.go.textRenderer.text = city.name();
+        go.transform.setPosition(x, y, z);
+        go.textRenderer.text = city.name();
     }
 
     function onNewCity(sender, city, self) {
@@ -45,7 +44,7 @@ define(function (require) {
     }
 
     function onCityRename(city, name, self) {
-        self._cityGOs[city.tile()].go.textRenderer.text = name;
+        self._cityGOs[city.tile()].textRenderer.text = name;
     }
 
     function Cityman(root) {
@@ -55,8 +54,22 @@ define(function (require) {
 
     Cityman.prototype.init = function () {
         var root = this.root;
+        var cam = root.camera.cameraScript;
 
         Events.on(root.core.cities, Core.CityService.events.cityNew, onNewCity, this);
+        Events.on(cam, WorldCamera.events.inputClick, function(sender, e){
+           var gos = cam.pickGameObject(e.gameViewportX, e.gameViewportY);
+            for(var i in gos){
+                var item = gos[i];
+                if(item instanceof CityLabel){
+                    var cmp = item.getComponent(CityComponent);
+                    var city = cmp.city;
+                    var id = city.id();
+                    console.log("CITY!!!", id);
+                    root.ui.navigate("city/"+id);
+                }
+            }
+        });
 
         this.establish();
     };
@@ -67,26 +80,45 @@ define(function (require) {
 
     Cityman.prototype.establish = function(){
         var root = this.root;
-        var tools = root.tools;
-        tools.disableAll();
-        tools.enableTool(ToolCode.tileSelector);
-        var tool = tools.tools[ToolCode.tileSelector];
 
+        //render hint
         root.ui.gameScreen().worldScreen().showHint("Pick a tile where you want your city to be located!");
+
+        //enable selector
+        var selector = new TileSelector(root);
+        var token = -1;
+        var s = Events.on(selector, TileSelector.events.change, function(a,b,c){
+            root.hiliteMan.disable(token);
+            token = root.hiliteMan.hilite({
+                tile: a.selectedTile(),
+                borderColor: "rgba(255,255,255,1)",
+                borderWidth: 2
+            });
+        });
+
+        //bind ui
         var controls = root.ui.gameScreen().showActionControls();
         controls.onSubmit = function () {
-            var tile = tool.selectedTile;
+            var tile = selector.selectedTile();
 
             root.ui.gameScreen().showPrompt("Give city a name!", function (val) {
                 root.core.cities.establishCity(tile, val);
-                tools.enableAll();
-                tools.selectTool(ToolCode.panner);
                 root.ui.gameScreen().showWorld();
                 root.ui.gameScreen().worldScreen().hideHint();
             }, "My City");
+
+            //disable hiliters & selector
+            root.hiliteMan.disable(token);
+            selector.dispose();
+            Events.off(selector, TileSelector.events.change, s);
         };
         controls.canDiscard(false);
-        tools.selectTool(ToolCode.tileSelector);
+    };
+
+    Cityman.prototype.getCityGameObject = function(cityId){
+        var city = this.root.core.cities.getCity(cityId);
+        var tile = city.tile();
+        return this._cityGOs[tile];
     };
 
     return Cityman;

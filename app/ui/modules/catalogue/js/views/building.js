@@ -12,7 +12,7 @@ define(function (require) {
             this.setElement(fragment);
         },
         render: function () {
-            this.$el.html(template({
+            this.$el.append(template({
                 building: this.model.toJSON()
             }));
             return this;

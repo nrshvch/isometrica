@@ -431,7 +431,7 @@ th {
 .game-ui .building-cats .cat-image .cat-img,
 .game-ui .building-view > .row > .cell > .body .eye > img,
 .game-ui .building-view > .row > .cell > .body .eye > .img,
-.game-ui .top-bar .section .icon,
+.game-ui .top-bar .section > .icon-val .icon,
 .ui-list-window > .row > .cell > .buttons > .button .icon,
 .game-ui .building-cats > .row > .cell > .buttons > .button .icon {
   image-rendering: optimizeSpeed;
@@ -452,8 +452,10 @@ th {
   /* IE8+           */
 }
 .ui-block,
-.game-ui .city-view .tab-content,
-.game-ui .top-bar {
+.ui-window > .row > .cell > .body .tab-content,
+.game-ui .top-bar,
+.ui-list-window > .row > .cell > .body .tab-content,
+.game-ui .building-cats > .row > .cell > .body .tab-content {
   background-color: #4ebaba;
   border: 1px solid #73c8c8;
   border-bottom-color: #3c9999;
@@ -517,25 +519,25 @@ th {
   border-right-color: #3ac3c3;
 }
 .ui-tab,
-.ui-window > .row > .cell > .tabs .tabs-middle-container .tab,
-.ui-list-window > .row > .cell > .tabs .tabs-middle-container .tab,
-.game-ui .building-cats > .row > .cell > .tabs .tabs-middle-container .tab {
+.ui-window > .row > .cell > .tabs-section .tabs .tab,
+.ui-list-window > .row > .cell > .tabs-section .tabs .tab,
+.game-ui .building-cats > .row > .cell > .tabs-section .tabs .tab {
   background-color: #4ebaba;
   border: 1px solid #73c8c8;
   border-bottom-color: #3c9999;
   border-right-color: #3c9999;
 }
 .ui-tab.active,
-.ui-window > .row > .cell > .tabs .tabs-middle-container .tab.active,
-.ui-list-window > .row > .cell > .tabs .tabs-middle-container .tab.active,
-.game-ui .building-cats > .row > .cell > .tabs .tabs-middle-container .tab.active {
+.ui-window > .row > .cell > .tabs-section .tabs .tab.active,
+.ui-list-window > .row > .cell > .tabs-section .tabs .tab.active,
+.game-ui .building-cats > .row > .cell > .tabs-section .tabs .tab.active {
   background-color: #2e9c9c;
   border: 1px solid #60d0d0;
   border-bottom-color: #174d4d;
   border-right-color: #174d4d;
 }
 .middle-position:before,
-.ui-window > .row > .cell > .tabs .tabs-middle-container .tab:before,
+.ui-window > .row > .cell > .tabs-section .tabs .tab:before,
 .ui-window > .row > .cell > .buttons > .button:before,
 .game-ui .world-view .hint-pos:before,
 .game-ui .world-view .btns .slot:before,
@@ -543,13 +545,13 @@ th {
 .game-ui .building-cats .cat-image:before,
 .game-ui .building-cats .cat-name:before,
 .game-ui .top-bar .city-name:before,
-.game-ui .top-bar .section:before,
-.game-ui .top-bar .section .text:before,
+.game-ui .top-bar .section > .icon-val:before,
+.game-ui .top-bar .section > .icon-val .text:before,
 .game-ui #splash:before,
 .game-ui .prompt-view .body:before,
-.ui-list-window > .row > .cell > .tabs .tabs-middle-container .tab:before,
+.ui-list-window > .row > .cell > .tabs-section .tabs .tab:before,
 .ui-list-window > .row > .cell > .buttons > .button:before,
-.game-ui .building-cats > .row > .cell > .tabs .tabs-middle-container .tab:before,
+.game-ui .building-cats > .row > .cell > .tabs-section .tabs .tab:before,
 .game-ui .building-cats > .row > .cell > .buttons > .button:before {
   content: "";
   display: inline-block;
@@ -592,16 +594,16 @@ th {
 .game-ui .building-cats > .row > .cell.flex {
   height: 100%;
 }
-.ui-window > .row > .cell > .tabs,
-.ui-list-window > .row > .cell > .tabs,
-.game-ui .building-cats > .row > .cell > .tabs {
+.ui-window > .row > .cell > .tabs-section,
+.ui-list-window > .row > .cell > .tabs-section,
+.game-ui .building-cats > .row > .cell > .tabs-section {
   height: 48px;
   overflow-x: hidden;
   position: relative;
 }
-.ui-window > .row > .cell > .tabs .tabs-middle-container,
-.ui-list-window > .row > .cell > .tabs .tabs-middle-container,
-.game-ui .building-cats > .row > .cell > .tabs .tabs-middle-container {
+.ui-window > .row > .cell > .tabs-section .tabs,
+.ui-list-window > .row > .cell > .tabs-section .tabs,
+.game-ui .building-cats > .row > .cell > .tabs-section .tabs {
   position: absolute;
   top: 10%;
   bottom: 10%;
@@ -610,14 +612,15 @@ th {
   white-space: nowrap;
   font-size: 0;
 }
-.ui-window > .row > .cell > .tabs .tabs-middle-container .tab,
-.ui-list-window > .row > .cell > .tabs .tabs-middle-container .tab,
-.game-ui .building-cats > .row > .cell > .tabs .tabs-middle-container .tab {
+.ui-window > .row > .cell > .tabs-section .tabs .tab,
+.ui-list-window > .row > .cell > .tabs-section .tabs .tab,
+.game-ui .building-cats > .row > .cell > .tabs-section .tabs .tab {
   display: inline-block;
   height: 100%;
   margin: 0 4px;
   padding: 0 16px;
   font-size: 10pt;
+  text-transform: capitalize;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
 }
 .ui-window > .row > .cell > .body,
@@ -628,7 +631,28 @@ th {
   left: 0;
   bottom: 0;
   right: 0;
-  overflow-y: auto;
+  overflow: hidden;
+}
+.ui-window > .row > .cell > .body .tab-content,
+.ui-list-window > .row > .cell > .body .tab-content,
+.game-ui .building-cats > .row > .cell > .body .tab-content {
+  overflow-y: scroll;
+}
+.ui-window > .row > .cell > .body .tab-content:not(:first-child):not(:last-child),
+.ui-list-window > .row > .cell > .body .tab-content:not(:first-child):not(:last-child),
+.game-ui .building-cats > .row > .cell > .body .tab-content:not(:first-child):not(:last-child) {
+  border-left-width: 0;
+  border-right-width: 0;
+}
+.ui-window > .row > .cell > .body .tab-content:first-child,
+.ui-list-window > .row > .cell > .body .tab-content:first-child,
+.game-ui .building-cats > .row > .cell > .body .tab-content:first-child {
+  border-right-width: 0;
+}
+.ui-window > .row > .cell > .body .tab-content:last-child,
+.ui-list-window > .row > .cell > .body .tab-content:last-child,
+.game-ui .building-cats > .row > .cell > .body .tab-content:last-child {
+  border-left-width: 0;
 }
 .ui-window > .row > .cell > .body .tab-content,
 .ui-list-window > .row > .cell > .body .tab-content,
@@ -793,42 +817,92 @@ input {
 .game-ui .face-icon,
 .game-ui .citizen-icon {
   background-image: url(../sprites/icons.png);
-  background-position: 0 28.57142857%;
+  background-position: 0 0%;
   background-size: cover;
 }
 .game-ui .clock-icon {
   background-image: url(../sprites/icons.png);
-  background-position: 0 42.85714286%;
+  background-position: 0 33.33333333%;
   background-size: cover;
 }
 .game-ui .coin-icon {
   background-image: url(../sprites/icons.png);
-  background-position: 0 57.14285714%;
+  background-position: 0 38.88888889%;
   background-size: cover;
 }
 .game-ui .back-icon {
   background-image: url(../sprites/icons.png);
-  background-position: 0 0%;
+  background-position: 0 5.55555556%;
   background-size: cover;
 }
 .game-ui .bulldozer-icon {
   background-image: url(../sprites/icons.png);
-  background-position: 0 14.28571429%;
+  background-position: 0 27.77777778%;
   background-size: cover;
 }
 .game-ui .cross-icon {
   background-image: url(../sprites/icons.png);
-  background-position: 0 71.42857143%;
+  background-position: 0 44.44444444%;
   background-size: cover;
 }
 .game-ui .gear-icon {
   background-image: url(../sprites/icons.png);
-  background-position: 0 85.71428571%;
+  background-position: 0 55.55555556%;
   background-size: cover;
 }
 .game-ui .tick-icon {
   background-image: url(../sprites/icons.png);
   background-position: 0 100%;
+  background-size: cover;
+}
+.game-ui .house-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 72.22222222%;
+  background-size: cover;
+}
+.game-ui .buildings-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 77.77777778%;
+  background-size: cover;
+}
+.game-ui .build-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 11.11111111%;
+  background-size: cover;
+}
+.game-ui .road-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 94.44444444%;
+  background-size: cover;
+}
+.game-ui .hammer-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 61.11111111%;
+  background-size: cover;
+}
+.game-ui .helmet-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 66.66666667%;
+  background-size: cover;
+}
+.game-ui .wood-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 55.55555556%;
+  background-size: cover;
+}
+.game-ui .food-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 66.66666667%;
+  background-size: cover;
+}
+.game-ui .money-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 38.88888889%;
+  background-size: cover;
+}
+.game-ui .stone-icon {
+  background-image: url(../sprites/icons.png);
+  background-position: 0 66.66666667%;
   background-size: cover;
 }
 .game-ui .icon-bar {
@@ -1122,19 +1196,6 @@ input {
 .game-ui .building-view > .row > .cell > .body .info {
   margin: 2%;
 }
-.game-ui .city-view .tab-content {
-  overflow-y: scroll;
-}
-.game-ui .city-view .tab-content:not(:first-child):not(:last-child) {
-  border-left-width: 0;
-  border-right-width: 0;
-}
-.game-ui .city-view .tab-content:first-child {
-  border-right-width: 0;
-}
-.game-ui .city-view .tab-content:last-child {
-  border-left-width: 0;
-}
 .game-ui .city-view .map-tab-content {
   overflow-y: auto;
   height: 100%;
@@ -1210,11 +1271,22 @@ input {
   width: 40%;
   margin: 2%;
   background-color: #fff;
+  position: relative;
 }
 .game-ui .city-view .info-tab-content .bird-eye-container:after {
   content: "";
   display: block;
   padding-top: 100%;
+}
+.game-ui .city-view .info-tab-content .bird-eye-container > * {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
 }
 .game-ui .city-view .info-tab-content .info-container {
   position: absolute;
@@ -1269,19 +1341,22 @@ input {
 .game-ui .top-bar .section {
   float: left;
   height: 100%;
+}
+.game-ui .top-bar .section > .icon-val {
   font-size: 0;
   white-space: nowrap;
+  height: 100%;
 }
-.game-ui .top-bar .section .icon {
+.game-ui .top-bar .section > .icon-val .icon {
   display: inline-block;
   height: 80%;
   vertical-align: middle;
 }
-.game-ui .top-bar .section .icon img {
+.game-ui .top-bar .section > .icon-val .icon img {
   display: block;
   height: 100%;
 }
-.game-ui .top-bar .section .text {
+.game-ui .top-bar .section > .icon-val .text {
   padding-left: 1%;
   display: inline-block;
   height: 100%;

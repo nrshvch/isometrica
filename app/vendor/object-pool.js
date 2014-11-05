@@ -1,4 +1,4 @@
-(function(){
+define(function(require){
     /**
      * @constructor
      */
@@ -36,5 +36,5 @@
         return ObjectPool.returnObject(this, obj);
     };
 
-    this.ObjectPool = ObjectPool;
-}).call(this);
+    return window.ObjectPool = ObjectPool;
+});

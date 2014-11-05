@@ -3,16 +3,16 @@ define(function (require) {
     var glMatrix = require("../vendor/gl-matrix");
     var Events = require("events");
 
+    var events = {
+        inputMove: 0,
+        inputClick: 1,
+        inputDragStart: 2,
+        inputDragEnd: 3,
+        inputDrag: 4
+    };
+
     function CameraScript() {
         engine.Component.call(this);
-        this.events = {
-            inputMove: 0,
-            inputClick: 1,
-            inputDragStart: 2,
-            inputDragEnd: 3,
-            inputDrag: 4
-        };
-
 
         var self = this,
             lastPointerPos = null,
@@ -77,7 +77,11 @@ define(function (require) {
         }
     }
 
+    CameraScript.events = events;
+
     CameraScript.prototype = Object.create(engine.Component.prototype);
+
+    CameraScript.prototype.events = events;
     CameraScript.prototype.constructor = CameraScript;
 
     var tmpctx = document.createElement("canvas").getContext("2d"),
@@ -99,6 +103,14 @@ define(function (require) {
     CameraScript.prototype.onPointerUp = null;
     CameraScript.prototype.onPointerOut = null;
     CameraScript.prototype.panSens = 1;
+    CameraScript.prototype._lock = false;
+
+    CameraScript.prototype.lock = function(l){
+        if(l === undefined)
+            return this._lock;
+
+        this._lock = l;
+    };
 
     CameraScript.prototype.awake = function () {
         var camera = this.gameObject.camera,
@@ -170,6 +182,7 @@ define(function (require) {
     };
 
     CameraScript.prototype.pan = function (x, y) {
+        if(!this._lock)
         this.gameObject.transform.translate(
             (-x * COS45 + y / COS45) / this.panSens, 0,
             (x * COS45 + y / COS45) / this.panSens, 'world'

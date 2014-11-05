@@ -32,7 +32,7 @@ Below are listed development milestones/guidelines, that may vary by time.
 * Bridges
 * More buildings
 * Camera rotation
-* Code minification, resources optimization
+* Code minification, resources optimization - done
 * build task
 
 ### Useful

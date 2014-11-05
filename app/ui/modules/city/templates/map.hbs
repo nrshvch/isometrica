@@ -1,0 +1,19 @@
+<div class="map-tab-content">
+    <div class="map-tab-content-container">
+        <div class="map-container"></div>
+        <div class="map-buttons">
+            <div class="map-button">Crime</div>
+            <div class="map-button active">Ecology</div>
+            <div class="map-button">Wealth</div>
+            <div class="map-button">Terrain</div>
+            <div class="map-button">Names</div>
+            <script>
+                var btns = document.querySelectorAll(".map-button");
+                for (var i = 0; i < btns.length; i++)
+                    btns[i].addEventListener("click", function () {
+                        this.classList.toggle("active");
+                    });
+            </script>
+        </div>
+    </div>
+</div>

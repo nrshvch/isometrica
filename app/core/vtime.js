@@ -39,6 +39,8 @@ define(function (require) {
         newYear: 2
     };
 
+    VTime.prototype.constructor = VTime;
+
     VTime.prototype.start = function(){
         Events.fire(this,this.events.newYear, this.now);
         Events.fire(this,this.events.newMonth, this.now);
@@ -85,6 +87,10 @@ define(function (require) {
 
     VTime.prototype.toString = function(){
         return "D" + this.day + "M" + this.month + "Y" + this.year;
+    };
+
+    VTime.prototype.toMDY = function(){
+        return this.monthName + " " + this.day + ", " + this.year;
     };
 
     VTime.prototype.save = function(){

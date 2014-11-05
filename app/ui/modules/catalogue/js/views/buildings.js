@@ -4,9 +4,15 @@ define(function(require){
     var template = templates["catalogue/buildings"];
 
     return Backbone.View.extend({
+        tagName: "span",
+        events: {
+          "click a[data-building]" : function(e){
+              var building = $(e.currentTarget).attr("data-building");
+              this.catalogue.execute(this.model.get("code"), building);
+          }
+        },
         initialize: function(options){
-            this.options = options || {};
-            this.setElement(document.createDocumentFragment());
+            this.catalogue = options.catalogue;
         },
         render: function(){
             var flat = this.model.toJSON();

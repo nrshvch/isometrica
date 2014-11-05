@@ -23,12 +23,12 @@
         height: 100%;
       }
 
-      & > .tabs {
+      & > .tabs-section {
         height: @tabs-height;
         overflow-x: hidden;
         position: relative;
 
-        .tabs-middle-container {
+        .tabs {
           position: absolute;
           top: 10%;
           bottom: 10%;
@@ -45,6 +45,8 @@
             padding: 0 16px;
             font-size: 10pt;
 
+            text-transform: capitalize;
+
             &:extend(.middle-position all);
 
             .box-shadow;
@@ -54,8 +56,30 @@
 
       & > .body {
         position: absolute;
-        top:0; left:0; bottom: 0; right: 0;
-        overflow-y: auto;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        overflow: hidden;
+
+        .tab-content {
+          &:extend(.ui-block);
+
+          &:not(:first-child):not(:last-child) {
+            border-left-width: 0;
+            border-right-width: 0;
+          }
+
+          &:first-child {
+            border-right-width: 0;
+          }
+
+          &:last-child {
+            border-left-width: 0;
+          }
+
+          overflow-y: scroll;
+        }
 
         .tab-content {
           @duration: .33s;
@@ -65,10 +89,10 @@
           width: 100%;
           top: 0;
           left: -100%;
-          transition: left @duration,opacity 0s @duration;
+          transition: left @duration, opacity 0s @duration;
           opacity: 0;
 
-          &.active~.tab-content {
+          &.active ~ .tab-content {
             left: 100%;
           }
 

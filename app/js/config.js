@@ -23,13 +23,14 @@ define(function (require) {
                 "gl-matrix": "bower_components/gl-matrix/dist/gl-matrix",
                 "simplex-noise": "vendor/simplex-noise",
                 handlebars: "bower_components/handlebars/handlebars.min",
-                events: 'vendor/events',
+                events: 'js/events-wrapper',
                 "object-pool": 'vendor/object-pool',
                 enumeration: 'vendor/enumeration',
                 eventmanager: 'vendor/eventmanager',
                 binaryheap: 'vendor/binaryheap',
                 namespace: 'vendor/namespace',
-                "reactive-property": 'vendor/reactive-property'
+                "reactive-property": 'vendor/reactive-property',
+                "marionette" : "bower_components/backbone.marionette/lib/backbone.marionette"
             }
         },
         shim: {
@@ -43,9 +44,6 @@ define(function (require) {
                 deps: ['underscore', 'jquery'],
                 exports: 'Backbone'
             },
-            'vendor/events': {
-                exports: 'Events'
-            },
             'vendor/object-pool': {
                 deps: ['events'],
                 exports: 'ObjectPool'
@@ -53,9 +51,9 @@ define(function (require) {
             'bower_components/handlebars/handlebars.min': {
                 exports: 'Handlebars'
             },
-            "vendor/reactive-property":{
-                deps: ["events"],
-                exports: "ReactiveProperty"
+            'marionette' : {
+                deps: ['Backbone'],
+                exports: "Backbone"
             }
         }
     });

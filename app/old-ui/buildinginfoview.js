@@ -7,7 +7,6 @@ define(function (require) {
     var template = require("text!templates/buildinginfoview.html"),
         BuildingData = Core.BuildingData,
         ResourcesBarView = require("./views/resourcesbarview"),
-        ToolCode = require("../tools/toolcode");
 
     var BuildingInfoView = Backbone.View.extend({
         events: {

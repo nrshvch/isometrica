@@ -1,7 +1,7 @@
 define(function (require) {
     var Pathfinder = require("./pathfinder");
     var underscore = require("underscore"),
-        BuildingClassCode = require("data/buildingclasscode");
+        BuildingClassCode = require("data/classcode");
 
     function Pathman() {
         this.nodes = [];

@@ -16,7 +16,6 @@ define(function (require) {
     var Events = require("events");
     var ViewportView = require("./views/viewportview");
 
-    var ToolCode = require("../tools/toolcode");
 
     var GameView = Backbone.View.extend({
         events: {

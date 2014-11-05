@@ -1,11 +1,13 @@
-define(function(require){
+define(function (require) {
     var View = require("./views/topbarview");
 
-    function TopBar(ui){
-      this.ui = ui;
-      this.view = new View({
-        options: this
-      });
+    function TopBar(game) {
+        this.app = game;
+        this.ui = game.ui;
+        this.view = new View({
+            app: game,
+            ui: game.ui
+        });
     }
 
     TopBar.prototype.view = null;

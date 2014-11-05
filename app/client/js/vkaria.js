@@ -9,8 +9,6 @@ define(function (require) {
         TilesMan = require("./tilesman"),
         HiliteMan = require("./hiliteman"),
         PathMan = require("./pathfinding/pathman"),
-        Tools = require("./tools/tools"),
-        PlayerScript = require("./components/playerscript"),
         CameraScript = require("./components/camerascript"),
         RenderLayer = require("client/renderlayer"),
         Terrain = require("./terrain");
@@ -18,6 +16,9 @@ define(function (require) {
     var ChunkMan = require("./chunkman");
     var Cityman = require("./cityman");
     var Roadman = require("./roadman");
+    var CameraControl = require("./cameracontrol");
+    var Player = require("./player");
+    var CameraMan = require("./cameraman");
 
     function Vkaria(core, ui, callback) {
         // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -52,16 +53,19 @@ define(function (require) {
         //init engine
         this.game = new engine.Game();
 
-        this.hiliteMan = new HiliteMan();
+        this.hiliteMan = new HiliteMan(this);
         this.buildman = new BuildMan(this);
         this.tilesman = new TilesMan(this);
-        this.tools = new Tools(this);
         this.terrain = new Terrain(this);
         this.envman = new EnvMan(this);
         this.chunkman = new ChunkMan(this);
         this.cityman = new Cityman(this);
         this.roadman = new Roadman(this);
         this.pathman = new PathMan();
+        this.cameraControl = new CameraControl(this);
+        this.cameraman = new CameraMan(this);
+
+        this.player = new Player(this);
     }
 
     Vkaria.prototype.prepare = function(callback){
@@ -91,7 +95,6 @@ define(function (require) {
     Vkaria.prototype.start = function () {
         this.camera = new engine.Camera("mainCamera");
         this.camera.addComponent(new CameraScript());
-        this.camera.addComponent(new PlayerScript());
         this.game.scene.addGameObject(this.camera);
 
         this.game.run();
@@ -101,12 +104,12 @@ define(function (require) {
         this.pathman.start();
         this.buildman.start();
         this.tilesman.start();
-        this.tools.start();
         this.terrain.init();
         this.chunkman.init();
         this.envman.init();
         this.cityman.init();
         this.roadman.init();
+        this.cameraControl.init();
 
 
         window.t = require("./gameObjects/Trolley");

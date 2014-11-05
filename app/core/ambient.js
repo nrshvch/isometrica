@@ -4,7 +4,7 @@
 define(function (require) {
     var Simplex = require("simplex-noise");
     var TerrainType = require("./terraintype");
-    var BuildingCode = require("./buildingcode");
+    var BuildingCode = require("data/buildingcode");
     var BuildingService = require("./buildings");
     var Terrain = require("./terrain");
     var Events = require("events");

@@ -1,5 +1,5 @@
 define(function(require){
-    var BuildingCode = require("core/buildingcode");
+    var BuildingCode = require("data/buildingcode");
 
     /*
      Для точного перемещения внутри ячейки патфайндер запрашивает

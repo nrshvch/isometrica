@@ -186,6 +186,38 @@ define(function (require) {
         return idx - (n & 1) - ((n >> 1) & 1) * dy;
     }
 
+    function max(tile0,tile1){
+        var x0 = Terrain.extractX(tile0);
+        var x1 = Terrain.extractX(tile1);
+        var y0 = Terrain.extractY(tile0);
+        var y1 = Terrain.extractY(tile1);
+
+        return Terrain.convertToIndex(Math.max(x0,x1), Math.max(y0,y1));
+    }
+
+    function min(tile0,tile1){
+        var x0 = Terrain.extractX(tile0);
+        var x1 = Terrain.extractX(tile1);
+        var y0 = Terrain.extractY(tile0);
+        var y1 = Terrain.extractY(tile1);
+
+        return Terrain.convertToIndex(Math.min(x0,x1), Math.min(y0,y1));
+    }
+
+    function contains(tile0,tile1,t){
+        var t0 = min(tile0,tile1);
+        var t1 = max(tile0,tile1);
+
+        var x0 = Terrain.extractX(t0);
+        var x1 = Terrain.extractX(t1);
+        var y0 = Terrain.extractY(t0);
+        var y1 = Terrain.extractY(t1);
+        var x = Terrain.extractX(t);
+        var y = Terrain.extractY(t);
+
+        return x >= x0 && x <= x1 && y >= y0 && y <= y1;
+    }
+
     /**
      * @exports
      * @param world
@@ -401,6 +433,9 @@ define(function (require) {
 
     Terrain.isSlope = isSlope;
     Terrain.isSlopeSmooth = isSlopeSmooth;
+    Terrain.min = min;
+    Terrain.max = max;
+    Terrain.contains = contains;
 
     return Terrain;
 });

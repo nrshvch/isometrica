@@ -1,7 +1,7 @@
 define(function (require) {
     var engine = require("engine/main");
     var Bren = require("../components/cityborderrenderer");
-        //CityScript = require("../cityscript");
+    var City = require("../components/city");
 
     function CityLabel(city){
         engine.GameObject.call(this, "city");
@@ -18,7 +18,9 @@ define(function (require) {
         this.transform.addChild(b.transform);
         b.transform.setLocalPosition(0,0,0);
 
-
+        var cityComponent = new City();
+        cityComponent.city = city;
+        this.addComponent(cityComponent);
         //this.cityScript = this.addComponent(new CityScript(x,y));
     }
 

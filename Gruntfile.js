@@ -181,7 +181,8 @@ module.exports = function (grunt) {
                         },
                         tasks: [
                             {
-                                scale: [64]
+                                filter: ["Point"],
+                                resize: [68]
                             }
                         ]
                     }
@@ -251,26 +252,32 @@ module.exports = function (grunt) {
         },
         watch: {
             less: {
-                files: ['./app/ui/**/*.less'], // which files to watch
+                files: ['app/ui/**/*.less'], // which files to watch
                 tasks: ['less:dev'],
                 options: {
                     nospawn: true
                 }
             },
             templates: {
-                files: "./app/ui/modules/*/templates/*.hbs",
+                files: "app/ui/modules/*/templates/*.hbs",
                 tasks: 'handlebars',
                 options: {
                     nospawn: true
                 }
             },
             sprites: {
-                files: "./app/client/assets/images/**/*",
-                tasks: "sprite:dev"
+                files: "app/client/assets/images/**/*",
+                tasks: "sprite:dev",
+                options: {
+                    nospawn: true
+                }
             },
             icons: {
-                files: "./app/ui/icons/**/*",
-                tasks: "icons"
+                files: "app/ui/icons/**/*.png",
+                tasks: ["icons", "less:dev"],
+                options: {
+                    nospawn: true
+                }
             }
         }
     });
@@ -278,6 +285,6 @@ module.exports = function (grunt) {
     // Default task(s).
     grunt.registerTask('default', ['watch']);
     grunt.registerTask('build', ["clean:dist", 'requirejs', "template:dist", "sprite:dist", "less:dist", "uglify:dist","copy", "imagemin:dist"]);
-    grunt.registerTask("icons", ["clean:tmp", "gm:icons", "sprite:css-icons"]);
+    grunt.registerTask("icons", ["clean:tmp", "gm:icons", "sprite:css-icons", ]);
 
 };

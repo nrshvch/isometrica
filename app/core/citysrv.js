@@ -38,6 +38,8 @@ define(function (require) {
         this._citiesByName = {};
         this._citiesByTile = {};
         this._citiesById = {};
+
+        this.onNewCity = Events.event(events.cityNew);
     }
 
     CityService.events = events;

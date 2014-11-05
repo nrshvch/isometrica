@@ -2,7 +2,7 @@ define(function (require) {
     var Config = require("./config");
     var MainRouter = require("./mainrouter");
     var SplashScreen = require("../modules/splash/js/main");
-    var GameScreen = require("../modules/gamescreen/js/main");
+    var GameScreen = require("../modules/gamescreen/js/gamescreen");
     var $ = require("jquery");
 
     var events = {
@@ -18,6 +18,8 @@ define(function (require) {
     UIManager.prototype._gameScreen = null;
 
     UIManager.prototype.init = function () {
+        //console.log("HAPPEN NOTHING!");
+        //return;
         var self = this;
         var f = function () {
             self.router = new MainRouter({
@@ -86,9 +88,9 @@ define(function (require) {
         window.history.back();
     };
 
-    UIManager.prototype.navigate = function (uri) {
+    UIManager.prototype.navigate = function (uri, trigger) {
         this.router.navigate(uri, {
-            trigger: true
+            trigger: trigger === undefined ? true : trigger
         });
     };
 

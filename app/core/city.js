@@ -9,7 +9,7 @@ define(function (require) {
     var CityTilesParams = require("./city/citytilesparams");
     var CityPopulation = require("./city/citypopulation");
     var Resource = require("./resourcecode");
-    var BuildingCode = require("./buildingcode");
+    var BuildingCode = require("data/buildingcode");
     var Terrain = require("./terrain");
 
     var Core = namespace("Isometrica.Core");
@@ -23,7 +23,16 @@ define(function (require) {
         rename: 1
     };
 
+    /**
+     *
+     * @param world
+     * @param tile
+     * @constructor
+     */
     function City(world, tile) {
+        this.update = Events.event(events.update);
+        this.rename = Events.event(events.rename);
+
         this.root = this.world = world;
         this._id = id++;
         this._tile = tile;
@@ -33,7 +42,7 @@ define(function (require) {
         this.tilesParams = this.tileParamsService = new CityTilesParams(this);
         this.resourcesModule = this.resources = this.resourcesService = new CityResources(this);
         this.statsService = new CityStats(this);
-        this.populationService = new CityPopulation(this);
+        this.populationService = this.population = new CityPopulation(this);
         this.lab = this.laboratoryService = new Laboratory(this);
         this.buildings = this.buildingService = new CityBuildings(this);
 
@@ -77,10 +86,19 @@ define(function (require) {
         return false;
     };
 
+    /**
+     *
+     * @returns {number}
+     */
     City.prototype.id = function(){
         return this._id;
     };
 
+    /**
+     *
+     * @param value
+     * @returns {*}
+     */
     City.prototype.name = function(value) {
         if (value !== undefined) {
             this._name = value;
@@ -90,6 +108,11 @@ define(function (require) {
         return this._name;
     };
 
+    /**
+     *
+     * @param value
+     * @returns {int}
+     */
     City.prototype.tile = function(value){
         if(value !== undefined)
             return this._tile = value;
@@ -115,10 +138,23 @@ define(function (require) {
         return data;
     };
 
+    /**
+     *
+     * @param world
+     * @param tile
+     * @returns {boolean}
+     */
     City.canEstablish = function(world, tile){
         return !Terrain.isSlope(world.terrain.tileSlope(tile));
     };
 
+    /**
+     *
+     * @param world
+     * @param tile
+     * @param name
+     * @returns {*}
+     */
     City.establish = function(world, tile, name) {
         if(!City.canEstablish(world, tile))
             return null;
