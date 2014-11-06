@@ -8,9 +8,13 @@ define(function (require) {
             client: "client/js",
             core: "core",
             engine: "engine",
-            jquery_dist: '',
-            templates: 'templates',
             helpers: './vendor/helpers'
+        },
+        hbs: { // optional
+            helpers: true,            // default: true
+            i18n: false,              // default: false
+            templateExtension: 'hbs', // default: 'hbs'
+            partialsUrl: ''           // default: ''
         },
         map: {
             "*": {
@@ -19,18 +23,17 @@ define(function (require) {
                 underscore: 'bower_components/underscore/underscore',
                 backbone: 'bower_components/backbone/backbone',
                 numeral: 'bower_components/numeral/numeral',
-                text: 'bower_components/requirejs-text/text',
                 "gl-matrix": "bower_components/gl-matrix/dist/gl-matrix",
                 "simplex-noise": "vendor/simplex-noise",
-                handlebars: "bower_components/handlebars/handlebars.min",
                 events: 'js/events-wrapper',
                 "object-pool": 'vendor/object-pool',
                 enumeration: 'vendor/enumeration',
-                eventmanager: 'vendor/eventmanager',
                 binaryheap: 'vendor/binaryheap',
                 namespace: 'vendor/namespace',
                 "reactive-property": 'vendor/reactive-property',
-                "marionette" : "bower_components/backbone.marionette/lib/backbone.marionette"
+                "marionette" : "bower_components/backbone.marionette/lib/backbone.marionette",
+                text: 'bower_components/requirejs-text/text',
+                hbs: 'bower_components/require-handlebars-plugin/hbs'
             }
         },
         shim: {
@@ -47,9 +50,6 @@ define(function (require) {
             'vendor/object-pool': {
                 deps: ['events'],
                 exports: 'ObjectPool'
-            },
-            'bower_components/handlebars/handlebars.min': {
-                exports: 'Handlebars'
             },
             'marionette' : {
                 deps: ['Backbone'],

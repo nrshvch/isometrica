@@ -1,7 +1,6 @@
 define(function(require){
    var Backbone = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["catalogue/categories"];
+    var template = require("hbs!../../templates/categories");
 
     return Backbone.View.extend({
         events: {

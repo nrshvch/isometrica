@@ -1,6 +1,12 @@
-/**
- * Created by denis on 11/5/14.
- */
-/**
- * Created by denis on 11/5/14.
- */
+define(function(require) {
+    var Backbone = require("backbone");
+    var Marionette = Backbone.Marionette;
+
+    function MainApp(){
+        Marionette.Application.apply(this, arguments);
+    }
+
+    MainApp.prototype = Object.create(Marionette.Application.prototype);
+
+    return MainApp;
+});

@@ -1,7 +1,6 @@
 define(function (require) {
     var Backbone = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["city/info"];
+    var template = require("hbs!../../templates/info");
     var ResourceBarView = require("ui/modules/valbar/js/views/view");
 
     return Backbone.View.extend({

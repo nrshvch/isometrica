@@ -1,7 +1,6 @@
 define(function(require) {
   var Backbone = require("backbone");
-  var templates = require("ui/js/templates");
-  var template = templates["gamescreen/gamelayout"];
+    var template = require("hbs!../../templates/gamelayout");
 
   var View = Backbone.View.extend({
     initialize: function(options) {

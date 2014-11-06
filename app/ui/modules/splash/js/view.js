@@ -1,7 +1,7 @@
 define(function(require){
     var Backbone = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["splash/splash"];
+    var template = require("hbs!../templates/splash");
+
     var View = Backbone.View.extend({
         initialize: function(options){
             this.options = options || {};

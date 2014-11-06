@@ -1,7 +1,7 @@
 define(function (require) {
     var Backbone = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["topbar/topbar"];
+    var template = require("hbs!../../templates/topbar");
+
     var Events = require("events");
     var Numeral = require("numeral");
 

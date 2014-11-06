@@ -1,7 +1,7 @@
 define(function(require){
     var Backbone  = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["valbar/valbar"];
+    var template = require("hbs!../../templates/valbar");
+
 
     function onChange(){
         this.render();

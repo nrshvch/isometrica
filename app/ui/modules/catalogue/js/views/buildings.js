@@ -1,7 +1,7 @@
 define(function(require){
     var Backbone = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["catalogue/buildings"];
+    var template = require("hbs!../../templates/buildings");
+
 
     return Backbone.View.extend({
         tagName: "span",

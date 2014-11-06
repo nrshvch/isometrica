@@ -1,6 +1,6 @@
 define(function (require) {
     var Backbone = require("backbone");
-    var template = require("ui/js/templates")["prompt/prompt"];
+    var template = require("hbs!./templates/prompt");
 
     return Backbone.View.extend({
         events: {

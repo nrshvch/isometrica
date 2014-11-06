@@ -2,7 +2,6 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks('grunt-contrib-requirejs');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-contrib-less');
-    grunt.loadNpmTasks('grunt-contrib-handlebars');
     grunt.loadNpmTasks('grunt-spritesmith');
     grunt.loadNpmTasks('grunt-template');
     grunt.loadNpmTasks('grunt-contrib-clean');
@@ -65,21 +64,6 @@ module.exports = function (grunt) {
                 },
                 files: {
                     "./dist/ui/css/main.css": "./app/ui/less/main.less"
-                }
-            }
-        },
-        handlebars: {
-            compile: {
-                options: {
-                    namespace: "Templates",
-                    amd: true,
-                    processName: function (filePath) {
-                        var file = filePath.replace(/\.\/app\/ui\/modules\/(.*)\/templates\/(\w+)\.hbs/, '$1/$2');
-                        return file;
-                    }
-                },
-                files: {
-                    "./app/ui/js/templates.js": "./app/ui/**/*.hbs"
                 }
             }
         },
@@ -254,13 +238,6 @@ module.exports = function (grunt) {
             less: {
                 files: ['app/ui/**/*.less'], // which files to watch
                 tasks: ['less:dev'],
-                options: {
-                    nospawn: true
-                }
-            },
-            templates: {
-                files: "app/ui/modules/*/templates/*.hbs",
-                tasks: 'handlebars',
                 options: {
                     nospawn: true
                 }

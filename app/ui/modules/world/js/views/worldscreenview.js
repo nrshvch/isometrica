@@ -1,7 +1,7 @@
 define(function (require) {
     var Backbone = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["world/worldscreen"];
+    var template = require("hbs!../../templates/worldscreen");
+
     var $ = require("jquery");
     var BuildingCode = require("data/buildingcode");
 

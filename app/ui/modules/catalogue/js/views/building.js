@@ -3,8 +3,7 @@
  */
 define(function (require) {
     var Backbone = require("backbone");
-    var templates = require("ui/js/templates");
-    var template = templates["catalogue/building"];
+    var template = require("hbs!../../templates/building");
 
     var View = Backbone.View.extend({
         initialize: function (options) {
