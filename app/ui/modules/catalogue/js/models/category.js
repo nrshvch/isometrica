@@ -1,16 +1,14 @@
-define(function(require){
-   var Backbone = require("backbone");
-    var Buildings = require("../collections/buildings");
+import Backbone from "backbone";
+import Buildings from "../collections/buildings";
 
-    return Backbone.Model.extend({
-        initialize: function(){
-            this.buildings = new Buildings()
-        },
-        defaults: function(){
-            return {
-                code: -1,
-                displayName: "Unnamed"
-            }
+export default Backbone.Model.extend({
+    initialize: function(){
+        this.buildings = new Buildings()
+    },
+    defaults: function(){
+        return {
+            code: -1,
+            displayName: "Unnamed"
         }
-    });
+    }
 });

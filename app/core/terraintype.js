@@ -1,18 +1,17 @@
-define(function (require) {
-    var namespace = require("namespace");
-    var Core = namespace("Isometrica.Core");
+import namespace from "namespace";
 
-    /**
-     * @enum TerrainType
-     * @exports TerrainType
-     */
-    var TerrainType = {
-        water: 0,
-        grass: 1,
-        shore: 2
-    };
+var Core = namespace("Isometrica.Core");
 
-    Core.TerrainType = TerrainType;
+/**
+ * @enum TerrainType
+ * @exports TerrainType
+ */
+var TerrainType = {
+    water: 0,
+    grass: 1,
+    shore: 2
+};
 
-    return TerrainType;
-});
+Core.TerrainType = TerrainType;
+
+export default TerrainType;

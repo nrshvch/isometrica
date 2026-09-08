@@ -1,7 +1,6 @@
-define(function (require) {
-    var Events = require("events");
+import Events from "events";
 
-    var millisecondsInDay = 86400000,
+var millisecondsInDay = 86400000,
         monthNames = [ "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December" ];
 
@@ -102,5 +101,4 @@ define(function (require) {
         return true;
     };
 
-    return VTime;
-});
+export default VTime;

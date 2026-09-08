@@ -5,199 +5,197 @@
  * Time: 18:56
  * To change this template use File | Settings | File Templates.
  */
-define(function (require) {
-    var BuildingState = require("core/buildingstate");
-    var Resources = require("core/resources");
-    var Events = require("events");
-    /**
-     * @type {BuildingClassCode}
-     */
-    var BuildingClassCode = require("data/classcode");
-    var BuildingData = require("data/buildings");
-    var TileIterator = require("./tileiterator");
-    /**
-     * @type {TileIteratorRadial}
-     */
-    var TileIteratorRadial = require("./tileiteratorradial");
-    /**
-     * @type {TerrainType}
-     */
-    var TerrainType = require("./terraintype");
-    /**
-     * @type {GatherReq}
-     */
-    var GatherReq = require("./gatherreq");
-    var Terrain = require("./terrain");
+import BuildingState from "core/buildingstate";
+import Resources from "core/resources";
+import Events from "events";
+/**
+ * @type {BuildingClassCode}
+ */
+import BuildingClassCode from "data/classcode";
+import BuildingData from "data/buildings";
+import TileIterator from "./tileiterator";
+/**
+ * @type {TileIteratorRadial}
+ */
+import TileIteratorRadial from "./tileiteratorradial";
+/**
+ * @type {TerrainType}
+ */
+import TerrainType from "./terraintype";
+/**
+ * @type {GatherReq}
+ */
+import GatherReq from "./gatherreq";
+import Terrain from "./terrain";
 
-    var Construction = require("./construction");
+import Construction from "./construction";
 
-    var events = {
-        stateChange: 0
-    };
+var events = {
+    stateChange: 0
+};
 
-    function Building() {
-        Construction.constructor(this);
+function Building() {
+    Construction.constructor(this);
 
-        this.producing = {};
-        this.demanding = {};
+    this.producing = {};
+    this.demanding = {};
+}
+
+Building.events = events;
+
+Building.prototype = Object.create(Construction.prototype);
+Building.prototype.constructor = Building;
+
+Building.prototype.createdAt = null; //game time
+Building.prototype.demanding = null;
+Building.prototype.producing = null;
+Building.prototype.permanent = true;
+Building.prototype.events = events;
+
+Building.prototype.init = function(world, code, tile, rot){
+    Construction.init(this, world, code, tile, rot);
+
+    this.createdAt = this.createdAt || this.world.time.now;
+
+    Events.on(this, Construction.events.stateChange, onStateChange, this);
+
+    if (this.data.classCode !== BuildingClassCode.tree) {
+        Events.once(this, "dispose", onDispose, Events.on(this.world, this.world.events.tick, onTick, this));
     }
+};
 
-    Building.events = events;
+Building.prototype.dispose = function () {
+    Events.fire(this, "dispose");
+};
 
-    Building.prototype = Object.create(Construction.prototype);
-    Building.prototype.constructor = Building;
+Building.prototype.citizenCapacity = function () {
+    var cap = 0;
+    var data = BuildingData[this.buildingCode];
 
-    Building.prototype.createdAt = null; //game time
-    Building.prototype.demanding = null;
-    Building.prototype.producing = null;
-    Building.prototype.permanent = true;
-    Building.prototype.events = events;
+    if (this._state == BuildingState.ready)
+        cap = data.citizenCapacity || 0;
 
-    Building.prototype.init = function(world, code, tile, rot){
-        Construction.init(this, world, code, tile, rot);
+    return cap;
+};
 
-        this.createdAt = this.createdAt || this.world.time.now;
+function onDispose(self, args, tickSubscriptionId) {
+    Events.off(self.world, self.world.events.tick, tickSubscriptionId);
 
-        Events.on(this, Construction.events.stateChange, onStateChange, this);
+    self._state = BuildingState.none;
+    updateEffectOnTileParams(self);
+}
 
-        if (this.data.classCode !== BuildingClassCode.tree) {
-            Events.once(this, "dispose", onDispose, Events.on(this.world, this.world.events.tick, onTick, this));
+function checkFullfilRequirements(self) {
+    var world = self.world;
+    var data = BuildingData[self.buildingCode];
+
+    if (!world)
+        throw "World is not set yet";
+
+    if (data.requirement === GatherReq.inGrassLand) {
+        var occupiedIterator = self.occupiedTiles();
+
+        while (!occupiedIterator.done) {
+            var tile = occupiedIterator.next();
+            var terrainType = world.terrain.getTerrainType(tile);
+            if (terrainType !== TerrainType.grass)
+                return false;
         }
-    };
+    } else if (data.requirement === GatherReq.nearTree) {
+        var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, data.sizeX + 2, data.sizeY + 2);
+        while (!iter.done) {
+            var tile = iter.next();
+            var b = world.buildings.get(tile);
 
-    Building.prototype.dispose = function () {
-        Events.fire(this, "dispose");
-    };
-
-    Building.prototype.citizenCapacity = function () {
-        var cap = 0;
-        var data = BuildingData[this.buildingCode];
-
-        if (this._state == BuildingState.ready)
-            cap = data.citizenCapacity || 0;
-
-        return cap;
-    };
-
-    function onDispose(self, args, tickSubscriptionId) {
-        Events.off(self.world, self.world.events.tick, tickSubscriptionId);
-
-        self._state = BuildingState.none;
-        updateEffectOnTileParams(self);
-    }
-
-    function checkFullfilRequirements(self) {
-        var world = self.world;
-        var data = BuildingData[self.buildingCode];
-
-        if (!world)
-            throw "World is not set yet";
-
-        if (data.requirement === GatherReq.inGrassLand) {
-            var occupiedIterator = self.occupiedTiles();
-
-            while (!occupiedIterator.done) {
-                var tile = occupiedIterator.next();
-                var terrainType = world.terrain.getTerrainType(tile);
-                if (terrainType !== TerrainType.grass)
-                    return false;
-            }
-        } else if (data.requirement === GatherReq.nearTree) {
-            var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, data.sizeX + 2, data.sizeY + 2);
-            while (!iter.done) {
-                var tile = iter.next();
-                var b = world.buildings.get(tile);
-
-                if(b === undefined && world.envService.hasTree(tile))
+            if(b === undefined && world.envService.hasTree(tile))
+                return true;
+            else if (b !== null) {
+                var d = BuildingData[b.buildingCode];
+                if (d.classCode === BuildingClassCode.tree)
                     return true;
-                else if (b !== null) {
-                    var d = BuildingData[b.buildingCode];
-                    if (d.classCode === BuildingClassCode.tree)
-                        return true;
-                }
-            }
-        } else if (data.requirement === GatherReq.nearWater) {
-            var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, data.sizeX + 2, data.sizeY + 2);
-            while (!iter.done) {
-                var tile = iter.next();
-                var t = world.terrain.getTerrainType(tile);
-                if (t === TerrainType.water || t === TerrainType.shore) {
-                    return true;
-                }
             }
         }
-
-        return true;
+    } else if (data.requirement === GatherReq.nearWater) {
+        var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, data.sizeX + 2, data.sizeY + 2);
+        while (!iter.done) {
+            var tile = iter.next();
+            var t = world.terrain.getTerrainType(tile);
+            if (t === TerrainType.water || t === TerrainType.shore) {
+                return true;
+            }
+        }
     }
 
-    /**
-     * Updates params of tiles that are affected by effect of this building
-     * @param self
-     */
-    function updateEffectOnTileParams(self) {
-        var key = "building_" + self.id;
-        var paramsMan = self.world.tileParams;
-        var circle, tile, data, tilesParams, effect, effectRadius;
+    return true;
+}
 
-        data = BuildingData[self.buildingCode];
-        effect = data.tileEffect || null;
-        effectRadius = data.tileEffectRadius || 1;
+/**
+ * Updates params of tiles that are affected by effect of this building
+ * @param self
+ */
+function updateEffectOnTileParams(self) {
+    var key = "building_" + self.id;
+    var paramsMan = self.world.tileParams;
+    var circle, tile, data, tilesParams, effect, effectRadius;
 
-        if (self._state === BuildingState.ready) {
-            if (effect !== null) {
-                if (paramsMan.has(key))
-                    paramsMan.remove(key);
+    data = BuildingData[self.buildingCode];
+    effect = data.tileEffect || null;
+    effectRadius = data.tileEffectRadius || 1;
 
-                circle = new TileIteratorRadial(self.tile, effectRadius);
-                tilesParams = {};
-
-                while (!circle.done) {
-                    tile = TileIteratorRadial.next(circle);
-                    tilesParams[tile] = effect;
-                }
-
-                paramsMan.add(key, tilesParams);
-            }
-        } else {
-            if (effect !== null && paramsMan.has(key))
+    if (self._state === BuildingState.ready) {
+        if (effect !== null) {
+            if (paramsMan.has(key))
                 paramsMan.remove(key);
+
+            circle = new TileIteratorRadial(self.tile, effectRadius);
+            tilesParams = {};
+
+            while (!circle.done) {
+                tile = TileIteratorRadial.next(circle);
+                tilesParams[tile] = effect;
+            }
+
+            paramsMan.add(key, tilesParams);
         }
+    } else {
+        if (effect !== null && paramsMan.has(key))
+            paramsMan.remove(key);
     }
+}
 
-    function onTick(sender, args, self) {
-        self.getCity();
+function onTick(sender, args, self) {
+    self.getCity();
 
-        produce(self);
-        demand(self);
+    produce(self);
+    demand(self);
+}
+
+function onStateChange(sender, args, self){
+    updateEffectOnTileParams(self);
+}
+
+function produce(self) {
+    Resources.clear(self.producing);
+
+    var data = BuildingData[self.buildingCode];
+    var city = self.getCity();
+
+    if (self._state == BuildingState.ready && (data.requirement === undefined || data.requirement === GatherReq.none || checkFullfilRequirements(self))) {
+        Resources.add(self.producing, self.producing, data.producing);
+        city.resources.add(self.producing);
     }
+}
 
-    function onStateChange(sender, args, self){
-        updateEffectOnTileParams(self);
+function demand(self) {
+    Resources.clear(self.demanding);
+
+    var data = BuildingData[self.buildingCode];
+    var city = self.getCity();
+
+    if (self._state == BuildingState.ready) {
+        Resources.add(self.demanding, self.demanding, data.demanding);
+        city.resources.sub(self.demanding);
     }
+}
 
-    function produce(self) {
-        Resources.clear(self.producing);
-
-        var data = BuildingData[self.buildingCode];
-        var city = self.getCity();
-
-        if (self._state == BuildingState.ready && (data.requirement === undefined || data.requirement === GatherReq.none || checkFullfilRequirements(self))) {
-            Resources.add(self.producing, self.producing, data.producing);
-            city.resources.add(self.producing);
-        }
-    }
-
-    function demand(self) {
-        Resources.clear(self.demanding);
-
-        var data = BuildingData[self.buildingCode];
-        var city = self.getCity();
-
-        if (self._state == BuildingState.ready) {
-            Resources.add(self.demanding, self.demanding, data.demanding);
-            city.resources.sub(self.demanding);
-        }
-    }
-
-    return Building;
-});
+export default Building;

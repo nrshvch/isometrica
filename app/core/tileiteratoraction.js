@@ -1,7 +1,8 @@
-define(/** @lends TileIteratorAction */ function (require) {
-    var Namespace = require("namespace");
-    var TileIterator = require("./tileiterator");
-    var Core = Namespace("Isometrica.Core");
+/** @lends TileIteratorAction */
+import Namespace from "namespace";
+import TileIterator from "./tileiterator";
+
+var Core = Namespace("Isometrica.Core");
 
     /**
      * @type {TileIteratorAction}
@@ -41,5 +42,4 @@ define(/** @lends TileIteratorAction */ function (require) {
         return TileIteratorAction.setup(tile, w, l, f, args);
     };
 
-    return TileIteratorAction;
-});
+export default TileIteratorAction;

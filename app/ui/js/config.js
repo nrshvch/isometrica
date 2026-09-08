@@ -1,5 +1,3 @@
-define(function(){
-   return {
-       splashTime: 2000
-   }
-});
+export default {
+    splashTime: 2000
+}

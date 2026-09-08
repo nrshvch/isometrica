@@ -1,8 +1,8 @@
-define(function(require){
-    var namespace = require("namespace");
-    var Client = namespace("Isometrica.Client");
+import namespace from "namespace";
+import Vkaria from "./vkaria";
 
-    Client.Vkaria = require("./vkaria");
+var Client = namespace("Isometrica.Client");
 
-    return Client;
-});
+Client.Vkaria = Vkaria;
+
+export default Client;

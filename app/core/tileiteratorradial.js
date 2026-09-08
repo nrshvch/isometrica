@@ -1,7 +1,7 @@
-define(function(require){
-    var Namespace = require("namespace");
-    var Terrain = require("./terrain");
-    var Core = Namespace("Isometrica.Core");
+import Namespace from "namespace";
+import Terrain from "./terrain";
+
+var Core = Namespace("Isometrica.Core");
 
     /**
      * @type {TileRadialIterator}
@@ -77,5 +77,4 @@ define(function(require){
         return (Math.sqrt(dx*dx + dy*dy)) <= iterator.radius;
     }
 
-    return TileRadialIterator;
-});
+export default TileRadialIterator;

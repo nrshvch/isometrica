@@ -1,61 +1,59 @@
-define(function (require) {
-    var WorldScreenView = require("./views/worldscreenview");
-    var Controls = require("./worldaction");
+import WorldScreenView from "./views/worldscreenview";
+import Controls from "./worldaction";
 
-    function WorldScreen(ui, client) {
-        this.ui = ui;
-        this.view = new WorldScreenView({
-            controller: this
-        });
-        this.client = client;
-        this.init(client);
+function WorldScreen(ui, client) {
+    this.ui = ui;
+    this.view = new WorldScreenView({
+        controller: this
+    });
+    this.client = client;
+    this.init(client);
 
-        window.worldScreen = this;
+    window.worldScreen = this;
+}
+
+WorldScreen.prototype.view = null;
+
+WorldScreen.prototype.init = function (client) {
+    var cnv = this.view.getCanvas();
+    var cam = client.camera;
+    var viewport = client.game.graphics.createViewport(cnv);
+    viewport.setCamera(cam);
+    this.viewport = viewport;
+};
+
+WorldScreen.prototype.updateSize = function () {
+    var cnv = this.view.getCanvas();
+    this.viewport.setSize(cnv.offsetWidth, cnv.offsetHeight);
+};
+
+WorldScreen.prototype.show = function (name) {
+    switch (name) {
+        case "build":
+            this.view.showBuildButtons();
+            break;
+        default:
+            this.view.showMainButtons();
     }
+};
 
-    WorldScreen.prototype.view = null;
+WorldScreen.prototype.showControls = function (controls) {
+    if (controls === undefined)
+        controls = new Controls();
 
-    WorldScreen.prototype.init = function (client) {
-        var cnv = this.view.getCanvas();
-        var cam = client.camera;
-        var viewport = client.game.graphics.createViewport(cnv);
-        viewport.setCamera(cam);
-        this.viewport = viewport;
-    };
+    this.view.showActionButtons(controls);
 
-    WorldScreen.prototype.updateSize = function () {
-        var cnv = this.view.getCanvas();
-        this.viewport.setSize(cnv.offsetWidth, cnv.offsetHeight);
-    };
-
-    WorldScreen.prototype.show = function (name) {
-        switch (name) {
-            case "build":
-                this.view.showBuildButtons();
-                break;
-            default:
-                this.view.showMainButtons();
-        }
-    };
-
-    WorldScreen.prototype.showControls = function (controls) {
-        if (controls === undefined)
-            controls = new Controls();
-
-        this.view.showActionButtons(controls);
-
-        return controls;
-    };
+    return controls;
+};
 
 
 
-    WorldScreen.prototype.showHint = function(text){
-        this.view.hint(text);
-    };
+WorldScreen.prototype.showHint = function(text){
+    this.view.hint(text);
+};
 
-    WorldScreen.prototype.hideHint = function(){
-        this.view.hint("");
-    };
+WorldScreen.prototype.hideHint = function(){
+    this.view.hint("");
+};
 
-    return WorldScreen;
-});
+export default WorldScreen;

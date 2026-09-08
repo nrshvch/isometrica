@@ -1,11 +1,9 @@
-define(function(require){
-   var Engine = require("engine/main");
+import Engine from "engine/main";
 
-    function City(){}
+function City(){}
 
-    City.prototype = Object.create(Engine.Component.prototype);
+City.prototype = Object.create(Engine.Component.prototype);
 
-    City.prototype.city = null;
+City.prototype.city = null;
 
-    return City;
-});
+export default City;

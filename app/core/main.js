@@ -1,49 +1,46 @@
-define(function (require) {
-    var namespace = require("namespace");
+import namespace from "namespace";
 
-    require("data/buildings"); //for sake of compatibility
-    require("data/classcode"); //for sake of compatibility
-    require("data/classes"); //for sake of compatibility
-    require("./logic");
-    require("./terraintype");
-    require("./ambient");
-    require("./building");
-    //require("data/classcode");
-    //require("./buildingclassdata");
-    require("data/buildingcode");
-    require("./buildingpositioning");
-    require("./buildings");
-    require("./buildingstate");
-    require("./city");
-    require("./config");
-    require("./construction");
-    require("./errorcode");
-    require("./gatherreq");
-    require("./influencemap");
-    require("./logic");
-    require("./msgsrv");
-    require("./researchdirection");
-    require("./researchstate");
-    require("./resourcecode");
-    require("./resources");
-    require("./terrain");
-    require("./terraintype");
-    require("./tileiterator");
-    require("./tileiteratoraction");
-    require("./tileiteratorradial");
-    require("./tiletype");
-    require("./vtime");
-    require("./city/area");
-    require("./city/citybuildings");
-    require("./city/citypopulation");
-    require("./city/cityresources");
-    require("./city/citystats");
-    require("./city/citytilesparams");
-    require("./city/laboratory");
-    require("./world/marketsrv");
-    require("./world/tileparam");
-    require("./world/tileparams");
-    require("./world/tileparamsmanager");
+import "data/buildings"; //for sake of compatibility
+import "data/classcode"; //for sake of compatibility
+import "data/classes"; //for sake of compatibility
+import "./logic";
+import "./terraintype";
+import "./ambient";
+import "./building";
+//import "data/classcode";
+//import "./buildingclassdata";
+import "data/buildingcode";
+import "./buildingpositioning";
+import "./buildings";
+import "./buildingstate";
+import "./city";
+import "./config";
+import "./construction";
+import "./errorcode";
+import "./gatherreq";
+import "./influencemap";
+import "./logic";
+import "./msgsrv";
+import "./researchdirection";
+import "./researchstate";
+import "./resourcecode";
+import "./resources";
+import "./terrain";
+import "./tileiterator";
+import "./tileiteratoraction";
+import "./tileiteratorradial";
+import "./tiletype";
+import "./vtime";
+import "./city/area";
+import "./city/citybuildings";
+import "./city/citypopulation";
+import "./city/cityresources";
+import "./city/citystats";
+import "./city/citytilesparams";
+import "./city/laboratory";
+import "./world/marketsrv";
+import "./world/tileparam";
+import "./world/tileparams";
+import "./world/tileparamsmanager";
 
-    return namespace("Isometrica.Core");
-});
+export default namespace("Isometrica.Core");

@@ -1,13 +1,11 @@
-define(function(require){
-   var Backbone  = require("backbone");
+import Backbone from "backbone";
 
-    return Backbone.Model.extend({
-        defaults: function(){
-            return {
-                icon: null,
-                value: "-",
-                title: ""
-            }
+export default Backbone.Model.extend({
+    defaults: function(){
+        return {
+            icon: null,
+            value: "-",
+            title: ""
         }
-    });
+    }
 });

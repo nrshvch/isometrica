@@ -5,13 +5,12 @@
  * Time: 18:41
  * To change this template use File | Settings | File Templates.
  */
-define(function (require) {
-    var Resources = require("../resources"),
-        Events = require("events"),
-        BuildingData = require("data/buildings");
+import Resources from "../resources";
+import Events from "events";
+import BuildingData from "data/buildings";
+import namespace from "namespace";
 
-    var namespace = require("namespace");
-    var CityService = namespace("Isometrica.Core.CityService");
+var CityService = namespace("Isometrica.Core.CityService");
     CityService.Stats = CityStats;
 
     var resourceBuffer1 = {};
@@ -122,5 +121,4 @@ define(function (require) {
         return cityStats.maintenanceCost;
     }
 
-    return CityStats;
-});
+export default CityStats;

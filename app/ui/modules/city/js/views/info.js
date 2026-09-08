@@ -1,37 +1,39 @@
-define(function (require) {
-    var Backbone = require("backbone");
-    var template = require("hbs!../../templates/info");
-    var ResourceBarView = require("ui/modules/valbar/js/views/view");
+import Backbone from "backbone";
+import __templateSource from "../../templates/info.hbs?raw";
+import Handlebars from "handlebars";
+import ResourceBarView from "ui/modules/valbar/js/views/view";
+import $ from "jquery";
 
-    return Backbone.View.extend({
-        initialize: function (options) {
-            this.setElement(template(this.model.toJSON()));
-            var resBar = new ResourceBarView({
-                collection: this.model.resources
-            });
-            $(".available-resources", this.$el).append(resBar.el);
-            this.listenTo(this.model, "change", function(){
-                this.render();
-            });
+var template = Handlebars.compile(__templateSource);
+
+export default Backbone.View.extend({
+    initialize: function (options) {
+        this.setElement(template(this.model.toJSON()));
+        var resBar = new ResourceBarView({
+            collection: this.model.resources
+        });
+        $(".available-resources", this.$el).append(resBar.el);
+        this.listenTo(this.model, "change", function(){
+            this.render();
+        });
 
 
-            //vp cam
-            var client = options.cityView.game.client;
-            var cam = client.cameraman.createCamera();
-            var cityId = this.model.city.id();
-            var go = client.cityman.getCityGameObject(cityId);
-            var pos = go.transform.getPosition();
-            cam.transform.setPosition(pos[0], pos[1], pos[2]);
-            var viewport = client.game.graphics.createViewport();
-            viewport.setCamera(cam);
-            $(".bird-eye-container", this.$el).append(viewport.canvas);
-            viewport.setSize(400, 400);
-        },
-        render: function(){
-            $(".pop", this.$el).text(this.model.city.population.getPopulation());
-            $(".maxPop", this.$el).text(this.model.city.population.getCapacity());
+        //vp cam
+        var client = options.cityView.game.client;
+        var cam = client.cameraman.createCamera();
+        var cityId = this.model.city.id();
+        var go = client.cityman.getCityGameObject(cityId);
+        var pos = go.transform.getPosition();
+        cam.transform.setPosition(pos[0], pos[1], pos[2]);
+        var viewport = client.game.graphics.createViewport();
+        viewport.setCamera(cam);
+        $(".bird-eye-container", this.$el).append(viewport.canvas);
+        viewport.setSize(400, 400);
+    },
+    render: function(){
+        $(".pop", this.$el).text(this.model.city.population.getPopulation());
+        $(".maxPop", this.$el).text(this.model.city.population.getCapacity());
 
-            return this;
-        }
-    });
+        return this;
+    }
 });

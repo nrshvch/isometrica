@@ -1,7 +1,7 @@
 //ENUM of codes of different building kinds. e.g. house1,house2,house3 all are of house class(group).
-define(function (require) {
-    var namespace = require("namespace");
-    var Core = namespace("Isometrica.Core");
+import namespace from "namespace";
+
+var Core = namespace("Isometrica.Core");
 
     /**
      * @exports BuildingClassCode
@@ -16,5 +16,4 @@ define(function (require) {
         commerce: 5
     };
 
-    return BuildingClassCode;
-});
+export default BuildingClassCode;

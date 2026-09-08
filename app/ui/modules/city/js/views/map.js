@@ -1,15 +1,16 @@
-define(function (require) {
-    var Backbone = require("backbone");
-    var template = require("hbs!../../templates/map");
+import Backbone from "backbone";
+import __templateSource from "../../templates/map.hbs?raw";
+import Handlebars from "handlebars";
+
+var template = Handlebars.compile(__templateSource);
 
 
 
-    return Backbone.View.extend({
-        initialize: function (options) {
-            this.setElement(template());
-        },
-        render: function () {
+export default Backbone.View.extend({
+    initialize: function (options) {
+        this.setElement(template());
+    },
+    render: function () {
 
-        },
-    });
+    },
 });

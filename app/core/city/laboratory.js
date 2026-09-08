@@ -1,14 +1,13 @@
 //TODO время изучения и прогресс должны хранится в таком формате, чтобы можно было бзе проблем начать изучать из сэйвгэйма
 
-define(function (require) {
-    var Events = require("events"),
-        ResearchState = require("../researchstate"),
-        Direction = require("../researchdirection"),
-        BuildingData = require("data/buildings"),
-        VTime = require("../vtime");
+import Events from "events";
+import ResearchState from "../researchstate";
+import Direction from "../researchdirection";
+import BuildingData from "data/buildings";
+import VTime from "../vtime";
+import namespace from "namespace";
 
-    var namespace = require("namespace");
-    var CityService = namespace("Isometrica.Core.CityService");
+var CityService = namespace("Isometrica.Core.CityService");
     CityService.Laboratory = Lab;
 
     var DirectionData = {};
@@ -155,5 +154,4 @@ define(function (require) {
         return this.dirData;
     };
 
-    return Lab;
-});
+export default Lab;

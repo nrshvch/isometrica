@@ -190,15 +190,15 @@
     @tick: 0px 1152px 0px -1152 64px 64 64px 1216 '../sprites/icons.png';
 
     .sprite-position(@sprite) {
-    @offset-y: ~`parseInt("@{sprite}".split(', ')[1],10)`;
-    @height: ~`parseInt("@{sprite}".split(', ')[5],10)`;
-    @total-height: ~`parseInt("@{sprite}".split(', ')[7],10)`;
+    @offset-y: unit(extract(@sprite, 2));
+    @height: extract(@sprite, 6);
+    @total-height: extract(@sprite, 8);
     @y: @offset-y / ( @total-height - @height ) * 100;
-    background-position: 0  0%+@y;
+    background-position: 0 (0% + @y);
     }
 
     .sprite-image(@sprite) {
-    @sprite-image: ~`"@{sprite}".split(', ')[8].slice(1, -2)`;
+    @sprite-image: extract(@sprite, 9);
     background-image: url(@sprite-image);
     }
 
