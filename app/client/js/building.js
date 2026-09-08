@@ -1,7 +1,7 @@
 define(function (require) {
     var engine = require("engine/main"),
         Core = require("core/main"),
-        glMatrix = require("./vendor/gl-matrix"),
+        glMatrix = require("gl-matrix"),
         buildingData = Core.BuildingData,
         BuildingData = buildingData,
         BuildingClassCode = require("data/classcode"),
