@@ -1,6 +1,6 @@
 define(function (require) {
     var engine = require("engine/main");
-    var glMatrix = require("../vendor/gl-matrix");
+    var glMatrix = require("gl-matrix");
 
     function Component() {
         engine.Component.call(this);

@@ -7,7 +7,7 @@
  */
 define(function (require) {
 
-    var BinaryHeap = require("binaryheap");
+    var BinaryHeap = require("yabh");
 
     function Pathfinder() {
 
@@ -90,8 +90,11 @@ define(function (require) {
                         visited[neighbor.nodeId] = true;
                     }
                     else {
-                        // Already seen the node, but since it has been rescored we need to reorder it in the heap
-                        OPEN.rescoreElement(neighbor);
+                        // Already seen the node, but since it has been rescored we need to reorder it in the heap.
+                        // yabh has no rescoreElement; re-inserting reorders it the same way (and is the same O(n),
+                        // since the old rescoreElement also had to indexOf the node first).
+                        OPEN.remove(neighbor);
+                        OPEN.push(neighbor);
                     }
                 }
             }

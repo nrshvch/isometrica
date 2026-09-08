@@ -3,7 +3,7 @@
  */
 define(function (require) {
     var Engine = require("engine/main");
-    var glMatrix = require("../vendor/gl-matrix");
+    var glMatrix = require("gl-matrix");
     var Vec3 = glMatrix.vec3;
     var Core = require("core/main");
     var Config = require("../config");

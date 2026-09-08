@@ -1,6 +1,6 @@
 //This wrapper is neccessary in order to provide compatibility across all my code, because at different times I've used different approaches of managing events
 define(function (require) {
-    var Events = require("vendor/events");
+    var Events = require("events/main");
 
     function EventEmmiter() {
     }

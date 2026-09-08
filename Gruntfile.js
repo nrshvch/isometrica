@@ -226,7 +226,7 @@ module.exports = function (grunt) {
         copy: {
             dist: {
                 files: [
-                    {expand: true, cwd: './app/bower_components/requirejs', src: ['require.js'], dest: './dist/js'},
+                    {expand: true, cwd: './node_modules/requirejs', src: ['require.js'], dest: './dist/js'},
                     {expand: true, cwd: './app/ui/fonts', src: ['**'], dest: './dist/ui/fonts'},
                     {expand: true, cwd: './app/ui/css/img', src: ['**'], dest: './dist/ui/css/img'},
                     {expand: true, cwd: './app/ui/img', src: ['**'], dest: './dist/ui/img'},

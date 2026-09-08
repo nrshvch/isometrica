@@ -4,7 +4,7 @@ define(function (require) {
     var namespace = require("namespace");
     var ResourceCode = require("core/resourcecode");
     var TerrainType = require('./terraintype');
-    var Simplex = require("simplex-noise");
+    var Simplex = require("seeded-simplex");
     var Events = require("events");
     //var TileIterator = require("./tileiterator");
 
