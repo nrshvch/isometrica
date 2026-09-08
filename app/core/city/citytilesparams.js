@@ -1,11 +1,10 @@
 /**
  * Created by User on 25.08.2014.
  */
-define(function(require){
-    var TileParam = require("../world/tileparam");
+import TileParam from "../world/tileparam";
+import namespace from "namespace";
 
-    var namespace = require("namespace");
-    var CityService = namespace("Isometrica.Core.CityService");
+var CityService = namespace("Isometrica.Core.CityService");
     CityService.TileParams = CityTilesParams;
 
     function CityTilesParams(city){
@@ -29,5 +28,4 @@ define(function(require){
         return (i > 0 && ecosum / i) || -1;
     };
 
-    return CityTilesParams;
-});
+export default CityTilesParams;

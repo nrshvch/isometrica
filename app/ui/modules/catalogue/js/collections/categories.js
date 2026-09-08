@@ -1,8 +1,6 @@
-define(function(require){
-    var Backbone = require("backbone");
-    var Category = require("../models/category");
+import Backbone from "backbone";
+import Category from "../models/category";
 
-    return Backbone.Collection.extend({
-       model: Category
-    });
+export default Backbone.Collection.extend({
+   model: Category
 });

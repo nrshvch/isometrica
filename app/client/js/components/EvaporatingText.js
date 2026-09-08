@@ -1,31 +1,31 @@
-define(['engine/main'], function (engine) {
-    function EvaporatingTextScript(text, color) {
-        this.text = text;
-        this.color = color;
-    }
+import engine from "engine/main";
 
-    EvaporatingTextScript.prototype = Object.create(engine.Component.prototype);
+function EvaporatingTextScript(text, color) {
+    this.text = text;
+    this.color = color;
+}
 
-    EvaporatingTextScript.prototype.ttl = 1400;
-    EvaporatingTextScript.prototype.startedAt = 0;
+EvaporatingTextScript.prototype = Object.create(engine.Component.prototype);
 
-    EvaporatingTextScript.prototype.start = function () {
-        var textRenderer = this.gameObject.addComponent(new engine.TextRenderer());
-        textRenderer.layer = vkaria.layers.overlayLayer;
-        textRenderer.text = this.text;
-        textRenderer.color = this.color;
-        textRenderer.style = "bold 12px arial";
+EvaporatingTextScript.prototype.ttl = 1400;
+EvaporatingTextScript.prototype.startedAt = 0;
 
-        var time = this.gameObject.world.logic.time;
-        this.startedAt = time.time;
-    }
+EvaporatingTextScript.prototype.start = function () {
+    var textRenderer = this.gameObject.addComponent(new engine.TextRenderer());
+    textRenderer.layer = vkaria.layers.overlayLayer;
+    textRenderer.text = this.text;
+    textRenderer.color = this.color;
+    textRenderer.style = "bold 12px arial";
 
-    EvaporatingTextScript.prototype.tick = function () {
-        this.gameObject.transform.translate(Math.random(), 1, Math.random(), "world");
+    var time = this.gameObject.world.logic.time;
+    this.startedAt = time.time;
+}
 
-        if (this.gameObject.world.logic.time.time - this.startedAt > this.ttl)
-            this.gameObject.destroy();
-    }
+EvaporatingTextScript.prototype.tick = function () {
+    this.gameObject.transform.translate(Math.random(), 1, Math.random(), "world");
 
-    return EvaporatingTextScript;
-})
+    if (this.gameObject.world.logic.time.time - this.startedAt > this.ttl)
+        this.gameObject.destroy();
+}
+
+export default EvaporatingTextScript;

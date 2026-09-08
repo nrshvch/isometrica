@@ -1,9 +1,8 @@
-define(function () {
-    /**
-     * @enum BuildingCode
-     * @exports BuildingCode
-     */
-    var BuildingCode = {
+/**
+ * @enum BuildingCode
+ * @exports BuildingCode
+ */
+var BuildingCode = {
         tree1: 0,
         tree2: 1,
         cityHall: 3,
@@ -31,5 +30,4 @@ define(function () {
         ironMine: 25
     };
 
-    return BuildingCode;
-});
+export default BuildingCode;

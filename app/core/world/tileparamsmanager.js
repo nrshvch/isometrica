@@ -1,11 +1,10 @@
 /**
  * Created by User on 21.08.2014.
  */
-define(function(require){
-    var TileParams = require("./tileparams");
-    var TileParam = require("./tileparam");
+import TileParams from "./tileparams";
+import TileParam from "./tileparam";
 
-    var MAX_PARAM_VAL = 100;
+var MAX_PARAM_VAL = 100;
 
     var defaults = {};
     Object.defineProperty(defaults, TileParam.Ecology, {
@@ -142,6 +141,4 @@ define(function(require){
             delete self._map[tile];
     }
 
-    return TileParamsMan;
-
-});
+export default TileParamsMan;

@@ -1,180 +1,180 @@
-define(function (require) {
-    var Backbone = require("backbone");
-    var template = require("hbs!../../templates/worldscreen");
+import Backbone from "backbone";
+import __templateSource from "../../templates/worldscreen.hbs?raw";
+import Handlebars from "handlebars";
+import $ from "jquery";
+import BuildingCode from "data/buildingcode";
 
-    var $ = require("jquery");
-    var BuildingCode = require("data/buildingcode");
+var template = Handlebars.compile(__templateSource);
 
-    var btns = {
-        confirm: {
-            icon: "tick-icon",
-            action: function (view) {
+var btns = {
+    confirm: {
+        icon: "tick-icon",
+        action: function (view) {
 
-            }
-        },
-        cancel: {
-            icon: "cross-icon",
-            action: function (view) {
-
-            }
-        },
-        "return": {
-            icon: "back-icon",
-            action: function (view) {
-
-            }
-        },
-        config: {
-            icon: "gear-icon",
-            action: function (view) {
-
-            }
-        },
-        lab: {
-            icon: "face-icon",
-            action: function (view) {
-
-            }
-        },
-        destroy: {
-            icon: "bulldozer-icon",
-            action: function (view) {
-
-            }
-        },
-        build: {
-            icon: "coin-icon",
-            action: function (view) {
-                view.showBuildButtons();
-            }
-        },
-        "build-road": {
-            icon: "clock-icon",
-            action: function (view) {
-                view.showMainButtons();
-            }
-        },
-        pan: {
-            icon: "clock-icon",
-            action: function (view) {
-
-            }
         }
-    };
+    },
+    cancel: {
+        icon: "cross-icon",
+        action: function (view) {
 
-    function setBtn(self, index, icon, f) {
-        var state = self._state;
-        var btn = state[index] || (state[index] = {});
-        btn.icon = icon;
-        btn.action = f;
-    }
+        }
+    },
+    "return": {
+        icon: "back-icon",
+        action: function (view) {
 
-    function unsetBtn(self, index) {
-        delete self._state[index];
-    }
+        }
+    },
+    config: {
+        icon: "gear-icon",
+        action: function (view) {
 
-    function unsetBtns(self) {
-        unsetBtn(self, 0);
-        unsetBtn(self, 1);
-        unsetBtn(self, 2);
-        unsetBtn(self, 3);
-        unsetBtn(self, 4);
-    }
+        }
+    },
+    lab: {
+        icon: "face-icon",
+        action: function (view) {
 
-    function renderBtns(self) {
-        var $btns = $(".btn", self.$el);
+        }
+    },
+    destroy: {
+        icon: "bulldozer-icon",
+        action: function (view) {
 
-        //reset
-        $btns.removeClass().addClass("btn").off("click");
+        }
+    },
+    build: {
+        icon: "coin-icon",
+        action: function (view) {
+            view.showBuildButtons();
+        }
+    },
+    "build-road": {
+        icon: "clock-icon",
+        action: function (view) {
+            view.showMainButtons();
+        }
+    },
+    pan: {
+        icon: "clock-icon",
+        action: function (view) {
 
-        var state = self._state;
-        for (var key in state) {
-            var btn = state[key];
-            if (btn !== undefined) {
-                var $btn = $btns.eq(parseInt(key, 10));
-                $btn.addClass(btn.icon);
-                $btn.on("click", btn.action);
-            }
         }
     }
+};
 
-    function WorldScreenView() {
-        Backbone.View.apply(this, arguments);
+function setBtn(self, index, icon, f) {
+    var state = self._state;
+    var btn = state[index] || (state[index] = {});
+    btn.icon = icon;
+    btn.action = f;
+}
+
+function unsetBtn(self, index) {
+    delete self._state[index];
+}
+
+function unsetBtns(self) {
+    unsetBtn(self, 0);
+    unsetBtn(self, 1);
+    unsetBtn(self, 2);
+    unsetBtn(self, 3);
+    unsetBtn(self, 4);
+}
+
+function renderBtns(self) {
+    var $btns = $(".btn", self.$el);
+
+    //reset
+    $btns.removeClass().addClass("btn").off("click");
+
+    var state = self._state;
+    for (var key in state) {
+        var btn = state[key];
+        if (btn !== undefined) {
+            var $btn = $btns.eq(parseInt(key, 10));
+            $btn.addClass(btn.icon);
+            $btn.on("click", btn.action);
+        }
     }
+}
 
-    WorldScreenView.prototype = Object.create(Backbone.View.prototype);
+function WorldScreenView() {
+    Backbone.View.apply(this, arguments);
+}
 
-    WorldScreenView.prototype.initialize = function (options) {
-        this.controller = options.controller;
+WorldScreenView.prototype = Object.create(Backbone.View.prototype);
 
-        this.mainCanvas = document.createElement("canvas");
-        this.mainCanvas.id = "mainCanvas";
+WorldScreenView.prototype.initialize = function (options) {
+    this.controller = options.controller;
 
-        this.setElement(template());
-        $(".body", this.el).append(this.mainCanvas);
+    this.mainCanvas = document.createElement("canvas");
+    this.mainCanvas.id = "mainCanvas";
 
-        this.render();
+    this.setElement(template());
+    $(".body", this.el).append(this.mainCanvas);
 
-        this._state = {};
-    };
+    this.render();
 
-    WorldScreenView.prototype.getCanvas = function () {
-        return this.mainCanvas;//$("#mainCanvas", this.el);
-    };
+    this._state = {};
+};
 
-    WorldScreenView.prototype.render = function () {
-        renderBtns(this);
-        return this;
-    };
+WorldScreenView.prototype.getCanvas = function () {
+    return this.mainCanvas;//$("#mainCanvas", this.el);
+};
 
-    WorldScreenView.prototype.showMainButtons = function () {
-        var view = this;
-        unsetBtns(this);
-        setBtn(this, 0, "back-icon", function () {
-            view.controller.ui.back();
-        });
-        setBtn(this, 1, "hammer-icon", function () {
-            view.controller.ui.navigate("world/build");
-        });
+WorldScreenView.prototype.render = function () {
+    renderBtns(this);
+    return this;
+};
 
-        renderBtns(this);
-    };
+WorldScreenView.prototype.showMainButtons = function () {
+    var view = this;
+    unsetBtns(this);
+    setBtn(this, 0, "back-icon", function () {
+        view.controller.ui.back();
+    });
+    setBtn(this, 1, "hammer-icon", function () {
+        view.controller.ui.navigate("world/build");
+    });
 
-    WorldScreenView.prototype.showBuildButtons = function () {
-        var view = this;
-        unsetBtns(this);
-        setBtn(this, 0, "back-icon", function () {
-            view.controller.ui.back();
-        });
-        setBtn(this, 1, "house-icon", function () {
-            view.controller.ui.navigate("catalogue");
-        });
-        setBtn(this, 2, "road-icon", function () {
-            view.controller.ui.navigate("build/" + BuildingCode.road);
-        });
-        setBtn(this, 3, "bulldozer-icon", function () {
-            view.controller.ui.navigate("destroy");
-        });
+    renderBtns(this);
+};
 
-        renderBtns(this);
-    };
+WorldScreenView.prototype.showBuildButtons = function () {
+    var view = this;
+    unsetBtns(this);
+    setBtn(this, 0, "back-icon", function () {
+        view.controller.ui.back();
+    });
+    setBtn(this, 1, "house-icon", function () {
+        view.controller.ui.navigate("catalogue");
+    });
+    setBtn(this, 2, "road-icon", function () {
+        view.controller.ui.navigate("build/" + BuildingCode.road);
+    });
+    setBtn(this, 3, "bulldozer-icon", function () {
+        view.controller.ui.navigate("destroy");
+    });
 
-    WorldScreenView.prototype.showActionButtons = function (controls) {
-        unsetBtns(this);
+    renderBtns(this);
+};
 
-        setBtn(this, 3, "tick-icon", function () {
-            controls.submit();
-        });
-        setBtn(this, 4, "cross-icon", function () {
-            controls.discard();
-        });
+WorldScreenView.prototype.showActionButtons = function (controls) {
+    unsetBtns(this);
 
-        renderBtns(this);
-    };
+    setBtn(this, 3, "tick-icon", function () {
+        controls.submit();
+    });
+    setBtn(this, 4, "cross-icon", function () {
+        controls.discard();
+    });
 
-    WorldScreenView.prototype.hint = function (text) {
-        $(".hint", this.$el).text(text);
-    };
+    renderBtns(this);
+};
 
-    return WorldScreenView;
-});
+WorldScreenView.prototype.hint = function (text) {
+    $(".hint", this.$el).text(text);
+};
+
+export default WorldScreenView;

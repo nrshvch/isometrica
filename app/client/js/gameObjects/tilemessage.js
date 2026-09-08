@@ -1,19 +1,17 @@
-define(function (require) {
-    var engine = require("engine/main"),
-        EvaporatingText = require("../components/EvaporatingText");
-        //CityScript = require("../cityscript");
+import engine from "engine/main";
+import EvaporatingText from "../components/EvaporatingText";
+    //CityScript = require("../cityscript");
 
-    function TileMessage(text, color){
-        engine.GameObject.call(this, "tileMessage");
-
+function TileMessage(text, color){
+    engine.GameObject.call(this, "tileMessage");
 
 
-        this.addComponent(new EvaporatingText(text, color));
 
-        //this.cityScript = this.addComponent(new CityScript(x,y));
-    }
+    this.addComponent(new EvaporatingText(text, color));
 
-    TileMessage.prototype = Object.create(engine.GameObject.prototype);
+    //this.cityScript = this.addComponent(new CityScript(x,y));
+}
 
-    return TileMessage;
-});
+TileMessage.prototype = Object.create(engine.GameObject.prototype);
+
+export default TileMessage;

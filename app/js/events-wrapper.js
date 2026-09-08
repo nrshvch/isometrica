@@ -1,48 +1,10 @@
 //This wrapper is neccessary in order to provide compatibility across all my code, because at different times I've used different approaches of managing events
-define(function (require) {
-    var Events = require("events/main");
+//
+//The wrapper itself is built inside app/js/vendor/amd-loader.js (and registered
+//there under the AMD id "events"), because the vendor engine artifact needs the
+//exact same wrapper for its own internal `require("events")` calls, and that
+//can't import this file without a circular dependency. This file just exposes
+//that same object as the app's regular "events" module.
+import {amd} from "./vendor/amd-loader.js";
 
-    function EventEmmiter() {
-    }
-
-    EventEmmiter.event = Events.event;
-
-    EventEmmiter.EventEmmiter = EventEmmiter;
-
-    EventEmmiter.addListener = EventEmmiter.on = Events.on;
-
-    EventEmmiter.once = EventEmmiter.once = Events.once;
-
-    EventEmmiter.removeListener = EventEmmiter.off = Events.off;
-
-    EventEmmiter.emit = EventEmmiter.fire = Events.fire;
-
-    /**
-     * @deprecated
-     * @type {addListener|*}
-     */
-    EventEmmiter.subscribe = Events.on;
-    /**
-     * @deprecated
-     * @type {removeListener|*}
-     */
-    EventEmmiter.unsubscribe = Events.off;
-
-    EventEmmiter.prototype.addEventListener = EventEmmiter.prototype.addListener = function (event, listener, meta) {
-        return Events.on(this, event, listener, meta);
-    };
-
-    EventEmmiter.prototype.removeEventListener = EventEmmiter.prototype.removeListener = function (event, listenerOrId) {
-        return Events.off(this, event, listenerOrId);
-    };
-
-    EventEmmiter.prototype.dispatchEvent = EventEmmiter.prototype.emit = function (event, args) {
-        return Events.fire(this, event, args);
-    };
-
-    EventEmmiter.prototype.once = function (event, listener, meta) {
-        return Events.on(this, event, listener, meta, true);
-    };
-
-    return window.Events = EventEmmiter;
-});
+export default amd("events");

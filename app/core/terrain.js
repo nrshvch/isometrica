@@ -1,14 +1,13 @@
 //TODO cache terrain Z values
 
-define(function (require) {
-    var namespace = require("namespace");
-    var ResourceCode = require("core/resourcecode");
-    var TerrainType = require('./terraintype');
-    var Simplex = require("seeded-simplex");
-    var Events = require("events");
-    //var TileIterator = require("./tileiterator");
+import namespace from "namespace";
+import ResourceCode from "core/resourcecode";
+import TerrainType from "./terraintype";
+import Simplex from "seeded-simplex";
+import Events from "events";
+//var TileIterator = require("./tileiterator");
 
-    namespace("Isometrica.Core").Terrain = Terrain;
+namespace("Isometrica.Core").Terrain = Terrain;
 
     var events = {
         tileCleared: 0,
@@ -437,5 +436,4 @@ define(function (require) {
     Terrain.max = max;
     Terrain.contains = contains;
 
-    return Terrain;
-});
+export default Terrain;

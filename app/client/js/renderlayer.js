@@ -5,11 +5,11 @@
  * Time: 13:23
  * To change this template use File | Settings | File Templates.
  */
-define({
+export default {
     groundLayer: 0,
     groundDrawLayer: 1,
     roadLayer: 2,
     vehiclesLayer: 3,
     buildingsLayer: 4,
     overlayLayer: 5
-})
+}

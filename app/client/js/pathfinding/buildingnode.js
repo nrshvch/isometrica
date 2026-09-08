@@ -1,96 +1,94 @@
-define(function (require) {
-    var Node = require("./node");
+import Node from "./node";
 
-    function BuildingNode(building) {
-        Node.call(this);
-        this.building = building;
+function BuildingNode(building) {
+    Node.call(this);
+    this.building = building;
 
+}
+
+BuildingNode.prototype = Object.create(Node.prototype);
+
+
+BuildingNode.prototype.building = null;
+BuildingNode.prototype.road = false;
+
+BuildingNode.prototype.getConnectableNodes = function () {
+    var sData = this.building.staticData;
+    var data = this.building.data;
+    var r = [];
+
+    var entrances = sData.roadGates;
+    if (entrances !== undefined) {
+        //var eX = sData.roadEntrance & 0xFFFF;
+        //var eY = sData.roadEntrance >> 16;
+        //var x = eX + (eX === self.data.x ? -1 : 1);
+        //var y = eY + (eY === self.data.y ? -1 : 1);
+
+        for (var i = 0; i < entrances.length; i++) {
+            var entrance = entrances[i];
+            var x = entrance[0] + data.x;
+            var y = entrance[1] + data.y;
+            var road = vkaria.roadman.getRoad(x, y);
+
+            if (road !== null) {
+                r.push(road.node);
+            }
+        }
     }
 
-    BuildingNode.prototype = Object.create(Node.prototype);
+    return r;
+};
 
+BuildingNode.prototype.connect = function (node) {
+    if (node.road === true) {
+        var data = node.building.data,
+            x = data.x,
+            y = data.y;
 
-    BuildingNode.prototype.building = null;
-    BuildingNode.prototype.road = false;
-
-    BuildingNode.prototype.getConnectableNodes = function () {
         var sData = this.building.staticData;
         var data = this.building.data;
-        var r = [];
-
         var entrances = sData.roadGates;
-        if (entrances !== undefined) {
-            //var eX = sData.roadEntrance & 0xFFFF;
-            //var eY = sData.roadEntrance >> 16;
-            //var x = eX + (eX === self.data.x ? -1 : 1);
-            //var y = eY + (eY === self.data.y ? -1 : 1);
 
+        if (entrances !== undefined) {
             for (var i = 0; i < entrances.length; i++) {
                 var entrance = entrances[i];
-                var x = entrance[0] + data.x;
-                var y = entrance[1] + data.y;
-                var road = vkaria.roadman.getRoad(x, y);
+                var ex = entrance[0] + data.x;
+                var ey = entrance[1] + data.y;
+                if(x === ex && y === ey){
+                    Node.prototype.connect.call(this, node);
 
-                if (road !== null) {
-                    r.push(road.node);
+                    return this;
                 }
             }
         }
+    }
+    return false;
+};
 
-        return r;
-    };
+BuildingNode.prototype.getGate = function(node){
+    if(!node)
+        return null;
 
-    BuildingNode.prototype.connect = function (node) {
-        if (node.road === true) {
-            var data = node.building.data,
-                x = data.x,
-                y = data.y;
+    var h = node.building;
 
-            var sData = this.building.staticData;
-            var data = this.building.data;
-            var entrances = sData.roadGates;
+    var x = h.data.x,
+        y = h.data.y,
+        bx = this.building.data.x,
+        by = this.building.data.y,
+        gates = this.building.staticData.roadGates;
 
-            if (entrances !== undefined) {
-                for (var i = 0; i < entrances.length; i++) {
-                    var entrance = entrances[i];
-                    var ex = entrance[0] + data.x;
-                    var ey = entrance[1] + data.y;
-                    if(x === ex && y === ey){
-                        Node.prototype.connect.call(this, node);
-
-                        return this;
-                    }
-                }
-            }
+    for(var i = 0; i < gates.length; i++){
+        var gate = gates[i];
+        if(gate[0] === (x - bx) && gate[1] === (y-by)){
+            return i;
         }
-        return false;
-    };
+    }
+};
 
-    BuildingNode.prototype.getGate = function(node){
-        if(!node)
-            return null;
+BuildingNode.prototype.getPath = function(fromNode, toNode){
+    var g1 = this.getGate(fromNode);
+    var g2 = this.getGate(toNode);
+    return this.building.getPath(g1,g2);
+};
 
-        var h = node.building;
-
-        var x = h.data.x,
-            y = h.data.y,
-            bx = this.building.data.x,
-            by = this.building.data.y,
-            gates = this.building.staticData.roadGates;
-
-        for(var i = 0; i < gates.length; i++){
-            var gate = gates[i];
-            if(gate[0] === (x - bx) && gate[1] === (y-by)){
-                return i;
-            }
-        }
-    };
-
-    BuildingNode.prototype.getPath = function(fromNode, toNode){
-        var g1 = this.getGate(fromNode);
-        var g2 = this.getGate(toNode);
-        return this.building.getPath(g1,g2);
-    };
-
-    return BuildingNode;
-});
+export default BuildingNode;

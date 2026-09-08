@@ -1,10 +1,9 @@
 /**
  * Created by User on 21.08.2014.
  */
-define(function(require){
-    var TileParam = require("./tileparam");
+import TileParam from "./tileparam";
 
-    var TileParams = {};
+var TileParams = {};
 
     TileParams.maxValue = 100;
 
@@ -84,5 +83,4 @@ define(function(require){
         }
     };
 
-    return TileParams;
-});
+export default TileParams;

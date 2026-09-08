@@ -1,10 +1,8 @@
-define(function(require){
-    var Backbone = require("backbone");
+import Backbone from "backbone";
 
-    return Backbone.View.extend({
-        tagName: "span",
-        initialize: function(options){
-            this.options = options || {};
-        }
-    });
+export default Backbone.View.extend({
+    tagName: "span",
+    initialize: function(options){
+        this.options = options || {};
+    }
 });

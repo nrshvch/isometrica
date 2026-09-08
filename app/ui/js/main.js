@@ -1,98 +1,102 @@
-define(function (require) {
-    var Config = require("./config");
-    var MainRouter = require("./mainrouter");
-    var SplashScreen = require("../modules/splash/js/main");
-    var GameScreen = require("../modules/gamescreen/js/gamescreen");
-    var $ = require("jquery");
+import Config from "./config";
+import MainRouter from "./mainrouter";
+import SplashScreen from "../modules/splash/js/main";
+import GameScreen from "../modules/gamescreen/js/gamescreen";
+import $ from "jquery";
+import Backbone from "backbone";
 
-    var events = {
-        ready: 0
+// Under RequireJS, Backbone's AMD branch always received jQuery and wired
+// Backbone.$ itself. Vite's CJS interop takes Backbone's plain CommonJS
+// branch instead, which leaves Backbone.$ unset, so views can't render.
+Backbone.$ = $;
+
+var events = {
+    ready: 0
+};
+
+function UIManager() {
+    this.rootNode = $(".game-ui");
+}
+
+UIManager.events = events;
+
+UIManager.prototype._gameScreen = null;
+
+UIManager.prototype.init = function () {
+    //console.log("HAPPEN NOTHING!");
+    //return;
+    var self = this;
+    var f = function () {
+        self.router = new MainRouter({
+            ui: self
+        });
+
+        Backbone.history.start();
     };
 
-    function UIManager() {
-        this.rootNode = $(".game-ui");
+    if(typeof SHOW_SPLASH !== "undefined" && SHOW_SPLASH === false) {
+        f();
+    }else{
+        this.show("splash");
+        setTimeout(f, Config.splashTime);
     }
+};
 
-    UIManager.events = events;
+UIManager.prototype.game = function (callback) {
+    var self = this;
+    if (this._core && this._client) {
+        callback(this._core, this._client);
+        return;
+    }
+    Promise.all([import("client/main"), import("core/main")]).then(function (modules) {
+        var Vkaria = modules[0].default.Vkaria;
+        var Core = modules[1].default;
+        var core = self._core = new Core.Logic();
+        var client = self._client = new Vkaria(core, self);
+        callback(core, client);
+    });
+};
 
-    UIManager.prototype._gameScreen = null;
+UIManager.prototype.core = function () {
+    return this._core || null;
+};
 
-    UIManager.prototype.init = function () {
-        //console.log("HAPPEN NOTHING!");
-        //return;
-        var self = this;
-        var f = function () {
-            self.router = new MainRouter({
-                ui: self
-            });
+UIManager.prototype.client = function () {
+    return this._client || null;
+};
 
-            Backbone.history.start();
-        };
+UIManager.prototype.gameScreen = function () {
+    return this._gameScreen || (this._gameScreen = new GameScreen(this));
+};
 
-        if(typeof SHOW_SPLASH !== "undefined" && SHOW_SPLASH === false) {
-            f();
-        }else{
-            this.show("splash");
-            setTimeout(f, Config.splashTime);
-        }
-    };
+UIManager.prototype.splashScreen = function () {
+    return this._splashScreen || (this._splashScreen = new SplashScreen(this));
+};
 
-    UIManager.prototype.game = function (callback) {
-        var self = this;
-        if (this._core && this._client) {
-            callback(this._core, this._client);
-            return;
-        }
-        requirejs(["client/main"], function (Vkaria) {
-            var Vkaria = Vkaria.Vkaria;
-            var Core = Isometrica.Core;
-            var core = self._core = new Core.Logic();
-            var client = self._client = new Vkaria(core, self);
-            callback(core, client);
-        });
-    };
+UIManager.prototype.log = function (val) {
+    console.log(val);
+};
 
-    UIManager.prototype.core = function () {
-        return this._core || null;
-    };
+UIManager.prototype.show = function (name) {
+    this.rootNode.empty();
 
-    UIManager.prototype.client = function () {
-        return this._client || null;
-    };
+    switch (name) {
+        case "game":
+            this.rootNode.append(this.gameScreen().view.el);
+            break;
+        case "splash":
+            this.rootNode.append(this.splashScreen().show().el)
+    }
+};
 
-    UIManager.prototype.gameScreen = function () {
-        return this._gameScreen || (this._gameScreen = new GameScreen(this));
-    };
+UIManager.prototype.back = function () {
+    window.history.back();
+};
 
-    UIManager.prototype.splashScreen = function () {
-        return this._splashScreen || (this._splashScreen = new SplashScreen(this));
-    };
+UIManager.prototype.navigate = function (uri, trigger) {
+    this.router.navigate(uri, {
+        trigger: trigger === undefined ? true : trigger
+    });
+};
 
-    UIManager.prototype.log = function (val) {
-        console.log(val);
-    };
-
-    UIManager.prototype.show = function (name) {
-        this.rootNode.empty();
-
-        switch (name) {
-            case "game":
-                this.rootNode.append(this.gameScreen().view.el);
-                break;
-            case "splash":
-                this.rootNode.append(this.splashScreen().show().el)
-        }
-    };
-
-    UIManager.prototype.back = function () {
-        window.history.back();
-    };
-
-    UIManager.prototype.navigate = function (uri, trigger) {
-        this.router.navigate(uri, {
-            trigger: trigger === undefined ? true : trigger
-        });
-    };
-
-    return UIManager;
-});
+export default UIManager;

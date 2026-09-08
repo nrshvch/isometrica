@@ -1,17 +1,15 @@
-define(function(require){
-    var View = require("./view");
+import View from "./view";
 
-   function Module(){
+function Module(){
 
-   }
+}
 
-    Module.prototype.open = function(message, placeholder, callback){
-        return new View({
-            message: message,
-            placeholder: placeholder,
-            callback: callback
-        }).render();
-    }
+Module.prototype.open = function(message, placeholder, callback){
+    return new View({
+        message: message,
+        placeholder: placeholder,
+        callback: callback
+    }).render();
+}
 
-    return Module;
-});
+export default Module;

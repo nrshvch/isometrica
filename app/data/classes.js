@@ -1,7 +1,6 @@
-define(function (require) {
-    var BuildingClassCode = require("data/classcode");
+import BuildingClassCode from "data/classcode";
 
-    var data = {};
+var data = {};
 
     data[BuildingClassCode.municipal] = {
         hidden: false,
@@ -33,6 +32,4 @@ define(function (require) {
         name: "commerce"
     };
 
-    return data;
-
-});
+export default data;

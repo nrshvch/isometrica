@@ -1,17 +1,18 @@
-define(function(require){
-    var Backbone = require("backbone");
-    var template = require("hbs!../templates/splash");
+import Backbone from "backbone";
+import __templateSource from "../templates/splash.hbs?raw";
+import Handlebars from "handlebars";
 
-    var View = Backbone.View.extend({
-        initialize: function(options){
-            this.options = options || {};
-            this.setElement(document.createDocumentFragment());
-        },
-        render: function(){
-            this.$el.append(template());
-            return this;
-        }
-    });
+var template = Handlebars.compile(__templateSource);
 
-    return View;
+var View = Backbone.View.extend({
+    initialize: function(options){
+        this.options = options || {};
+        this.setElement(document.createDocumentFragment());
+    },
+    render: function(){
+        this.$el.append(template());
+        return this;
+    }
 });
+
+export default View;

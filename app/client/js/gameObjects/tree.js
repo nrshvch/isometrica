@@ -1,23 +1,22 @@
 /**
  * Created by denis on 9/18/14.
  */
-define(function (require) {
-    var Engine = require("engine/main");
-    var GameObject = Engine.GameObject;
-    var RenderLayer = require("../renderlayer");
-    var SpriteRenderer = Engine.SpriteRenderer;
+import Engine from "engine/main";
+import RenderLayer from "../renderlayer";
 
-    var layer = RenderLayer.buildingsLayer;
-    var renderer = null;
+var GameObject = Engine.GameObject;
+var SpriteRenderer = Engine.SpriteRenderer;
 
-    function Tree() {
-        GameObject.init(this, "tree");
-        renderer = new SpriteRenderer();
-        renderer.layer = layer;
-        this.addComponent(renderer);
-    }
+var layer = RenderLayer.buildingsLayer;
+var renderer = null;
 
-    Tree.prototype = Object.create(GameObject.prototype);
+function Tree() {
+    GameObject.init(this, "tree");
+    renderer = new SpriteRenderer();
+    renderer.layer = layer;
+    this.addComponent(renderer);
+}
 
-    return Tree;
-});
+Tree.prototype = Object.create(GameObject.prototype);
+
+export default Tree;

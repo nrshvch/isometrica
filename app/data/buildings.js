@@ -3,33 +3,32 @@
 
 //TODO !!! BUILDINGDATA HAS CIRCULAR DEPENDENCIES -> Core need BuildingData and vice versa; ATM it works as it is, but be aware
 
-define(function (require) {
-    var namespace = require("namespace");
-    var BuildingCode = require("data/buildingcode");
-    var BuildingClassCode = require("./classcode");
-    /**
-     * @type {ResearchDirection}
-     */
-    var ResearchDirection = require("core/researchdirection")
-    /**
-     * @type {ResearchState}
-     */
-    var ResearchState = require("core/researchstate");
-    var RenderLayer = require("client/renderlayer");
-    /**
-     * @type {GatherReq}
-     */
-    var GatherReq = require("core/gatherreq");
-    /**
-     * @type {ResourceCode}
-     */
-    var ResourceCode = require("core/resourcecode");
-    /**
-     * @type {BuildingPositioning}
-     */
-    var BuildingPositioning = require("core/buildingpositioning");
+import namespace from "namespace";
+import BuildingCode from "data/buildingcode";
+import BuildingClassCode from "./classcode";
+/**
+ * @type {ResearchDirection}
+ */
+import ResearchDirection from "core/researchdirection";
+/**
+ * @type {ResearchState}
+ */
+import ResearchState from "core/researchstate";
+import RenderLayer from "client/renderlayer";
+/**
+ * @type {GatherReq}
+ */
+import GatherReq from "core/gatherreq";
+/**
+ * @type {ResourceCode}
+ */
+import ResourceCode from "core/resourcecode";
+/**
+ * @type {BuildingPositioning}
+ */
+import BuildingPositioning from "core/buildingpositioning";
 
-    var Core = namespace("Isometrica.Core");
+var Core = namespace("Isometrica.Core");
 
     var buildingData = Core.BuildingData = {};
 
@@ -722,5 +721,4 @@ define(function (require) {
         ]
     };
 
-    return buildingData;
-});
+export default buildingData;

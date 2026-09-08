@@ -1,62 +1,60 @@
-define(function (require) {
-    var lastId = 0;
+var lastId = 0;
 
-    function Node() {
-        this.nodeId = lastId++;
-        this.connectedNodes = [];
+function Node() {
+    this.nodeId = lastId++;
+    this.connectedNodes = [];
+}
+
+Node.prototype.nodeId = null;
+Node.prototype.graph = null;
+Node.prototype.cost = 1;
+Node.prototype.connectedNodes = null;
+
+Node.prototype.getConnectableNodes = function () {
+    throw "Not implemented";
+};
+
+Node.prototype.connect = function (node) {
+    if (this.connectedNodes.indexOf(node) === -1) {
+        this.connectedNodes.push(node);
+        return this;
     }
+    return false;
+};
 
-    Node.prototype.nodeId = null;
-    Node.prototype.graph = null;
-    Node.prototype.cost = 1;
-    Node.prototype.connectedNodes = null;
+Node.prototype.disconnect = function (node) {
 
-    Node.prototype.getConnectableNodes = function () {
-        throw "Not implemented";
-    };
+    var index = this.connectedNodes.indexOf(node);
+    if (index !== -1) {
+        this.connectedNodes.splice(index, 1);
+    }
+};
 
-    Node.prototype.connect = function (node) {
-        if (this.connectedNodes.indexOf(node) === -1) {
-            this.connectedNodes.push(node);
-            return this;
-        }
-        return false;
-    };
+Node.prototype.addTo = function (graph) {
+    this.graph = graph;
 
-    Node.prototype.disconnect = function (node) {
+    var cNodes = this.getConnectableNodes();
+    for (var i = 0; i < cNodes.length; i++) {
+        var cNode = cNodes[i].connect(this);
+        if (cNode !== false)
+            this.connect(cNode);
+    }
+};
 
-        var index = this.connectedNodes.indexOf(node);
-        if (index !== -1) {
-            this.connectedNodes.splice(index, 1);
-        }
-    };
+Node.prototype.remove = function () {
+    var cnodes = this.connectedNodes.slice(0), //copy it because loop will modify it
+        cnlen = cnodes.length,
+        cnode;
 
-    Node.prototype.addTo = function (graph) {
-        this.graph = graph;
+    for (var i = 0; i < cnlen; i++) {
+        cnode = cnodes[i];
+        cnode.disconnect(this);
+        this.disconnect(cnode);
+    }
+};
 
-        var cNodes = this.getConnectableNodes();
-        for (var i = 0; i < cNodes.length; i++) {
-            var cNode = cNodes[i].connect(this);
-            if (cNode !== false)
-                this.connect(cNode);
-        }
-    };
+Node.prototype.toString = function(){
+    return "Node #"+this.nodeId;
+};
 
-    Node.prototype.remove = function () {
-        var cnodes = this.connectedNodes.slice(0), //copy it because loop will modify it
-            cnlen = cnodes.length,
-            cnode;
-
-        for (var i = 0; i < cnlen; i++) {
-            cnode = cnodes[i];
-            cnode.disconnect(this);
-            this.disconnect(cnode);
-        }
-    };
-
-    Node.prototype.toString = function(){
-        return "Node #"+this.nodeId;
-    };
-
-    return Node;
-});
+export default Node;

@@ -1,9 +1,8 @@
 /**
  * Created by denis on 8/27/14.
  */
-define(function(require){
-    var Resources = require("../resources");
-    var Resource = require("../resourcecode");
+import Resources from "../resources";
+import Resource from "../resourcecode";
 
     function price(resource){
         return 10;
@@ -43,5 +42,4 @@ define(function(require){
         return true;
     };
 
-    return MarketService;
-});
+export default MarketService;

@@ -1,26 +1,25 @@
-define(function(require){
-    var engine = require("engine/main");
-    var GameObject = engine.GameObject;
-    var SpriteRenderer = engine.SpriteRenderer;
-    var RenderLayer = require("../renderlayer");
-    var layer = RenderLayer.groundLayer;
+import engine from "engine/main";
+import RenderLayer from "../renderlayer";
 
-    var renderer = null;
+var GameObject = engine.GameObject;
+var SpriteRenderer = engine.SpriteRenderer;
+var layer = RenderLayer.groundLayer;
 
-    function Tile() {
-        GameObject.init(this, "tile");
+var renderer = null;
 
-        renderer = new SpriteRenderer();
+function Tile() {
+    GameObject.init(this, "tile");
 
-        renderer.setPivot(32, 24);
-        renderer.layer = layer;
+    renderer = new SpriteRenderer();
 
-        this.addComponent(renderer);
-    }
+    renderer.setPivot(32, 24);
+    renderer.layer = layer;
 
-    Tile.prototype = Object.create(GameObject.prototype);
+    this.addComponent(renderer);
+}
 
-    //Tile.prototype.layer = 1;
+Tile.prototype = Object.create(GameObject.prototype);
 
-    return Tile;
-});
+//Tile.prototype.layer = 1;
+
+export default Tile;

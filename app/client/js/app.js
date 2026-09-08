@@ -1,9 +1,7 @@
-define(function (require) {
-    //var BuildMan = require("./buildman");
+//var BuildMan = require("./buildman");
 
-    function App(){
-        //this.buildMan = new BuildMan();
-    }
+function App(){
+    //this.buildMan = new BuildMan();
+}
 
-    return App;
-});
+export default App;

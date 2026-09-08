@@ -1,12 +1,10 @@
-define(function(require){
-   var Backbone = require("backbone");
+import Backbone from "backbone";
 
-    return Backbone.Model.extend({
-       defaults: function(){
-           return {
-               name: "Unnamed",
-               code: -1
-           }
+export default Backbone.Model.extend({
+   defaults: function(){
+       return {
+           name: "Unnamed",
+           code: -1
        }
-    });
+   }
 });
