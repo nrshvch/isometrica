@@ -4,7 +4,7 @@
  * each is a single file of old-style AMD `define()` calls produced by r.js,
  * kept exactly as committed (see vendor/build.js). This module is the only
  * place that understands that format - it is a tiny synchronous AMD registry
- * that evaluates those artifacts and lets the rest of the app pull named
+ * that evaluates those artifacts and lets the rest of the src pull named
  * modules out of them as plain values, without pulling in a real AMD loader.
  *
  * Everything is synchronous: the artifacts are inlined as strings via Vite's
@@ -99,8 +99,8 @@ evalBundle(seededSimplexSrc);
 evalBundle(reactivePropertySrc);
 evalBundle(engineSrc);
 
-// The old RequireJS app config mapped the bare id "events" (used internally
-// by engine/* and object-pool, not just app code) to app/js/events-wrapper.js
+// The old RequireJS src config mapped the bare id "events" (used internally
+// by engine/* and object-pool, not just src code) to src/js/events-wrapper.js
 // rather than the raw vendor package, because different eras of this
 // codebase used different event APIs. Registering the same wrapper here,
 // under "events", keeps that resolution working for the vendor artifacts

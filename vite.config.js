@@ -4,15 +4,15 @@ import {fileURLToPath} from "node:url";
 
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
 var app = function (p) {
-    return path.resolve(__dirname, "app", p);
+    return path.resolve(__dirname, "src", p);
 };
 
-// These mirror the old app/js/config.js requirejs `paths`/`map` entries:
-// short ids for the app's own layers, plus the vendor/ packages (built by
-// `npm run build:vendor`, see vendor/build.js) which app/js/vendor/*.js
+// These mirror the old src/js/config.js requirejs `paths`/`map` entries:
+// short ids for the src's own layers, plus the vendor/ packages (built by
+// `npm run build:vendor`, see vendor/build.js) which src/js/vendor/*.js
 // exposes as plain ES modules via a tiny AMD shim.
 export default defineConfig({
-    root: "app",
+    root: "src",
     build: {
         outDir: "../dist",
         emptyOutDir: true,
