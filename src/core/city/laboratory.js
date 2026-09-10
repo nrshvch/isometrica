@@ -51,12 +51,12 @@ var CityService = namespace("Isometrica.Core.CityService");
         var items = data.items[level], isNew;
 
         for (var key in items) {
-            isNew = self.researchedItems[key] !== true;
+            isNew = self.researchedItems[items[key]] !== true;
 
             if (isNew) {
-                self.researchedItems[key] = true;
+                self.researchedItems[items[key]] = true;
 
-                quiet || Events.fire(self, events.buildingInvented, parseInt(key, 10));
+                quiet || Events.fire(self, events.buildingInvented, parseInt(items[key], 10));
             }
         }
     }

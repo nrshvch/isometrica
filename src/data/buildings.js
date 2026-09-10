@@ -105,6 +105,7 @@ var Core = namespace("Isometrica.Core");
     };
 
     buildingData[BuildingCode.road] = {
+        hidden: true,
         size: 0x11,
         sizeX: 1,
         sizeY: 1,
@@ -211,8 +212,6 @@ var Core = namespace("Isometrica.Core");
             wood: 10,
             money: 10
         },
-        researchLevel: 1,
-        researchDirection: ResearchDirection.housing,
         name: "tiny house",
         sprites: [
             {
@@ -236,17 +235,17 @@ var Core = namespace("Isometrica.Core");
             money: 5
         },
         demanding: {
-            food: 5,
-            electricity: 1,
-            water: 1
+            // food: 5,
+            // electricity: 1,
+            // water: 1
         },
         citizenCapacity: 3,
         constructionTime: 3000,
         constructionCost: {
             money: 1000,
-            wood: 100,
-            stone: 100,
-            iron: 100
+            // wood: 100,
+            // stone: 100,
+            // iron: 100
         },
         name: "small residential house",
         canRotate: true,
@@ -308,9 +307,9 @@ var Core = namespace("Isometrica.Core");
         constructionTime: 5000,
         constructionCost: {
             money: 1500,
-            wood: 150,
-            stone: 50,
-            iron: 150
+            // wood: 150,
+            // stone: 50,
+            // iron: 150
         },
         name: "cottage house",
         citizenCapacity: 4,
@@ -346,17 +345,16 @@ var Core = namespace("Isometrica.Core");
             money: 10
         },
         demanding: {
-            food: 10,
-            electricity: 2,
-            water: 2
+            // food: 10,
+            // electricity: 2,
+            // water: 2
         },
-        citizenCapacity: 4,
         constructionTime: 5000,
         constructionCost: {
             money: 1500,
-            wood: 50,
-            stone: 150,
-            iron: 150
+            // wood: 50,
+            // stone: 150,
+            // iron: 150
         },
         name: "two story house",
         citizenCapacity: 6,
@@ -392,17 +390,17 @@ var Core = namespace("Isometrica.Core");
             money: 10
         },
         demanding: {
-            food: 10,
-            electricity: 2,
-            water: 2
+            // food: 10,
+            // electricity: 2,
+            // water: 2
         },
         citizenCapacity: 6,
         constructionTime: 5000,
         constructionCost: {
             money: 1500,
-            wood: 50,
-            stone: 150,
-            iron: 150
+            // wood: 50,
+            // stone: 150,
+            // iron: 150
         },
         name: "house",
         sprites: [
@@ -459,59 +457,59 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    buildingData[BuildingCode.farm] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.farm,
-        classCode: BuildingClassCode.industry,
-        producing: {},
-        demanding: {},
-        constructionTime: 3000,
-        constructionCost: {},
-        name: "farm",
-        requirement: GatherReq.inGrassLand,
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 30,
-                path: "buildings/testbuilding0.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
+    // buildingData[BuildingCode.farm] = {
+    //     sizeX: 1,
+    //     sizeY: 1,
+    //     buildingCode: BuildingCode.farm,
+    //     classCode: BuildingClassCode.industry,
+    //     producing: {},
+    //     demanding: {},
+    //     constructionTime: 3000,
+    //     constructionCost: {},
+    //     name: "farm",
+    //     requirement: GatherReq.inGrassLand,
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 30,
+    //             path: "buildings/testbuilding0.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
 
-    buildingData[BuildingCode.windTurbine] = {
-        sizeX: 3,
-        sizeY: 3,
-        buildingCode: BuildingCode.windTurbine,
-        classCode: BuildingClassCode.municipal,
-        producing: {
-            electricity: 5
-        },
-        demanding: {
-            money: 1
-        },
-        constructionTime: 5000,
-        constructionCost: {
-            money: 50,
-            iron: 50
-        },
-        name: "wind turbine",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 30,
-                path: "buildings/testbuilding0.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
+    // buildingData[BuildingCode.windTurbine] = {
+    //     sizeX: 3,
+    //     sizeY: 3,
+    //     buildingCode: BuildingCode.windTurbine,
+    //     classCode: BuildingClassCode.municipal,
+    //     producing: {
+    //         electricity: 5
+    //     },
+    //     demanding: {
+    //         money: 1
+    //     },
+    //     constructionTime: 5000,
+    //     constructionCost: {
+    //         money: 50,
+    //         iron: 50
+    //     },
+    //     name: "wind turbine",
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 30,
+    //             path: "buildings/testbuilding0.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
 
     buildingData[BuildingCode.waterTower] = {
         sizeX: 1,
@@ -543,182 +541,182 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    buildingData[BuildingCode.waterPump] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.waterPump,
-        classCode: BuildingClassCode.municipal,
-        producing: {
-            water: 15
-        },
-        demanding: {
-            money: 2
-        },
-        constructionTime: 10000,
-        constructionCost: {
-            money: 100,
-            stone: 40,
-            iron: 40
-        },
-        name: "water pump station",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 30,
-                path: "buildings/testbuilding0.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
-
-    buildingData[BuildingCode.smallMarket] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.smallMarket,
-        classCode: BuildingClassCode.commerce,
-        producing: {
-            money: 100
-        },
-        demanding: {},
-        constructionTime: 10000,
-        constructionCost: {
-            money: 50
-        },
-        name: "small market",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 30,
-                path: "buildings/testbuilding0.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
-
-
-    //Gatherers
-    buildingData[BuildingCode.lumberMill] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.lumberMill,
-        classCode: BuildingClassCode.industry,
-        producing: {
-            wood: 5
-        },
-        demanding: {},
-        constructionTime: 3000,
-        constructionCost: {
-            money: 100
-        },
-        name: "lumber mill",
-        requirement: GatherReq.nearTree,
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 30,
-                path: "buildings/testbuilding0.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
-
-    buildingData[BuildingCode.oilWell] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.oilWell,
-        classCode: BuildingClassCode.industry,
-        positioning: BuildingPositioning.resource,
-        resource: ResourceCode.oil,
-        producing: {
-            oil: 5
-        },
-        demanding: {},
-        constructionTime: 10000,
-        constructionCost: {
-            money: 100
-        },
-        requirement: GatherReq.oilTile,
-        name: "oil rig",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 30,
-                path: "buildings/testbuilding0.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
-
-    buildingData[BuildingCode.stoneQuarry] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.stoneQuarry,
-        classCode: BuildingClassCode.industry,
-        positioning: BuildingPositioning.resource,
-        resource: ResourceCode.stone,
-        producing: {
-            stone: 5
-        },
-        demanding: {},
-        constructionTime: 5000,
-        constructionCost: {
-            money: 100
-        },
-        requirement: GatherReq.stoneTile,
-        name: "stone quarry",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 30,
-                path: "buildings/testbuilding0.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
-
-    buildingData[BuildingCode.ironMine] = {
-        sizeX: 1,
-        sizeY: 1,
-        positioning: BuildingPositioning.resource,
-        resource: ResourceCode.iron,
-        buildingCode: BuildingCode.ironMine,
-        classCode: BuildingClassCode.industry,
-        producing: {
-            iron: 5
-        },
-        demanding: {},
-        constructionTime: 5000,
-        constructionCost: {
-            money: 100
-        },
-        requirement: GatherReq.ironTile,
-        name: "iron mine",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 26,
-                path: "buildings/testbuilding1.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
+    // buildingData[BuildingCode.waterPump] = {
+    //     sizeX: 1,
+    //     sizeY: 1,
+    //     buildingCode: BuildingCode.waterPump,
+    //     classCode: BuildingClassCode.municipal,
+    //     producing: {
+    //         water: 15
+    //     },
+    //     demanding: {
+    //         money: 2
+    //     },
+    //     constructionTime: 10000,
+    //     constructionCost: {
+    //         money: 100,
+    //         stone: 40,
+    //         iron: 40
+    //     },
+    //     name: "water pump station",
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 30,
+    //             path: "buildings/testbuilding0.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
+    //
+    // buildingData[BuildingCode.smallMarket] = {
+    //     sizeX: 1,
+    //     sizeY: 1,
+    //     buildingCode: BuildingCode.smallMarket,
+    //     classCode: BuildingClassCode.commerce,
+    //     producing: {
+    //         money: 100
+    //     },
+    //     demanding: {},
+    //     constructionTime: 10000,
+    //     constructionCost: {
+    //         money: 50
+    //     },
+    //     name: "small market",
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 30,
+    //             path: "buildings/testbuilding0.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
+    //
+    //
+    // //Gatherers
+    // buildingData[BuildingCode.lumberMill] = {
+    //     sizeX: 1,
+    //     sizeY: 1,
+    //     buildingCode: BuildingCode.lumberMill,
+    //     classCode: BuildingClassCode.industry,
+    //     producing: {
+    //         wood: 5
+    //     },
+    //     demanding: {},
+    //     constructionTime: 3000,
+    //     constructionCost: {
+    //         money: 100
+    //     },
+    //     name: "lumber mill",
+    //     requirement: GatherReq.nearTree,
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 30,
+    //             path: "buildings/testbuilding0.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
+    //
+    // buildingData[BuildingCode.oilWell] = {
+    //     sizeX: 1,
+    //     sizeY: 1,
+    //     buildingCode: BuildingCode.oilWell,
+    //     classCode: BuildingClassCode.industry,
+    //     positioning: BuildingPositioning.resource,
+    //     resource: ResourceCode.oil,
+    //     producing: {
+    //         oil: 5
+    //     },
+    //     demanding: {},
+    //     constructionTime: 10000,
+    //     constructionCost: {
+    //         money: 100
+    //     },
+    //     requirement: GatherReq.oilTile,
+    //     name: "oil rig",
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 30,
+    //             path: "buildings/testbuilding0.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
+    //
+    // buildingData[BuildingCode.stoneQuarry] = {
+    //     sizeX: 1,
+    //     sizeY: 1,
+    //     buildingCode: BuildingCode.stoneQuarry,
+    //     classCode: BuildingClassCode.industry,
+    //     positioning: BuildingPositioning.resource,
+    //     resource: ResourceCode.stone,
+    //     producing: {
+    //         stone: 5
+    //     },
+    //     demanding: {},
+    //     constructionTime: 5000,
+    //     constructionCost: {
+    //         money: 100
+    //     },
+    //     requirement: GatherReq.stoneTile,
+    //     name: "stone quarry",
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 30,
+    //             path: "buildings/testbuilding0.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
+    //
+    // buildingData[BuildingCode.ironMine] = {
+    //     sizeX: 1,
+    //     sizeY: 1,
+    //     positioning: BuildingPositioning.resource,
+    //     resource: ResourceCode.iron,
+    //     buildingCode: BuildingCode.ironMine,
+    //     classCode: BuildingClassCode.industry,
+    //     producing: {
+    //         iron: 5
+    //     },
+    //     demanding: {},
+    //     constructionTime: 5000,
+    //     constructionCost: {
+    //         money: 100
+    //     },
+    //     requirement: GatherReq.ironTile,
+    //     name: "iron mine",
+    //     sprites: [
+    //         {
+    //             x: 0,
+    //             y: 0,
+    //             z: 0,
+    //             pivotX: 32,
+    //             pivotY: 26,
+    //             path: "buildings/testbuilding1.png",
+    //             layer: RenderLayer.buildingsLayer
+    //         }
+    //     ]
+    // };
 
 export default buildingData;
