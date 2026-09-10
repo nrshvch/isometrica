@@ -1,41 +1,20 @@
 import CatalogueView from "./views/catalogue";
-import CategoriesView from "./views/categories";
 import BuildingsView from "./views/buildings";
 import BuildingView from "./views/building";
-import Categories from "./collections/categories";
 import Buildings from "./collections/buildings";
-import Category from "./models/category";
 import Building from "./models/building";
 import Data from "data/buildings";
-import ClassCode from "data/classcode";
-import ClassData from "data/classes";
 
 var BuildingData = Data;
 
-function getCategories(self) {
-    var cats = new Categories();
-    //var core = self.ui.core();
-    var val, data, cat;
-    for (var key in ClassCode) {
-        val = ClassCode[key];
-        data = ClassData[val];
-        if (!data.hidden) {
-            cat = new Category({
-                code: val,
-                name: key,
-                displayName: data.name
-            });
-            cats.add(cat);
-        }
-    }
-    return cats;
-}
-
-function getBuildings(self, classCode) {
+// Buildings still carry a classCode (see data/classcode, data/classes) so the
+// category grouping stays in the data, but the catalogue UI no longer splits
+// on it - everything is shown as one flat list.
+function getBuildings(self) {
     var r = [], code, b;
     for (code in Data) {
         b = Data[code];
-        if (b.classCode === classCode) {
+        if(!b.hidden) {
             r.push(new Building({
                 code: code,
                 classCode: b.classCode,
@@ -44,17 +23,6 @@ function getBuildings(self, classCode) {
         }
     }
     return r;
-}
-
-function getCategory(self, code) {
-    code = parseInt(code, 10);
-    var data = ClassData[code];
-    var category = new Category({
-        code: code,
-        displayName: data.name
-    });
-    category.buildings.add(getBuildings(self, code));
-    return category;
 }
 
 function getBuilding(self, code) {
@@ -72,23 +40,17 @@ function Catalogue(ui) {
     this.view = new CatalogueView();
 }
 
-Catalogue.prototype.execute = function (catId, buildingId) {
+Catalogue.prototype.execute = function (buildingId) {
     var v;
     if (buildingId) {
         v = new BuildingView({
             catalogue: this,
-            catId: catId,
             model: getBuilding(this, buildingId)
         }).render();
-    } else if (catId) {
+    } else {
         v = new BuildingsView({
             catalogue: this,
-            model: getCategory(this, catId)
-        }).render();
-    } else {
-        v = new CategoriesView({
-            catalogue: this,
-            collection: getCategories(this)
+            collection: new Buildings(getBuildings(this))
         }).render();
     }
 
