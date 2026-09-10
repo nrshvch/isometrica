@@ -186,6 +186,7 @@ Buildman.prototype.destroy = function () {
 
     //bind ui
     var controls = root.ui.gameScreen().showActionControls();
+    controls.canRotate(false);
     controls.onSubmit = function () {
         var iter = ts.selectedTiles(),
             tile;
@@ -230,7 +231,7 @@ Buildman.prototype.build = function (code) {
     //draw blue grid
     var tokens = [];
     var ts = new AreaSelector(this.root);
-    var rotation = true;
+    var rotation = false;
 
     function updateHilite() {
         var tile0 = ts.tile0(),
@@ -238,12 +239,13 @@ Buildman.prototype.build = function (code) {
 
         // a single anchored tile (not yet dragged into a multi-tile paint
         // area) should hilite the building's whole footprint, not just the
-        // one tile under the cursor. Rotation only flips the sprite, not the
-        // footprint - Construction#occupiedTiles and the under-construction
-        // site placeholder (buildingview.js) both use sizeX/sizeY as-is, so
-        // match that here rather than swapping them.
+        // one tile under the cursor - matching how Construction#occupiedTiles
+        // and the under-construction site placeholder (buildingview.js) swap
+        // sizeX/sizeY when rotated
         if (tile0 !== -1 && tile0 === tile1) {
-            tile1 = tile0 + (data.sizeX - 1) + (data.sizeY - 1) * Terrain.dy;
+            var sizeX = rotation ? data.sizeY : data.sizeX,
+                sizeY = rotation ? data.sizeX : data.sizeY;
+            tile1 = tile0 + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
         }
 
         root.hiliteMan.disable(tokens);
@@ -260,6 +262,7 @@ Buildman.prototype.build = function (code) {
 
     //bind ui
     var controls = root.ui.gameScreen().showActionControls();
+    controls.canRotate(!!data.canRotate);
     controls.onRotate = function () {
         rotation = !rotation;
         updateHilite();

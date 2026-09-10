@@ -45,11 +45,11 @@ BuildingView.prototype.update = function () {
                 sizeY = 0;
 
             if (this.building.data.rotation) {
-                sizeX = staticData.sizeX;// >> 4;
-                sizeY = staticData.sizeY;// & 0x0F;
+                sizeX = staticData.sizeY;
+                sizeY = staticData.sizeX;
             } else {
-                sizeX = staticData.sizeX;// & 0x0F;
-                sizeY = staticData.sizeY;// >> 4;
+                sizeX = staticData.sizeX;
+                sizeY = staticData.sizeY;
             }
 
 
