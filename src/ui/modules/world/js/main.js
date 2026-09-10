@@ -33,7 +33,10 @@ WorldScreen.prototype.show = function (name) {
             this.view.showBuildButtons();
             break;
         default:
-            this.view.showMainButtons();
+            if (this.client.core.cities.getCity(0))
+                this.view.showBuildButtons();
+            else
+                this.view.showInitialButtons();
     }
 };
 
