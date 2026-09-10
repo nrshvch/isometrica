@@ -66,7 +66,7 @@ Cityman.prototype.init = function () {
                 var city = cmp.city;
                 var id = city.id();
                 console.log("CITY!!!", id);
-                root.ui.navigate("city/"+id);
+                root.ui.navigate("city", [id]);
             }
         }
     });

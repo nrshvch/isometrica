@@ -89,14 +89,9 @@ UIManager.prototype.show = function (name) {
     }
 };
 
-UIManager.prototype.back = function () {
-    window.history.back();
-};
-
-UIManager.prototype.navigate = function (uri, trigger) {
-    this.router.navigate(uri, {
-        trigger: trigger === undefined ? true : trigger
-    });
+UIManager.prototype.navigate = function (module, args) {
+    this.show("game");
+    this.gameScreen().execute(module, args);
 };
 
 export default UIManager;

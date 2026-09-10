@@ -5,31 +5,10 @@ var Router = Backbone.Router.extend({
         this.ui = options.ui;
     },
     routes: {
-        "build/:id": "build",
-        "catalogue(/:cat)(/:id)" : "catalogue",
-        "city(/:id)(/:tab)" : "city",
-        "(world)(/:nav)": "world",
-        "destroy" : "destroy"
+        "*path": "root"
     },
-    build: function(){
-        this.ui.show("game");
-        this.ui.gameScreen().execute("build", arguments);
-    },
-    world: function(){
-        this.ui.show("game");
-        this.ui.gameScreen().execute("world", arguments);
-    },
-    catalogue: function(){
-        this.ui.show("game");
-        this.ui.gameScreen().execute("catalogue", arguments);
-    },
-    destroy: function(){
-        this.ui.show("game");
-        this.ui.gameScreen().execute("destroy");
-    },
-    city: function(){
-        this.ui.show("game");
-        this.ui.gameScreen().execute("city", arguments)
+    root: function(){
+        this.ui.navigate("world");
     }
 });
 

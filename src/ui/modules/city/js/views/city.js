@@ -38,7 +38,6 @@ export default Backbone.View.extend({
         this.tabs[name].render();
         $(".tab, .tab-content", this.$el).removeClass("active");
         $(".tab[data-tab=" + name + "], .tab-content[data-tab=" + name + "]", this.$el).addClass("active");
-        this.ui.navigate("city/0/"+name, false);
     },
     addTab: function (name, view) {
         this.tabs[name] = view;
