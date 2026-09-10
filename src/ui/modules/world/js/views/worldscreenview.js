@@ -128,14 +128,11 @@ WorldScreenView.prototype.render = function () {
     return this;
 };
 
-WorldScreenView.prototype.showMainButtons = function () {
+WorldScreenView.prototype.showInitialButtons = function () {
     var view = this;
     unsetBtns(this);
-    setBtn(this, 0, "back-icon", function () {
-        view.controller.ui.back();
-    });
-    setBtn(this, 1, "hammer-icon", function () {
-        view.controller.ui.navigate("world/build");
+    setBtn(this, 2, "house-icon", function () {
+        view.controller.client.cityman.establish();
     });
 
     renderBtns(this);
@@ -144,9 +141,6 @@ WorldScreenView.prototype.showMainButtons = function () {
 WorldScreenView.prototype.showBuildButtons = function () {
     var view = this;
     unsetBtns(this);
-    setBtn(this, 0, "back-icon", function () {
-        view.controller.ui.back();
-    });
     setBtn(this, 1, "house-icon", function () {
         view.controller.ui.navigate("catalogue");
     });
@@ -163,10 +157,10 @@ WorldScreenView.prototype.showBuildButtons = function () {
 WorldScreenView.prototype.showActionButtons = function (controls) {
     unsetBtns(this);
 
-    setBtn(this, 3, "tick-icon", function () {
+    setBtn(this, 2, "tick-icon", function () {
         controls.submit();
     });
-    setBtn(this, 4, "cross-icon", function () {
+    setBtn(this, 0, "back-icon", function () {
         controls.discard();
     });
 

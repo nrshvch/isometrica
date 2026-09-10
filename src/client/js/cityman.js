@@ -71,7 +71,6 @@ Cityman.prototype.init = function () {
         }
     });
 
-    this.establish();
 };
 
 Cityman.prototype.locate = function (city) {
@@ -96,6 +95,14 @@ Cityman.prototype.establish = function(){
         });
     });
 
+    function cleanup() {
+        //disable hiliters & selector
+        root.hiliteMan.disable(token);
+        selector.dispose();
+        Events.off(selector, TileSelector.events.change, s);
+        root.ui.gameScreen().worldScreen().hideHint();
+    }
+
     //bind ui
     var controls = root.ui.gameScreen().showActionControls();
     controls.onSubmit = function () {
@@ -104,15 +111,14 @@ Cityman.prototype.establish = function(){
         root.ui.gameScreen().showPrompt("Give city a name!", function (val) {
             root.core.cities.establishCity(tile, val);
             root.ui.gameScreen().showWorld();
-            root.ui.gameScreen().worldScreen().hideHint();
         }, "My City");
 
-        //disable hiliters & selector
-        root.hiliteMan.disable(token);
-        selector.dispose();
-        Events.off(selector, TileSelector.events.change, s);
+        cleanup();
     };
-    controls.canDiscard(false);
+    controls.onDiscard = function () {
+        cleanup();
+        root.ui.gameScreen().showWorld();
+    };
 };
 
 Cityman.prototype.getCityGameObject = function(cityId){
