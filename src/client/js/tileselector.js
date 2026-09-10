@@ -23,12 +23,23 @@ function pickTile(me, screenX, screenY) {
     return tile && me.root.terrain.getCoordinates(tile) || -1;
 }
 
+function onMove(sender, e, self) {
+    if (self._locked) return;
+
+    var screenX = e.gameViewportX,
+        screenY = e.gameViewportY;
+
+    var tile = pickTile(self, screenX, screenY);
+    self._tile(tile);
+}
+
 function onClick(sender, e, self) {
     var screenX = e.gameViewportX,
         screenY = e.gameViewportY;
 
     var tile = pickTile(self, screenX, screenY);
     self._tile(tile);
+    self._locked = true;
 }
 
 function onChange(s,a,m){
@@ -47,12 +58,15 @@ var events = {
 function TileSelector(root) {
     this.root = root;
     this._tile = RProp(-1);
+    this._locked = false;
 
     var cam = this._cam = root.camera.cameraScript;
 
+    var ms = Events.on(cam, WorldCamera.events.inputMove, onMove, this);
     var cs = Events.on(cam, WorldCamera.events.inputClick, onClick, this);
     var s = this._tile.onChange(onChange, false, this);
 
+    Events.once(this, events.dispose, onDispose, ms);
     Events.once(this, events.dispose, onDispose, cs);
     Events.once(this, events.dispose, onDispose, s);
 }
@@ -60,6 +74,7 @@ function TileSelector(root) {
 TileSelector.events = events;
 
 TileSelector.prototype._tile = -1;
+TileSelector.prototype._locked = false;
 
 TileSelector.prototype.selectedTile = function(){
     return this._tile();

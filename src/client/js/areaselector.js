@@ -26,6 +26,17 @@ function pickTile(me, screenX, screenY) {
     return tile && me._terrain.getCoordinates(tile) || -1;
 }
 
+function onMove(sender, e, self) {
+    if (self._locked) return;
+
+    var screenX = e.gameViewportX,
+        screenY = e.gameViewportY;
+
+    var tile = pickTile(self, screenX, screenY);
+    self._tile0(tile, true);
+    self._tile1(tile);
+}
+
 function onClick(sender, e, self) {
     var screenX = e.gameViewportX,
         screenY = e.gameViewportY;
@@ -33,6 +44,7 @@ function onClick(sender, e, self) {
     var tile = pickTile(self, screenX, screenY);
     self._tile0(tile, true);
     self._tile1(tile);
+    self._locked = true;
 }
 
 function onDragStart(sender, e, me) {
@@ -42,6 +54,7 @@ function onDragStart(sender, e, me) {
     var tile = pickTile(me, screenX, screenY);
     me._tile0(tile, true);
     me._tile1(tile);
+    me._locked = true;
 }
 
 function onDrag(sender, param, me) {
@@ -70,10 +83,12 @@ function TileSelector(root) {
     this.root = root;
     this._tile0 = RProp(-1);
     this._tile1 = RProp(-1);
+    this._locked = false;
 
     this._terrain = root.terrain;
     var cam = this._cam = root.camera.cameraScript;
 
+    var ms = Events.on(cam, WorldCamera.events.inputMove, onMove, this);
     var cs = Events.on(cam, WorldCamera.events.inputClick, onClick, this);
     var dss = Events.on(cam, WorldCamera.events.inputDragStart, onDragStart, this);
     var ds = Events.on(cam, WorldCamera.events.inputDrag, onDrag, this);
@@ -81,6 +96,7 @@ function TileSelector(root) {
     var a = this._tile0.onChange(onChange, false, this);
     var b = this._tile1.onChange(onChange, false, this);
 
+    Events.once(this, events.dispose, onDispose, ms);
     Events.once(this, events.dispose, onDispose, cs);
     Events.once(this, events.dispose, onDispose, dss);
     Events.once(this, events.dispose, onDispose, ds);
@@ -92,6 +108,7 @@ TileSelector.events = events;
 
 TileSelector.prototype._tile0 = -1;
 TileSelector.prototype._tile1 = -1;
+TileSelector.prototype._locked = false;
 
 TileSelector.prototype.selectedTiles = function () {
     var t0 = this._tile0(),
