@@ -77,21 +77,19 @@ Catalogue.prototype.execute = function (catId, buildingId) {
     if (buildingId) {
         v = new BuildingView({
             catalogue: this,
+            catId: catId,
             model: getBuilding(this, buildingId)
         }).render();
-        this.ui.navigate("catalogue/" + catId + "/" + buildingId, false);
     } else if (catId) {
         v = new BuildingsView({
             catalogue: this,
             model: getCategory(this, catId)
         }).render();
-        this.ui.navigate("catalogue/" + catId, false);
     } else {
         v = new CategoriesView({
             catalogue: this,
             collection: getCategories(this)
         }).render();
-        this.ui.navigate("catalogue", false);
     }
 
     this.view.$el.empty();

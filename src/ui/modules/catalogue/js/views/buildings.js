@@ -12,6 +12,13 @@ export default Backbone.View.extend({
       "click a[data-building]" : function(e){
           var building = $(e.currentTarget).attr("data-building");
           this.catalogue.execute(this.model.get("code"), building);
+      },
+      "click a[data-build]" : function(e){
+          var code = $(e.currentTarget).attr("data-build");
+          this.catalogue.ui.navigate("build", [code]);
+      },
+      "click .button.back": function(){
+          this.catalogue.execute();
       }
     },
     initialize: function(options){
