@@ -2,6 +2,7 @@
 import Core from "core/main";
 import engine from "engine/main";
 import BuildingClassCode from "data/classcode";
+import BuildingData from "data/buildings";
 import Building from "./building";
 import Road from "./road";
 import EventManager from "events";
@@ -218,6 +219,7 @@ Buildman.prototype.destroy = function () {
 
 Buildman.prototype.build = function (code) {
     var root = this.root;
+    var data = BuildingData[code];
 
     //show hint
     root.ui.gameScreen().worldScreen().showHint("Pick a tile!");
@@ -228,22 +230,39 @@ Buildman.prototype.build = function (code) {
     //draw blue grid
     var tokens = [];
     var ts = new AreaSelector(this.root);
-    var sub = Events.on(ts, AreaSelector.events.change, function(a,b,c) {
+    var rotation = true;
+
+    function updateHilite() {
+        var tile0 = ts.tile0(),
+            tile1 = ts.tile1();
+
+        // a single anchored tile (not yet dragged into a multi-tile paint
+        // area) should hilite the building's whole footprint, not just the
+        // one tile under the cursor. Rotation only flips the sprite, not the
+        // footprint - Construction#occupiedTiles and the under-construction
+        // site placeholder (buildingview.js) both use sizeX/sizeY as-is, so
+        // match that here rather than swapping them.
+        if (tile0 !== -1 && tile0 === tile1) {
+            tile1 = tile0 + (data.sizeX - 1) + (data.sizeY - 1) * Terrain.dy;
+        }
+
         root.hiliteMan.disable(tokens);
         tokens = root.hiliteMan.hilite({
-            tile0: ts.tile0(),
-            tile1: ts.tile1(),
+            tile0: tile0,
+            tile1: tile1,
             fillColor: "rgba(0,0,127,0.4)",
             borderColor: "rgba(0,0,255,0.4)",
             borderWidth: 2
         });
-    });
+    }
+
+    var sub = Events.on(ts, AreaSelector.events.change, updateHilite);
 
     //bind ui
     var controls = root.ui.gameScreen().showActionControls();
-    var rotation = true;
     controls.onRotate = function () {
         rotation = !rotation;
+        updateHilite();
     };
     controls.onSubmit = function () {
         var iter = ts.selectedTiles(),
