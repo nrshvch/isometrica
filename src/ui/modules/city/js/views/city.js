@@ -21,6 +21,14 @@ export default Backbone.View.extend({
         this.tabs = {};
     },
     render: function () {
+        // this view is a cached singleton (see city.js Module#mainView) that
+        // gets detached and re-appended each time the dialog is opened;
+        // GameScreenView#body() removes the previous screen with jQuery's
+        // .empty(), which strips all bound listeners from it (including
+        // Backbone's delegated `events`) even though we're about to reuse
+        // it, so they need to be rebound on every render.
+        this.delegateEvents();
+
         this.$el.html(cityTemplate({
             tabs: this.tabs
         }));
