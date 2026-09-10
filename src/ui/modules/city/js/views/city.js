@@ -11,6 +11,9 @@ export default Backbone.View.extend({
         "click .tab": function (e) {
             var id = $(e.target).attr("data-tab");
             this.show(id);
+        },
+        "click .button.close": function () {
+            this.ui.navigate("world");
         }
     },
     initialize: function (options) {
