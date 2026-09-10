@@ -78,6 +78,7 @@ Cityman.prototype.locate = function (city) {
 };
 
 Cityman.prototype.establish = function(){
+    var self = this;
     var root = this.root;
 
     //render hint
@@ -111,7 +112,10 @@ Cityman.prototype.establish = function(){
         root.ui.gameScreen().showPrompt("Give city a name!", function (val) {
             root.core.cities.establishCity(tile, val);
             root.ui.gameScreen().showWorld();
-        }, "My City");
+        }, "My City", function () {
+            root.ui.gameScreen().showWorld();
+            self.establish();
+        });
 
         cleanup();
     };
