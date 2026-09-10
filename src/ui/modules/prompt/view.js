@@ -29,6 +29,6 @@ export default Backbone.View.extend({
         this.options.callback(this.value());
     },
     discard: function(){
-
+        this.options.onDiscard && this.options.onDiscard();
     }
 });

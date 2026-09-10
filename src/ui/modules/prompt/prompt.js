@@ -4,11 +4,12 @@ function Module(){
 
 }
 
-Module.prototype.open = function(message, placeholder, callback){
+Module.prototype.open = function(message, placeholder, callback, onDiscard){
     return new View({
         message: message,
         placeholder: placeholder,
-        callback: callback
+        callback: callback,
+        onDiscard: onDiscard
     }).render();
 }
 

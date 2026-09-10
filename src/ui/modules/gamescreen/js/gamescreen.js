@@ -88,8 +88,8 @@ GameScreen.prototype.show = function (name, args) {
     }
 };
 
-GameScreen.prototype.showPrompt = function (message, callback, placeholder) {
-    var view = this.prompt().open(message, placeholder, callback);
+GameScreen.prototype.showPrompt = function (message, callback, placeholder, onDiscard) {
+    var view = this.prompt().open(message, placeholder, callback, onDiscard);
     this.view.body(view.render());
 };
 
