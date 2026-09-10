@@ -155,16 +155,32 @@ WorldScreenView.prototype.showBuildButtons = function () {
 };
 
 WorldScreenView.prototype.showActionButtons = function (controls) {
-    unsetBtns(this);
+    var view = this;
 
-    setBtn(this, 2, "tick-icon", function () {
-        controls.submit();
-    });
-    setBtn(this, 0, "back-icon", function () {
-        controls.discard();
-    });
+    function render() {
+        unsetBtns(view);
 
-    renderBtns(this);
+        setBtn(view, 2, "tick-icon", function () {
+            controls.submit();
+        });
+        setBtn(view, 0, "cross-icon", function () {
+            controls.discard();
+        });
+
+        // canRotate may be set by the caller only after this view was
+        // handed the controls, so keep the button in sync with it instead
+        // of reading it once
+        if (controls.canRotate()) {
+            setBtn(view, 1, "rotation-icon", function () {
+                controls.rotate();
+            });
+        }
+
+        renderBtns(view);
+    }
+
+    controls.canRotate.onChange(render, false, this);
+    render();
 };
 
 WorldScreenView.prototype.hint = function (text) {

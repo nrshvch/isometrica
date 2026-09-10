@@ -73,7 +73,10 @@ Construction.prototype.getCity = function(){
  * @returns {TileIterator}
  */
 Construction.prototype.occupiedTiles = function () {
-    return new TileIterator(this.tile, this.tile + (this.data.sizeX - 1) + (this.data.sizeY - 1) * Terrain.dy);
+    var sizeX = this.rotation ? this.data.sizeY : this.data.sizeX,
+        sizeY = this.rotation ? this.data.sizeX : this.data.sizeY;
+
+    return new TileIterator(this.tile, this.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy);
 };
 
 export default Construction;

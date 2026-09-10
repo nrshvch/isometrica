@@ -106,6 +106,7 @@ Cityman.prototype.establish = function(){
 
     //bind ui
     var controls = root.ui.gameScreen().showActionControls();
+    controls.canRotate(false);
     controls.onSubmit = function () {
         var tile = selector.selectedTile();
 
