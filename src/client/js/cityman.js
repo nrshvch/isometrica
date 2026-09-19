@@ -26,6 +26,14 @@ function addCityGO(self, city) {
     return gos[tile];
 }
 
+function labelText(city) {
+    return city.name() + " (" + city.population.getPopulation() + ")";
+}
+
+function updateLabel(self, city) {
+    self._cityGOs[city.tile()].textRenderer.text = labelText(city);
+}
+
 function setupLabel(self, city) {
     var go = addCityGO(self, city);
     var tile = city.tile();
@@ -34,17 +42,23 @@ function setupLabel(self, city) {
     var z = self.root.terrain.tileZPos(tile);
 
     go.transform.setPosition(x, y, z);
-    go.textRenderer.text = city.name();
+    go.textRenderer.text = labelText(city);
 }
 
 function onNewCity(sender, city, self) {
     setupLabel(self, city);
 
-    Events.on(city, City.events.rename, onCityRename, self)
+    Events.on(city, City.events.rename, onCityRename, self);
+    //the city ticks its update event, which is when the population moves
+    Events.on(city, City.events.update, onCityUpdate, self);
 }
 
 function onCityRename(city, name, self) {
-    self._cityGOs[city.tile()].textRenderer.text = name;
+    updateLabel(self, city);
+}
+
+function onCityUpdate(city, args, self) {
+    updateLabel(self, city);
 }
 
 function Cityman(root) {
