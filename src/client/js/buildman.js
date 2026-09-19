@@ -9,6 +9,9 @@ import EventManager from "events";
 import Events from "events";
 import Chunkman from "./chunkman";
 import AreaSelector from "./areaselector";
+import TileMessage from "./gameObjects/tilemessage";
+import Config from "./config";
+import ResourceCode from "core/resourcecode";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -103,8 +106,38 @@ function onChunkRemove(sender, chunk, self) {
 }
 
 
+/**
+ * Floats the money it just cost above the freshly placed construction, one
+ * text per built instance - a road tile is an instance of its own, while a
+ * multi tile building gets a single text over the middle of its footprint.
+ */
+function showConstructionCost(self, model) {
+    var data = model.data,
+        cost = data.constructionCost && data.constructionCost[ResourceCode.money];
+
+    if (!cost)
+        return;
+
+    var root = self.root,
+        tileSize = Config.tileSize,
+        sizeX = model.rotation ? data.sizeY : data.sizeX,
+        sizeY = model.rotation ? data.sizeX : data.sizeY,
+        x = Terrain.extractX(model.tile),
+        y = Terrain.extractY(model.tile),
+        z = root.core.world.terrain.getGridPointHeight(x + 1, y);
+
+    var message = new TileMessage("-" + cost, "rgb(255,64,64)");
+    root.game.logic.world.addGameObject(message);
+    message.transform.setPosition(
+        (x + (sizeX - 1) / 2) * tileSize,
+        z * Config.tileZStep,
+        (y + (sizeY - 1) / 2) * tileSize
+    );
+}
+
 function onBuildingBuilt(sender, building, self) {
     createBuilding(self, building);
+    showConstructionCost(self, building);
 }
 
 function onBuildingUpdated(sender, building, self) {
