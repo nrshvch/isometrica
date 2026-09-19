@@ -9,6 +9,8 @@ import CityTilesParams from "./city/citytilesparams";
 import CityPopulation from "./city/citypopulation";
 import Resource from "./resourcecode";
 import BuildingCode from "data/buildingcode";
+import BuildingClassCode from "data/classcode";
+import BuildingData from "data/buildings";
 import Terrain from "./terrain";
 
 var Core = namespace("Isometrica.Core");
@@ -73,7 +75,12 @@ City.prototype.onTick = function (sender, args, meta) {
 };
 
 City.prototype.clearTile = function (tile) {
-    if(this.areaService.contains(tile)) {
+    var building = this.world.buildingService.get(tile),
+        //roads may be laid outside of the borders, so they have to be
+        //removable out there as well - anything else is city land only
+        isOwnRoad = building !== null && BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
+
+    if(this.areaService.contains(tile) || isOwnRoad) {
         var cost = 100;
 
         if(this.resourcesService.hasEnoughResource(Resource.money, cost)) {

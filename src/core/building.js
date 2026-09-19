@@ -180,6 +180,11 @@ function produce(self) {
     var data = BuildingData[self.buildingCode];
     var city = self.getCity();
 
+    //a road laid outside of any city's borders belongs to no one, so there is
+    //no treasury to pay into
+    if (city === null)
+        return;
+
     if (self._state == BuildingState.ready && (data.requirement === undefined || data.requirement === GatherReq.none || checkFullfilRequirements(self))) {
         Resources.add(self.producing, self.producing, data.producing);
         city.resources.add(self.producing);
@@ -191,6 +196,9 @@ function demand(self) {
 
     var data = BuildingData[self.buildingCode];
     var city = self.getCity();
+
+    if (city === null)
+        return;
 
     if (self._state == BuildingState.ready) {
         Resources.add(self.demanding, self.demanding, data.demanding);
