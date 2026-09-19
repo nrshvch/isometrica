@@ -14,11 +14,15 @@ var Vec3 = glMatrix.vec3;
 var float32Buffer = new Float32Array(3);
 
 function gridPoint(terrain, gx, gy) {
-    var ts = Config.tileSize;
+    var ts = Config.tileSize,
+        //everything below zero is sea bed, and the water is drawn as a flat
+        //surface at zero - so the outline rides the waves rather than diving
+        //down to the bottom of the bay
+        z = Math.max(terrain.getGridPointHeight(gx, gy), 0);
 
     return new Float32Array([
         gx * ts - ts / 2,
-        terrain.getGridPointHeight(gx, gy) * Config.tileZStep,
+        z * Config.tileZStep,
         gy * ts - ts / 2
     ]);
 }
