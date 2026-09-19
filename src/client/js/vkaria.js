@@ -15,6 +15,7 @@ import EnvMan from "./envman";
 import ChunkMan from "./chunkman";
 import Cityman from "./cityman";
 import Roadman from "./roadman";
+import Landman from "./landman";
 import CameraControl from "./cameracontrol";
 import Player from "./player";
 import CameraMan from "./cameraman";
@@ -61,6 +62,7 @@ function Vkaria(core, ui, callback) {
     this.chunkman = new ChunkMan(this);
     this.cityman = new Cityman(this);
     this.roadman = new Roadman(this);
+    this.landman = new Landman(this);
     this.pathman = new PathMan();
     this.cameraControl = new CameraControl(this);
     this.cameraman = new CameraMan(this);
@@ -109,6 +111,7 @@ Vkaria.prototype.startServices = function(){
     this.envman.init();
     this.cityman.init();
     this.roadman.init();
+    this.landman.init();
     this.cameraControl.init();
 
 

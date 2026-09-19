@@ -17,7 +17,7 @@ var dash = [4];
 //region funcs
 function calculateBorderPoints(city) {
     var a, b, c, d, i, len, idx;
-    var tiles = city.area.getInfluenceArea();
+    var tiles = city.area.getTiles();
     var yIndexUnit = Terrain.convertToIndex(0, 1);
     var edges = {}, paths = [];
 
@@ -274,8 +274,8 @@ function onAreaChange(sender, args, self) {
 function CityBorderRenderer(city) {
     this.layer = RenderLayer.groundDrawLayer;
     this.city = city;
-    var inflmap = city.root.areaService;
-    Events.on(inflmap, inflmap.events.areaChange, onAreaChange, this);
+    var area = city.area;
+    Events.on(area, area.events.change, onAreaChange, this);
 }
 
 CityBorderRenderer.prototype = Object.create(Engine.Renderer.prototype);

@@ -116,7 +116,7 @@ var Core = namespace("Isometrica.Core");
         constructionTime: 0,
         constructionCost: {
             stone: 1,
-            money: 1
+            money: 100
         },
         name: "road",
         sprites: [

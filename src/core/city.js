@@ -11,6 +11,7 @@ import Resource from "./resourcecode";
 import BuildingCode from "data/buildingcode";
 import BuildingClassCode from "data/classcode";
 import BuildingData from "data/buildings";
+import Config from "./config";
 import Terrain from "./terrain";
 
 var Core = namespace("Isometrica.Core");
@@ -80,8 +81,12 @@ City.prototype.clearTile = function (tile) {
         //removable out there as well - anything else is city land only
         isOwnRoad = building !== null && BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
 
+    //bare ground has nothing to clear away, so it is free and does nothing
+    if (building === null && this.world.envService.getTree(tile) === null)
+        return false;
+
     if(this.areaService.contains(tile) || isOwnRoad) {
-        var cost = 100;
+        var cost = Config.clearTileCost;
 
         if(this.resourcesService.hasEnoughResource(Resource.money, cost)) {
             this.world.terrain.clearTile(tile);

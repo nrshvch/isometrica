@@ -107,32 +107,44 @@ function onChunkRemove(sender, chunk, self) {
 
 
 /**
- * Floats the money it just cost above the freshly placed construction, one
- * text per built instance - a road tile is an instance of its own, while a
- * multi tile building gets a single text over the middle of its footprint.
+ * Floats what it just cost over the middle of an area of sizeX by sizeY tiles
+ * anchored at tile.
  */
-function showConstructionCost(self, model) {
-    var data = model.data,
-        cost = data.constructionCost && data.constructionCost[ResourceCode.money];
-
-    if (!cost)
-        return;
-
+function showCost(self, tile, sizeX, sizeY, amount) {
     var root = self.root,
         tileSize = Config.tileSize,
-        sizeX = model.rotation ? data.sizeY : data.sizeX,
-        sizeY = model.rotation ? data.sizeX : data.sizeY,
-        x = Terrain.extractX(model.tile),
-        y = Terrain.extractY(model.tile),
+        x = Terrain.extractX(tile),
+        y = Terrain.extractY(tile),
         z = root.core.world.terrain.getGridPointHeight(x + 1, y);
 
-    var message = new TileMessage("-" + cost, "rgb(255,64,64)");
+    var message = new TileMessage("-$" + amount, "rgb(255,64,64)");
     root.game.logic.world.addGameObject(message);
     message.transform.setPosition(
         (x + (sizeX - 1) / 2) * tileSize,
         z * Config.tileZStep,
         (y + (sizeY - 1) / 2) * tileSize
     );
+}
+
+/**
+ * One text per built instance - a road tile is an instance of its own, while a
+ * multi tile building gets a single text over the middle of its footprint.
+ */
+function showConstructionCost(self, model) {
+    var data = model.data,
+        //what the city was actually charged, trees cleared for the site
+        //included - only a build the player paid for carries it
+        cost = model.expense !== undefined
+            ? model.expense
+            : data.constructionCost && data.constructionCost[ResourceCode.money];
+
+    if (!cost)
+        return;
+
+    showCost(self, model.tile,
+        model.rotation ? data.sizeY : data.sizeX,
+        model.rotation ? data.sizeX : data.sizeY,
+        cost);
 }
 
 function onBuildingBuilt(sender, building, self) {
@@ -195,6 +207,7 @@ Buildman.prototype.getBuilding = function (tile_or_x, y) {
 };
 
 Buildman.prototype.destroy = function () {
+    var self = this;
     var root = this.root;
 
     //show hint
@@ -226,7 +239,10 @@ Buildman.prototype.destroy = function () {
         if (iter !== null)
             while (!iter.done) {
                 tile = iter.next();
-                root.core.cities.getCity(0).clearTile(tile);
+                //every tile is charged on its own, so each one that goes
+                //gets its own text
+                if (root.core.cities.getCity(0).clearTile(tile))
+                    showCost(self, tile, 1, 1, Core.Config.clearTileCost);
             }
 
         //release resources

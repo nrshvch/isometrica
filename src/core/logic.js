@@ -4,7 +4,7 @@ import Buildings from "./buildings";
 import VTime from "./vtime";
 import EnvService from "./ambient";
 import Config from "./config";
-import InfluenceMap from "./influencemap";
+import CityLand from "./cityland";
 import TileParamsMan from "./world/tileparamsmanager";
 import MarketService from "./world/marketsrv";
 import MessagingService from "./msgsrv";
@@ -23,9 +23,8 @@ function Logic() {
     this.envService = new EnvService(this);
     this.tileParams = new TileParamsMan(this);
     this.marketService = new MarketService(this);
+    this.landRegistry = this.areaService = new CityLand(this);
     this.cities = new CityService(this);
-
-    this.influenceMap = this.areaService = new InfluenceMap(this);
 }
 
 var events = Logic.events = Logic.prototype.events = {
