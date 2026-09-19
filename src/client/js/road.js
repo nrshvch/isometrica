@@ -48,7 +48,10 @@ Road.prototype.updateProfile = function () {
 
         id = 90000 + a * 1000 + b * 100 + c * 10 + d;
 
-        if (id === 90000) return;
+        //a road with no neighbours left looks the same as a freshly placed
+        //lone one - there is no sprite for 90000, the standalone piece is x1
+        if (id === 90000)
+            id = 91111;
     } else if (slopeId === Terrain.SlopeType.AB) {
         id = 1;
     } else if (slopeId === Terrain.SlopeType.AC) {

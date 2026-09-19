@@ -4,6 +4,7 @@
 import Terrain from "./terrain";
 import Events from "events";
 import BuildingData from "data/buildings";
+import BuildingClassCode from "data/classcode";
 import TileRadialIterator from "./tileiteratorradial";
 import CityService from "./citysrv";
 
@@ -29,6 +30,11 @@ function calcCityInfluenceArea(self, cityBuildings) {
     var influences = [];
     for (var i = 0, l = buildings.length; i < l; i++) {
         building = buildings[i];
+
+        //roads don't claim land for the city, they only connect what it has
+        if (BuildingData[building.buildingCode].classCode === BuildingClassCode.road)
+            continue;
+
         var iter = building.occupiedTiles(), index;
         var radius = BuildingData[building.buildingCode].influenceRadius | 1;
         while ((index = iter.next()) !== -1) {

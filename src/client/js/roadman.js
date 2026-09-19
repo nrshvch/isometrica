@@ -48,6 +48,12 @@ function onBuildingUnload(sender, building, self){
 
     if(data.classCode === BuildingClassCode.road){
         removeRoad(self, model.tile);
+
+        //the same event carries both a demolished road and one whose chunk is
+        //just being unloaded; only a demolished one is gone from the core, and
+        //only then should the junctions around it fall back to simpler pieces
+        if(self.root.core.buildingService.get(model.tile) === null)
+            updateRoadsNear(self, model.tile);
     }
 }
 

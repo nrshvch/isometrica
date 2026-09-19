@@ -4,6 +4,7 @@
 import Events from "events";
 import BuildingCode from "data/buildingcode";
 import BuildingData from "data/buildings";
+import BuildingClassCode from "data/classcode";
 import ErrorCode from "../errorcode";
 import Building from "../building";
 import Terrain from "../terrain";
@@ -126,7 +127,9 @@ function buildTest(self, code, tile, rotation) {
         return ErrorCode.BUILDING_NOT_AVAIL;
     else if (code === BuildingCode.cityHall && self.cityHall !== null)
         return ErrorCode.CITY_HALL_ALREADY_BUILT;
-    else if (!city.area.contains(tile, Terrain.convertToIndex(data.sizeX, data.sizeY)))
+    //roads may be laid anywhere, they are how a city reaches out beyond its
+    //own borders in the first place - everything else stays inside them
+    else if (data.classCode !== BuildingClassCode.road && !city.area.contains(tile, Terrain.convertToIndex(data.sizeX, data.sizeY)))
         return ErrorCode.CANT_BUILD_HERE;
     else if (!city.resources.hasEnough(data.constructionCost))
         return ErrorCode.NOT_ENOUGH_RES;
