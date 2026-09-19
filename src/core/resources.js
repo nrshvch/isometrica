@@ -43,7 +43,7 @@ Resources.sub = function(out, a, b){
         key = ResourceCode[name];
         va = a[key] || 0;
         vb = b[key] || 0;
-        va = va + vb;
+        va = va - vb;
         if(va !== 0 || out[key] !== undefined)
             out[key] = va;
     }

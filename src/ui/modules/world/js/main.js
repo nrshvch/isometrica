@@ -1,8 +1,14 @@
 import WorldScreenView from "./views/worldscreenview";
 import Controls from "./worldaction";
+import ReactiveProperty from "reactive-property";
 
 function WorldScreen(ui, client) {
     this.ui = ui;
+
+    //true while an action (build, destroy, buy land...) holds the buttons,
+    //so world decorations know to stay out of the way
+    this.busy = ReactiveProperty(false);
+
     this.view = new WorldScreenView({
         controller: this
     });
@@ -28,6 +34,8 @@ WorldScreen.prototype.updateSize = function () {
 };
 
 WorldScreen.prototype.show = function (name) {
+    this.busy(false);
+
     switch (name) {
         case "build":
             this.view.showBuildButtons();
@@ -45,6 +53,7 @@ WorldScreen.prototype.showControls = function (controls) {
         controls = new Controls();
 
     this.view.showActionButtons(controls);
+    this.busy(true);
 
     return controls;
 };

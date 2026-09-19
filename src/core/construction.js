@@ -60,7 +60,7 @@ Construction.prototype.getState = function(){
 
 Construction.prototype.getCity = function(){
     var world = this.world, city = null,
-        cityId = world.influenceMap.getTileOwner(this.tile);
+        cityId = world.landRegistry.getTileOwner(this.tile);
 
     if (cityId !== -1)
         city = world.cities.getCity(cityId);

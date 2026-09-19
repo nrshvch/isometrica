@@ -12,7 +12,7 @@ var CityService = namespace("Isometrica.Core.CityService");
     }
 
     CityTilesParams.prototype.avgEco = function(){
-        var area = this.city.area.getInfluenceArea(),
+        var area = this.city.area.getTiles(),
             t,
             worldTilesParams = this.city.world.tileParams,
             params, eco, ecosum = 0, i = 0;

@@ -18,7 +18,7 @@ import "./config";
 import "./construction";
 import "./errorcode";
 import "./gatherreq";
-import "./influencemap";
+import "./cityland";
 import "./logic";
 import "./msgsrv";
 import "./researchdirection";

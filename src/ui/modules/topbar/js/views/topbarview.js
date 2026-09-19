@@ -55,16 +55,11 @@ var View = Backbone.View.extend({
     },
     renderMoney: function(){
         var money = this.city.resources.getResources()[Isometrica.Core.ResourceCode.money];
-        $(".money", this.$el).text(Numeral(money).format("0a"));
-    },
-    renderPopulation: function(){
-        var pop = this.city.population;
-        $(".population", this.$el).text(pop.getPopulation() + " / " + pop.getCapacity());
+        $(".money", this.$el).text(Numeral(money).format("0,0"));
     },
     render: function(){
         this.renderDate();
         this.renderName();
-        this.renderPopulation();
         this.renderMoney();
     },
     dispose: function(){
