@@ -116,6 +116,16 @@ TileSelector.prototype.selectedTiles = function () {
     return t0 !== -1 && t1 !== -1 && new Core.TileIterator(t0, t1) || null;
 };
 
+/**
+ * Drops the current selection and resumes following the cursor, so the
+ * selector can be reused for another area without being recreated.
+ */
+TileSelector.prototype.reset = function () {
+    this._locked = false;
+    this._tile0(-1, true);
+    this._tile1(-1);
+};
+
 TileSelector.prototype.dispose = function () {
     Events.fire(this, events.dispose);
 };

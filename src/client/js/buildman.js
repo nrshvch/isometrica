@@ -276,14 +276,10 @@ Buildman.prototype.build = function (code) {
                 root.core.cities.getCity(0).buildingService.buildBuilding(code, tile, rotation);
             }
 
-        //release resources
-        ts.dispose();
-        root.hiliteMan.disable(tokens);
-        Events.off(ts, AreaSelector.events.change, sub);
-
-        root.ui.gameScreen().showWorld();
-        root.ui.gameScreen().worldScreen().hideHint();
-        root.camera.cameraScript.lock(false);
+        // stay in build mode: drop the selection and keep the selector, hint,
+        // controls and cam lock so another area can be placed right away
+        ts.reset();
+        updateHilite();
     };
     controls.onDiscard = function () {
         //release resources
