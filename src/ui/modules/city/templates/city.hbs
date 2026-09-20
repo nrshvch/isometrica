@@ -1,0 +1,33 @@
+<div class="city-view ui-window">
+    <div class="row">
+        <div class="cell">
+            <div class="tabs-section">
+                <div class="tabs">
+                    {{#each tabs}}
+                        <div class="tab" data-tab="{{@key}}">{{@key}}</div>
+                    {{/each}}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="cell flex">
+            <div class="body">
+                {{#each tabs}}
+                    <div class="tab-content" data-tab="{{@key}}">
+                    </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="cell">
+            <div class="buttons count-1">
+                <a class="button ui-button close">
+                    <img class="icon back-icon" src='ui/img/onebyone.gif'/>
+                    <div class="text">Close</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

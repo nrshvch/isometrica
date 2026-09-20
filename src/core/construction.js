@@ -1,0 +1,84 @@
+/**
+ * Created by denis on 8/27/14.
+ */
+import ConstructionData from "data/buildings";
+import TileIterator from "./tileiterator";
+import Terrain from "./terrain";
+import ConstructionState from "./buildingstate";
+
+var id;
+
+var events = {
+    stateChange: 0
+};
+
+function constructor(self){
+    self.id = id++;
+}
+
+function init(self, world, code, tile, rot, done){
+    self.data = ConstructionData[code];
+    self.world = world;
+    self.tile = tile;
+    self.buildingCode = code;
+    self.rotation = rot || 0;
+
+    //a building coming back from a save was put up long ago - it stands
+    //finished from the moment it appears
+    if(self.data.constructionTime === 0 || done === true){
+        self._state = ConstructionState.ready;
+    }else{
+        self._state = ConstructionState.underConstruction;
+        setTimeout(function(){
+            self._state = ConstructionState.ready;
+            Events.fire(self, events.stateChange, self._state);
+        }, self.data.constructionTime);
+    }
+}
+
+function Construction() {
+    constructor(this);
+}
+
+Construction.constructor = constructor;
+Construction.events = events;
+Construction.init = init;
+
+Construction.prototype.id = -1;
+Construction.prototype.tile = -1;
+Construction.prototype.rotation = 0;
+Construction.prototype.data = null;
+Construction.prototype.world = null;
+Construction.prototype.buildingCode = -1;
+Construction.prototype._state = ConstructionState.none;
+
+Construction.prototype.init = function(world, code, tile, rot, done){
+    return init(this, world, code, tile, rot, done);
+};
+
+Construction.prototype.getState = function(){
+    return this._state;
+};
+
+Construction.prototype.getCity = function(){
+    var world = this.world, city = null,
+        cityId = world.landRegistry.getTileOwner(this.tile);
+
+    if (cityId !== -1)
+        city = world.cities.getCity(cityId);
+
+    return city;
+};
+
+/**
+ *
+ * @returns {TileIterator}
+ */
+Construction.prototype.occupiedTiles = function () {
+    var sizeX = this.rotation ? this.data.sizeY : this.data.sizeX,
+        sizeY = this.rotation ? this.data.sizeX : this.data.sizeY;
+
+    return new TileIterator(this.tile, this.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy);
+};
+
+export default Construction;
