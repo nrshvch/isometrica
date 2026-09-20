@@ -63,8 +63,18 @@ function Roadman(root) {
 }
 
 Roadman.prototype.init = function () {
-    Events.on(this.root.buildman, Buildman.events.buildingLoad, onBuildingLoad, this);
-    Events.on(this.root.buildman, Buildman.events.buildingUnload, onBuildingUnload, this);
+    var buildman = this.root.buildman;
+
+    Events.on(buildman, Buildman.events.buildingLoad, onBuildingLoad, this);
+    Events.on(buildman, Buildman.events.buildingUnload, onBuildingUnload, this);
+
+    //a road whose view was made before this ran never worked out which piece
+    //to draw, and would sit there as a lone crossroads for good - so anything
+    //already standing is taken over here rather than trusted to arrive
+    var views = buildman.getBuildingViews();
+
+    for (var i = 0; i < views.length; i++)
+        onBuildingLoad(buildman, views[i], this);
 };
 
 Roadman.prototype.getRoad = function(tile){

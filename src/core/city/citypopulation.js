@@ -13,7 +13,12 @@ var CityService = namespace("Isometrica.Core.CityService");
 CityService.Population = CityPopulation;
 
 var MAX_PARAM_VAL = TileParamsMan.MAX_PARAM_VAL;
-var TAX_MONEY = 1;
+
+//What one citizen pays per tick. Houses earn nothing by standing there - it is
+//the people in them who pay - so this is what a house is bought for: at around
+//100 to 140 money a head to build, one earns itself back in 40 to 70 ticks
+//once it fills up.
+var TAX_MONEY = 2;
 
 
 /**

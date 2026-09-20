@@ -72,6 +72,11 @@ Cityman.prototype.init = function () {
 
     Events.on(root.core.cities, Core.CityService.events.cityNew, onNewCity, this);
     Events.on(cam, WorldCamera.events.inputClick, function(sender, e){
+        //an action owns the world while it runs - opening the city screen from
+        //under it would leave the action with no buttons and no way to finish
+        if (root.ui.gameScreen().worldScreen().busy())
+            return;
+
        var gos = cam.pickGameObject(e.gameViewportX, e.gameViewportY);
         for(var i in gos){
             var item = gos[i];

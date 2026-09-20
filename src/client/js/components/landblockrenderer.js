@@ -4,16 +4,21 @@
  * The outline follows the terrain grid points along the block perimeter, so it
  * hugs hills the same way the city border does, and the whole block is drawn as
  * a single shape - a per tile hilite would put a grid all over it.
+ *
+ * It is drawn a little way inside the block, as every outline in the game is
+ * (see client/tileoutline), so that a block sharing its edge with the city
+ * limits shows two lines rather than one on top of the other.
  */
 import Engine from "engine/main";
 import * as glMatrix from "gl-matrix";
 import Config from "../config";
 import RenderLayer from "../renderlayer";
+import {PADDING} from "../tileoutline";
 
 var Vec3 = glMatrix.vec3;
 var float32Buffer = new Float32Array(3);
 
-function gridPoint(terrain, gx, gy) {
+function gridPoint(terrain, gx, gy, insetX, insetY) {
     var ts = Config.tileSize,
         //everything below zero is sea bed, and the water is drawn as a flat
         //surface at zero - so the outline rides the waves rather than diving
@@ -21,9 +26,9 @@ function gridPoint(terrain, gx, gy) {
         z = Math.max(terrain.getGridPointHeight(gx, gy), 0);
 
     return new Float32Array([
-        gx * ts - ts / 2,
+        gx * ts - ts / 2 + insetX,
         z * Config.tileZStep,
-        gy * ts - ts / 2
+        gy * ts - ts / 2 + insetY
     ]);
 }
 
@@ -32,20 +37,21 @@ function calculatePerimeter(terrain, block) {
         y0 = block.y0,
         x1 = block.x1 + 1,
         y1 = block.y1 + 1,
+        p = PADDING,
         points = [],
         i;
 
     for (i = x0; i <= x1; i++)
-        points.push(gridPoint(terrain, i, y0));
+        points.push(gridPoint(terrain, i, y0, i === x0 ? p : (i === x1 ? -p : 0), p));
 
     for (i = y0 + 1; i <= y1; i++)
-        points.push(gridPoint(terrain, x1, i));
+        points.push(gridPoint(terrain, x1, i, -p, i === y1 ? -p : 0));
 
     for (i = x1 - 1; i >= x0; i--)
-        points.push(gridPoint(terrain, i, y1));
+        points.push(gridPoint(terrain, i, y1, i === x0 ? p : 0, -p));
 
     for (i = y1 - 1; i > y0; i--)
-        points.push(gridPoint(terrain, x0, i));
+        points.push(gridPoint(terrain, x0, i, p, 0));
 
     return points;
 }

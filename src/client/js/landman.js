@@ -192,6 +192,11 @@ function onClick(sender, e, self) {
     if (self._picked !== null || worldScreen(self).busy())
         return;
 
+    //a tower standing on a block that is up for sale is still a tower: the
+    //click belongs to it, and the land underneath keeps out of it
+    if (self.root.buildman.pickBuilding(e.gameViewportX, e.gameViewportY) !== null)
+        return;
+
     var go = findOffer(self, pickTile(self.root, e.gameViewportX, e.gameViewportY));
 
     if (go !== null)

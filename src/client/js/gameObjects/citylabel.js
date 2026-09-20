@@ -8,8 +8,9 @@ function CityLabel(city){
     var text = this.addComponent(new engine.TextRenderer());
     text.layer = vkaria.layers.overlayLayer;
     text.text = city.name();
-    text.style = "normal 16px arial";
-
+    text.style = "bold 16px Courier New";
+    text.strokeStyle = "black";
+    text.lineWidth = 4;
 
     var b = new engine.GameObject("border");
     var bren = new Bren(city);

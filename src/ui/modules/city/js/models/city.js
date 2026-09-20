@@ -1,6 +1,14 @@
 import Backbone from "backbone";
 import ValbarItems from "ui/modules/valbar/js/collections/items";
 import Events from "events";
+import ResourceCode from "core/resourcecode";
+
+var icons = {};
+icons[ResourceCode.money] = "coin";
+
+function icon(resource){
+    return icons[resource] || resource;
+}
 
 export default Backbone.Model.extend({
     initialize: function(attributes, options) {
@@ -17,11 +25,12 @@ export default Backbone.Model.extend({
             for(var key in r) {
                 if (typeof models[key] === "undefined")
                     models[key] = d.resources.add({
-                        icon: key,
-                        value: r[key]
+                        icon: icon(key),
+                        title: key,
+                        value: Math.round(r[key])
                     });
                 else
-                    models[key].set("value", r[key]);
+                    models[key].set("value", Math.round(r[key]));
             }
 
             //population

@@ -31,8 +31,21 @@ export default Backbone.View.extend({
         viewport.setSize(400, 400);
     },
     render: function(){
-        $(".pop", this.$el).text(this.model.city.population.getPopulation());
-        $(".maxPop", this.$el).text(this.model.city.population.getCapacity());
+        var city = this.model.city;
+        var water = city.water;
+
+        $(".pop", this.$el).text(city.population.getPopulation());
+        $(".maxPop", this.$el).text(city.population.getCapacity());
+
+        //why houses are standing empty, if any are
+        var missing = city.getMissingServices();
+
+        $(".towers", this.$el).text(water.getTowerCount());
+        $(".roads", this.$el).text(city.roads.getNetworkSize() + " tiles off the city hall");
+        $(".unserved", this.$el).text(
+            missing.road === 0 && missing.water === 0
+                ? "-"
+                : missing.road + " without a road, " + missing.water + " without water");
 
         return this;
     }

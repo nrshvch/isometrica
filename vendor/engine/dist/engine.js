@@ -3386,6 +3386,7 @@ define('engine/components/textrenderer',['require','namespace','./renderer','gl-
     p.layer = 0;
     p.align = "center";
     p.valign = "middle";
+    p.strokeStyle = undefined;
 
     p.setGameObject = function(gameObject){
         Component.prototype.setGameObject.call(this, gameObject);
@@ -3406,6 +3407,14 @@ define('engine/components/textrenderer',['require','namespace','./renderer','gl-
         layer.fillStyle = this.color;
         layer.textAlign = this.align;
         layer.textBaseline = this.valign;
+
+        if(this.strokeStyle){
+            layer.lineJoin = 'round'; // or 'miter' with miterLimit
+            layer.lineWidth = this.lineWidth || 4;      // Thickness of the outline
+            layer.strokeStyle = this.strokeStyle; // Color of the outline
+            layer.strokeText(this.text, vec3Buffer1[0], vec3Buffer1[1])
+        }
+
         layer.fillText(this.text, vec3Buffer1[0], vec3Buffer1[1]);
     };
 

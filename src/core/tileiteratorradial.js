@@ -28,30 +28,26 @@ var Core = Namespace("Isometrica.Core");
             open = iterator.open,
             tile = open.pop();
 
-        closed[tile] = true;
-
-        var a = tile + 1;
-        var b = tile - 1;
-        var c = tile + Terrain.dy;
-        var d = tile - Terrain.dy;
-
-        if(closed[a] !== true && insideRadius(iterator, a))
-            open.push(a);
-
-        if(closed[b] !== true && insideRadius(iterator, b))
-            open.push(b);
-
-        if(closed[c] !== true && insideRadius(iterator, c))
-            open.push(c);
-
-        if(closed[d] !== true && insideRadius(iterator, d))
-            open.push(d);
+        //a tile is spoken for the moment it goes on the open list, not when it
+        //comes off it - marking it later let the same tile be pushed by each
+        //of its neighbours in turn and handed out several times over
+        push(iterator, closed, open, tile + 1);
+        push(iterator, closed, open, tile - 1);
+        push(iterator, closed, open, tile + Terrain.dy);
+        push(iterator, closed, open, tile - Terrain.dy);
 
         if(open.length === 0)
             iterator.done = true;
 
         return tile;
     };
+
+    function push(iterator, closed, open, tile){
+        if(closed[tile] !== true && insideRadius(iterator, tile)){
+            closed[tile] = true;
+            open.push(tile);
+        }
+    }
 
     TileRadialIterator.reset = function(iterator){
         iterator.i = 0;
@@ -62,6 +58,7 @@ var Core = Namespace("Isometrica.Core");
         iterator.tile = tile;
         iterator.open = [tile];
         iterator.closed = {};
+        iterator.closed[tile] = true;
         iterator.radius = radius;
         iterator.done = false;
     };

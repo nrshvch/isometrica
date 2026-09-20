@@ -6,22 +6,14 @@
 
   &:extend(.ui-block);
 
-  .city-name {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    text-align: center;
-    color: transparent;
-    text-shadow: 1px 0px 0px rgba(255, 255, 255, 0.4), 0px -1px 0px rgba(0, 0, 0, 0.4);
-
-    &:extend(.middle-position all);
-  }
-
   .left {
     float: left;
     height: 100%;
     width: 100%;
     position: absolute;
+    .icon {
+      margin-right: 4px;
+    }
 
     .section {
       float: left;
@@ -35,6 +27,9 @@
     height: 100%;
     width: 100%;
 
+    .icon {
+      margin-right: 4px;
+    }
     .section {
       float: right;
       padding-right: 1%;
@@ -58,8 +53,6 @@
         height: 80%;
         vertical-align: middle;
 
-        &:extend(.pixelated);
-
         img {
           display: block;
           height: 100%;
@@ -73,8 +66,21 @@
 
         display: inline-block;
         height: 100%;
-        font-size: 8pt;
+        font-size: 14px;
+        font-weight: bold;
         vertical-align: middle;
+        font-variant: small-caps;
+
+        font-family: "Courier New", Courier, monospace;
+        text-shadow:
+                -1px 0 0 #000,
+                  0 -1px 0 #000,
+                0  1px 0 #000,
+                1px  0 0 #000,
+                  -1px -1px 1px #000,
+                  1px -1px 1px #000,
+                -1px  1px 1px #000,
+                1px  1px 1px #000;
       }
     }
   }

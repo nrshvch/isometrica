@@ -22,13 +22,24 @@ function GameScreen(ui) {
         //ready, so the bar goes up straight away rather than waiting on an
         //event that has been and gone
         if (cities.getCities().length > 0)
-            d.view.head(d.topBar().view);
+            showTopBar(d);
 
         cities.onNewCity().on(function(citysrv, city){
 
-            d.view.head(d.topBar().view);
+            showTopBar(d);
         });
     }, this);
+}
+
+/**
+ * The bar takes a slice off the top of the screen, so the world below it is
+ * suddenly smaller than the canvas it was measured for - it has to be told,
+ * or the view stays stretched until something else resizes it and the whole
+ * picture jumps.
+ */
+function showTopBar(gameScreen) {
+    gameScreen.view.head(gameScreen.topBar().view);
+    gameScreen.worldScreen().updateSize();
 }
 
 GameScreen.prototype.init = function (callback) {

@@ -1,7 +1,7 @@
 //TODO cache terrain Z values
 
 import namespace from "namespace";
-import ResourceCode from "core/resourcecode";
+import DepositCode from "./depositcode";
 import TerrainType from "./terraintype";
 import Simplex from "seeded-simplex";
 import Events from "events";
@@ -396,11 +396,11 @@ namespace("Isometrica.Core").Terrain = Terrain;
 
     Terrain.prototype.resourceDistribution = function (x, y) {
         if (stoneDistribution(x, y))
-            return ResourceCode.stone;
+            return DepositCode.stone;
         else if (ironDistribution(x, y))
-            return ResourceCode.iron;
+            return DepositCode.iron;
         else if (oilDistribution(x, y))
-            return ResourceCode.oil;
+            return DepositCode.oil;
         else
             return null;
     };
@@ -417,9 +417,10 @@ namespace("Isometrica.Core").Terrain = Terrain;
         if (!isSlope(this.tileSlope(Terrain.convertToIndex(x,y)))) {
             var r = this.resourceDistribution(x, y);
 
-            if (r === ResourceCode.oil && this.getTerrainType(x, y) === TerrainType.water) {
-                return ResourceCode.oil;
-            } else if (r !== ResourceCode.none && r !== ResourceCode.oil && this.getTerrainType(x, y) !== TerrainType.water) {
+            //oil is the one that lies offshore; everything else is on land
+            if (r === DepositCode.oil && this.getTerrainType(x, y) === TerrainType.water) {
+                return DepositCode.oil;
+            } else if (r !== null && r !== DepositCode.oil && this.getTerrainType(x, y) !== TerrainType.water) {
                 return r;
             }
         }
