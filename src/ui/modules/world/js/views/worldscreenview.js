@@ -141,6 +141,9 @@ WorldScreenView.prototype.showInitialButtons = function () {
 WorldScreenView.prototype.showBuildButtons = function () {
     var view = this;
     unsetBtns(this);
+    setBtn(this, 0, "cross-icon", function () {
+        view.controller.startFresh();
+    });
     setBtn(this, 1, "house-icon", function () {
         view.controller.ui.navigate("catalogue");
     });

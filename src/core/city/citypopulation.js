@@ -39,6 +39,20 @@ CityPopulation.prototype.getPopulation = function(){
     return Math.max(this._population | 0, 0);
 };
 
+/**
+ * @returns {number} how many live here, down to the fraction a tick moves
+ */
+CityPopulation.prototype.save = function(){
+    return this._population;
+};
+
+/**
+ * @param population {number}
+ */
+CityPopulation.prototype.load = function(population){
+    this._population = population || 0;
+};
+
 CityPopulation.prototype.getTaxIncomeAmount = function(){
     return TAX_MONEY * this.getPopulation();
 };

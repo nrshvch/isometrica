@@ -60,6 +60,32 @@ WorldScreen.prototype.showControls = function (controls) {
 
 
 
+/**
+ * Asks whether the player really means to leave this city behind, and starts
+ * a new blank one under a new id if they do. The city they are on is kept -
+ * it stays in storage under its own address.
+ */
+WorldScreen.prototype.startFresh = function () {
+    var self = this;
+
+    this.showHint("Do you really want to start fresh?");
+
+    var controls = this.showControls();
+    controls.canRotate(false);
+
+    controls.onSubmit = function () {
+        self.hideHint();
+        self.ui.startFreshCity();
+    };
+
+    controls.onDiscard = function () {
+        self.hideHint();
+        self.show();
+    };
+
+    return controls;
+};
+
 WorldScreen.prototype.showHint = function(text){
     this.view.hint(text);
 };

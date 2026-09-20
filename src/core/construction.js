@@ -16,14 +16,16 @@ function constructor(self){
     self.id = id++;
 }
 
-function init(self, world, code, tile, rot){
+function init(self, world, code, tile, rot, done){
     self.data = ConstructionData[code];
     self.world = world;
     self.tile = tile;
     self.buildingCode = code;
     self.rotation = rot || 0;
 
-    if(self.data.constructionTime === 0){
+    //a building coming back from a save was put up long ago - it stands
+    //finished from the moment it appears
+    if(self.data.constructionTime === 0 || done === true){
         self._state = ConstructionState.ready;
     }else{
         self._state = ConstructionState.underConstruction;
@@ -50,8 +52,8 @@ Construction.prototype.world = null;
 Construction.prototype.buildingCode = -1;
 Construction.prototype._state = ConstructionState.none;
 
-Construction.prototype.init = function(world, code, tile, rot){
-    return init(this, world, code, tile, rot);
+Construction.prototype.init = function(world, code, tile, rot, done){
+    return init(this, world, code, tile, rot, done);
 };
 
 Construction.prototype.getState = function(){

@@ -216,6 +216,31 @@ Area.prototype.getAreaCost = function () {
     return calculateAreaCost(this);
 };
 
+/**
+ * Only the blocks the city bought go into a save - where they sit on the map
+ * follows from the city's own tile, and their price from where they sit.
+ *
+ * @returns {Array[]} [bx, by] pairs
+ */
+Area.prototype.save = function () {
+    var blocks = this._blocks, r = [];
+
+    for (var k in blocks)
+        r.push([blocks[k].bx, blocks[k].by]);
+
+    return r;
+};
+
+/**
+ * Hands the city back the blocks it had, free of charge.
+ *
+ * @param list {Array[]} [bx, by] pairs
+ */
+Area.prototype.load = function (list) {
+    for (var i = 0; i < list.length; i++)
+        claimBlock(this, block(this, list[i][0], list[i][1]));
+};
+
 function key(bx, by) {
     return bx + ":" + by;
 }

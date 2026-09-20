@@ -45,7 +45,12 @@ var events = CityBuildings.prototype.events = {
 };
 
 CityBuildings.prototype.init = function () {
+    var buildings = this.city.root.buildings;
 
+    //whatever takes a building down - a bulldozer, the terrain being cleared -
+    //goes through the world's register, and the city's own list has to follow
+    //it, or a save would put razed buildings back up
+    Events.on(buildings, buildings.events.buildingRemoved, onBuildingRemoved, this);
 };
 
 CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
@@ -119,6 +124,60 @@ CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
         Events.fire(this, events.new, bs[i]);
 };
 
+/**
+ * Puts a building back where a save says it stood: no build test, no bill, and
+ * standing finished from the start. What the build test looks at was the
+ * player's business back when they built it, and they paid for it then.
+ *
+ * @param code {number}
+ * @param tile {number}
+ * @param [rotation] {number}
+ * @returns {Building}
+ */
+CityBuildings.prototype.restore = function (code, tile, rotation) {
+    var building = new Building();
+
+    building.init(this.city.world, code, tile, rotation, true);
+
+    this.city.root.buildings.build(building);
+
+    this._buildings.push(building);
+
+    if (code === BuildingCode.cityHall)
+        this.cityHall = building;
+
+    Events.fire(this, events.new, building);
+
+    return building;
+};
+
+/**
+ * @returns {Object[]} what stands in the city, as it goes into a save
+ */
+CityBuildings.prototype.save = function () {
+    var r = [], building;
+
+    for (var i = 0; i < this._buildings.length; i++) {
+        building = this._buildings[i];
+
+        r.push({
+            code: building.buildingCode,
+            tile: building.tile,
+            rotation: building.rotation || 0
+        });
+    }
+
+    return r;
+};
+
+/**
+ * @param list {Object[]}
+ */
+CityBuildings.prototype.load = function (list) {
+    for (var i = 0; i < list.length; i++)
+        this.restore(list[i].code, list[i].tile, list[i].rotation);
+};
+
 CityBuildings.prototype.destroyBuilding = function () {
     throw "Not implemented";
 };
@@ -147,6 +206,18 @@ function clearingCost(self, code, tile, rotation) {
     }
 
     return trees * Config.clearTileCost;
+}
+
+function onBuildingRemoved(sender, building, self) {
+    var index = self._buildings.indexOf(building);
+
+    if (index === -1)
+        return;
+
+    self._buildings.splice(index, 1);
+
+    if (self.cityHall === building)
+        self.cityHall = null;
 }
 
 function buildTest(self, code, tile, rotation) {

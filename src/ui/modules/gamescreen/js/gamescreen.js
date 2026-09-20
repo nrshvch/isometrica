@@ -16,7 +16,15 @@ function GameScreen(ui) {
     });
 
     this.onReady().on(function(s,a,d){
-        d.client.core.cities.onNewCity().on(function(citysrv, city){
+        var cities = d.client.core.cities;
+
+        //a city out of a save is already standing by the time the client is
+        //ready, so the bar goes up straight away rather than waiting on an
+        //event that has been and gone
+        if (cities.getCities().length > 0)
+            d.view.head(d.topBar().view);
+
+        cities.onNewCity().on(function(citysrv, city){
 
             d.view.head(d.topBar().view);
         });
@@ -34,6 +42,11 @@ GameScreen.prototype.init = function (callback) {
             //loads assets
             client.prepare(function () {
                 core.start();
+
+                //the saved city goes into the world before the client puts
+                //anything on screen, so that what is drawn is drawn once
+                self.ui.showCityInUrl(core.persistence.open(self.ui.cityId()));
+
                 client.start();
                 callback(self);
                 client.startServices();

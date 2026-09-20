@@ -195,6 +195,21 @@ Buildman.prototype.start = function () {
     Events.on(core.constructionService, ConstructionService.events.buildingRemoved, onBuildingRemoved, this);
 };
 
+/**
+ * Takes over the chunks that were already loaded before anyone was listening.
+ *
+ * A city out of a save is standing in the world before the client comes up, so
+ * the chunks it sits on can have been loaded without a single chunkLoad going
+ * out - whatever stands on them gets its view here. Runs once the rest of the
+ * client is subscribed, so that roadman sees the roads it has to join up.
+ */
+Buildman.prototype.init = function () {
+    var chunks = this.root.chunkman.getChunks();
+
+    for (var i = 0; i < chunks.length; i++)
+        onChunkLoad(this.root.chunkman, chunks[i], this);
+};
+
 Buildman.prototype.getBuilding = function (tile_or_x, y) {
     var tile;
 

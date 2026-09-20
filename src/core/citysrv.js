@@ -55,8 +55,34 @@ CityService.prototype.establishCity = function(tile, name){
     return city;
 };
 
+/**
+ * Brings a city back from a save. It is not founded - it has been there all
+ * along, so nothing is tested, nothing is charged, and no city hall is put up:
+ * the save says what stands where.
+ *
+ * @param data {Object} as City#save left it
+ * @returns {City}
+ */
+CityService.prototype.restoreCity = function (data) {
+    var city = new City(this.root, data.tile);
+
+    addCity(this, city);
+    Events.fire(this, events.cityNew, city);
+
+    city.load(data);
+
+    return city;
+};
+
 CityService.prototype.getCity = function (id) {
     return this._citiesById[id];
+};
+
+/**
+ * @returns {City[]}
+ */
+CityService.prototype.getCities = function () {
+    return this._cities;
 };
 
 export default CityService;
