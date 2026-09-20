@@ -1,6 +1,6 @@
 # Isometrica
 
-This is JavaScript city building game prototype I've built around 2012. Keeping it alive for historical preservation only.
+This is JavaScript city building game prototype I've built around 2012. Keeping it alive for historical reference only.
 
 ![Isoville](public/isoville.png)
 
