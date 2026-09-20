@@ -68,6 +68,20 @@ CityResources.prototype.getResources = function(){
     return this._resources;
 };
 
+/**
+ * @returns {Object} the treasury, as it goes into a save
+ */
+CityResources.prototype.save = function(){
+    return Resources.clone(this._resources);
+};
+
+/**
+ * @param resources {Object}
+ */
+CityResources.prototype.load = function(resources){
+    this._resources = Resources.clone(resources || {});
+};
+
 function hasEnoughCheck(key, value, self){
     return self._resources[key] >= value;
 }

@@ -85,10 +85,19 @@ Cityman.prototype.init = function () {
         }
     });
 
+    //a city loaded from a save was put into the world before the client came
+    //up, so it gets its label here instead of off the event - and the camera
+    //opens on it, where the player left off
+    var cities = root.core.cities.getCities();
+    for (var i = 0; i < cities.length; i++)
+        onNewCity(root.core.cities, cities[i], this);
+
+    if (cities.length > 0)
+        this.locate(cities[0]);
 };
 
 Cityman.prototype.locate = function (city) {
-    this.root.camera.cameraScript.moveTo(this._cityGOs[city.tile()].go.transform);
+    this.root.camera.cameraScript.moveTo(this._cityGOs[city.tile()].transform);
 };
 
 Cityman.prototype.establish = function(){

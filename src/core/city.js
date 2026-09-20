@@ -40,6 +40,10 @@ function City(world, tile) {
     this._tile = tile;
     this.timeEstablished = world.time.milliseconds;
 
+    //tiles the player paid to have cleared - the world generates the same
+    //trees every time, so a save only has to name the ones that went
+    this._clearedTiles = [];
+
     this.area = this.areaService = new Area(this);
     this.tilesParams = this.tileParamsService = new CityTilesParams(this);
     this.resourcesModule = this.resources = this.resourcesService = new CityResources(this);
@@ -54,6 +58,7 @@ function City(world, tile) {
     this.statsService.init();
     this.populationService.init();
     this.areaService.init();
+    this.buildingService.init();
 
     Events.on(world, world.events.tick, this.onTick, {self: this});
 
@@ -91,6 +96,7 @@ City.prototype.clearTile = function (tile) {
         if(this.resourcesService.hasEnoughResource(Resource.money, cost)) {
             this.world.terrain.clearTile(tile);
             this.resourcesModule.subResource(Resource.money, cost);
+            this._clearedTiles.push(tile);
             return true;
         }
     }
@@ -128,6 +134,59 @@ City.prototype.tile = function(value){
     if(value !== undefined)
         return this._tile = value;
     return this._tile;
+};
+
+/**
+ * Everything of the city that came from the player: what they named it, where
+ * they put it, what they own, what they built and what they cleared away.
+ * Anything the game can work out on its own - production, ratings, what the
+ * research opened up - is left to it.
+ *
+ * @returns {Object}
+ */
+City.prototype.save = function () {
+    return {
+        name: this.name(),
+        tile: this.tile(),
+        established: this.timeEstablished,
+        resources: this.resourcesService.save(),
+        population: this.populationService.save(),
+        area: this.areaService.save(),
+        research: this.laboratoryService.save(),
+        clearedTiles: this._clearedTiles.slice(),
+        buildings: this.buildingService.save()
+    };
+};
+
+/**
+ * Puts a saved city back together. The order is the one the city grew in:
+ * research opens the buildings up, the land is bought, the ground is cleared,
+ * and only then does anything stand on it.
+ *
+ * @param data {Object} as City#save left it
+ */
+City.prototype.load = function (data) {
+    this.name(data.name || "");
+
+    if (data.established !== undefined)
+        this.timeEstablished = data.established;
+
+    this.laboratoryService.load(data.research || {});
+    this.areaService.load(data.area || []);
+
+    var cleared = data.clearedTiles || [];
+    for (var i = 0; i < cleared.length; i++) {
+        this.world.terrain.clearTile(cleared[i]);
+        this._clearedTiles.push(cleared[i]);
+    }
+
+    this.buildingService.load(data.buildings || []);
+
+    //last, so that nothing the restoring did can show up on the bill
+    if (data.resources !== undefined)
+        this.resourcesService.load(data.resources);
+
+    this.populationService.load(data.population);
 };
 
 /**

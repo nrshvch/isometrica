@@ -9,6 +9,7 @@ import TileParamsMan from "./world/tileparamsmanager";
 import MarketService from "./world/marketsrv";
 import MessagingService from "./msgsrv";
 import CityService from "./citysrv";
+import CityPersistence from "./persistence/citypersistence";
 import namespace from "namespace";
 
 namespace("Isometrica.Core").Logic = Logic;
@@ -25,6 +26,10 @@ function Logic() {
     this.marketService = new MarketService(this);
     this.landRegistry = this.areaService = new CityLand(this);
     this.cities = new CityService(this);
+
+    //the player's city goes to localStorage through here - nothing starts
+    //until whoever knows the url asks it to open a city
+    this.persistence = new CityPersistence(this);
 }
 
 var events = Logic.events = Logic.prototype.events = {

@@ -52,8 +52,8 @@ Building.prototype.producing = null;
 Building.prototype.permanent = true;
 Building.prototype.events = events;
 
-Building.prototype.init = function(world, code, tile, rot){
-    Construction.init(this, world, code, tile, rot);
+Building.prototype.init = function(world, code, tile, rot, done){
+    Construction.init(this, world, code, tile, rot, done);
 
     this.createdAt = this.createdAt || this.world.time.now;
 

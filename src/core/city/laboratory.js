@@ -154,4 +154,39 @@ var CityService = namespace("Isometrica.Core.CityService");
         return this.dirData;
     };
 
+    /**
+     * How far each direction got. What that opened up follows from it, so the
+     * list of invented buildings is not saved along.
+     *
+     * @returns {Object} direction -> level
+     */
+    Lab.prototype.save = function () {
+        var levels = {};
+
+        for (var direction in this.dirData)
+            levels[direction] = this.dirData[direction].level;
+
+        return levels;
+    };
+
+    /**
+     * @param levels {Object} direction -> level
+     */
+    Lab.prototype.load = function (levels) {
+        for (var direction in levels) {
+            var research = this.dirData[direction];
+
+            if (research === undefined)
+                continue;
+
+            research.level = levels[direction];
+            research.state = ResearchState.available;
+
+            //a research opens up its own level and every level below it, and a
+            //loaded city has no one watching yet, so it happens quietly
+            for (var level = 0; level <= research.level; level++)
+                openItems(this, direction, level, true);
+        }
+    };
+
 export default Lab;

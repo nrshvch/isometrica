@@ -112,6 +112,11 @@ Vkaria.prototype.startServices = function(){
     this.cityman.init();
     this.roadman.init();
     this.landman.init();
+
+    //last of the lot: it puts up the views for a city that was loaded from a
+    //save, and everyone who cares about those has to be listening by now
+    this.buildman.init();
+
     this.cameraControl.init();
 
 
