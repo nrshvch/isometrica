@@ -50,16 +50,12 @@ var View = Backbone.View.extend({
         $(".date", this.$el).text(this.time.toMDY());
         return this;
     },
-    renderName: function(){
-        $(".city-name", this.$el).text(this.city.name());
-    },
     renderMoney: function(){
         var money = this.city.resources.getResources()[Isometrica.Core.ResourceCode.money];
-        $(".money", this.$el).text(Numeral(money).format("0,0"));
+        $(".money", this.$el).text('$'+Numeral(money).format("0,0"));
     },
     render: function(){
         this.renderDate();
-        this.renderName();
         this.renderMoney();
     },
     dispose: function(){

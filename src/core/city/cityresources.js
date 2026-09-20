@@ -15,9 +15,7 @@ CityService.Resource = CityResources;
 function CityResources(city){
     this.city = city;
     this._resources = {
-        money: 10000,
-        stone: 100,
-        wood: 100
+        money: 10000
     };
 }
 
@@ -76,10 +74,25 @@ CityResources.prototype.save = function(){
 };
 
 /**
+ * Takes only what the city still keeps books on - a save written when there
+ * were nine resources carries eight the game no longer has, and they would
+ * sit in the treasury forever, being written back out on every save.
+ *
  * @param resources {Object}
  */
 CityResources.prototype.load = function(resources){
-    this._resources = Resources.clone(resources || {});
+    resources = resources || {};
+
+    var kept = {};
+
+    for (var name in Resource) {
+        var key = Resource[name];
+
+        if (resources[key] !== undefined)
+            kept[key] = resources[key];
+    }
+
+    this._resources = kept;
 };
 
 function hasEnoughCheck(key, value, self){

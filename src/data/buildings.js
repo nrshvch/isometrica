@@ -20,9 +20,10 @@ import RenderLayer from "client/renderlayer";
  */
 import GatherReq from "core/gatherreq";
 /**
- * @type {ResourceCode}
+ * What the gatherers below stand on, once they are woken up again.
+ * @type {DepositCode}
  */
-import ResourceCode from "core/resourcecode";
+import DepositCode from "core/depositcode";
 /**
  * @type {BuildingPositioning}
  */
@@ -112,11 +113,13 @@ var Core = namespace("Isometrica.Core");
         buildingCode: BuildingCode.road,
         classCode: BuildingClassCode.road,
         producing: {},
-        demanding: {},
+        //a street is the city's to keep up, and there are always a lot of them
+        demanding: {
+            money: 0.5
+        },
         constructionTime: 0,
         constructionCost: {
-            stone: 1,
-            money: 100
+            money: 25
         },
         name: "road",
         sprites: [
@@ -150,19 +153,17 @@ var Core = namespace("Isometrica.Core");
         sizeY: 1,
         buildingCode: BuildingCode.house0,
         classCode: BuildingClassCode.house,
-        producing: {
-            stone: 1,
-            wood: 1,
-            iron: 1
-        },
-        demanding: {
-            water: 1
-        },
-        citizenCapacity: 1,
+        producing: {},
+        demanding: {},
+        //a trailer needs nothing of anybody - park it in a field and someone
+        //will live in it, which is what a city has before it has streets
+        requires: {},
+        //it sleeps a couple: the cheapest roof per head there is, paid for
+        //with the view
+        citizenCapacity: 2,
         constructionTime: 3000,
         constructionCost: {
-            stone: 8,
-            wood: 8
+            money: 150
         },
         name: "mobile house",
         canRotate: true,
@@ -205,12 +206,14 @@ var Core = namespace("Isometrica.Core");
         classCode: BuildingClassCode.house,
         producing: {},
         demanding: {},
-        citizenCapacity: 1,
+        //a cottage on a lane, drawing from a well of its own
+        requires: {
+            road: true
+        },
+        citizenCapacity: 3,
         constructionTime: 3000,
         constructionCost: {
-            stone: 10,
-            wood: 10,
-            money: 10
+            money: 300
         },
         name: "tiny house",
         sprites: [
@@ -231,21 +234,16 @@ var Core = namespace("Isometrica.Core");
         sizeY: 2,
         buildingCode: BuildingCode.house2,
         classCode: BuildingClassCode.house,
-        producing: {
-            money: 5
+        producing: {},
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
         },
-        demanding: {
-            // food: 5,
-            // electricity: 1,
-            // water: 1
-        },
-        citizenCapacity: 3,
+        citizenCapacity: 5,
         constructionTime: 3000,
         constructionCost: {
-            money: 1000,
-            // wood: 100,
-            // stone: 100,
-            // iron: 100
+            money: 600
         },
         name: "small residential house",
         canRotate: true,
@@ -296,23 +294,18 @@ var Core = namespace("Isometrica.Core");
         sizeY: 1,
         buildingCode: BuildingCode.house3,
         classCode: BuildingClassCode.house,
-        producing: {
-            money: 10
-        },
-        demanding: {
-            food: 10,
-            electricity: 2,
-            water: 2
+        producing: {},
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 1500,
-            // wood: 150,
-            // stone: 50,
-            // iron: 150
+            money: 800
         },
         name: "cottage house",
-        citizenCapacity: 4,
+        citizenCapacity: 6,
         sprites: [
             {
                 x: 0,
@@ -341,23 +334,18 @@ var Core = namespace("Isometrica.Core");
         sizeY: 2,
         buildingCode: BuildingCode.house4,
         classCode: BuildingClassCode.house,
-        producing: {
-            money: 10
-        },
-        demanding: {
-            // food: 10,
-            // electricity: 2,
-            // water: 2
+        producing: {},
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 1500,
-            // wood: 50,
-            // stone: 150,
-            // iron: 150
+            money: 1400
         },
         name: "two story house",
-        citizenCapacity: 6,
+        citizenCapacity: 10,
         sprites: [
             {
                 x: 0,
@@ -386,21 +374,16 @@ var Core = namespace("Isometrica.Core");
         sizeY: 1,
         buildingCode: BuildingCode.house5,
         classCode: BuildingClassCode.house,
-        producing: {
-            money: 10
+        producing: {},
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
         },
-        demanding: {
-            // food: 10,
-            // electricity: 2,
-            // water: 2
-        },
-        citizenCapacity: 6,
+        citizenCapacity: 8,
         constructionTime: 5000,
         constructionCost: {
-            money: 1500,
-            // wood: 50,
-            // stone: 150,
-            // iron: 150
+            money: 1100
         },
         name: "house",
         sprites: [
@@ -431,18 +414,17 @@ var Core = namespace("Isometrica.Core");
         sizeY: 1,
         buildingCode: BuildingCode.cityHall,
         classCode: BuildingClassCode.municipal,
-        producing: {
-            money: 1,
-            food: 3,
-            stone: 1,
-            wood: 1
+        producing: {},
+        //the city pays for its own offices - a flat sum for the building...
+        demanding: {
+            money: 2
         },
-        demanding: {},
+        //...and so much for every tile of land it has to administer, which is
+        //what makes sprawl expensive and a tight, tall city cheap to run
+        upkeepPerTile: 0.15,
         constructionTime: 3000,
-        constructionCost: {
-            stone: 20,
-            wood: 20
-        },
+        //it comes with the city, so there is nobody to bill for it
+        constructionCost: {},
         name: "city hall",
         sprites: [
             {
@@ -511,21 +493,23 @@ var Core = namespace("Isometrica.Core");
     //     ]
     // };
 
+    //The one thing that turns money into something the houses need. It waters
+    //the ground around it - see core/city/citywater - so where it goes matters
+    //as much as whether the city can afford to run it.
     buildingData[BuildingCode.waterTower] = {
         sizeX: 1,
         sizeY: 1,
         buildingCode: BuildingCode.waterTower,
         classCode: BuildingClassCode.municipal,
-        producing: {
-            water: 5
-        },
+        producing: {},
         demanding: {
-            money: 1
+            money: 5
         },
+        //how far it waters, in tiles
+        waterRadius: 6,
         constructionTime: 10000,
         constructionCost: {
-            money: 50,
-            stone: 50
+            money: 250
         },
         name: "water tower",
         sprites: [
@@ -635,7 +619,7 @@ var Core = namespace("Isometrica.Core");
     //     buildingCode: BuildingCode.oilWell,
     //     classCode: BuildingClassCode.industry,
     //     positioning: BuildingPositioning.resource,
-    //     resource: ResourceCode.oil,
+    //     resource: DepositCode.oil,
     //     producing: {
     //         oil: 5
     //     },
@@ -665,7 +649,7 @@ var Core = namespace("Isometrica.Core");
     //     buildingCode: BuildingCode.stoneQuarry,
     //     classCode: BuildingClassCode.industry,
     //     positioning: BuildingPositioning.resource,
-    //     resource: ResourceCode.stone,
+    //     resource: DepositCode.stone,
     //     producing: {
     //         stone: 5
     //     },
@@ -693,7 +677,7 @@ var Core = namespace("Isometrica.Core");
     //     sizeX: 1,
     //     sizeY: 1,
     //     positioning: BuildingPositioning.resource,
-    //     resource: ResourceCode.iron,
+    //     resource: DepositCode.iron,
     //     buildingCode: BuildingCode.ironMine,
     //     classCode: BuildingClassCode.industry,
     //     producing: {

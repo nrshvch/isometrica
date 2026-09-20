@@ -10,11 +10,15 @@ var Terrain = Core.Terrain;
 function filterTile(gameObjects) {
     var r = gameObjects,
         l = r.length,
-        layer;
+        sprite;
 
     for (var i = 0; i < l; i++) {
-        layer = r[i].spriteRenderer.layer;
-        if (layer === RenderLayer.groundLayer)
+        //picking hands back anything it can hit, and that includes text - a
+        //city's name, a "no water" over a house - which has no sprite to read
+        //a layer off
+        sprite = r[i].spriteRenderer;
+
+        if (sprite !== undefined && sprite.layer === RenderLayer.groundLayer)
             return r[i];
     }
 

@@ -7,6 +7,9 @@ import CityBuildings from "./city/citybuildings";
 import CityResources from "./city/cityresources";
 import CityTilesParams from "./city/citytilesparams";
 import CityPopulation from "./city/citypopulation";
+import CityWater from "./city/citywater";
+import CityRoads from "./city/cityroads";
+import ServiceCode from "./servicecode";
 import Resource from "./resourcecode";
 import BuildingCode from "data/buildingcode";
 import BuildingClassCode from "data/classcode";
@@ -51,11 +54,15 @@ function City(world, tile) {
     this.populationService = this.population = new CityPopulation(this);
     this.lab = this.laboratoryService = new Laboratory(this);
     this.buildings = this.buildingService = new CityBuildings(this);
+    this.water = this.waterService = new CityWater(this);
+    this.roads = this.roadService = new CityRoads(this);
 
     //register city in influence map
     //this.root.areaService.registerCity(this);
 
     this.statsService.init();
+    this.waterService.init();
+    this.roadService.init();
     this.populationService.init();
     this.areaService.init();
     this.buildingService.init();
@@ -73,6 +80,55 @@ City.prototype._tile = -1;
 
 City.prototype.init = function(){
     this.buildingService.buildBuilding(BuildingCode.cityHall, this.tile());
+};
+
+/**
+ * What this building wants from the city and is not getting.
+ *
+ * A street comes before the mains - it is the first thing the player should
+ * put right, and the one the game complains about first - so a house with
+ * neither road nor water is reported as missing its road.
+ *
+ * @param building {Building}
+ * @returns {string|null} a ServiceCode, or null when the building has all it
+ *                        asks for (which is everything a shed asks for)
+ */
+City.prototype.missing = function (building) {
+    var requires = BuildingData[building.buildingCode].requires;
+
+    if (requires === undefined)
+        return null;
+
+    if (requires[ServiceCode.road] === true && !this.roadService.reaches(building))
+        return ServiceCode.road;
+
+    if (requires[ServiceCode.water] === true && !this.waterService.serves(building))
+        return ServiceCode.water;
+
+    return null;
+};
+
+/**
+ * How many of the city's buildings are going without, per service.
+ *
+ * @returns {Object} ServiceCode -> count
+ */
+City.prototype.getMissingServices = function () {
+    var buildings = this.buildingService.getBuildings(),
+        r = {},
+        missing, i;
+
+    for (var name in ServiceCode)
+        r[ServiceCode[name]] = 0;
+
+    for (i = 0; i < buildings.length; i++) {
+        missing = this.missing(buildings[i]);
+
+        if (missing !== null)
+            r[missing]++;
+    }
+
+    return r;
 };
 
 City.prototype.onTick = function (sender, args, meta) {

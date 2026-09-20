@@ -10,6 +10,7 @@ import Events from "events";
 import Chunkman from "./chunkman";
 import AreaSelector from "./areaselector";
 import TileMessage from "./gameObjects/tilemessage";
+import CityWater from "core/city/citywater";
 import Config from "./config";
 import ResourceCode from "core/resourcecode";
 
@@ -36,6 +37,9 @@ function setBuilding(self, tile, building) {
         self.buildingByXY[x] = [];
 
     self.buildingByXY[x][y] = building;
+
+    //so a picked sprite can be traced back to the building it belongs to
+    self.buildingByGO[building.view.gameObject.instanceId] = building;
 }
 
 function removeBuilding(self, tile) {
@@ -46,6 +50,7 @@ function removeBuilding(self, tile) {
     if (self.buildingByXY[x] !== undefined && self.buildingByXY[x][y] !== undefined) {
         building = self.buildingByXY[x][y];
         Events.fire(self, self.events.buildingRemoved, building);
+        delete self.buildingByGO[building.view.gameObject.instanceId];
         building.destroy();
 
         if (!building.data.permanent)
@@ -174,6 +179,7 @@ function Buildman(main) {
     EventManager.call(this);
 
     this.buildingByXY = [];
+    this.buildingByGO = {};
     this.root = main;
 }
 
@@ -208,6 +214,70 @@ Buildman.prototype.init = function () {
 
     for (var i = 0; i < chunks.length; i++)
         onChunkLoad(this.root.chunkman, chunks[i], this);
+};
+
+/**
+ * What the player clicked on, if they clicked on a building at all.
+ *
+ * A tall building is drawn well above the tile it stands on - the tile under
+ * the cursor halfway up a water tower is the ground behind it - so this tests
+ * the sprites themselves and traces whichever was hit back to its building.
+ *
+ * Whoever handles a click asks this first: a click that landed on a building
+ * belongs to the building, not to the land underneath it.
+ *
+ * @returns {Building|null} the core building, not its view
+ */
+Buildman.prototype.pickBuilding = function (screenX, screenY) {
+    var gos = this.root.camera.cameraScript.pickGameObject(screenX, screenY),
+        view, i;
+
+    for (i = 0; i < gos.length; i++) {
+        view = viewOfGameObject(this, gos[i]);
+
+        if (view !== null)
+            return view.model();
+    }
+
+    return null;
+};
+
+/**
+ * Walks up from a picked sprite to the view it is part of.
+ */
+function viewOfGameObject(self, go) {
+    var transform = go.transform, view;
+
+    while (transform !== null && transform !== undefined) {
+        view = self.buildingByGO[transform.gameObject.instanceId];
+
+        if (view !== undefined)
+            return view;
+
+        transform = transform.parent;
+    }
+
+    return null;
+}
+
+/**
+ * Every building view there is right now.
+ *
+ * Whoever starts up after some of these were made needs to catch up on them -
+ * chunks can be streamed in by something as innocent as the camera being moved
+ * onto a loaded city, which happens while the client is still starting.
+ *
+ * @returns {Building[]}
+ */
+Buildman.prototype.getBuildingViews = function () {
+    var byXY = this.buildingByXY, r = [], x, y;
+
+    for (x in byXY) {
+        for (y in byXY[x])
+            r.push(byXY[x][y]);
+    }
+
+    return r;
 };
 
 Buildman.prototype.getBuilding = function (tile_or_x, y) {
@@ -286,6 +356,10 @@ Buildman.prototype.build = function (code) {
     var root = this.root;
     var data = BuildingData[code];
 
+    //what this thing would water from where the cursor is, so that a tower is
+    //placed by what it will reach rather than by guesswork
+    var waterRadius = CityWater.radius(code);
+
     //show hint
     root.ui.gameScreen().worldScreen().showHint("Pick a tile!");
 
@@ -320,6 +394,14 @@ Buildman.prototype.build = function (code) {
             borderColor: "rgba(0,0,255,0.4)",
             borderWidth: 2
         });
+
+        //what this tower would water, outlined the way the city limits are
+        if (waterRadius > 0) {
+            if (tile0 === -1)
+                root.serviceman.hideCoverage();
+            else
+                root.serviceman.showCoverage(tile0, waterRadius);
+        }
     }
 
     var sub = Events.on(ts, AreaSelector.events.change, updateHilite);
@@ -349,6 +431,7 @@ Buildman.prototype.build = function (code) {
         //release resources
         ts.dispose();
         root.hiliteMan.disable(tokens);
+        root.serviceman.hideCoverage();
         Events.off(ts, AreaSelector.events.change, sub);
 
         root.ui.gameScreen().showWorld();

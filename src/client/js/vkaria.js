@@ -15,6 +15,7 @@ import EnvMan from "./envman";
 import ChunkMan from "./chunkman";
 import Cityman from "./cityman";
 import Roadman from "./roadman";
+import ServiceMan from "./serviceman";
 import Landman from "./landman";
 import CameraControl from "./cameracontrol";
 import Player from "./player";
@@ -62,6 +63,7 @@ function Vkaria(core, ui, callback) {
     this.chunkman = new ChunkMan(this);
     this.cityman = new Cityman(this);
     this.roadman = new Roadman(this);
+    this.serviceman = new ServiceMan(this);
     this.landman = new Landman(this);
     this.pathman = new PathMan();
     this.cameraControl = new CameraControl(this);
@@ -109,12 +111,22 @@ Vkaria.prototype.startServices = function(){
     this.terrain.init();
     this.chunkman.init();
     this.envman.init();
-    this.cityman.init();
+
+    //everything that watches building views comes up before anything that can
+    //make one. tilesman streams chunks the moment the camera moves, and the
+    //camera moves while the client is still starting - cityman puts it on the
+    //city it just loaded - so a listener that starts after that misses the
+    //whole city. They all catch up on what is already there as well, so the
+    //order below is no longer the only thing holding this together.
     this.roadman.init();
+    this.serviceman.init();
     this.landman.init();
 
-    //last of the lot: it puts up the views for a city that was loaded from a
-    //save, and everyone who cares about those has to be listening by now
+    //moves the camera onto a loaded city, which streams that city's chunks in
+    this.cityman.init();
+
+    //and this puts up the views for a city standing in chunks that were loaded
+    //before anybody was listening for them
     this.buildman.init();
 
     this.cameraControl.init();

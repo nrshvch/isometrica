@@ -7,6 +7,7 @@
  */
 import BuildingState from "core/buildingstate";
 import Resources from "core/resources";
+import Resource from "core/resourcecode";
 import Events from "events";
 /**
  * @type {BuildingClassCode}
@@ -69,13 +70,18 @@ Building.prototype.dispose = function () {
 };
 
 Building.prototype.citizenCapacity = function () {
-    var cap = 0;
     var data = BuildingData[this.buildingCode];
 
-    if (this._state == BuildingState.ready)
-        cap = data.citizenCapacity || 0;
+    if (this._state !== BuildingState.ready)
+        return 0;
 
-    return cap;
+    //nobody moves into a house with no street to it or no water in it
+    var city = this.getCity();
+
+    if (city !== null && city.missing(this) !== null)
+        return 0;
+
+    return data.citizenCapacity || 0;
 };
 
 function onDispose(self, args, tickSubscriptionId) {
@@ -202,6 +208,14 @@ function demand(self) {
 
     if (self._state == BuildingState.ready) {
         Resources.add(self.demanding, self.demanding, data.demanding);
+
+        //the city hall is paid to administer the city, and the more land there
+        //is to administer the more it costs - which is what makes a tight city
+        //of tall houses cheaper to run than the same people spread thin
+        if (data.upkeepPerTile !== undefined)
+            Resources.addOne(self.demanding, self.demanding, Resource.money,
+                data.upkeepPerTile * city.area.getTileCount());
+
         city.resources.sub(self.demanding);
     }
 }

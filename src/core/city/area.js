@@ -18,8 +18,6 @@ import namespace from "namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Area = Area;
 
-var AREA_TILE_COST_PER_TURN = 0.025;
-
 var BLOCK_SIZE = 5;
 var BLOCK_BASE_PRICE = 1000;
 
@@ -49,12 +47,8 @@ Area.prototype.events = events;
 Area.prototype._city = null;
 
 Area.prototype.init = function () {
-    var world = this._city.world;
-
     //the block the city was founded on comes with the city
     claimBlock(this, block(this, 0, 0));
-
-    Events.on(world, world.events.tick, onTick, this);
 };
 
 /**
@@ -93,6 +87,13 @@ Area.prototype.contains = function (a, b, c, d) {
     }
 
     return true;
+};
+
+/**
+ * @returns {number} how many tiles the city holds
+ */
+Area.prototype.getTileCount = function () {
+    return this.getBlocks().length * BLOCK_SIZE * BLOCK_SIZE;
 };
 
 /**
@@ -212,8 +213,12 @@ Area.prototype.buyBlock = function (bx, by) {
     return true;
 };
 
+/**
+ * @deprecated land is billed through the city hall now - see the upkeepPerTile
+ *             of the city hall in data/buildings
+ */
 Area.prototype.getAreaCost = function () {
-    return calculateAreaCost(this);
+    return 0;
 };
 
 /**
@@ -313,17 +318,6 @@ function claimBlock(self, b) {
     city.world.landRegistry.claim(city.id(), b.tile0, b.tile1);
 
     Events.fire(self, events.change, b);
-}
-
-function calculateAreaCost(self) {
-    var n = self.getBlocks().length * BLOCK_SIZE * BLOCK_SIZE;
-    return self.areaCost = n * AREA_TILE_COST_PER_TURN;
-}
-
-function onTick(sender, args, self) {
-    var money = {};
-    money[Resource.money] = calculateAreaCost(self);
-    self._city.resourcesModule.sub(money);
 }
 
 export default Area;

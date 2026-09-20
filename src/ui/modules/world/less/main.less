@@ -1,35 +1,6 @@
 .world-view {
   @import "../../../less/game-ui/icons/icons";
 
-  @-webkit-keyframes redPulse {
-    from {
-      color: white;
-    }
-    25% {
-      color: #ffaaaa;
-    }
-    50% {
-      color: #aaffaa;
-    }
-    75% {
-      color: #aaaaff
-    }
-  }
-  @keyframes redPulse {
-    from {
-      color: white;
-    }
-    25% {
-      color: #ffaaaa;
-    }
-    50% {
-      color: #aaffaa;
-    }
-    75% {
-      color: #aaaaff
-    }
-  }
-
   canvas {
     display: block;
     width: 100%;
@@ -51,12 +22,15 @@
     & > .hint {
       display: inline-block;
       font-size: 12pt;
-      animation-duration: 2s;
-      animation-iteration-count: infinite;
-      animation-name: redPulse;
-      -webkit-animation-duration: 2s;
-      -webkit-animation-iteration-count: infinite;
-      -webkit-animation-name: redPulse;
+      text-shadow:
+              -2px 0 0 #000,
+                0 -2px 0 #000,
+              0  2px 0 #000,
+              2px  0 0 #000,
+                -2px -2px 1px #000,
+                2px -2px 1px #000,
+              -2px  2px 1px #000,
+              2px  2px 1px #000;
     }
   }
 

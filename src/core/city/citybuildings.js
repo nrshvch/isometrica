@@ -57,6 +57,10 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
     var city = this.city;
     var root = this.city.root;
 
+    //the catalogue hands codes over as the strings they are in the markup, and
+    //"3" is not BuildingCode.cityHall however much it looks like it
+    code = parseInt(code, 10);
+
     var errorCode = buildTest(this, code, tile, rotate);
 
     if (errorCode === ErrorCode.NONE) {
@@ -92,6 +96,8 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
 };
 
 CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
+    code = parseInt(code, 10);
+
     var city = this.city;
     var root = city.root;
     var data = BuildingData[code];
@@ -135,6 +141,9 @@ CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
  * @returns {Building}
  */
 CityBuildings.prototype.restore = function (code, tile, rotation) {
+    //saves written before the codes were made numbers carry them as strings
+    code = parseInt(code, 10);
+
     var building = new Building();
 
     building.init(this.city.world, code, tile, rotation, true);

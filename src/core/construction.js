@@ -6,7 +6,7 @@ import TileIterator from "./tileiterator";
 import Terrain from "./terrain";
 import ConstructionState from "./buildingstate";
 
-var id;
+var id = 0;
 
 var events = {
     stateChange: 0

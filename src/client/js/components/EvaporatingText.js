@@ -24,7 +24,9 @@ EvaporatingTextScript.prototype.start = function () {
     textRenderer.layer = vkaria.layers.overlayLayer;
     textRenderer.text = this.text;
     textRenderer.color = this.color;
-    textRenderer.style = "bold 12px arial";
+    textRenderer.style = "bold 16px Courier New";
+    textRenderer.strokeStyle = "black";
+    textRenderer.lineWidth = 4;
 
     var time = this.gameObject.world.logic.time;
     this.startedAt = time.time;
