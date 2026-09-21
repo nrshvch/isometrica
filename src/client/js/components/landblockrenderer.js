@@ -73,7 +73,8 @@ LandBlockRenderer.prototype = Object.create(Engine.Renderer.prototype);
 
 LandBlockRenderer.prototype.fillColor = "rgba(0,255,0,0.05)";
 LandBlockRenderer.prototype.borderColor = "rgba(0,255,0,0.7)";
-LandBlockRenderer.prototype.borderWidth = 2;
+//as heavy as the city limits, which it so often runs alongside
+LandBlockRenderer.prototype.borderWidth = 3;
 LandBlockRenderer.prototype.dash = [4];
 LandBlockRenderer.prototype.points = null;
 LandBlockRenderer.prototype.block = null;

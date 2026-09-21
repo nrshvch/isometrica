@@ -28,10 +28,12 @@ var Terrain = Core.Terrain;
 //+x, +y, -x, -y
 var DIRECTIONS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
-//how far inside its own edge a line is drawn, in world units - a tile is about
-//45 of them across, so this is a hair's breadth on the ground and just enough
-//to keep two borders apart
-export var PADDING = 2.5;
+//How far inside its own edge a line is drawn, in world units. The camera never
+//zooms, so this is a fixed number of pixels on screen wherever the line is and
+//however large the area it goes round - about two and a half. Borders are
+//drawn 3px wide, so that keeps each line clear of its own edge and two areas
+//side by side show a hairline of ground between their borders.
+export var PADDING = 3;
 
 //which way to go on at a vertex, relative to the way we came in: turn, then
 //straight on, then the other turn, and only then back the way we came
@@ -44,8 +46,10 @@ var PREFERENCE = [1, 0, 3, 2];
  * @returns {Array[]} one array of [x, y, z] points per closed ring
  */
 export function outline(tiles, terrain, padding) {
-    return points(simplify(rings(edges(tiles))), terrain,
-        padding === undefined ? PADDING : padding);
+    //every grid point along the edge is kept until it has a height, so the line
+    //can follow the ground; only then are the ones it does not need dropped
+    return simplify(points(rings(edges(tiles)), terrain,
+        padding === undefined ? PADDING : padding));
 }
 
 /**
@@ -167,39 +171,46 @@ function direction(from, to) {
 }
 
 /**
- * Drops the points that sit in the middle of a straight run.
+ * Drops the points the line can do without: the ones halfway along a run that
+ * is straight on the map *and* level on the ground. A point where the edge
+ * goes over a rise stays, or the line would cut through the hill instead of
+ * going over it.
  */
-function simplify(paths) {
-    for (var i = 0; i < paths.length; i++) {
-        var path = paths[i],
+function simplify(rings) {
+    for (var i = 0; i < rings.length; i++) {
+        var ring = rings[i],
             kept = [],
             prev, curr, next, j;
 
-        for (j = 0; j < path.length; j++) {
-            curr = path[j];
+        for (j = 0; j < ring.length; j++) {
+            curr = ring[j];
             //a ring closes back on itself, so the first and last points have
             //neighbours too
-            prev = path[(j - 1 + path.length) % path.length];
-            next = path[(j + 1) % path.length];
+            prev = ring[(j - 1 + ring.length) % ring.length];
+            next = ring[(j + 1) % ring.length];
 
-            if (path.length > 2 && straight(prev, curr, next))
+            if (ring.length > 2 && redundant(prev, curr, next))
                 continue;
 
             kept.push(curr);
         }
 
-        paths[i] = kept;
+        rings[i] = kept;
     }
 
-    return paths;
+    return rings;
 }
 
-function straight(prev, curr, next) {
-    var px = Terrain.extractX(prev), py = Terrain.extractY(prev),
-        cx = Terrain.extractX(curr), cy = Terrain.extractY(curr),
-        nx = Terrain.extractX(next), ny = Terrain.extractY(next);
+/**
+ * Whether a point lies on the straight segment between its neighbours - same
+ * height all three, and in line along x or along z.
+ */
+function redundant(prev, curr, next) {
+    if (prev[1] !== curr[1] || curr[1] !== next[1])
+        return false;
 
-    return (px === cx && cx === nx) || (py === cy && cy === ny);
+    return (prev[0] === curr[0] && curr[0] === next[0]) ||
+        (prev[2] === curr[2] && curr[2] === next[2]);
 }
 
 function points(paths, terrain, padding) {
@@ -237,13 +248,14 @@ function points(paths, terrain, padding) {
 }
 
 /**
- * How far to pull a corner in so that the whole ring sits inside its own edge.
+ * How far to pull a point in so that the whole ring sits inside its own edge.
  *
- * The two edges meeting here are at right angles - a straight run has had its
- * middle points dropped by now - so one of them says how far to come in along
- * x and the other how far along y. Which side is the inside follows from the
- * way the ring is wound, and a hole is wound the other way round, so the same
- * sum pulls it towards the ground it encloses.
+ * Halfway along a straight run both edges point the same way, and the point
+ * comes in by the padding, square to the run. At a corner they are at right
+ * angles, so one says how far to come in along x and the other along y. Which
+ * side is the inside follows from the way the ring is wound, and a hole is
+ * wound the other way round, so the same sum pulls it towards the ground it
+ * encloses.
  */
 function corner(path, at, padding) {
     var prev = path[(at - 1 + path.length) % path.length],
@@ -251,6 +263,9 @@ function corner(path, at, padding) {
         next = path[(at + 1) % path.length],
         incoming = inward(prev, curr),
         outgoing = inward(curr, next);
+
+    if (incoming[0] === outgoing[0] && incoming[1] === outgoing[1])
+        return [incoming[0] * padding, incoming[1] * padding];
 
     return [
         (incoming[0] + outgoing[0]) * padding,
@@ -261,10 +276,14 @@ function corner(path, at, padding) {
 /**
  * The way the enclosed ground lies from an edge running from one point to the
  * next: a quarter turn from the direction of travel.
+ *
+ * Only the direction - the edge between two corners can be any number of tiles
+ * long once the straight runs are dropped, and letting that length through
+ * pulled the line in further the bigger the city got.
  */
 function inward(from, to) {
-    var dx = Terrain.extractX(to) - Terrain.extractX(from),
-        dy = Terrain.extractY(to) - Terrain.extractY(from);
+    var dx = Math.sign(Terrain.extractX(to) - Terrain.extractX(from)),
+        dy = Math.sign(Terrain.extractY(to) - Terrain.extractY(from));
 
     return [-dy, dx];
 }

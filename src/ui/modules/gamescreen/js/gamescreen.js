@@ -138,6 +138,10 @@ GameScreen.prototype.execute = function (module, args) {
                 gs.show("world");
                 gs.client.buildman.destroy();
                 break;
+            case "land":
+                gs.show("world");
+                gs.client.landman.enter();
+                break;
             case "city":
                 gs.show("city", args);
                 break;
