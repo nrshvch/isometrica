@@ -191,6 +191,10 @@ function produce(self) {
     if (city === null)
         return;
 
+    //a shop with no street to it or no water in it takes nothing over the counter
+    if (city.missing(self) !== null)
+        return;
+
     if (self._state == BuildingState.ready && (data.requirement === undefined || data.requirement === GatherReq.none || checkFullfilRequirements(self))) {
         Resources.add(self.producing, self.producing, data.producing);
         city.resources.add(self.producing);

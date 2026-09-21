@@ -63,7 +63,15 @@ function removeBuilding(self, tile) {
 }
 
 function createBuilding(self, model) {
-    var building;
+    var building = getBuilding(self, model.tile);
+
+    //the same building can turn up here more than once: one reaching over a
+    //chunk's edge is found by both chunks, and a chunk streamed in while the
+    //client was starting up is walked again by Buildman#init. A second view
+    //would be left over the first for good - drawn, but no longer tracked, so
+    //it never goes away with the building and never follows its neighbours
+    if (building !== null && building.data === model)
+        return building;
 
     if (model.data.classCode === BuildingClassCode.road) {
         building = new Road(self.root);
@@ -408,7 +416,9 @@ Buildman.prototype.build = function (code) {
 
     //bind ui
     var controls = root.ui.gameScreen().showActionControls();
-    controls.canRotate(!!data.canRotate);
+    //anything can be turned round - what was never painted that way is drawn
+    //flipped over (see BuildingView) - unless it says otherwise
+    controls.canRotate(data.canRotate !== false);
     controls.onRotate = function () {
         rotation = !rotation;
         updateHilite();

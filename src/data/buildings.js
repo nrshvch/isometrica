@@ -107,6 +107,8 @@ var Core = namespace("Isometrica.Core");
 
     buildingData[BuildingCode.road] = {
         hidden: true,
+        //a road's piece follows its neighbours, never the way it was put down
+        canRotate: false,
         size: 0x11,
         sizeX: 1,
         sizeY: 1,
@@ -166,7 +168,6 @@ var Core = namespace("Isometrica.Core");
             money: 150
         },
         name: "mobile house",
-        canRotate: true,
         sprites: [
             {
                 x: 0,
@@ -246,7 +247,6 @@ var Core = namespace("Isometrica.Core");
             money: 600
         },
         name: "small residential house",
-        canRotate: true,
         sprites: [
             {
                 x: 0,
@@ -434,6 +434,221 @@ var Core = namespace("Isometrica.Core");
                 pivotX: 32,
                 pivotY: 46,
                 path: "buildings/cityhall.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
+    };
+
+    //A corner shop: nobody lives in it, it just takes the city's money over the
+    //counter and pays its share into the treasury - as long as customers can get
+    //to it and there is water in the tap.
+    buildingData[BuildingCode.shop] = {
+        sizeX: 1,
+        sizeY: 1,
+        buildingCode: BuildingCode.shop,
+        classCode: BuildingClassCode.commerce,
+        producing: {
+            money: 8
+        },
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
+        },
+        constructionTime: 5000,
+        constructionCost: {
+            money: 700
+        },
+        name: "shop",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 48,
+                path: "buildings/shop.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
+    };
+
+    //a block of flats: a street's worth of people on four tiles
+    buildingData[BuildingCode.apartments] = {
+        sizeX: 2,
+        sizeY: 2,
+        buildingCode: BuildingCode.apartments,
+        classCode: BuildingClassCode.house,
+        producing: {},
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
+        },
+        citizenCapacity: 40,
+        constructionTime: 15000,
+        constructionCost: {
+            money: 4500
+        },
+        name: "apartment block",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 16,
+                path: "buildings/apartments-0-0.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 0,
+                y: 0,
+                z: 1,
+                pivotX: 32,
+                pivotY: 61,
+                path: "buildings/apartments-0-1.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 1,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 17,
+                path: "buildings/apartments-1-0.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 1,
+                y: 0,
+                z: 1,
+                pivotX: 32,
+                pivotY: 60,
+                path: "buildings/apartments-1-1.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
+    };
+
+    //pays better than a shop over the same bit of pavement
+    buildingData[BuildingCode.bank] = {
+        sizeX: 1,
+        sizeY: 1,
+        buildingCode: BuildingCode.bank,
+        classCode: BuildingClassCode.commerce,
+        producing: {
+            money: 14
+        },
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
+        },
+        constructionTime: 8000,
+        constructionCost: {
+            money: 1200
+        },
+        name: "bank",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 49,
+                path: "buildings/bank.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
+    };
+
+    //a supermarket with a car park of its own: a shop's trade four tiles over
+    buildingData[BuildingCode.bigShop] = {
+        sizeX: 2,
+        sizeY: 2,
+        buildingCode: BuildingCode.bigShop,
+        classCode: BuildingClassCode.commerce,
+        producing: {
+            money: 25
+        },
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
+        },
+        constructionTime: 10000,
+        constructionCost: {
+            money: 2000
+        },
+        name: "big shop",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 16,
+                path: "buildings/bigshop-0-0.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 0,
+                y: 0,
+                z: 1,
+                pivotX: 32,
+                pivotY: 49,
+                path: "buildings/bigshop-0-1.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 1,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 14,
+                path: "buildings/bigshop-1-0.png",
+                layer: RenderLayer.buildingsLayer
+            },
+            {
+                x: 1,
+                y: 0,
+                z: 1,
+                pivotX: 32,
+                pivotY: 46,
+                path: "buildings/bigshop-1-1.png",
+                layer: RenderLayer.buildingsLayer
+            }
+        ]
+    };
+
+    //nothing makes more money than an office tower, and nothing costs more to put up
+    buildingData[BuildingCode.office] = {
+        sizeX: 1,
+        sizeY: 1,
+        buildingCode: BuildingCode.office,
+        classCode: BuildingClassCode.commerce,
+        producing: {
+            money: 80
+        },
+        demanding: {},
+        requires: {
+            road: true,
+            water: true
+        },
+        constructionTime: 20000,
+        constructionCost: {
+            money: 8000
+        },
+        name: "office tower",
+        sprites: [
+            {
+                x: 0,
+                y: 0,
+                z: 0,
+                pivotX: 32,
+                pivotY: 101,
+                path: "buildings/office.png",
                 layer: RenderLayer.buildingsLayer
             }
         ]
