@@ -6,9 +6,13 @@
  * the city spreads, keeps it off the water and hands over a whole block of free
  * land at once, so even the biggest buildings have somewhere to go.
  *
- * The blocks on sale are part of the world view, not a mode of their own: they
- * sit around the city with their price on them until one is clicked, and only
- * then does the purchase ask to be confirmed.
+ * Buying is a mode of its own, entered from the world's action bar. Only then
+ * do the blocks on sale show up around the city, each with its price across
+ * the middle, and the only way out is the cross on the left. Clicking a block
+ * asks for the purchase to be confirmed; either way it goes, the player is back
+ * to picking, with whatever new blocks the purchase opened up.
+ *
+ * Outside the mode the world shows the city and nothing for sale.
  */
 import Core from "core/main";
 import Events from "events";
@@ -101,6 +105,7 @@ function showOffers(self) {
         block = blocks[i];
 
         go = new LandBlock(terrain, block);
+        go.setPrice(formatMoney(block.price));
         paint(go, OFFER_FILL, OFFER_BORDER, OFFER_DASH);
         root.game.logic.world.addGameObject(go);
 
@@ -147,12 +152,28 @@ function showCost(self, block, cost) {
 }
 
 /**
- * Leaves the confirmation step and hands the world buttons back.
+ * Waits for a block to be picked, with nothing to confirm yet and only the
+ * cross to leave by.
+ */
+function pick(self) {
+    hint(self, "Pick a block of land to buy!");
+
+    var controls = self.root.ui.gameScreen().showActionControls();
+    controls.canRotate(false);
+    controls.canSubmit(false);
+    controls.onDiscard = function () {
+        self.exit();
+    };
+}
+
+/**
+ * Leaves the confirmation step for picking again - the player may well want
+ * the next block along.
  */
 function done(self) {
     self._picked = null;
-    hint(self, "");
-    self.root.ui.gameScreen().showWorld();
+    showAllOffers(self);
+    pick(self);
 }
 
 /**
@@ -188,15 +209,13 @@ function confirm(self, go) {
 }
 
 function onClick(sender, e, self) {
-    //while another action owns the buttons the world belongs to it
-    if (self._picked !== null || worldScreen(self).busy())
+    //outside the mode there is nothing for sale, and while a block is being
+    //confirmed the buttons are the only way on
+    if (!self._active || self._picked !== null)
         return;
 
-    //a tower standing on a block that is up for sale is still a tower: the
-    //click belongs to it, and the land underneath keeps out of it
-    if (self.root.buildman.pickBuilding(e.gameViewportX, e.gameViewportY) !== null)
-        return;
-
+    //in this mode it is the land the player is aiming at, whatever happens to
+    //stand on it or behind it
     var go = findOffer(self, pickTile(self.root, e.gameViewportX, e.gameViewportY));
 
     if (go !== null)
@@ -204,7 +223,9 @@ function onClick(sender, e, self) {
 }
 
 function onAreaChange(sender, args, self) {
-    showOffers(self);
+    //new land means new neighbours for sale - only worth drawing while buying
+    if (self._active)
+        showOffers(self);
 }
 
 function onNewCity(sender, city, self) {
@@ -214,21 +235,6 @@ function onNewCity(sender, city, self) {
 
     self._city = city;
     Events.on(city.area, city.area.events.change, onAreaChange, self);
-
-    showOffers(self);
-}
-
-/**
- * While a build or destroy action is running, the blocks on sale would only be
- * in the way, so they step aside until the world view is idle again.
- */
-function onBusyChange(sender, busy, self) {
-    //the confirmation step is an action of our own, it keeps its block
-    if (self._picked !== null)
-        return;
-
-    for (var i = 0; i < self._offers.length; i++)
-        self._offers[i].renderersEnabled(!busy);
 }
 
 function Landman(root) {
@@ -236,7 +242,33 @@ function Landman(root) {
     this._offers = [];
     this._picked = null;
     this._city = null;
+    this._active = false;
 }
+
+/**
+ * Puts the blocks on sale on the map and waits for one to be picked.
+ */
+Landman.prototype.enter = function () {
+    if (this._city === null)
+        return;
+
+    this._active = true;
+
+    showOffers(this);
+    pick(this);
+};
+
+/**
+ * Takes the blocks on sale off the map and hands the world buttons back.
+ */
+Landman.prototype.exit = function () {
+    this._active = false;
+
+    clearOffers(this);
+    hint(this, "");
+
+    this.root.ui.gameScreen().showWorld();
+};
 
 Landman.prototype.init = function () {
     var root = this.root,
@@ -244,9 +276,6 @@ Landman.prototype.init = function () {
 
     Events.on(cities, Core.CityService.events.cityNew, onNewCity, this);
     Events.on(root.camera.cameraScript, WorldCamera.events.inputClick, onClick, this);
-
-    var ws = root.ui.gameScreen().worldScreen();
-    ws.busy.onChange(onBusyChange, false, this);
 
     //the city may already be there when the client restarts its services
     var city = cities.getCity(0);

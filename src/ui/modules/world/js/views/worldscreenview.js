@@ -153,6 +153,9 @@ WorldScreenView.prototype.showBuildButtons = function () {
     setBtn(this, 3, "bulldozer-icon", function () {
         view.controller.ui.navigate("destroy");
     });
+    setBtn(this, 4, "coin-icon", function () {
+        view.controller.ui.navigate("land");
+    });
 
     renderBtns(this);
 };
@@ -163,9 +166,13 @@ WorldScreenView.prototype.showActionButtons = function (controls) {
     function render() {
         unsetBtns(view);
 
-        setBtn(view, 2, "tick-icon", function () {
-            controls.submit();
-        });
+        //an action that is only ever left, never confirmed - picking which block
+        //of land to buy, say - has nothing for a tick to do
+        if (controls.canSubmit()) {
+            setBtn(view, 2, "tick-icon", function () {
+                controls.submit();
+            });
+        }
         setBtn(view, 0, "cross-icon", function () {
             controls.discard();
         });
@@ -183,6 +190,7 @@ WorldScreenView.prototype.showActionButtons = function (controls) {
     }
 
     controls.canRotate.onChange(render, false, this);
+    controls.canSubmit.onChange(render, false, this);
     render();
 };
 
