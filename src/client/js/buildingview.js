@@ -67,40 +67,9 @@ BuildingView.prototype.update = function () {
                 }
             }
         } else if (b.data.getState() === BuildingState.ready) {
-            var spritesData = staticData.sprites,
-                rotated = !!b.data.rotation,
-                //a building nobody painted turned round is drawn flipped over
-                mirrored = rotated && !staticData.spritesRotate;
+            var rotated = !!b.data.rotation;
 
-            if (rotated && staticData.spritesRotate)
-                spritesData = staticData.spritesRotate;
-
-            var len = spritesData.length;
-            for (var i = 0; i < len; i++) {
-                var spriteData = spritesData[i];
-
-                var spriteRenderer = new engine.SpriteRenderer();
-                spriteRenderer.layer = spriteData.layer;
-                spriteRenderer.pivotY = spriteData.pivotY;
-
-                var sprite = vkaria.sprites.getSprite(spriteData.path, mirrored);
-                spriteRenderer.setSprite(sprite);
-
-                if (mirrored)
-                    mirrorPivot(spriteRenderer, sprite, spriteData.pivotX);
-                else
-                    spriteRenderer.pivotX = spriteData.pivotX;
-
-                var spriteGO = new engine.GameObject();
-                spriteGO.addComponent(spriteRenderer);
-                this.gameObject.transform.addChild(spriteGO.transform);
-
-                //flipped over, the piece over tile (x, y) is the one over (y, x)
-                if (mirrored)
-                    spriteGO.transform.setLocalPosition(spriteData.z * tileSize, spriteData.y * tileZStep, spriteData.x * tileSize);
-                else
-                    spriteGO.transform.setLocalPosition(spriteData.x * tileSize, spriteData.y * tileZStep, spriteData.z * tileSize);
-            }
+            addSprites(this.gameObject, staticData, rotated, 1);
 
             //add smoke
             if (staticData.smokeSource !== undefined) {
@@ -128,6 +97,55 @@ BuildingView.prototype.update = function () {
         this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
     }
 };
+
+/**
+ * Hangs the finished building's sprites under parent, laid out relative to the
+ * tile it stands on - shared with the see-through preview shown while placing.
+ *
+ * @param opacity {number} 1 for the real thing
+ * @param [layer] {number} every piece goes on this one rather than its own
+ */
+function addSprites(parent, staticData, rotated, opacity, layer) {
+    var spritesData = staticData.sprites,
+        tileSize = Config.tileSize,
+        tileZStep = Config.tileZStep,
+        //a building nobody painted turned round is drawn flipped over
+        mirrored = rotated && !staticData.spritesRotate;
+
+    if (rotated && staticData.spritesRotate)
+        spritesData = staticData.spritesRotate;
+
+    var len = spritesData.length;
+    for (var i = 0; i < len; i++) {
+        var spriteData = spritesData[i];
+
+        var spriteRenderer = new engine.SpriteRenderer();
+        spriteRenderer.layer = layer !== undefined ? layer : spriteData.layer;
+        spriteRenderer.pivotY = spriteData.pivotY;
+
+        var sprite = vkaria.sprites.getSprite(spriteData.path, mirrored);
+        spriteRenderer.setSprite(sprite);
+
+        if (mirrored)
+            mirrorPivot(spriteRenderer, sprite, spriteData.pivotX);
+        else
+            spriteRenderer.pivotX = spriteData.pivotX;
+
+        var spriteGO = new engine.GameObject();
+        spriteGO.addComponent(spriteRenderer);
+        //the renderer resets its opacity once it is attached
+        spriteRenderer.opacity = opacity;
+        parent.transform.addChild(spriteGO.transform);
+
+        //flipped over, the piece over tile (x, y) is the one over (y, x)
+        if (mirrored)
+            spriteGO.transform.setLocalPosition(spriteData.z * tileSize, spriteData.y * tileZStep, spriteData.x * tileSize);
+        else
+            spriteGO.transform.setLocalPosition(spriteData.x * tileSize, spriteData.y * tileZStep, spriteData.z * tileSize);
+    }
+}
+
+BuildingView.addSprites = addSprites;
 
 /**
  * The pivot sits as far from the right edge of a flipped picture as it did from
