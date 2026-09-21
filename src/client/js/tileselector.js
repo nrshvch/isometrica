@@ -50,8 +50,15 @@ function onChange(s,a,m){
     Events.fire(m, events.change);
 }
 
-function onDispose(a,b,c){
-    Events.off(c);
+//data is [host, event, subscription] - Events.off needs all three, a bare
+//subscription is not enough to find what it was subscribed to
+function onDispose(sender, args, data){
+    Events.off(data[0], data[1], data[2]);
+}
+
+function onDisposeProp(sender, args, data){
+    //a reactive property's onChange called with a token unsubscribes it
+    data[0].onChange(data[1]);
 }
 
 var events = {
@@ -70,9 +77,9 @@ function TileSelector(root) {
     var cs = Events.on(cam, WorldCamera.events.inputClick, onClick, this);
     var s = this._tile.onChange(onChange, false, this);
 
-    Events.once(this, events.dispose, onDispose, ms);
-    Events.once(this, events.dispose, onDispose, cs);
-    Events.once(this, events.dispose, onDispose, s);
+    Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputMove, ms]);
+    Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputClick, cs]);
+    Events.once(this, events.dispose, onDisposeProp, [this._tile, s]);
 }
 
 TileSelector.events = events;
