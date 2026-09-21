@@ -67,13 +67,13 @@ BuildingView.prototype.update = function () {
                 }
             }
         } else if (b.data.getState() === BuildingState.ready) {
-            var spritesData;
+            var spritesData = staticData.sprites,
+                rotated = !!b.data.rotation,
+                //a building nobody painted turned round is drawn flipped over
+                mirrored = rotated && !staticData.spritesRotate;
 
-            if (b.data.rotation && staticData.spritesRotate) {
+            if (rotated && staticData.spritesRotate)
                 spritesData = staticData.spritesRotate;
-            } else if (staticData.sprites) {
-                var spritesData = staticData.sprites;
-            }
 
             var len = spritesData.length;
             for (var i = 0; i < len; i++) {
@@ -81,21 +81,39 @@ BuildingView.prototype.update = function () {
 
                 var spriteRenderer = new engine.SpriteRenderer();
                 spriteRenderer.layer = spriteData.layer;
-                spriteRenderer.setSprite(vkaria.sprites.getSprite(spriteData.path));
-                spriteRenderer.pivotX = spriteData.pivotX;
                 spriteRenderer.pivotY = spriteData.pivotY;
+
+                var sprite = vkaria.sprites.getSprite(spriteData.path, mirrored);
+                spriteRenderer.setSprite(sprite);
+
+                if (mirrored)
+                    mirrorPivot(spriteRenderer, sprite, spriteData.pivotX);
+                else
+                    spriteRenderer.pivotX = spriteData.pivotX;
 
                 var spriteGO = new engine.GameObject();
                 spriteGO.addComponent(spriteRenderer);
                 this.gameObject.transform.addChild(spriteGO.transform);
-                spriteGO.transform.setLocalPosition(spriteData.x * tileSize, spriteData.y * tileZStep, spriteData.z * tileSize);
+
+                //flipped over, the piece over tile (x, y) is the one over (y, x)
+                if (mirrored)
+                    spriteGO.transform.setLocalPosition(spriteData.z * tileSize, spriteData.y * tileZStep, spriteData.x * tileSize);
+                else
+                    spriteGO.transform.setLocalPosition(spriteData.x * tileSize, spriteData.y * tileZStep, spriteData.z * tileSize);
             }
 
             //add smoke
             if (staticData.smokeSource !== undefined) {
-                var smokeSource = new engine.GameObject();
-                smokeSource.transform.setLocalPosition(staticData.smokeSource[0] * tileSize, staticData.smokeSource[1] * tileZStep, staticData.smokeSource[2] * tileSize);
-                smokeSource.addComponent(new SmokeSource());
+                var smoke = staticData.smokeSource,
+                    smokeSource = new engine.GameObject();
+
+                //the chimney turns round with the rest of the house
+                if (rotated)
+                    smokeSource.transform.setLocalPosition(smoke[2] * tileSize, smoke[1] * tileZStep, smoke[0] * tileSize);
+                else
+                    smokeSource.transform.setLocalPosition(smoke[0] * tileSize, smoke[1] * tileZStep, smoke[2] * tileSize);
+
+                smokeSource.addComponent(new SmokeSource(b.data));
                 this.gameObject.transform.addChild(smokeSource.transform);
             }
         }
@@ -110,6 +128,17 @@ BuildingView.prototype.update = function () {
         this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
     }
 };
+
+/**
+ * The pivot sits as far from the right edge of a flipped picture as it did from
+ * the left edge of the original - which takes the picture's width, and that of
+ * one still loading is not known yet.
+ */
+function mirrorPivot(spriteRenderer, sprite, pivotX) {
+    vkaria.sprites.whenReady(sprite, function () {
+        spriteRenderer.pivotX = sprite.width - pivotX;
+    });
+}
 
 BuildingView.prototype.render = function () {
     if (this.gameObject.world === null)

@@ -21,8 +21,15 @@ var getSmoke = function(){
     }
 };
 
-function SmokeSourceScript() {
+/**
+ * @param building {Building} optional - the house the chimney is on. A house
+ *                            nobody has moved into, for want of a street or of
+ *                            water, has no fire going; with no building given
+ *                            (a trolley) it smokes regardless.
+ */
+function SmokeSourceScript(building) {
     engine.Component.call(this);
+    this.building = building || null;
 };
 
 var vec3Buffer = new Float32Array(3);
@@ -35,10 +42,20 @@ SmokeSourceScript.prototype.start = function () {
 
 SmokeSourceScript.prototype.tick = function (time) {
     if(time.now - this.time > 300){
-        this.spawnSmoke();
+        if (isLit(this.building))
+            this.spawnSmoke();
         this.time = time.now;
     }
 };
+
+function isLit(building) {
+    if (building === null)
+        return true;
+
+    var city = building.getCity();
+
+    return city !== null && city.missing(building) === null;
+}
 
 SmokeSourceScript.prototype.spawnSmoke = function(){
     var smoke = getSmoke();

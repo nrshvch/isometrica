@@ -22,6 +22,11 @@ var BuildingCode = {
         house3: 18,
         house4: 19,
         house5: 20,
+        shop: 21,
+        bank: 23,
+        bigShop: 24,
+        office: 26,
+        apartments: 27,
 
         //gatherers
         lumberMill: 6,

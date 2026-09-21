@@ -21,6 +21,7 @@ import CameraControl from "./cameracontrol";
 import Player from "./player";
 import CameraMan from "./cameraman";
 import Trolley from "./gameObjects/Trolley";
+import SpriteCache from "./spritecache";
 
 function Vkaria(core, ui, callback) {
     // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -50,7 +51,7 @@ function Vkaria(core, ui, callback) {
 
     //assets
     this.assets = new engine.AssetManager();
-    this.sprites = new engine.SpriteManager(this.assets);
+    this.sprites = new SpriteCache(this.assets);
 
     //init engine
     this.game = new engine.Game();
@@ -82,10 +83,8 @@ Vkaria.prototype.prepare = function(callback){
     //FF won't run game before any resource is ready. Empty "new Image()" shim is not helpful.
     this.assets.getAsset("gfx/spritesheet.json", engine.AssetManager.Resource.ResourceTypeEnum.json).done(function (resourceJSON) {
         if (resourceJSON.state === resourceJSON.constructor.ResourceStateEnum.ready) {
-            self.sprites.frames = resourceJSON.data.frames;
-
             self.assets.getAsset("gfx/spritesheet.png", engine.AssetManager.Resource.ResourceTypeEnum.image).done(function (resourceImage) {
-                self.sprites.atlas = resourceImage.data;
+                self.sprites.setSpritesheet(resourceJSON.data.frames, resourceImage.data);
                 //self.start();
                 callback && callback();
             });
