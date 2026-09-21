@@ -15,6 +15,7 @@ import CityWater from "core/city/citywater";
 import Config from "./config";
 import RenderLayer from "./renderlayer";
 import ResourceCode from "core/resourcecode";
+import ErrorCode from "core/errorcode";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -150,23 +151,97 @@ function createPreview(self, data, tile, rotation) {
 }
 
 /**
- * Floats what it just cost over the middle of an area of sizeX by sizeY tiles
- * anchored at tile.
+ * Floats text over the middle of an area of sizeX by sizeY tiles anchored at
+ * tile.
  */
-function showCost(self, tile, sizeX, sizeY, amount) {
+function showText(self, tile, sizeX, sizeY, text) {
     var root = self.root,
+        terrain = root.core.world.terrain,
         tileSize = Config.tileSize,
         x = Terrain.extractX(tile),
         y = Terrain.extractY(tile),
-        z = root.core.world.terrain.getGridPointHeight(x + 1, y);
+        //over water it floats from the surface, not from the bottom
+        z = terrain.getTerrainType(x, y) === Core.TerrainType.water
+            ? 0
+            : terrain.getGridPointHeight(x + 1, y);
 
-    var message = new TileMessage("-$" + amount, "rgb(255,64,64)");
+    var message = new TileMessage(text, "rgb(255,64,64)");
     root.game.logic.world.addGameObject(message);
     message.transform.setPosition(
         (x + (sizeX - 1) / 2) * tileSize,
         z * Config.tileZStep,
         (y + (sizeY - 1) / 2) * tileSize
     );
+}
+
+/**
+ * Floats what it just cost over the middle of an area of sizeX by sizeY tiles
+ * anchored at tile.
+ */
+function showCost(self, tile, sizeX, sizeY, amount) {
+    showText(self, tile, sizeX, sizeY, "-$" + amount);
+}
+
+/**
+ * What the player is told when a build is turned down, keyed by ErrorCode.
+ */
+var errorText = {};
+errorText[ErrorCode.CITY_HALL_ALREADY_BUILT] = "city hall exists";
+errorText[ErrorCode.BUILDING_NOT_AVAIL] = "not available";
+errorText[ErrorCode.NOT_ENOUGH_RES] = "no money";
+errorText[ErrorCode.CANT_BUILD_ON_WATER] = "on water";
+errorText[ErrorCode.CANT_BUILD_HERE] = "can't build here";
+errorText[ErrorCode.WRONG_RESOURCE_TILE] = "no deposit";
+errorText[ErrorCode.LAND_NOT_SUITABLE] = "too steep";
+errorText[ErrorCode.FLAT_LAND_REQUIRED] = "not flat";
+errorText[ErrorCode.TILE_TAKEN] = "occupied";
+errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
+
+/**
+ * Puts code down on every tile of the selection and tells the player why
+ * whatever did not go in was turned down.
+ *
+ * The core reports each refusal on its own tile. An area dragged out is tried
+ * tile by tile, so it would bury itself in them: the tiles covered by what
+ * was just put down all come back occupied, and the same reason tends to
+ * repeat everywhere - so each reason is said once, where it first came up,
+ * and "occupied" only when nothing went in at all.
+ */
+function buildSelection(self, code, iter, rotation) {
+    var root = self.root,
+        data = BuildingData[code],
+        messaging = root.core.messagingService,
+        errors = [],
+        tried = 0,
+        tile, i, seen = {};
+
+    var sub = Events.on(messaging, Core.MessagingService.events.tileMessage, function (sender, message) {
+        if (message.type === Core.MessageType.tileError)
+            errors.push(message);
+    });
+
+    try {
+        while (!iter.done) {
+            tile = iter.next();
+            tried++;
+            root.core.cities.getCity(0).buildingService.buildBuilding(code, tile, rotation);
+        }
+    } finally {
+        Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
+    }
+
+    for (i = 0; i < errors.length; i++) {
+        var reason = errors[i].text;
+
+        if (seen[reason] || (reason === ErrorCode.TILE_TAKEN && errors.length < tried))
+            continue;
+
+        seen[reason] = true;
+        showText(self, errors[i].tile,
+            rotation ? data.sizeY : data.sizeX,
+            rotation ? data.sizeX : data.sizeY,
+            errorText[reason] || "can't build");
+    }
 }
 
 /**
@@ -470,13 +545,9 @@ Buildman.prototype.build = function (code) {
         updateHilite();
     };
     controls.onSubmit = function () {
-        var iter = ts.selectedTiles(),
-            tile;
+        var iter = ts.selectedTiles();
         if (iter !== null)
-            while (!iter.done) {
-                tile = iter.next();
-                root.core.cities.getCity(0).buildingService.buildBuilding(code, tile, rotation);
-            }
+            buildSelection(self, code, iter, rotation);
 
         // stay in build mode: drop the selection and keep the selector, hint,
         // controls and cam lock so another area can be placed right away
