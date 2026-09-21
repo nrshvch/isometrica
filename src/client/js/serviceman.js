@@ -1,7 +1,8 @@
 /**
  * Shows what the city's services do and do not reach.
  *
- * Two things, both about the same question - why a house is standing empty:
+ * Three things, all about the same question - what a building is doing for
+ * the city, and why a house is standing empty:
  *
  *  - a red word over anything going without, "no road" before "no water",
  *    because a street is the first thing to put right. Without it a house
@@ -10,6 +11,9 @@
  *    the city limits are. Clicking a tower shows its reach and clicking
  *    anywhere else puts it away again; the same outline follows the cursor
  *    while a tower is being placed (see buildman).
+ *  - what a clicked building is worth: the money it makes or costs a tick,
+ *    and how full it is - residents for a house, workers for a business.
+ *    It is put away the same way the outline is.
  *
  * Labels live and die with the building views themselves (buildman announces
  * those as chunks come and go), so nothing is drawn for a part of the map that
@@ -23,6 +27,8 @@ import CityWater from "core/city/citywater";
 import Buildman from "./buildman";
 import WorldCamera from "./components/camerascript";
 import TileAreaBorderRenderer from "./components/tileareaborderrenderer";
+import MultilineTextRenderer from "./components/multilinetextrenderer";
+import BuildingClassCode from "data/classcode";
 import RenderLayer from "client/renderlayer";
 import Config from "./config";
 
@@ -31,6 +37,9 @@ var Terrain = Core.Terrain;
 var text = {};
 text[ServiceCode.road] = "no road";
 text[ServiceCode.water] = "no water";
+//not a service, but the same kind of trouble: a business nobody works in
+var NO_WORKERS = "noWorkers";
+text[NO_WORKERS] = "no workers";
 
 //high enough to clear the roof of anything it sits over
 var HEIGHT = Config.tileSize;
@@ -93,6 +102,9 @@ function refresh(self) {
         model = views[tile].model();
         missing = city.missing(model);
 
+        if (missing === null && model.jobs() > 0 && city.jobs.getWorkers(model) === 0)
+            missing = NO_WORKERS;
+
         if (missing === null)
             hide(self, tile);
         else
@@ -113,6 +125,62 @@ function onBuildingUnload(sender, building, self) {
 
 function onTick(sender, args, self) {
     refresh(self);
+    refreshInfo(self);
+}
+
+var INCOME_COLOR = "rgb(64,255,64)";
+var EXPENSE_COLOR = "rgb(255,64,64)";
+
+/**
+ * @returns {{text: string, color: string}} green for what it brings in, red for
+ *                                          what it costs, white for neither
+ */
+function formatMoney(amount) {
+    var rounded = Math.round(amount * 10) / 10;
+
+    return {
+        text: (rounded > 0 ? "+" : rounded < 0 ? "-" : "") + "$" + Math.abs(rounded),
+        color: rounded > 0 ? INCOME_COLOR : rounded < 0 ? EXPENSE_COLOR : "white"
+    };
+}
+
+/**
+ * @returns {Array} the money first, then how full it is if anybody lives or
+ *                  works in it
+ */
+function infoLines(city, building) {
+    var data = building.data,
+        lines = [formatMoney(city.getBuildingIncome(building))];
+
+    if (data.citizenCapacity)
+        lines.push("peeps " + city.population.getResidents(building) + "/" + data.citizenCapacity);
+    else if (data.jobs)
+        lines.push("jobs " + city.jobs.getWorkers(building) + "/" + data.jobs);
+
+    return lines;
+}
+
+/**
+ * Trees and rocks do nothing for anybody, and a road out past the borders has
+ * no city to do it for.
+ */
+function hasInfo(building) {
+    return building.data.classCode !== BuildingClassCode.tree && building.getCity() !== null;
+}
+
+function refreshInfo(self) {
+    var building = self._infoBuilding;
+
+    if (building === null)
+        return;
+
+    //bulldozed while it was being looked at
+    if (self.root.core.buildings.get(building.tile) !== building) {
+        self.hideInfo();
+        return;
+    }
+
+    self._info.textRenderer.lines = infoLines(building.getCity(), building);
 }
 
 function pickTile(root, screenX, screenY) {
@@ -135,13 +203,16 @@ function pickTile(root, screenX, screenY) {
  * than being left behind on top of somebody else's business.
  */
 function onBusyChange(sender, busy, self) {
-    if (busy)
+    if (busy) {
         self.hideCoverage();
+        self.hideInfo();
+    }
 }
 
 /**
- * Clicking a water tower shows what it waters. Clicking anything else - bare
- * ground, a house, the sea - puts the outline away again.
+ * Clicking a building shows what it is worth, and a water tower what it waters
+ * as well. Clicking anything else - bare ground, a tree, the sea - puts them
+ * away again.
  */
 function onClick(sender, e, self) {
     //while an action owns the world (placing a building, clearing ground) the
@@ -165,6 +236,11 @@ function onClick(sender, e, self) {
         self.showCoverage(building.tile, radius);
     else
         self.hideCoverage();
+
+    if (building !== null && hasInfo(building))
+        self.showInfo(building);
+    else
+        self.hideInfo();
 }
 
 function ServiceMan(root) {
@@ -172,6 +248,8 @@ function ServiceMan(root) {
     this._views = {};
     this._labels = {};
     this._coverage = null;
+    this._info = null;
+    this._infoBuilding = null;
 }
 
 /**
@@ -201,6 +279,53 @@ ServiceMan.prototype.hideCoverage = function () {
     if (this._coverage !== null) {
         this._coverage.gameObject.destroy();
         this._coverage = null;
+    }
+};
+
+/**
+ * Writes what the building is worth over the middle of it, and keeps it up to
+ * date every tick until it is put away.
+ *
+ * @param building {Building}
+ */
+ServiceMan.prototype.showInfo = function (building) {
+    var info = this._info;
+
+    if (info === null) {
+        info = this._info = new engine.GameObject("buildingInfo");
+
+        var renderer = info.addComponent(new MultilineTextRenderer());
+
+        renderer.layer = RenderLayer.overlayLayer;
+        renderer.color = "white";
+        renderer.style = "bold 16px Courier New";
+        renderer.strokeStyle = "black";
+        renderer.lineWidth = 4;
+
+        this.root.game.scene.addGameObject(info);
+    }
+
+    var terrain = this.root.terrain,
+        data = building.data,
+        //turned round, the footprint's sides swap
+        sizeX = building.rotation ? data.sizeY : data.sizeX,
+        sizeY = building.rotation ? data.sizeX : data.sizeY,
+        far = building.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
+
+    info.transform.setPosition(
+        (terrain.tileXPos(building.tile) + terrain.tileXPos(far)) / 2,
+        (terrain.tileYPos(building.tile) + terrain.tileYPos(far)) / 2 + HEIGHT,
+        (terrain.tileZPos(building.tile) + terrain.tileZPos(far)) / 2);
+
+    this._infoBuilding = building;
+    refreshInfo(this);
+};
+
+ServiceMan.prototype.hideInfo = function () {
+    if (this._info !== null) {
+        this._info.destroy();
+        this._info = null;
+        this._infoBuilding = null;
     }
 };
 

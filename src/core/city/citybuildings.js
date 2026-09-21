@@ -246,7 +246,11 @@ function buildTest(self, code, tile, rotation) {
         return ErrorCode.CITY_HALL_ALREADY_BUILT;
     //roads may be laid anywhere, they are how a city reaches out beyond its
     //own borders in the first place - everything else stays inside them
-    else if (data.classCode !== BuildingClassCode.road && !city.area.contains(tile, Terrain.convertToIndex(data.sizeX, data.sizeY)))
+    //turned round, the footprint's sides swap
+    else if (data.classCode !== BuildingClassCode.road && !city.area.contains(
+            Terrain.extractX(tile), Terrain.extractY(tile),
+            rotation ? data.sizeY : data.sizeX,
+            rotation ? data.sizeX : data.sizeY))
         return ErrorCode.OUTSIDE_CITY;
     else if (!city.resources.hasEnough(data.constructionCost))
         return ErrorCode.NOT_ENOUGH_RES;

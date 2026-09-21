@@ -7,6 +7,7 @@ import CityBuildings from "./city/citybuildings";
 import CityResources from "./city/cityresources";
 import CityTilesParams from "./city/citytilesparams";
 import CityPopulation from "./city/citypopulation";
+import CityJobs from "./city/cityjobs";
 import CityWater from "./city/citywater";
 import CityRoads from "./city/cityroads";
 import ServiceCode from "./servicecode";
@@ -52,6 +53,7 @@ function City(world, tile) {
     this.resourcesModule = this.resources = this.resourcesService = new CityResources(this);
     this.statsService = new CityStats(this);
     this.populationService = this.population = new CityPopulation(this);
+    this.jobs = this.jobsService = new CityJobs(this);
     this.lab = this.laboratoryService = new Laboratory(this);
     this.buildings = this.buildingService = new CityBuildings(this);
     this.water = this.waterService = new CityWater(this);
@@ -106,6 +108,19 @@ City.prototype.missing = function (building) {
         return ServiceCode.water;
 
     return null;
+};
+
+/**
+ * What a building did for the treasury on the last tick: what it made, less
+ * what it cost to run, plus the taxes of whoever lives in it.
+ *
+ * @param building {Building}
+ * @returns {number} money per tick, negative when it costs more than it brings
+ */
+City.prototype.getBuildingIncome = function (building) {
+    return (building.producing[Resource.money] || 0)
+        - (building.demanding[Resource.money] || 0)
+        + this.populationService.getResidents(building) * CityPopulation.TAX_MONEY;
 };
 
 /**
