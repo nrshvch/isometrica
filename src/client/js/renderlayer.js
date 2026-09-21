@@ -11,5 +11,8 @@ export default {
     roadLayer: 2,
     vehiclesLayer: 3,
     buildingsLayer: 4,
-    overlayLayer: 5
+    overlayLayer: 5,
+    //what is about to be built - drawn over everything so that nothing
+    //already standing, the tile's own trees included, hides it
+    previewLayer: 6
 }

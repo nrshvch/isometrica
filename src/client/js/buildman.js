@@ -4,6 +4,7 @@ import engine from "engine/main";
 import BuildingClassCode from "data/classcode";
 import BuildingData from "data/buildings";
 import Building from "./building";
+import BuildingView from "./buildingview";
 import Road from "./road";
 import EventManager from "events";
 import Events from "events";
@@ -12,6 +13,7 @@ import AreaSelector from "./areaselector";
 import TileMessage from "./gameObjects/tilemessage";
 import CityWater from "core/city/citywater";
 import Config from "./config";
+import RenderLayer from "./renderlayer";
 import ResourceCode from "core/resourcecode";
 
 var Terrain = Core.Terrain;
@@ -118,6 +120,34 @@ function onChunkRemove(sender, chunk, self) {
     }
 }
 
+
+/**
+ * A see-through copy of the building standing on tile, turned the way it would
+ * be put down - so that what is about to be placed, and which way it faces, is
+ * seen before the click rather than after it.
+ *
+ * @returns {engine.GameObject}
+ */
+function createPreview(self, data, tile, rotation) {
+    var terrain = self.root.core.world.terrain,
+        tileSize = Config.tileSize,
+        x = Terrain.extractX(tile),
+        y = Terrain.extractY(tile),
+        //over water it floats on the surface, which is drawn at 0 whatever
+        //the depth of the bottom underneath (see client Terrain)
+        z = terrain.getTerrainType(x, y) === Core.TerrainType.water
+            ? 0
+            : terrain.getGridPointHeight(x + 1, y),
+        go = new engine.GameObject("building preview");
+
+    BuildingView.addSprites(go, data, rotation, 0.5, RenderLayer.previewLayer);
+
+    //placed before it goes in - the world files it by where it stands
+    go.transform.setPosition(x * tileSize, z * Config.tileZStep, y * tileSize);
+    self.root.game.logic.world.addGameObject(go);
+
+    return go;
+}
 
 /**
  * Floats what it just cost over the middle of an area of sizeX by sizeY tiles
@@ -361,6 +391,7 @@ Buildman.prototype.destroy = function () {
 
 
 Buildman.prototype.build = function (code) {
+    var self = this;
     var root = this.root;
     var data = BuildingData[code];
 
@@ -378,10 +409,25 @@ Buildman.prototype.build = function (code) {
     var tokens = [];
     var ts = new AreaSelector(this.root);
     var rotation = false;
+    var preview = null;
+
+    function updatePreview(tile0, tile1) {
+        if (preview !== null) {
+            preview.destroy();
+            preview = null;
+        }
+
+        //only while a single building is being aimed - an area dragged out
+        //is shown by its hilite alone
+        if (tile0 !== -1 && tile0 === tile1)
+            preview = createPreview(self, data, tile0, rotation);
+    }
 
     function updateHilite() {
         var tile0 = ts.tile0(),
             tile1 = ts.tile1();
+
+        updatePreview(tile0, tile1);
 
         // a single anchored tile (not yet dragged into a multi-tile paint
         // area) should hilite the building's whole footprint, not just the
@@ -440,6 +486,7 @@ Buildman.prototype.build = function (code) {
     controls.onDiscard = function () {
         //release resources
         ts.dispose();
+        updatePreview(-1, -1);
         root.hiliteMan.disable(tokens);
         root.serviceman.hideCoverage();
         Events.off(ts, AreaSelector.events.change, sub);
