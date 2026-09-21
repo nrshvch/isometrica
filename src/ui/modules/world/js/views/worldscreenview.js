@@ -153,7 +153,7 @@ WorldScreenView.prototype.showBuildButtons = function () {
     setBtn(this, 3, "bulldozer-icon", function () {
         view.controller.ui.navigate("destroy");
     });
-    setBtn(this, 4, "coin-icon", function () {
+    setBtn(this, 4, "tile-dollar-icon", function () {
         view.controller.ui.navigate("land");
     });
 
