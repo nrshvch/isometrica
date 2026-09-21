@@ -12,7 +12,8 @@ var ErrorCode = {
     WRONG_RESOURCE_TILE: 6,
     LAND_NOT_SUITABLE: 7,
     FLAT_LAND_REQUIRED: 8,
-    TILE_TAKEN: 9
+    TILE_TAKEN: 9,
+    OUTSIDE_CITY: 10
 };
 
 export default ErrorCode;
