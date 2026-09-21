@@ -20,6 +20,18 @@
   .cover;
 }
 
+//not on the sprite sheet - it is its own small piece of pixel art, so it is
+//scaled up without smoothing to stay crisp beside the others. The path goes
+//through a variable the way the sheet's does, so it resolves from main.less
+@tile-dollar-image: '../icons/tile-dollar.png';
+
+.tile-dollar-icon {
+  background-image: url(@tile-dollar-image);
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  .cover;
+}
+
 .back-icon {
   .sprite(@back);
   .cover;
