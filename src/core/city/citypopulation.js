@@ -19,6 +19,7 @@ var MAX_PARAM_VAL = TileParamsMan.MAX_PARAM_VAL;
 //100 to 140 money a head to build, one earns itself back in 40 to 70 ticks
 //once it fills up.
 var TAX_MONEY = 2;
+CityPopulation.TAX_MONEY = TAX_MONEY;
 
 
 /**
@@ -28,6 +29,10 @@ var TAX_MONEY = 2;
 function CityPopulation(city){
     this.city = city;
     this._population = 0;
+
+    //who lives where, worked out once a day like the jobs are (see CityJobs)
+    this._housedAt = null;
+    this._residents = {};
 }
 
 CityPopulation.prototype.init = function(){
@@ -58,6 +63,19 @@ CityPopulation.prototype.load = function(population){
     this._population = population || 0;
 };
 
+/**
+ * How many of the city's people live in this building. The city only counts
+ * heads, so they are put up the way the jobs are handed out: the oldest
+ * houses fill first.
+ *
+ * @param building {Building}
+ * @returns {number}
+ */
+CityPopulation.prototype.getResidents = function(building){
+    house(this);
+    return this._residents[building.id] || 0;
+};
+
 CityPopulation.prototype.getTaxIncomeAmount = function(){
     return TAX_MONEY * this.getPopulation();
 };
@@ -66,6 +84,32 @@ function onTick(world, args, self){
     populationChangePerTick(self);
 
     payTaxes(self);
+}
+
+function house(self){
+    var now = self.city.world.time.now;
+
+    if (self._housedAt === now)
+        return;
+
+    var buildings = self.city.buildingService.getBuildings(),
+        left = self.getPopulation(),
+        residents = {},
+        capacity, n, i;
+
+    for (i = 0; i < buildings.length; i++) {
+        capacity = buildings[i].citizenCapacity();
+
+        if (capacity === 0)
+            continue;
+
+        n = Math.min(capacity, left);
+        left -= n;
+        residents[buildings[i].id] = n;
+    }
+
+    self._housedAt = now;
+    self._residents = residents;
 }
 
 function calculateCapacity(self){

@@ -39,6 +39,7 @@ import "./vtime";
 import "./city/area";
 import "./city/citybuildings";
 import "./city/citypopulation";
+import "./city/cityjobs";
 import "./city/citywater";
 import "./city/cityroads";
 import "./city/cityresources";

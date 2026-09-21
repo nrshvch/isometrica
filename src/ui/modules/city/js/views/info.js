@@ -36,6 +36,7 @@ export default Backbone.View.extend({
 
         $(".pop", this.$el).text(city.population.getPopulation());
         $(".maxPop", this.$el).text(city.population.getCapacity());
+        $(".jobs", this.$el).text(city.jobs.getFilled() + " of " + city.jobs.getJobs() + " filled");
 
         //why houses are standing empty, if any are
         var missing = city.getMissingServices();

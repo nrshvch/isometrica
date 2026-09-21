@@ -84,6 +84,24 @@ Building.prototype.citizenCapacity = function () {
     return data.citizenCapacity || 0;
 };
 
+/**
+ * @returns {number} how many people it can employ - none, like a house full of
+ *                   nobody, until it is built and has everything it needs
+ */
+Building.prototype.jobs = function () {
+    var data = BuildingData[this.buildingCode];
+
+    if (!data.jobs || this._state !== BuildingState.ready)
+        return 0;
+
+    var city = this.getCity();
+
+    if (city !== null && city.missing(this) !== null)
+        return 0;
+
+    return data.jobs;
+};
+
 function onDispose(self, args, tickSubscriptionId) {
     Events.off(self.world, self.world.events.tick, tickSubscriptionId);
 
@@ -94,6 +112,9 @@ function onDispose(self, args, tickSubscriptionId) {
 function checkFullfilRequirements(self) {
     var world = self.world;
     var data = BuildingData[self.buildingCode];
+    //turned round, the footprint's sides swap
+    var sizeX = self.rotation ? data.sizeY : data.sizeX,
+        sizeY = self.rotation ? data.sizeX : data.sizeY;
 
     if (!world)
         throw "World is not set yet";
@@ -108,7 +129,7 @@ function checkFullfilRequirements(self) {
                 return false;
         }
     } else if (data.requirement === GatherReq.nearTree) {
-        var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, data.sizeX + 2, data.sizeY + 2);
+        var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, sizeX + 2, sizeY + 2);
         while (!iter.done) {
             var tile = iter.next();
             var b = world.buildings.get(tile);
@@ -122,7 +143,7 @@ function checkFullfilRequirements(self) {
             }
         }
     } else if (data.requirement === GatherReq.nearWater) {
-        var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, data.sizeX + 2, data.sizeY + 2);
+        var iter = new TileIterator(self.tile - Terrain.dx, self.tile - Terrain.dy, sizeX + 2, sizeY + 2);
         while (!iter.done) {
             var tile = iter.next();
             var t = world.terrain.getTerrainType(tile);
@@ -196,7 +217,8 @@ function produce(self) {
         return;
 
     if (self._state == BuildingState.ready && (data.requirement === undefined || data.requirement === GatherReq.none || checkFullfilRequirements(self))) {
-        Resources.add(self.producing, self.producing, data.producing);
+        //a business makes what it makes only as far as it has the people for it
+        Resources.mul(self.producing, data.producing, city.jobs.getStaffing(self));
         city.resources.add(self.producing);
     }
 }

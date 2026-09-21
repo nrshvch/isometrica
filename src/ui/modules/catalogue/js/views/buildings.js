@@ -9,11 +9,7 @@ var template = Handlebars.compile(__templateSource);
 export default Backbone.View.extend({
     tagName: "span",
     events: {
-      "click a[data-building]" : function(e){
-          var building = $(e.currentTarget).attr("data-building");
-          this.catalogue.execute(building);
-      },
-      "click a[data-build]" : function(e){
+      "click .item[data-build]" : function(e){
           var code = $(e.currentTarget).attr("data-build");
           this.catalogue.ui.navigate("build", [code]);
       },

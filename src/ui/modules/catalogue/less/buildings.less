@@ -4,8 +4,16 @@
     width: 46%;
     margin: 2%;
     position: relative;
+    display: block;
+    cursor: pointer;
+    color: inherit;
+    text-decoration: none;
 
     .box-shadow;
+
+    &:hover .name {
+      .ui-button;
+    }
 
     &:after {
       content: "";
@@ -56,15 +64,26 @@
     padding: 4% 0%;
   }
 
-  .buttons {
-    font-size: 0;
-    .build, .info {
-      font-size: 10pt;
+  //a fixed number of single lines, clipped rather than wrapped, so no card
+  //grows taller than its neighbours whatever the building has to say
+  .stats {
+    .ui-block;
+
+    padding: 3% 4%;
+    font-size: 9pt;
+    line-height: 1.5;
+
+    .stat {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      height: 1.5em;
+    }
+
+    .label {
       display: inline-block;
-      width: 50%;
-      .ui-button;
-      text-align: center;
-      padding: 8% 0%;
+      width: 6em;
+      opacity: 0.7;
     }
   }
 }

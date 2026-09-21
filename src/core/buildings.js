@@ -66,8 +66,11 @@ function buildTest(self, code, tile, rotation) {
 
         if (terrainType === TerrainType.water)
             return ErrorCode.CANT_BUILD_ON_WATER;
-        else if (positioning === BuildingPositioning.flat && resource !== null)
-            return ErrorCode.CANT_BUILD_HERE;
+        //a deposit does not keep an ordinary building off a tile - nothing
+        //draws deposits, and nothing can be built on them either while the
+        //mines are out of the game, so a tile that looks like bare grass has
+        //to take a building like bare grass does. Put back the flat-building
+        //CANT_BUILD_HERE check here once deposits are drawn and mined again
         else if (positioning === BuildingPositioning.resource && resource !== data.resource)
             return ErrorCode.WRONG_RESOURCE_TILE;
         else if (data.classCode === BuildingClassCode.road && Terrain.isSlope(slopeId) && !Terrain.isSlopeSmooth(slopeId))

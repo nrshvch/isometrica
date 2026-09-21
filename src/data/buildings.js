@@ -41,7 +41,10 @@ var Core = namespace("Isometrica.Core");
         producing: {},
         demanding: {},
         constructionTime: 0,
-        constructionCost: {},
+        //a sapling costs a little less than felling a grown tree (Config.clearTileCost)
+        constructionCost: {
+            money: 20
+        },
         name: "tree",
         sprites: [
             {
@@ -64,7 +67,9 @@ var Core = namespace("Isometrica.Core");
         producing: {},
         demanding: {},
         constructionTime: 0,
-        constructionCost: {},
+        constructionCost: {
+            money: 20
+        },
         name: "tree",
         sprites: [
             {
@@ -87,7 +92,10 @@ var Core = namespace("Isometrica.Core");
         producing: {},
         demanding: {},
         constructionTime: 0,
-        constructionCost: {},
+        //rock is hauled in, so it costs more than a tree
+        constructionCost: {
+            money: 50
+        },
         researchState: ResearchState.available,
         researchTime: 0,
         researchCost: {},
@@ -450,6 +458,8 @@ var Core = namespace("Isometrica.Core");
         producing: {
             money: 8
         },
+        //how many citizens it takes to run - it only makes its money with them in
+        jobs: 4,
         demanding: {},
         requires: {
             road: true,
@@ -540,6 +550,7 @@ var Core = namespace("Isometrica.Core");
         producing: {
             money: 14
         },
+        jobs: 6,
         demanding: {},
         requires: {
             road: true,
@@ -572,6 +583,7 @@ var Core = namespace("Isometrica.Core");
         producing: {
             money: 25
         },
+        jobs: 12,
         demanding: {},
         requires: {
             road: true,
@@ -631,6 +643,8 @@ var Core = namespace("Isometrica.Core");
         producing: {
             money: 80
         },
+        //a whole apartment block's worth of people goes to work in it
+        jobs: 40,
         demanding: {},
         requires: {
             road: true,
