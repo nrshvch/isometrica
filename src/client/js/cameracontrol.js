@@ -7,8 +7,8 @@ function onDrag(sender, param, me) {
     me._cam.pan(dragX, dragY);
 }
 
-function onDispose(a, b, c) {
-    Events.off(c);
+function onDispose(sender, args, data) {
+    Events.off(data[0], data[1], data[2]);
 }
 
 var events = {
@@ -26,7 +26,7 @@ CameraControl.prototype.init = function () {
 
     var a = Events.on(cam, WorldCamera.events.inputDrag, onDrag, this);
 
-    Events.once(this, events.dispose, onDispose, a);
+    Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputDrag, a]);
 };
 
 export default CameraControl;
