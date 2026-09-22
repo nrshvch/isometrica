@@ -8,7 +8,7 @@ import $ from "jquery";
 var template = Handlebars.compile(__templateSource);
 
 function onTimeAdvance(s, a, d) {
-    d.renderDate();
+    d.renderTime();
 }
 
 function onCityRename(s,a,d){
@@ -46,8 +46,8 @@ var View = Backbone.View.extend({
         //render all
         this.render();
     },
-    renderDate: function () {
-        $(".date", this.$el).text(this.time.toMDY());
+    renderTime: function () {
+        $(".time", this.$el).text(this.time.toHM());
         return this;
     },
     renderMoney: function(){
@@ -55,7 +55,7 @@ var View = Backbone.View.extend({
         $(".money", this.$el).text('$'+Numeral(money).format("0,0"));
     },
     render: function(){
-        this.renderDate();
+        this.renderTime();
         this.renderMoney();
     },
     dispose: function(){
