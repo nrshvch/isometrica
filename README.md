@@ -2,7 +2,7 @@
 
 This is JavaScript city building game prototype I've built around 2012. Keeping it alive for historical reference only.
 
-![Isoville](public/isoville.png)
+![Isoville](public/miniville.gif)
 
 ### Live demo
 https://nrshvch.github.io/isometrica
