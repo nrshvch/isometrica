@@ -3,6 +3,7 @@ import Core from "core/main";
 import Config from "./config";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
+import Vehicles from "data/vehicles";
 
 var Terrain = Core.Terrain;
 var SlopeType = Terrain.SlopeType;
@@ -16,17 +17,15 @@ var SlopeType = Terrain.SlopeType;
 //go - demolished, or their chunk unloaded - it is put on some other road.
 //
 //A car keeps to the right hand side of the road: it drives along a line off
-//the middle of the tile, to the right of the way it is going. There is one
-//picture of it, lying along the y axis, and it looks the same driving either
-//way; mirrored, it lies along the x axis.
+//the middle of the tile, to the right of the way it is going.
+//
+//Each one is some body type - a sedan, a van, a bus... - in some colour, with
+//a picture for each of the four ways it can drive, all out of one image that
+//tools/genvehicles.js paints (see data/vehicles.js). Bigger ones drive slower.
 //
 //Positions here are in tiles: the middle of tile (x, y) is at (x, y), which is
 //where the game puts the tile in the world too, and its edges are half a tile
 //off it.
-
-var SPRITE = "vehicles/car.png",
-    PIVOT_X = 10,
-    PIVOT_Y = 8;
 
 var CARS_PER_ROAD = 1 / 4,
     //how far off the middle of the road a lane is, in tiles
@@ -225,7 +224,9 @@ CarScript.prototype.target = 0;
 CarScript.prototype.x = 0;
 CarScript.prototype.y = 0;
 CarScript.prototype.speed = SPEED;
-CarScript.prototype.alongX = null;
+//its pictures, one for each way it drives: {"x+": sprite, ...}
+CarScript.prototype.looks = null;
+CarScript.prototype.heading = null;
 
 /**
  * Puts the car on a road tile picked at random, off on a route from it.
@@ -248,7 +249,7 @@ CarScript.prototype.spawn = function () {
             this.target = 1;
             this.x = this.waypoints[0].x;
             this.y = this.waypoints[0].y;
-            this.speed = SPEED * (0.8 + Math.random() * 0.4);
+            this.dress();
             this.place();
 
             return true;
@@ -256,6 +257,20 @@ CarScript.prototype.spawn = function () {
     }
 
     return false;
+};
+
+/**
+ * A body type picked at random - the common ones more often - in a random
+ * colour, and the speed that goes with it.
+ */
+CarScript.prototype.dress = function () {
+    var type = this.man.pickType(),
+        colors = Object.keys(type.frames),
+        color = colors[Math.random() * colors.length | 0];
+
+    this.looks = type.frames[color];
+    this.heading = null;
+    this.speed = SPEED * type.speed * (0.9 + Math.random() * 0.2);
 };
 
 /**
@@ -296,12 +311,18 @@ CarScript.prototype.place = function () {
     var root = this.man.root,
         to = this.waypoints[this.target],
         from = this.waypoints[this.target - 1],
-        alongX = Math.abs(to.x - from.x) > Math.abs(to.y - from.y),
-        renderer = this.gameObject.spriteRenderer;
+        dx = to.x - from.x,
+        dy = to.y - from.y,
+        heading = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "x+" : "x-") : (dy > 0 ? "y+" : "y-"),
+        renderer, frame;
 
-    if (alongX !== this.alongX) {
-        this.alongX = alongX;
-        this.man.setSprite(renderer, alongX);
+    if (heading !== this.heading) {
+        this.heading = heading;
+        frame = this.looks[heading];
+        renderer = this.gameObject.spriteRenderer;
+        renderer.setSprite(frame.sprite);
+        renderer.pivotX = frame.pivotX;
+        renderer.pivotY = frame.pivotY;
     }
 
     this.gameObject.transform.setPosition(
@@ -372,6 +393,9 @@ function Car(man) {
 Car.prototype = Object.create(engine.GameObject.prototype);
 
 function reconcile(self) {
+    if (self.types === null)
+        return;
+
     var target = Math.floor(self.root.roadman.getRoadCount() * CARS_PER_ROAD),
         cars = self.cars,
         car, i;
@@ -411,12 +435,16 @@ CarManScript.prototype.tick = function (time) {
 function Carman(root) {
     this.root = root;
     this.cars = [];
+    this.types = null;
+    this.totalWeight = 0;
 }
 
 Carman.prototype.init = function () {
     var go = new engine.GameObject("carman");
     go.addComponent(new CarManScript(this));
     this.root.game.logic.world.addGameObject(go);
+
+    loadTypes(this);
 };
 
 /**
@@ -437,21 +465,63 @@ Carman.prototype.respawn = function (script) {
     }
 };
 
-Carman.prototype.setSprite = function (renderer, alongX) {
-    var sprites = this.root.sprites,
-        sprite = sprites.getSprite(SPRITE, alongX);
+/**
+ * A body type, picked by how common it is.
+ */
+Carman.prototype.pickType = function () {
+    var types = this.types,
+        r = Math.random() * this.totalWeight,
+        i;
 
-    renderer.setSprite(sprite);
-    renderer.pivotY = PIVOT_Y;
-    renderer.pivotX = alongX ? sprite.width - PIVOT_X : PIVOT_X;
+    for (i = 0; i < types.length - 1; i++) {
+        r -= types[i].weight;
 
-    //a mirrored picture is empty until it has been painted, and its width with it
-    if (sprite.width === 0) {
-        sprites.whenReady(sprite, function () {
-            if (renderer.sprite === sprite)
-                renderer.pivotX = alongX ? sprite.width - PIVOT_X : PIVOT_X;
-        });
+        if (r < 0)
+            break;
     }
+
+    return types[i];
 };
+
+/**
+ * Cuts the pictures out of the vehicles image once it is loaded; no car goes
+ * out before that.
+ */
+function loadTypes(self) {
+    var sprites = self.root.sprites,
+        image = sprites.getSprite(Vehicles.image);
+
+    sprites.whenReady(image, function () {
+        var types = [], total = 0;
+
+        Object.keys(Vehicles.types).forEach(function (name) {
+            var data = Vehicles.types[name],
+                type = {name: name, speed: data.speed, weight: data.weight, frames: {}};
+
+            Object.keys(data.colors).forEach(function (color) {
+                var looks = type.frames[color] = {};
+
+                Object.keys(data.colors[color]).forEach(function (heading) {
+                    var f = data.colors[color][heading],
+                        sprite = new engine.SpriteManager.Sprite();
+
+                    sprite.sourceImage = image.sourceImage;
+                    sprite.offsetX = image.offsetX + f[0];
+                    sprite.offsetY = image.offsetY + f[1];
+                    sprite.width = f[2];
+                    sprite.height = f[3];
+
+                    looks[heading] = {sprite: sprite, pivotX: f[4], pivotY: f[5]};
+                });
+            });
+
+            types.push(type);
+            total += type.weight;
+        });
+
+        self.types = types;
+        self.totalWeight = total;
+    });
+}
 
 export default Carman;
