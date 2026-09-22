@@ -383,8 +383,13 @@ CarScript.prototype.tick = function (time) {
 function Car(man) {
     engine.GameObject.init(this, "car");
 
+    //on the buildings layer rather than the one named after vehicles: a whole
+    //layer is drawn over the one under it, so a car on its own layer goes
+    //behind every building there is - including the porch or the fence of one
+    //standing behind it, which is drawn over the road in front of it. Among
+    //the buildings a car is sorted by where it actually is instead.
     var renderer = new engine.SpriteRenderer();
-    renderer.layer = RenderLayer.vehiclesLayer;
+    renderer.layer = RenderLayer.buildingsLayer;
     this.addComponent(renderer);
 
     this.car = this.addComponent(new CarScript(man));
