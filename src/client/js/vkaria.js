@@ -21,7 +21,7 @@ import Terrainman from "./terrainman";
 import CameraControl from "./cameracontrol";
 import Player from "./player";
 import CameraMan from "./cameraman";
-import Trolley from "./gameObjects/Trolley";
+import Carman from "./carman";
 import SpriteCache from "./spritecache";
 
 function Vkaria(core, ui, callback) {
@@ -69,6 +69,7 @@ function Vkaria(core, ui, callback) {
     this.landman = new Landman(this);
     this.terrainman = new Terrainman(this);
     this.pathman = new PathMan();
+    this.carman = new Carman(this);
     this.cameraControl = new CameraControl(this);
     this.cameraman = new CameraMan(this);
 
@@ -132,18 +133,7 @@ Vkaria.prototype.startServices = function(){
 
     this.cameraControl.init();
 
-
-    window.t = Trolley;
-    var p = this.pathman;
-    setInterval(function () {
-        var pa = p.findPath();
-        if (pa && pa.length) {
-            var b = new t;
-            vkaria.game.logic.world.addGameObject(b);
-            b.transform.setPosition(pa[0][0], pa[0][1], pa[0][2]);
-            b.entity.setPath(pa);
-        }
-    }, 1000);
+    this.carman.init();
 };
 
 /**
