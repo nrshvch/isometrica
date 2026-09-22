@@ -101,7 +101,8 @@ HiliteMan.prototype._hiliteArea2 = function (data) {
             y: Terrain.extractY(tile),
             fillColor: fill,
             borderColor: border,
-            borderWidth: borderWidth
+            borderWidth: borderWidth,
+            underwater: data.underwater
         })
     }
 

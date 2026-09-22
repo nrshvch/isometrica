@@ -134,9 +134,9 @@ GameScreen.prototype.execute = function (module, args) {
                 //gs.worldScreen().show("build");
                 //gs.client.tools.selectTool(ToolCode.builder).setBuilding(args[0]);
                 break;
-            case "destroy":
+            case "terrain":
                 gs.show("world");
-                gs.client.buildman.destroy();
+                gs.client.terrainman.enter();
                 break;
             case "land":
                 gs.show("world");
@@ -151,6 +151,10 @@ GameScreen.prototype.execute = function (module, args) {
 
 GameScreen.prototype.showActionControls = function () {
     return this.worldScreen().showControls();
+};
+
+GameScreen.prototype.showToolControls = function (buttons) {
+    return this.worldScreen().showTools(buttons);
 };
 
 GameScreen.prototype.showWorld = function () {

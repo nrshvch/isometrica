@@ -137,6 +137,16 @@ TileSelector.prototype.reset = function () {
     this._tile1(-1);
 };
 
+/**
+ * Whether the player has picked the area, rather than the selector just
+ * following the cursor around.
+ *
+ * @returns {boolean}
+ */
+TileSelector.prototype.isPicked = function () {
+    return this._locked && this._tile0() !== -1 && this._tile1() !== -1;
+};
+
 TileSelector.prototype.dispose = function () {
     Events.fire(this, events.dispose);
 };

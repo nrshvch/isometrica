@@ -16,6 +16,7 @@ import Config from "./config";
 import RenderLayer from "./renderlayer";
 import ResourceCode from "core/resourcecode";
 import ErrorCode from "core/errorcode";
+import Numeral from "numeral";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -155,8 +156,17 @@ function createPreview(self, data, tile, rotation) {
  * tile.
  */
 function showText(self, tile, sizeX, sizeY, text) {
-    var root = self.root,
-        terrain = root.core.world.terrain,
+    var message = new TileMessage(text, "rgb(255,64,64)");
+    self.root.game.logic.world.addGameObject(message);
+    placeOverArea(self, message, tile, sizeX, sizeY, 0);
+}
+
+/**
+ * Puts go over the middle of an area of sizeX by sizeY tiles anchored at
+ * tile, height world units above the ground.
+ */
+function placeOverArea(self, go, tile, sizeX, sizeY, height) {
+    var terrain = self.root.core.world.terrain,
         tileSize = Config.tileSize,
         x = Terrain.extractX(tile),
         y = Terrain.extractY(tile),
@@ -165,13 +175,37 @@ function showText(self, tile, sizeX, sizeY, text) {
             ? 0
             : terrain.getGridPointHeight(x + 1, y);
 
-    var message = new TileMessage(text, "rgb(255,64,64)");
-    root.game.logic.world.addGameObject(message);
-    message.transform.setPosition(
+    go.transform.setPosition(
         (x + (sizeX - 1) / 2) * tileSize,
-        z * Config.tileZStep,
+        z * Config.tileZStep + height,
         (y + (sizeY - 1) / 2) * tileSize
     );
+}
+
+/**
+ * A price tag that stays over a building yet to be put down, for as long as
+ * it is being aimed - what it would cost, trees cleared for it included.
+ * Grey when the city could not pay it.
+ *
+ * @returns {engine.GameObject}
+ */
+function createPriceTag(self, tile, sizeX, sizeY, amount, affordable) {
+    var go = new engine.GameObject("price tag"),
+        renderer = go.addComponent(new engine.TextRenderer());
+
+    renderer.layer = RenderLayer.overlayLayer;
+    renderer.color = affordable ? "rgb(255,64,64)" : "rgb(160,160,160)";
+    renderer.style = "bold 16px Courier New";
+    renderer.strokeStyle = "black";
+    renderer.lineWidth = 4;
+    renderer.text = "-$" + Numeral(amount).format("0,0");
+
+    //placed before it goes in - the world files it by where it stands; up
+    //off the ground so the ghost underneath does not hide it
+    placeOverArea(self, go, tile, sizeX, sizeY, Config.tileSize);
+    self.root.game.logic.world.addGameObject(go);
+
+    return go;
 }
 
 /**
@@ -179,7 +213,7 @@ function showText(self, tile, sizeX, sizeY, text) {
  * anchored at tile.
  */
 function showCost(self, tile, sizeX, sizeY, amount) {
-    showText(self, tile, sizeX, sizeY, "-$" + amount);
+    showText(self, tile, sizeX, sizeY, "-$" + Numeral(amount).format("0,0"));
 }
 
 /**
@@ -404,66 +438,21 @@ Buildman.prototype.getBuilding = function (tile_or_x, y) {
     return getBuilding(this, tile);
 };
 
-Buildman.prototype.destroy = function () {
-    var self = this;
-    var root = this.root;
-
-    //show hint
-    root.ui.gameScreen().worldScreen().showHint("Pick a tile that you want to clear!");
-
-    //lock cam
-    root.camera.cameraScript.lock(true);
-
-    //draw red grid
-    var tokens = [];
-    var ts = new AreaSelector(this.root);
-    var sub = Events.on(ts, AreaSelector.events.change, function(a,b,c) {
-        root.hiliteMan.disable(tokens);
-        tokens = root.hiliteMan.hilite({
-            tile0: ts.tile0(),
-            tile1: ts.tile1(),
-            fillColor: "rgba(127,0,0,0.4)",
-            borderColor: "rgba(255,0,0,0.4)",
-            borderWidth: 2
-        });
-    });
-
-    //bind ui
-    var controls = root.ui.gameScreen().showActionControls();
-    controls.canRotate(false);
-    controls.onSubmit = function () {
-        var iter = ts.selectedTiles(),
-            tile;
-        if (iter !== null)
-            while (!iter.done) {
-                tile = iter.next();
-                //every tile is charged on its own, so each one that goes
-                //gets its own text
-                if (root.core.cities.getCity(0).clearTile(tile))
-                    showCost(self, tile, 1, 1, Core.Config.clearTileCost);
-            }
-
-        //release resources
-        ts.dispose();
-        root.hiliteMan.disable(tokens);
-        Events.off(ts, AreaSelector.events.change, sub);
-
-        root.ui.gameScreen().showWorld();
-        root.ui.gameScreen().worldScreen().hideHint();
-        root.camera.cameraScript.lock(false);
-    };
-    controls.onDiscard = function () {
-        //release resources
-        ts.dispose();
-        root.hiliteMan.disable(tokens);
-        Events.off(ts, AreaSelector.events.change, sub);
-
-        root.ui.gameScreen().showWorld();
-        root.ui.gameScreen().worldScreen().hideHint();
-        root.camera.cameraScript.lock(false);
-    };
+/**
+ * Floats text over the middle of an area of sizeX by sizeY tiles anchored at
+ * tile - the way a build that was turned down says why.
+ */
+Buildman.prototype.showText = function (tile, sizeX, sizeY, text) {
+    showText(this, tile, sizeX, sizeY, text);
 };
 
+/**
+ * Floats what something just cost over the middle of an area of sizeX by
+ * sizeY tiles anchored at tile.
+ */
+Buildman.prototype.showCost = function (tile, sizeX, sizeY, amount) {
+    showCost(this, tile, sizeX, sizeY, amount);
+};
 
 Buildman.prototype.build = function (code) {
     var self = this;
@@ -485,6 +474,30 @@ Buildman.prototype.build = function (code) {
     var ts = new AreaSelector(this.root);
     var rotation = false;
     var preview = null;
+    var priceTags = [];
+
+    //one tag over every building the selection would put down, priced the
+    //way a submit would charge it
+    function updatePriceTags(tile0, tile1) {
+        var i, quotes, sizeX, sizeY;
+
+        for (i = 0; i < priceTags.length; i++)
+            priceTags[i].destroy();
+        priceTags = [];
+
+        if (tile0 === -1 || tile1 === -1)
+            return;
+
+        sizeX = rotation ? data.sizeY : data.sizeX;
+        sizeY = rotation ? data.sizeX : data.sizeY;
+        quotes = root.core.cities.getCity(0).buildingService.quoteSelection(code, tile0, tile1, rotation);
+
+        for (i = 0; i < quotes.length; i++) {
+            if (quotes[i].cost > 0)
+                priceTags.push(createPriceTag(self, quotes[i].tile, sizeX, sizeY,
+                    quotes[i].cost, quotes[i].error === ErrorCode.NONE));
+        }
+    }
 
     function updatePreview(tile0, tile1) {
         if (preview !== null) {
@@ -503,6 +516,7 @@ Buildman.prototype.build = function (code) {
             tile1 = ts.tile1();
 
         updatePreview(tile0, tile1);
+        updatePriceTags(tile0, tile1);
 
         // a single anchored tile (not yet dragged into a multi-tile paint
         // area) should hilite the building's whole footprint, not just the
@@ -558,6 +572,7 @@ Buildman.prototype.build = function (code) {
         //release resources
         ts.dispose();
         updatePreview(-1, -1);
+        updatePriceTags(-1, -1);
         root.hiliteMan.disable(tokens);
         root.serviceman.hideCoverage();
         Events.off(ts, AreaSelector.events.change, sub);

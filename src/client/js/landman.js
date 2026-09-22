@@ -144,7 +144,7 @@ function findOffer(self, tile) {
 }
 
 function showCost(self, block, cost) {
-    var message = new TileMessage("-" + formatMoney(cost), "rgb(255,64,64)"),
+    var message = new TileMessage("-$" + Numeral(cost).format("0,0"), "rgb(255,64,64)"),
         pos = blockCenter(self.root, block);
 
     self.root.game.logic.world.addGameObject(message);

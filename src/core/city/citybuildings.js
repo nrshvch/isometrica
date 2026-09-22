@@ -95,6 +95,94 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
     }
 };
 
+/**
+ * What putting code down on every tile from tile0 to tile1 would come to,
+ * without putting anything down - so the bill can be shown before the click.
+ *
+ * Walks the tiles in the order a build of the selection does, and holds what
+ * the ones before would have taken against the ones after: the footprints
+ * they would stand on, the money they would have spent, a city hall one of
+ * them would have put up. A tile the build would turn down is left out, save
+ * one turned down for want of money only - its price is still worth knowing.
+ *
+ * @param code {number}
+ * @param tile0 {number}
+ * @param tile1 {number}
+ * @param [rotation] {boolean}
+ * @returns {{tile: number, cost: number, error: number}[]}
+ */
+CityBuildings.prototype.quoteSelection = function (code, tile0, tile1, rotation) {
+    code = parseInt(code, 10);
+
+    var data = BuildingData[code],
+        sizeX = rotation ? data.sizeY : data.sizeX,
+        sizeY = rotation ? data.sizeX : data.sizeY,
+        resources = this.city.resources.getResources(),
+        cost = data.constructionCost || {},
+        taken = Object.create(null),
+        spent = Object.create(null),
+        cityHall = this.cityHall !== null,
+        iter = new TileIterator(tile0, tile1),
+        r = [],
+        tile, errorCode, clearing, money, footprint, key, enough;
+
+    while (!iter.done) {
+        tile = TileIterator.next(iter);
+
+        errorCode = this.city.root.buildingService.test(code, tile, rotation);
+
+        //the rest of buildTest, less what is about money - that is held
+        //against what the tiles before would have spent instead
+        if (errorCode === ErrorCode.NONE) {
+            if (this.city.laboratoryService.getAvailableBuildings()[code] !== true)
+                errorCode = ErrorCode.BUILDING_NOT_AVAIL;
+            else if (code === BuildingCode.cityHall && cityHall)
+                errorCode = ErrorCode.CITY_HALL_ALREADY_BUILT;
+            else if (data.classCode !== BuildingClassCode.road && !this.city.area.contains(
+                    Terrain.extractX(tile), Terrain.extractY(tile), sizeX, sizeY))
+                errorCode = ErrorCode.OUTSIDE_CITY;
+        }
+
+        footprint = new TileIterator(tile, tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy);
+        while (errorCode === ErrorCode.NONE && !footprint.done) {
+            if (taken[TileIterator.next(footprint)])
+                errorCode = ErrorCode.TILE_TAKEN;
+        }
+
+        if (errorCode !== ErrorCode.NONE)
+            continue;
+
+        clearing = clearingCost(this, code, tile, rotation);
+        money = (cost[Resource.money] || 0) + clearing;
+
+        enough = (resources[Resource.money] || 0) - (spent[Resource.money] || 0) >= money;
+        for (key in cost) {
+            if (key !== Resource.money && (resources[key] || 0) - (spent[key] || 0) < cost[key])
+                enough = false;
+        }
+
+        if (!enough) {
+            r.push({tile: tile, cost: money, error: ErrorCode.NOT_ENOUGH_RES});
+            continue;
+        }
+
+        for (key in cost)
+            spent[key] = (spent[key] || 0) + cost[key];
+        spent[Resource.money] = (spent[Resource.money] || 0) + clearing;
+
+        footprint = new TileIterator(tile, tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy);
+        while (!footprint.done)
+            taken[TileIterator.next(footprint)] = true;
+
+        if (code === BuildingCode.cityHall)
+            cityHall = true;
+
+        r.push({tile: tile, cost: money, error: ErrorCode.NONE});
+    }
+
+    return r;
+};
+
 CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
     code = parseInt(code, 10);
 

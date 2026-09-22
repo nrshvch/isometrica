@@ -32,6 +32,26 @@
   .cover;
 }
 
+//raising and lowering the ground - drawn the same way as the tile with the
+//dollar on it
+@chevron-up-image: '../icons/chevron-up.png';
+@chevron-down-image: '../icons/chevron-down.png';
+
+.chevron-up-icon,
+.chevron-down-icon {
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  .cover;
+}
+
+.chevron-up-icon {
+  background-image: url(@chevron-up-image);
+}
+
+.chevron-down-icon {
+  background-image: url(@chevron-down-image);
+}
+
 .back-icon {
   .sprite(@back);
   .cover;

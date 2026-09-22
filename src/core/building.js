@@ -232,15 +232,21 @@ function demand(self) {
     if (city === null)
         return;
 
+    //a town nobody has moved into yet runs up no bills - the player gets to
+    //look around before the clock starts ticking
+    if (city.population.getPopulation() === 0)
+        return;
+
     if (self._state == BuildingState.ready) {
         Resources.add(self.demanding, self.demanding, data.demanding);
 
         //the city hall is paid to administer the city, and the more land there
         //is to administer the more it costs - which is what makes a tight city
-        //of tall houses cheaper to run than the same people spread thin
+        //of tall houses cheaper to run than the same people spread thin. The
+        //block the city was founded on is covered by its flat upkeep.
         if (data.upkeepPerTile !== undefined)
             Resources.addOne(self.demanding, self.demanding, Resource.money,
-                data.upkeepPerTile * city.area.getTileCount());
+                data.upkeepPerTile * city.area.getBoughtTileCount());
 
         city.resources.sub(self.demanding);
     }

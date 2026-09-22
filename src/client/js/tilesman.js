@@ -45,8 +45,9 @@ Tilesman.prototype.start = function () {
     var cam = vkaria.game.logic.world.findByName("mainCamera");
 
     cam.transform.addEventListener(cam.transform.events.update, this.onCameraMove);
-    Events.on(vkaria.core.terrain, Core.Terrain.events.gridUpdate, function (terrain, args, self) {
-        self.updateChunks();
+    //only the tiles around the ground that moved have to be drawn again
+    Events.on(vkaria.core.terrain, Core.Terrain.events.gridUpdate, function (terrain, args) {
+        vkaria.terrain.redraw(args.tiles);
     }, this);
 
     this.onCameraMove(cam.transform);

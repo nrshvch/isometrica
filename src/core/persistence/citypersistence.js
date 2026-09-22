@@ -139,6 +139,8 @@ CityPersistence.prototype.save = function () {
         id: this._id,
         savedAt: Date.now(),
         time: this.world.time.now,
+        //the ground is the world's, whoever paid for shaping it
+        terrain: this.world.terrain.save(),
         city: city.save()
     };
 
@@ -234,6 +236,10 @@ CityPersistence.prototype.remove = function (id) {
 function restore(self, data) {
     if (data.time !== undefined && data.time !== null)
         self.world.time.load(data.time);
+
+    //the ground goes back first - everything else stands on it
+    if (data.terrain !== undefined && data.terrain !== null)
+        self.world.terrain.load(data.terrain);
 
     if (data.city !== undefined && data.city !== null)
         self.world.cities.restoreCity(data.city);

@@ -29,6 +29,8 @@ Renderer.prototype = Object.create(engine.Renderer.prototype);
 Renderer.prototype.fillColor = "rgba(0,255,0,0.5)";
 Renderer.prototype.borderColor = "rgba(0,0,0,0.5)";
 Renderer.prototype.borderWidth = 1;
+//a dash pattern for the border, or null for a solid line
+Renderer.prototype.borderDash = null;
 
 Renderer.prototype.points = null;
 
@@ -52,6 +54,8 @@ Renderer.prototype.render = function(layer, viewportRenderer){
     if(this.borderColor !== undefined){
         layer.strokeStyle = this.borderColor;
         layer.lineWidth = this.borderWidth;
+        if (this.borderDash !== null)
+            layer.setLineDash(this.borderDash);
         layer.stroke();
     }
 

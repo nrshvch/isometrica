@@ -58,7 +58,16 @@ WorldScreen.prototype.showControls = function (controls) {
     return controls;
 };
 
-
+/**
+ * Hands the buttons to a mode of its own, which gives them back by showing
+ * the world again.
+ *
+ * @param buttons {Object[]} see WorldScreenView#showToolButtons
+ */
+WorldScreen.prototype.showTools = function (buttons) {
+    this.view.showToolButtons(buttons);
+    this.busy(true);
+};
 
 /**
  * Asks whether the player really means to leave this city behind, and starts

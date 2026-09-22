@@ -10,6 +10,7 @@ import * as glMatrix from "gl-matrix";
 import RenderLayer from "../renderlayer";
 import Events from "events";
 import {outline} from "../tileoutline";
+import Core from "core/main";
 
 var Vec3 = glMatrix.vec3;
 var float32Buffer = new Float32Array(3);
@@ -24,6 +25,12 @@ function onAreaChange(sender, args, self) {
         self.points = borderPoints(self);
 }
 
+//the line follows the ground, so it has to be traced again when that moves
+function onGridUpdate(sender, args, self) {
+    if (self.city)
+        self.points = borderPoints(self);
+}
+
 /**
  * @param city {City}
  * @constructor
@@ -34,6 +41,7 @@ function CityBorderRenderer(city) {
 
     var area = city.area;
     Events.on(area, area.events.change, onAreaChange, this);
+    Events.on(city.world.terrain, Core.Terrain.events.gridUpdate, onGridUpdate, this);
 }
 
 CityBorderRenderer.prototype = Object.create(Engine.Renderer.prototype);

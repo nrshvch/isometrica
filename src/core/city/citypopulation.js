@@ -16,8 +16,8 @@ var MAX_PARAM_VAL = TileParamsMan.MAX_PARAM_VAL;
 
 //What one citizen pays per tick. Houses earn nothing by standing there - it is
 //the people in them who pay - so this is what a house is bought for: at around
-//100 to 140 money a head to build, one earns itself back in 40 to 70 ticks
-//once it fills up.
+//75 to 180 money a head to build, one earns itself back in 40 to 90 ticks
+//once it fills up (an apartment block, dense as it is, takes 150).
 var TAX_MONEY = 2;
 CityPopulation.TAX_MONEY = TAX_MONEY;
 
@@ -33,6 +33,7 @@ function CityPopulation(city){
     //who lives where, worked out once a day like the jobs are (see CityJobs)
     this._housedAt = null;
     this._residents = {};
+    this._shortOfJobs = {};
 }
 
 CityPopulation.prototype.init = function(){
@@ -41,6 +42,23 @@ CityPopulation.prototype.init = function(){
     Events.on(world, world.events.tick, onTick, this);
 };
 
+/**
+ * Whether the people of this house need work in the city to move in. Only a
+ * trailer or a tiny house is cheap enough to live in without a job.
+ *
+ * @param data {Object} building data
+ * @returns {boolean}
+ */
+function needsJobs(data){
+    return data.needsJobs !== false;
+}
+CityPopulation.needsJobs = needsJobs;
+
+/**
+ * @returns {number} how many can live in the city: every bed in the houses
+ *                   that need no jobs, and as many of the rest as there are
+ *                   jobs to go round
+ */
 CityPopulation.prototype.getCapacity = function(){
     return calculateCapacity(this);
 };
@@ -76,6 +94,20 @@ CityPopulation.prototype.getResidents = function(building){
     return this._residents[building.id] || 0;
 };
 
+/**
+ * Whether this house has no work for any of its beds: the jobs are handed to
+ * the beds of the oldest houses first, whether anybody sleeps in them yet or
+ * not, and they ran out before this one. A house left with some jobs, but
+ * fewer than it has beds, does not count.
+ *
+ * @param building {Building}
+ * @returns {boolean}
+ */
+CityPopulation.prototype.isShortOfJobs = function(building){
+    house(this);
+    return this._shortOfJobs[building.id] === true;
+};
+
 CityPopulation.prototype.getTaxIncomeAmount = function(){
     return TAX_MONEY * this.getPopulation();
 };
@@ -94,7 +126,13 @@ function house(self){
 
     var buildings = self.city.buildingService.getBuildings(),
         left = self.getPopulation(),
+        //beds in houses that need jobs are only good for as many as can work
+        jobs = self.city.jobs.getJobs(),
+        //the same jobs handed to beds rather than people, so that a house
+        //still waiting for its people is known to be short all the same
+        bedJobs = jobs,
         residents = {},
+        shortOfJobs = {},
         capacity, n, i;
 
     for (i = 0; i < buildings.length; i++) {
@@ -103,23 +141,39 @@ function house(self){
         if (capacity === 0)
             continue;
 
+        if (needsJobs(buildings[i].data)) {
+            if (bedJobs === 0)
+                shortOfJobs[buildings[i].id] = true;
+
+            bedJobs = Math.max(bedJobs - capacity, 0);
+            capacity = Math.min(capacity, jobs);
+        }
+
         n = Math.min(capacity, left);
         left -= n;
         residents[buildings[i].id] = n;
+
+        if (needsJobs(buildings[i].data))
+            jobs -= n;
     }
 
     self._housedAt = now;
     self._residents = residents;
+    self._shortOfJobs = shortOfJobs;
 }
 
 function calculateCapacity(self){
-    var r = 0;
+    var free = 0, working = 0;
     var buildings = self.city.buildingService.getBuildings();
     for (var key in buildings) {
         var building = buildings[key];
-        r += building.citizenCapacity();
+
+        if (needsJobs(building.data))
+            working += building.citizenCapacity();
+        else
+            free += building.citizenCapacity();
     }
-    return r;
+    return free + Math.min(working, self.city.jobs.getJobs());
 }
 
 function populationChangePerTick(self) {
