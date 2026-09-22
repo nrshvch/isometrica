@@ -28,6 +28,7 @@ function getStats(b) {
 
     if (requires.road) needs.push("road");
     if (requires.water) needs.push("water");
+    if (b.citizenCapacity && CityPopulation.needsJobs(b)) needs.push("jobs");
 
     if (b.citizenCapacity) {
         benefits.push("up to +$" + b.citizenCapacity * CityPopulation.TAX_MONEY + "/tick tax");

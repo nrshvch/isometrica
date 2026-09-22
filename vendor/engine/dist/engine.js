@@ -606,14 +606,48 @@ define('engine/Canvas2dRenderer',['require','./config','gl-matrix','./components
         bufferVec3 = new Float32Array([0, 0, 0]),
         buffer2Vec3 = new Float32Array([0, 0, 0]),
         bufferMat4 = new Float32Array(16),
-        depthSort = function (a, b) {
-            //a.gameObject.transform.getPosition(bufferVec3);
-            Transform.getPosition(a.gameObject.transform, bufferVec3);
-            a = bufferVec3[0] - bufferVec3[1] + bufferVec3[2];
-            //b.gameObject.transform.getPosition(bufferVec3);
-            Transform.getPosition(b.gameObject.transform, bufferVec3);
-            return a - (bufferVec3[0] - bufferVec3[1] + bufferVec3[2]);
+        // depth keys are computed once per renderer per frame, then a typed
+        // array of indices is sorted by them -- avoids resolving transforms
+        // O(n log n) times inside the comparator
+        sortKeys = new Float64Array(1024),
+        sortIndices = new Uint32Array(1024),
+        sortScratch = [],
+        compareIndices = function (a, b) {
+            return (sortKeys[a] - sortKeys[b]) || (a - b);
         };
+
+    function depthSort(renderers) {
+        var count = renderers.length,
+            i, pos, indices;
+
+        if (count < 2)
+            return;
+
+        if (sortKeys.length < count) {
+            var size = sortKeys.length;
+            while (size < count)
+                size *= 2;
+            sortKeys = new Float64Array(size);
+            sortIndices = new Uint32Array(size);
+        }
+
+        for (i = 0; i < count; i++) {
+            pos = Transform.getLocalToWorld(renderers[i].gameObject.transform);
+            sortKeys[i] = pos[12] - pos[13] + pos[14];
+            sortIndices[i] = i;
+            sortScratch[i] = renderers[i];
+        }
+
+        indices = sortIndices.subarray(0, count);
+        indices.sort(compareIndices);
+
+        for (i = 0; i < count; i++)
+            renderers[i] = sortScratch[indices[i]];
+
+        // drop references so disposed renderers can be collected
+        for (i = 0; i < count; i++)
+            sortScratch[i] = null;
+    }
 
     function render(self, camera, viewport) {
         viewport.context.fillRect(0,0,100,100);
@@ -647,7 +681,7 @@ define('engine/Canvas2dRenderer',['require','./config','gl-matrix','./components
             renderersCount = renderers.length;
 
             if (~config.noLayerDepthSortingMask & 1 << i) {
-                renderers.sort(depthSort);
+                depthSort(renderers);
             }
 
             for (j = 0; j < renderersCount; j++) {
@@ -695,7 +729,7 @@ define('engine/Canvas2dRenderer',['require','./config','gl-matrix','./components
             renderersCount = renderers.length;
 
             if (config.depthSortingMask & (1 << i)) {
-                renderers.sort(depthSort);
+                depthSort(renderers);
             }
 
             for (j = 0; j < renderersCount; j++) {

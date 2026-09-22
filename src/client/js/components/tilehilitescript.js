@@ -19,6 +19,8 @@ Script.prototype.setHiliteData = function(hiliteData){
     if(hiliteData.borderWidth !== undefined)
         r.borderWidth = hiliteData.borderWidth;
 
+    r.borderDash = hiliteData.borderDash || null;
+
 
     var tile = vkaria.terrain.getTile(r.x, r.y);
     var pos = tile.transform.getPosition();
@@ -36,6 +38,13 @@ Script.prototype.setHiliteData = function(hiliteData){
         terrain.getGridPointHeight(r.x + 1, r.y + 1),
     ];
     var zStep = Config.tileZStep;
+
+    //water is drawn flat at its surface, but shaping the ground means shaping
+    //the bottom - so a hilite that asks for it follows the ground underneath
+    if (type === 0 && hiliteData.underwater === true) {
+        t.setPosition(pos[0], gps[2] * zStep, pos[2]);
+        type = -1;
+    }
 
     if (type === 0) {
         r.points[0][1] = 0;

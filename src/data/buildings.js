@@ -168,6 +168,8 @@ var Core = namespace("Isometrica.Core");
         //a trailer needs nothing of anybody - park it in a field and someone
         //will live in it, which is what a city has before it has streets
         requires: {},
+        //nobody who lives in a trailer needs a job in town to afford it
+        needsJobs: false,
         //it sleeps a couple: the cheapest roof per head there is, paid for
         //with the view
         citizenCapacity: 2,
@@ -219,6 +221,8 @@ var Core = namespace("Isometrica.Core");
         requires: {
             road: true
         },
+        //cheap enough to get by without a job in town, like a trailer
+        needsJobs: false,
         citizenCapacity: 3,
         constructionTime: 3000,
         constructionCost: {
@@ -249,10 +253,10 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
-        citizenCapacity: 5,
+        citizenCapacity: 8,
         constructionTime: 3000,
         constructionCost: {
-            money: 600
+            money: 1000
         },
         name: "small residential house",
         sprites: [
@@ -310,10 +314,10 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 800
+            money: 1300
         },
         name: "cottage house",
-        citizenCapacity: 6,
+        citizenCapacity: 9,
         sprites: [
             {
                 x: 0,
@@ -350,10 +354,10 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 1400
+            money: 1800
         },
         name: "two story house",
-        citizenCapacity: 10,
+        citizenCapacity: 12,
         sprites: [
             {
                 x: 0,
@@ -388,10 +392,10 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
-        citizenCapacity: 8,
+        citizenCapacity: 9,
         constructionTime: 5000,
         constructionCost: {
-            money: 1100
+            money: 1300
         },
         name: "house",
         sprites: [
@@ -423,13 +427,19 @@ var Core = namespace("Isometrica.Core");
         buildingCode: BuildingCode.cityHall,
         classCode: BuildingClassCode.municipal,
         producing: {},
-        //the city pays for its own offices - a flat sum for the building...
+        //the city pays for its own offices - a flat sum for the building and
+        //the block it was founded on, which the taxes of a single trailer
+        //just cover: the first house keeps the town afloat, the second one
+        //starts earning (nothing is due while the town stands empty)...
         demanding: {
-            money: 2
+            money: 4
         },
-        //...and so much for every tile of land it has to administer, which is
+        //...and so much for every tile of land bought on top of that, which is
         //what makes sprawl expensive and a tight, tall city cheap to run
-        upkeepPerTile: 0.15,
+        upkeepPerTile: 1.5,
+        //a few clerks, so that the first proper house in town has somebody
+        //working before there is a shop to work in
+        jobs: 4,
         constructionTime: 3000,
         //it comes with the city, so there is nobody to bill for it
         constructionCost: {},
@@ -447,6 +457,22 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
+    //Commerce runs on the same curve as the houses: the smaller the building,
+    //the sooner it earns itself back and the more it makes of every worker,
+    //the bigger, the more it makes of every tile. A young city is short of
+    //money and has land to spare, so it builds shops; once land costs a
+    //fortune a block, it is worth sinking years into a tower.
+    //
+    //                cost   jobs  /tick  payback  per tile
+    //  shop          1000    20     15      67       15
+    //  bank          1800    30     20      90       20
+    //  big shop      9000   140     96      94       24
+    //  office       25000   200    110     227      110
+    //
+    //Every citizen in a house that needs jobs needs a job of their own, so the
+    //job counts are generous - a street of houses gets by on a shop and a
+    //bank, the way a real one would.
+
     //A corner shop: nobody lives in it, it just takes the city's money over the
     //counter and pays its share into the treasury - as long as customers can get
     //to it and there is water in the tap.
@@ -456,10 +482,10 @@ var Core = namespace("Isometrica.Core");
         buildingCode: BuildingCode.shop,
         classCode: BuildingClassCode.commerce,
         producing: {
-            money: 8
+            money: 15
         },
         //how many citizens it takes to run - it only makes its money with them in
-        jobs: 4,
+        jobs: 20,
         demanding: {},
         requires: {
             road: true,
@@ -467,7 +493,7 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 700
+            money: 1000
         },
         name: "shop",
         sprites: [
@@ -483,7 +509,21 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    //a block of flats: a street's worth of people on four tiles
+    //a block of flats: a street's worth of people on four tiles - dearer per
+    //head than any house, what it saves is land.
+    //
+    //Houses go the way commerce does (see the shop): heads per tile against
+    //ticks to earn back what they cost, at full occupancy. Every step up packs
+    //more people onto the same land, which is what pays for the water, the
+    //jobs and the longer wait
+    //
+    //  mobile house   2 / tile    38      small house   4   / tile   63
+    //  tiny house     3 / tile    50      cottage       4.5 / tile   72
+    //  house        4.5 / tile    72      two story     6   / tile   75
+    //  apartments    10 / tile   150
+    //
+    //The cottage and the house are the same building in two looks, so that a
+    //street of them need not be the same house over and over.
     buildingData[BuildingCode.apartments] = {
         sizeX: 2,
         sizeY: 2,
@@ -498,7 +538,7 @@ var Core = namespace("Isometrica.Core");
         citizenCapacity: 40,
         constructionTime: 15000,
         constructionCost: {
-            money: 4500
+            money: 12000
         },
         name: "apartment block",
         sprites: [
@@ -548,9 +588,9 @@ var Core = namespace("Isometrica.Core");
         buildingCode: BuildingCode.bank,
         classCode: BuildingClassCode.commerce,
         producing: {
-            money: 14
+            money: 20
         },
-        jobs: 6,
+        jobs: 30,
         demanding: {},
         requires: {
             road: true,
@@ -558,7 +598,7 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 8000,
         constructionCost: {
-            money: 1200
+            money: 1800
         },
         name: "bank",
         sprites: [
@@ -574,16 +614,17 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    //a supermarket with a car park of its own: a shop's trade four tiles over
+    //a supermarket with a car park of its own: out-earns a row of banks on the
+    //same land, but it takes a long while to save up for
     buildingData[BuildingCode.bigShop] = {
         sizeX: 2,
         sizeY: 2,
         buildingCode: BuildingCode.bigShop,
         classCode: BuildingClassCode.commerce,
         producing: {
-            money: 25
+            money: 96
         },
-        jobs: 12,
+        jobs: 140,
         demanding: {},
         requires: {
             road: true,
@@ -591,7 +632,7 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 10000,
         constructionCost: {
-            money: 2000
+            money: 9000
         },
         name: "big shop",
         sprites: [
@@ -634,17 +675,18 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    //nothing makes more money than an office tower, and nothing costs more to put up
+    //nothing makes more money than an office tower, and nothing costs more to
+    //put up - a late-game building, not a first one
     buildingData[BuildingCode.office] = {
         sizeX: 1,
         sizeY: 1,
         buildingCode: BuildingCode.office,
         classCode: BuildingClassCode.commerce,
         producing: {
-            money: 80
+            money: 110
         },
-        //a whole apartment block's worth of people goes to work in it
-        jobs: 40,
+        //five apartment blocks' worth of people go to work in it
+        jobs: 200,
         demanding: {},
         requires: {
             road: true,
@@ -652,7 +694,7 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 20000,
         constructionCost: {
-            money: 8000
+            money: 25000
         },
         name: "office tower",
         sprites: [

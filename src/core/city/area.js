@@ -19,7 +19,7 @@ var CityService = namespace("Isometrica.Core.CityService");
 CityService.Area = Area;
 
 var BLOCK_SIZE = 5;
-var BLOCK_BASE_PRICE = 1000;
+var BLOCK_BASE_PRICE = 100000;
 
 var events = {
     change: 0
@@ -94,6 +94,14 @@ Area.prototype.contains = function (a, b, c, d) {
  */
 Area.prototype.getTileCount = function () {
     return this.getBlocks().length * BLOCK_SIZE * BLOCK_SIZE;
+};
+
+/**
+ * @returns {number} how many tiles the city paid for - everything but the
+ *                   block it was founded on
+ */
+Area.prototype.getBoughtTileCount = function () {
+    return Math.max(0, this.getTileCount() - BLOCK_SIZE * BLOCK_SIZE);
 };
 
 /**
@@ -281,12 +289,12 @@ function block(self, bx, by) {
 /**
  * Land gets dearer the further it is from the block the city was founded on:
  * the four blocks around it go for BLOCK_BASE_PRICE, and every ring beyond
- * costs ten times the one before it.
+ * costs BLOCK_BASE_PRICE more than the one before it.
  */
 function blockPrice(bx, by) {
     var ring = Math.abs(bx) + Math.abs(by);
 
-    return ring === 0 ? 0 : BLOCK_BASE_PRICE * Math.pow(10, ring - 1);
+    return BLOCK_BASE_PRICE * ring;
 }
 
 /**

@@ -40,6 +40,9 @@ text[ServiceCode.water] = "no water";
 //not a service, but the same kind of trouble: a business nobody works in
 var NO_WORKERS = "noWorkers";
 text[NO_WORKERS] = "no workers";
+//and a house whose people would have nowhere to work
+var NO_JOBS = "noJobs";
+text[NO_JOBS] = "no jobs";
 
 //high enough to clear the roof of anything it sits over
 var HEIGHT = Config.tileSize;
@@ -104,6 +107,8 @@ function refresh(self) {
 
         if (missing === null && model.jobs() > 0 && city.jobs.getWorkers(model) === 0)
             missing = NO_WORKERS;
+        else if (missing === null && city.population.isShortOfJobs(model))
+            missing = NO_JOBS;
 
         if (missing === null)
             hide(self, tile);

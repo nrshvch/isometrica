@@ -17,6 +17,8 @@ import BuildingClassCode from "data/classcode";
 import BuildingData from "data/buildings";
 import Config from "./config";
 import Terrain from "./terrain";
+import ErrorCode from "./errorcode";
+import TerrainType from "./terraintype";
 
 var Core = namespace("Isometrica.Core");
 
@@ -43,10 +45,6 @@ function City(world, tile) {
     this._id = id++;
     this._tile = tile;
     this.timeEstablished = world.time.milliseconds;
-
-    //tiles the player paid to have cleared - the world generates the same
-    //trees every time, so a save only has to name the ones that went
-    this._clearedTiles = [];
 
     this.area = this.areaService = new Area(this);
     this.tilesParams = this.tileParamsService = new CityTilesParams(this);
@@ -154,24 +152,74 @@ City.prototype.onTick = function (sender, args, meta) {
 City.prototype.clearTile = function (tile) {
     var building = this.world.buildingService.get(tile),
         //roads may be laid outside of the borders, so they have to be
-        //removable out there as well - anything else is city land only
-        isOwnRoad = building !== null && BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
+        //removable out there as well - any other building is city land only.
+        //A tree is part of the world, not of the city, so it can go anywhere
+        allowed = building === null
+            || this.areaService.contains(tile)
+            || BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
 
     //bare ground has nothing to clear away, so it is free and does nothing
     if (building === null && this.world.envService.getTree(tile) === null)
         return false;
 
-    if(this.areaService.contains(tile) || isOwnRoad) {
-        var cost = Config.clearTileCost;
+    if (!allowed || !this.resourcesService.hasEnoughResource(Resource.money, Config.clearTileCost))
+        return false;
 
-        if(this.resourcesService.hasEnoughResource(Resource.money, cost)) {
-            this.world.terrain.clearTile(tile);
-            this.resourcesModule.subResource(Resource.money, cost);
-            this._clearedTiles.push(tile);
-            return true;
-        }
+    this.world.terrain.clear(tile);
+    this.resourcesModule.subResource(Resource.money, Config.clearTileCost);
+    return true;
+};
+
+/**
+ * Raises or lowers the rectangle of tiles between tile0 and tile1 as one piece
+ * of land - see Terrain#planLevel for what that does to the ground - and pays
+ * for it. The ground belongs to the world, not to the city, so it can be
+ * shaped anywhere; the city only foots the bill.
+ *
+ * Every tile the ground moves under is a tile modified, whether it was picked
+ * or only dragged along: each costs terraformTileCost - ten times that for
+ * water being raised - plus clearing whatever tree grew on it. Nothing may
+ * stand on any of them, so a building anywhere in the way stops the whole thing.
+ *
+ * @param tile0 {number}
+ * @param tile1 {number}
+ * @param direction {number} 1 to raise, -1 to lower
+ * @returns {{error: number, tile: number, cost: number}} error is an
+ *          ErrorCode, and tile the tile it is about; cost is what was paid
+ */
+City.prototype.terraform = function (tile0, tile1, direction) {
+    var world = this.world,
+        terrain = world.terrain,
+        plan = terrain.planLevel(tile0, tile1, direction),
+        cost = 0,
+        tile, i;
+
+    if (plan === null)
+        return {error: ErrorCode.TERRAFORM_TOO_LARGE, tile: tile0, cost: 0};
+
+    for (i = 0; i < plan.tiles.length; i++) {
+        tile = plan.tiles[i];
+
+        if (world.buildingService.get(tile) !== null)
+            return {error: ErrorCode.TILE_TAKEN, tile: tile, cost: 0};
+
+        //what the tile is and what grows there are looked up before the
+        //ground moves
+        cost += Config.terraformTileCost
+            * (direction > 0 && terrain.getTerrainType(tile) === TerrainType.water
+                ? Config.terraformWaterFactor : 1);
+
+        if (world.envService.getTree(tile) !== null)
+            cost += Config.clearTileCost;
     }
-    return false;
+
+    if (!this.resourcesService.hasEnoughResource(Resource.money, cost))
+        return {error: ErrorCode.NOT_ENOUGH_RES, tile: tile0, cost: 0};
+
+    terrain.modify(plan);
+    this.resourcesModule.subResource(Resource.money, cost);
+
+    return {error: ErrorCode.NONE, tile: tile0, cost: cost};
 };
 
 /**
@@ -209,7 +257,8 @@ City.prototype.tile = function(value){
 
 /**
  * Everything of the city that came from the player: what they named it, where
- * they put it, what they own, what they built and what they cleared away.
+ * they put it, what they own and what they built. What they cleared away is
+ * the world's, and saved with it (see Terrain#save).
  * Anything the game can work out on its own - production, ratings, what the
  * research opened up - is left to it.
  *
@@ -224,7 +273,6 @@ City.prototype.save = function () {
         population: this.populationService.save(),
         area: this.areaService.save(),
         research: this.laboratoryService.save(),
-        clearedTiles: this._clearedTiles.slice(),
         buildings: this.buildingService.save()
     };
 };
@@ -244,12 +292,11 @@ City.prototype.load = function (data) {
 
     this.laboratoryService.load(data.research || {});
     this.areaService.load(data.area || []);
-
+    //saves from before the world kept its own cleared tiles have them here -
+    //they move over to the world, which saves them from then on
     var cleared = data.clearedTiles || [];
-    for (var i = 0; i < cleared.length; i++) {
-        this.world.terrain.clearTile(cleared[i]);
-        this._clearedTiles.push(cleared[i]);
-    }
+    for (var i = 0; i < cleared.length; i++)
+        this.world.terrain.clear(cleared[i]);
 
     this.buildingService.load(data.buildings || []);
 

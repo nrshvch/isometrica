@@ -151,7 +151,7 @@ WorldScreenView.prototype.showBuildButtons = function () {
         view.controller.ui.navigate("build", [BuildingCode.road]);
     });
     setBtn(this, 3, "bulldozer-icon", function () {
-        view.controller.ui.navigate("destroy");
+        view.controller.ui.navigate("terrain");
     });
     setBtn(this, 4, "tile-dollar-icon", function () {
         view.controller.ui.navigate("land");
@@ -192,6 +192,23 @@ WorldScreenView.prototype.showActionButtons = function (controls) {
     controls.canRotate.onChange(render, false, this);
     controls.canSubmit.onChange(render, false, this);
     render();
+};
+
+/**
+ * Puts up the buttons of a mode that has more to do than confirm or cancel.
+ *
+ * @param buttons {Object[]} per slot, {icon, action} - a slot left undefined
+ *                stays empty
+ */
+WorldScreenView.prototype.showToolButtons = function (buttons) {
+    unsetBtns(this);
+
+    for (var i = 0; i < buttons.length; i++) {
+        if (buttons[i] !== undefined)
+            setBtn(this, i, buttons[i].icon, buttons[i].action);
+    }
+
+    renderBtns(this);
 };
 
 WorldScreenView.prototype.hint = function (text) {

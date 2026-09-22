@@ -17,6 +17,7 @@ import Cityman from "./cityman";
 import Roadman from "./roadman";
 import ServiceMan from "./serviceman";
 import Landman from "./landman";
+import Terrainman from "./terrainman";
 import CameraControl from "./cameracontrol";
 import Player from "./player";
 import CameraMan from "./cameraman";
@@ -66,6 +67,7 @@ function Vkaria(core, ui, callback) {
     this.roadman = new Roadman(this);
     this.serviceman = new ServiceMan(this);
     this.landman = new Landman(this);
+    this.terrainman = new Terrainman(this);
     this.pathman = new PathMan();
     this.cameraControl = new CameraControl(this);
     this.cameraman = new CameraMan(this);

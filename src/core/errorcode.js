@@ -13,7 +13,8 @@ var ErrorCode = {
     LAND_NOT_SUITABLE: 7,
     FLAT_LAND_REQUIRED: 8,
     TILE_TAKEN: 9,
-    OUTSIDE_CITY: 10
+    OUTSIDE_CITY: 10,
+    TERRAFORM_TOO_LARGE: 11
 };
 
 export default ErrorCode;

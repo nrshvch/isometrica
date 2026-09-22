@@ -78,65 +78,17 @@ namespace("Isometrica.Core").Terrain = Terrain;
         return Math.floor((0.8 * land + 0.2 * island) * 16);
     }
 
-    function edit(self, idx, z) {
-        var result = {};
-        if(terraformResult(self, idx, z, result)){
-            for(idx in result){
-                self.gridPoints[idx] = result[idx];
-            }
-            Events.fire(self, events.gridUpdate, result);
-        }
-    }
+    //levelling one tile can pull a whole hillside along with it, and past this
+    //many grid points it is not a tile being levelled any more
+    var MAX_LEVEL_POINTS = 4096;
 
-    function terraformResult(self, idx, z, points){
-        points = points || {};
-
-        var t0 = gridpointTile(idx, 0);
-        var t1 = gridpointTile(idx, 1);
-        var t2 = gridpointTile(idx, 2);
-        var t3 = gridpointTile(idx, 3);
-
-        var bman = self.world.buildings;
-        if(bman.get(t0) !== null || bman.get(t1) !== null || bman.get(t2) !== null || bman.get(t3) !== null)
-            return false;
-
-
-        var a = idx + 1;
-        var b = idx - 1;
-        var c = idx + dy;
-        var d = idx - dy;
-
-        var az = points[a] || self.getGridPointHeight(a);
-        var bz = points[b] || self.getGridPointHeight(b);
-        var cz = points[c] || self.getGridPointHeight(c);
-        var dz = points[d] || self.getGridPointHeight(d);
-
-        var ok = true;
-
-        if (az - z < -1)
-            ok = ok && terraformResult(self, a, z - 1, points);
-        else if (az - z > 1)
-            ok = ok && terraformResult(self, a, z + 1, points);
-
-        if (bz - z < -1)
-            ok = ok && terraformResult(self, b, z - 1, points);
-        else if (bz - z > 1)
-            ok = ok && terraformResult(self, b, z + 1, points);
-
-        if (cz - z < -1)
-            ok = ok && terraformResult(self, c, z - 1, points);
-        else if (cz - z > 1)
-            ok = ok && terraformResult(self, c, z + 1, points);
-
-        if (dz - z < -1)
-            ok = ok && terraformResult(self, d, z - 1, points);
-        else if (dz - z > 1)
-            ok = ok && terraformResult(self, d, z + 1, points);
-
-        if(ok)
-            points[idx] = z;
-
-        return ok;
+    /**
+     * The four grid points around p that the heights are kept in step with -
+     * any two of them next to each other differ by one step at most, which is
+     * all the tile sprites can show.
+     */
+    function neighbourPoints(p) {
+        return [p + 1, p - 1, p + dy, p - dy];
     }
 
     //A = x,y, B = x+1,y, C = x,y+1, D = x+1,y+1
@@ -224,7 +176,11 @@ namespace("Isometrica.Core").Terrain = Terrain;
      */
     function Terrain(world) {
         this.world = world;
-        this.gridPoints = [];
+        //only the grid points that were edited - everything else is worked
+        //out from the noise every time it is asked for
+        this.gridPoints = Object.create(null);
+        //the tiles shaping the ground left empty
+        this.clearedTiles = Object.create(null);
     }
 
     Terrain.SlopeType = SlopeType;
@@ -248,8 +204,189 @@ namespace("Isometrica.Core").Terrain = Terrain;
 
     //Terrain.prototype.events = events;
 
-    Terrain.prototype.edit = function (idx, z) {
-        return edit(this, idx, z);
+    /**
+     * Works out what levelling the rectangle of tiles between tile0 and tile1
+     * would do to the ground, without doing it.
+     *
+     * The rectangle is levelled as one: ground that is not flat is brought to
+     * its highest corner going up and to its lowest going down, and ground that
+     * is flat already goes a whole step up or down. Every grid point around it
+     * that ends up more than a step from its neighbour is dragged along, so the
+     * slopes around the levelled ground stay ones the tiles can draw.
+     *
+     * @param tile0 {number}
+     * @param tile1 {number}
+     * @param direction {number} 1 to raise, -1 to lower
+     * @returns {{points: Object, tiles: number[]}|null}
+     *          points: grid point -> its new height, for every point that moves
+     *          tiles: every tile with a corner that moves
+     *          or null when it would drag more of the land along than it may
+     */
+    Terrain.prototype.planLevel = function (tile0, tile1, direction) {
+        var t0 = min(tile0, tile1),
+            t1 = max(tile0, tile1),
+            x0 = Terrain.extractX(t0),
+            y0 = Terrain.extractY(t0),
+            x1 = Terrain.extractX(t1) + 1,
+            y1 = Terrain.extractY(t1) + 1,
+            points = Object.create(null),
+            queue = [],
+            count = 0,
+            lo = Infinity,
+            hi = -Infinity,
+            target, x, y, p, z, h, hn, nbs, i;
+
+        for (x = x0; x <= x1; x++) {
+            for (y = y0; y <= y1; y++) {
+                z = this.getGridPointHeight(x, y);
+                lo = Math.min(lo, z);
+                hi = Math.max(hi, z);
+            }
+        }
+
+        if (lo === hi)
+            target = hi + direction;
+        else
+            target = direction > 0 ? hi : lo;
+
+        for (x = x0; x <= x1; x++) {
+            for (y = y0; y <= y1; y++) {
+                p = Terrain.convertToIndex(x, y);
+
+                if (this.getGridPointHeight(p) !== target) {
+                    points[p] = target;
+                    queue.push(p);
+                    count++;
+                }
+            }
+        }
+
+        //every point that moved can leave a neighbour too far behind, which
+        //then moves as little as it has to and passes it on
+        while (queue.length > 0) {
+            p = queue.pop();
+            h = points[p];
+            nbs = neighbourPoints(p);
+
+            for (i = 0; i < nbs.length; i++) {
+                hn = points[nbs[i]];
+
+                if (hn === undefined)
+                    hn = this.getGridPointHeight(nbs[i]);
+
+                if (hn < h - 1)
+                    points[nbs[i]] = h - 1;
+                else if (hn > h + 1)
+                    points[nbs[i]] = h + 1;
+                else
+                    continue;
+
+                if (++count > MAX_LEVEL_POINTS)
+                    return null;
+
+                queue.push(nbs[i]);
+            }
+        }
+
+        var tiles = [],
+            seen = Object.create(null),
+            tile, n;
+
+        for (p in points) {
+            p = +p;
+
+            for (n = 0; n < 4; n++) {
+                tile = gridpointTile(p, n);
+
+                if (seen[tile] === true)
+                    continue;
+
+                seen[tile] = true;
+                tiles.push(tile);
+            }
+        }
+
+        return {
+            points: points,
+            tiles: tiles
+        };
+    };
+
+    /**
+     * Carries out what Terrain#planLevel worked out. Every tile the ground
+     * moves under is an override of the generated world from then on, so it
+     * is cleared as well: whatever the world would have grown there - a tree
+     * that shows now, or one that would once the tile is dry land or flat -
+     * is gone for good.
+     *
+     * @param plan {Object} as Terrain#planLevel returned it
+     */
+    Terrain.prototype.modify = function (plan) {
+        var tiles = plan.tiles, i;
+
+        for (i = 0; i < tiles.length; i++) {
+            if (this.clearedTiles[tiles[i]] !== true)
+                this.clear(tiles[i]);
+        }
+
+        for (var p in plan.points)
+            this.gridPoints[p] = plan.points[p];
+
+        Events.fire(this, events.gridUpdate, {
+            points: plan.points,
+            tiles: tiles
+        });
+    };
+
+    /**
+     * Clears a tile for good: whatever stands or grows there goes, and the
+     * world never grows anything there again - it is kept with the ground's
+     * other overrides, not with whoever paid for it.
+     *
+     * @param tile {number}
+     */
+    Terrain.prototype.clear = function (tile) {
+        this.clearedTiles[tile] = true;
+        this.clearTile(tile);
+    };
+
+    /**
+     * Everything that overrides the generated world: the grid points that were
+     * moved, and the tiles that were cleared.
+     *
+     * @returns {{points: Array[], cleared: number[]}}
+     */
+    Terrain.prototype.save = function () {
+        var points = [], cleared = [], k;
+
+        for (k in this.gridPoints)
+            points.push([+k, this.gridPoints[k]]);
+
+        for (k in this.clearedTiles)
+            cleared.push(+k);
+
+        return {points: points, cleared: cleared};
+    };
+
+    /**
+     * Puts the ground back the way Terrain#save left it. Nothing is drawn yet
+     * when a save is opened, so only whoever keeps track of what grows where
+     * hears about it.
+     *
+     * @param data {{points: Array[], cleared: number[]}}
+     */
+    Terrain.prototype.load = function (data) {
+        var points = data.points || [],
+            cleared = data.cleared || [],
+            i;
+
+        for (i = 0; i < points.length; i++)
+            this.gridPoints[points[i][0]] = points[i][1];
+
+        for (i = 0; i < cleared.length; i++) {
+            this.clearedTiles[cleared[i]] = true;
+            this.clearTile(cleared[i]);
+        }
     };
 
     Terrain.prototype.getAreaGrid = function (x0, y0, w, l) {
