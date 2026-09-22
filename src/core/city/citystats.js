@@ -8,12 +8,17 @@
 import Resources from "../resources";
 import Events from "events";
 import BuildingData from "data/buildings";
+import VTime from "../vtime";
 import namespace from "namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
     CityService.Stats = CityStats;
 
     var resourceBuffer1 = {};
+
+    //how long a year is for maintenance: the number of ticks a year used to
+    //take when one of them was a day
+    var TICKS_IN_YEAR = 365;
 
     function CityStats(city) {
         this.city = city;
@@ -54,24 +59,25 @@ var CityService = namespace("Isometrica.Core.CityService");
 
     //PRIVATE
 
-    function calculateBuildingMaintenanceDailyCostPercent(city, building, dateNow) {
+    function calculateBuildingMaintenanceTickCostPercent(city, building, now) {
         //After 10 years of building exploitation it starts to require maintenance costs.
         //Max.maintenance cost per year is 25% of building construction cost.
         //Maintenance cost starts from 1% and raises to max in 50 years, after maintenance started.
-        var dateThen = new Date();
-        dateThen.setTime(building.createdAt);
-        var dYear = dateNow.getYear() - dateThen.getYear() - 10,
+        //A year here is TICKS_IN_YEAR ticks of the world, whatever one tick is
+        //worth on the clock.
+        var ticks = (now - building.createdAt) / VTime.millisecondsPerTick,
+            dYear = ticks / TICKS_IN_YEAR - 10,
             percent = 0, r = 0;
 
         if (dYear > 0) {
             if (dYear <= 50) {
                 percent = 0.25 * dYear / 50;
-            } else if (dYear > 50) {
+            } else {
                 percent = 0.25;
             }
 
-            //amount of resources to take, daily
-            r = percent / city.world.time.daysInYear;
+            //amount of resources to take, per tick
+            r = percent / TICKS_IN_YEAR;
         }
 
         return r;
@@ -101,8 +107,7 @@ var CityService = namespace("Isometrica.Core.CityService");
     }
 
     function calculateMaintenanceCost(cityStats) {
-        var dateNow = new Date();
-        dateNow.setTime(cityStats.city.world.time.now);
+        var now = cityStats.city.world.time.now;
 
         Resources.clear(cityStats.maintenanceCost);
 
@@ -113,7 +118,7 @@ var CityService = namespace("Isometrica.Core.CityService");
             var building = buildings[i];
             var data = BuildingData[building.buildingCode];
 
-            var maintenanceCostN = calculateBuildingMaintenanceDailyCostPercent(cityStats.city, building, dateNow);
+            var maintenanceCostN = calculateBuildingMaintenanceTickCostPercent(cityStats.city, building, now);
             Resources.mul(resourceBuffer1, data.constructionCost, maintenanceCostN);
             Resources.add(cityStats.maintenanceCost, cityStats.maintenanceCost, resourceBuffer1);
         }

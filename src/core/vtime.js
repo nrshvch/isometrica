@@ -1,30 +1,16 @@
 import Events from "events";
 
-var millisecondsInDay = 86400000,
-        monthNames = [ "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December" ];
-
-    function daysInYear(year) {
-        if(year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)) {
-            // Leap year
-            return 366;
-        } else {
-            // Not a leap year
-            return 365;
-        }
-    }
+//The clock the city runs on: one tick of the world is one hour. Nothing keeps
+//a date any more - the game only ever shows the time of day - so this counts
+//hours and says which one of the day it is now.
+var millisecondsInHour = 3600000,
+    hoursInDay = 24;
 
     function VTime(world) {
         this.now = 0;
 
+        this.hour = 0;
         this.day = 1;
-        this.year = 1;
-        this.month = 1;
-        this.monthName = monthNames[0];
-        this.daysInYear = 365;
-
-        this.prevMonth = 0;
-        this.prevYear = 0;
 
         Events.subscribe(world, world.events.tick, function(sender, args, self){
             self.tick();
@@ -33,23 +19,22 @@ var millisecondsInDay = 86400000,
 
     var events = VTime.events = VTime.prototype.events = {
         advance: 3,
-        newDay: 0,
-        newMonth: 1,
-        newYear: 2
+        newDay: 0
     };
+
+    //how much game time one tick of the world is worth
+    VTime.millisecondsPerTick = millisecondsInHour;
 
     VTime.prototype.constructor = VTime;
 
     VTime.prototype.start = function(){
-        Events.fire(this,this.events.newYear, this.now);
-        Events.fire(this,this.events.newMonth, this.now);
         Events.fire(this,this.events.newDay, this.now);
     };
 
     VTime.prototype.setTime = function(now){
         this.now = now;
-        Events.fire(this,this.events.newYear, this.now);
-        Events.fire(this,this.events.newMonth, this.now);
+        this.hour = Math.floor(now / millisecondsInHour) % hoursInDay;
+        this.day = Math.floor(now / (millisecondsInHour * hoursInDay)) + 1;
         Events.fire(this,this.events.newDay, this.now);
     };
 
@@ -59,37 +44,26 @@ var millisecondsInDay = 86400000,
     };
 
     VTime.prototype.advance = function () {
-        this.now += millisecondsInDay;
-
-        var date = new Date(this.now);
-
-        this.year = date.getFullYear() - 1969;
-        this.month = date.getMonth() + 1;
-        this.monthName = monthNames[this.month - 1];
-        this.day = date.getDate();
+        this.now += millisecondsInHour;
+        this.hour = (this.hour + 1) % hoursInDay;
 
         Events.fire(this,this.events.advance, this);
 
-        Events.fire(this,this.events.newDay, this.now);
-
-        if(this.month !== this.prevMonth){
-            Events.fire(this,this.events.newMonth, this.now);
-            this.prevMonth = this.month;
-        }
-
-        if(this.year !== this.prevYear){
-            Events.fire(this,this.events.newYear, this.now);
-            this.prevYear = this.year;
-            this.daysInYear = daysInYear(this.year);
+        if(this.hour === 0){
+            this.day++;
+            Events.fire(this,this.events.newDay, this.now);
         }
     };
 
     VTime.prototype.toString = function(){
-        return "D" + this.day + "M" + this.month + "Y" + this.year;
+        return this.toHM();
     };
 
-    VTime.prototype.toMDY = function(){
-        return this.monthName + " " + this.day + ", " + this.year;
+    /**
+     * The time of day, as it is shown: "00:00" to "23:00".
+     */
+    VTime.prototype.toHM = function(){
+        return (this.hour < 10 ? "0" : "") + this.hour + ":00";
     };
 
     VTime.prototype.save = function(){
