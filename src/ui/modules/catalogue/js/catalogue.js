@@ -31,7 +31,7 @@ function getStats(b) {
     if (b.citizenCapacity && CityPopulation.needsJobs(b)) needs.push("jobs");
 
     if (b.citizenCapacity) {
-        benefits.push("up to +$" + b.citizenCapacity * CityPopulation.TAX_MONEY + "/tick tax");
+        benefits.push("up to +$" + b.citizenCapacity * CityPopulation.taxPerResident(b) + "/tick tax");
     }
     for (res in b.producing) {
         benefits.push("+" + (res === "money" ? "$" : res + " ") + b.producing[res] + "/tick"

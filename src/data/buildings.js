@@ -253,10 +253,13 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
+        //people in a house of their own are worth more a head to the treasury
+        //than the same people stacked in flats
+        taxPerResident: 2.5,
         citizenCapacity: 8,
         constructionTime: 3000,
         constructionCost: {
-            money: 1000
+            money: 1200
         },
         name: "small residential house",
         sprites: [
@@ -314,9 +317,12 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 1300
+            money: 1600
         },
         name: "cottage house",
+        //people in a house of their own are worth more a head to the treasury
+        //than the same people stacked in flats
+        taxPerResident: 2.5,
         citizenCapacity: 9,
         sprites: [
             {
@@ -354,9 +360,12 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 1800
+            money: 2200
         },
         name: "two story house",
+        //people in a house of their own are worth more a head to the treasury
+        //than the same people stacked in flats
+        taxPerResident: 2.5,
         citizenCapacity: 12,
         sprites: [
             {
@@ -392,10 +401,13 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
+        //people in a house of their own are worth more a head to the treasury
+        //than the same people stacked in flats
+        taxPerResident: 2.5,
         citizenCapacity: 9,
         constructionTime: 5000,
         constructionCost: {
-            money: 1300
+            money: 1600
         },
         name: "house",
         sprites: [
@@ -512,15 +524,27 @@ var Core = namespace("Isometrica.Core");
     //a block of flats: a street's worth of people on four tiles - dearer per
     //head than any house, what it saves is land.
     //
-    //Houses go the way commerce does (see the shop): heads per tile against
-    //ticks to earn back what they cost, at full occupancy. Every step up packs
-    //more people onto the same land, which is what pays for the water, the
-    //jobs and the longer wait
+    //Houses and flats are the same tier of building and pull opposite ways.
+    //A house takes more land for the same people and pays more a head for it;
+    //a block of flats is the cheap way to grow - little land, little tax, and
+    //fifty more pairs of hands for the shops and offices, which is where the
+    //city gets its money back. So a player with land to spare builds houses
+    //and earns, and one hemmed in builds flats and grows.
     //
-    //  mobile house   2 / tile    38      small house   4   / tile   63
-    //  tiny house     3 / tile    50      cottage       4.5 / tile   72
-    //  house        4.5 / tile    72      two story     6   / tile   75
-    //  apartments    10 / tile   150
+    //                   cost  heads  tax   heads   money   payback
+    //                                /head /tile   /tile
+    //  mobile house      150    2    2      2        4        38
+    //  tiny house        300    3    2      3        6        50
+    //  small house      1200    8    2.5    4       10        60
+    //  cottage / house  1600    9    2.5    4.5     11.3      71
+    //  two story        2200   12    2.5    6       15        73
+    //  apartments       5000   50    1     12.5     12.5     100
+    //
+    //Tax is only half of what a head is worth: everybody in town can hold a
+    //job, and a worker in an office is another $0.60 a tick on top. Counting
+    //that, a tile of two story houses is worth about 18 a tick and a tile of
+    //flats about 20 - near enough the same money, with the flats holding
+    //twice the people and the houses paying for themselves sooner.
     //
     //The cottage and the house are the same building in two looks, so that a
     //street of them need not be the same house over and over.
@@ -535,10 +559,14 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
-        citizenCapacity: 40,
+        //the cheapest roof per head in the city, and the rents to match: what
+        //the treasury gets out of a block of flats is its people's work, not
+        //their taxes
+        taxPerResident: 1,
+        citizenCapacity: 50,
         constructionTime: 15000,
         constructionCost: {
-            money: 12000
+            money: 5000
         },
         name: "apartment block",
         sprites: [
@@ -686,7 +714,7 @@ var Core = namespace("Isometrica.Core");
             money: 110
         },
         //five apartment blocks' worth of people go to work in it
-        jobs: 200,
+        jobs: 180,
         demanding: {},
         requires: {
             road: true,
