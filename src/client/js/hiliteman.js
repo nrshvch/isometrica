@@ -26,7 +26,11 @@ function createHiliter(me) {
 }
 
 function HiliteMan(root) {
-    this.hiliters = [];
+    //keyed by token, and a token is never handed out twice - so a hiliter
+    //that is disabled is gone for good instead of leaving a hole behind, and
+    //disabling the same token again (buildman does) can't hit a newer one
+    this.hiliters = new Map();
+    this._lastToken = 0;
     this.root = root;
 }
 
@@ -37,14 +41,15 @@ function hiliteOne(me, params){
     params.x = Terrain.extractX(tile);
     params.y = Terrain.extractY(tile);
 
-    me._hiliteOne(params);
+    return me._hiliteOne(params);
 }
 
 HiliteMan.prototype._hiliteOne = function (hiliteData) {
     var hiliter = createHiliter(this);
     hiliter.setHiliteData(hiliteData);
-    var index = this.hiliters.push(hiliter) - 1;
-    return index;
+    var token = this._lastToken++;
+    this.hiliters.set(token, hiliter);
+    return token;
 };
 
 HiliteMan.prototype._hiliteArea = function (hiliteAreaData) {
@@ -140,15 +145,17 @@ HiliteMan.prototype.disable = function (tokenData) {
                 this.disable(tokenData[i]);
             }
         } else {
-            if (tokenData >= 0 && this.hiliters[tokenData] !== null) {
-                var hiliter = this.hiliters[tokenData];
-                this.hiliters[tokenData] = null;
+            var hiliter = this.hiliters.get(tokenData);
+            if (hiliter !== undefined) {
+                this.hiliters.delete(tokenData);
                 hiliter.gameObject.destroy();
             }
         }
     } else {
-        for (var i = 0; i < this.hiliters.length; i++)
-            this.disable(i);
+        this.hiliters.forEach(function (hiliter) {
+            hiliter.gameObject.destroy();
+        });
+        this.hiliters.clear();
     }
 };
 
