@@ -110,6 +110,16 @@ Roadman.prototype.getRoadCount = function () {
 };
 
 /**
+ * Every loaded road tile. The list itself, not a copy - whoever gets it reads
+ * it and leaves it alone.
+ *
+ * @returns {number[]}
+ */
+Roadman.prototype.getRoadTiles = function () {
+    return this._tiles;
+};
+
+/**
  * A loaded road tile picked at random, or -1 when there is none.
  */
 Roadman.prototype.getRandomRoadTile = function () {

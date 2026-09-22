@@ -1,15 +1,16 @@
 import Events from "events";
 
-//The clock the city runs on: one tick of the world is one hour. Nothing keeps
-//a date any more - the game only ever shows the time of day - so this counts
-//hours and says which one of the day it is now.
-var millisecondsInHour = 3600000,
-    hoursInDay = 24;
+//The clock the city runs on: one tick of the world is a quarter of an hour.
+//Nothing keeps a date any more - the game only ever shows the time of day - so
+//this counts quarters and says what time of day it is now.
+var millisecondsInTick = 900000,
+    millisecondsInDay = 86400000;
 
     function VTime(world) {
         this.now = 0;
 
         this.hour = 0;
+        this.minute = 0;
         this.day = 1;
 
         Events.subscribe(world, world.events.tick, function(sender, args, self){
@@ -23,7 +24,7 @@ var millisecondsInHour = 3600000,
     };
 
     //how much game time one tick of the world is worth
-    VTime.millisecondsPerTick = millisecondsInHour;
+    VTime.millisecondsPerTick = millisecondsInTick;
 
     VTime.prototype.constructor = VTime;
 
@@ -31,10 +32,17 @@ var millisecondsInHour = 3600000,
         Events.fire(this,this.events.newDay, this.now);
     };
 
+    function set(self, now){
+        var inDay = now % millisecondsInDay;
+
+        self.now = now;
+        self.hour = Math.floor(inDay / 3600000);
+        self.minute = Math.floor(inDay % 3600000 / 60000);
+        self.day = Math.floor(now / millisecondsInDay) + 1;
+    }
+
     VTime.prototype.setTime = function(now){
-        this.now = now;
-        this.hour = Math.floor(now / millisecondsInHour) % hoursInDay;
-        this.day = Math.floor(now / (millisecondsInHour * hoursInDay)) + 1;
+        set(this, now);
         Events.fire(this,this.events.newDay, this.now);
     };
 
@@ -44,15 +52,14 @@ var millisecondsInHour = 3600000,
     };
 
     VTime.prototype.advance = function () {
-        this.now += millisecondsInHour;
-        this.hour = (this.hour + 1) % hoursInDay;
+        var day = this.day;
+
+        set(this, this.now + millisecondsInTick);
 
         Events.fire(this,this.events.advance, this);
 
-        if(this.hour === 0){
-            this.day++;
+        if(this.day !== day)
             Events.fire(this,this.events.newDay, this.now);
-        }
     };
 
     VTime.prototype.toString = function(){
@@ -60,10 +67,11 @@ var millisecondsInHour = 3600000,
     };
 
     /**
-     * The time of day, as it is shown: "00:00" to "23:00".
+     * The time of day, as it is shown: "00:00" to "23:45".
      */
     VTime.prototype.toHM = function(){
-        return (this.hour < 10 ? "0" : "") + this.hour + ":00";
+        return (this.hour < 10 ? "0" : "") + this.hour + ":" +
+            (this.minute < 10 ? "0" : "") + this.minute;
     };
 
     VTime.prototype.save = function(){
