@@ -21,6 +21,20 @@ var MAX_PARAM_VAL = TileParamsMan.MAX_PARAM_VAL;
 var TAX_MONEY = 2;
 CityPopulation.TAX_MONEY = TAX_MONEY;
 
+/**
+ * What one resident of this house pays per tick. People in a house of their
+ * own are worth more to the treasury a head than people in a block of flats,
+ * so what a city earns depends on what it puts them up in, not only on how
+ * many of them there are.
+ *
+ * @param data {Object} building data
+ * @returns {number} money per tick, per head
+ */
+function taxPerResident(data){
+    return data.taxPerResident !== undefined ? data.taxPerResident : TAX_MONEY;
+}
+CityPopulation.taxPerResident = taxPerResident;
+
 
 /**
  * @param city {City}
@@ -109,7 +123,16 @@ CityPopulation.prototype.isShortOfJobs = function(building){
 };
 
 CityPopulation.prototype.getTaxIncomeAmount = function(){
-    return TAX_MONEY * this.getPopulation();
+    var buildings = this.city.buildingService.getBuildings(),
+        total = 0, i;
+
+    house(this);
+
+    for (i = 0; i < buildings.length; i++)
+        total += (this._residents[buildings[i].id] || 0)
+            * taxPerResident(buildings[i].data);
+
+    return total;
 };
 
 function onTick(world, args, self){

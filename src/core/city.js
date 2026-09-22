@@ -118,7 +118,8 @@ City.prototype.missing = function (building) {
 City.prototype.getBuildingIncome = function (building) {
     return (building.producing[Resource.money] || 0)
         - (building.demanding[Resource.money] || 0)
-        + this.populationService.getResidents(building) * CityPopulation.TAX_MONEY;
+        + this.populationService.getResidents(building)
+        * CityPopulation.taxPerResident(building.data);
 };
 
 /**
