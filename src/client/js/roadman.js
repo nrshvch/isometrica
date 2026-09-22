@@ -14,10 +14,28 @@ function getRoad(self, tile) {
 }
 
 function addRoad(self, tile, road) {
+    if (self._roads[tile] === undefined) {
+        self._index[tile] = self._tiles.length;
+        self._tiles.push(tile);
+    }
+
     self._roads[tile] = road;
 }
 
 function removeRoad(self, tile){
+    if (self._roads[tile] === undefined)
+        return;
+
+    //the last tile takes the place of the one going, so the list stays packed
+    var i = self._index[tile],
+        last = self._tiles.pop();
+
+    if (last !== tile) {
+        self._tiles[i] = last;
+        self._index[last] = i;
+    }
+
+    delete self._index[tile];
     delete self._roads[tile];
 }
 
@@ -60,6 +78,9 @@ function onBuildingUnload(sender, building, self){
 function Roadman(root) {
     this.root = root;
     this._roads = {};
+    //every loaded road tile, packed, for picking one at random
+    this._tiles = [];
+    this._index = {};
 }
 
 Roadman.prototype.init = function () {
@@ -79,6 +100,22 @@ Roadman.prototype.init = function () {
 
 Roadman.prototype.getRoad = function(tile){
     return getRoad(this, tile);
+};
+
+/**
+ * How many road tiles are loaded right now.
+ */
+Roadman.prototype.getRoadCount = function () {
+    return this._tiles.length;
+};
+
+/**
+ * A loaded road tile picked at random, or -1 when there is none.
+ */
+Roadman.prototype.getRandomRoadTile = function () {
+    var tiles = this._tiles;
+
+    return tiles.length === 0 ? -1 : tiles[Math.random() * tiles.length | 0];
 };
 
 export default Roadman;

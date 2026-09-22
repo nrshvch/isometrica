@@ -101,4 +101,80 @@ Pathfinder.search = function (start, end, heuristic) {
     return [];
 };
 
+/**
+ * A* over tiles rather than nodes - for a grid that is not worth a node per
+ * cell, like the roads cars drive on. Tiles are plain numbers, every step costs
+ * the same.
+ *
+ * @param start {number}
+ * @param end {number}
+ * @param neighbours {function(number, number[])} fills the array with the tiles one can step to from the tile
+ * @param heuristic {function(number, number)} estimated steps from one tile to the other
+ * @param [limit] {number} gives up after looking at this many tiles
+ * @returns {number[]} tiles from start to end, both included; empty when there is no way
+ */
+Pathfinder.searchTiles = function (start, end, neighbours, heuristic, limit) {
+    var parents = new Map(),
+        gScore = new Map(),
+        closed = new Set(),
+        next = [],
+        seen = 0,
+        current, gCurrent, neighbour, tGScore, known, i, path;
+
+    //entries carry the score they were queued with - a tile queued again
+    //with a better one must not change the score of the entry already in
+    var open = new BinaryHeap(function (entry) {
+        return entry.f;
+    });
+
+    gScore.set(start, 0);
+    open.push({tile: start, f: heuristic(start, end)});
+
+    while (open.size() > 0) {
+        current = open.pop().tile;
+
+        if (current === end) {
+            path = [current];
+
+            while (parents.has(current))
+                path.push(current = parents.get(current));
+
+            return path.reverse();
+        }
+
+        if (closed.has(current))
+            continue;
+
+        closed.add(current);
+
+        if (limit !== undefined && ++seen > limit)
+            break;
+
+        gCurrent = gScore.get(current);
+        next.length = 0;
+        neighbours(current, next);
+
+        for (i = 0; i < next.length; i++) {
+            neighbour = next[i];
+
+            if (closed.has(neighbour))
+                continue;
+
+            tGScore = gCurrent + 1;
+            known = gScore.get(neighbour);
+
+            if (known === undefined || tGScore < known) {
+                parents.set(neighbour, current);
+                gScore.set(neighbour, tGScore);
+
+                //one already queued is queued again with its better score;
+                //the stale entry is skipped once the tile is closed
+                open.push({tile: neighbour, f: tGScore + heuristic(neighbour, end)});
+            }
+        }
+    }
+
+    return [];
+};
+
 export default Pathfinder;
