@@ -606,69 +606,103 @@ define('engine/Canvas2dRenderer',['require','./config','gl-matrix','./components
         bufferVec3 = new Float32Array([0, 0, 0]),
         buffer2Vec3 = new Float32Array([0, 0, 0]),
         bufferMat4 = new Float32Array(16),
-        // depth keys are computed once per renderer per frame, then packed
-        // (key bits | index) into a BigUint64Array and sorted with no
-        // comparator -- lets the engine use a native numeric sort instead of
-        // calling back into JS for every comparison. The top 48 bits hold an
-        // order-preserving transform of the depth key's IEEE-754 bits (see
-        // sortableKeyBits), the low 16 bits hold the original index (so the
-        // sort naturally keeps equal-key renderers in their original relative
-        // order, matching the old comparator's `|| (a - b)` tie-break) --
-        // supports up to 65535 renderers per layer, far beyond what a single
-        // canvas layer ever holds.
-        sortScratch = [],
-        packedKeys = new BigUint64Array(1024),
-        bitConvBuffer = new ArrayBuffer(8),
-        bitConvFloat = new Float64Array(bitConvBuffer),
-        bitConvBits = new BigUint64Array(bitConvBuffer),
-        // BigInt literal syntax (e.g. `0n`) is ES2020 and the vendor bundler's
-        // esprima parser predates it, so these are built via BigInt() calls
-        SIGN_BIT_64 = BigInt("0x8000000000000000"),
-        ALL_BITS_64 = BigInt("0xffffffffffffffff"),
-        INDEX_BITS_64 = BigInt(16),
-        INDEX_MASK_64 = (BigInt(1) << INDEX_BITS_64) - BigInt(1),
-        KEY_MASK_64 = ALL_BITS_64 ^ INDEX_MASK_64,
-        ZERO_BIG = BigInt(0),
-        sortableKeyBits = function (x) {
-            // normalize -0 to +0 so it sorts equal to +0, matching `x - y` semantics
-            if (x === 0) x = 0;
-            bitConvFloat[0] = x;
-            var bits = bitConvBits[0];
-            return (bits & SIGN_BIT_64) !== ZERO_BIG ? (~bits) & ALL_BITS_64 : bits | SIGN_BIT_64;
-        };
+        // depth keys are computed once per renderer per frame, then sorted by
+        // a linear-time counting sort instead of a comparator-based sort --
+        // no JS callback per comparison. Every scratch buffer below is
+        // allocated once, here, at a fixed capacity generous enough for any
+        // single canvas layer's draw list -- depthSort itself never calls
+        // `new` and never holds renderer references in a side array, so the
+        // hot path (it runs once per layer per frame) is fully GC-free.
+        // Depth is quantized to 16 bits (65536 buckets, plenty of resolution
+        // for on-screen depth ordering) by linearly mapping this frame's
+        // [min, max] key range onto bucket indices. bucketOffsets doubles as
+        // both the per-bucket count and, after the prefix-sum pass, each
+        // bucket's next write slot; depthBuckets doubles as each renderer's
+        // bucket id and then, once consumed against bucketOffsets, its final
+        // destination index -- so the permutation is applied to `renderers`
+        // in place via cycle-following (using `visited` to avoid revisiting
+        // a slot), rather than scattering into a scratch array of object
+        // references and copying back. Consuming buckets in original order
+        // keeps equal-bucket renderers in their original relative order
+        // (stable, like the old `|| (a - b)` tie-break).
+        BUCKET_COUNT = 65536,
+        MAX_LAYER_RENDERERS = BUCKET_COUNT,
+        depthKeys = new Float64Array(MAX_LAYER_RENDERERS),
+        depthBuckets = new Uint16Array(MAX_LAYER_RENDERERS),
+        visited = new Uint8Array(MAX_LAYER_RENDERERS),
+        bucketOffsets = new Uint32Array(BUCKET_COUNT);
 
     function depthSort(renderers) {
         var count = renderers.length,
-            i, pos, key, view, idx;
+            i, j, pos, key, min, max, range, scale, bucket, sum, c,
+            next, val, saved;
 
         if (count < 2)
             return;
 
-        if (packedKeys.length < count) {
-            var size = packedKeys.length;
-            while (size < count)
-                size *= 2;
-            packedKeys = new BigUint64Array(size);
-        }
+        min = Infinity;
+        max = -Infinity;
 
         for (i = 0; i < count; i++) {
             pos = Transform.getLocalToWorld(renderers[i].gameObject.transform);
             key = pos[12] - pos[13] + pos[14];
-            packedKeys[i] = (sortableKeyBits(key) & KEY_MASK_64) | BigInt(i);
-            sortScratch[i] = renderers[i];
+            depthKeys[i] = key;
+            if (key < min) min = key;
+            if (key > max) max = key;
         }
 
-        view = packedKeys.subarray(0, count);
-        view.sort();
+        range = max - min;
+        scale = range > 0 ? (BUCKET_COUNT - 1) / range : 0;
+
+        bucketOffsets.fill(0);
 
         for (i = 0; i < count; i++) {
-            idx = Number(view[i] & INDEX_MASK_64);
-            renderers[i] = sortScratch[idx];
+            bucket = ((depthKeys[i] - min) * scale) | 0;
+            // guard against fp rounding pushing the max key past the last bucket
+            if (bucket > BUCKET_COUNT - 1)
+                bucket = BUCKET_COUNT - 1;
+            depthBuckets[i] = bucket;
+            bucketOffsets[bucket]++;
         }
 
-        // drop references so disposed renderers can be collected
-        for (i = 0; i < count; i++)
-            sortScratch[i] = null;
+        // prefix sum: turn per-bucket counts into each bucket's start offset
+        sum = 0;
+        for (i = 0; i < BUCKET_COUNT; i++) {
+            c = bucketOffsets[i];
+            bucketOffsets[i] = sum;
+            sum += c;
+        }
+
+        // consume depthBuckets (bucket id) into each renderer's destination slot
+        for (i = 0; i < count; i++) {
+            bucket = depthBuckets[i];
+            depthBuckets[i] = bucketOffsets[bucket]++;
+        }
+
+        // apply the resulting permutation to renderers in place, one cycle
+        // at a time -- no scratch array of object references needed
+        visited.fill(0, 0, count);
+
+        for (i = 0; i < count; i++) {
+            if (visited[i])
+                continue;
+
+            j = i;
+            val = renderers[i];
+
+            for (;;) {
+                visited[j] = 1;
+                next = depthBuckets[j];
+                if (next === i) {
+                    renderers[next] = val;
+                    break;
+                }
+                saved = renderers[next];
+                renderers[next] = val;
+                val = saved;
+                j = next;
+            }
+        }
     }
 
     function render(self, camera, viewport) {
