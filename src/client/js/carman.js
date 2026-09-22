@@ -4,6 +4,7 @@ import Config from "./config";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import Vehicles from "data/vehicles";
+import BuildingClassCode from "data/classcode";
 
 var Terrain = Core.Terrain;
 var SlopeType = Terrain.SlopeType;
@@ -23,6 +24,16 @@ var SlopeType = Terrain.SlopeType;
 //a picture for each of the four ways it can drive, all out of one image that
 //tools/genvehicles.js paints (see data/vehicles.js). Bigger ones drive slower.
 //
+//Where one goes depends on what it is. A light car drives by the clock: to
+//work in the morning, home in the evening, wherever in the afternoon. Between
+//midnight and six it is on its way off the roads: it finishes the trip it is
+//on, and is taken off when it gets there rather than setting out again. One
+//still driving at six carries on and heads to work like the rest.
+//Vans and lorries are about their own business and go wherever, at any hour.
+//A bus is given two stops when it goes out and spends the rest of its day
+//going between them. Only the choice of a new destination goes by any of this
+//- one already on its way keeps its route.
+//
 //Positions here are in tiles: the middle of tile (x, y) is at (x, y), which is
 //where the game puts the tile in the world too, and its edges are half a tile
 //off it.
@@ -37,7 +48,44 @@ var CARS_PER_ROAD = 1 / 4,
     //how often the number of cars is set right, ms
     RECONCILE_INTERVAL = 500,
     //cars put on the roads at a time, so a city just loaded fills up gradually
-    SPAWN_BATCH = 8;
+    SPAWN_BATCH = 8,
+    //destinations of the hour to try before falling back on any road at all
+    DESTINATION_TRIES = 3,
+    //how long the roads outside the shops and houses are taken as found, ms
+    DESTINATIONS_TTL = 2000;
+
+//what a building has to be for cars to drive to it
+var WORK = "work",
+    HOME = "home";
+
+//how a body type picks where to go: by the time of day, at random, or back
+//and forth between the two stops it was given
+var COMMUTER = 0,
+    ERRAND = 1,
+    SHUTTLE = 2;
+
+//everything not named here is a light car, and drives by the clock
+var TRAFFIC = {
+    van: ERRAND,
+    truck: ERRAND,
+    bus: SHUTTLE
+};
+
+function wanted(kind, data) {
+    return kind === HOME ?
+        data.classCode === BuildingClassCode.house :
+        //anywhere anybody works: the shops, the industry, the town hall
+        data.jobs > 0;
+}
+
+//from this hour to that one, light cars drive to buildings of that kind
+var HOURS = [
+    {from: 6, to: 12, kind: WORK},
+    {from: 18, to: 24, kind: HOME}
+];
+
+//until this hour a light car that arrives somewhere stays there
+var LIGHTS_OUT_UNTIL = 6;
 
 var dy = Terrain.dy;
 
@@ -117,19 +165,64 @@ function pickDestination(root, start) {
     return queue[1 + (Math.random() * (queue.length - 1) | 0)];
 }
 
-/**
- * Road tiles from start to some other one it is connected to, both included,
- * or an empty array when there is nowhere to go.
- */
-function findRoute(root, start) {
-    var end = pickDestination(root, start);
-
-    if (end === -1)
-        return [];
-
+//the way from one road tile to another, or an empty array when there is none
+function routeTo(root, start, end) {
     return Pathfinder.searchTiles(start, end, function (tile, out) {
         neighbours(root, tile, out);
     }, distance);
+}
+
+/**
+ * Whether light cars take to the roads at this hour - between midnight and six
+ * in the morning they do not.
+ */
+function lightAllowed(root) {
+    return root.core.time.hour >= LIGHTS_OUT_UNTIL;
+}
+
+/**
+ * What light cars are driving to at this time of day, or null when it is one
+ * of the hours they just drive about.
+ */
+function wantedKind(root) {
+    var hour = root.core.time.hour, i;
+
+    for (i = 0; i < HOURS.length; i++) {
+        if (hour >= HOURS[i].from && hour < HOURS[i].to)
+            return HOURS[i].kind;
+    }
+
+    return null;
+}
+
+/**
+ * Road tiles from start to some other one it is connected to, both included,
+ * or an empty array when there is nowhere to go. A road by a building of that
+ * kind is tried first, if one is asked for; when there is no getting to one,
+ * or none is wanted, it is any road within reach.
+ */
+function findRoute(man, start, kind) {
+    var root = man.root,
+        tiles, end, found, i;
+
+    if (kind !== null) {
+        tiles = man.getDestinations(kind);
+
+        for (i = 0; i < DESTINATION_TRIES && tiles.length > 0; i++) {
+            end = tiles[Math.random() * tiles.length | 0];
+
+            if (end !== start) {
+                found = routeTo(root, start, end);
+
+                if (found.length > 1)
+                    return found;
+            }
+        }
+    }
+
+    end = pickDestination(root, start);
+
+    return end === -1 ? [] : routeTo(root, start, end);
 }
 
 function direction(from, to) {
@@ -227,6 +320,9 @@ CarScript.prototype.speed = SPEED;
 //its pictures, one for each way it drives: {"x+": sprite, ...}
 CarScript.prototype.looks = null;
 CarScript.prototype.heading = null;
+CarScript.prototype.traffic = COMMUTER;
+//a bus's two stops, whichever of them it is not at being where it goes next
+CarScript.prototype.stops = null;
 
 /**
  * Puts the car on a road tile picked at random, off on a route from it.
@@ -236,20 +332,25 @@ CarScript.prototype.heading = null;
 CarScript.prototype.spawn = function () {
     var root = this.man.root, tile, route, attempt;
 
+    this.dress();
+
     for (attempt = 0; attempt < 4; attempt++) {
         tile = root.roadman.getRandomRoadTile();
 
         if (tile === -1)
             return false;
 
-        route = findRoute(root, tile);
+        route = this.nextRoute(tile);
 
         if (route.length > 1) {
+            //a bus keeps the two ends of its first route and runs between them
+            if (this.traffic === SHUTTLE)
+                this.stops = [route[0], route[route.length - 1]];
+
             this.waypoints = routeWaypoints(route, null);
             this.target = 1;
             this.x = this.waypoints[0].x;
             this.y = this.waypoints[0].y;
-            this.dress();
             this.place();
 
             return true;
@@ -257,6 +358,56 @@ CarScript.prototype.spawn = function () {
     }
 
     return false;
+};
+
+/**
+ * Got there. A light car that arrives between midnight and six is off the
+ * roads for the night; anything else sets off again from where it stands -
+ * one that was still driving at six among them, which now has the morning's
+ * run to work ahead of it like any other.
+ */
+CarScript.prototype.arrive = function () {
+    var wps = this.waypoints,
+        last = wps[wps.length - 1],
+        before = wps[wps.length - 2],
+        from = before === undefined || before.tile === last.tile ? null : direction(before.tile, last.tile),
+        route, next, i;
+
+    if (this.traffic === COMMUTER && !lightAllowed(this.man.root)) {
+        this.man.remove(this);
+        return;
+    }
+
+    route = this.nextRoute(last.tile);
+
+    if (route.length < 2) {
+        this.man.respawn(this);
+        return;
+    }
+
+    //it stands still at the end of the old route, so that is where the new one
+    //starts from - no jump onto its first point
+    next = routeWaypoints(route, from);
+    wps = [{tile: last.tile, x: this.x, y: this.y}];
+
+    for (i = 0; i < next.length; i++)
+        wps.push(next[i]);
+
+    this.waypoints = wps;
+    this.target = 1;
+};
+
+/**
+ * Where it goes from here, as road tiles - by the clock for a light car, to
+ * the other stop for a bus that has its two, anywhere for the rest.
+ */
+CarScript.prototype.nextRoute = function (from) {
+    var man = this.man;
+
+    if (this.traffic === SHUTTLE && this.stops !== null)
+        return routeTo(man.root, from, this.stops[0] === from ? this.stops[1] : this.stops[0]);
+
+    return findRoute(man, from, this.traffic === COMMUTER ? wantedKind(man.root) : null);
 };
 
 /**
@@ -271,6 +422,8 @@ CarScript.prototype.dress = function () {
     this.looks = type.frames[color];
     this.heading = null;
     this.speed = SPEED * type.speed * (0.9 + Math.random() * 0.2);
+    this.traffic = type.traffic;
+    this.stops = null;
 };
 
 /**
@@ -282,8 +435,14 @@ CarScript.prototype.extend = function () {
     var wps = this.waypoints,
         last = wps[wps.length - 1],
         before = wps[wps.length - 2],
-        route = findRoute(this.man.root, last.tile),
-        from, next, i;
+        route, from, next, i;
+
+    //in the small hours nothing is joined on for a light car: it drives the
+    //last of this route and it is seen to when it gets there
+    if (this.traffic === COMMUTER && !lightAllowed(this.man.root))
+        return;
+
+    route = this.nextRoute(last.tile);
 
     if (route.length < 2)
         return;
@@ -363,9 +522,9 @@ CarScript.prototype.tick = function (time) {
         this.y = wp.y;
         step -= d;
 
+        //nothing was joined on, so this is where the route ends
         if (this.target === wps.length - 1) {
-            //there was nowhere to go on to from here
-            this.man.respawn(this);
+            this.arrive();
             return;
         }
 
@@ -401,7 +560,12 @@ function reconcile(self) {
     if (self.types === null)
         return;
 
-    var target = Math.floor(self.root.roadman.getRoadCount() * CARS_PER_ROAD),
+    var light = lightAllowed(self.root),
+        //as many as the roads take - though in the small hours no light car
+        //goes out, so what is left is the share of them that is vans,
+        //lorries and buses, and the roads are the quieter for it
+        most = Math.floor(self.root.roadman.getRoadCount() * CARS_PER_ROAD),
+        target = light ? most : Math.floor(most * self.nightWeight / self.totalWeight),
         cars = self.cars,
         car, i;
 
@@ -415,7 +579,9 @@ function reconcile(self) {
         self.root.game.logic.world.addGameObject(car);
     }
 
-    while (cars.length > target)
+    //only when the roads themselves are gone - the night thins the traffic out
+    //by letting the light cars finish and stay where they got to
+    while (cars.length > most)
         cars.pop().destroy();
 }
 
@@ -442,6 +608,10 @@ function Carman(root) {
     this.cars = [];
     this.types = null;
     this.totalWeight = 0;
+    //of that, what is out between midnight and six
+    this.nightWeight = 0;
+    //roads by the places people drive to, by kind
+    this.destinations = {};
 }
 
 Carman.prototype.init = function () {
@@ -457,12 +627,18 @@ Carman.prototype.init = function () {
  * altogether, when there is no road left to put it on.
  */
 Carman.prototype.respawn = function (script) {
-    if (script.spawn())
-        return;
+    if (!script.spawn())
+        this.remove(script);
+};
+
+/**
+ * Takes the car off the roads for good. Whatever it is wanted for, another one
+ * goes out in its place when there is room for it.
+ */
+Carman.prototype.remove = function (script) {
+    var i = this.cars.indexOf(script.gameObject);
 
     script.waypoints = [];
-
-    var i = this.cars.indexOf(script.gameObject);
 
     if (i !== -1) {
         this.cars.splice(i, 1);
@@ -471,21 +647,66 @@ Carman.prototype.respawn = function (script) {
 };
 
 /**
- * A body type, picked by how common it is.
+ * The loaded roads that run past a place people drive to at this time of day -
+ * somewhere with work in it, or a house. Worked out again every so often, as
+ * roads and buildings come and go.
+ *
+ * @param kind {string} WORK or HOME
+ * @returns {number[]}
  */
-Carman.prototype.pickType = function () {
-    var types = this.types,
-        r = Math.random() * this.totalWeight,
-        i;
+Carman.prototype.getDestinations = function (kind) {
+    var found = this.destinations[kind],
+        now = Date.now();
 
-    for (i = 0; i < types.length - 1; i++) {
-        r -= types[i].weight;
+    if (found !== undefined && now - found.at < DESTINATIONS_TTL)
+        return found.tiles;
 
-        if (r < 0)
-            break;
+    var buildings = this.root.core.buildingService,
+        roads = this.root.roadman.getRoadTiles(),
+        tiles = [],
+        tile, building, i, j;
+
+    for (i = 0; i < roads.length; i++) {
+        tile = roads[i];
+
+        for (j = 0; j < DIRECTIONS.length; j++) {
+            building = buildings.get(tile + DIRECTIONS[j][2]);
+
+            if (building !== null && wanted(kind, building.data)) {
+                tiles.push(tile);
+                break;
+            }
+        }
     }
 
-    return types[i];
+    this.destinations[kind] = {tiles: tiles, at: now};
+
+    return tiles;
+};
+
+/**
+ * A body type, picked by how common it is - one that is out at this hour, so
+ * no light car between midnight and six.
+ */
+Carman.prototype.pickType = function () {
+    var light = lightAllowed(this.root),
+        types = this.types,
+        r = Math.random() * (light ? this.totalWeight : this.nightWeight),
+        type, i;
+
+    for (i = 0; i < types.length; i++) {
+        type = types[i];
+
+        if (!light && type.traffic === COMMUTER)
+            continue;
+
+        r -= type.weight;
+
+        if (r < 0)
+            return type;
+    }
+
+    return type;
 };
 
 /**
@@ -497,11 +718,17 @@ function loadTypes(self) {
         image = sprites.getSprite(Vehicles.image);
 
     sprites.whenReady(image, function () {
-        var types = [], total = 0;
+        var types = [], total = 0, night = 0;
 
         Object.keys(Vehicles.types).forEach(function (name) {
             var data = Vehicles.types[name],
-                type = {name: name, speed: data.speed, weight: data.weight, frames: {}};
+                type = {
+                    name: name,
+                    speed: data.speed,
+                    weight: data.weight,
+                    traffic: TRAFFIC[name] !== undefined ? TRAFFIC[name] : COMMUTER,
+                    frames: {}
+                };
 
             Object.keys(data.colors).forEach(function (color) {
                 var looks = type.frames[color] = {};
@@ -522,10 +749,14 @@ function loadTypes(self) {
 
             types.push(type);
             total += type.weight;
+
+            if (type.traffic !== COMMUTER)
+                night += type.weight;
         });
 
         self.types = types;
         self.totalWeight = total;
+        self.nightWeight = night;
     });
 }
 
