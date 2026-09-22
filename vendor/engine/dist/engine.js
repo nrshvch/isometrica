@@ -606,43 +606,65 @@ define('engine/Canvas2dRenderer',['require','./config','gl-matrix','./components
         bufferVec3 = new Float32Array([0, 0, 0]),
         buffer2Vec3 = new Float32Array([0, 0, 0]),
         bufferMat4 = new Float32Array(16),
-        // depth keys are computed once per renderer per frame, then a typed
-        // array of indices is sorted by them -- avoids resolving transforms
-        // O(n log n) times inside the comparator
-        sortKeys = new Float64Array(1024),
-        sortIndices = new Uint32Array(1024),
+        // depth keys are computed once per renderer per frame, then packed
+        // (key bits | index) into a BigUint64Array and sorted with no
+        // comparator -- lets the engine use a native numeric sort instead of
+        // calling back into JS for every comparison. The top 48 bits hold an
+        // order-preserving transform of the depth key's IEEE-754 bits (see
+        // sortableKeyBits), the low 16 bits hold the original index (so the
+        // sort naturally keeps equal-key renderers in their original relative
+        // order, matching the old comparator's `|| (a - b)` tie-break) --
+        // supports up to 65535 renderers per layer, far beyond what a single
+        // canvas layer ever holds.
         sortScratch = [],
-        compareIndices = function (a, b) {
-            return (sortKeys[a] - sortKeys[b]) || (a - b);
+        packedKeys = new BigUint64Array(1024),
+        bitConvBuffer = new ArrayBuffer(8),
+        bitConvFloat = new Float64Array(bitConvBuffer),
+        bitConvBits = new BigUint64Array(bitConvBuffer),
+        // BigInt literal syntax (e.g. `0n`) is ES2020 and the vendor bundler's
+        // esprima parser predates it, so these are built via BigInt() calls
+        SIGN_BIT_64 = BigInt("0x8000000000000000"),
+        ALL_BITS_64 = BigInt("0xffffffffffffffff"),
+        INDEX_BITS_64 = BigInt(16),
+        INDEX_MASK_64 = (BigInt(1) << INDEX_BITS_64) - BigInt(1),
+        KEY_MASK_64 = ALL_BITS_64 ^ INDEX_MASK_64,
+        ZERO_BIG = BigInt(0),
+        sortableKeyBits = function (x) {
+            // normalize -0 to +0 so it sorts equal to +0, matching `x - y` semantics
+            if (x === 0) x = 0;
+            bitConvFloat[0] = x;
+            var bits = bitConvBits[0];
+            return (bits & SIGN_BIT_64) !== ZERO_BIG ? (~bits) & ALL_BITS_64 : bits | SIGN_BIT_64;
         };
 
     function depthSort(renderers) {
         var count = renderers.length,
-            i, pos, indices;
+            i, pos, key, view, idx;
 
         if (count < 2)
             return;
 
-        if (sortKeys.length < count) {
-            var size = sortKeys.length;
+        if (packedKeys.length < count) {
+            var size = packedKeys.length;
             while (size < count)
                 size *= 2;
-            sortKeys = new Float64Array(size);
-            sortIndices = new Uint32Array(size);
+            packedKeys = new BigUint64Array(size);
         }
 
         for (i = 0; i < count; i++) {
             pos = Transform.getLocalToWorld(renderers[i].gameObject.transform);
-            sortKeys[i] = pos[12] - pos[13] + pos[14];
-            sortIndices[i] = i;
+            key = pos[12] - pos[13] + pos[14];
+            packedKeys[i] = (sortableKeyBits(key) & KEY_MASK_64) | BigInt(i);
             sortScratch[i] = renderers[i];
         }
 
-        indices = sortIndices.subarray(0, count);
-        indices.sort(compareIndices);
+        view = packedKeys.subarray(0, count);
+        view.sort();
 
-        for (i = 0; i < count; i++)
-            renderers[i] = sortScratch[indices[i]];
+        for (i = 0; i < count; i++) {
+            idx = Number(view[i] & INDEX_MASK_64);
+            renderers[i] = sortScratch[idx];
+        }
 
         // drop references so disposed renderers can be collected
         for (i = 0; i < count; i++)
