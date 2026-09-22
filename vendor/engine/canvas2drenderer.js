@@ -20,43 +20,46 @@ define(function (require) {
         buffer2Vec3 = new Float32Array([0, 0, 0]),
         bufferMat4 = new Float32Array(16),
         // depth keys are computed once per renderer per frame, then sorted by
-        // a linear-time counting sort instead of a comparator-based sort --
-        // no JS callback per comparison. Every scratch buffer below is
-        // allocated once, here, at a fixed capacity generous enough for any
-        // single canvas layer's draw list -- depthSort itself never calls
-        // `new` and never holds renderer references in a side array, so the
-        // hot path (it runs once per layer per frame) is fully GC-free.
-        // Depth is quantized by linearly mapping this frame's [min, max] key
-        // range onto bucket indices. bucketOffsets doubles as both the
-        // per-bucket count and, after the prefix-sum pass, each bucket's
-        // next write slot; depthBuckets doubles as each renderer's bucket id
-        // and then, once consumed against bucketOffsets, its final
-        // destination index -- so the permutation is applied to `renderers`
-        // in place via cycle-following (using `visited` to avoid revisiting
-        // a slot), rather than scattering into a scratch array of object
-        // references and copying back. Consuming buckets in original order
-        // keeps equal-bucket renderers in their original relative order
-        // (stable, like the old `|| (a - b)` tie-break).
+        // a 2-pass LSD radix sort over an 8-bit digit each (radix 256) --
+        // no JS comparator callback, full 16-bit depth resolution, and no
+        // 65536-wide histogram (a single pass over the whole 16-bit key would
+        // need one, and clearing/prefix-summing it every call turned out to
+        // cost more than the O(n) work it replaced for a typical layer's
+        // renderer count -- see git history). Two 256-wide digit passes keep
+        // the fixed per-call cost down to ~2*256 regardless of key range.
+        // Every buffer below is allocated once, here, at a fixed capacity
+        // generous enough for any single canvas layer's draw list --
+        // depthSort itself never calls `new` and never holds renderer
+        // references in a side array, so the hot path (it runs once per
+        // layer per frame) is fully GC-free.
         //
-        // BUCKET_COUNT is *not* sized for depth resolution (4096 is already
-        // far finer than an isometric renderer needs) -- it's sized for
-        // speed: every call clears and prefix-sums the whole bucketOffsets
-        // array regardless of how many renderers are actually being sorted,
-        // so that fixed cost has to stay small relative to a typical layer's
-        // renderer count, or it swamps the O(n) work it's meant to replace.
-        // Benchmarked against the old comparator sort across n=50..3000:
-        // 65536 buckets only wins past roughly n=600 (below that the fixed
-        // clear+scan over 256KB dominates); 4096 wins at every n tested.
-        BUCKET_COUNT = 4096,
+        // permBufA/permBufB ping-pong an index permutation (not renderer
+        // references) across the two digit passes; each pass is a stable
+        // counting sort by one digit, and LSD order (least-significant digit
+        // first) makes the composition of both passes a full, stable sort by
+        // the 16-bit key -- equal-key renderers keep their original relative
+        // order, like the old `|| (a - b)` tie-break. After both passes the
+        // current perm buffer maps destination slot -> source index (gather
+        // form); that's inverted into scatterDest (source index -> dest
+        // slot) and applied to `renderers` in place via cycle-following
+        // (using `visited` to avoid revisiting a slot already placed).
+        KEY_BITS = 16,
+        KEY_MAX = 0xffff,
+        RADIX_BITS = 8,
+        RADIX = 1 << RADIX_BITS,
         MAX_LAYER_RENDERERS = 65536,
         depthKeys = new Float64Array(MAX_LAYER_RENDERERS),
-        depthBuckets = new Uint16Array(MAX_LAYER_RENDERERS),
+        quantizedKeys = new Uint16Array(MAX_LAYER_RENDERERS),
+        permBufA = new Uint16Array(MAX_LAYER_RENDERERS),
+        permBufB = new Uint16Array(MAX_LAYER_RENDERERS),
+        scatterDest = new Uint16Array(MAX_LAYER_RENDERERS),
         visited = new Uint8Array(MAX_LAYER_RENDERERS),
-        bucketOffsets = new Uint32Array(BUCKET_COUNT);
+        digitCounts = new Uint32Array(RADIX);
 
     function depthSort(renderers) {
         var count = renderers.length,
-            i, j, pos, key, min, max, range, scale, bucket, sum, c,
+            i, j, pos, key, min, max, range, scale, q,
+            shift, d, sum, c, cur, alt, tmp,
             next, val, saved;
 
         if (count < 2)
@@ -74,32 +77,49 @@ define(function (require) {
         }
 
         range = max - min;
-        scale = range > 0 ? (BUCKET_COUNT - 1) / range : 0;
-
-        bucketOffsets.fill(0);
+        scale = range > 0 ? KEY_MAX / range : 0;
 
         for (i = 0; i < count; i++) {
-            bucket = ((depthKeys[i] - min) * scale) | 0;
-            // guard against fp rounding pushing the max key past the last bucket
-            if (bucket > BUCKET_COUNT - 1)
-                bucket = BUCKET_COUNT - 1;
-            depthBuckets[i] = bucket;
-            bucketOffsets[bucket]++;
+            q = ((depthKeys[i] - min) * scale) | 0;
+            // guard against fp rounding pushing the max key past the last value
+            if (q > KEY_MAX)
+                q = KEY_MAX;
+            quantizedKeys[i] = q;
+            permBufA[i] = i;
         }
 
-        // prefix sum: turn per-bucket counts into each bucket's start offset
-        sum = 0;
-        for (i = 0; i < BUCKET_COUNT; i++) {
-            c = bucketOffsets[i];
-            bucketOffsets[i] = sum;
-            sum += c;
+        cur = permBufA;
+        alt = permBufB;
+
+        for (shift = 0; shift < KEY_BITS; shift += RADIX_BITS) {
+            digitCounts.fill(0);
+
+            for (i = 0; i < count; i++) {
+                d = (quantizedKeys[cur[i]] >> shift) & (RADIX - 1);
+                digitCounts[d]++;
+            }
+
+            sum = 0;
+            for (i = 0; i < RADIX; i++) {
+                c = digitCounts[i];
+                digitCounts[i] = sum;
+                sum += c;
+            }
+
+            for (i = 0; i < count; i++) {
+                d = (quantizedKeys[cur[i]] >> shift) & (RADIX - 1);
+                alt[digitCounts[d]++] = cur[i];
+            }
+
+            tmp = cur;
+            cur = alt;
+            alt = tmp;
         }
 
-        // consume depthBuckets (bucket id) into each renderer's destination slot
-        for (i = 0; i < count; i++) {
-            bucket = depthBuckets[i];
-            depthBuckets[i] = bucketOffsets[bucket]++;
-        }
+        // cur[k] = source index of the renderer that belongs at position k;
+        // invert into a scatter map so the cycle applier below can use it
+        for (i = 0; i < count; i++)
+            scatterDest[cur[i]] = i;
 
         // apply the resulting permutation to renderers in place, one cycle
         // at a time -- no scratch array of object references needed
@@ -114,7 +134,7 @@ define(function (require) {
 
             for (;;) {
                 visited[j] = 1;
-                next = depthBuckets[j];
+                next = scatterDest[j];
                 if (next === i) {
                     renderers[next] = val;
                     break;
