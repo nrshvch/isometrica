@@ -1,7 +1,6 @@
 /* TODO gameObject's components should be grouped in global groups
 * that way same components would be accessible anytime & from one place
 * TODO Tick should be event. Not method.
-* TODO ..ooor we can create collection of updatable components right when GO is added, doing update == null check just once.
 * TODO rename to "scene"
 */
 
@@ -18,6 +17,7 @@ define(function (require) {
 
         this.logic = logic;
         this.gameObjects = [];
+        this.tickers = [];
 
         if (useOctree === true)
             q = this.octree = new Octree(64,1000,45)
@@ -56,6 +56,22 @@ define(function (require) {
      * @private
      */
     p.gameObjectsCount = 0;
+
+    /**
+     * Flat, precomputed list of gameObjects that currently have at least one
+     * tickable component. Kept up to date via registerTicker/unregisterTicker
+     * (see GameObject#updateSubscription) so p.tick() never has to call into
+     * -- or check components of -- gameObjects that do nothing every frame.
+     * @type {GameObject[]}
+     * @private
+     */
+    p.tickers = null;
+
+    /**
+     * @type {number}
+     * @private
+     */
+    p.tickersCount = 0;
 
     /**
      * @private
@@ -177,13 +193,49 @@ define(function (require) {
         this._started = true;
     };
 
+    /**
+     * Registers a gameObject to receive tick() calls. No-op if it's already
+     * registered.
+     * @param {GameObject} gameObject
+     */
+    p.registerTicker = function (gameObject) {
+        if (gameObject._tickerIndex !== undefined)
+            return;
+
+        gameObject._tickerIndex = this.tickersCount;
+        this.tickers[this.tickersCount++] = gameObject;
+    };
+
+    /**
+     * Unregisters a gameObject from tick() calls. No-op if it isn't
+     * registered. Swaps the last entry into the freed slot so removal stays
+     * O(1) instead of an indexOf + splice.
+     * @param {GameObject} gameObject
+     */
+    p.unregisterTicker = function (gameObject) {
+        var idx = gameObject._tickerIndex;
+        if (idx === undefined)
+            return;
+
+        var last = this.tickers.pop();
+        if (last !== gameObject) {
+            this.tickers[idx] = last;
+            last._tickerIndex = idx;
+        }
+        this.tickersCount--;
+
+        gameObject._tickerIndex = undefined;
+    };
+
     p.tick = function (time) {
         var i,
-            len = this.gameObjectsCount,
-            gos = this.gameObjects;
+            tickers = this.tickers;
 
-        for (i = 0; i < len; i++)
-            gos[i].tick(time);
+        // tickersCount is read fresh every iteration (not cached) because a
+        // gameObject can unregister itself -- or another gameObject -- from
+        // within its own tick(), which shrinks this list in place.
+        for (i = 0; i < this.tickersCount; i++)
+            tickers[i].tick(time);
 
         if (this.removeQueueWaiting) {
             var len = this.removeQueue.length,
@@ -191,6 +243,7 @@ define(function (require) {
 
             for (i = 0; i < len; i++) {
                 gameObject = this.removeQueue.pop();
+                this.unregisterTicker(gameObject);
                 gameObject.transform.destroy(); //TODO: refactor this with event.
                 this.gameObjects.splice(this.gameObjects.indexOf(gameObject), 1);
                 this.gameObjectsCount--;

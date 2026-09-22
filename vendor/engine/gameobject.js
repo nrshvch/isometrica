@@ -54,12 +54,13 @@ define(function (require) {
     };
 
     p.updateSubscription = function () {
-        if (this.world)
-            if (this.hasUpdatableComponents()) {
-                this.world.addEventListener(this.world.events.update, this.update);
-            } else {
-                this.world.removeEventListener(this.world.events.update, this.update);
-            }
+        if (!this.world)
+            return;
+
+        if (this.hasUpdatableComponents())
+            this.world.registerTicker(this);
+        else
+            this.world.unregisterTicker(this);
     };
 
 
@@ -124,6 +125,14 @@ define(function (require) {
     p.removeQueueWaiting = false;
 
     /**
+     * Index of this gameObject in the world's flat tickers list, or
+     * undefined when it isn't currently registered to receive tick() calls.
+     * @private
+     * @type {number|undefined}
+     */
+    p._tickerIndex = undefined;
+
+    /**
      * Runs once, before start
      */
     p.awake = function () {
@@ -157,7 +166,7 @@ define(function (require) {
     p.setWorld = function (world) {
         this.world = world;
 
-        //this.updateSubscription();
+        this.updateSubscription();
     };
 
     /**
@@ -172,7 +181,7 @@ define(function (require) {
 
         this._started && component.start !== null && component.start();
 
-        //this.updateSubscription();
+        this.updateSubscription();
 
         return component;
     };
@@ -182,7 +191,7 @@ define(function (require) {
         this.removeQueue.push(component);
         this.removeQueueWaiting = true;
 
-        //this.updateSubscription();
+        this.updateSubscription();
     };
 
     /**
@@ -221,6 +230,7 @@ define(function (require) {
             }
 
             this.removeQueueWaiting = false;
+            this.updateSubscription();
         }
     }
 

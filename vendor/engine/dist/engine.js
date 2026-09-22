@@ -2180,7 +2180,6 @@ define('engine/lib/octree',["./Octree/node", "./Octree/Item"], function (Node, I
 /* TODO gameObject's components should be grouped in global groups
 * that way same components would be accessible anytime & from one place
 * TODO Tick should be event. Not method.
-* TODO ..ooor we can create collection of updatable components right when GO is added, doing update == null check just once.
 * TODO rename to "scene"
 */
 
@@ -2197,6 +2196,7 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
 
         this.logic = logic;
         this.gameObjects = [];
+        this.tickers = [];
 
         if (useOctree === true)
             q = this.octree = new Octree(64,1000,45)
@@ -2235,6 +2235,22 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
      * @private
      */
     p.gameObjectsCount = 0;
+
+    /**
+     * Flat, precomputed list of gameObjects that currently have at least one
+     * tickable component. Kept up to date via registerTicker/unregisterTicker
+     * (see GameObject#updateSubscription) so p.tick() never has to call into
+     * -- or check components of -- gameObjects that do nothing every frame.
+     * @type {GameObject[]}
+     * @private
+     */
+    p.tickers = null;
+
+    /**
+     * @type {number}
+     * @private
+     */
+    p.tickersCount = 0;
 
     /**
      * @private
@@ -2356,13 +2372,49 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
         this._started = true;
     };
 
+    /**
+     * Registers a gameObject to receive tick() calls. No-op if it's already
+     * registered.
+     * @param {GameObject} gameObject
+     */
+    p.registerTicker = function (gameObject) {
+        if (gameObject._tickerIndex !== undefined)
+            return;
+
+        gameObject._tickerIndex = this.tickersCount;
+        this.tickers[this.tickersCount++] = gameObject;
+    };
+
+    /**
+     * Unregisters a gameObject from tick() calls. No-op if it isn't
+     * registered. Swaps the last entry into the freed slot so removal stays
+     * O(1) instead of an indexOf + splice.
+     * @param {GameObject} gameObject
+     */
+    p.unregisterTicker = function (gameObject) {
+        var idx = gameObject._tickerIndex;
+        if (idx === undefined)
+            return;
+
+        var last = this.tickers.pop();
+        if (last !== gameObject) {
+            this.tickers[idx] = last;
+            last._tickerIndex = idx;
+        }
+        this.tickersCount--;
+
+        gameObject._tickerIndex = undefined;
+    };
+
     p.tick = function (time) {
         var i,
-            len = this.gameObjectsCount,
-            gos = this.gameObjects;
+            tickers = this.tickers;
 
-        for (i = 0; i < len; i++)
-            gos[i].tick(time);
+        // tickersCount is read fresh every iteration (not cached) because a
+        // gameObject can unregister itself -- or another gameObject -- from
+        // within its own tick(), which shrinks this list in place.
+        for (i = 0; i < this.tickersCount; i++)
+            tickers[i].tick(time);
 
         if (this.removeQueueWaiting) {
             var len = this.removeQueue.length,
@@ -2370,6 +2422,7 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
 
             for (i = 0; i < len; i++) {
                 gameObject = this.removeQueue.pop();
+                this.unregisterTicker(gameObject);
                 gameObject.transform.destroy(); //TODO: refactor this with event.
                 this.gameObjects.splice(this.gameObjects.indexOf(gameObject), 1);
                 this.gameObjectsCount--;
@@ -2524,12 +2577,13 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
     };
 
     p.updateSubscription = function () {
-        if (this.world)
-            if (this.hasUpdatableComponents()) {
-                this.world.addEventListener(this.world.events.update, this.update);
-            } else {
-                this.world.removeEventListener(this.world.events.update, this.update);
-            }
+        if (!this.world)
+            return;
+
+        if (this.hasUpdatableComponents())
+            this.world.registerTicker(this);
+        else
+            this.world.unregisterTicker(this);
     };
 
 
@@ -2594,6 +2648,14 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
     p.removeQueueWaiting = false;
 
     /**
+     * Index of this gameObject in the world's flat tickers list, or
+     * undefined when it isn't currently registered to receive tick() calls.
+     * @private
+     * @type {number|undefined}
+     */
+    p._tickerIndex = undefined;
+
+    /**
      * Runs once, before start
      */
     p.awake = function () {
@@ -2627,7 +2689,7 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
     p.setWorld = function (world) {
         this.world = world;
 
-        //this.updateSubscription();
+        this.updateSubscription();
     };
 
     /**
@@ -2642,7 +2704,7 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
 
         this._started && component.start !== null && component.start();
 
-        //this.updateSubscription();
+        this.updateSubscription();
 
         return component;
     };
@@ -2652,7 +2714,7 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
         this.removeQueue.push(component);
         this.removeQueueWaiting = true;
 
-        //this.updateSubscription();
+        this.updateSubscription();
     };
 
     /**
@@ -2691,6 +2753,7 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
             }
 
             this.removeQueueWaiting = false;
+            this.updateSubscription();
         }
     }
 
