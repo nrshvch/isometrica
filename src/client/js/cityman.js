@@ -4,7 +4,6 @@
 import Core from "core/main";
 import Events from "events";
 import CityLabel from "./gameObjects/citylabel";
-import Config from "./config";
 import TileSelector from "./tileselector";
 import WorldCamera from "./components/camerascript";
 import CityComponent from "./components/city";
@@ -141,7 +140,7 @@ Cityman.prototype.establish = function(){
         root.ui.gameScreen().showPrompt("Give city a name!", function (val) {
             root.core.cities.establishCity(tile, val);
             root.ui.gameScreen().showWorld();
-        }, "My City", function () {
+        }, "Miniville", function () {
             root.ui.gameScreen().showWorld();
             self.establish();
         });
