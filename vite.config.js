@@ -38,7 +38,6 @@ export default defineConfig({
             {find: "reactive-property", replacement: app("js/vendor/reactive-property.js")},
             {find: "object-pool", replacement: app("shared/object-pool.js")},
             {find: "enumeration", replacement: app("shared/enumeration.js")},
-            {find: "helpers", replacement: app("shared/helpers.js")},
             {find: "seeded-simplex", replacement: app("shared/seeded-simplex.js")}
         ]
     }
