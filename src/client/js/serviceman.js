@@ -170,8 +170,13 @@ function infoLines(city, building) {
  * Trees and rocks do nothing for anybody, and a road out past the borders has
  * no city to do it for.
  */
+//a road's upkeep is all there is to say about it, and that is on the price
+//tag already - clicked, it is ground like any other
 function hasInfo(building) {
-    return building.data.classCode !== BuildingClassCode.tree && building.getCity() !== null;
+    var classCode = building.data.classCode;
+
+    return classCode !== BuildingClassCode.tree && classCode !== BuildingClassCode.road
+        && building.getCity() !== null;
 }
 
 function refreshInfo(self) {
@@ -240,12 +245,12 @@ function ServiceMan(root) {
 /**
  * Clicking a building shows what it is worth, and a water tower what it waters
  * as well. Clicking it again puts them away, and so does clicking anything
- * else - bare ground, a tree, the sea.
+ * else - bare ground, a road, a tree, the sea.
  *
  * @param screenX {number} where the click was, in viewport pixels
  * @param screenY {number}
  * @returns {boolean} whether it landed on something there is anything to show
- *                    for, rather than on bare ground or a tree
+ *                    for, rather than on bare ground, a road or a tree
  */
 ServiceMan.prototype.inspect = function (screenX, screenY) {
     var root = this.root,
