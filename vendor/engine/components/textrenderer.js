@@ -21,6 +21,7 @@ define(function (require) {
     p.align = "center";
     p.valign = "middle";
     p.strokeStyle = undefined;
+    p.opacity = 1;
 
     p.setGameObject = function(gameObject){
         Component.prototype.setGameObject.call(this, gameObject);
@@ -37,6 +38,11 @@ define(function (require) {
     p.render = function(layer, viewportRenderer){
         glMatrix.vec3.transformMat4(vec3Buffer1, this.gameObject.transform.getPosition(vec3Buffer1), viewportRenderer.M);
 
+        if(this.opacity !== 1) {
+            layer.save();
+            layer.globalAlpha = this.opacity;
+        }
+
         layer.font = this.style;
         layer.fillStyle = this.color;
         layer.textAlign = this.align;
@@ -50,6 +56,9 @@ define(function (require) {
         }
 
         layer.fillText(this.text, vec3Buffer1[0], vec3Buffer1[1]);
+
+        if(this.opacity !== 1)
+            layer.restore();
     };
 
     return TextRenderer;

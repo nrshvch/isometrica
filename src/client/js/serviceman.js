@@ -58,6 +58,7 @@ function createLabel(self, tile, missing) {
     renderer.strokeStyle = "black";
     renderer.lineWidth = 4;
     renderer.text = text[missing];
+    renderer.opacity = opacityAt(self, tile);
 
     var terrain = self.root.terrain;
 
@@ -127,6 +128,27 @@ function onBuildingUnload(sender, building, self) {
 
     delete self._views[tile];
     hide(self, tile);
+}
+
+//the word over a building fades with it, so it does not hide what the
+//building was faded to show (see Buildman#fadeAround)
+function onBuildingFade(sender, building, self) {
+    var label = self._labels[building.model().tile];
+
+    if (label !== undefined)
+        label.textRenderer.opacity = building.view.opacity;
+}
+
+/**
+ * How see-through the building on tile is drawn right now - a word that turns
+ * up over one already faded starts out faded too.
+ */
+function opacityAt(self, tile) {
+    var building = self._views[tile];
+
+    return building !== undefined && building.view.opacity !== undefined
+        ? building.view.opacity
+        : 1;
 }
 
 function onTick(sender, args, self) {
@@ -407,6 +429,7 @@ ServiceMan.prototype.init = function () {
 
     Events.on(root.buildman, Buildman.events.buildingLoad, onBuildingLoad, this);
     Events.on(root.buildman, Buildman.events.buildingUnload, onBuildingUnload, this);
+    Events.on(root.buildman, Buildman.events.buildingFade, onBuildingFade, this);
     Events.on(world, world.events.tick, onTick, this);
     Events.on(root.camera.cameraScript, WorldCamera.events.inputClick, onClick, this);
 

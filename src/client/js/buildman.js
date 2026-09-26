@@ -87,6 +87,12 @@ function createBuilding(self, model) {
 
     setBuilding(self, model.tile, building);
 
+    //one that goes up by whatever is being placed fades in with the rest
+    if (self.fadeRings !== null && fades(model)) {
+        fade(self, building, fadeOf(self, model));
+        self.faded[model.tile] = true;
+    }
+
     Events.fire(self, self.events.buildingAdded, building);
 
     return building;
@@ -126,8 +132,8 @@ function onChunkRemove(sender, chunk, self) {
 
 //how see-through a preview is: one that would go up, and one that could not
 //go up right now - its ground is taken, too steep, or not paid for
-var PREVIEW_OPACITY = 0.5,
-    PREVIEW_BLOCKED_OPACITY = 0.2;
+var PREVIEW_OPACITY = 0.75,
+    PREVIEW_BLOCKED_OPACITY = 0.35;
 
 /**
  * A see-through copy of the building standing on tile, turned the way it would
@@ -155,6 +161,124 @@ function createPreview(self, data, tile, rotation, opacity) {
     self.root.game.logic.world.addGameObject(go);
 
     return go;
+}
+
+//the tiles of a selection a building would go up on, and those it would not -
+//in the lawn green of the houses' yards and their roof red, lightened, so the
+//selection sits in with the sprites around it
+var HILITE_FILL = "rgba(146,203,68,0.12)",
+    HILITE_BORDER = "rgba(146,203,68,0.7)",
+    HILITE_BLOCKED_FILL = "rgba(222,98,96,0.25)",
+    HILITE_BLOCKED_BORDER = "rgba(222,98,96,0.7)";
+
+//how far around the tiles being picked the buildings standing there fade, so
+//that a tower in front does not hide the ground behind it
+var FADE_RADIUS = 3;
+//how see-through a building is by how many tiles its nearest part is from the
+//picked ones - on them, then right next to them, and so on out to the radius
+var FADE_OPACITY = [0.3, 0.35, 0.55, 0.8];
+
+/**
+ * How far each tile within FADE_RADIUS of tiles is from the nearest of them,
+ * 0 for the tiles themselves.
+ */
+function ringsAround(tiles) {
+    var rings = Object.create(null),
+        near, r, x, y, dx, dy, i;
+
+    for (i = 0; i < tiles.length; i++) {
+        x = Terrain.extractX(tiles[i]);
+        y = Terrain.extractY(tiles[i]);
+
+        for (dx = -FADE_RADIUS; dx <= FADE_RADIUS; dx++) {
+            for (dy = -FADE_RADIUS; dy <= FADE_RADIUS; dy++) {
+                near = Terrain.convertToIndex(x + dx, y + dy);
+                r = Math.max(Math.abs(dx), Math.abs(dy));
+
+                if (rings[near] === undefined || r < rings[near])
+                    rings[near] = r;
+            }
+        }
+    }
+
+    return rings;
+}
+
+/**
+ * Whether model is something that can stand in the way - roads lie flat and
+ * trees are no taller than what is placed among them.
+ */
+function fades(model) {
+    var classCode = model.data.classCode;
+
+    return classCode !== BuildingClassCode.road && classCode !== BuildingClassCode.tree;
+}
+
+/**
+ * The opacity model is drawn at while fading: that of whichever part of it is
+ * nearest the picked tiles.
+ */
+function fadeOf(self, model) {
+    var tiles = model.occupiedTiles(),
+        opacity = 1,
+        ring;
+
+    while (!tiles.done) {
+        ring = self.fadeRings[TileIterator.next(tiles)];
+
+        if (ring !== undefined)
+            opacity = Math.min(opacity, FADE_OPACITY[ring]);
+    }
+
+    return opacity;
+}
+
+function fade(self, building, opacity) {
+    building.view.setOpacity(opacity);
+    Events.fire(self, self.events.buildingFade, building);
+}
+
+function setOpacity(self, tile, opacity) {
+    var building = getBuilding(self, tile);
+
+    //whatever stood there may have given way to a road since it was faded
+    if (building !== null && building.view instanceof BuildingView)
+        fade(self, building, opacity);
+}
+
+/**
+ * Fades whatever stands within FADE_RADIUS of tiles, the nearer the fainter,
+ * and brings back to solid what was faded before and is not near them now.
+ */
+function fadeAround(self, tiles) {
+    var buildings = self.root.core.buildingService,
+        was = self.faded,
+        tile, model;
+
+    self.fadeRings = ringsAround(tiles);
+    self.faded = Object.create(null);
+
+    for (tile in self.fadeRings) {
+        model = buildings.get(+tile);
+
+        if (model !== null && self.faded[model.tile] === undefined && fades(model)) {
+            self.faded[model.tile] = true;
+            setOpacity(self, model.tile, fadeOf(self, model));
+        }
+    }
+
+    for (tile in was) {
+        if (self.faded[tile] === undefined)
+            setOpacity(self, +tile, 1);
+    }
+}
+
+/**
+ * Everything faded by fadeAround solid again.
+ */
+function unfade(self) {
+    fadeAround(self, []);
+    self.fadeRings = null;
 }
 
 /**
@@ -343,7 +467,10 @@ var events = {
     buildingAdd: 0,
     buildingRemove: 1,
     buildingLoad: 0,
-    buildingUnload: 1
+    buildingUnload: 1,
+    //one was faded or made solid again, so that whatever is drawn over it
+    //can follow suit
+    buildingFade: 2
 };
 
 function Buildman(main) {
@@ -352,6 +479,11 @@ function Buildman(main) {
     this.buildingByXY = [];
     this.buildingByGO = {};
     this.root = main;
+
+    //what fadeAround last faded, by the tile it stands on, and how far the
+    //tiles around the picked ones are from them - null while nothing is
+    this.faded = Object.create(null);
+    this.fadeRings = null;
 }
 
 
@@ -478,6 +610,22 @@ Buildman.prototype.showCost = function (tile, sizeX, sizeY, amount) {
     showCost(this, tile, sizeX, sizeY, amount);
 };
 
+/**
+ * Fades whatever stands around tiles, the nearer the fainter, so that a tower
+ * in front does not hide the ground being picked - and brings back to solid
+ * what the last call faded and this one does not.
+ */
+Buildman.prototype.fadeAround = function (tiles) {
+    fadeAround(this, tiles);
+};
+
+/**
+ * Everything faded by fadeAround solid again.
+ */
+Buildman.prototype.unfade = function () {
+    unfade(this);
+};
+
 Buildman.prototype.build = function (code) {
     var self = this;
     var root = this.root;
@@ -559,6 +707,25 @@ Buildman.prototype.build = function (code) {
         return r;
     }
 
+    //every tile under a footprint whose building would go up - the rest of
+    //the selection is turned down, for its ground or for its price
+    function buildableTiles(quotes) {
+        var r = Object.create(null),
+            x, y, i;
+
+        for (i = 0; i < quotes.length; i++) {
+            if (quotes[i].error !== ErrorCode.NONE)
+                continue;
+
+            for (x = 0; x < sizeX(); x++) {
+                for (y = 0; y < sizeY(); y++)
+                    r[quotes[i].tile + x + y * Terrain.dy] = true;
+            }
+        }
+
+        return r;
+    }
+
     //every building the selection covers, turned the way it would be put
     //down - faint where it could not go up
     function previewBuildings(tiles, quotes) {
@@ -621,13 +788,21 @@ Buildman.prototype.build = function (code) {
 
         updatePriceTags(quotes);
 
+        //so that a tower in front of the selection does not hide it
+        fadeAround(self, ts.tiles());
+
+        //green under a building that would go up, red under one that would not
+        var buildable = buildableTiles(quotes);
+
         root.hiliteMan.disable(tokens);
         tokens = root.hiliteMan.hilite(ts.tiles().map(function (tile) {
+            var ok = buildable[tile] === true;
+
             return {
                 x: Terrain.extractX(tile),
                 y: Terrain.extractY(tile),
-                fillColor: "rgba(0,0,127,0.4)",
-                borderColor: "rgba(0,0,255,0.4)",
+                fillColor: ok ? HILITE_FILL : HILITE_BLOCKED_FILL,
+                borderColor: ok ? HILITE_BORDER : HILITE_BLOCKED_BORDER,
                 borderWidth: 2
             };
         }));
@@ -662,6 +837,7 @@ Buildman.prototype.build = function (code) {
         ts.dispose();
         clearPreview();
         updatePriceTags([]);
+        unfade(self);
         root.hiliteMan.disable(tokens);
         root.serviceman.hidePlacementCoverage();
         Events.off(ts, AreaSelector.events.change, sub);
