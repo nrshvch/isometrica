@@ -20,9 +20,30 @@ function BuildingView() {
 
 BuildingView.prototype.gameObject = null;
 BuildingView.prototype.building = null;
+//1 for solid - less while something being placed nearby needs to be seen
+//through it (see Buildman)
+BuildingView.prototype.opacity = 1;
 
 BuildingView.prototype.setBuilding = function (building) {
     this.building = building;
+};
+
+/**
+ * Makes the whole building see-through, or solid again with 1 - and keeps it
+ * that way when it is drawn over, say as it is finished.
+ */
+BuildingView.prototype.setOpacity = function (opacity) {
+    var children = this.gameObject.transform.children,
+        renderer, i;
+
+    this.opacity = opacity;
+
+    for (i = 0; i < children.length; i++) {
+        renderer = children[i].gameObject.spriteRenderer;
+
+        if (renderer)
+            renderer.opacity = opacity;
+    }
 };
 
 BuildingView.prototype.update = function () {
@@ -60,6 +81,8 @@ BuildingView.prototype.update = function () {
                     sprite.setSprite(vkaria.sprites.getSprite("site.png")).setPivot(32, 24);
 
                     part.addComponent(sprite);
+                    //the renderer resets its opacity once it is attached
+                    sprite.opacity = this.opacity;
                     this.gameObject.transform.addChild(part.transform);
                     part.transform.translate(x * Config.tileSize, 0, y * Config.tileSize);
                 }
@@ -67,7 +90,7 @@ BuildingView.prototype.update = function () {
         } else if (b.data.getState() === BuildingState.ready) {
             var rotated = !!b.data.rotation;
 
-            addSprites(this.gameObject, staticData, rotated, 1);
+            addSprites(this.gameObject, staticData, rotated, this.opacity);
 
             //add smoke
             if (staticData.smokeSource !== undefined) {

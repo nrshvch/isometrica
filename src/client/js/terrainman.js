@@ -94,6 +94,9 @@ Terrainman.prototype.enter = function () {
     worldScreen.showHint("Drag to place, pull arrows to resize!");
 
     function updateHilite() {
+        //so that a tower in front of the picked ground does not hide it
+        buildman.fadeAround(ts.tiles());
+
         root.hiliteMan.disable(tokens);
         tokens = root.hiliteMan.hilite(hiliteData(ts.tiles()));
     }
@@ -137,6 +140,7 @@ Terrainman.prototype.enter = function () {
 
     function leave() {
         ts.dispose();
+        buildman.unfade();
         root.hiliteMan.disable(tokens);
         Events.off(ts, AreaSelector.events.change, sub);
 
