@@ -89,6 +89,18 @@ define(function (require) {
     p._awaken = false;
 
     /**
+     * How many of gameObjects' slots are empty. Taking a gameObject out only
+     * empties its slot, and the list is closed up the next time it is read -
+     * in the same order, which is the order the layers that are not depth
+     * sorted are drawn in. A chunk of ground going with everything on it,
+     * thousands at once, then costs one pass over the list rather than one
+     * indexOf and splice each.
+     * @private
+     * @type {number}
+     */
+    p._holes = 0;
+
+    /**
      * Array with gameObjects
      * @param {GameObject} gameObject
      */
@@ -96,7 +108,9 @@ define(function (require) {
         if (gameObject.world === this)
             return;
 
-        this.gameObjects[this.gameObjectsCount++] = gameObject;
+        gameObject._worldIndex = this.gameObjects.length;
+        this.gameObjects.push(gameObject);
+        this.gameObjectsCount++;
         gameObject.setWorld(this);
 
         if (this.octree !== null) {
@@ -170,7 +184,8 @@ define(function (require) {
         }
 
         world.unregisterTicker(gameObject);
-        world.gameObjects.splice(world.gameObjects.indexOf(gameObject), 1);
+        world.gameObjects[gameObject._worldIndex] = null;
+        world._holes++;
         world.gameObjectsCount--;
         gameObject.world = null;
 
@@ -178,7 +193,29 @@ define(function (require) {
             world.octree.remove(gameObject.item);
     }
 
+    function compact(world) {
+        var gameObjects = world.gameObjects,
+            len = gameObjects.length,
+            gameObject, i, n;
+
+        if (world._holes === 0)
+            return;
+
+        for (i = 0, n = 0; i < len; i++) {
+            gameObject = gameObjects[i];
+            if (gameObject !== null) {
+                gameObject._worldIndex = n;
+                gameObjects[n++] = gameObject;
+            }
+        }
+
+        gameObjects.length = n;
+        world._holes = 0;
+    }
+
     p.retrieve = function (gameObject) {
+        compact(this);
+
         if (this.octree !== null) {
             var items = this.octree.retrieve(gameObject.item);
             for (var i = 0; i < items.length; i++) {
@@ -202,15 +239,21 @@ define(function (require) {
      * will be called from the same loop.
      */
     p.awake = function(){
-        for (var i = 0; i < this.gameObjectsCount; i++) {
-            this.gameObjects[i].awake();
+        compact(this);
+
+        for (var i = 0; i < this.gameObjects.length; i++) {
+            if (this.gameObjects[i] !== null)
+                this.gameObjects[i].awake();
         }
         this._awaken = true;
     };
 
     p.start = function () {
-        for (var i = 0; i < this.gameObjectsCount; i++) {
-            this.gameObjects[i].start();
+        compact(this);
+
+        for (var i = 0; i < this.gameObjects.length; i++) {
+            if (this.gameObjects[i] !== null)
+                this.gameObjects[i].start();
         }
         this._started = true;
     };
@@ -285,9 +328,11 @@ define(function (require) {
     };
 
     p.findByName = function (name) {
+        compact(this);
+
         var result = [],
             gameObjects = this.gameObjects,
-            len = this.gameObjectsCount,
+            len = gameObjects.length,
             gameObject,
             i;
 

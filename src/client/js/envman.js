@@ -8,114 +8,144 @@ import Terrain from "./terrain";
 import Core from "core/main";
 import Chunkman from "./chunkman";
 import Pool from "object-pool";
+import Rocks from "data/rocks";
+//a rock is drawn the way a tree is: one sprite among the buildings
 import Tree from "./gameObjects/tree";
 
 var BuildingData = Core.BuildingData;
 var TileIterator = Core.TileIterator;
 var CoreTerrain = Core.Terrain;
 
-function placeTree(self, go, tile) {
-    var x = CoreTerrain.extractX(tile),
+/**
+ * What the world put on the tile, as the sprite it is drawn with - a tree or
+ * stones - or null where there is nothing.
+ */
+function sceneryOf(self, tile) {
+    var service = self.root.core.envService,
+        code = service.getTree(tile);
+
+    if (code !== null)
+        return BuildingData[code].sprites[0];
+
+    code = service.getRock(tile);
+
+    return code !== null ? Rocks[code] : null;
+}
+
+/**
+ * A tree stands on a corner of its tile. Stones lie flat all over it, the
+ * way the tile does, so they go at the height of its middle - halfway up it,
+ * on a slope.
+ */
+function place(self, go, tile, spriteData) {
+    var terrain = self.root.core.terrain,
+        x = CoreTerrain.extractX(tile),
         y = CoreTerrain.extractY(tile),
-        z = self.root.core.terrain.getGridPointHeight(x + 1, y);
+        z = spriteData.flat ? terrain.getHeight(x + 0.5, y + 0.5) : terrain.getGridPointHeight(x + 1, y);
 
     go.transform.setPosition(x * Config.tileSize, z * Config.tileZStep, y * Config.tileSize);
 }
 
-function plantTree(self, tile, treeCode) {
-    var go = Pool.borrowObject(self.pool);
-
-    var spriteData = BuildingData[treeCode].sprites[0];
+function dress(self, go, spriteData) {
     var renderer = go.renderer;
     renderer.setSprite(self.root.sprites.getSprite(spriteData.path));
     renderer.pivotX = spriteData.pivotX;
     renderer.pivotY = spriteData.pivotY;
+}
 
-    placeTree(self, go, tile);
+function plant(self, tile, spriteData) {
+    var go = Pool.borrowObject(self.pool);
+
+    dress(self, go, spriteData);
+    place(self, go, tile, spriteData);
 
     self.root.game.scene.addGameObject(go);
 
-    self._trees[tile] = go;
+    self._scenery[tile] = go;
 }
 
-function removeTree(self, tile){
-    var go = self._trees[tile];
+function remove(self, tile){
+    var go = self._scenery[tile];
     if (go !== undefined) {
-        delete self._trees[tile];
+        delete self._scenery[tile];
         Pool.returnObject(self.pool, go);
         self.root.game.scene.removeGameObject(go);
     }
 }
 
-function plantTrees(self, chunk) {
+function plantAll(self, chunk) {
     var tiles = chunk.tiles();
-    var tile, service = self.root.core.envService, treeCode;
+    var tile, spriteData;
     while (!tiles.done) {
         tile = TileIterator.next(tiles);
-        treeCode = service.getTree(tile);
-        if (treeCode !== null && self._trees[tile] === undefined)
-            plantTree(self, tile, treeCode);
+        if (self._scenery[tile] === undefined && (spriteData = sceneryOf(self, tile)) !== null)
+            plant(self, tile, spriteData);
     }
 }
 
-function cleanTrees(self, chunk) {
+function removeAll(self, chunk) {
     var tiles = chunk.tiles();
     var tile;
 
     while (!tiles.done) {
         tile = TileIterator.next(tiles);
-        removeTree(self, tile);
+        remove(self, tile);
     }
 }
 
 function onChunkLoad(sender, chunk, meta) {
     //console.log("EnvMan::onTileLoad", sender, args, meta);
-    plantTrees(meta, chunk);
+    plantAll(meta, chunk);
 }
 
 function onChunkRemove(sender, chunk, meta) {
     //console.log("EnvMan::onTileRemove", sender, args, meta);
-    cleanTrees(meta, chunk);
+    removeAll(meta, chunk);
 }
 
-function onTreeRemove(sender, tile, self){
-    removeTree(self, tile);
+function onSceneryRemove(sender, tile, self){
+    remove(self, tile);
 }
 
 /**
- * The ground under these tiles moved, so their trees are put at its new
- * height - or taken away, where the tile is under water or on a slope now,
- * or planted where it no longer is.
+ * The ground under these tiles moved, so their trees and stones are put at
+ * its new height - or taken away, where the tile is under water now, or put
+ * where they were not.
  *
- * A tree that stays is moved rather than taken out and planted again: taking
+ * One that stays is moved rather than taken out and put there again: taking
  * one out only happens at the end of the tick, and the pool would hand the
  * same one straight back to be lost with it.
  */
 function onGridUpdate(sender, args, self) {
     var tiles = args.tiles,
-        service = self.root.core.envService,
-        tile, treeCode, go, i;
+        tile, spriteData, go, i;
 
     for (i = 0; i < tiles.length; i++) {
         tile = tiles[i];
-        go = self._trees[tile];
-        treeCode = service.getTree(tile);
+        go = self._scenery[tile];
+        spriteData = sceneryOf(self, tile);
 
         if (go !== undefined) {
-            if (treeCode === null)
-                removeTree(self, tile);
-            else
-                placeTree(self, go, tile);
-        //a tree is only ever planted on a tile that is on screen
-        } else if (treeCode !== null && self.root.terrain.getTile(tile) !== null) {
-            plantTree(self, tile, treeCode);
+            if (spriteData === null)
+                remove(self, tile);
+            else {
+                dress(self, go, spriteData);
+                place(self, go, tile, spriteData);
+            }
+        //only ever put on a tile that is on screen
+        } else if (spriteData !== null && self.root.terrain.getTile(tile) !== null) {
+            plant(self, tile, spriteData);
         }
     }
 }
 
+/**
+ * Draws what the world puts on the land by itself, wherever it is on screen:
+ * the trees, and the stones.
+ */
 function EnvMan(root) {
     this.root = root;
-    this._trees = {};
+    this._scenery = {};
     this.pool = new Pool(Tree);
 }
 
@@ -125,13 +155,13 @@ EnvMan.prototype.init = function () {
     var chunks = this.root.chunkman.getChunks();
 
     for(var i in chunks){
-        plantTrees(this, chunks[i]);
+        plantAll(this, chunks[i]);
     }
 
     Events.on(this.root.chunkman, Chunkman.events.chunkLoad, onChunkLoad, this);
     Events.on(this.root.chunkman, Chunkman.events.chunkUnload, onChunkRemove, this);
 
-    Events.on(this.core.envService, Core.EnvService.events.treeRemove,onTreeRemove, this);
+    Events.on(this.core.envService, Core.EnvService.events.sceneryRemove, onSceneryRemove, this);
     Events.on(this.core.terrain, Core.Terrain.events.gridUpdate, onGridUpdate, this);
 };
 

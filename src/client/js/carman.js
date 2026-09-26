@@ -46,9 +46,11 @@ var SlopeType = Terrain.SlopeType;
 //going between them. Only the choice of a new destination goes by any of this
 //- one already on its way keeps its route.
 //
-//Now and then one breaks down: it stops where it is, smoke coming out of its
-//engine as thick as a chimney's, for a few hours of the game's time, then
-//carries on with its trip. The rest of the traffic goes by it the way cars go
+//Every so many tiles one breaks down: it stops where it is, smoke coming out
+//of its engine as thick as a chimney's, for a few hours of the game's time,
+//then carries on with its trip. It gives some warning: for the last few tiles
+//before it goes it crawls along, its engine already smoking - thinner, two
+//puffs a second. The rest of the traffic goes by it the way cars go
 //by each other here - straight through. Every one can puff a little smoke out
 //of its tailpipe as it drives too - two puffs a second, thinner than a chimney
 //- but that is switched off (EXHAUST).
@@ -76,8 +78,15 @@ var CARS_PER_ROAD = 1 / 4,
     DESTINATION_TRIES = 3,
     //how long the roads outside the shops and houses are taken as found, ms
     DESTINATIONS_TTL = 2000,
-    //how far a car drives between breakdowns, on average, in tiles
+    //how far a car drives between breakdowns, in tiles
     BREAKDOWN_EVERY = 2000,
+    //how many tiles before that it starts to give out: it slows down and its
+    //engine smokes
+    FAILING_FOR = 20,
+    //what share of its speed it still makes then
+    FAILING_SPEED = 0.5,
+    //and how often a puff comes out of the engine, ms
+    FAILING_SMOKE_EVERY = 500,
     //how long one stands broken down, in hours of the game's time - give or
     //take
     BREAKDOWN_HOURS = 3,
@@ -394,6 +403,8 @@ CarScript.prototype.stops = null;
 //real time left before it drives on again when it has broken down, ms; none
 //when it is running
 CarScript.prototype.stalled = 0;
+//how far it has driven since it last broke down, in tiles
+CarScript.prototype.driven = 0;
 //since the last puff of smoke out of it, ms
 CarScript.prototype.sinceSmoke = 0;
 //which flash of its lamp is showing, and how long it has been, ms
@@ -410,8 +421,10 @@ CarScript.prototype.sinceLamp = 0;
 CarScript.prototype.spawn = function (traffic) {
     var man = this.man, root = man.root, origin, tile, route, attempt;
 
-    //it is put on the new road running
+    //it is put on the new road running, some way off its next breakdown - not
+    //the same way off as everything put out with it, or they would all go at once
     this.stalled = 0;
+    this.driven = Math.random() * (BREAKDOWN_EVERY - FAILING_FOR);
     //and does not puff in step with everything put out with it
     this.sinceSmoke = Math.random() * EXHAUST_EVERY;
     this.dress(traffic);
@@ -585,24 +598,36 @@ CarScript.prototype.extend = function () {
  */
 CarScript.prototype.breakDown = function () {
     this.stalled = BREAKDOWN_HOURS * HOUR * (0.6 + Math.random() * 0.8) / GAME_SPEED;
+    this.driven = 0;
+};
+
+/**
+ * Whether it is in its last few tiles before it breaks down - slow, and
+ * smoking already.
+ */
+CarScript.prototype.failing = function () {
+    return this.stalled <= 0 && this.driven >= BREAKDOWN_EVERY - FAILING_FOR;
 };
 
 /**
  * A puff of smoke every so often: out of the tailpipe while it drives, out of
- * the engine, more often and black, while it stands broken down. Each rises
- * from where it came out, so a car driving leaves a trail of them behind.
+ * the engine, black, when it is about to break down, and more often still
+ * while it stands broken down. Each rises from where it came out, so a car
+ * driving leaves a trail of them behind.
  */
 CarScript.prototype.smoke = function (dt) {
     var broken = this.stalled > 0,
+        failing = this.failing(),
+        engine = broken || failing,
         frame = this.looks[this.heading],
-        at = broken ? frame.engine : frame.tailpipe;
+        at = engine ? frame.engine : frame.tailpipe;
 
-    if (!broken && !EXHAUST)
+    if (!engine && !EXHAUST)
         return;
 
     this.sinceSmoke += dt;
 
-    if (this.sinceSmoke < (broken ? BREAKDOWN_SMOKE_EVERY : EXHAUST_EVERY))
+    if (this.sinceSmoke < (broken ? BREAKDOWN_SMOKE_EVERY : failing ? FAILING_SMOKE_EVERY : EXHAUST_EVERY))
         return;
 
     this.sinceSmoke = 0;
@@ -612,7 +637,7 @@ CarScript.prototype.smoke = function (dt) {
         position[0] + at[0] * Config.tileSize,
         position[1] + at[1] * Config.tileZStep,
         position[2] + at[2] * Config.tileSize,
-        broken ? SmokeScript.soot : SmokeScript.steam
+        engine ? SmokeScript.soot : SmokeScript.steam
     );
 };
 
@@ -678,7 +703,7 @@ CarScript.prototype.blink = function (dt) {
 CarScript.prototype.tick = function (time) {
     var roadman = this.man.root.roadman,
         wps = this.waypoints,
-        travel = this.speed * time.dt / 1000,
+        travel = this.speed * time.dt / 1000 * (this.failing() ? FAILING_SPEED : 1),
         step = travel,
         wp, dx, dy, d;
 
@@ -698,6 +723,8 @@ CarScript.prototype.tick = function (time) {
         this.stalled -= time.dt;
         return;
     }
+
+    this.driven += travel;
 
     while (step > 0) {
         wp = wps[this.target];
@@ -731,7 +758,7 @@ CarScript.prototype.tick = function (time) {
 
     this.place();
 
-    if (Math.random() < travel / BREAKDOWN_EVERY)
+    if (this.driven >= BREAKDOWN_EVERY)
         this.breakDown();
 };
 

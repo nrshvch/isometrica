@@ -66,8 +66,9 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
     if (errorCode === ErrorCode.NONE) {
         var data = BuildingData[code];
 
-        //the trees the site stands on are felled by the build itself, and the
-        //clearing goes on the bill - counted before, while they are still there
+        //the trees and rocks the site stands on are cleared by the build itself,
+        //and the clearing goes on the bill - counted before, while they are
+        //still there
         var clearing = clearingCost(this, code, tile, rotate);
 
         var building = new Building();
@@ -272,7 +273,7 @@ CityBuildings.prototype.getBuildings = function () {
 
 /**
  * What it costs to clear the site of a building - one clearing charge for
- * every tile of its footprint that has a tree on it.
+ * every tile of its footprint that has a tree or a rock on it.
  *
  * @returns {number}
  */
@@ -282,14 +283,14 @@ function clearingCost(self, code, tile, rotation) {
         sizeX = rotation ? data.sizeY : data.sizeX,
         sizeY = rotation ? data.sizeX : data.sizeY,
         iter = new TileIterator(tile, tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy),
-        trees = 0;
+        cleared = 0;
 
     while (!iter.done) {
-        if (world.envService.getTree(TileIterator.next(iter)) !== null)
-            trees++;
+        if (world.envService.hasScenery(TileIterator.next(iter)))
+            cleared++;
     }
 
-    return trees * Config.clearTileCost;
+    return cleared * Config.clearTileCost;
 }
 
 function onBuildingRemoved(sender, building, self) {
