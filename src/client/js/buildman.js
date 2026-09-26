@@ -6,12 +6,14 @@ import BuildingData from "data/buildings";
 import Building from "./building";
 import BuildingView from "./buildingview";
 import Road from "./road";
+import RoadView from "./roadview";
 import EventManager from "events";
 import Events from "events";
 import Chunkman from "./chunkman";
 import AreaSelector from "./areaselector";
 import TileMessage from "./gameObjects/tilemessage";
 import CityWater from "core/city/citywater";
+import CityBuildings from "core/city/citybuildings";
 import Config from "./config";
 import RenderLayer from "./renderlayer";
 import ResourceCode from "core/resourcecode";
@@ -123,6 +125,11 @@ function onChunkRemove(sender, chunk, self) {
 }
 
 
+//how see-through a preview is: one that would go up, and one that could not
+//go up right now - its ground is taken, too steep, or not paid for
+var PREVIEW_OPACITY = 0.5,
+    PREVIEW_BLOCKED_OPACITY = 0.2;
+
 /**
  * A see-through copy of the building standing on tile, turned the way it would
  * be put down - so that what is about to be placed, and which way it faces, is
@@ -130,7 +137,7 @@ function onChunkRemove(sender, chunk, self) {
  *
  * @returns {engine.GameObject}
  */
-function createPreview(self, data, tile, rotation) {
+function createPreview(self, data, tile, rotation, opacity) {
     var terrain = self.root.core.world.terrain,
         tileSize = Config.tileSize,
         x = Terrain.extractX(tile),
@@ -142,10 +149,28 @@ function createPreview(self, data, tile, rotation) {
             : terrain.getGridPointHeight(x + 1, y),
         go = new engine.GameObject("building preview");
 
-    BuildingView.addSprites(go, data, rotation, 0.5, RenderLayer.previewLayer);
+    BuildingView.addSprites(go, data, rotation, opacity, RenderLayer.previewLayer);
 
     //placed before it goes in - the world files it by where it stands
     go.transform.setPosition(x * tileSize, z * Config.tileZStep, y * tileSize);
+    self.root.game.logic.world.addGameObject(go);
+
+    return go;
+}
+
+/**
+ * A see-through piece id of road on tile - drawn over everything, the way a
+ * building's preview is, so the trees it would clear do not hide it.
+ *
+ * @returns {engine.GameObject}
+ */
+function createRoadPreview(self, tile, id, opacity) {
+    var go = new engine.GameObject("road preview");
+
+    RoadView.addSprite(go, id, opacity, RenderLayer.previewLayer);
+
+    //placed before it goes in - the world files it by where it stands
+    RoadView.place(go, tile);
     self.root.game.logic.world.addGameObject(go);
 
     return go;
@@ -232,22 +257,23 @@ errorText[ErrorCode.TILE_TAKEN] = "occupied";
 errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
 
 /**
- * Puts code down on every tile of the selection and tells the player why
- * whatever did not go in was turned down.
+ * Puts code down on each of anchors and tells the player why whatever did not
+ * go in was turned down.
  *
- * The core reports each refusal on its own tile. An area dragged out is tried
- * tile by tile, so it would bury itself in them: the tiles covered by what
- * was just put down all come back occupied, and the same reason tends to
- * repeat everywhere - so each reason is said once, where it first came up,
- * and "occupied" only when nothing went in at all.
+ * The core reports each refusal on its own tile, and over an area the same
+ * reason tends to repeat everywhere - so each reason is said once, where it
+ * first came up. "Occupied" only when nothing went in at all: a road laid
+ * across another is turned down where they cross, and that is no news.
+ *
+ * @param anchors {number[]} see CityBuildings.selectionAnchors
  */
-function buildSelection(self, code, iter, rotation) {
+function buildSelection(self, code, anchors, rotation) {
     var root = self.root,
         data = BuildingData[code],
         messaging = root.core.messagingService,
         errors = [],
         tried = 0,
-        tile, i, seen = {};
+        i, seen = {};
 
     var sub = Events.on(messaging, Core.MessagingService.events.tileMessage, function (sender, message) {
         if (message.type === Core.MessageType.tileError)
@@ -255,10 +281,9 @@ function buildSelection(self, code, iter, rotation) {
     });
 
     try {
-        while (!iter.done) {
-            tile = iter.next();
+        for (i = 0; i < anchors.length; i++) {
             tried++;
-            root.core.cities.getCity(0).buildingService.buildBuilding(code, tile, rotation);
+            root.core.cities.getCity(0).buildingService.buildBuilding(code, anchors[i], rotation);
         }
     } finally {
         Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
@@ -459,92 +484,153 @@ Buildman.prototype.build = function (code) {
     var root = this.root;
     var data = BuildingData[code];
 
-    //what this thing would water from where the cursor is, so that a tower is
-    //placed by what it will reach rather than by guesswork
+    //what this thing would water from where it is being placed, so that a
+    //tower is placed by what it will reach rather than by guesswork
     var waterRadius = CityWater.radius(code);
 
-    //show hint
-    root.ui.gameScreen().worldScreen().showHint("Pick a tile!");
-
-    //lock cam
-    root.camera.cameraScript.lock(true);
-
-    //draw blue grid
-    var tokens = [];
-    var ts = new AreaSelector(this.root);
     var rotation = false;
-    var preview = null;
+
+    //the building's footprint the way it is turned - Construction#occupiedTiles
+    //and the under-construction site placeholder (buildingview.js) swap
+    //sizeX/sizeY the same way when rotated
+    function sizeX() {
+        return rotation ? data.sizeY : data.sizeX;
+    }
+
+    function sizeY() {
+        return rotation ? data.sizeX : data.sizeY;
+    }
+
+    //show hint
+    root.ui.gameScreen().worldScreen().showHint("Drag to place, pull arrows to resize!");
+
+    //the selection covers whole footprints, one building each
+    var tokens = [];
+    var ts = new AreaSelector(this.root, {stepX: sizeX(), stepY: sizeY()});
+    var previews = [];
+    //roads already standing that are showing what they would turn into
+    var reshaped = [];
     var priceTags = [];
+
+    //where the buildings would stand, one to a footprint
+    function anchors() {
+        return CityBuildings.selectionAnchors(code, ts.tile0(), ts.tile1(), rotation);
+    }
 
     //one tag over every building the selection would put down, priced the
     //way a submit would charge it
-    function updatePriceTags(tile0, tile1) {
-        var i, quotes, sizeX, sizeY;
+    function updatePriceTags(quotes) {
+        var i;
 
         for (i = 0; i < priceTags.length; i++)
             priceTags[i].destroy();
         priceTags = [];
 
-        if (tile0 === -1 || tile1 === -1)
-            return;
-
-        sizeX = rotation ? data.sizeY : data.sizeX;
-        sizeY = rotation ? data.sizeX : data.sizeY;
-        quotes = root.core.cities.getCity(0).buildingService.quoteSelection(code, tile0, tile1, rotation);
-
         for (i = 0; i < quotes.length; i++) {
             if (quotes[i].cost > 0)
-                priceTags.push(createPriceTag(self, quotes[i].tile, sizeX, sizeY,
+                priceTags.push(createPriceTag(self, quotes[i].tile, sizeX(), sizeY(),
                     quotes[i].cost, quotes[i].error === ErrorCode.NONE));
         }
     }
 
-    function updatePreview(tile0, tile1) {
-        if (preview !== null) {
-            preview.destroy();
-            preview = null;
+    function clearPreview() {
+        var i;
+
+        for (i = 0; i < previews.length; i++)
+            previews[i].destroy();
+        previews = [];
+
+        //back to their own pieces
+        for (i = 0; i < reshaped.length; i++)
+            reshaped[i].view.showPiece(reshaped[i].typeCode);
+        reshaped = [];
+    }
+
+    //the opacity each quoted tile's preview is drawn at
+    function opacities(quotes) {
+        var r = Object.create(null);
+
+        for (var i = 0; i < quotes.length; i++)
+            r[quotes[i].tile] = quotes[i].error === ErrorCode.NONE
+                ? PREVIEW_OPACITY
+                : PREVIEW_BLOCKED_OPACITY;
+
+        return r;
+    }
+
+    //every building the selection covers, turned the way it would be put
+    //down - faint where it could not go up
+    function previewBuildings(tiles, quotes) {
+        var opacity = opacities(quotes);
+
+        for (var i = 0; i < tiles.length; i++)
+            previews.push(createPreview(self, data, tiles[i], rotation,
+                opacity[tiles[i]] || PREVIEW_BLOCKED_OPACITY));
+    }
+
+    //the roads as they would look once laid: each piece joined up with the
+    //ones around it, new and old alike, and the old ones they meet showing
+    //what they would turn into. Where no road can go there is nothing
+    function previewRoads(quotes) {
+        var terrain = root.core.terrain,
+            roadman = root.roadman,
+            laid = opacities(quotes),
+            seen = Object.create(null),
+            tile, next, road, id, i, j;
+
+        function isRoad(t) {
+            return laid[t] !== undefined || roadman.getRoad(t) !== null;
         }
 
-        //only while a single building is being aimed - an area dragged out
-        //is shown by its hilite alone
-        if (tile0 !== -1 && tile0 === tile1)
-            preview = createPreview(self, data, tile0, rotation);
+        for (i = 0; i < quotes.length; i++) {
+            tile = quotes[i].tile;
+            previews.push(createRoadPreview(self, tile,
+                Road.profile(terrain, tile, isRoad), laid[tile]));
+
+            for (j = 0; j < 4; j++) {
+                next = tile + [1, -1, Terrain.dy, -Terrain.dy][j];
+                road = roadman.getRoad(next);
+
+                if (road === null || seen[next] === true)
+                    continue;
+
+                seen[next] = true;
+                id = Road.profile(terrain, next, isRoad);
+
+                if (id !== road.typeCode) {
+                    road.view.showPiece(id);
+                    reshaped.push(road);
+                }
+            }
+        }
     }
 
     function updateHilite() {
-        var tile0 = ts.tile0(),
-            tile1 = ts.tile1();
+        var tiles = anchors(),
+            quotes = root.core.cities.getCity(0).buildingService
+                .quoteSelection(code, ts.tile0(), ts.tile1(), rotation);
 
-        updatePreview(tile0, tile1);
-        updatePriceTags(tile0, tile1);
+        clearPreview();
 
-        // a single anchored tile (not yet dragged into a multi-tile paint
-        // area) should hilite the building's whole footprint, not just the
-        // one tile under the cursor - matching how Construction#occupiedTiles
-        // and the under-construction site placeholder (buildingview.js) swap
-        // sizeX/sizeY when rotated
-        if (tile0 !== -1 && tile0 === tile1) {
-            var sizeX = rotation ? data.sizeY : data.sizeX,
-                sizeY = rotation ? data.sizeX : data.sizeY;
-            tile1 = tile0 + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
-        }
+        if (data.classCode === BuildingClassCode.road)
+            previewRoads(quotes);
+        else
+            previewBuildings(tiles, quotes);
+
+        updatePriceTags(quotes);
 
         root.hiliteMan.disable(tokens);
         tokens = root.hiliteMan.hilite({
-            tile0: tile0,
-            tile1: tile1,
+            tile0: ts.tile0(),
+            tile1: ts.tile1(),
             fillColor: "rgba(0,0,127,0.4)",
             borderColor: "rgba(0,0,255,0.4)",
             borderWidth: 2
         });
 
-        //what this tower would water, outlined the way the city limits are
-        if (waterRadius > 0) {
-            if (tile0 === -1)
-                root.serviceman.hideCoverage();
-            else
-                root.serviceman.showCoverage(tile0, waterRadius);
-        }
+        //what these towers would water, outlined the way the city limits are
+        if (waterRadius > 0)
+            root.serviceman.showPlacementCoverage(tiles, waterRadius);
     }
 
     var sub = Events.on(ts, AreaSelector.events.change, updateHilite);
@@ -556,31 +642,32 @@ Buildman.prototype.build = function (code) {
     controls.canRotate(data.canRotate !== false);
     controls.onRotate = function () {
         rotation = !rotation;
-        updateHilite();
+        //the whole selection turns with the buildings on it - which redraws
+        //it all
+        ts.rotate();
     };
     controls.onSubmit = function () {
-        var iter = ts.selectedTiles();
-        if (iter !== null)
-            buildSelection(self, code, iter, rotation);
+        buildSelection(self, code, anchors(), rotation);
 
-        // stay in build mode: drop the selection and keep the selector, hint,
-        // controls and cam lock so another area can be placed right away
-        ts.reset();
+        // stay in build mode with the selection where it was, so the next
+        // one can be dragged along from it - what is under it now is taken
         updateHilite();
     };
     controls.onDiscard = function () {
         //release resources
         ts.dispose();
-        updatePreview(-1, -1);
-        updatePriceTags(-1, -1);
+        clearPreview();
+        updatePriceTags([]);
         root.hiliteMan.disable(tokens);
-        root.serviceman.hideCoverage();
+        root.serviceman.hidePlacementCoverage();
         Events.off(ts, AreaSelector.events.change, sub);
 
         root.ui.gameScreen().showWorld();
         root.ui.gameScreen().worldScreen().hideHint();
-        root.camera.cameraScript.lock(false);
     };
+
+    //the selection is up from the start, in the middle of the screen
+    updateHilite();
 };
 
 export default Buildman;

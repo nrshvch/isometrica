@@ -50,32 +50,64 @@ BuildingView.prototype.update = function () {
     var b = this.road;
 
     if (b !== null && b.staticData !== null) {
-        var staticData = b.staticData,
-            tileSize = Config.tileSize,
-            tileZStep = Config.tileZStep;
-
         //
         if(this.gameObject.transform.children.length === 0){
-            var part = new engine.GameObject(),
-                sprite = new engine.SpriteRenderer();
-            sprite.layer = RenderLayer.roadLayer;
-            sprite.setSprite(vkaria.sprites.getSprite(roadSprite[this.road.typeCode])).setPivot(32,24);
-            part.addComponent(sprite);
-            this.gameObject.transform.addChild(part.transform);
-            part.transform.translate(0,0,0);
+            addSprite(this.gameObject, this.road.typeCode, 1, RenderLayer.roadLayer);
         }else{
             this.gameObject.transform.children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite(roadSprite[this.road.typeCode]));
         }
 
-        //position gameObject
-        var data = b.data,
-            x = Terrain.extractX(data.tile),// + data.subPosX,
-            y = Terrain.extractY(data.tile),// + data.subPosY,
-            z = vkaria.core.world.terrain.getHeight(x + 0.5, y + 0.5);
-
-        this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
+        place(this.gameObject, b.data.tile);
     }
 };
+
+/**
+ * Draws piece id in place of the road's own - what it would turn into once
+ * the roads being laid next to it join up with it. Its own comes back with
+ * the next update.
+ *
+ * @param id {number} which piece (see Road.profile)
+ */
+BuildingView.prototype.showPiece = function (id) {
+    var children = this.gameObject.transform.children;
+
+    if (children.length > 0)
+        children[0].gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite(roadSprite[id]));
+};
+
+/**
+ * Hangs piece id of road under parent - shared with the see-through preview
+ * shown while roads are being laid.
+ *
+ * @param id {number} which piece (see Road.profile)
+ * @param opacity {number} 1 for the real thing
+ * @param layer {number}
+ */
+function addSprite(parent, id, opacity, layer) {
+    var part = new engine.GameObject(),
+        sprite = new engine.SpriteRenderer();
+
+    sprite.layer = layer;
+    sprite.setSprite(vkaria.sprites.getSprite(roadSprite[id])).setPivot(32,24);
+    part.addComponent(sprite);
+    //the renderer resets its opacity once it is attached
+    sprite.opacity = opacity;
+    parent.transform.addChild(part.transform);
+}
+
+/**
+ * Puts go where a road on tile stands.
+ */
+function place(go, tile) {
+    var x = Terrain.extractX(tile),
+        y = Terrain.extractY(tile),
+        z = vkaria.core.world.terrain.getHeight(x + 0.5, y + 0.5);
+
+    go.transform.setPosition(x * Config.tileSize, z * Config.tileZStep, y * Config.tileSize);
+}
+
+BuildingView.addSprite = addSprite;
+BuildingView.place = place;
 
 BuildingView.prototype.render = function () {
     if (this.gameObject.world === null)

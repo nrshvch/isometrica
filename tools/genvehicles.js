@@ -19,8 +19,9 @@
  *   node tools/genvehicles.js
  *
  * Writes src/public/gfx/vehicles/vehicles.png with every picture on it and
- * src/data/vehicles.js saying where each one is and where its pivot is: the
- * middle of the vehicle, on the ground.
+ * src/data/vehicles.js saying where each one is and where its pivot is - the
+ * middle of the vehicle, on the ground - and where its smoke comes out: its
+ * tailpipe as it drives, its engine when it breaks down.
  */
 
 var fs = require("fs");
@@ -99,9 +100,13 @@ function lights(boxes, length, width, z0, z1, inset, size) {
     boxes.push(box(length, length + e, width - inset - size, width - inset, z0, z1, TAILLIGHT));
 }
 
+//where smoke comes out of a type, as points in its own frame - l, w and z like
+//a box's: its tailpipe, low under the back bumper on the right, puffs as it
+//drives; its engine smokes when it breaks down - under the bonnet on most, low
+//on the front of a lorry's cab, which sits over it, and at the back of a bus
 var TYPES = {
     sedan: {
-        length: 13, width: 6, speed: 1, weight: 5,
+        length: 13, width: 6, speed: 1, weight: 5, engine: [1.8, 3, 3.8], tailpipe: [13.2, 4.8, 1.0],
         build: function (c) {
             var b = [];
             wheels(b, 13, 6, [2.6, 10.4], 1.2);
@@ -115,7 +120,7 @@ var TYPES = {
         }
     },
     hatchback: {
-        length: 11, width: 6, speed: 1, weight: 4,
+        length: 11, width: 6, speed: 1, weight: 4, engine: [1.6, 3, 3.8], tailpipe: [11.2, 4.8, 1.0],
         build: function (c) {
             var b = [];
             wheels(b, 11, 6, [2.3, 8.8], 1.2);
@@ -129,7 +134,7 @@ var TYPES = {
         }
     },
     pickup: {
-        length: 14, width: 6, speed: 0.95, weight: 3,
+        length: 14, width: 6, speed: 0.95, weight: 3, engine: [1.8, 3, 4.0], tailpipe: [14.2, 4.8, 1.2],
         build: function (c) {
             var b = [];
             wheels(b, 14, 6, [2.7, 11.3], 1.4);
@@ -149,7 +154,7 @@ var TYPES = {
         }
     },
     van: {
-        length: 13, width: 6.5, speed: 0.9, weight: 3,
+        length: 13, width: 6.5, speed: 0.9, weight: 3, engine: [1.2, 3.25, 4.2], tailpipe: [13.2, 5.3, 1.1],
         build: function (c) {
             var b = [];
             wheels(b, 13, 6.5, [2.4, 10.6], 1.3);
@@ -164,7 +169,7 @@ var TYPES = {
         }
     },
     truck: {
-        length: 21, width: 7, speed: 0.75, weight: 2,
+        length: 21, width: 7, speed: 0.75, weight: 2, engine: [0, 3.5, 3.2], tailpipe: [21.2, 5.8, 1.2],
         build: function (c) {
             var b = [];
             wheels(b, 21, 7, [2.8, 14.6, 17.8], 1.5);
@@ -185,7 +190,7 @@ var TYPES = {
         }
     },
     bus: {
-        length: 25, width: 7.5, speed: 0.7, weight: 1,
+        length: 25, width: 7.5, speed: 0.7, weight: 1, engine: [25.2, 3.75, 4.2], tailpipe: [25.2, 6.3, 1.2],
         build: function (c) {
             var b = [], panes = [], l;
             wheels(b, 25, 7.5, [4.0, 19.5], 1.5);
@@ -239,6 +244,27 @@ function place(boxes, length, width, dir) {
             {x0: a0, x1: a1, y0: c0, y1: c1, z0: b.z0, z1: b.z1, color: b.color} :
             {x0: c0, x1: c1, y0: a0, y1: a1, z0: b.z0, z1: b.z1, color: b.color};
     });
+}
+
+//a tile is this many units along the ground, and a step up of the land this
+//many pixels on the screen
+var TILE = 32,
+    STEP = 8;
+
+/**
+ * Where a point in the vehicle's own frame is when it goes that way: off its
+ * middle on the ground, [x, z, y] - along the ground in tiles, up in steps of
+ * the land, the way a building gives where its chimney smokes.
+ */
+function placePoint(p, length, width, dir) {
+    var b = place([box(p[0], p[0], p[1], p[1], p[2], p[2])], length, width, dir)[0];
+
+    return [round(b.x0 / TILE), round(b.z0 / STEP), round(b.y0 / TILE)];
+}
+
+function round(v) {
+    //no "-0" in the data
+    return Math.round(v * 1000) / 1000 || 0;
 }
 
 //where a point in the world lands on the screen, the origin at 0, 0
@@ -365,10 +391,13 @@ Object.keys(TYPES).forEach(function (type) {
         data[type].colors[color] = {};
 
         Object.keys(DIRECTIONS).forEach(function (d) {
-            var picture = render(place(boxes, t.length, t.width, DIRECTIONS[d]));
+            var picture = render(place(boxes, t.length, t.width, DIRECTIONS[d])),
+                engine = placePoint(t.engine, t.length, t.width, DIRECTIONS[d]),
+                tailpipe = placePoint(t.tailpipe, t.length, t.width, DIRECTIONS[d]);
 
             frames.push({picture: picture, x: x, y: sheetH});
-            data[type].colors[color][d] = [x, sheetH, picture.w, picture.h, picture.pivotX, picture.pivotY];
+            data[type].colors[color][d] = [x, sheetH, picture.w, picture.h, picture.pivotX, picture.pivotY]
+                .concat(engine, tailpipe);
 
             x += picture.w + GAP;
             rowH = Math.max(rowH, picture.h);
@@ -407,8 +436,12 @@ fs.writeFileSync(OUT_DATA,
     "//\n" +
     "//Every body type, with how fast it drives next to a car (1) and how often it\n" +
     "//turns up next to the others; for each colour and each way it drives\n" +
-    "//(x+, x-, y+, y-) where its picture is in the image:\n" +
-    "//[x, y, width, height, pivotX, pivotY], the pivot being its middle on the ground.\n" +
+    "//(x+, x-, y+, y-) where its picture is in the image and where smoke comes out:\n" +
+    "//[x, y, width, height, pivotX, pivotY, engineX, engineZ, engineY, tailpipeX,\n" +
+    "//tailpipeZ, tailpipeY], the pivot being its middle on the ground. The tailpipe\n" +
+    "//puffs as it drives, the engine smokes when it breaks down; each is off that\n" +
+    "//middle along x, up and along y - in tiles and steps of the land, like a\n" +
+    "//building's smokeSource.\n" +
     "export default {\n" +
     "    image: " + JSON.stringify(IMAGE) + ",\n" +
     "    types: " + JSON.stringify(data, null, 4).replace(/\n/g, "\n    ").replace(/\[\s+([^\]]*?)\s+\]/g, function (m, inner) {

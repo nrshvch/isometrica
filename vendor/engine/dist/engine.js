@@ -2200,8 +2200,6 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
 
         if (useOctree === true)
             q = this.octree = new Octree(64,1000,45)
-
-        this.removeQueue = [];
     }
 
     var p = World.prototype = Object.create(EventManager.prototype);
@@ -2253,16 +2251,13 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
     p.tickersCount = 0;
 
     /**
+     * Index in tickers of the gameObject being ticked right now, or -1 outside
+     * of p.tick(). Lets unregisterTicker() keep the loop from skipping anybody
+     * when a gameObject goes mid-tick.
      * @private
-     * @type {[]}
+     * @type {number}
      */
-    p.removeQueue = null;
-
-    /**
-     * @private
-     * @type {boolean}
-     */
-    p.removeQueueWaiting = false;
+    p._tickCursor = -1;
 
     /**
      * @private
@@ -2277,7 +2272,9 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
      * @param {GameObject} gameObject
      */
     p.addGameObject = function (gameObject) {
-        //TODO check if gameObject is already present
+        if (gameObject.world === this)
+            return;
+
         this.gameObjects[this.gameObjectsCount++] = gameObject;
         gameObject.setWorld(this);
 
@@ -2321,18 +2318,43 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
      * Game object will be removed at the end of tick
      * @param {GameObject} gameObject
      */
+    /**
+     * Takes the gameObject out of the world there and then, children and all:
+     * it is neither ticked nor drawn from now on, and it can be added again
+     * straight away - an object pool may hand it back out within the same
+     * tick. It lets go of whatever it hangs on; its own children stay on it,
+     * and come back with it if it is added again. Removing one that is not in
+     * the world does nothing.
+     *
+     * @param {GameObject} gameObject
+     */
     p.removeGameObject = function (gameObject) {
-        //put GO's children in queue first, because they may be dependant on GO
-        //therefore should be deleted first
-        if (gameObject.transform.children.length !== 0) {
-            for (var i = 0; i < gameObject.transform.children.length; i++) {
-                var child = gameObject.transform.children[i].gameObject;
-                this.removeGameObject(child);
-            }
+        if (gameObject.world !== this)
+            return;
+
+        take(this, gameObject);
+        gameObject.transform.destroy();
+    };
+
+    function take(world, gameObject) {
+        var children = gameObject.transform.children,
+            child, i;
+
+        //children first, because they may be dependant on GO
+        for (i = 0; i < children.length; i++) {
+            child = children[i].gameObject;
+
+            if (child.world === world)
+                take(world, child);
         }
 
-        this.removeQueue.push(gameObject);
-        this.removeQueueWaiting = true;
+        world.unregisterTicker(gameObject);
+        world.gameObjects.splice(world.gameObjects.indexOf(gameObject), 1);
+        world.gameObjectsCount--;
+        gameObject.world = null;
+
+        if (world.octree !== null)
+            world.octree.remove(gameObject.item);
     }
 
     p.retrieve = function (gameObject) {
@@ -2389,16 +2411,36 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
      * Unregisters a gameObject from tick() calls. No-op if it isn't
      * registered. Swaps the last entry into the freed slot so removal stays
      * O(1) instead of an indexOf + splice.
+     *
+     * Mid-tick, the ones up to the cursor have had their turn and the rest
+     * have not, and a swap must not mix them up: a gap at or before the cursor
+     * is first moved onto it - the one ticking now takes the gap - and the
+     * cursor steps back, so the last entry swapped in there still gets its
+     * turn.
      * @param {GameObject} gameObject
      */
     p.unregisterTicker = function (gameObject) {
-        var idx = gameObject._tickerIndex;
+        var idx = gameObject._tickerIndex,
+            tickers = this.tickers,
+            cursor = this._tickCursor,
+            moved, last;
+
         if (idx === undefined)
             return;
 
-        var last = this.tickers.pop();
-        if (last !== gameObject) {
-            this.tickers[idx] = last;
+        if (idx < cursor) {
+            moved = tickers[cursor];
+            tickers[idx] = moved;
+            moved._tickerIndex = idx;
+            idx = cursor;
+        }
+
+        if (idx <= cursor)
+            this._tickCursor--;
+
+        last = tickers.pop();
+        if (idx < tickers.length) {
+            tickers[idx] = last;
             last._tickerIndex = idx;
         }
         this.tickersCount--;
@@ -2407,33 +2449,17 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
     };
 
     p.tick = function (time) {
-        var i,
-            tickers = this.tickers;
+        var tickers = this.tickers;
 
         // tickersCount is read fresh every iteration (not cached) because a
         // gameObject can unregister itself -- or another gameObject -- from
-        // within its own tick(), which shrinks this list in place.
-        for (i = 0; i < this.tickersCount; i++)
-            tickers[i].tick(time);
-
-        if (this.removeQueueWaiting) {
-            var len = this.removeQueue.length,
-                gameObject;
-
-            for (i = 0; i < len; i++) {
-                gameObject = this.removeQueue.pop();
-                this.unregisterTicker(gameObject);
-                gameObject.transform.destroy(); //TODO: refactor this with event.
-                this.gameObjects.splice(this.gameObjects.indexOf(gameObject), 1);
-                this.gameObjectsCount--;
-
-                //remove from tree
-                if(this.octree !== null){
-                    this.octree.remove(gameObject.item);
-                }
-            }
-
-            this.removeQueueWaiting = false;
+        // within its own tick(), which shrinks this list in place; the cursor
+        // is a field so that unregisterTicker() can move it back when it does.
+        try {
+            for (this._tickCursor = 0; this._tickCursor < this.tickersCount; this._tickCursor++)
+                tickers[this._tickCursor].tick(time);
+        } finally {
+            this._tickCursor = -1;
         }
     };
 
@@ -2757,9 +2783,12 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
         }
     }
 
+    /**
+     * Takes it out of the world it is in, if any - see World#removeGameObject.
+     */
     p.destroy = function () {
-        this.world.removeGameObject(this);
-        this.world = null;
+        if (this.world !== null)
+            this.world.removeGameObject(this);
     }
 
     return GameObject;

@@ -30,21 +30,24 @@ Road.prototype.setData = function(data){
     this.view.render();
 };
 
-Road.prototype.updateProfile = function () {
-    var tile = this.data.tile,
-        slopeId = this.root.core.terrain.tileSlope(tile),
-        buildman = this.root.roadman,
-        ne = buildman.getRoad(tile + 1),
-        nw = buildman.getRoad(tile + Terrain.dy),
-        sw = buildman.getRoad(tile - 1),
-        se = buildman.getRoad(tile - Terrain.dy),
+/**
+ * Which piece of road goes on tile: one joined up to whichever of its four
+ * neighbours isRoad says are roads, or a ramp on a slope.
+ *
+ * @param terrain {Terrain} core terrain
+ * @param tile {number}
+ * @param isRoad {function(number): boolean}
+ * @returns {number} a key of the road sprites (see RoadView)
+ */
+Road.profile = function (terrain, tile, isRoad) {
+    var slopeId = terrain.tileSlope(tile),
         id;
 
     if (!Terrain.isSlope(slopeId)) {
-        var a = sw !== null,
-            b = se !== null,
-            c = ne !== null,
-            d = nw !== null;
+        var a = isRoad(tile - 1),
+            b = isRoad(tile - Terrain.dy),
+            c = isRoad(tile + 1),
+            d = isRoad(tile + Terrain.dy);
 
         id = 90000 + a * 1000 + b * 100 + c * 10 + d;
 
@@ -61,6 +64,15 @@ Road.prototype.updateProfile = function () {
     } else if (slopeId === Terrain.SlopeType.BD) {
         id = 4;
     }
+
+    return id;
+};
+
+Road.prototype.updateProfile = function () {
+    var roadman = this.root.roadman,
+        id = Road.profile(this.root.core.terrain, this.data.tile, function (tile) {
+            return roadman.getRoad(tile) !== null;
+        });
 
     this.typeCode = id;
 
