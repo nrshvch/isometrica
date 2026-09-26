@@ -58,10 +58,19 @@ function isLit(building) {
 }
 
 SmokeSourceScript.prototype.spawnSmoke = function(){
-    var smoke = getSmoke();
     this.gameObject.transform.getPosition(vec3Buffer);
-    smoke.transform.setPosition(vec3Buffer[0], vec3Buffer[1], vec3Buffer[2]);
-    this.gameObject.world.addGameObject(smoke);
+    SmokeSourceScript.puff(this.gameObject.world, vec3Buffer[0], vec3Buffer[1], vec3Buffer[2]);
+};
+
+/**
+ * Lets out one puff of smoke at that point in the world, to rise and fade
+ * there - for whatever smokes on its own schedule rather than with a
+ * SmokeSource on it, like a car.
+ */
+SmokeSourceScript.puff = function (world, x, y, z) {
+    var smoke = getSmoke();
+    smoke.transform.setPosition(x, y, z);
+    world.addGameObject(smoke);
 };
 
 

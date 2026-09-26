@@ -10,9 +10,15 @@ SmokeScript.prototype.ttl = 1600;
 SmokeScript.prototype.startedAt = 0;
 SmokeScript.prototype.spriten = 0;
 
+//runs every time the puff is put back into the world out of the pool, and
+//only the first time gives it something to be drawn with
 SmokeScript.prototype.start = function () {
-    var sprite = this.gameObject.addComponent(new engine.SpriteRenderer());
-    sprite.layer = vkaria.layers.buildingsLayer;
+    var sprite = this.gameObject.spriteRenderer;
+
+    if (sprite === undefined) {
+        sprite = this.gameObject.addComponent(new engine.SpriteRenderer());
+        sprite.layer = vkaria.layers.buildingsLayer;
+    }
 
     //sprite.setSprite(vkaria.sprites.getSprite(SmokeScript.sprites[Math.round(Math.random()*2)]));
     sprite.setSprite(vkaria.sprites.getSprite("smoke.png"));

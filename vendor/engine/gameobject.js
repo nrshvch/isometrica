@@ -234,9 +234,12 @@ define(function (require) {
         }
     }
 
+    /**
+     * Takes it out of the world it is in, if any - see World#removeGameObject.
+     */
     p.destroy = function () {
-        this.world.removeGameObject(this);
-        this.world = null;
+        if (this.world !== null)
+            this.world.removeGameObject(this);
     }
 
     return GameObject;

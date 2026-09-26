@@ -21,15 +21,13 @@ Script.prototype.setHiliteData = function(hiliteData){
 
     r.borderDash = hiliteData.borderDash || null;
 
+    r.arrow = hiliteData.arrow || null;
 
-    var tile = vkaria.terrain.getTile(r.x, r.y);
-    var pos = tile.transform.getPosition();
-    t.setPosition(pos[0], pos[1], pos[2]);
-
-    var type = vkaria.core.world.terrain.getTerrainType(r.x, r.y);
-    //var gps = vkaria.core.world.terrain.getGridPoints(r.x, r.y);
+    if (hiliteData.arrowColor !== undefined)
+        r.arrowColor = hiliteData.arrowColor;
 
     var terrain = vkaria.core.world.terrain;
+    var type = terrain.getTerrainType(r.x, r.y);
 
     var gps = [
         terrain.getGridPointHeight(r.x, r.y),
@@ -41,10 +39,18 @@ Script.prototype.setHiliteData = function(hiliteData){
 
     //water is drawn flat at its surface, but shaping the ground means shaping
     //the bottom - so a hilite that asks for it follows the ground underneath
-    if (type === 0 && hiliteData.underwater === true) {
-        t.setPosition(pos[0], gps[2] * zStep, pos[2]);
+    if (type === 0 && hiliteData.underwater === true)
         type = -1;
-    }
+
+    //where the tile itself is drawn (see client Terrain) - worked out rather
+    //than read off it, since a hilite may well go on a tile that is not drawn:
+    //one reaching past the edge of what is loaded, or left behind while the
+    //map was panned away
+    t.setPosition(
+        r.x * Config.tileSize,
+        type === 0 ? 0 : gps[2] * zStep,
+        r.y * Config.tileSize
+    );
 
     if (type === 0) {
         r.points[0][1] = 0;

@@ -32,13 +32,11 @@ BuildingView.prototype.update = function () {
             tileSize = Config.tileSize,
             tileZStep = Config.tileZStep;
 
-        //clear old GOs
-        var children = this.gameObject.transform.children,
-            len = children.length;
-        for (var i = 0; i < len; i++) {
-            var child = children[i];
-            child.gameObject.destroy();
-        }
+        //clear old GOs - each one lets go of the view as it is destroyed, so
+        //off a copy of the list
+        var children = this.gameObject.transform.children.slice();
+        for (var i = 0; i < children.length; i++)
+            children[i].gameObject.destroy();
 
         if (b.data.getState() === BuildingState.underConstruction) {
             var sizeX = 0,

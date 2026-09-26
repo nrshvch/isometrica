@@ -9,8 +9,9 @@
  *    nobody moves into looks like a bug rather than a missing street.
  *  - the ground a water tower waters, outlined in one continuous line the way
  *    the city limits are. Clicking a tower shows its reach and clicking
- *    anywhere else puts it away again; the same outline follows the cursor
- *    while a tower is being placed (see buildman).
+ *    anywhere else puts it away again; an outline of its own follows the
+ *    selection while a tower is being placed (see buildman), so the towers
+ *    already standing can be clicked to see how the two line up.
  *  - what a clicked building is worth: the money it makes or costs a tick,
  *    and how full it is - residents for a house, workers for a business.
  *    It is put away the same way the outline is.
@@ -214,38 +215,13 @@ function onBusyChange(sender, busy, self) {
     }
 }
 
-/**
- * Clicking a building shows what it is worth, and a water tower what it waters
- * as well. Clicking anything else - bare ground, a tree, the sea - puts them
- * away again.
- */
 function onClick(sender, e, self) {
     //while an action owns the world (placing a building, clearing ground) the
-    //outline belongs to that action, not to a stray click
+    //clicks are that action's - it passes on the ones it has no use for
     if (self.root.ui.gameScreen().worldScreen().busy())
         return;
 
-    var root = self.root,
-        building = root.buildman.pickBuilding(e.gameViewportX, e.gameViewportY);
-
-    //clicking the ground a tower stands on counts too - its sprite leaves the
-    //corners of its own tile showing
-    if (building === null) {
-        var tile = pickTile(root, e.gameViewportX, e.gameViewportY);
-        building = tile === -1 ? null : root.core.buildings.get(tile);
-    }
-
-    var radius = building === null ? 0 : CityWater.radius(building);
-
-    if (radius > 0)
-        self.showCoverage(building.tile, radius);
-    else
-        self.hideCoverage();
-
-    if (building !== null && hasInfo(building))
-        self.showInfo(building);
-    else
-        self.hideInfo();
+    self.inspect(e.gameViewportX, e.gameViewportY);
 }
 
 function ServiceMan(root) {
@@ -253,38 +229,102 @@ function ServiceMan(root) {
     this._views = {};
     this._labels = {};
     this._coverage = null;
+    this._placementCoverage = null;
     this._info = null;
     this._infoBuilding = null;
 }
 
 /**
- * Outlines the ground a tower on this tile waters - the very tiles CityWater
- * goes on to count as watered.
+ * Clicking a building shows what it is worth, and a water tower what it waters
+ * as well. Clicking anything else - bare ground, a tree, the sea - puts them
+ * away again.
+ *
+ * @param screenX {number} where the click was, in viewport pixels
+ * @param screenY {number}
+ */
+ServiceMan.prototype.inspect = function (screenX, screenY) {
+    var root = this.root,
+        building = root.buildman.pickBuilding(screenX, screenY);
+
+    //clicking the ground a tower stands on counts too - its sprite leaves the
+    //corners of its own tile showing
+    if (building === null) {
+        var tile = pickTile(root, screenX, screenY);
+        building = tile === -1 ? null : root.core.buildings.get(tile);
+    }
+
+    var radius = building === null ? 0 : CityWater.radius(building);
+
+    if (radius > 0)
+        this.showCoverage(building.tile, radius);
+    else
+        this.hideCoverage();
+
+    if (building !== null && hasInfo(building))
+        this.showInfo(building);
+    else
+        this.hideInfo();
+};
+
+/**
+ * Outlines the ground towers on these tiles water - the very tiles CityWater
+ * goes on to count as watered - in the renderer kept under key, made on first
+ * use.
+ */
+function showCoverage(self, key, towers, radius) {
+    var tiles = [],
+        coverage = self[key],
+        i;
+
+    for (i = 0; i < towers.length; i++)
+        tiles = tiles.concat(CityWater.coverage(towers[i], radius));
+
+    if (coverage === null) {
+        var go = new engine.GameObject("waterCoverage");
+
+        coverage = self[key] = go.addComponent(
+            new TileAreaBorderRenderer(self.root.core.terrain, tiles));
+
+        self.root.game.logic.world.addGameObject(go);
+    } else {
+        coverage.setTiles(tiles);
+    }
+}
+
+function hideCoverage(self, key) {
+    if (self[key] !== null) {
+        self[key].gameObject.destroy();
+        self[key] = null;
+    }
+}
+
+/**
+ * What a tower that was clicked waters.
  *
  * @param tile {number}
  * @param radius {number}
  */
 ServiceMan.prototype.showCoverage = function (tile, radius) {
-    var tiles = CityWater.coverage(tile, radius),
-        coverage = this._coverage;
-
-    if (coverage === null) {
-        var go = new engine.GameObject("waterCoverage");
-
-        coverage = this._coverage = go.addComponent(
-            new TileAreaBorderRenderer(this.root.core.terrain, tiles));
-
-        this.root.game.logic.world.addGameObject(go);
-    } else {
-        coverage.setTiles(tiles);
-    }
+    showCoverage(this, "_coverage", [tile], radius);
 };
 
 ServiceMan.prototype.hideCoverage = function () {
-    if (this._coverage !== null) {
-        this._coverage.gameObject.destroy();
-        this._coverage = null;
-    }
+    hideCoverage(this, "_coverage");
+};
+
+/**
+ * What towers about to be put down on these tiles would water, all of them
+ * together - kept apart from the one a click shows, so both can be up at once.
+ *
+ * @param tiles {number[]}
+ * @param radius {number}
+ */
+ServiceMan.prototype.showPlacementCoverage = function (tiles, radius) {
+    showCoverage(this, "_placementCoverage", tiles, radius);
+};
+
+ServiceMan.prototype.hidePlacementCoverage = function () {
+    hideCoverage(this, "_placementCoverage");
 };
 
 /**

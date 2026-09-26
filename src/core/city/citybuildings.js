@@ -96,14 +96,48 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
 };
 
 /**
- * What putting code down on every tile from tile0 to tile1 would come to,
+ * Where the buildings go when the tiles from tile0 to tile1 are covered with
+ * code: the area is tiled with its footprint from its near corner on, one
+ * building to a footprint, and a footprint that would reach out past the far
+ * corner is left out. In the order a build of the selection goes through them.
+ *
+ * @param code {number}
+ * @param tile0 {number}
+ * @param tile1 {number}
+ * @param [rotation] {boolean}
+ * @returns {number[]} the tile each building would stand on
+ */
+CityBuildings.selectionAnchors = function (code, tile0, tile1, rotation) {
+    var data = BuildingData[parseInt(code, 10)],
+        sizeX = rotation ? data.sizeY : data.sizeX,
+        sizeY = rotation ? data.sizeX : data.sizeY,
+        t0 = Terrain.min(tile0, tile1),
+        t1 = Terrain.max(tile0, tile1),
+        x0 = Terrain.extractX(t0),
+        y0 = Terrain.extractY(t0),
+        x1 = Terrain.extractX(t1),
+        y1 = Terrain.extractY(t1),
+        r = [],
+        x, y;
+
+    for (y = y0; y + sizeY - 1 <= y1; y += sizeY) {
+        for (x = x0; x + sizeX - 1 <= x1; x += sizeX)
+            r.push(Terrain.convertToIndex(x, y));
+    }
+
+    return r;
+};
+
+/**
+ * What covering the tiles from tile0 to tile1 with code would come to,
  * without putting anything down - so the bill can be shown before the click.
  *
- * Walks the tiles in the order a build of the selection does, and holds what
- * the ones before would have taken against the ones after: the footprints
- * they would stand on, the money they would have spent, a city hall one of
- * them would have put up. A tile the build would turn down is left out, save
- * one turned down for want of money only - its price is still worth knowing.
+ * Goes through the buildings in the order a build of the selection does (see
+ * CityBuildings.selectionAnchors), and holds what the ones before would have
+ * taken against the ones after: the money they would have spent, a city hall
+ * one of them would have put up. A building the build would turn down is left
+ * out, save one turned down for want of money only - its price is still worth
+ * knowing.
  *
  * @param code {number}
  * @param tile0 {number}
@@ -119,20 +153,19 @@ CityBuildings.prototype.quoteSelection = function (code, tile0, tile1, rotation)
         sizeY = rotation ? data.sizeX : data.sizeY,
         resources = this.city.resources.getResources(),
         cost = data.constructionCost || {},
-        taken = Object.create(null),
         spent = Object.create(null),
         cityHall = this.cityHall !== null,
-        iter = new TileIterator(tile0, tile1),
+        anchors = CityBuildings.selectionAnchors(code, tile0, tile1, rotation),
         r = [],
-        tile, errorCode, clearing, money, footprint, key, enough;
+        tile, errorCode, clearing, money, key, enough, i;
 
-    while (!iter.done) {
-        tile = TileIterator.next(iter);
+    for (i = 0; i < anchors.length; i++) {
+        tile = anchors[i];
 
         errorCode = this.city.root.buildingService.test(code, tile, rotation);
 
         //the rest of buildTest, less what is about money - that is held
-        //against what the tiles before would have spent instead
+        //against what the buildings before would have spent instead
         if (errorCode === ErrorCode.NONE) {
             if (this.city.laboratoryService.getAvailableBuildings()[code] !== true)
                 errorCode = ErrorCode.BUILDING_NOT_AVAIL;
@@ -141,12 +174,6 @@ CityBuildings.prototype.quoteSelection = function (code, tile0, tile1, rotation)
             else if (data.classCode !== BuildingClassCode.road && !this.city.area.contains(
                     Terrain.extractX(tile), Terrain.extractY(tile), sizeX, sizeY))
                 errorCode = ErrorCode.OUTSIDE_CITY;
-        }
-
-        footprint = new TileIterator(tile, tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy);
-        while (errorCode === ErrorCode.NONE && !footprint.done) {
-            if (taken[TileIterator.next(footprint)])
-                errorCode = ErrorCode.TILE_TAKEN;
         }
 
         if (errorCode !== ErrorCode.NONE)
@@ -169,10 +196,6 @@ CityBuildings.prototype.quoteSelection = function (code, tile0, tile1, rotation)
         for (key in cost)
             spent[key] = (spent[key] || 0) + cost[key];
         spent[Resource.money] = (spent[Resource.money] || 0) + clearing;
-
-        footprint = new TileIterator(tile, tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy);
-        while (!footprint.done)
-            taken[TileIterator.next(footprint)] = true;
 
         if (code === BuildingCode.cityHall)
             cityHall = true;

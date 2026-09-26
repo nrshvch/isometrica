@@ -12,6 +12,13 @@ import * as glMatrix from "gl-matrix";
 var vec3Buffer1 = new Float32Array(3),
     mat4Buffer1 = new Float32Array(16);
 
+//an arrow lying on the tile: how far out from its middle the tip reaches, how
+//far back the base sits and how wide the base is either side - in tiles. Half
+//as long as it is wide
+var ARROW_TIP = 0.11,
+    ARROW_BASE = 0.11,
+    ARROW_HALF_WIDTH = 0.22;
+
 function Renderer(){
     engine.Renderer.call(this);
 
@@ -31,8 +38,54 @@ Renderer.prototype.borderColor = "rgba(0,0,0,0.5)";
 Renderer.prototype.borderWidth = 1;
 //a dash pattern for the border, or null for a solid line
 Renderer.prototype.borderDash = null;
+//[dx, dy] in tiles - an arrow drawn on the tile pointing that way, or null
+Renderer.prototype.arrow = null;
+Renderer.prototype.arrowColor = "white";
 
 Renderer.prototype.points = null;
+
+/**
+ * Where the point u, v tiles off the middle of the tile is on screen, lifted
+ * the way the tile's corners are so that it lies on its slope.
+ */
+function surfacePoint(out, points, u, v, M) {
+    var ts = Config.tileSize,
+        fx = u + 0.5,
+        fz = v + 0.5;
+
+    //the corners are p0 (-,-), p1 (-,+), p2 (+,+) and p3 (+,-)
+    out[0] = u * ts;
+    out[1] = points[0][1] * (1 - fx) * (1 - fz) + points[3][1] * fx * (1 - fz)
+        + points[1][1] * (1 - fx) * fz + points[2][1] * fx * fz;
+    out[2] = v * ts;
+
+    return glMatrix.vec3.transformMat4(out, out, M);
+}
+
+function renderArrow(self, layer, M) {
+    var dx = self.arrow[0],
+        dz = self.arrow[1],
+        len = Math.sqrt(dx * dx + dz * dz),
+        points = self.points,
+        p = vec3Buffer1;
+
+    dx /= len;
+    dz /= len;
+
+    layer.beginPath();
+    surfacePoint(p, points, dx * ARROW_TIP, dz * ARROW_TIP, M);
+    layer.moveTo(p[0], p[1]);
+    surfacePoint(p, points, -dx * ARROW_BASE - dz * ARROW_HALF_WIDTH, -dz * ARROW_BASE + dx * ARROW_HALF_WIDTH, M);
+    layer.lineTo(p[0], p[1]);
+    surfacePoint(p, points, -dx * ARROW_BASE + dz * ARROW_HALF_WIDTH, -dz * ARROW_BASE - dx * ARROW_HALF_WIDTH, M);
+    layer.lineTo(p[0], p[1]);
+    layer.closePath();
+
+    layer.save();
+    layer.fillStyle = self.arrowColor;
+    layer.fill();
+    layer.restore();
+}
 
 Renderer.prototype.render = function(layer, viewportRenderer){
     var vec3 = glMatrix.vec3,
@@ -64,6 +117,9 @@ Renderer.prototype.render = function(layer, viewportRenderer){
         layer.fill();
     }
     layer.restore();
+
+    if (this.arrow !== null)
+        renderArrow(this, layer, M);
 };
 
 export default Renderer;
