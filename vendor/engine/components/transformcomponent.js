@@ -29,6 +29,15 @@ define(function (require) {
 
         this.worldToLocal = new Float32Array(identityMat4Values);
 
+        //own from the start, defaults kept, so that every transform has the
+        //same shape - set later, in whichever order a transform happened to
+        //move or get a parent, they left the hot getLocalToWorld juggling
+        //several of them
+        this.gameObject = null;
+        this.parent = null;
+        this.dirtyL = false;
+        this.dirtyW = false;
+
         //When parent updates, our coords changes
         //so let's set flag to update out matrices
         var self = this;

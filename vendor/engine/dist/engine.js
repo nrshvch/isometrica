@@ -484,6 +484,15 @@ define('engine/components/transformcomponent',['require','namespace','../compone
 
         this.worldToLocal = new Float32Array(identityMat4Values);
 
+        //own from the start, defaults kept, so that every transform has the
+        //same shape - set later, in whichever order a transform happened to
+        //move or get a parent, they left the hot getLocalToWorld juggling
+        //several of them
+        this.gameObject = null;
+        this.parent = null;
+        this.dirtyL = false;
+        this.dirtyW = false;
+
         //When parent updates, our coords changes
         //so let's set flag to update out matrices
         var self = this;
@@ -3488,6 +3497,18 @@ define('engine/components/spriterenderer',['require','namespace','./renderer','.
 
         this.enabled = false;
         this.t = Vec3.transformMat4;
+
+        //Everything culling and drawing read is the sprite's own from the
+        //start, in the same order - defaults kept - so that every sprite has
+        //one shape and the loop over tens of thousands of them stays on V8's
+        //fast path. Filled in later, one at a time and in whatever order,
+        //they left it juggling several.
+        this.gameObject = null;
+        this.sprite = this.sprite;
+        this.pivotX = this.pivotX;
+        this.pivotY = this.pivotY;
+        this.opacity = 1;
+        this.layer = this.layer;
     }
 
     var p = Sprite.prototype = Object.create(Component.prototype);
