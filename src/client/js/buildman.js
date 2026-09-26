@@ -508,8 +508,10 @@ Buildman.prototype.build = function (code) {
     var ts = new AreaSelector(this.root, {
         stepX: sizeX(),
         stepY: sizeY(),
-        //a road pulled out can turn a corner on the way
-        turns: data.classCode === BuildingClassCode.road
+        //a road is laid a line at a time: pulled out it can turn a corner on
+        //the way, and there is no rectangle to pull by its corners
+        turns: data.classCode === BuildingClassCode.road,
+        corners: data.classCode !== BuildingClassCode.road
     });
     var previews = [];
     //roads already standing that are showing what they would turn into
