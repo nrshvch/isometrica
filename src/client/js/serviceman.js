@@ -232,15 +232,20 @@ function ServiceMan(root) {
     this._placementCoverage = null;
     this._info = null;
     this._infoBuilding = null;
+    //what a click is showing, info or reach or both - clicked again, it is
+    //put away
+    this._inspected = null;
 }
 
 /**
  * Clicking a building shows what it is worth, and a water tower what it waters
- * as well. Clicking anything else - bare ground, a tree, the sea - puts them
- * away again.
+ * as well. Clicking it again puts them away, and so does clicking anything
+ * else - bare ground, a tree, the sea.
  *
  * @param screenX {number} where the click was, in viewport pixels
  * @param screenY {number}
+ * @returns {boolean} whether it landed on something there is anything to show
+ *                    for, rather than on bare ground or a tree
  */
 ServiceMan.prototype.inspect = function (screenX, screenY) {
     var root = this.root,
@@ -253,7 +258,16 @@ ServiceMan.prototype.inspect = function (screenX, screenY) {
         building = tile === -1 ? null : root.core.buildings.get(tile);
     }
 
-    var radius = building === null ? 0 : CityWater.radius(building);
+    var radius = building === null ? 0 : CityWater.radius(building),
+        shown = radius > 0 || (building !== null && hasInfo(building));
+
+    //the same one again - it was clicked to put away, which still makes it
+    //something that was there to click
+    if (shown && building === this._inspected) {
+        this.hideCoverage();
+        this.hideInfo();
+        return true;
+    }
 
     if (radius > 0)
         this.showCoverage(building.tile, radius);
@@ -264,6 +278,10 @@ ServiceMan.prototype.inspect = function (screenX, screenY) {
         this.showInfo(building);
     else
         this.hideInfo();
+
+    this._inspected = shown ? building : null;
+
+    return shown;
 };
 
 /**
@@ -310,6 +328,8 @@ ServiceMan.prototype.showCoverage = function (tile, radius) {
 
 ServiceMan.prototype.hideCoverage = function () {
     hideCoverage(this, "_coverage");
+    //put away by whatever means, the next click on it shows it again
+    this._inspected = null;
 };
 
 /**
@@ -372,6 +392,8 @@ ServiceMan.prototype.hideInfo = function () {
         this._info = null;
         this._infoBuilding = null;
     }
+
+    this._inspected = null;
 };
 
 ServiceMan.prototype.init = function () {

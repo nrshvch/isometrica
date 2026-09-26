@@ -3,16 +3,18 @@
  *
  * The selection starts out on the tile in the middle of the screen, and stays
  * put while the map is panned - a drag anywhere else still pans it, and a tap
- * still shows what a building is doing, so the spot can be looked for with
- * the selection already up. On a phone there is no cursor to follow and no
- * telling a pan from a pick until the finger moves, so the selection is never
- * drawn out by dragging:
+ * on a building still shows what it is doing, so the spot can be looked for
+ * with the selection already up. On a phone there is no cursor to follow and
+ * no telling a pan from a pick until the finger moves, so the selection is
+ * never drawn out by dragging:
  *
  *  - dragging the selection moves it, held by the tile it was grabbed at, so
  *    it follows the finger rather than jumping under it
+ *  - tapping bare ground puts it there instead, back down to one footprint
  *  - the ring of tiles around it are handles, each with an arrow pointing the
  *    way it resizes: one on an edge moves that edge alone, one on a corner
- *    the two edges meeting there
+ *    the two edges meeting there. Pulled in past the other side, it goes on
+ *    to grow out that way - no lifting the finger to turn round
  *
  * A selection that stands for buildings is kept to a whole number of their
  * footprints, and turns round along with them - see AreaSelector#rotate.
@@ -212,19 +214,39 @@ function onDrag(sender, param, me) {
         return;
     }
 
-    //an edge is pulled along its own axis only, and never past the one
-    //across from it - whatever the finger does, one step is left
-    if (handle.dx > 0)
-        x1 = x0 + snap(x1 + dx - x0 + 1, me._stepX) - 1;
-    else if (handle.dx < 0)
-        x0 = x1 - snap(x1 - (x0 + dx) + 1, me._stepX) + 1;
+    //an edge is pulled along its own axis only
+    var x = handle.dx === 0 ? [x0, x1] : pull(x0, x1, handle.dx, dx, me._stepX),
+        y = handle.dy === 0 ? [y0, y1] : pull(y0, y1, handle.dy, dy, me._stepY);
 
-    if (handle.dy > 0)
-        y1 = y0 + snap(y1 + dy - y0 + 1, me._stepY) - 1;
-    else if (handle.dy < 0)
-        y0 = y1 - snap(y1 - (y0 + dy) + 1, me._stepY) + 1;
+    select(me, x[0], y[0], x[1], y[1]);
+}
 
-    select(me, x0, y0, x1, y1);
+/**
+ * Where the edge of lo - hi on side way (1 for hi, -1 for lo) ends up pulled
+ * by, with the handle kept under the finger: out, the side grows; in, it
+ * shrinks down to one step; and on past the other side it grows out that
+ * way instead, from the tile the other edge was on.
+ *
+ * @returns {number[]} the new lo and hi
+ */
+function pull(lo, hi, way, by, step) {
+    var fixed = way > 0 ? lo : hi,
+        edge = (way > 0 ? hi : lo) + by,
+        //how far across the edge is from the fixed tile, that tile counted
+        size = (edge - fixed) * way + 1,
+        //and across the other way - the handle is a tile out from the edge,
+        //so once it is round the other side the edge is two tiles further on
+        other = (fixed - edge) * way - 1,
+        far;
+
+    if (size < 1 && other >= 1) {
+        way = -way;
+        size = other;
+    }
+
+    far = fixed + way * (snap(size, step) - 1);
+
+    return [Math.min(fixed, far), Math.max(fixed, far)];
 }
 
 function onDragEnd(sender, e, me) {
@@ -236,11 +258,41 @@ function onDragEnd(sender, e, me) {
 }
 
 /**
- * A tap is not the selector's business - it shows what a building is doing,
- * the same as it does outside of any action.
+ * A single footprint about tile - in the middle of it, as near as whole tiles
+ * allow.
+ */
+function placeAt(me, tile, force) {
+    var x0 = Terrain.extractX(tile) - ((me._stepX - 1) >> 1),
+        y0 = Terrain.extractY(tile) - ((me._stepY - 1) >> 1);
+
+    select(me, x0, y0, x0 + me._stepX - 1, y0 + me._stepY - 1, force);
+}
+
+/**
+ * A tap on anything with something to show for it - a house, a tower - shows
+ * it, the same as it does outside of any action, and one on a city's name
+ * does nothing. So does one on the selection, or on what is being placed on
+ * it. A tap anywhere else on the ground puts the selection there, back down
+ * to one footprint.
  */
 function onClick(sender, e, me) {
-    me.root.serviceman.inspect(e.gameViewportX, e.gameViewportY);
+    var x = e.gameViewportX,
+        y = e.gameViewportY,
+        root = me.root,
+        hit;
+
+    //the city screen does not open while an action is running - but the name
+    //is still what was tapped, not the ground behind it
+    if (root.cityman.pickCity(x, y) !== null)
+        return;
+
+    hit = pick(me, x, y);
+
+    if (hit.preview || hit.tile === -1 || root.serviceman.inspect(x, y))
+        return;
+
+    if (!contains(me, Terrain.extractX(hit.tile), Terrain.extractY(hit.tile)))
+        placeAt(me, hit.tile);
 }
 
 //data is [host, event, subscription] - Events.off needs all three, a bare
@@ -287,18 +339,8 @@ function AreaSelector(root, options) {
     Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputDragEnd, des]);
     Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputClick, cs]);
 
-    //a footprint wider than a tile is put about the middle of the screen, as
-    //near as whole tiles allow
-    var tile = centerTile(this),
-        x0 = Terrain.extractX(tile) - ((this._stepX - 1) >> 1),
-        y0 = Terrain.extractY(tile) - ((this._stepY - 1) >> 1);
-
-    this._x0 = x0;
-    this._y0 = y0;
-    this._x1 = x0 + this._stepX - 1;
-    this._y1 = y0 + this._stepY - 1;
-
-    drawHandles(this);
+    //nobody is listening yet, but the handles are drawn all the same
+    placeAt(this, centerTile(this), true);
 }
 
 AreaSelector.events = events;
