@@ -66,6 +66,7 @@ function Cityman(root) {
 }
 
 Cityman.prototype.init = function () {
+    var self = this;
     var root = this.root;
     var cam = root.camera.cameraScript;
 
@@ -76,17 +77,10 @@ Cityman.prototype.init = function () {
         if (root.ui.gameScreen().worldScreen().busy())
             return;
 
-       var gos = cam.pickGameObject(e.gameViewportX, e.gameViewportY);
-        for(var i in gos){
-            var item = gos[i];
-            if(item instanceof CityLabel){
-                var cmp = item.getComponent(CityComponent);
-                var city = cmp.city;
-                var id = city.id();
-                console.log("CITY!!!", id);
-                root.ui.navigate("city", [id]);
-            }
-        }
+        var city = self.pickCity(e.gameViewportX, e.gameViewportY);
+
+        if (city !== null)
+            root.ui.navigate("city", [city.id()]);
     });
 
     //a city loaded from a save was put into the world before the client came
@@ -98,6 +92,22 @@ Cityman.prototype.init = function () {
 
     if (cities.length > 0)
         this.locate(cities[0]);
+};
+
+/**
+ * The city whose name was clicked on, if it was one.
+ *
+ * @returns {City|null}
+ */
+Cityman.prototype.pickCity = function (screenX, screenY) {
+    var gos = this.root.camera.cameraScript.pickGameObject(screenX, screenY);
+
+    for (var i = 0; i < gos.length; i++) {
+        if (gos[i] instanceof CityLabel)
+            return gos[i].getComponent(CityComponent).city;
+    }
+
+    return null;
 };
 
 Cityman.prototype.locate = function (city) {
