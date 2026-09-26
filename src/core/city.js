@@ -154,13 +154,14 @@ City.prototype.clearTile = function (tile) {
     var building = this.world.buildingService.get(tile),
         //roads may be laid outside of the borders, so they have to be
         //removable out there as well - any other building is city land only.
-        //A tree is part of the world, not of the city, so it can go anywhere
+        //A tree or a rock is part of the world, not of the city, so it can go
+        //anywhere
         allowed = building === null
             || this.areaService.contains(tile)
             || BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
 
     //bare ground has nothing to clear away, so it is free and does nothing
-    if (building === null && this.world.envService.getTree(tile) === null)
+    if (building === null && !this.world.envService.hasScenery(tile))
         return false;
 
     if (!allowed || !this.resourcesService.hasEnoughResource(Resource.money, Config.clearTileCost))
@@ -179,8 +180,9 @@ City.prototype.clearTile = function (tile) {
  *
  * Every tile the ground moves under is a tile modified, whether it was picked
  * or only dragged along: each costs terraformTileCost - ten times that for
- * water being raised - plus clearing whatever tree grew on it. Nothing may
- * stand on any of them, so a building anywhere in the way stops the whole thing.
+ * water being raised - plus clearing whatever tree or rock was on it. Nothing
+ * may stand on any of them, so a building anywhere in the way stops the whole
+ * thing.
  *
  * @param tiles {number[]}
  * @param direction {number} 1 to raise, -1 to lower
@@ -210,7 +212,7 @@ City.prototype.terraform = function (tiles, direction) {
             * (direction > 0 && terrain.getTerrainType(tile) === TerrainType.water
                 ? Config.terraformWaterFactor : 1);
 
-        if (world.envService.getTree(tile) !== null)
+        if (world.envService.hasScenery(tile))
             cost += Config.clearTileCost;
     }
 

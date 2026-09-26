@@ -47,6 +47,9 @@ define(function(require){
             cam.setup(viewport.width, viewport.height, 100);
 
             glMatrix.mat4.mul(cam.worldToViewportMatrix, cam.projectionMatrix, cam.gameObject.transform.getWorldToLocal());
+
+            //it sees more or less of the world now, if from the same spot
+            cam.dispatchEvent(cam.events.update);
         };
     }
 
@@ -72,6 +75,20 @@ define(function(require){
     CameraComponent.prototype.worldToScreenMatrix = null;
     CameraComponent.prototype.worldToViewportMatrix = null;
 
+    /**
+     * How much larger than life it shows things: 2 is twice as close, 0.5
+     * twice as far.
+     *
+     * It is the camera's resolution rather than its lens - it renders its
+     * viewport's size divided by this, in pixels, and that picture is
+     * stretched over the viewport (see Viewport#setSize). Everything that
+     * draws, or picks what is under the pointer, keeps working in the
+     * camera's own pixels, a sprite's pixel is still one of them, and the
+     * pointer comes in those same pixels.
+     * @type {number}
+     */
+    CameraComponent.prototype.zoom = 1;
+
     CameraComponent.prototype.setup = function (width, height, length) {
 
         //update frustum size
@@ -91,6 +108,13 @@ define(function(require){
         //update aabbox
         this.bounds.Calculate(this.frustumBox);
     }
+
+    CameraComponent.prototype.setZoom = function (zoom) {
+        this.zoom = zoom;
+
+        if (this.viewport !== null && this.viewport.displayWidth !== null)
+            this.viewport.setSize(this.viewport.displayWidth, this.viewport.displayHeight);
+    };
 
     CameraComponent.prototype.setViewport = function (viewport) {
         this.viewport = viewport;

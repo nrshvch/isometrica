@@ -7,7 +7,11 @@ var events = {
     inputClick: 1,
     inputDragStart: 2,
     inputDragEnd: 3,
-    inputDrag: 4
+    inputDrag: 4,
+    //{gameViewportX, gameViewportY, scale}, see Viewport#events.pinch
+    inputPinchStart: 5,
+    inputPinch: 6,
+    inputPinchEnd: 7
 };
 
 function CameraScript() {
@@ -74,6 +78,18 @@ function CameraScript() {
                 self.dispatchEvent(self.events.inputDragEnd, e);
         }
     }
+
+    this.onPinchStart = function (sender, e) {
+        self.dispatchEvent(self.events.inputPinchStart, e);
+    };
+
+    this.onPinch = function (sender, e) {
+        self.dispatchEvent(self.events.inputPinch, e);
+    };
+
+    this.onPinchEnd = function (sender, e) {
+        self.dispatchEvent(self.events.inputPinchEnd, e);
+    };
 }
 
 CameraScript.events = events;
@@ -101,6 +117,9 @@ CameraScript.prototype.onPointerMove = null;
 CameraScript.prototype.onPointerDown = null;
 CameraScript.prototype.onPointerUp = null;
 CameraScript.prototype.onPointerOut = null;
+CameraScript.prototype.onPinchStart = null;
+CameraScript.prototype.onPinch = null;
+CameraScript.prototype.onPinchEnd = null;
 CameraScript.prototype.panSens = 1;
 CameraScript.prototype._lock = false;
 
@@ -122,6 +141,9 @@ CameraScript.prototype.awake = function () {
         Events.on(viewport, viewport.events.pointerup, self.onPointerUp);
         Events.on(viewport, viewport.events.pointermove, self.onPointerMove);
         Events.on(viewport, viewport.events.pointerout, self.onPointerOut);
+        Events.on(viewport, viewport.events.pinchstart, self.onPinchStart);
+        Events.on(viewport, viewport.events.pinch, self.onPinch);
+        Events.on(viewport, viewport.events.pinchend, self.onPinchEnd);
     });
 
     camera.addEventListener(camera.events.viewportRemoved, function (camera) {
@@ -131,6 +153,9 @@ CameraScript.prototype.awake = function () {
         viewport.removeEventListener(viewport.events.pointerup, self.onPointerUp);
         viewport.removeEventListener(viewport.events.pointermove, self.onPointerMove);
         viewport.removeEventListener(viewport.events.pointerout, self.onPointerOut);
+        viewport.removeEventListener(viewport.events.pinchstart, self.onPinchStart);
+        viewport.removeEventListener(viewport.events.pinch, self.onPinch);
+        viewport.removeEventListener(viewport.events.pinchend, self.onPinchEnd);
     });
 
 
@@ -186,6 +211,44 @@ CameraScript.prototype.pan = function (x, y) {
         (-x * COS45 + y / COS45) / this.panSens, 0,
         (x * COS45 + y / COS45) / this.panSens, 'world'
     );
+};
+
+/**
+ * Zooms, keeping the ground that is at x, y on screen right there - the spot
+ * between the fingers, or under the pointer - or else the middle of it.
+ *
+ * @param [zoom] {number} see engine CameraComponent#zoom
+ * @param [x] {number} in viewport pixels at the zoom it is at now
+ * @param [y] {number}
+ * @returns {number|undefined} the zoom it is at, when not given one
+ */
+CameraScript.prototype.zoom = function (zoom, x, y) {
+    var camera = this.gameObject.camera,
+        from = camera.zoom,
+        viewport = camera.viewport;
+
+    if (zoom === undefined)
+        return from;
+
+    if (zoom === from || this._lock)
+        return;
+
+    if (viewport === null || x === undefined) {
+        camera.setZoom(zoom);
+        return;
+    }
+
+    //how far off the middle of the screen it is, in page pixels, which
+    //are the ones that stay where they are
+    var dx = (x - viewport.width / 2) * from,
+        dy = (y - viewport.height / 2) * from;
+
+    camera.setZoom(zoom);
+
+    //the camera zooms about the middle, so that ground is still dx / from
+    //of its pixels off it - and pixels of a new size, of which it should
+    //be dx / zoom
+    this.pan(dx / zoom - dx / from, dy / zoom - dy / from);
 };
 
 CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
