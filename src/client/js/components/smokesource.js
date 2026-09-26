@@ -66,9 +66,12 @@ SmokeSourceScript.prototype.spawnSmoke = function(){
  * Lets out one puff of smoke at that point in the world, to rise and fade
  * there - for whatever smokes on its own schedule rather than with a
  * SmokeSource on it, like a car.
+ *
+ * @param [looks] {string[]} SmokeScript.steam, the default, or SmokeScript.soot
  */
-SmokeSourceScript.puff = function (world, x, y, z) {
+SmokeSourceScript.puff = function (world, x, y, z, looks) {
     var smoke = getSmoke();
+    smoke.smoke.looks = looks || SmokeScript.steam;
     smoke.transform.setPosition(x, y, z);
     world.addGameObject(smoke);
 };

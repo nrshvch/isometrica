@@ -4,6 +4,7 @@ import Config from "./config";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import SmokeSource from "./components/smokesource";
+import SmokeScript from "./components/smokeScript";
 import VTime from "core/vtime";
 import CoreConfig from "core/config";
 import Vehicles from "data/vehicles";
@@ -86,7 +87,9 @@ var CARS_PER_ROAD = 1 / 4,
     EXHAUST_EVERY = 500,
     //and out of the engine while it stands broken down - as often as out of a
     //chimney
-    BREAKDOWN_SMOKE_EVERY = 300;
+    BREAKDOWN_SMOKE_EVERY = 300,
+    //how long a police car's lamp stays blue before it turns red, ms
+    LAMP_EVERY = 240;
 
 //game time that goes by in a millisecond of the real thing
 var GAME_SPEED = VTime.millisecondsPerTick / CoreConfig.tickDelay,
@@ -106,6 +109,9 @@ var COMMUTER = 0,
 var TRAFFIC = {
     van: ERRAND,
     truck: ERRAND,
+    //a cab and a police car go where they are called, at any hour
+    taxi: ERRAND,
+    police: ERRAND,
     bus: SHUTTLE
 };
 
@@ -390,6 +396,9 @@ CarScript.prototype.stops = null;
 CarScript.prototype.stalled = 0;
 //since the last puff of smoke out of it, ms
 CarScript.prototype.sinceSmoke = 0;
+//which flash of its lamp is showing, and how long it has been, ms
+CarScript.prototype.lamp = 0;
+CarScript.prototype.sinceLamp = 0;
 
 /**
  * Puts the car on the roads, off on a route. A light car starts where the
@@ -524,6 +533,8 @@ CarScript.prototype.dress = function (traffic) {
     this.type = type;
     this.looks = type.frames[color];
     this.heading = null;
+    this.lamp = type.lamps === null ? 0 : Math.random() * type.lamps.length | 0;
+    this.sinceLamp = 0;
     this.baseSpeed = SPEED * type.speed * (0.9 + Math.random() * 0.2);
     this.traffic = type.traffic;
     this.stops = null;
@@ -578,8 +589,8 @@ CarScript.prototype.breakDown = function () {
 
 /**
  * A puff of smoke every so often: out of the tailpipe while it drives, out of
- * the engine, more often, while it stands broken down. Each rises from where
- * it came out, so a car driving leaves a trail of them behind.
+ * the engine, more often and black, while it stands broken down. Each rises
+ * from where it came out, so a car driving leaves a trail of them behind.
  */
 CarScript.prototype.smoke = function (dt) {
     var broken = this.stalled > 0,
@@ -600,7 +611,8 @@ CarScript.prototype.smoke = function (dt) {
     SmokeSource.puff(this.gameObject.world,
         position[0] + at[0] * Config.tileSize,
         position[1] + at[1] * Config.tileZStep,
-        position[2] + at[2] * Config.tileSize
+        position[2] + at[2] * Config.tileSize,
+        broken ? SmokeScript.soot : SmokeScript.steam
     );
 };
 
@@ -623,6 +635,7 @@ CarScript.prototype.place = function () {
         renderer.setSprite(frame.sprite);
         renderer.pivotX = frame.pivotX;
         renderer.pivotY = frame.pivotY;
+        this.showLamp();
     }
 
     this.gameObject.transform.setPosition(
@@ -630,6 +643,36 @@ CarScript.prototype.place = function () {
         groundHeight(root, this.x, this.y) * Config.tileZStep,
         this.y * Config.tileSize
     );
+};
+
+/**
+ * Lays this flash of its lamp - or its sign, which is always the same one -
+ * over the car, the way it is facing now.
+ */
+CarScript.prototype.showLamp = function () {
+    var lamps = this.type.lamps;
+
+    this.gameObject.spriteRenderer.setLit(lamps === null ? null : lamps[this.lamp][this.heading]);
+};
+
+/**
+ * Blue, then red, and round again - for as long as there is more than one
+ * flash to show. A cab's sign has only the one and never changes.
+ */
+CarScript.prototype.blink = function (dt) {
+    var lamps = this.type.lamps;
+
+    if (lamps === null || lamps.length < 2)
+        return;
+
+    this.sinceLamp += dt;
+
+    if (this.sinceLamp < LAMP_EVERY)
+        return;
+
+    this.sinceLamp = 0;
+    this.lamp = (this.lamp + 1) % lamps.length;
+    this.showLamp();
 };
 
 CarScript.prototype.tick = function (time) {
@@ -649,6 +692,7 @@ CarScript.prototype.tick = function (time) {
     }
 
     this.smoke(time.dt);
+    this.blink(time.dt);
 
     if (this.stalled > 0) {
         this.stalled -= time.dt;
@@ -691,6 +735,52 @@ CarScript.prototype.tick = function (time) {
         this.breakDown();
 };
 
+/**
+ * Draws a vehicle, and over it whatever gives off light of its own - a police
+ * car's lamp, a cab's sign. The lit part is a picture of its own laid on top
+ * rather than a picture of the whole car per flash, and it is drawn by this
+ * one renderer so that it is sorted, and moves, with the car itself and
+ * nothing can come between the two.
+ *
+ * It is also where a darkened car will part company with its lamp: night
+ * shading belongs on the draw below, not on this one.
+ */
+function VehicleRenderer() {
+    engine.SpriteRenderer.call(this);
+}
+
+VehicleRenderer.prototype = Object.create(engine.SpriteRenderer.prototype);
+
+VehicleRenderer.prototype.constructor = VehicleRenderer;
+
+//{sprite, pivotX, pivotY}, or null for a vehicle with nothing lit on it
+VehicleRenderer.prototype.lit = null;
+
+VehicleRenderer.prototype.setLit = function (lit) {
+    this.lit = lit;
+};
+
+VehicleRenderer.prototype.render = function (layer, viewportRenderer, viewport, self) {
+    engine.SpriteRenderer.prototype.render.call(self, layer, viewportRenderer, viewport, self);
+
+    var lit = self.lit;
+
+    if (lit === null)
+        return;
+
+    var sprite = lit.sprite;
+
+    if (sprite.width === 0)
+        return;
+
+    //where the vehicle itself was just drawn; the lamp was painted standing on
+    //the car, about the same point, so its own pivot puts it back there
+    var buffer = self.buf;
+
+    layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, sprite.width, sprite.height,
+        (buffer[0] - lit.pivotX) | 0, (buffer[1] - lit.pivotY) | 0, sprite.width, sprite.height);
+};
+
 function Car(man) {
     engine.GameObject.init(this, "car");
 
@@ -699,7 +789,7 @@ function Car(man) {
     //behind every building there is - including the porch or the fence of one
     //standing behind it, which is drawn over the road in front of it. Among
     //the buildings a car is sorted by where it actually is instead.
-    var renderer = new engine.SpriteRenderer();
+    var renderer = new VehicleRenderer();
     renderer.layer = RenderLayer.buildingsLayer;
     this.addComponent(renderer);
 
@@ -974,6 +1064,19 @@ function loadTypes(self) {
     sprites.whenReady(image, function () {
         var types = [], total = 0, night = 0;
 
+        //one picture out of the vehicles image, by where the data says it is
+        function cut(f) {
+            var sprite = new engine.SpriteManager.Sprite();
+
+            sprite.sourceImage = image.sourceImage;
+            sprite.offsetX = image.offsetX + f[0];
+            sprite.offsetY = image.offsetY + f[1];
+            sprite.width = f[2];
+            sprite.height = f[3];
+
+            return {sprite: sprite, pivotX: f[4], pivotY: f[5]};
+        }
+
         Object.keys(Vehicles.types).forEach(function (name) {
             var data = Vehicles.types[name],
                 type = {
@@ -981,7 +1084,9 @@ function loadTypes(self) {
                     speed: data.speed,
                     weight: data.weight,
                     traffic: TRAFFIC[name] !== undefined ? TRAFFIC[name] : COMMUTER,
-                    frames: {}
+                    frames: {},
+                    //what is lit on it, a flash at a time: [{"x+": picture, ...}]
+                    lamps: null
                 };
 
             Object.keys(data.colors).forEach(function (color) {
@@ -989,28 +1094,30 @@ function loadTypes(self) {
 
                 Object.keys(data.colors[color]).forEach(function (heading) {
                     var f = data.colors[color][heading],
-                        sprite = new engine.SpriteManager.Sprite();
+                        look = looks[heading] = cut(f);
 
-                    sprite.sourceImage = image.sourceImage;
-                    sprite.offsetX = image.offsetX + f[0];
-                    sprite.offsetY = image.offsetY + f[1];
-                    sprite.width = f[2];
-                    sprite.height = f[3];
-
-                    looks[heading] = {
-                        sprite: sprite,
-                        pivotX: f[4],
-                        pivotY: f[5],
-                        engine: [f[6], f[7], f[8]],
-                        tailpipe: [f[9], f[10], f[11]]
-                    };
+                    look.engine = [f[6], f[7], f[8]];
+                    look.tailpipe = [f[9], f[10], f[11]];
                 });
             });
+
+            if (data.lamps !== undefined) {
+                type.lamps = data.lamps.map(function (phase) {
+                    var pictures = {};
+
+                    Object.keys(phase).forEach(function (heading) {
+                        pictures[heading] = cut(phase[heading]);
+                    });
+
+                    return pictures;
+                });
+            }
 
             types.push(type);
             total += type.weight;
 
-            //what still runs in the small hours: the vans and the lorries
+            //what still runs in the small hours: the vans and the lorries,
+            //the cabs and the police
             if (type.traffic === ERRAND)
                 night += type.weight;
         });

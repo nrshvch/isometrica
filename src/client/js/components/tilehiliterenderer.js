@@ -19,6 +19,10 @@ var ARROW_TIP = 0.11,
     ARROW_BASE = 0.11,
     ARROW_HALF_WIDTH = 0.22;
 
+//a square lying in the middle of the tile, half as wide as it is either way -
+//in tiles. As wide as an arrow is long
+var SQUARE_HALF = 0.11;
+
 function Renderer(){
     engine.Renderer.call(this);
 
@@ -40,7 +44,10 @@ Renderer.prototype.borderWidth = 1;
 Renderer.prototype.borderDash = null;
 //[dx, dy] in tiles - an arrow drawn on the tile pointing that way, or null
 Renderer.prototype.arrow = null;
-Renderer.prototype.arrowColor = "white";
+//a small square drawn in the middle of the tile
+Renderer.prototype.square = false;
+//the arrow's or the square's
+Renderer.prototype.markerColor = "white";
 
 Renderer.prototype.points = null;
 
@@ -82,7 +89,29 @@ function renderArrow(self, layer, M) {
     layer.closePath();
 
     layer.save();
-    layer.fillStyle = self.arrowColor;
+    layer.fillStyle = self.markerColor;
+    layer.fill();
+    layer.restore();
+}
+
+function renderSquare(self, layer, M) {
+    var points = self.points,
+        p = vec3Buffer1,
+        h = SQUARE_HALF;
+
+    layer.beginPath();
+    surfacePoint(p, points, -h, -h, M);
+    layer.moveTo(p[0], p[1]);
+    surfacePoint(p, points, h, -h, M);
+    layer.lineTo(p[0], p[1]);
+    surfacePoint(p, points, h, h, M);
+    layer.lineTo(p[0], p[1]);
+    surfacePoint(p, points, -h, h, M);
+    layer.lineTo(p[0], p[1]);
+    layer.closePath();
+
+    layer.save();
+    layer.fillStyle = self.markerColor;
     layer.fill();
     layer.restore();
 }
@@ -120,6 +149,9 @@ Renderer.prototype.render = function(layer, viewportRenderer){
 
     if (this.arrow !== null)
         renderArrow(this, layer, M);
+
+    if (this.square)
+        renderSquare(this, layer, M);
 };
 
 export default Renderer;

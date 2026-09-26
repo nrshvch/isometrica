@@ -205,40 +205,46 @@ namespace("Isometrica.Core").Terrain = Terrain;
     //Terrain.prototype.events = events;
 
     /**
-     * Works out what levelling the rectangle of tiles between tile0 and tile1
-     * would do to the ground, without doing it.
+     * Works out what levelling tiles would do to the ground, without doing it.
      *
-     * The rectangle is levelled as one: ground that is not flat is brought to
-     * its highest corner going up and to its lowest going down, and ground that
-     * is flat already goes a whole step up or down. Every grid point around it
-     * that ends up more than a step from its neighbour is dragged along, so the
-     * slopes around the levelled ground stay ones the tiles can draw.
+     * The tiles are levelled as one, whatever shape they make: ground that is
+     * not flat is brought to its highest corner going up and to its lowest
+     * going down, and ground that is flat already goes a whole step up or
+     * down. Every grid point around it that ends up more than a step from its
+     * neighbour is dragged along, so the slopes around the levelled ground
+     * stay ones the tiles can draw.
      *
-     * @param tile0 {number}
-     * @param tile1 {number}
+     * @param tiles {number[]}
      * @param direction {number} 1 to raise, -1 to lower
      * @returns {{points: Object, tiles: number[]}|null}
      *          points: grid point -> its new height, for every point that moves
      *          tiles: every tile with a corner that moves
      *          or null when it would drag more of the land along than it may
      */
-    Terrain.prototype.planLevel = function (tile0, tile1, direction) {
-        var t0 = min(tile0, tile1),
-            t1 = max(tile0, tile1),
-            x0 = Terrain.extractX(t0),
-            y0 = Terrain.extractY(t0),
-            x1 = Terrain.extractX(t1) + 1,
-            y1 = Terrain.extractY(t1) + 1,
+    Terrain.prototype.planLevel = function (tiles, direction) {
+        var corners = [],
+            seenCorner = Object.create(null),
             points = Object.create(null),
             queue = [],
             count = 0,
             lo = Infinity,
             hi = -Infinity,
-            target, x, y, p, z, h, hn, nbs, i;
+            target, x, y, p, z, h, hn, nbs, i, j;
 
-        for (x = x0; x <= x1; x++) {
-            for (y = y0; y <= y1; y++) {
-                z = this.getGridPointHeight(x, y);
+        //the corners of tile x, y are the grid points x, y to x + 1, y + 1
+        for (i = 0; i < tiles.length; i++) {
+            for (j = 0; j < 4; j++) {
+                x = Terrain.extractX(tiles[i]) + (j & 1);
+                y = Terrain.extractY(tiles[i]) + (j >> 1);
+                p = Terrain.convertToIndex(x, y);
+
+                if (seenCorner[p] === true)
+                    continue;
+
+                seenCorner[p] = true;
+                corners.push(p);
+
+                z = this.getGridPointHeight(p);
                 lo = Math.min(lo, z);
                 hi = Math.max(hi, z);
             }
@@ -249,15 +255,13 @@ namespace("Isometrica.Core").Terrain = Terrain;
         else
             target = direction > 0 ? hi : lo;
 
-        for (x = x0; x <= x1; x++) {
-            for (y = y0; y <= y1; y++) {
-                p = Terrain.convertToIndex(x, y);
+        for (i = 0; i < corners.length; i++) {
+            p = corners[i];
 
-                if (this.getGridPointHeight(p) !== target) {
-                    points[p] = target;
-                    queue.push(p);
-                    count++;
-                }
+            if (this.getGridPointHeight(p) !== target) {
+                points[p] = target;
+                queue.push(p);
+                count++;
             }
         }
 

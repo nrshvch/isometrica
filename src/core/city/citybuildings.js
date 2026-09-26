@@ -96,56 +96,21 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
 };
 
 /**
- * Where the buildings go when the tiles from tile0 to tile1 are covered with
- * code: the area is tiled with its footprint from its near corner on, one
- * building to a footprint, and a footprint that would reach out past the far
- * corner is left out. In the order a build of the selection goes through them.
+ * What putting code down on each of anchors would come to, without putting
+ * anything down - so the bill can be shown before the click.
+ *
+ * Goes through them in the order a build of the selection does, and holds
+ * what the ones before would have taken against the ones after: the money
+ * they would have spent, a city hall one of them would have put up. A
+ * building the build would turn down is left out, save one turned down for
+ * want of money only - its price is still worth knowing.
  *
  * @param code {number}
- * @param tile0 {number}
- * @param tile1 {number}
- * @param [rotation] {boolean}
- * @returns {number[]} the tile each building would stand on
- */
-CityBuildings.selectionAnchors = function (code, tile0, tile1, rotation) {
-    var data = BuildingData[parseInt(code, 10)],
-        sizeX = rotation ? data.sizeY : data.sizeX,
-        sizeY = rotation ? data.sizeX : data.sizeY,
-        t0 = Terrain.min(tile0, tile1),
-        t1 = Terrain.max(tile0, tile1),
-        x0 = Terrain.extractX(t0),
-        y0 = Terrain.extractY(t0),
-        x1 = Terrain.extractX(t1),
-        y1 = Terrain.extractY(t1),
-        r = [],
-        x, y;
-
-    for (y = y0; y + sizeY - 1 <= y1; y += sizeY) {
-        for (x = x0; x + sizeX - 1 <= x1; x += sizeX)
-            r.push(Terrain.convertToIndex(x, y));
-    }
-
-    return r;
-};
-
-/**
- * What covering the tiles from tile0 to tile1 with code would come to,
- * without putting anything down - so the bill can be shown before the click.
- *
- * Goes through the buildings in the order a build of the selection does (see
- * CityBuildings.selectionAnchors), and holds what the ones before would have
- * taken against the ones after: the money they would have spent, a city hall
- * one of them would have put up. A building the build would turn down is left
- * out, save one turned down for want of money only - its price is still worth
- * knowing.
- *
- * @param code {number}
- * @param tile0 {number}
- * @param tile1 {number}
+ * @param anchors {number[]} the tile each building would stand on
  * @param [rotation] {boolean}
  * @returns {{tile: number, cost: number, error: number}[]}
  */
-CityBuildings.prototype.quoteSelection = function (code, tile0, tile1, rotation) {
+CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
     code = parseInt(code, 10);
 
     var data = BuildingData[code],
@@ -155,7 +120,6 @@ CityBuildings.prototype.quoteSelection = function (code, tile0, tile1, rotation)
         cost = data.constructionCost || {},
         spent = Object.create(null),
         cityHall = this.cityHall !== null,
-        anchors = CityBuildings.selectionAnchors(code, tile0, tile1, rotation),
         r = [],
         tile, errorCode, clearing, money, key, enough, i;
 

@@ -10,6 +10,15 @@ SmokeScript.prototype.ttl = 1600;
 SmokeScript.prototype.startedAt = 0;
 SmokeScript.prototype.spriten = 0;
 
+//white, out of a chimney
+SmokeScript.steam = ["smoke.png", "smoke1.png", "smoke2.png"];
+
+//black, out of an engine on fire - greyer and thinner the higher it gets
+SmokeScript.soot = ["smoke/soot0.png", "smoke/soot1.png", "smoke/soot2.png"];
+
+//what the puff looks like as it rises, one picture after another
+SmokeScript.prototype.looks = SmokeScript.steam;
+
 //runs every time the puff is put back into the world out of the pool, and
 //only the first time gives it something to be drawn with
 SmokeScript.prototype.start = function () {
@@ -21,7 +30,7 @@ SmokeScript.prototype.start = function () {
     }
 
     //sprite.setSprite(vkaria.sprites.getSprite(SmokeScript.sprites[Math.round(Math.random()*2)]));
-    sprite.setSprite(vkaria.sprites.getSprite("smoke.png"));
+    sprite.setSprite(vkaria.sprites.getSprite(this.looks[0]));
     sprite.setPivot(4,4);
 
     this.spriten = 0;
@@ -37,10 +46,10 @@ SmokeScript.prototype.tick = function (time) {
     var dtime = this.gameObject.world.logic.time.time - this.startedAt;
 
     if(this.spriten == 1 && dtime > this.ttl * 2/3){
-        this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("smoke2.png"));
+        this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite(this.looks[2]));
         this.spriten = 2;
     }else if(this.spriten == 0 && dtime > this.ttl * 1/3){
-        this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite("smoke1.png"));
+        this.gameObject.spriteRenderer.setSprite(vkaria.sprites.getSprite(this.looks[1]));
         this.spriten = 1;
     }
 
