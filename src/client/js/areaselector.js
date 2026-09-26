@@ -19,6 +19,9 @@
  *    lifting the finger to turn round. So the selection takes any shape, as
  *    long as it stays in one piece: pulled in, a row or a column stops at the
  *    footprint that would cut the rest off
+ *  - laying roads, a row or column pulled off to the side as well as along -
+ *    out, in, or in past its far end - runs to where the finger is along it,
+ *    turns the corner there and heads for the finger
  *  - where more than one row or column ends at the same tile - inside a U, in
  *    the crook of an L - the handle there is a square, and pulls whichever of
  *    them the finger goes along
@@ -349,7 +352,7 @@ function onDrag(sender, param, me) {
     var dx = Terrain.extractX(tile) - drag.x,
         dy = Terrain.extractY(tile) - drag.y,
         handle = drag.handle,
-        cells, by, way, next, rx, ry, b, i, j, k;
+        cells, by, side, way, next, rx, ry, b, i, j, k;
 
     if (drag.mode === MOVE) {
         select(me, drag.ox + dx, drag.oy + dy, drag.cells);
@@ -377,20 +380,31 @@ function onDrag(sender, param, me) {
                 add(cells, i, j);
         }
     } else {
-        //a row or a column pulled in stops short of cutting any of the rest
-        //of the selection off - it goes a footprint at a time, so it stops
-        //right at the one that would
         by = handle.dx !== 0 ? steps(dx, me._stepX) : steps(dy, me._stepY);
-        way = by < 0 ? -1 : 1;
-        cells = drag.cells;
+        side = handle.dx !== 0 ? steps(dy, me._stepY) : steps(dx, me._stepX);
 
-        for (k = way; k * way <= by * way; k += way) {
-            next = pullRun(drag.cells, handle, k);
+        //pulled off to the side as well, it turns the corner towards the
+        //finger wherever along it the finger is - as long as that cuts
+        //nothing off
+        next = me._turns && side !== 0 ? pullRun(drag.cells, handle, by, side) : null;
 
-            if (!connected(next))
-                break;
-
+        if (next !== null && connected(next)) {
             cells = next;
+        } else {
+            //a row or a column pulled in stops short of cutting any of the
+            //rest of the selection off - it goes a footprint at a time, so it
+            //stops right at the one that would
+            way = by < 0 ? -1 : 1;
+            cells = drag.cells;
+
+            for (k = way; k * way <= by * way; k += way) {
+                next = pullRun(drag.cells, handle, k);
+
+                if (!connected(next))
+                    break;
+
+                cells = next;
+            }
         }
     }
 
@@ -451,16 +465,24 @@ function choose(me, options, screenX, screenY) {
 /**
  * The selection with the row - or the column - handle is at the end of
  * pulled by footprints, and nothing else of it changed (see pull).
+ *
+ * With side as well, it runs from the end that stays to where the finger is
+ * along it - out further, in part of the way, or on past the far end, the way
+ * pulled in past it does - and turns the corner there, side footprints off to
+ * one side, so that the finger is on the handle off the end of the turn.
  */
-function pullRun(cells, handle, by) {
+function pullRun(cells, handle, by, side) {
     var r = copy(cells),
         //along the row, or down the column
         row = handle.dx !== 0,
+        way = row ? handle.dx : handle.dy,
         n = row ? handle.i : handle.j,
-        lo, hi, run;
+        lo, hi, run, fixed, tip, k;
 
-    function at(n) {
-        return row ? [n, handle.j] : [handle.i, n];
+    //m footprints off to the side of the row or column
+    function at(n, m) {
+        m = m || 0;
+        return row ? [n, handle.j + m] : [handle.i + m, n];
     }
 
     function on(n) {
@@ -471,13 +493,23 @@ function pullRun(cells, handle, by) {
     for (lo = n; on(lo - 1); lo--);
     for (hi = n; on(hi + 1); hi++);
 
+    if (side) {
+        //where along it the finger is - the corner goes right under it
+        tip = (way > 0 ? hi + 1 : lo - 1) + by;
+        fixed = way > 0 ? lo : hi;
+        run = [Math.min(fixed, tip), Math.max(fixed, tip)];
+    } else {
+        run = pull(lo, hi, way, by);
+    }
+
     for (n = lo; n <= hi; n++)
         delete r[key.apply(null, at(n))];
 
-    run = pull(lo, hi, row ? handle.dx : handle.dy, by);
-
     for (n = run[0]; n <= run[1]; n++)
         add(r, at(n)[0], at(n)[1]);
+
+    for (k = 1; k < Math.abs(side || 0); k++)
+        add(r, at(tip, side < 0 ? -k : k)[0], at(tip, side < 0 ? -k : k)[1]);
 
     return r;
 }
@@ -608,6 +640,9 @@ var events = {
  *                       1 by 1 when left out
  *        underwater   - the handles lie on the ground under water rather
  *                       than on its surface
+ *        turns        - a row or column pulled off to the side as well as
+ *                       along turns the corner towards the finger - for
+ *                       laying roads
  * @constructor
  */
 function AreaSelector(root, options) {
@@ -618,6 +653,7 @@ function AreaSelector(root, options) {
     this._stepX = options.stepX || 1;
     this._stepY = options.stepY || 1;
     this._underwater = options.underwater === true;
+    this._turns = options.turns === true;
     this._handleTokens = [];
     this._handles = {};
     this._cells = {};

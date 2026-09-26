@@ -505,7 +505,12 @@ Buildman.prototype.build = function (code) {
 
     //the selection covers whole footprints, one building each
     var tokens = [];
-    var ts = new AreaSelector(this.root, {stepX: sizeX(), stepY: sizeY()});
+    var ts = new AreaSelector(this.root, {
+        stepX: sizeX(),
+        stepY: sizeY(),
+        //a road pulled out can turn a corner on the way
+        turns: data.classCode === BuildingClassCode.road
+    });
     var previews = [];
     //roads already standing that are showing what they would turn into
     var reshaped = [];
