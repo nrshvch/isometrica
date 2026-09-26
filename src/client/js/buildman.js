@@ -13,7 +13,6 @@ import Chunkman from "./chunkman";
 import AreaSelector from "./areaselector";
 import TileMessage from "./gameObjects/tilemessage";
 import CityWater from "core/city/citywater";
-import CityBuildings from "core/city/citybuildings";
 import Config from "./config";
 import RenderLayer from "./renderlayer";
 import ResourceCode from "core/resourcecode";
@@ -265,7 +264,7 @@ errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
  * first came up. "Occupied" only when nothing went in at all: a road laid
  * across another is turned down where they cross, and that is no news.
  *
- * @param anchors {number[]} see CityBuildings.selectionAnchors
+ * @param anchors {number[]} the tile each building would stand on
  */
 function buildSelection(self, code, anchors, rotation) {
     var root = self.root,
@@ -512,11 +511,6 @@ Buildman.prototype.build = function (code) {
     var reshaped = [];
     var priceTags = [];
 
-    //where the buildings would stand, one to a footprint
-    function anchors() {
-        return CityBuildings.selectionAnchors(code, ts.tile0(), ts.tile1(), rotation);
-    }
-
     //one tag over every building the selection would put down, priced the
     //way a submit would charge it
     function updatePriceTags(quotes) {
@@ -606,9 +600,10 @@ Buildman.prototype.build = function (code) {
     }
 
     function updateHilite() {
-        var tiles = anchors(),
+        //where the buildings would stand, one to a footprint of the selection
+        var tiles = ts.anchors(),
             quotes = root.core.cities.getCity(0).buildingService
-                .quoteSelection(code, ts.tile0(), ts.tile1(), rotation);
+                .quoteSelection(code, tiles, rotation);
 
         clearPreview();
 
@@ -620,13 +615,15 @@ Buildman.prototype.build = function (code) {
         updatePriceTags(quotes);
 
         root.hiliteMan.disable(tokens);
-        tokens = root.hiliteMan.hilite({
-            tile0: ts.tile0(),
-            tile1: ts.tile1(),
-            fillColor: "rgba(0,0,127,0.4)",
-            borderColor: "rgba(0,0,255,0.4)",
-            borderWidth: 2
-        });
+        tokens = root.hiliteMan.hilite(ts.tiles().map(function (tile) {
+            return {
+                x: Terrain.extractX(tile),
+                y: Terrain.extractY(tile),
+                fillColor: "rgba(0,0,127,0.4)",
+                borderColor: "rgba(0,0,255,0.4)",
+                borderWidth: 2
+            };
+        }));
 
         //what these towers would water, outlined the way the city limits are
         if (waterRadius > 0)
@@ -647,7 +644,7 @@ Buildman.prototype.build = function (code) {
         ts.rotate();
     };
     controls.onSubmit = function () {
-        buildSelection(self, code, anchors(), rotation);
+        buildSelection(self, code, ts.anchors(), rotation);
 
         // stay in build mode with the selection where it was, so the next
         // one can be dragged along from it - what is under it now is taken

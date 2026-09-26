@@ -22,9 +22,10 @@ Script.prototype.setHiliteData = function(hiliteData){
     r.borderDash = hiliteData.borderDash || null;
 
     r.arrow = hiliteData.arrow || null;
+    r.square = hiliteData.square === true;
 
-    if (hiliteData.arrowColor !== undefined)
-        r.arrowColor = hiliteData.arrowColor;
+    if (hiliteData.markerColor !== undefined)
+        r.markerColor = hiliteData.markerColor;
 
     var terrain = vkaria.core.world.terrain;
     var type = terrain.getTerrainType(r.x, r.y);

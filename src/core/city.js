@@ -172,26 +172,26 @@ City.prototype.clearTile = function (tile) {
 };
 
 /**
- * Raises or lowers the rectangle of tiles between tile0 and tile1 as one piece
- * of land - see Terrain#planLevel for what that does to the ground - and pays
- * for it. The ground belongs to the world, not to the city, so it can be
- * shaped anywhere; the city only foots the bill.
+ * Raises or lowers tiles as one piece of land, whatever shape they make - see
+ * Terrain#planLevel for what that does to the ground - and pays for it. The
+ * ground belongs to the world, not to the city, so it can be shaped anywhere;
+ * the city only foots the bill.
  *
  * Every tile the ground moves under is a tile modified, whether it was picked
  * or only dragged along: each costs terraformTileCost - ten times that for
  * water being raised - plus clearing whatever tree grew on it. Nothing may
  * stand on any of them, so a building anywhere in the way stops the whole thing.
  *
- * @param tile0 {number}
- * @param tile1 {number}
+ * @param tiles {number[]}
  * @param direction {number} 1 to raise, -1 to lower
  * @returns {{error: number, tile: number, cost: number}} error is an
  *          ErrorCode, and tile the tile it is about; cost is what was paid
  */
-City.prototype.terraform = function (tile0, tile1, direction) {
+City.prototype.terraform = function (tiles, direction) {
     var world = this.world,
         terrain = world.terrain,
-        plan = terrain.planLevel(tile0, tile1, direction),
+        plan = terrain.planLevel(tiles, direction),
+        tile0 = tiles[0],
         cost = 0,
         tile, i;
 

@@ -49,6 +49,11 @@ var GLASS = [96, 150, 196],
     HEADLIGHT = [255, 244, 180],
     TAILLIGHT = [220, 30, 30],
     BUMPER = [120, 122, 128],
+    SIGN = [250, 238, 196],
+    LAMP_BLUE = [48, 96, 236],
+    LAMP_RED = [228, 44, 44],
+    LIVERY_DARK = [32, 32, 38],
+    LIVERY_LIGHT = [242, 244, 246],
     CARGO = [214, 214, 206];
 
 function mix(c, to, k) {
@@ -100,6 +105,51 @@ function lights(boxes, length, width, z0, z1, inset, size) {
     boxes.push(box(length, length + e, width - inset - size, width - inset, z0, z1, TAILLIGHT));
 }
 
+//the shape every saloon shares - the plain one, the cab and the police car are
+//the same car underneath, only painted differently
+function sedanBoxes(c) {
+    var b = [];
+    wheels(b, 13, 6, [2.6, 10.4], 1.2);
+    b.push(box(0, 13, 0, 6, 1.2, 3.8, c));
+    b.push(box(-0.2, 0, 0.3, 5.7, 1.2, 2.2, BUMPER));
+    b.push(box(13, 13.2, 0.3, 5.7, 1.2, 2.2, BUMPER));
+    lights(b, 13, 6, 2.4, 3.3, 0.4, 1.3);
+    b.push(box(3.6, 9.6, 0.5, 5.5, 3.8, 6.6, c));
+    windows(b, 3.6, 9.6, 0.5, 5.5, 4.2, 6.1, 0.6, [[4.2, 6.4], [6.9, 9.0]]);
+    return b;
+}
+
+//a panel painted on both doors. A chequer would be the thing for a cab, but
+//four squares of two pixels read as one blur - a plain panel, and the sign on
+//the roof, say cab well enough at this size
+function panel(boxes, l0, l1, width, z0, z1, color) {
+    var e = 0.12;
+
+    boxes.push(box(l0, l1, -e, width + e, z0, z1, color));
+}
+
+//Anything that gives off light of its own - a police car's lamp, a cab's sign -
+//is painted apart from the car it sits on and laid over it as it is drawn. Two
+//reasons: the lamp can flash without a picture of the whole car per flash, and
+//once night falls and the cars are darkened, what is lit can be left alone.
+//
+//The lamp is painted where it stands on the car, so its own middle-of-the-
+//vehicle-on-the-ground pivot puts it back exactly where it belongs.
+
+//the base a police car's lamp stands on - this part is just paint, so it stays
+//on the car
+var LAMP_BASE = [5.1, 7.5, 0.9, 5.1, 6.6, 7.1];
+
+//its two domes, one lit and one dim, turn and turn about
+function lampBoxes(blueLit) {
+    var l0 = 5.4, l1 = 7.2, w0 = 1.2, w1 = 4.8, mid = 3.0, z0 = 7.1, z1 = 8.0;
+
+    return [
+        box(l0, l1, w0, mid, z0, z1, blueLit ? lighter(LAMP_BLUE, 0.3) : darker(LAMP_BLUE, 0.55)),
+        box(l0, l1, mid, w1, z0, z1, blueLit ? darker(LAMP_RED, 0.55) : lighter(LAMP_RED, 0.3))
+    ];
+}
+
 //where smoke comes out of a type, as points in its own frame - l, w and z like
 //a box's: its tailpipe, low under the back bumper on the right, puffs as it
 //drives; its engine smokes when it breaks down - under the bonnet on most, low
@@ -107,16 +157,39 @@ function lights(boxes, length, width, z0, z1, inset, size) {
 var TYPES = {
     sedan: {
         length: 13, width: 6, speed: 1, weight: 5, engine: [1.8, 3, 3.8], tailpipe: [13.2, 4.8, 1.0],
+        build: sedanBoxes
+    },
+    //a cab: always yellow, with the chequer down its sides and a sign on top
+    taxi: {
+        length: 13, width: 6, speed: 1, weight: 2, engine: [1.8, 3, 3.8], tailpipe: [13.2, 4.8, 1.0],
+        colors: ["yellow"],
         build: function (c) {
-            var b = [];
-            wheels(b, 13, 6, [2.6, 10.4], 1.2);
-            b.push(box(0, 13, 0, 6, 1.2, 3.8, c));
-            b.push(box(-0.2, 0, 0.3, 5.7, 1.2, 2.2, BUMPER));
-            b.push(box(13, 13.2, 0.3, 5.7, 1.2, 2.2, BUMPER));
-            lights(b, 13, 6, 2.4, 3.3, 0.4, 1.3);
-            b.push(box(3.6, 9.6, 0.5, 5.5, 3.8, 6.6, c));
-            windows(b, 3.6, 9.6, 0.5, 5.5, 4.2, 6.1, 0.6, [[4.2, 6.4], [6.9, 9.0]]);
+            var b = sedanBoxes(c);
+            panel(b, 4.6, 8.6, 6, 2.0, 3.6, LIVERY_LIGHT);
+            //what the sign stands on; the lit part of it is laid over the car
+            b.push(box(5.4, 7.6, 1.6, 4.4, 6.6, 7.0, LIVERY_DARK));
             return b;
+        },
+        //the sign is always on - one frame, so it never changes
+        lamps: function () {
+            return [[box(5.4, 7.6, 1.6, 4.4, 7.0, 8.0, SIGN)]];
+        }
+    },
+    //a police car: white with black doors and a lamp on the roof
+    police: {
+        length: 13, width: 6, speed: 1.1, weight: 1, engine: [1.8, 3, 3.8], tailpipe: [13.2, 4.8, 1.0],
+        colors: ["white"],
+        build: function (c) {
+            var b = sedanBoxes(c);
+            //doors, and the pillars between them
+            b.push(box(3.4, 9.8, -0.12, 6.12, 1.2, 3.8, LIVERY_DARK));
+            b.push(box(3.6, 9.6, 0.38, 5.62, 3.8, 4.3, LIVERY_DARK));
+            b.push(box(LAMP_BASE[0], LAMP_BASE[1], LAMP_BASE[2], LAMP_BASE[3], LAMP_BASE[4], LAMP_BASE[5], LIVERY_DARK));
+            return b;
+        },
+        //blue, then red, and round again
+        lamps: function () {
+            return [lampBoxes(true), lampBoxes(false)];
         }
     },
     hatchback: {
@@ -318,7 +391,12 @@ function cast(boxes, sx, sy) {
     return hit === null ? null : shade(hit.color, face);
 }
 
-function render(boxes) {
+/**
+ * @param boxes {object[]}
+ * @param [lit] {boolean} true for something that gives off light: no darkened
+ *        edge round it, which would only dirty a lamp of three pixels
+ */
+function render(boxes, lit) {
     var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity,
         corners, i, j, p, w, h, pixels, color;
 
@@ -345,7 +423,8 @@ function render(boxes) {
         }
     }
 
-    outline(pixels, w, h);
+    if (lit !== true)
+        outline(pixels, w, h);
 
     return {w: w, h: h, pixels: pixels, pivotX: -minX, pivotY: -minY};
 }
@@ -385,24 +464,43 @@ Object.keys(TYPES).forEach(function (type) {
 
     data[type] = {speed: t.speed, weight: t.weight, colors: {}};
 
-    Object.keys(COLORS).forEach(function (color) {
+    function frame(picture) {
+        frames.push({picture: picture, x: x, y: sheetH});
+        var at = [x, sheetH, picture.w, picture.h, picture.pivotX, picture.pivotY];
+
+        x += picture.w + GAP;
+        rowH = Math.max(rowH, picture.h);
+
+        return at;
+    }
+
+    //most types come in every colour; a cab or a police car has its own
+    (t.colors || Object.keys(COLORS)).forEach(function (color) {
         var boxes = t.build(COLORS[color]);
 
         data[type].colors[color] = {};
 
         Object.keys(DIRECTIONS).forEach(function (d) {
-            var picture = render(place(boxes, t.length, t.width, DIRECTIONS[d])),
-                engine = placePoint(t.engine, t.length, t.width, DIRECTIONS[d]),
+            var engine = placePoint(t.engine, t.length, t.width, DIRECTIONS[d]),
                 tailpipe = placePoint(t.tailpipe, t.length, t.width, DIRECTIONS[d]);
 
-            frames.push({picture: picture, x: x, y: sheetH});
-            data[type].colors[color][d] = [x, sheetH, picture.w, picture.h, picture.pivotX, picture.pivotY]
+            data[type].colors[color][d] = frame(render(place(boxes, t.length, t.width, DIRECTIONS[d])))
                 .concat(engine, tailpipe);
-
-            x += picture.w + GAP;
-            rowH = Math.max(rowH, picture.h);
         });
     });
+
+    //the lit bits that are laid over it, one picture per flash
+    if (t.lamps !== undefined) {
+        data[type].lamps = t.lamps().map(function (phase) {
+            var at = {};
+
+            Object.keys(DIRECTIONS).forEach(function (d) {
+                at[d] = frame(render(place(phase, t.length, t.width, DIRECTIONS[d]), true));
+            });
+
+            return at;
+        });
+    }
 
     sheetW = Math.max(sheetW, x);
     sheetH += rowH + GAP;

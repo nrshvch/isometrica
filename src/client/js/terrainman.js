@@ -29,35 +29,54 @@ var HALO_DASH = [4, 4];
 
 /**
  * One hilite per tile: the picked ones outlined in white and the rings around
- * them dashed and fading out - all following the ground, under water too,
- * since that is where it gets shaped.
+ * them dashed and fading out, following their shape - all following the
+ * ground, under water too, since that is where it gets shaped.
  */
-function hiliteData(tile0, tile1) {
-    var x0 = Terrain.extractX(tile0),
-        y0 = Terrain.extractY(tile0),
-        x1 = Terrain.extractX(tile1),
-        y1 = Terrain.extractY(tile1),
+function hiliteData(tiles) {
+    var picked = Object.create(null),
+        ring = Object.create(null),
         halo = [],
-        picked = [],
-        ring, x, y;
+        selected = [],
+        tile, near, r, x, y, dx, dy, i;
 
-    for (x = x0 - HALO_RADIUS; x <= x1 + HALO_RADIUS; x++) {
-        for (y = y0 - HALO_RADIUS; y <= y1 + HALO_RADIUS; y++) {
-            ring = Math.max(x0 - x, x - x1, y0 - y, y - y1, 0);
+    for (i = 0; i < tiles.length; i++)
+        picked[tiles[i]] = true;
 
-            (ring === 0 ? picked : halo).push({
-                x: x,
-                y: y,
-                borderColor: ring === 0 ? SELECTED_BORDER : HALO_BORDERS[ring - 1],
-                borderWidth: ring === 0 ? 2 : 1,
-                borderDash: ring === 0 ? null : HALO_DASH,
-                underwater: true
-            });
+    //how far each tile around them is from the nearest picked one
+    for (i = 0; i < tiles.length; i++) {
+        x = Terrain.extractX(tiles[i]);
+        y = Terrain.extractY(tiles[i]);
+
+        for (dx = -HALO_RADIUS; dx <= HALO_RADIUS; dx++) {
+            for (dy = -HALO_RADIUS; dy <= HALO_RADIUS; dy++) {
+                near = Terrain.convertToIndex(x + dx, y + dy);
+                r = Math.max(Math.abs(dx), Math.abs(dy));
+
+                if (picked[near] !== true && (ring[near] === undefined || r < ring[near]))
+                    ring[near] = r;
+            }
         }
     }
 
+    function hilite(tile, border, width, dash) {
+        return {
+            x: Terrain.extractX(tile),
+            y: Terrain.extractY(tile),
+            borderColor: border,
+            borderWidth: width,
+            borderDash: dash,
+            underwater: true
+        };
+    }
+
+    for (tile in ring)
+        halo.push(hilite(+tile, HALO_BORDERS[ring[tile] - 1], 1, HALO_DASH));
+
+    for (i = 0; i < tiles.length; i++)
+        selected.push(hilite(tiles[i], SELECTED_BORDER, 2, null));
+
     //the picked tiles last, so their outline is drawn over the others
-    return halo.concat(picked);
+    return halo.concat(selected);
 }
 
 function Terrainman(root) {
@@ -76,7 +95,7 @@ Terrainman.prototype.enter = function () {
 
     function updateHilite() {
         root.hiliteMan.disable(tokens);
-        tokens = root.hiliteMan.hilite(hiliteData(ts.tile0(), ts.tile1()));
+        tokens = root.hiliteMan.hilite(hiliteData(ts.tiles()));
     }
 
     var sub = Events.on(ts, AreaSelector.events.change, updateHilite);
@@ -86,37 +105,32 @@ Terrainman.prototype.enter = function () {
     //so it is drawn over again
     function act(f) {
         return function () {
-            f(ts.tile0(), ts.tile1());
+            f(ts.tiles(), ts.bounds());
             ts.refresh();
         };
     }
 
-    function bulldoze(tile0, tile1) {
-        var city = root.core.cities.getCity(0),
-            iter = new Core.TileIterator(tile0, tile1),
-            tile;
+    function bulldoze(tiles) {
+        var city = root.core.cities.getCity(0);
 
-        while (!iter.done) {
-            tile = iter.next();
+        for (var i = 0; i < tiles.length; i++) {
             //every tile is charged on its own, so each one that goes gets
             //its own text
-            if (city.clearTile(tile))
-                buildman.showCost(tile, 1, 1, Core.Config.clearTileCost);
+            if (city.clearTile(tiles[i]))
+                buildman.showCost(tiles[i], 1, 1, Core.Config.clearTileCost);
         }
     }
 
     function level(direction) {
-        return function (tile0, tile1) {
-            var t0 = Terrain.min(tile0, tile1),
-                t1 = Terrain.max(tile0, tile1),
-                result = root.core.cities.getCity(0).terraform(t0, t1, direction);
+        return function (tiles, bounds) {
+            var result = root.core.cities.getCity(0).terraform(tiles, direction);
 
             if (result.error !== ErrorCode.NONE)
                 buildman.showText(result.tile, 1, 1, errorText[result.error] || "can't do that");
             else if (result.cost > 0)
-                buildman.showCost(t0,
-                    Terrain.extractX(t1) - Terrain.extractX(t0) + 1,
-                    Terrain.extractY(t1) - Terrain.extractY(t0) + 1,
+                buildman.showCost(Terrain.convertToIndex(bounds.x0, bounds.y0),
+                    bounds.x1 - bounds.x0 + 1,
+                    bounds.y1 - bounds.y0 + 1,
                     result.cost);
         };
     }
