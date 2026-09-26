@@ -27,7 +27,8 @@
  *    them the finger goes along
  *  - while it is a whole rectangle, there is a handle off each of its corners
  *    as well, a square too, that pulls both of the sides meeting there the
- *    same way. Any other shape has no corners to pull
+ *    same way. Any other shape has no corners to pull, and nor do roads -
+ *    they are laid a line at a time
  *
  * It turns round along with the buildings on it - see AreaSelector#rotate.
  */
@@ -213,7 +214,7 @@ function findHandles(me) {
         }
     }
 
-    if (!isRect(cells))
+    if (!me._corners || !isRect(cells))
         return r;
 
     b = cellBounds(cells);
@@ -643,6 +644,8 @@ var events = {
  *        turns        - a row or column pulled off to the side as well as
  *                       along turns the corner towards the finger - for
  *                       laying roads
+ *        corners      - false to leave out the handles off a rectangle's
+ *                       corners
  * @constructor
  */
 function AreaSelector(root, options) {
@@ -654,6 +657,7 @@ function AreaSelector(root, options) {
     this._stepY = options.stepY || 1;
     this._underwater = options.underwater === true;
     this._turns = options.turns === true;
+    this._corners = options.corners !== false;
     this._handleTokens = [];
     this._handles = {};
     this._cells = {};
