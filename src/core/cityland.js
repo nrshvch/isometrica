@@ -8,7 +8,7 @@
  */
 import Events from "events";
 import TileIterator from "./tileiterator";
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 namespace("Isometrica.Core").CityLand = CityLand;
 

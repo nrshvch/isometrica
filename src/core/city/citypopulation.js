@@ -8,7 +8,7 @@ import Events from "events";
 import Resource from "../resourcecode";
 import TileParamsMan from "../world/tileparamsmanager";
 
-import namespace from "namespace";
+import namespace from "shared/namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Population = CityPopulation;
 

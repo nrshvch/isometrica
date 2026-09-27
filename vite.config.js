@@ -30,15 +30,12 @@ export default defineConfig({
             {find: /^data\//, replacement: app("data") + "/"},
             {find: /^client\//, replacement: app("client/js") + "/"},
             {find: /^ui\//, replacement: app("ui") + "/"},
+            {find: /^shared\//, replacement: app("shared") + "/"},
 
-            {find: "namespace", replacement: app("shared/namespace.js")},
             {find: "events/main", replacement: app("js/vendor/events-main.js")},
             {find: "events", replacement: app("js/events-wrapper.js")},
             {find: "engine/main", replacement: app("js/vendor/engine-main.js")},
             {find: "reactive-property", replacement: app("js/vendor/reactive-property.js")},
-            {find: "object-pool", replacement: app("shared/object-pool.js")},
-            {find: "enumeration", replacement: app("shared/enumeration.js")},
-            {find: "seeded-simplex", replacement: app("shared/seeded-simplex.js")}
         ]
     }
 });

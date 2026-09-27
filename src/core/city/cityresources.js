@@ -4,7 +4,7 @@
 import Resources from "../resources";
 import Resource from "../resourcecode";
 
-import namespace from "namespace";
+import namespace from "shared/namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Resource = CityResources;
 

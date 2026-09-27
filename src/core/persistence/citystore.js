@@ -10,7 +10,7 @@
  * Ids are six characters out of [0-9A-Za-z], short enough to carry around in
  * the address bar (/#/pA4b1c).
  */
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 var Core = namespace("Isometrica.Core");
 Core.CityStore = CityStore;

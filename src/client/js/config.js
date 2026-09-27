@@ -1,7 +1,7 @@
 /**
  * Created by User on 28.07.2014.
  */
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 var Client = namespace("Isometrica.Client");
 

@@ -2,7 +2,7 @@
  * Created by User on 25.08.2014.
  */
 import TileParam from "../world/tileparam";
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
     CityService.TileParams = CityTilesParams;

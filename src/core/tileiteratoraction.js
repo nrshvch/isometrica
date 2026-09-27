@@ -1,5 +1,5 @@
 /** @lends TileIteratorAction */
-import Namespace from "namespace";
+import Namespace from "shared/namespace";
 import TileIterator from "./tileiterator";
 
 var Core = Namespace("Isometrica.Core");

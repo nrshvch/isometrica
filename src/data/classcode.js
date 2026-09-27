@@ -1,5 +1,5 @@
 //ENUM of codes of different building kinds. e.g. house1,house2,house3 all are of house class(group).
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 var Core = namespace("Isometrica.Core");
 

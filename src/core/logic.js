@@ -10,7 +10,7 @@ import MarketService from "./world/marketsrv";
 import MessagingService from "./msgsrv";
 import CityService from "./citysrv";
 import CityPersistence from "./persistence/citypersistence";
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 namespace("Isometrica.Core").Logic = Logic;
 
