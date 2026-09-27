@@ -20,7 +20,7 @@ import BuildingData from "data/buildings";
 import BuildingState from "../buildingstate";
 import TileIteratorRadial from "../tileiteratorradial";
 
-import namespace from "namespace";
+import namespace from "shared/namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Water = CityWater;
 

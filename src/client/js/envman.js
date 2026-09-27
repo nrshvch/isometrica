@@ -7,7 +7,7 @@ import Events from "events";
 import Terrain from "./terrain";
 import Core from "core/main";
 import Chunkman from "./chunkman";
-import Pool from "object-pool";
+import Pool from "shared/object-pool";
 import Rocks from "data/rocks";
 //a rock is drawn the way a tree is: one sprite among the buildings
 import Tree from "./gameObjects/tree";

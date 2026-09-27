@@ -9,7 +9,7 @@ import Resources from "../resources";
 import Events from "events";
 import BuildingData from "data/buildings";
 import VTime from "../vtime";
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
     CityService.Stats = CityStats;

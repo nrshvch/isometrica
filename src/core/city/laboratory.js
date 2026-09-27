@@ -5,7 +5,7 @@ import ResearchState from "../researchstate";
 import Direction from "../researchdirection";
 import BuildingData from "data/buildings";
 import VTime from "../vtime";
-import namespace from "namespace";
+import namespace from "shared/namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
     CityService.Laboratory = Lab;

@@ -1,10 +1,10 @@
 //TODO cache terrain Z values
 
-import namespace from "namespace";
+import namespace from "shared/namespace";
 import DepositCode from "./depositcode";
 import TerrainType from "./terraintype";
-import Simplex from "seeded-simplex";
 import Events from "events";
+import Simplex from "shared/seeded-simplex";
 //var TileIterator = require("./tileiterator");
 
 namespace("Isometrica.Core").Terrain = Terrain;

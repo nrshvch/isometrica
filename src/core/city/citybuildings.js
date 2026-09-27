@@ -12,7 +12,7 @@ import Building from "../building";
 import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
 
-import namespace from "namespace";
+import namespace from "shared/namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Buildings = CityBuildings;
 

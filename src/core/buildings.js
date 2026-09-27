@@ -29,7 +29,7 @@ import TileIteratorAction from "./tileiteratoraction";
  */
 import BuildingPositioning from "./buildingpositioning";
 
-import Namespace from "namespace";
+import Namespace from "shared/namespace";
 
 var Core = Namespace("Isometrica.Core");
 Core.ConstructionService = Buildings;
