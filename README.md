@@ -7,7 +7,7 @@ Keeping it alive for historical reference only.
 ![Isoville](public/miniville.gif)
 
 ### Live demo
-https://nrshvch.github.io/isometrica
+https://peeps.land
 
 ### Features
 

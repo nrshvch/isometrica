@@ -169,7 +169,7 @@ Cityman.prototype.establish = function(){
         root.ui.gameScreen().showPrompt("Give city a name!", function (val) {
             root.core.cities.establishCity(tile, val);
             root.ui.gameScreen().showWorld();
-        }, "Miniville", function () {
+        }, ["Miniville", "Peepsville", "Flatville", "Greenville", "Happyville"][Math.round(Math.random()*2)], function () {
             root.ui.gameScreen().showWorld();
             self.establish();
         });
