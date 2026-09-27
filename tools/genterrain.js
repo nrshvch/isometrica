@@ -101,15 +101,22 @@ var EDGES = {
     }
 };
 
-//lowest first: each one spills over every one before it. Water draws its
-//shore over any ground, deep water darkens the shallows at its edge, and ice
-//closes over open water of either depth
+//lowest first: each one spills over every one before it. Every biome's rock
+//is under all the grass and sand, which grows and drifts over its edges; snow
+//covers everything; water draws its shore over any ground, deep water darkens
+//the shallows at its edge, and ice closes over open water of either depth
 var PRECEDENCE = [
-    "alpine_rock",
+    "rock_basalt",
+    "rock_granite",
+    "rock_dolomite",
+    "rock_limestone",
+    "rock_kopje",
+    "rock_sandstone",
     "grass_tropical",
+    "grass_boreal",
     "grass",
-    "grass_euro",
-    "sand_arid",
+    "grass_south",
+    "savannah",
     "sand_dunes",
     "snow",
     "water_shallow",
@@ -122,6 +129,48 @@ var PRECEDENCE = [
 var PIN = 0.16;
 //decorations are kept this far off the edges, so none is cut in half
 var DECORATION_MARGIN = 0.1;
+
+/**
+ * The rock of one biome's mountains, which shows between the grass and the
+ * snow: slabs cracked apart, smaller cracks through them, layers where it is
+ * laid down in them, lichen or moss here and there, and scree.
+ *
+ * @param o {Object} name and description; palette, dark to light; crack, the
+ *        colour in the cracks; strata, how much it is layered; growth, two
+ *        colours of what grows on it, from where the noise is over growthAt;
+ *        scree, the colours of the stones lying on it
+ */
+function rock(o) {
+    return {
+        name: o.name,
+        description: o.description,
+        kind: "land",
+        waterBody: "water_shallow",
+        look: {lit: 1, dark: 1.05, shadow: [1.05, 1, 0.9], rim: 1},
+        edge: {depth: 0.4, amp: 0.14, waves: 5, soft: 0.13, grain: 0.45, clump: 12, specks: 0.35, reach: 0.22, lip: 0.85},
+        albedo: function (s) {
+            var strata = Math.sin(2 * Math.PI * (s.u + 3 * s.v) + 3 * s.noise("warp", 2, 1)),
+                slab = s.cells("slabs", 3, 0.09),
+                chip = s.cells("chips", 7, 0.05),
+                c = ramp(o.palette, 0.5 + 0.3 * s.noise("field", 3, 2) + o.strata * strata + 0.3 * (slab.tone - 0.5)),
+                growth = s.noise("lichen", 9, 1);
+
+            //the cracks between slabs are not all the way open, and smaller
+            //ones run through the slabs here and there
+            if (slab.f2 - slab.f1 < 0.035 && s.noise("open", 5, 1) > -0.4)
+                c = mix(c, o.crack, 0.7);
+            else if (chip.f2 - chip.f1 < 0.03 && s.noise("chipped", 6, 1) > 0.2)
+                c = mix(c, o.crack, 0.35);
+            else if (growth > o.growthAt && s.random(7) < 0.55)
+                c = mix(c, o.growth[s.random(8) < 0.5 ? 0 : 1], 0.55);
+
+            return grain(c, s, 0.09, 3);
+        },
+        decorations: [
+            {density: 0.02, cells: pebble(o.scree)}
+        ]
+    };
+}
 
 /**
  * The tilesets. For a painted one:
@@ -144,113 +193,176 @@ var DECORATION_MARGIN = 0.1;
  * All distances are in the tile's own u, v.
  */
 var TILESETS = {
-    alpine_rock: {
-        name: "Alpine rock",
-        description: "Bare grey limestone of the high Alps - cracked slabs, scree and lichen.",
-        kind: "land",
-        waterBody: "water_shallow",
-        look: {lit: 1, dark: 1.05, shadow: [1.05, 1, 0.9], rim: 1},
-        edge: {depth: 0.26, amp: 0.13, waves: 5, soft: 0.06, grain: 0.3, clump: 12, specks: 0.2, reach: 0.12, lip: 0.8},
-        albedo: function (s) {
-            var strata = Math.sin(2 * Math.PI * (s.u + 3 * s.v) + 3 * s.noise("warp", 2, 1)),
-                slab = s.cells("slabs", 3, 0.09),
-                chip = s.cells("chips", 7, 0.05),
-                c = ramp(ROCK, 0.5 + 0.3 * s.noise("field", 3, 2) + 0.06 * strata + 0.3 * (slab.tone - 0.5)),
-                lichen = s.noise("lichen", 9, 1);
-
-            //the cracks between slabs are not all the way open, and smaller
-            //ones run through the slabs here and there
-            if (slab.f2 - slab.f1 < 0.035 && s.noise("open", 5, 1) > -0.4)
-                c = mix(c, [58, 58, 62], 0.7);
-            else if (chip.f2 - chip.f1 < 0.03 && s.noise("chipped", 6, 1) > 0.2)
-                c = mix(c, [84, 84, 86], 0.45);
-            else if (lichen > 0.35 && s.random(7) < 0.55)
-                c = mix(c, s.random(8) < 0.5 ? [128, 136, 86] : [158, 150, 98], 0.55);
-
-            return grain(c, s, 0.09, 3);
-        },
-        decorations: [
-            {density: 0.02, cells: pebble([[176, 174, 166], [150, 148, 142], [120, 116, 110]])}
-        ]
-    },
+    rock_basalt: rock({
+        name: "Basalt",
+        description: "Dark volcanic rock of tropical mountains, overgrown with moss.",
+        palette: [[0, [52, 50, 50]], [0.5, [76, 72, 68]], [1, [104, 98, 90]]],
+        crack: [30, 28, 28],
+        strata: 0.02,
+        growth: [[58, 96, 40], [80, 120, 50]],
+        growthAt: 0.1,
+        scree: [[96, 92, 86], [70, 66, 62]]
+    }),
+    rock_granite: rock({
+        name: "Granite",
+        description: "Dark, cold granite of the northern forests' fells, grey-green with lichen.",
+        palette: [[0, [74, 78, 84]], [0.5, [104, 108, 112]], [1, [138, 140, 140]]],
+        crack: [44, 46, 50],
+        strata: 0,
+        growth: [[84, 106, 70], [150, 156, 120]],
+        growthAt: 0.15,
+        scree: [[140, 142, 144], [112, 114, 118]]
+    }),
+    rock_dolomite: rock({
+        name: "Dolomite",
+        description: "Grey limestone of the Alps and the Dolomites - cracked slabs, scree and lichen.",
+        palette: [[0, [98, 98, 100]], [0.5, [132, 130, 126]], [1, [166, 163, 156]]],
+        crack: [58, 58, 62],
+        strata: 0.06,
+        growth: [[128, 136, 86], [158, 150, 98]],
+        growthAt: 0.35,
+        scree: [[176, 174, 166], [150, 148, 142], [120, 116, 110]]
+    }),
+    rock_limestone: rock({
+        name: "Limestone",
+        description: "Warm, pale limestone of the mountains of Spain and Italy, sun-bleached.",
+        palette: [[0, [150, 138, 116]], [0.5, [186, 174, 148]], [1, [214, 204, 180]]],
+        crack: [110, 98, 80],
+        strata: 0.08,
+        growth: [[168, 160, 110], [196, 178, 120]],
+        growthAt: 0.5,
+        scree: [[222, 212, 190], [190, 178, 152]]
+    }),
+    rock_kopje: rock({
+        name: "Kopje granite",
+        description: "Reddish-brown granite of the savannah's rocky hills.",
+        palette: [[0, [112, 82, 66]], [0.5, [146, 110, 88]], [1, [178, 142, 114]]],
+        crack: [76, 54, 44],
+        strata: 0,
+        growth: [[150, 140, 96], [120, 110, 70]],
+        growthAt: 0.45,
+        scree: [[176, 140, 112], [140, 104, 84]]
+    }),
+    rock_sandstone: rock({
+        name: "Red sandstone",
+        description: "Layered red rock of the Atlas and the desert mountains.",
+        palette: [[0, [140, 70, 44]], [0.5, [176, 98, 62]], [1, [206, 134, 90]]],
+        crack: [96, 46, 30],
+        strata: 0.14,
+        growth: [[190, 150, 100], [160, 110, 76]],
+        growthAt: 0.6,
+        scree: [[196, 126, 86], [150, 84, 56]]
+    }),
     grass_tropical: {
         name: "Tropical grassland",
-        description: "Rich, deep green growth of the tropics, lush and clumped.",
+        description: "Deep, dark green growth of the tropics, lush and clumped.",
         kind: "land",
         waterBody: "water_shallow",
         look: {lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1},
-        edge: {depth: 0.3, amp: 0.14, waves: 3, soft: 0.09, grain: 0.35, clump: 9, specks: 0.14, reach: 0.1, lip: 0.85},
+        edge: {depth: 0.42, amp: 0.15, waves: 3, soft: 0.14, grain: 0.45, clump: 9, specks: 0.3, reach: 0.22, lip: 0.88},
         albedo: function (s) {
             var c = ramp(TROPICAL, 0.5 + 0.45 * s.noise("field", 3, 2)),
                 clump = s.noise("clump", 9, 2);
 
             if (clump > 0.15)
-                c = mix(c, [18, 70, 24], Math.min(1, (clump - 0.15) * 2.5) * 0.6);
+                c = mix(c, [8, 40, 16], Math.min(1, (clump - 0.15) * 2.5) * 0.6);
             else if (clump < -0.3)
-                c = mix(c, [84, 160, 44], Math.min(1, (-0.3 - clump) * 3) * 0.5);
+                c = mix(c, [52, 108, 34], Math.min(1, (-0.3 - clump) * 3) * 0.5);
 
             return grain(c, s, 0.1, 5);
         },
         decorations: [
-            {density: 0.025, cells: tuft([96, 172, 52], [22, 72, 24])}
+            {density: 0.02, cells: tuft([56, 112, 36], [10, 44, 18])}
+        ]
+    },
+    grass_boreal: {
+        name: "Pine forest floor",
+        description: "Moss and needles under the northern pine forests - dark, muted green.",
+        kind: "land",
+        waterBody: "water_shallow",
+        look: {lit: 0.9, dark: 1, shadow: [1, 1, 1], rim: 1},
+        edge: {depth: 0.42, amp: 0.14, waves: 3, soft: 0.13, grain: 0.45, clump: 8, specks: 0.3, reach: 0.22, lip: 0.88},
+        albedo: function (s) {
+            var c = ramp(BOREAL, 0.5 + 0.4 * s.noise("field", 3, 2)),
+                moss = s.noise("moss", 7, 2),
+                litter = s.noise("litter", 11, 1);
+
+            //cushions of brighter moss, and needles gone brown between them
+            if (moss > 0.25)
+                c = mix(c, [96, 118, 58], Math.min(1, (moss - 0.25) * 2.5) * 0.55);
+            else if (litter > 0.3)
+                c = mix(c, [88, 72, 48], Math.min(1, (litter - 0.3) * 2) * 0.5);
+
+            return grain(c, s, 0.08, 4);
+        },
+        decorations: [
+            {density: 0.012, cells: dot([[92, 72, 46], [110, 86, 56]])},
+            {density: 0.003, cells: dot([[118, 126, 100], [132, 136, 112]])}
         ]
     },
     grass: {
-        name: "Grass",
-        description: "The grass the game started with, as it is.",
+        name: "European grassland",
+        description: "The grass the game started with, as it is - the green of temperate Europe.",
         kind: "land",
         waterBody: "water_shallow",
         source: GRASS_DIR,
-        edge: {depth: 0.28, amp: 0.12, waves: 4, soft: 0.08, grain: 0.45, clump: 11, specks: 0.16, reach: 0.1, lip: 0.9}
+        edge: {depth: 0.42, amp: 0.14, waves: 4, soft: 0.14, grain: 0.55, clump: 11, specks: 0.3, reach: 0.22, lip: 0.92}
     },
-    grass_euro: {
-        name: "European grassland",
-        description: "Fresh green meadow of temperate Europe, with clover and a few flowers.",
+    grass_south: {
+        name: "Southern European grassland",
+        description: "Sun-burnt grass of Spain and Italy - olive and straw, green only in the hollows.",
         kind: "land",
         waterBody: "water_shallow",
-        look: {lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1},
-        edge: {depth: 0.28, amp: 0.12, waves: 4, soft: 0.08, grain: 0.45, clump: 11, specks: 0.16, reach: 0.1, lip: 0.9},
+        look: {lit: 0.9, dark: 1, shadow: [0.97, 1, 1.05], rim: 1},
+        edge: {depth: 0.42, amp: 0.14, waves: 4, soft: 0.14, grain: 0.6, clump: 10, specks: 0.32, reach: 0.22, lip: 0.92},
         albedo: function (s) {
-            var c = ramp(EURO, 0.5 + 0.45 * s.noise("field", 3, 2)),
-                clover = s.noise("clover", 7, 1);
+            var c = ramp(SOUTH, 0.5 + 0.4 * s.noise("field", 3, 2)),
+                green = s.noise("green", 6, 2),
+                straw = s.noise("straw", 8, 1);
 
-            if (clover > 0.2)
-                c = mix(c, [54, 114, 50], Math.min(1, (clover - 0.2) * 3) * 0.5);
+            if (green > 0.3)
+                c = mix(c, [96, 116, 54], Math.min(1, (green - 0.3) * 2.5) * 0.55);
+            else if (straw > 0.25)
+                c = mix(c, [200, 180, 112], Math.min(1, (straw - 0.25) * 2.5) * 0.45);
 
-            return grain(c, s, 0.08, 6);
+            return grain(c, s, 0.08, 5);
         },
         decorations: [
-            {density: 0.004, cells: dot([[232, 224, 124], [238, 238, 228], [204, 164, 214]])}
+            {density: 0.006, cells: shrub([92, 98, 50], [66, 70, 38])},
+            {density: 0.006, cells: pebble([[208, 198, 172], [180, 168, 140]])}
         ]
     },
-    sand_arid: {
-        name: "Arid earth",
-        description: "Ochre-red hardpan of Morocco and the Levant, with dry scrub and stones.",
+    savannah: {
+        name: "Savannah",
+        description: "Golden dry grass of the savannah, with red earth showing through.",
         kind: "land",
         waterBody: "water_shallow",
-        look: {lit: 0.9, dark: 1, shadow: [0.95, 1, 1.1], rim: 1},
-        edge: {depth: 0.28, amp: 0.1, waves: 3, soft: 0.09, grain: 0.7, clump: 10, specks: 0.22, reach: 0.12, lip: 0},
+        look: {lit: 0.85, dark: 1, shadow: [0.96, 1, 1.08], rim: 0.9},
+        edge: {depth: 0.42, amp: 0.14, waves: 3, soft: 0.15, grain: 0.65, clump: 9, specks: 0.35, reach: 0.24, lip: 0},
         albedo: function (s) {
-            var c = ramp(ARID, 0.5 + 0.4 * s.noise("field", 3, 2)),
-                dust = s.noise("dust", 5, 2);
+            var c = ramp(SAVANNAH, 0.5 + 0.4 * s.noise("field", 3, 2)),
+                earth = s.noise("earth", 6, 2),
+                tall = s.noise("tall", 10, 1);
 
-            if (dust > 0.15)
-                c = mix(c, [214, 172, 124], Math.min(1, (dust - 0.15) * 2.5) * 0.55);
+            if (earth > 0.35)
+                c = mix(c, [168, 104, 66], Math.min(1, (earth - 0.35) * 2.5) * 0.6);
+            else if (tall > 0.3)
+                c = mix(c, [150, 124, 60], Math.min(1, (tall - 0.3) * 2.5) * 0.45);
 
             return grain(c, s, 0.07, 5);
         },
         decorations: [
-            {density: 0.01, cells: shrub([112, 112, 66], [82, 84, 50])},
-            {density: 0.012, cells: pebble([[206, 190, 164], [180, 160, 130]])}
+            {density: 0.02, cells: tuft([214, 184, 104], [128, 104, 52])},
+            {density: 0.004, cells: shrub([96, 104, 52], [66, 72, 36])}
         ]
     },
     sand_dunes: {
         name: "Desert sand",
-        description: "Golden wind-rippled dune sand of the Sahara - Egypt, Algeria.",
+        description: "Golden wind-rippled dune sand of the Sahara - Egypt, Algeria, Morocco.",
         kind: "land",
         waterBody: "water_shallow",
         look: {lit: 0.8, dark: 1, shadow: [0.95, 1, 1.12], rim: 0.55},
-        edge: {depth: 0.3, amp: 0.1, waves: 3, soft: 0.1, grain: 0.85, clump: 9, specks: 0.3, reach: 0.14, lip: 0},
+        edge: {depth: 0.42, amp: 0.12, waves: 3, soft: 0.16, grain: 0.85, clump: 9, specks: 0.45, reach: 0.26, lip: 0},
         albedo: function (s) {
             var ripple = Math.sin(2 * Math.PI * (4 * s.u + 2 * s.v) + 2.2 * s.noise("warp", 2, 1));
 
@@ -262,11 +374,11 @@ var TILESETS = {
     },
     snow: {
         name: "Snow",
-        description: "Deep, clean snow of the Swiss Alps, blue in the shade.",
+        description: "Deep, clean snow of the mountain tops and the frozen edge of the world, blue in the shade.",
         kind: "land",
         waterBody: "ice",
         look: {lit: 0.8, dark: 0.85, shadow: [1.2, 1.05, 0.72], rim: 0.4},
-        edge: {depth: 0.3, amp: 0.12, waves: 2.5, soft: 0.06, grain: 0.15, clump: 5, specks: 0.05, reach: 0.08, lip: 0.9},
+        edge: {depth: 0.42, amp: 0.15, waves: 2.5, soft: 0.12, grain: 0.35, clump: 5, specks: 0.28, reach: 0.22, lip: 0.92},
         albedo: function (s) {
             var crust = Math.sin(2 * Math.PI * (2 * s.u - 3 * s.v) + 2 * s.noise("warp", 2, 1));
 
@@ -299,7 +411,7 @@ var TILESETS = {
     },
     ice: {
         name: "Ice",
-        description: "Frozen-over water of cold lands, cracked and dusted with snow.",
+        description: "Frozen-over water of the cold edge of the world, cracked and dusted with snow.",
         kind: "water",
         slopes: [FLAT],
         look: {lit: 0.8, dark: 0.9, shadow: [1.2, 1.05, 0.72], rim: 0.5},
@@ -324,10 +436,10 @@ var TILESETS = {
 };
 
 //the colours each ground is painted from, dark to light
-var ROCK = [[0, [98, 98, 100]], [0.5, [132, 130, 126]], [1, [166, 163, 156]]];
-var TROPICAL = [[0, [22, 82, 28]], [0.5, [38, 110, 34]], [1, [62, 138, 38]]];
-var EURO = [[0, [62, 114, 40]], [0.5, [80, 132, 50]], [1, [106, 148, 58]]];
-var ARID = [[0, [160, 94, 56]], [0.5, [184, 120, 72]], [1, [206, 152, 100]]];
+var TROPICAL = [[0, [12, 52, 20]], [0.5, [22, 72, 26]], [1, [38, 92, 32]]];
+var BOREAL = [[0, [46, 62, 40]], [0.5, [64, 80, 50]], [1, [84, 100, 60]]];
+var SOUTH = [[0, [118, 114, 58]], [0.5, [150, 142, 76]], [1, [180, 166, 96]]];
+var SAVANNAH = [[0, [170, 136, 70]], [0.5, [196, 162, 88]], [1, [216, 186, 112]]];
 var DUNES = [[0, [194, 150, 90]], [0.5, [220, 182, 116]], [1, [238, 206, 144]]];
 var SNOW = [[0, [212, 222, 236]], [0.5, [229, 236, 246]], [1, [243, 247, 252]]];
 var ICE = [[0, [160, 194, 216]], [0.5, [184, 212, 228]], [1, [208, 229, 239]]];
