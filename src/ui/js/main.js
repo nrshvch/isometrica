@@ -1,4 +1,5 @@
 import Config from "./config";
+import ClientConfig from "../../client/js/config";
 import MainRouter from "./mainrouter";
 import SplashScreen from "../modules/splash/js/main";
 import GameScreen from "../modules/gamescreen/js/gamescreen";
@@ -9,6 +10,10 @@ import Backbone from "backbone";
 // Backbone.$ itself. Vite's CJS interop takes Backbone's plain CommonJS
 // branch instead, which leaves Backbone.$ unset, so views can't render.
 Backbone.$ = $;
+
+//a new city starts somewhere in a square this many tiles wide around the old one
+var START_SPREAD_TILES = 10000;
+var START_AT_KEY = "isometrica.startAt";
 
 var events = {
     ready: 0
@@ -111,7 +116,25 @@ UIManager.prototype.reopen = function (id) {
  * The old one stays in storage, to be come back to by its own address.
  */
 UIManager.prototype.startFreshCity = function () {
-    var core = this.core();
+    var core = this.core(),
+        client = this.client();
+
+    //the new city is not dropped right where the player stands, but somewhere
+    //within a 10k by 10k tiles square around it - cityman picks it up after
+    //the reload and opens the camera there
+    if (client !== null) {
+        var pos = client.camera.transform.getPosition(),
+            span = START_SPREAD_TILES * ClientConfig.tileSize;
+
+        try {
+            window.sessionStorage.setItem(START_AT_KEY, JSON.stringify({
+                x: pos[0] + (Math.random() - 0.5) * span,
+                z: pos[2] + (Math.random() - 0.5) * span
+            }));
+        } catch (e) {
+            //no storage - the new city just opens where the camera defaults to
+        }
+    }
 
     this.reopen(core === null ? null : core.persistence.newCityId());
 };
