@@ -8,3 +8,5 @@ test/temp
 .claudeignore
 assets/terrain/terraingen
 .wrangler
+/src/public/gfx/terrain/
+/src/public/gfx/trees/
