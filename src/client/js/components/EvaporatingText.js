@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 
 /**
  * A short lived text that floats up from its spawn point and disappears,

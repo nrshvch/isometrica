@@ -42,6 +42,10 @@ var LONE_ROCKS = 0.003;
 //and how much likelier, at the most, on a hillside that has some
 var SLOPE_ROCKS = 0.16;
 
+//how likely a cliff is on any tile of dry land - one on its own now and then,
+//never a group of them
+var LONE_CLIFFS = 0.004;
+
 //the rock codes of either kind of picture, to pick one of
 var HEAPS = [], STREWN = [];
 
@@ -182,14 +186,23 @@ Ambient.events = events;
 
 /**
  *
+ * What stands on the tile: a tree, or rarely a cliff on its own - as its
+ * building code, or null.
+ *
  * @param tileIdx
- * @returns {Building|null}
+ * @returns {number|null}
  */
 Ambient.prototype.getTree = function (tile) {
     var world = this.root,
         terrain = world.terrain,
         terrainType = terrain.getTerrainType(tile),
         resource = terrain.getResource(tile);
+
+    if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null
+        && this._usedTiles[tile] === undefined
+        && !Terrain.isSlope(terrain.tileSlope(tile))
+        && hash(Terrain.extractX(tile), Terrain.extractY(tile), 4) < LONE_CLIFFS)
+        return BuildingCode.cliff;
 
     //nothing grows where there are stones
     if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null && hasTree(this, tile)

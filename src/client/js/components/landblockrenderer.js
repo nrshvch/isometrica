@@ -9,7 +9,7 @@
  * (see client/tileoutline), so that a block sharing its edge with the city
  * limits shows two lines rather than one on top of the other.
  */
-import Engine from "engine/main";
+import Engine from "engine";
 import * as glMatrix from "gl-matrix";
 import Config from "../config";
 import RenderLayer from "../renderlayer";

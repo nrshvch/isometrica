@@ -1,6 +1,6 @@
 //TODO each building should be a building instance with attached prefab of building
 import Core from "core/main";
-import engine from "engine/main";
+import engine from "engine";
 import BuildingClassCode from "data/classcode";
 import BuildingData from "data/buildings";
 import Building from "./building";
@@ -303,8 +303,8 @@ function createRoadPreview(self, tile, id, opacity) {
  * Floats text over the middle of an area of sizeX by sizeY tiles anchored at
  * tile.
  */
-function showText(self, tile, sizeX, sizeY, text) {
-    var message = new TileMessage(text, "rgb(255,64,64)");
+function showText(self, tile, sizeX, sizeY, text, color) {
+    var message = new TileMessage(text, color || "rgb(255,64,64)");
     self.root.game.logic.world.addGameObject(message);
     placeOverArea(self, message, tile, sizeX, sizeY, 0);
 }
@@ -427,6 +427,15 @@ function buildSelection(self, code, anchors, rotation) {
 }
 
 /**
+ * Green and red of the tiles under a selection, for whoever else lets the
+ * player pick ground.
+ */
+Buildman.HILITE_FILL = HILITE_FILL;
+Buildman.HILITE_BORDER = HILITE_BORDER;
+Buildman.HILITE_BLOCKED_FILL = HILITE_BLOCKED_FILL;
+Buildman.HILITE_BLOCKED_BORDER = HILITE_BLOCKED_BORDER;
+
+/**
  * One text per built instance - a road tile is an instance of its own, while a
  * multi tile building gets a single text over the middle of its footprint.
  */
@@ -490,6 +499,39 @@ function Buildman(main) {
 Buildman.events = events;
 
 Buildman.prototype = Object.create(EventManager.prototype);
+
+/**
+ * A see-through copy of code standing on tile, the way one being placed is
+ * shown - fainter where it could not go up.
+ *
+ * @returns {engine.GameObject} to destroy once it is not wanted any more
+ */
+Buildman.prototype.preview = function (code, tile, rotation, ok) {
+    return createPreview(this, BuildingData[code], tile, rotation,
+        ok ? PREVIEW_OPACITY : PREVIEW_BLOCKED_OPACITY);
+};
+
+/**
+ * Floats money the city just got over tile - the other way round from what a
+ * build costs: green, and with a plus.
+ *
+ * @param tile {number}
+ * @param amount {number}
+ */
+Buildman.prototype.showIncome = function (tile, amount) {
+    showText(this, tile, 1, 1, "+$" + Numeral(amount).format("0,0"), "rgb(96,224,96)");
+};
+
+/**
+ * Floats why something was turned down over tile, the way a refused build is.
+ *
+ * @param tile {number}
+ * @param reason {number} ErrorCode
+ */
+Buildman.prototype.showError = function (tile, reason) {
+    showText(this, tile, 1, 1, errorText[reason] || "can't build");
+};
+
 
 Buildman.prototype.events = events;
 

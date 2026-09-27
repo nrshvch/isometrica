@@ -1,0 +1,6 @@
+{
+  "name": "reactive-property",
+  "private": true,
+  "type": "module",
+  "main": "dist/reactive-property.js"
+}

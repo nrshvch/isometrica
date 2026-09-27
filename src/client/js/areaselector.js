@@ -179,6 +179,9 @@ function findHandles(me) {
         r = {},
         cell, i, j, x0, y0, x1, y1, n, d, dx, dy, b;
 
+    if (!me._resizable)
+        return r;
+
     function claim(x, y, dx, dy) {
         var tile = Terrain.convertToIndex(x, y);
 
@@ -646,6 +649,9 @@ var events = {
  *                       laying roads
  *        corners      - false to leave out the handles off a rectangle's
  *                       corners
+ *        resizable    - false for a selection of one footprint only: no
+ *                       handles, it can only be dragged about or tapped
+ *                       somewhere else
  * @constructor
  */
 function AreaSelector(root, options) {
@@ -658,6 +664,7 @@ function AreaSelector(root, options) {
     this._underwater = options.underwater === true;
     this._turns = options.turns === true;
     this._corners = options.corners !== false;
+    this._resizable = options.resizable !== false;
     this._handleTokens = [];
     this._handles = {};
     this._cells = {};

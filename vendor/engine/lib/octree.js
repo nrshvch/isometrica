@@ -1,4 +1,4 @@
-define(["./Octree/node", "./Octree/Item"], function (Node, Item) {
+define(["./Octree/node", "./Octree/item"], function (Node, Item) {
 
         /**
          * @param {number} min Root bounding box min XYZ value.

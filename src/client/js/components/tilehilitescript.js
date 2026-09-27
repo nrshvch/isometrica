@@ -1,5 +1,5 @@
 import Config from "../config";
-import engine from "engine/main";
+import engine from "engine";
 
 function Script(){
     engine.Component.call(this);

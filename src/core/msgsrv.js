@@ -3,7 +3,7 @@
  */
 import Events from "events";
 import Namespace from "namespace";
-import Enumeration from "enumeration";
+import Enumeration from "shared/enumeration";
 import Terrain from "./terrain";
 
 var Core = Namespace("Isometrica.Core");

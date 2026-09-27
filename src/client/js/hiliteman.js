@@ -5,7 +5,7 @@
  * Time: 14:48
  * To change this template use File | Settings | File Templates.
  */
-import engine from "engine/main";
+import engine from "engine";
 import TileHiliteScript from "./components/tilehilitescript";
 import TileHiliteRenderer from "./components/tilehiliterenderer";
 import RenderLayer from "client/renderlayer";

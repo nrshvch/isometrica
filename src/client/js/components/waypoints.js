@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 
 function Waypoint(){
     this.x = 0;

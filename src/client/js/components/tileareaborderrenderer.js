@@ -7,7 +7,7 @@
  * so it will outline any shape: a square block, a water tower's round reach, or
  * several separate pieces at once.
  */
-import Engine from "engine/main";
+import Engine from "engine";
 import * as glMatrix from "gl-matrix";
 import RenderLayer from "../renderlayer";
 import {outline} from "../tileoutline";
@@ -18,19 +18,21 @@ var float32Buffer = new Float32Array(3);
 /**
  * @param terrain {Terrain} core terrain, for grid point heights
  * @param tiles {number[]}
+ * @param [padding] {number} how far inside the edge to draw, see tileoutline
  * @constructor
  */
-function TileAreaBorderRenderer(terrain, tiles) {
+function TileAreaBorderRenderer(terrain, tiles, padding) {
     Engine.Renderer.call(this);
 
     this.layer = RenderLayer.groundDrawLayer;
     this.terrain = terrain;
-    this.paths = outline(tiles || [], terrain);
+    this.padding = padding;
+    this.paths = outline(tiles || [], terrain, padding);
 }
 
 TileAreaBorderRenderer.prototype = Object.create(Engine.Renderer.prototype);
 
-TileAreaBorderRenderer.prototype.fillColor = "rgba(0,160,255,0.10)";
+TileAreaBorderRenderer.prototype.fillColor = "rgba(0,160,255,0.35)";
 TileAreaBorderRenderer.prototype.borderColor = "rgba(0,192,255,0.9)";
 TileAreaBorderRenderer.prototype.borderWidth = 2;
 TileAreaBorderRenderer.prototype.dash = [6, 4];
@@ -40,7 +42,7 @@ TileAreaBorderRenderer.prototype.paths = null;
  * @param tiles {number[]}
  */
 TileAreaBorderRenderer.prototype.setTiles = function (tiles) {
-    this.paths = outline(tiles || [], this.terrain);
+    this.paths = outline(tiles || [], this.terrain, this.padding);
 };
 
 TileAreaBorderRenderer.prototype.cullingTest = function (viewport, vprender) {

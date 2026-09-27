@@ -1,7 +1,7 @@
 /**
  * Created by denis on 9/18/14.
  */
-import Engine from "engine/main";
+import Engine from "engine";
 import RenderLayer from "../renderlayer";
 
 var GameObject = Engine.GameObject;
