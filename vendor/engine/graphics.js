@@ -1,4 +1,4 @@
-define(["./viewport", "./Canvas2dRenderer"], function (Viewport, Renderer) {
+define(["./viewport", "./canvas2drenderer"], function (Viewport, Renderer) {
     /**
      * @constructor
      */
