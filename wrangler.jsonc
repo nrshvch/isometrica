@@ -18,6 +18,8 @@
 	"workers_dev": true,
 	// `wrangler preview` URLs live on workers.dev and need this on.
 	"preview_urls": true,
+	// `wrangler preview` refuses to run without this block; empty means Previews reuse the settings above.
+	"previews": {},
 	"routes": [
 		{ "pattern": "dev.peeps.land", "custom_domain": true }
 	],
