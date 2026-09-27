@@ -4,7 +4,7 @@ import Events from "events";
 //The camera stops at these alone: at any zoom in between, pixel art comes out
 //with pixels of uneven sizes. Each is twice the one before, and 1 is what
 //the game has always been drawn at.
-var ZOOMS = [0.5, 1, 2];
+var ZOOMS = [0.5, 0.667, 1, 1.5, 2];
 
 function onDrag(sender, param, me) {
     var dragX = param.dx,
