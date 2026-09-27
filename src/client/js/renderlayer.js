@@ -11,8 +11,14 @@ export default {
     roadLayer: 2,
     vehiclesLayer: 3,
     buildingsLayer: 4,
-    overlayLayer: 5,
+    //a water tower's reach, over the buildings so a packed block does not
+    //bury it - and a clicked building once more over that (see serviceman)
+    coverageLayer: 5,
+    //the line round the clicked building's tiles, over the reach
+    footprintLayer: 6,
+    inspectedLayer: 7,
+    overlayLayer: 8,
     //what is about to be built - drawn over everything so that nothing
     //already standing, the tile's own trees included, hides it
-    previewLayer: 6
+    previewLayer: 9
 }
