@@ -1,9 +1,9 @@
 /**
  * Where city saves live in localStorage.
  *
- * Every city gets a row of its own - "isometrica.city.<id>" - so that a single
- * save can be read, hand edited or thrown away without touching the rest. One
- * more row, "isometrica.cities", is the directory of them: it says which key
+ * Every city gets a row of its own - "isometrica.v2.city.<id>" - so that a
+ * single save can be read, hand edited or thrown away without touching the
+ * rest. One more row, "isometrica.v2.cities", is the directory of them: it says which key
  * each city id is stored under, and which city the game opens when the url
  * does not name one.
  *
@@ -15,8 +15,12 @@ import namespace from "namespace";
 var Core = namespace("Isometrica.Core");
 Core.CityStore = CityStore;
 
-var INDEX_KEY = "isometrica.cities";
-var CITY_KEY_PREFIX = "isometrica.city.";
+//the keys carry a generation: saves under an older one hold buildings that
+//are not there any more (the cottage, the bank - folded into the looks of the
+//house and the shop), so they are left behind rather than read. Bump it again
+//whenever old saves stop making sense
+var INDEX_KEY = "isometrica.v2.cities";
+var CITY_KEY_PREFIX = "isometrica.v2.city.";
 var ID_LENGTH = 6;
 var ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 var VERSION = 1;

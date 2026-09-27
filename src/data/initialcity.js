@@ -6,7 +6,7 @@
  * their own city in their own storage row, leaving this one untouched.
  *
  * To fill it in, take one of your own saves out of localStorage - the row
- * named "isometrica.city.<id>", see Core.CityStore - and paste its contents
+ * named "isometrica.v2.city.<id>", see Core.CityStore - and paste its contents
  * here. The "id" and "savedAt" fields of the pasted save are ignored.
  *
  * null means there is nothing to start from: the game opens on a blank world
