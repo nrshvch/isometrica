@@ -1,4 +1,4 @@
-import Engine from "engine/main";
+import Engine from "engine";
 
 function City(){}
 

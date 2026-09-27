@@ -1,6 +1,6 @@
 //TODO cache terrain Z values
 
-import namespace from "shared/namespace";
+import namespace from "namespace";
 import DepositCode from "./depositcode";
 import TerrainType from "./terraintype";
 import Events from "events";

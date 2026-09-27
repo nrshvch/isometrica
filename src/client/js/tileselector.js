@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import RenderLayer from "./renderlayer";
 import WorldCamera from "./components/camerascript";
 import Events from "events";

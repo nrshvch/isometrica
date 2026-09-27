@@ -5,7 +5,7 @@
  * Time: 13:55
  * To change this template use File | Settings | File Templates.
  */
-import engine from "engine/main";
+import engine from "engine";
 import Config from "../config";
 import * as glMatrix from "gl-matrix";
 

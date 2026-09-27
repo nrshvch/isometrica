@@ -20,7 +20,7 @@ import Events from "events";
 import CityStore from "./citystore";
 import CityService from "../citysrv";
 import InitialCity from "data/initialcity";
-import namespace from "shared/namespace";
+import namespace from "namespace";
 
 var Core = namespace("Isometrica.Core");
 Core.CityPersistence = CityPersistence;

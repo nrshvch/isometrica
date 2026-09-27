@@ -1,122 +1,40 @@
 // events - entry point
-// Extracted verbatim from the pre-existing browserify bundle; AMD simplified
-// CommonJS wrapper added so r.js can build it. Do not reformat the body.
-define(function (require, exports, module) {
+// Exposes the raw API from ./events wrapped in an EventEmmiter-compatible
+// facade, because different eras of the code built on this package used
+// different styles of managing events. Both the engine and its consumers
+// require this facade under the bare id "events".
+define(function (require) {
+    var RawEvents = require("./events");
 
-var Event = require("./event");
-var Subscription = require("./subscription");
-
-/**
- * Retrieve Event object from host
- * @param host
- * @param name
- * @returns {*}
- */
-function event(host, name){
-    var e, events = host._events;
-
-    if (events === undefined)
-        events = host._events = Object.create(null);
-
-    e = events[name];
-
-    if (e === undefined)
-        e = events[name] = new Event();
-
-    return e;
-}
-
-/**
- * Subscribe to event of a given object
- * @param host {object}
- * @param name {string|number} Event name
- * @param handler {function}
- * @param data {object} Data that will be passed to callback
- * @param [once] {boolean}
- * @returns {number} Subscription id
- */
-function on(host, name, handler, data) {
-    var on = Event.on; //cached func runs faster
-    return on(event(host, name), handler, data);
-}
-
-function once(host, name, handler, data) {
-    var once = Event.once; //cached func runs faster
-    return once(event(host, name), handler, data);
-}
-
-/**
- * Unsubscribe from event of a given object
- * @param host {object}
- * @param event {string|number} Event id
- * @param tokenOrListener {number|function} Subscription id or handler
- * @returns {boolean}
- */
-function off(host, event, tokenOrListener) {
-    var e, off = Event.off;
-
-    if (host._events === undefined || host._events[event] === undefined)
-        return false;
-
-    e = host._events[event];
-
-    return off(e, tokenOrListener);
-}
-
-/**
- * Dispatch an event of a given object
- * @param host {object}
- * @param event {string|number} Event id
- * @param [c] {object} Sender argument that will be passed to callback
- * @param d {object} Event arguments that will be passed to callback
- */
-function fire(host, event, c, d) {
-    var sender, args;
-
-    if (d === undefined) {
-        sender = host;
-        args = c;
-    } else {
-        sender = c;
-        args = d;
+    function EventEmmiter() {
     }
 
-    return _fire(host, event, sender, args);
-}
+    EventEmmiter.event = RawEvents.event;
+    EventEmmiter.EventEmmiter = EventEmmiter;
+    EventEmmiter.addListener = EventEmmiter.on = RawEvents.on;
+    EventEmmiter.once = RawEvents.once;
+    EventEmmiter.removeListener = EventEmmiter.off = RawEvents.off;
+    EventEmmiter.emit = EventEmmiter.fire = RawEvents.fire;
+    /** @deprecated */
+    EventEmmiter.subscribe = RawEvents.on;
+    /** @deprecated */
+    EventEmmiter.unsubscribe = RawEvents.off;
 
-function _fire(host, event, sender, args){
-    if (host._events === undefined || host._events[event] === undefined)
-        return;
+    EventEmmiter.prototype.addEventListener = EventEmmiter.prototype.addListener = function (event, listener, meta) {
+        return RawEvents.on(this, event, listener, meta);
+    };
 
-    var fire = Event.fire; //cached func runs faster
-    fire(host._events[event], sender, args);
-}
+    EventEmmiter.prototype.removeEventListener = EventEmmiter.prototype.removeListener = function (event, listenerOrId) {
+        return RawEvents.off(this, event, listenerOrId);
+    };
 
+    EventEmmiter.prototype.dispatchEvent = EventEmmiter.prototype.emit = function (event, args) {
+        return RawEvents.fire(this, event, args);
+    };
 
-function callableEvent(name) {
-    function ev(a, b) {
-        if(a === undefined && b === undefined) {
-            return event(this, name);
-        }else if(a instanceof Subscription){
-            return off(this, name, a);
-        }else if(typeof a === "function"){
-            return on(this, name, a, b);
-        }else {
-            return _fire(this, name, a, b);
-        }
-    }
-    return ev;
-}
+    EventEmmiter.prototype.once = function (event, listener, meta) {
+        return RawEvents.on(this, event, listener, meta, true);
+    };
 
-function Events(){
-    this.on = on;
-    this.once = once;
-    this.off = off;
-    this.fire = fire;
-    this.event = callableEvent;
-    this.Event = Event;
-}
-
-module.exports = new Events();
-
+    return EventEmmiter;
 });

@@ -20,7 +20,7 @@
  * those as chunks come and go), so nothing is drawn for a part of the map that
  * is not on screen in the first place.
  */
-import engine from "engine/main";
+import engine from "engine";
 import Events from "events";
 import Core from "core/main";
 import ServiceCode from "core/servicecode";

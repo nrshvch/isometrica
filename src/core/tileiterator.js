@@ -1,5 +1,5 @@
 /** @lends TileIterator */
-import Namespace from "shared/namespace";
+import Namespace from "namespace";
 import Terrain from "./terrain";
 
 var TerrainDY = Terrain.dy;

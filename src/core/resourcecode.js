@@ -1,4 +1,4 @@
-import Namespace from "shared/namespace";
+import Namespace from "namespace";
 
 var Core = Namespace("Isometrica.Core");
 

@@ -1,0 +1,6 @@
+{
+  "name": "namespace",
+  "private": true,
+  "type": "module",
+  "main": "dist/namespace.js"
+}

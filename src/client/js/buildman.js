@@ -1,6 +1,6 @@
 //TODO each building should be a building instance with attached prefab of building
 import Core from "core/main";
-import engine from "engine/main";
+import engine from "engine";
 import BuildingClassCode from "data/classcode";
 import BuildingData from "data/buildings";
 import Building from "./building";

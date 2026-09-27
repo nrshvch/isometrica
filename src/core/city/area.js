@@ -14,7 +14,7 @@ import TileIterator from "../tileiterator";
 import Resource from "../resourcecode";
 import Terrain from "../terrain";
 
-import namespace from "shared/namespace";
+import namespace from "namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Area = Area;
 

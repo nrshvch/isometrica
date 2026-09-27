@@ -11,7 +11,7 @@
  * first, so the city's shops fill up one after the other instead of all of
  * them standing half empty - the ones left without anybody are plain to see.
  */
-import namespace from "shared/namespace";
+import namespace from "namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Jobs = CityJobs;

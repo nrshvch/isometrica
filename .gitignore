@@ -11,3 +11,4 @@ assets/terrain/terraingen
 /src/public/gfx/terrain/
 /src/public/gfx/trees/
 /src/public/gfx/buildings/generated
+/vendor/*/dist/

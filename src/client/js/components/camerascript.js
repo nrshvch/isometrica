@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import * as glMatrix from "gl-matrix";
 import Events from "events";
 

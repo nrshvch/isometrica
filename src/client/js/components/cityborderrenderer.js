@@ -5,7 +5,7 @@
  * land for sale and the water towers' reach use as well - so every "these tiles,
  * together" outline in the game is the same shape of thing.
  */
-import Engine from "engine/main";
+import Engine from "engine";
 import * as glMatrix from "gl-matrix";
 import RenderLayer from "../renderlayer";
 import Events from "events";

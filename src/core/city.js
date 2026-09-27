@@ -1,4 +1,4 @@
-import namespace from "shared/namespace";
+import namespace from "namespace";
 import Events from "events";
 import Laboratory from "./city/laboratory";
 import CityStats from "./city/citystats";
