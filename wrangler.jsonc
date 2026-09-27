@@ -1,0 +1,34 @@
+// Static site on Cloudflare Workers: `npm run build` → dist/, served as static assets (no Worker script).
+// Deployed by .github/workflows/deploy.yml.
+//
+// Top level is the "dev" Worker (dev.peeps.land):
+//   push to develop      → `wrangler deploy --env=`
+//   push to other branch → `wrangler preview --env= --name <branch>` → https://<branch>-dev.isometrica.workers.dev
+// env.production is the "prod" Worker (peeps.land):
+//   push to main         → `wrangler deploy --env production`
+//
+// workers_dev / preview_urls / routes are set explicitly so a deploy never flips what's set in the dashboard.
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dev",
+	"compatibility_date": "2026-09-01",
+	"assets": {
+		"directory": "./dist"
+	},
+	"workers_dev": true,
+	// `wrangler preview` URLs live on workers.dev and need this on.
+	"preview_urls": true,
+	"routes": [
+		{ "pattern": "dev.peeps.land", "custom_domain": true }
+	],
+	"env": {
+		"production": {
+			"name": "prod",
+			"workers_dev": true,
+			"preview_urls": false,
+			"routes": [
+				{ "pattern": "peeps.land", "custom_domain": true }
+			]
+		}
+	}
+}
