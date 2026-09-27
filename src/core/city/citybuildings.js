@@ -63,7 +63,32 @@ CityBuildings.prototype.init = function () {
     Events.on(buildings, buildings.events.buildingRemoved, onBuildingRemoved, this);
 };
 
-CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
+/**
+ * What a building of a type with several looks goes up in: the one asked for,
+ * or any of them - 0 for a building that has only the one.
+ *
+ * @param data {Object} its BuildingData
+ * @param [look] {number}
+ * @returns {number}
+ */
+function lookOf(data, look) {
+    var count = data.looks ? data.looks.length : 1;
+
+    if (look >= 0 && look < count)
+        return look;
+
+    return Math.floor(Math.random() * count);
+}
+
+CityBuildings.lookOf = lookOf;
+
+/**
+ * @param code {number}
+ * @param tile {number}
+ * @param [rotate] {boolean}
+ * @param [look] {number} which of its looks it goes up in - any, left out
+ */
+CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
     var city = this.city;
     var root = this.city.root;
 
@@ -83,6 +108,7 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
         var clearing = code === BuildingCode.cityHall ? 0 : clearingCost(this, code, tile, rotate);
 
         var building = new Building();
+        building.look = lookOf(data, look);
         building.init(city.world, code, tile, rotate);
 
         //what the player pays for it, set before the build is announced so
@@ -225,14 +251,16 @@ CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
  * @param code {number}
  * @param tile {number}
  * @param [rotation] {number}
+ * @param [look] {number}
  * @returns {Building}
  */
-CityBuildings.prototype.restore = function (code, tile, rotation) {
+CityBuildings.prototype.restore = function (code, tile, rotation, look) {
     //saves written before the codes were made numbers carry them as strings
     code = parseInt(code, 10);
 
     var building = new Building();
 
+    building.look = lookOf(BuildingData[code], look);
     building.init(this.city.world, code, tile, rotation, true);
 
     this.city.root.buildings.build(building);
@@ -259,7 +287,8 @@ CityBuildings.prototype.save = function () {
         r.push({
             code: building.buildingCode,
             tile: building.tile,
-            rotation: building.rotation || 0
+            rotation: building.rotation || 0,
+            look: building.look
         });
     }
 
@@ -271,7 +300,7 @@ CityBuildings.prototype.save = function () {
  */
 CityBuildings.prototype.load = function (list) {
     for (var i = 0; i < list.length; i++)
-        this.restore(list[i].code, list[i].tile, list[i].rotation);
+        this.restore(list[i].code, list[i].tile, list[i].rotation, list[i].look);
 };
 
 CityBuildings.prototype.destroyBuilding = function () {

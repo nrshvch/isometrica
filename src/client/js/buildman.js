@@ -13,6 +13,7 @@ import Chunkman from "./chunkman";
 import AreaSelector from "./areaselector";
 import TileMessage from "./gameObjects/tilemessage";
 import CityWater from "core/city/citywater";
+import CityBuildings from "core/city/citybuildings";
 import Config from "./config";
 import RenderLayer from "./renderlayer";
 import ResourceCode from "core/resourcecode";
@@ -140,9 +141,10 @@ var PREVIEW_OPACITY = 0.75,
  * be put down - so that what is about to be placed, and which way it faces, is
  * seen before the click rather than after it.
  *
+ * @param [look] {number} which of its type's looks it is shown in
  * @returns {engine.GameObject}
  */
-function createPreview(self, data, tile, rotation, opacity) {
+function createPreview(self, data, tile, rotation, opacity, look) {
     var terrain = self.root.core.world.terrain,
         tileSize = Config.tileSize,
         x = Terrain.extractX(tile),
@@ -154,7 +156,7 @@ function createPreview(self, data, tile, rotation, opacity) {
             : terrain.getGridPointHeight(x + 1, y),
         go = new engine.GameObject("building preview");
 
-    BuildingView.addSprites(go, data, rotation, opacity, RenderLayer.previewLayer);
+    BuildingView.addSprites(go, data, rotation, opacity, RenderLayer.previewLayer, look);
 
     //placed before it goes in - the world files it by where it stands
     go.transform.setPosition(x * tileSize, z * Config.tileZStep, y * tileSize);
@@ -389,8 +391,9 @@ errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
  * across another is turned down where they cross, and that is no news.
  *
  * @param anchors {number[]} the tile each building would stand on
+ * @param looks {number[]} which look each of them goes up in
  */
-function buildSelection(self, code, anchors, rotation) {
+function buildSelection(self, code, anchors, rotation, looks) {
     var root = self.root,
         data = BuildingData[code],
         messaging = root.core.messagingService,
@@ -406,7 +409,7 @@ function buildSelection(self, code, anchors, rotation) {
     try {
         for (i = 0; i < anchors.length; i++) {
             tried++;
-            root.core.cities.getCity(0).buildingService.buildBuilding(code, anchors[i], rotation);
+            root.core.cities.getCity(0).buildingService.buildBuilding(code, anchors[i], rotation, looks[i]);
         }
     } finally {
         Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
@@ -690,6 +693,19 @@ Buildman.prototype.build = function (code) {
         return rotation ? data.sizeX : data.sizeY;
     }
 
+    //the look each footprint of the selection goes up in, by the tile it
+    //starts on: picked the first time the selection covers it and kept from
+    //then on, so that the preview does not shuffle while it is dragged about
+    //and what goes up is what was shown
+    var looks = Object.create(null);
+
+    function lookAt(tile) {
+        if (looks[tile] === undefined)
+            looks[tile] = CityBuildings.lookOf(data);
+
+        return looks[tile];
+    }
+
     //show hint
     root.ui.gameScreen().worldScreen().showHint("Drag to place, pull arrows to resize!");
 
@@ -775,7 +791,7 @@ Buildman.prototype.build = function (code) {
 
         for (var i = 0; i < tiles.length; i++)
             previews.push(createPreview(self, data, tiles[i], rotation,
-                opacity[tiles[i]] || PREVIEW_BLOCKED_OPACITY));
+                opacity[tiles[i]] || PREVIEW_BLOCKED_OPACITY, lookAt(tiles[i])));
     }
 
     //the roads as they would look once laid: each piece joined up with the
@@ -868,7 +884,9 @@ Buildman.prototype.build = function (code) {
         ts.rotate();
     };
     controls.onSubmit = function () {
-        buildSelection(self, code, ts.anchors(), rotation);
+        var anchors = ts.anchors();
+
+        buildSelection(self, code, anchors, rotation, anchors.map(lookAt));
 
         // stay in build mode with the selection where it was, so the next
         // one can be dragged along from it - what is under it now is taken
