@@ -304,53 +304,14 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    buildingData[BuildingCode.house3] = {
+    //A building type rather than a building: the player puts down a house and
+    //it goes up in one of its looks, picked at random - so that a street of
+    //them need not be the same house over and over, and nobody has to pick
+    //one by one. The looks only differ in how they are drawn.
+    buildingData[BuildingCode.house] = {
         sizeX: 2,
         sizeY: 1,
-        buildingCode: BuildingCode.house3,
-        classCode: BuildingClassCode.house,
-        producing: {},
-        demanding: {},
-        requires: {
-            road: true,
-            water: true
-        },
-        constructionTime: 5000,
-        constructionCost: {
-            money: 1600
-        },
-        name: "cottage house",
-        //people in a house of their own are worth more a head to the treasury
-        //than the same people stacked in flats
-        taxPerResident: 2.5,
-        citizenCapacity: 9,
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 19,
-                path: "buildings/house3-1.png",
-                layer: RenderLayer.buildingsLayer
-            },
-            {
-                x: 1,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 40,
-                path: "buildings/house3-2.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ],
-        smokeSource: [1.25, 2.5, 0.85]
-    };
-
-    buildingData[BuildingCode.house4] = {
-        sizeX: 1,
-        sizeY: 2,
-        buildingCode: BuildingCode.house4,
+        buildingCode: BuildingCode.house,
         classCode: BuildingClassCode.house,
         producing: {},
         demanding: {},
@@ -362,72 +323,86 @@ var Core = namespace("Isometrica.Core");
         constructionCost: {
             money: 2200
         },
-        name: "two story house",
+        name: "house",
         //people in a house of their own are worth more a head to the treasury
         //than the same people stacked in flats
         taxPerResident: 2.5,
         citizenCapacity: 12,
-        sprites: [
+        //each what a building has to be drawn by - sprites, and smokeSource
+        //where it has a chimney. One that is turned was painted for the
+        //footprint turned round, and is drawn turned round to fit
+        looks: [
+            //a cottage
             {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 28,
-                path: "buildings/house4-1.png",
-                layer: RenderLayer.buildingsLayer
+                sprites: [
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        pivotX: 32,
+                        pivotY: 19,
+                        path: "buildings/house3-1.png",
+                        layer: RenderLayer.buildingsLayer
+                    },
+                    {
+                        x: 1,
+                        y: 0,
+                        z: 0,
+                        pivotX: 32,
+                        pivotY: 40,
+                        path: "buildings/house3-2.png",
+                        layer: RenderLayer.buildingsLayer
+                    }
+                ],
+                smokeSource: [1.25, 2.5, 0.85]
             },
+            //two storeys
             {
-                x: 0,
-                y: 0,
-                z: 1,
-                pivotX: 32,
-                pivotY: 41,
-                path: "buildings/house4-2.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ],
-        smokeSource: [0.75, 3.5, 1.25]
-    };
-
-    buildingData[BuildingCode.house5] = {
-        sizeX: 2,
-        sizeY: 1,
-        buildingCode: BuildingCode.house5,
-        classCode: BuildingClassCode.house,
-        producing: {},
-        demanding: {},
-        requires: {
-            road: true,
-            water: true
-        },
-        //people in a house of their own are worth more a head to the treasury
-        //than the same people stacked in flats
-        taxPerResident: 2.5,
-        citizenCapacity: 9,
-        constructionTime: 5000,
-        constructionCost: {
-            money: 1600
-        },
-        name: "house",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 35,
-                path: "buildings/house5-1.png",
-                layer: RenderLayer.buildingsLayer
+                turned: true,
+                sprites: [
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        pivotX: 32,
+                        pivotY: 28,
+                        path: "buildings/house4-1.png",
+                        layer: RenderLayer.buildingsLayer
+                    },
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 1,
+                        pivotX: 32,
+                        pivotY: 41,
+                        path: "buildings/house4-2.png",
+                        layer: RenderLayer.buildingsLayer
+                    }
+                ],
+                smokeSource: [0.75, 3.5, 1.25]
             },
+            //a plain one
             {
-                x: 1,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 31,
-                path: "buildings/house5-2.png",
-                layer: RenderLayer.buildingsLayer
+                sprites: [
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        pivotX: 32,
+                        pivotY: 35,
+                        path: "buildings/house5-1.png",
+                        layer: RenderLayer.buildingsLayer
+                    },
+                    {
+                        x: 1,
+                        y: 0,
+                        z: 0,
+                        pivotX: 32,
+                        pivotY: 31,
+                        path: "buildings/house5-2.png",
+                        layer: RenderLayer.buildingsLayer
+                    }
+                ]
             }
         ]
     };
@@ -477,13 +452,12 @@ var Core = namespace("Isometrica.Core");
     //
     //                cost   jobs  /tick  payback  per tile
     //  shop          1000    20     15      67       15
-    //  bank          1800    30     20      90       20
     //  big shop      9000   140     96      94       24
     //  office       25000   200    110     227      110
     //
     //Every citizen in a house that needs jobs needs a job of their own, so the
-    //job counts are generous - a street of houses gets by on a shop and a
-    //bank, the way a real one would.
+    //job counts are generous - a street of houses gets by on a couple of
+    //shops, the way a real one would.
 
     //A corner shop: nobody lives in it, it just takes the city's money over the
     //counter and pays its share into the treasury - as long as customers can get
@@ -508,15 +482,36 @@ var Core = namespace("Isometrica.Core");
             money: 1000
         },
         name: "shop",
-        sprites: [
+        //a small business on the corner, whatever it is - put down as one of
+        //these at random, the same building by the numbers (see house)
+        looks: [
+            //a shop
             {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 48,
-                path: "buildings/shop.png",
-                layer: RenderLayer.buildingsLayer
+                sprites: [
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        pivotX: 32,
+                        pivotY: 48,
+                        path: "buildings/shop.png",
+                        layer: RenderLayer.buildingsLayer
+                    }
+                ]
+            },
+            //a bank
+            {
+                sprites: [
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        pivotX: 32,
+                        pivotY: 49,
+                        path: "buildings/bank.png",
+                        layer: RenderLayer.buildingsLayer
+                    }
+                ]
             }
         ]
     };
@@ -536,18 +531,14 @@ var Core = namespace("Isometrica.Core");
     //  mobile house      150    2    2      2        4        38
     //  tiny house        300    3    2      3        6        50
     //  small house      1200    8    2.5    4       10        60
-    //  cottage / house  1600    9    2.5    4.5     11.3      71
-    //  two story        2200   12    2.5    6       15        73
+    //  house            2200   12    2.5    6       15        73
     //  apartments       5000   50    1     12.5     12.5     100
     //
     //Tax is only half of what a head is worth: everybody in town can hold a
     //job, and a worker in an office is another $0.60 a tick on top. Counting
-    //that, a tile of two story houses is worth about 18 a tick and a tile of
+    //that, a tile of houses is worth about 18 a tick and a tile of
     //flats about 20 - near enough the same money, with the flats holding
     //twice the people and the houses paying for themselves sooner.
-    //
-    //The cottage and the house are the same building in two looks, so that a
-    //street of them need not be the same house over and over.
     buildingData[BuildingCode.apartments] = {
         sizeX: 2,
         sizeY: 2,
@@ -609,41 +600,6 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    //pays better than a shop over the same bit of pavement
-    buildingData[BuildingCode.bank] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.bank,
-        classCode: BuildingClassCode.commerce,
-        producing: {
-            money: 20
-        },
-        jobs: 30,
-        demanding: {},
-        requires: {
-            road: true,
-            water: true
-        },
-        constructionTime: 8000,
-        constructionCost: {
-            money: 1800
-        },
-        name: "bank",
-        sprites: [
-            {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 32,
-                pivotY: 49,
-                path: "buildings/bank.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
-
-    //a supermarket with a car park of its own: out-earns a row of banks on the
-    //same land, but it takes a long while to save up for
     buildingData[BuildingCode.bigShop] = {
         sizeX: 2,
         sizeY: 2,

@@ -51,6 +51,8 @@ Construction.prototype.rotation = 0;
 Construction.prototype.data = null;
 Construction.prototype.world = null;
 Construction.prototype.buildingCode = -1;
+//which of its type's looks it went up in (see looks in data/buildings)
+Construction.prototype.look = 0;
 Construction.prototype._state = ConstructionState.none;
 
 Construction.prototype.init = function(world, code, tile, rot, done){

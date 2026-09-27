@@ -88,13 +88,15 @@ BuildingView.prototype.update = function () {
                 }
             }
         } else if (b.data.getState() === BuildingState.ready) {
-            var rotated = !!b.data.rotation;
+            var drawing = drawingOf(staticData, b.data.look),
+                //drawn the way its look was painted, see addSprites
+                rotated = !!b.data.rotation !== !!drawing.turned;
 
-            addSprites(this.gameObject, staticData, rotated, this.opacity);
+            addSprites(this.gameObject, staticData, !!b.data.rotation, this.opacity, undefined, b.data.look);
 
             //add smoke
-            if (staticData.smokeSource !== undefined) {
-                var smoke = staticData.smokeSource,
+            if (drawing.smokeSource !== undefined) {
+                var smoke = drawing.smokeSource,
                     smokeSource = new engine.GameObject();
 
                 //the chimney turns round with the rest of the house
@@ -125,16 +127,24 @@ BuildingView.prototype.update = function () {
  *
  * @param opacity {number} 1 for the real thing
  * @param [layer] {number} every piece goes on this one rather than its own
+ * @param [look] {number} which of its type's looks it is drawn in
  */
-function addSprites(parent, staticData, rotated, opacity, layer) {
-    var spritesData = staticData.sprites,
+function addSprites(parent, staticData, rotated, opacity, layer, look) {
+    var drawing = drawingOf(staticData, look);
+
+    //a look painted for the footprint turned round is drawn turned round, so
+    //that it covers the footprint the building actually has
+    if (drawing.turned)
+        rotated = !rotated;
+
+    var spritesData = drawing.sprites,
         tileSize = Config.tileSize,
         tileZStep = Config.tileZStep,
         //a building nobody painted turned round is drawn flipped over
-        mirrored = rotated && !staticData.spritesRotate;
+        mirrored = rotated && !drawing.spritesRotate;
 
-    if (rotated && staticData.spritesRotate)
-        spritesData = staticData.spritesRotate;
+    if (rotated && drawing.spritesRotate)
+        spritesData = drawing.spritesRotate;
 
     var len = spritesData.length;
     for (var i = 0; i < len; i++) {
@@ -167,6 +177,18 @@ function addSprites(parent, staticData, rotated, opacity, layer) {
 }
 
 BuildingView.addSprites = addSprites;
+
+/**
+ * What a building is drawn by - sprites, spritesRotate, smokeSource, turned:
+ * the look it went up in, for a type that comes in several (see looks in
+ * data/buildings), or else its own data.
+ *
+ * @param staticData {Object} its BuildingData
+ * @param [look] {number}
+ */
+function drawingOf(staticData, look) {
+    return staticData.looks ? staticData.looks[look || 0] : staticData;
+}
 
 /**
  * The pivot sits as far from the right edge of a flipped picture as it did from
