@@ -11,6 +11,7 @@ import Building from "./building";
 /**
  * @type {BuildingClassCode}
  */
+import BuildingCode from "data/buildingcode";
 import BuildingClassCode from "data/classcode";
 
 /**
@@ -66,6 +67,9 @@ function buildTest(self, code, tile, rotation) {
 
         if (terrainType === TerrainType.water)
             return ErrorCode.CANT_BUILD_ON_WATER;
+        //nothing grows on the beach - the world never puts a tree there either
+        else if (data.classCode === BuildingClassCode.tree && terrainType === TerrainType.shore)
+            return ErrorCode.LAND_NOT_SUITABLE;
         //a deposit does not keep an ordinary building off a tile - nothing
         //draws deposits, and nothing can be built on them either while the
         //mines are out of the game, so a tile that looks like bare grass has
@@ -75,7 +79,9 @@ function buildTest(self, code, tile, rotation) {
             return ErrorCode.WRONG_RESOURCE_TILE;
         else if (data.classCode === BuildingClassCode.road && Terrain.isSlope(slopeId) && !Terrain.isSlopeSmooth(slopeId))
             return ErrorCode.LAND_NOT_SUITABLE;
-        else if (data.classCode !== BuildingClassCode.tree && data.classCode !== BuildingClassCode.road && Terrain.isSlope(slopeId))
+        //a tree grows on a hillside, but a cliff stands on flat ground only
+        else if ((data.classCode !== BuildingClassCode.tree || data.buildingCode === BuildingCode.cliff)
+                && data.classCode !== BuildingClassCode.road && Terrain.isSlope(slopeId))
             return ErrorCode.FLAT_LAND_REQUIRED;
         else {
             var b = self.get(tile);

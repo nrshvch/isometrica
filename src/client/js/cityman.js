@@ -7,6 +7,8 @@ import CityLabel from "./gameObjects/citylabel";
 import TileSelector from "./tileselector";
 import WorldCamera from "./components/camerascript";
 import CityComponent from "./components/city";
+import Buildman from "./buildman";
+import ErrorCode from "core/errorcode";
 
 var City = Core.City;
 
@@ -138,16 +140,22 @@ Cityman.prototype.establish = function(){
     var root = this.root;
 
     //render hint
-    root.ui.gameScreen().worldScreen().showHint("Pick a tile where you want your city to be located!");
+    root.ui.gameScreen().worldScreen().showHint("Select a tile to found your city");
 
     //enable selector
     var selector = new TileSelector(root);
     var token = -1;
+    //green where a city could be founded, red where it could not - the same
+    //as the ground under a building being placed
     var s = Events.on(selector, TileSelector.events.change, function(a,b,c){
+        var tile = a.selectedTile(),
+            ok = City.canEstablish(root.core.world, tile);
+
         root.hiliteMan.disable(token);
         token = root.hiliteMan.hilite({
-            tile: a.selectedTile(),
-            borderColor: "rgba(255,255,255,1)",
+            tile: tile,
+            fillColor: ok ? Buildman.HILITE_FILL : Buildman.HILITE_BLOCKED_FILL,
+            borderColor: ok ? Buildman.HILITE_BORDER : Buildman.HILITE_BLOCKED_BORDER,
             borderWidth: 2
         });
     });
@@ -164,7 +172,17 @@ Cityman.prototype.establish = function(){
     var controls = root.ui.gameScreen().showActionControls();
     controls.canRotate(false);
     controls.onSubmit = function () {
-        var tile = selector.selectedTile();
+        var tile = selector.selectedTile(),
+            reason = tile === -1
+                ? ErrorCode.CANT_BUILD_HERE
+                : City.establishTest(root.core.world, tile);
+
+        //turned down, the player is told why and gets to pick again
+        if (reason !== ErrorCode.NONE) {
+            if (tile !== -1)
+                root.buildman.showError(tile, reason);
+            return;
+        }
 
         root.ui.gameScreen().showPrompt("Give city a name!", function (val) {
             root.core.cities.establishCity(tile, val);
