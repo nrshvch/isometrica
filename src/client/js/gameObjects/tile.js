@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import RenderLayer from "../renderlayer";
 
 var GameObject = engine.GameObject;

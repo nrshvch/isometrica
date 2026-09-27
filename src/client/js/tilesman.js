@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import Config from "./config";
 import Events from "events";
 import Tile from "./gameObjects/tile";

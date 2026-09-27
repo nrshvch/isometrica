@@ -1,4 +1,4 @@
-import Engine from "engine/main";
+import Engine from "engine";
 import CameraScript from "./components/camerascript";
 
 function CameraMan(root){

@@ -20,7 +20,7 @@
  * those as chunks come and go), so nothing is drawn for a part of the map that
  * is not on screen in the first place.
  */
-import engine from "engine/main";
+import engine from "engine";
 import Events from "events";
 import Core from "core/main";
 import ServiceCode from "core/servicecode";
@@ -32,6 +32,8 @@ import MultilineTextRenderer from "./components/multilinetextrenderer";
 import BuildingClassCode from "data/classcode";
 import RenderLayer from "client/renderlayer";
 import Config from "./config";
+import BuildingView from "./buildingview";
+import BuildingState from "core/buildingstate";
 
 var Terrain = Core.Terrain;
 
@@ -262,6 +264,9 @@ function ServiceMan(root) {
     //what a click is showing, info or reach or both - clicked again, it is
     //put away
     this._inspected = null;
+    //the building clicked, drawn again over its neighbours, and the line
+    //round its tiles
+    this._raised = [];
 }
 
 /**
@@ -307,6 +312,7 @@ ServiceMan.prototype.inspect = function (screenX, screenY) {
         this.hideInfo();
 
     this._inspected = shown ? building : null;
+    raise(this, this._inspected);
 
     return shown;
 };
@@ -329,11 +335,80 @@ function showCoverage(self, key, towers, radius) {
 
         coverage = self[key] = go.addComponent(
             new TileAreaBorderRenderer(self.root.core.terrain, tiles));
+        coverage.layer = RenderLayer.coverageLayer;
 
         self.root.game.logic.world.addGameObject(go);
     } else {
         coverage.setTiles(tiles);
     }
+}
+
+/**
+ * The clicked building drawn once more over everything around it - over its
+ * own reach too, for a tower - or none again with null.
+ */
+function raise(self, building) {
+    var i;
+
+    for (i = 0; i < self._raised.length; i++)
+        self._raised[i].destroy();
+    self._raised = [];
+
+    if (building === null)
+        return;
+
+    self._raised.push(outlineFootprint(self, building));
+
+    //a site under construction has nothing finished to draw yet
+    if (building.getState() === BuildingState.ready)
+        self._raised.push(copyBuilding(self, building));
+}
+
+/**
+ * A white line round the tiles the building stands on - under the copy of
+ * it, over the neighbours and any reach.
+ */
+function outlineFootprint(self, building) {
+    var data = building.data,
+        //turned round, the footprint's sides swap
+        sizeX = building.rotation ? data.sizeY : data.sizeX,
+        sizeY = building.rotation ? data.sizeX : data.sizeY,
+        tiles = [],
+        go = new engine.GameObject("inspected footprint"),
+        x, y, renderer;
+
+    for (y = 0; y < sizeY; y++)
+        for (x = 0; x < sizeX; x++)
+            tiles.push(building.tile + x + y * Terrain.dy);
+
+    renderer = go.addComponent(
+        //right on the tiles' edges, as the tile under the cursor is hilited
+        new TileAreaBorderRenderer(self.root.core.terrain, tiles, 0));
+    renderer.layer = RenderLayer.footprintLayer;
+    renderer.fillColor = "rgba(255,255,255,0)";
+    renderer.borderColor = "white";
+    renderer.dash = [];
+
+    self.root.game.logic.world.addGameObject(go);
+
+    return go;
+}
+
+function copyBuilding(self, building) {
+    var terrain = self.root.core.world.terrain,
+        tile = building.tile,
+        x = Terrain.extractX(tile),
+        y = Terrain.extractY(tile),
+        z = terrain.getGridPointHeight(x + 1, y),
+        go = new engine.GameObject("inspected building");
+
+    BuildingView.addSprites(go, building.data, !!building.rotation,
+        1, RenderLayer.inspectedLayer);
+
+    go.transform.setPosition(x * Config.tileSize, z * Config.tileZStep, y * Config.tileSize);
+    self.root.game.logic.world.addGameObject(go);
+
+    return go;
 }
 
 function hideCoverage(self, key) {
@@ -357,6 +432,7 @@ ServiceMan.prototype.hideCoverage = function () {
     hideCoverage(this, "_coverage");
     //put away by whatever means, the next click on it shows it again
     this._inspected = null;
+    raise(this, null);
 };
 
 /**
@@ -421,6 +497,7 @@ ServiceMan.prototype.hideInfo = function () {
     }
 
     this._inspected = null;
+    raise(this, null);
 };
 
 ServiceMan.prototype.init = function () {

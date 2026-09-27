@@ -1,0 +1,6 @@
+{
+  "name": "engine",
+  "private": true,
+  "type": "module",
+  "main": "dist/engine.js"
+}

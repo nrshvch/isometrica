@@ -3,6 +3,7 @@
  */
 import City from "./city";
 import namespace from "namespace";
+import Events from "events";
 
 var Core = namespace("Isometrica.Core");
 Core.CityService = CityService;

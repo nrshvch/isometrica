@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import LandBlockRenderer from "../components/landblockrenderer";
 import RenderLayer from "../renderlayer";
 

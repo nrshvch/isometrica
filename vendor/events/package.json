@@ -1,0 +1,6 @@
+{
+  "name": "events",
+  "private": true,
+  "type": "module",
+  "main": "dist/events.js"
+}
