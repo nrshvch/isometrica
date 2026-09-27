@@ -78,8 +78,9 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
 
         //the trees and rocks the site stands on are cleared by the build itself,
         //and the clearing goes on the bill - counted before, while they are
-        //still there
-        var clearing = clearingCost(this, code, tile, rotate);
+        //still there. Not for the city hall: it comes with the city, and
+        //founding one is free
+        var clearing = code === BuildingCode.cityHall ? 0 : clearingCost(this, code, tile, rotate);
 
         var building = new Building();
         building.init(city.world, code, tile, rotate);
