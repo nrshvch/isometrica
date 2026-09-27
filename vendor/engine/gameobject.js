@@ -133,6 +133,14 @@ define(function (require) {
     p._tickerIndex = undefined;
 
     /**
+     * The world whose list of stale slots this gameObject is on, if any - see
+     * World#invalidate.
+     * @private
+     * @type {World}
+     */
+    p._staleIn = null;
+
+    /**
      * Runs once, before start
      */
     p.awake = function () {
@@ -179,6 +187,10 @@ define(function (require) {
 
         component.setGameObject(this);
 
+        //it may be a renderer, which the world culls it by
+        if (this.world !== null)
+            this.world.invalidate(this);
+
         this._started && component.start !== null && component.start();
 
         this.updateSubscription();
@@ -190,6 +202,9 @@ define(function (require) {
         component.unsetGameObject();
         this.removeQueue.push(component);
         this.removeQueueWaiting = true;
+
+        if (this.world !== null)
+            this.world.invalidate(this);
 
         this.updateSubscription();
     };

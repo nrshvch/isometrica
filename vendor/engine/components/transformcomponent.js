@@ -44,7 +44,21 @@ define(function (require) {
         this.onParentUpdate = function(parent){
             self.dirtyL = true;
             self.dirtyW = true;
+            moved(self);
         }
+    }
+
+    /**
+     * Wherever a transform ends up, the world its gameObject is in has to
+     * know, for it keeps where everything is to cull by - see
+     * World#invalidate. Everything below that flags localToWorld dirty calls
+     * this too.
+     */
+    function moved(self) {
+        var gameObject = self.gameObject;
+
+        if (gameObject !== null && gameObject.world !== null)
+            gameObject.world.invalidate(gameObject);
     }
 
     function getLocalToWorld(self){
@@ -143,6 +157,7 @@ define(function (require) {
 
         this.dirtyL = true;
         this.dirtyW = true;
+        moved(this);
     }
 
     p.setGameObject = function(gameObject){
@@ -159,6 +174,7 @@ define(function (require) {
         this.parent = null;
         this.dirtyL = true;
         this.dirtyW = true;
+        moved(this);
     }
 
     p.translate = function (x, y, z, relativeTo) {
@@ -175,6 +191,7 @@ define(function (require) {
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
@@ -199,6 +216,7 @@ define(function (require) {
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
@@ -278,6 +296,7 @@ define(function (require) {
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
@@ -290,6 +309,7 @@ define(function (require) {
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
