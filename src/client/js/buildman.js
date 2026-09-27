@@ -176,7 +176,7 @@ var HILITE_FILL = "rgba(146,203,68,0.12)",
 var FADE_RADIUS = 3;
 //how see-through a building is by how many tiles its nearest part is from the
 //picked ones - on them, then right next to them, and so on out to the radius
-var FADE_OPACITY = [0.3, 0.35, 0.55, 0.8];
+var FADE_OPACITY = [0.2, 0.4, 0.6, 0.8];
 
 /**
  * How far each tile within FADE_RADIUS of tiles is from the nearest of them,
