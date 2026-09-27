@@ -92,7 +92,26 @@ Cityman.prototype.init = function () {
 
     if (cities.length > 0)
         this.locate(cities[0]);
+    else
+        startAtPicked(root);
 };
+
+/**
+ * A blank city opens wherever UIManager#startFreshCity picked for it, once.
+ */
+function startAtPicked(root) {
+    var at = null;
+
+    try {
+        at = JSON.parse(window.sessionStorage.getItem("isometrica.startAt"));
+        window.sessionStorage.removeItem("isometrica.startAt");
+    } catch (e) {
+        return;
+    }
+
+    if (at !== null && isFinite(at.x) && isFinite(at.z))
+        root.camera.transform.setPosition(at.x, 0, at.z);
+}
 
 /**
  * The city whose name was clicked on, if it was one.
