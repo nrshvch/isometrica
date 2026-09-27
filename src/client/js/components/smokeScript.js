@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 
 function SmokeScript() {
     engine.Component.call(this);

@@ -5,7 +5,7 @@
  * Time: 15:09
  * To change this template use File | Settings | File Templates.
  */
-import engine from "engine/main";
+import engine from "engine";
 import RenderLayer from "client/renderlayer";
 import Config from "./config";
 import Core from "core/main";

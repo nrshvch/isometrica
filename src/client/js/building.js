@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import Core from "core/main";
 import * as glMatrix from "gl-matrix";
 import BuildingClassCode from "data/classcode";

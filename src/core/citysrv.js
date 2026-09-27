@@ -2,7 +2,8 @@
  * Created by denis on 9/17/14.
  */
 import City from "./city";
-import namespace from "shared/namespace";
+import namespace from "namespace";
+import Events from "events";
 
 var Core = namespace("Isometrica.Core");
 Core.CityService = CityService;

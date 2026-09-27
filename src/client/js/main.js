@@ -1,4 +1,4 @@
-import namespace from "shared/namespace";
+import namespace from "namespace";
 import Vkaria from "./vkaria";
 
 var Client = namespace("Isometrica.Client");

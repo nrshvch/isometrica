@@ -2,7 +2,7 @@
  * Created by denis on 8/30/14.
  */
 import Events from "events";
-import Namespace from "shared/namespace";
+import Namespace from "namespace";
 import Enumeration from "shared/enumeration";
 import Terrain from "./terrain";
 

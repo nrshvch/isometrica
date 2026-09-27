@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 
 //Sits between the pictures the game ships with and the renderers that draw
 //them. Browsers blit a small canvas that already lives on the GPU a good deal

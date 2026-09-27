@@ -16,7 +16,7 @@ import BuildingClassCode from "data/classcode";
 import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
 
-import namespace from "shared/namespace";
+import namespace from "namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Roads = CityRoads;
 

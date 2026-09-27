@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import Core from "core/main";
 import Config from "./config";
 import RenderLayer from "./renderlayer";

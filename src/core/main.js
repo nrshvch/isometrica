@@ -1,4 +1,4 @@
-import namespace from "shared/namespace";
+import namespace from "namespace";
 
 import "data/buildings"; //for sake of compatibility
 import "data/classcode"; //for sake of compatibility

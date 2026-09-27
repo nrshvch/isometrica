@@ -1,6 +1,7 @@
 /**
  * Created by denis on 8/27/14.
  */
+import Events from "events";
 import ConstructionData from "data/buildings";
 import TileIterator from "./tileiterator";
 import Terrain from "./terrain";

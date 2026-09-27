@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import Bren from "../components/cityborderrenderer";
 import City from "../components/city";
 

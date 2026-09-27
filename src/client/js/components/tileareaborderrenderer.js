@@ -7,7 +7,7 @@
  * so it will outline any shape: a square block, a water tower's round reach, or
  * several separate pieces at once.
  */
-import Engine from "engine/main";
+import Engine from "engine";
 import * as glMatrix from "gl-matrix";
 import RenderLayer from "../renderlayer";
 import {outline} from "../tileoutline";

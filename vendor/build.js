@@ -3,16 +3,21 @@
  *
  * Every directory under vendor/ is one package: its sources sit at the top
  * of the package directory with main.js as the entry point, and r.js compiles
- * them into a single committed file in that package's own dist/ directory.
- * These libraries are frozen -- they are not expected to change -- so the build
- * is run by hand (`npm run build:vendor`) rather than on every src build.
+ * them into a single file in that package's own dist/ directory. The dists
+ * are not committed: `npm run dev`/`start`/`build` rebuild them first (their
+ * pre* scripts), so they never drift from the sources.
  *
  * Because vendor/ is the r.js baseUrl, each package's module ids fall out of
  * the directory layout by themselves (vendor/events/event.js -> events/event),
- * so a target needs nothing but its package name. Anything a package resolves at
- * runtime (npm libraries, the src's own `events` alias) is listed in `external`
- * and stubbed with "empty:" so r.js leaves the dependency in place rather than
- * inlining it.
+ * so a target needs nothing but its package name.
+ *
+ * Each artifact is a self-contained ES module: almond (a minimal AMD loader)
+ * plus the package's modules, ending in `export default require("<name>/main")`.
+ * Consumers import the dist directly (each package's package.json points at
+ * it), no loader shim needed. A package depending on another one lists it in
+ * `external`: r.js leaves it out ("empty:"), and the artifact imports that
+ * package's own dist instead and registers it with almond under the same id.
+ * Packages never reach into the app's src.
  *
  * Usage: node vendor/build.js
  */
@@ -22,35 +27,58 @@ var requirejs = require("requirejs");
 
 var ROOT = path.join(__dirname, "..");
 
-// `flat: true` publishes the package under its bare name (`namespace`) instead
-// of `namespace/main`. Only single-module packages can do that: a bare id has no
-// directory, so a package with relative internal requires has to keep the
-// `<name>/main` form for `./sibling` to resolve. Bare ids are preferable where
-// possible because they need no alias in the src's requirejs config.
+// Each external is imported from its own built package (or npm) at the top of
+// the artifact and handed to almond under the id the sources require it by.
+// `star` marks packages without a default export.
+var EXTERNALS = {
+    "events": {},
+    "namespace": {},
+    "gl-matrix": {star: true}
+};
+
 var PACKAGES = [
-    {name: "engine", external: ["events", "gl-matrix", "namespace"]},
+    {name: "namespace"},
     {name: "events"},
-    {name: "reactive-property"}
+    {name: "reactive-property"},
+    {name: "engine", external: ["events", "gl-matrix", "namespace"]}
 ];
 
+function varName(id) {
+    return "__ext_" + id.replace(/[^a-z0-9]/gi, "_");
+}
+
+function wrapFor(pkg) {
+    var ext = pkg.external || [];
+
+    var imports = ext.map(function (id) {
+        return (EXTERNALS[id].star ? "import * as " : "import ") + varName(id) + ' from "' + id + '";';
+    });
+
+    var defines = ext.map(function (id) {
+        return 'define("' + id + '", [], function () { return ' + varName(id) + "; });";
+    });
+
+    return {
+        start: "// Built by vendor/build.js - do not edit.\n" + imports.join("\n") + "\n",
+        end: "\n" + defines.join("\n") + '\nexport default require("' + pkg.name + '/main");\n'
+    };
+}
+
 function configFor(pkg) {
-    var paths = {};
+    var paths = {almond: path.join(ROOT, "node_modules/almond/almond")};
 
     (pkg.external || []).forEach(function (id) {
         paths[id] = "empty:";
     });
 
-    if (pkg.flat) {
-        paths[pkg.name] = pkg.name + "/main";
-    }
-
     return {
         baseUrl: path.join(ROOT, "vendor"),
-        name: pkg.flat ? pkg.name : pkg.name + "/main",
+        name: "almond",
+        include: [pkg.name + "/main"],
         out: path.join(ROOT, "vendor", pkg.name, "dist", pkg.name + ".js"),
         paths: paths,
-        // Artifacts are committed and read by humans when debugging, so keep
-        // them readable. The src build (npm run build) minifies afterwards.
+        wrap: wrapFor(pkg),
+        // Keep artifacts readable for debugging. The src build (npm run build) minifies afterwards.
         optimize: "none",
         preserveLicenseComments: true,
         logLevel: 2
@@ -66,7 +94,7 @@ function build(i) {
     var pkg = PACKAGES[i];
 
     requirejs.optimize(configFor(pkg), function () {
-        console.log("  " + (pkg.flat ? pkg.name : pkg.name + "/main") + "  ->  vendor/" + pkg.name + "/dist/" + pkg.name + ".js");
+        console.log("  " + pkg.name + "  ->  vendor/" + pkg.name + "/dist/" + pkg.name + ".js");
         build(i + 1);
     }, function (err) {
         console.error("FAILED building " + pkg.name + "\n" + err);

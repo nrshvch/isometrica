@@ -3,7 +3,7 @@
 
 //TODO !!! BUILDINGDATA HAS CIRCULAR DEPENDENCIES -> Core need BuildingData and vice versa; ATM it works as it is, but be aware
 
-import namespace from "shared/namespace";
+import namespace from "namespace";
 import BuildingCode from "data/buildingcode";
 import BuildingClassCode from "./classcode";
 /**

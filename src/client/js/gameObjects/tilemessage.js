@@ -1,4 +1,4 @@
-import engine from "engine/main";
+import engine from "engine";
 import EvaporatingText from "../components/EvaporatingText";
     //CityScript = require("../cityscript");
 

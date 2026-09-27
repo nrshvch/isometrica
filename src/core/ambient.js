@@ -8,7 +8,7 @@ import Rocks from "data/rocks";
 import BuildingService from "./buildings";
 import Terrain from "./terrain";
 import Events from "events";
-import namespace from "shared/namespace";
+import namespace from "namespace";
 
 var Core = namespace("Isometrica.Core");
 Core.EnvService = Ambient;

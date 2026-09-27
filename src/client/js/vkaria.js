@@ -3,7 +3,7 @@
 //TODO path finding using waypoints on tiles.
 
 //    var Core = require("core/main"),
-import engine from "engine/main";
+import engine from "engine";
 import BuildMan from "./buildman";
 import TilesMan from "./tilesman";
 import HiliteMan from "./hiliteman";
