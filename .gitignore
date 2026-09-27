@@ -8,3 +8,4 @@ test/temp
 .claudeignore
 assets/terrain/terraingen
 .wrangler
+src/public/gfx/buildings/generated
