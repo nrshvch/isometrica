@@ -4,13 +4,20 @@
 import Core from "core/main";
 import Events from "events";
 import CityLabel from "./gameObjects/citylabel";
-import TileSelector from "./tileselector";
+import AreaSelector from "./areaselector";
+import TileAreaBorderRenderer from "./components/tileareaborderrenderer";
+import engine from "engine";
+import Area from "core/city/area";
+import BuildingCode from "data/buildingcode";
+import BuildingData from "data/buildings";
+import ResourceCode from "core/resourcecode";
 import WorldCamera from "./components/camerascript";
 import CityComponent from "./components/city";
 import Buildman from "./buildman";
 import ErrorCode from "core/errorcode";
 
 var City = Core.City;
+var CoreTerrain = Core.Terrain;
 
 function addCityGO(self, city) {
     var gos = self._cityGOs;
@@ -135,36 +142,88 @@ Cityman.prototype.locate = function (city) {
     this.root.camera.cameraScript.moveTo(this._cityGOs[city.tile()].transform);
 };
 
+/**
+ * What founding a city on tile would look like: its city hall, faint where it
+ * could not go up, and the block of land it would start out with, outlined
+ * the way the city limits are.
+ */
+function previewCity(self, tile, ok) {
+    var root = self.root,
+        half = Area.BLOCK_SIZE >> 1,
+        x0 = CoreTerrain.extractX(tile) - half,
+        y0 = CoreTerrain.extractY(tile) - half,
+        tiles = [],
+        x, y;
+
+    for (y = 0; y < Area.BLOCK_SIZE; y++)
+        for (x = 0; x < Area.BLOCK_SIZE; x++)
+            tiles.push(CoreTerrain.convertToIndex(x0 + x, y0 + y));
+
+    var border = new engine.GameObject("city border preview"),
+        renderer = border.addComponent(new TileAreaBorderRenderer(root.core.terrain, tiles));
+
+    renderer.fillColor = "rgba(255,255,255,0)";
+    renderer.borderColor = "rgba(255,255,255,0.7)";
+    renderer.borderWidth = 3;
+    renderer.dash = [4];
+    root.game.logic.world.addGameObject(border);
+
+    return [root.buildman.preview(BuildingCode.cityHall, tile, false, ok), border];
+}
+
 Cityman.prototype.establish = function(){
     var self = this;
     var root = this.root;
 
-    //render hint
-    root.ui.gameScreen().worldScreen().showHint("Select a tile to found your city");
+    root.ui.gameScreen().worldScreen().showHint("Drag to where you want your city to be established!");
 
-    //enable selector
-    var selector = new TileSelector(root);
-    var token = -1;
+    //one city hall's footprint, up from the start in the middle of the screen
+    //- dragged about or tapped elsewhere, never resized
+    var hall = BuildingData[BuildingCode.cityHall];
+    var ts = new AreaSelector(root, {
+        stepX: hall.sizeX,
+        stepY: hall.sizeY,
+        resizable: false
+    });
+    var tokens = [];
+    var previews = [];
+
+    function clearPreview() {
+        for (var i = 0; i < previews.length; i++)
+            previews[i].destroy();
+        previews = [];
+    }
+
     //green where a city could be founded, red where it could not - the same
     //as the ground under a building being placed
-    var s = Events.on(selector, TileSelector.events.change, function(a,b,c){
-        var tile = a.selectedTile(),
+    function update() {
+        var tile = ts.anchors()[0],
             ok = City.canEstablish(root.core.world, tile);
 
-        root.hiliteMan.disable(token);
-        token = root.hiliteMan.hilite({
-            tile: tile,
-            fillColor: ok ? Buildman.HILITE_FILL : Buildman.HILITE_BLOCKED_FILL,
-            borderColor: ok ? Buildman.HILITE_BORDER : Buildman.HILITE_BLOCKED_BORDER,
-            borderWidth: 2
-        });
-    });
+        clearPreview();
+        previews = previewCity(self, tile, ok);
+        root.buildman.fadeAround(ts.tiles());
+
+        root.hiliteMan.disable(tokens);
+        tokens = root.hiliteMan.hilite(ts.tiles().map(function (t) {
+            return {
+                x: CoreTerrain.extractX(t),
+                y: CoreTerrain.extractY(t),
+                fillColor: ok ? Buildman.HILITE_FILL : Buildman.HILITE_BLOCKED_FILL,
+                borderColor: ok ? Buildman.HILITE_BORDER : Buildman.HILITE_BLOCKED_BORDER,
+                borderWidth: 2
+            };
+        }));
+    }
+
+    var sub = Events.on(ts, AreaSelector.events.change, update);
 
     function cleanup() {
-        //disable hiliters & selector
-        root.hiliteMan.disable(token);
-        selector.dispose();
-        Events.off(selector, TileSelector.events.change, s);
+        clearPreview();
+        root.buildman.unfade();
+        root.hiliteMan.disable(tokens);
+        Events.off(ts, AreaSelector.events.change, sub);
+        ts.dispose();
         root.ui.gameScreen().worldScreen().hideHint();
     }
 
@@ -172,21 +231,22 @@ Cityman.prototype.establish = function(){
     var controls = root.ui.gameScreen().showActionControls();
     controls.canRotate(false);
     controls.onSubmit = function () {
-        var tile = selector.selectedTile(),
-            reason = tile === -1
-                ? ErrorCode.CANT_BUILD_HERE
-                : City.establishTest(root.core.world, tile);
+        var tile = ts.anchors()[0],
+            reason = City.establishTest(root.core.world, tile);
 
         //turned down, the player is told why and gets to pick again
         if (reason !== ErrorCode.NONE) {
-            if (tile !== -1)
-                root.buildman.showError(tile, reason);
+            root.buildman.showError(tile, reason);
             return;
         }
 
         root.ui.gameScreen().showPrompt("Give city a name!", function (val) {
-            root.core.cities.establishCity(tile, val);
+            var city = root.core.cities.establishCity(tile, val);
             root.ui.gameScreen().showWorld();
+
+            //what the new city starts out with, handed over where it stands
+            if (city)
+                root.buildman.showIncome(tile, city.resources.getResources()[ResourceCode.money]);
         }, ["Miniville", "Peepsville", "Flatville", "Greenville", "Happyville"][Math.round(Math.random()*2)], function () {
             root.ui.gameScreen().showWorld();
             self.establish();
@@ -198,6 +258,8 @@ Cityman.prototype.establish = function(){
         cleanup();
         root.ui.gameScreen().showWorld();
     };
+
+    update();
 };
 
 Cityman.prototype.getCityGameObject = function(cityId){

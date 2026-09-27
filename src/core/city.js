@@ -344,21 +344,16 @@ City.prototype.toJSON = function () {
 };
 
 /**
- * Why a city could not be founded on tile, or ErrorCode.NONE when it can: it
- * takes flat dry land.
+ * Why a city could not be founded on tile, or ErrorCode.NONE when it can: its
+ * city hall goes up there right away, so it takes whatever ground the city
+ * hall does - flat, dry and free.
  *
  * @param world
  * @param tile
  * @returns {number} ErrorCode
  */
 City.establishTest = function (world, tile) {
-    if (world.terrain.getTerrainType(tile) === TerrainType.water)
-        return ErrorCode.CANT_BUILD_ON_WATER;
-
-    if (Terrain.isSlope(world.terrain.tileSlope(tile)))
-        return ErrorCode.FLAT_LAND_REQUIRED;
-
-    return ErrorCode.NONE;
+    return world.buildingService.test(BuildingCode.cityHall, tile, false);
 };
 
 /**

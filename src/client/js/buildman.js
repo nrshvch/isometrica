@@ -303,8 +303,8 @@ function createRoadPreview(self, tile, id, opacity) {
  * Floats text over the middle of an area of sizeX by sizeY tiles anchored at
  * tile.
  */
-function showText(self, tile, sizeX, sizeY, text) {
-    var message = new TileMessage(text, "rgb(255,64,64)");
+function showText(self, tile, sizeX, sizeY, text, color) {
+    var message = new TileMessage(text, color || "rgb(255,64,64)");
     self.root.game.logic.world.addGameObject(message);
     placeOverArea(self, message, tile, sizeX, sizeY, 0);
 }
@@ -499,6 +499,28 @@ function Buildman(main) {
 Buildman.events = events;
 
 Buildman.prototype = Object.create(EventManager.prototype);
+
+/**
+ * A see-through copy of code standing on tile, the way one being placed is
+ * shown - fainter where it could not go up.
+ *
+ * @returns {engine.GameObject} to destroy once it is not wanted any more
+ */
+Buildman.prototype.preview = function (code, tile, rotation, ok) {
+    return createPreview(this, BuildingData[code], tile, rotation,
+        ok ? PREVIEW_OPACITY : PREVIEW_BLOCKED_OPACITY);
+};
+
+/**
+ * Floats money the city just got over tile - the other way round from what a
+ * build costs: green, and with a plus.
+ *
+ * @param tile {number}
+ * @param amount {number}
+ */
+Buildman.prototype.showIncome = function (tile, amount) {
+    showText(this, tile, 1, 1, "+$" + Numeral(amount).format("0,0"), "rgb(96,224,96)");
+};
 
 /**
  * Floats why something was turned down over tile, the way a refused build is.
