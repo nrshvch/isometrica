@@ -1,46 +1,106 @@
-name: Deploy Isometrica to GitHub Pages
+# Build and deploy to Cloudflare Workers (static assets). Workers are defined in wrangler.jsonc.
+#
+# - push to main        → production, Worker "prod" (peeps.land), `wrangler deploy --env production`
+# - push to develop     → dev, Worker "dev" (dev.peeps.land), `wrangler deploy`
+# - push to any branch  → Preview on the "dev" Worker, `wrangler preview --name <branch>`
+#                         (https://<branch>-dev.isometrica.workers.dev)
+# - manual run          → Actions → "Build and deploy" → Run workflow
+name: Build and deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: ["**"]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  deployments: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  # Never cancel a production deployment half-way; superseded dev/preview runs can go.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build-and-deploy:
+  build-deploy:
+    name: Build and deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_CONFIGURED: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
-          cache: "npm"
+          node-version-file: .nvmrc
+          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
-      - name: Build project
-        run: npx vite build --base=/${{ github.event.repository.name }}/
+      - name: Build
+        run: npm run build
 
-      - name: Copy 404.html for SPA routing
-        run: cp dist/index.html dist/404.html
+      - name: Choose deploy command
+        id: target
+        if: env.CLOUDFLARE_CONFIGURED == 'true'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$REF_NAME" = "main" ]; then
+            echo "command=deploy --env production" >> "$GITHUB_OUTPUT"
+          elif [ "$REF_NAME" = "develop" ]; then
+            # `--env=` targets the top-level (dev) Worker explicitly.
+            echo "command=deploy --env=" >> "$GITHUB_OUTPUT"
+          else
+            # The Preview name becomes part of a hostname: lowercase letters, digits, hyphens.
+            name=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]' \
+              | sed -E 's/[^a-z0-9]+/-/g; s/^-+//' | cut -c1-40 | sed -E 's/-+$//')
+            echo "command=preview --env= --name ${name}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        if: env.CLOUDFLARE_CONFIGURED == 'true'
+        uses: cloudflare/wrangler-action@v4
         with:
-          path: "./dist"
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: ${{ steps.target.outputs.command }}
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Summary
+        if: always()
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$CLOUDFLARE_CONFIGURED" != "true" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets are not set, so nothing was deployed."
+            echo "Build passed; deployment skipped (Cloudflare secrets not configured)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$DEPLOY_OUTCOME" != "success" ]; then
+            {
+              echo "### Deployment failed"
+              echo "See the \"Deploy to Cloudflare Workers\" step. \"No access to the specified resource\" means the API token lacks **Workers Scripts: Edit**."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$REF_NAME" = "main" ]; then
+            {
+              echo "### Deployed to production"
+              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
+              echo "- Site: https://peeps.land/"
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$REF_NAME" = "develop" ]; then
+            {
+              echo "### Deployed to dev"
+              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
+              echo "- Site: https://dev.peeps.land/"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Preview deployed"
+              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
+              echo "- Preview: ${PREVIEW_URL:-see the deploy step log}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
