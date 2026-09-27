@@ -180,9 +180,9 @@ City.prototype.clearTile = function (tile) {
  *
  * Every tile the ground moves under is a tile modified, whether it was picked
  * or only dragged along: each costs terraformTileCost - ten times that for
- * water being raised - plus clearing whatever tree or rock was on it. Nothing
- * may stand on any of them, so a building anywhere in the way stops the whole
- * thing.
+ * water being raised - plus clearing whatever tree or rock was on it, the
+ * ones the player put there included. Nothing else may stand on any of them,
+ * so a building anywhere in the way stops the whole thing.
  *
  * @param tiles {number[]}
  * @param direction {number} 1 to raise, -1 to lower
@@ -195,7 +195,8 @@ City.prototype.terraform = function (tiles, direction) {
         plan = terrain.planLevel(tiles, direction),
         tile0 = tiles[0],
         cost = 0,
-        tile, i;
+        planted = [],
+        tile, building, i;
 
     if (plan === null)
         return {error: ErrorCode.TERRAFORM_TOO_LARGE, tile: tile0, cost: 0};
@@ -203,8 +204,16 @@ City.prototype.terraform = function (tiles, direction) {
     for (i = 0; i < plan.tiles.length; i++) {
         tile = plan.tiles[i];
 
-        if (world.buildingService.get(tile) !== null)
-            return {error: ErrorCode.TILE_TAKEN, tile: tile, cost: 0};
+        building = world.buildingService.get(tile);
+
+        //a tree or cliff the player put down goes the way a wild one does
+        if (building !== null) {
+            if (BuildingData[building.buildingCode].classCode !== BuildingClassCode.tree)
+                return {error: ErrorCode.TILE_TAKEN, tile: tile, cost: 0};
+
+            planted.push(building.tile);
+            cost += Config.clearTileCost;
+        }
 
         //what the tile is and what grows there are looked up before the
         //ground moves
@@ -218,6 +227,11 @@ City.prototype.terraform = function (tiles, direction) {
 
     if (!this.resourcesService.hasEnoughResource(Resource.money, cost))
         return {error: ErrorCode.NOT_ENOUGH_RES, tile: tile0, cost: 0};
+
+    //cleared by hand, since the ground only clears the tiles it never did
+    //before
+    for (i = 0; i < planted.length; i++)
+        terrain.clearTile(planted[i]);
 
     terrain.modify(plan);
     this.resourcesModule.subResource(Resource.money, cost);
@@ -330,13 +344,31 @@ City.prototype.toJSON = function () {
 };
 
 /**
+ * Why a city could not be founded on tile, or ErrorCode.NONE when it can: it
+ * takes flat dry land.
+ *
+ * @param world
+ * @param tile
+ * @returns {number} ErrorCode
+ */
+City.establishTest = function (world, tile) {
+    if (world.terrain.getTerrainType(tile) === TerrainType.water)
+        return ErrorCode.CANT_BUILD_ON_WATER;
+
+    if (Terrain.isSlope(world.terrain.tileSlope(tile)))
+        return ErrorCode.FLAT_LAND_REQUIRED;
+
+    return ErrorCode.NONE;
+};
+
+/**
  *
  * @param world
  * @param tile
  * @returns {boolean}
  */
 City.canEstablish = function(world, tile){
-    return !Terrain.isSlope(world.terrain.tileSlope(tile));
+    return City.establishTest(world, tile) === ErrorCode.NONE;
 };
 
 /**

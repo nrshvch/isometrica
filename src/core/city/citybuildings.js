@@ -20,6 +20,16 @@ CityService.Buildings = CityBuildings;
  * @param city {City}
  * @constructor
  */
+/**
+ * Roads may be laid anywhere, they are how a city reaches out beyond its own
+ * borders in the first place - and trees and cliffs are part of the world, not
+ * of the city. Everything else stays inside the borders.
+ */
+function placeableOutside(data) {
+    return data.classCode === BuildingClassCode.road
+        || data.classCode === BuildingClassCode.tree;
+}
+
 function CityBuildings(city) {
     this._buildings = [];
     this.city = this._city = city;
@@ -136,7 +146,7 @@ CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
                 errorCode = ErrorCode.BUILDING_NOT_AVAIL;
             else if (code === BuildingCode.cityHall && cityHall)
                 errorCode = ErrorCode.CITY_HALL_ALREADY_BUILT;
-            else if (data.classCode !== BuildingClassCode.road && !this.city.area.contains(
+            else if (!placeableOutside(data) && !this.city.area.contains(
                     Terrain.extractX(tile), Terrain.extractY(tile), sizeX, sizeY))
                 errorCode = ErrorCode.OUTSIDE_CITY;
         }
@@ -320,10 +330,8 @@ function buildTest(self, code, tile, rotation) {
         return ErrorCode.BUILDING_NOT_AVAIL;
     else if (code === BuildingCode.cityHall && self.cityHall !== null)
         return ErrorCode.CITY_HALL_ALREADY_BUILT;
-    //roads may be laid anywhere, they are how a city reaches out beyond its
-    //own borders in the first place - everything else stays inside them
     //turned round, the footprint's sides swap
-    else if (data.classCode !== BuildingClassCode.road && !city.area.contains(
+    else if (!placeableOutside(data) && !city.area.contains(
             Terrain.extractX(tile), Terrain.extractY(tile),
             rotation ? data.sizeY : data.sizeX,
             rotation ? data.sizeX : data.sizeY))

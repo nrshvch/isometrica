@@ -427,6 +427,15 @@ function buildSelection(self, code, anchors, rotation) {
 }
 
 /**
+ * Green and red of the tiles under a selection, for whoever else lets the
+ * player pick ground.
+ */
+Buildman.HILITE_FILL = HILITE_FILL;
+Buildman.HILITE_BORDER = HILITE_BORDER;
+Buildman.HILITE_BLOCKED_FILL = HILITE_BLOCKED_FILL;
+Buildman.HILITE_BLOCKED_BORDER = HILITE_BLOCKED_BORDER;
+
+/**
  * One text per built instance - a road tile is an instance of its own, while a
  * multi tile building gets a single text over the middle of its footprint.
  */
@@ -490,6 +499,17 @@ function Buildman(main) {
 Buildman.events = events;
 
 Buildman.prototype = Object.create(EventManager.prototype);
+
+/**
+ * Floats why something was turned down over tile, the way a refused build is.
+ *
+ * @param tile {number}
+ * @param reason {number} ErrorCode
+ */
+Buildman.prototype.showError = function (tile, reason) {
+    showText(this, tile, 1, 1, errorText[reason] || "can't build");
+};
+
 
 Buildman.prototype.events = events;
 
