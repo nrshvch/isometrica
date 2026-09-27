@@ -499,7 +499,21 @@ define('engine/components/transformcomponent',['require','namespace','../compone
         this.onParentUpdate = function(parent){
             self.dirtyL = true;
             self.dirtyW = true;
+            moved(self);
         }
+    }
+
+    /**
+     * Wherever a transform ends up, the world its gameObject is in has to
+     * know, for it keeps where everything is to cull by - see
+     * World#invalidate. Everything below that flags localToWorld dirty calls
+     * this too.
+     */
+    function moved(self) {
+        var gameObject = self.gameObject;
+
+        if (gameObject !== null && gameObject.world !== null)
+            gameObject.world.invalidate(gameObject);
     }
 
     function getLocalToWorld(self){
@@ -598,6 +612,7 @@ define('engine/components/transformcomponent',['require','namespace','../compone
 
         this.dirtyL = true;
         this.dirtyW = true;
+        moved(this);
     }
 
     p.setGameObject = function(gameObject){
@@ -614,6 +629,7 @@ define('engine/components/transformcomponent',['require','namespace','../compone
         this.parent = null;
         this.dirtyL = true;
         this.dirtyW = true;
+        moved(this);
     }
 
     p.translate = function (x, y, z, relativeTo) {
@@ -630,6 +646,7 @@ define('engine/components/transformcomponent',['require','namespace','../compone
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
@@ -654,6 +671,7 @@ define('engine/components/transformcomponent',['require','namespace','../compone
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
@@ -733,6 +751,7 @@ define('engine/components/transformcomponent',['require','namespace','../compone
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
@@ -745,6 +764,7 @@ define('engine/components/transformcomponent',['require','namespace','../compone
 
         this.dirtyL = true; //flag to update localToWorld
         this.dirtyW = true; //flag to update worldToLocal
+        moved(this);
 
         this.dispatchEvent(this.events.update, this);
     }
@@ -752,528 +772,226 @@ define('engine/components/transformcomponent',['require','namespace','../compone
     return Transform;
 });
 
-//TODO render only dirty areas of screen
-//TODO each GO could have multiple renderers...
-//TODO ...all scene renderers should be grouped in single array.
-define('engine/Canvas2dRenderer',['require','./config','gl-matrix','./components/transformcomponent'],function (require) {
-    var config = require("./config");
+/**
+ * Created with JetBrains WebStorm.
+ * User: User
+ * Date: 07.04.14
+ * Time: 15:21
+ * To change this template use File | Settings | File Templates.
+ */
+define('engine/components/renderer',['require','namespace','./../component','gl-matrix'],function (require) {
+    var namespace = require("namespace");
+    var Component = require("./../component");
+    var vec3Buffer1 = new Float32Array(3);
     var glMatrix = require("gl-matrix");
-    var Transform = require("./components/transformcomponent");
+    var Vec3 = glMatrix.vec3;
 
-    function Canvas2dRenderer(graphics) {
-        this.graphics = graphics;
-        this.layerBuffers = [];
-        for (var i = 0; i < config.layersCount; i++)
-            this.layerBuffers[i] = [];
-        this.M = [];
-        this.V = [];
+    namespace("Isometrica.Engine").Renderer = Renderer;
+
+    function Renderer(){
+        Component.call(this);
     }
 
-    var p = Canvas2dRenderer.prototype,
-        bufferVec3 = new Float32Array([0, 0, 0]),
-        buffer2Vec3 = new Float32Array([0, 0, 0]),
-        bufferMat4 = new Float32Array(16),
-        // depth keys are computed once per renderer per frame, then sorted by
-        // a 2-pass LSD radix sort over an 8-bit digit each (radix 256) --
-        // no JS comparator callback, full 16-bit depth resolution, and no
-        // 65536-wide histogram (a single pass over the whole 16-bit key would
-        // need one, and clearing/prefix-summing it every call turned out to
-        // cost more than the O(n) work it replaced for a typical layer's
-        // renderer count -- see git history). Two 256-wide digit passes keep
-        // the fixed per-call cost down to ~2*256 regardless of key range.
-        // Every buffer below is allocated once, here, at a fixed capacity
-        // generous enough for any single canvas layer's draw list --
-        // depthSort itself never calls `new` and never holds renderer
-        // references in a side array, so the hot path (it runs once per
-        // layer per frame) is fully GC-free.
-        //
-        // permBufA/permBufB ping-pong an index permutation (not renderer
-        // references) across the two digit passes; each pass is a stable
-        // counting sort by one digit, and LSD order (least-significant digit
-        // first) makes the composition of both passes a full, stable sort by
-        // the 16-bit key -- equal-key renderers keep their original relative
-        // order, like the old `|| (a - b)` tie-break. After both passes the
-        // current perm buffer maps destination slot -> source index (gather
-        // form); that's inverted into scatterDest (source index -> dest
-        // slot) and applied to `renderers` in place via cycle-following
-        // (using `visited` to avoid revisiting a slot already placed).
-        KEY_BITS = 16,
-        KEY_MAX = 0xffff,
-        RADIX_BITS = 8,
-        RADIX = 1 << RADIX_BITS,
-        MAX_LAYER_RENDERERS = 65536,
-        depthKeys = new Float64Array(MAX_LAYER_RENDERERS),
-        quantizedKeys = new Uint16Array(MAX_LAYER_RENDERERS),
-        permBufA = new Uint16Array(MAX_LAYER_RENDERERS),
-        permBufB = new Uint16Array(MAX_LAYER_RENDERERS),
-        scatterDest = new Uint16Array(MAX_LAYER_RENDERERS),
-        visited = new Uint8Array(MAX_LAYER_RENDERERS),
-        digitCounts = new Uint32Array(RADIX);
+    Renderer.prototype = Object.create(Component.prototype);
 
-    function depthSort(renderers) {
-        var count = renderers.length,
-            i, j, pos, key, min, max, range, scale, q,
-            shift, d, sum, c, cur, alt, tmp,
-            next, val, saved;
+    Renderer.prototype.cullingTest = function(viewport, viewportRenderer){
+        this.gameObject.transform.getPosition(vec3Buffer1);
+        Vec3.transformMat4(vec3Buffer1, vec3Buffer1, viewportRenderer.V);
 
-        if (count < 2)
-            return;
-
-        min = Infinity;
-        max = -Infinity;
-
-        for (i = 0; i < count; i++) {
-            pos = Transform.getLocalToWorld(renderers[i].gameObject.transform);
-            key = pos[12] - pos[13] + pos[14];
-            depthKeys[i] = key;
-            if (key < min) min = key;
-            if (key > max) max = key;
-        }
-
-        range = max - min;
-        scale = range > 0 ? KEY_MAX / range : 0;
-
-        for (i = 0; i < count; i++) {
-            q = ((depthKeys[i] - min) * scale) | 0;
-            // guard against fp rounding pushing the max key past the last value
-            if (q > KEY_MAX)
-                q = KEY_MAX;
-            quantizedKeys[i] = q;
-            permBufA[i] = i;
-        }
-
-        cur = permBufA;
-        alt = permBufB;
-
-        for (shift = 0; shift < KEY_BITS; shift += RADIX_BITS) {
-            digitCounts.fill(0);
-
-            for (i = 0; i < count; i++) {
-                d = (quantizedKeys[cur[i]] >> shift) & (RADIX - 1);
-                digitCounts[d]++;
-            }
-
-            sum = 0;
-            for (i = 0; i < RADIX; i++) {
-                c = digitCounts[i];
-                digitCounts[i] = sum;
-                sum += c;
-            }
-
-            for (i = 0; i < count; i++) {
-                d = (quantizedKeys[cur[i]] >> shift) & (RADIX - 1);
-                alt[digitCounts[d]++] = cur[i];
-            }
-
-            tmp = cur;
-            cur = alt;
-            alt = tmp;
-        }
-
-        // cur[k] = source index of the renderer that belongs at position k;
-        // invert into a scatter map so the cycle applier below can use it
-        for (i = 0; i < count; i++)
-            scatterDest[cur[i]] = i;
-
-        // apply the resulting permutation to renderers in place, one cycle
-        // at a time -- no scratch array of object references needed
-        visited.fill(0, 0, count);
-
-        for (i = 0; i < count; i++) {
-            if (visited[i])
-                continue;
-
-            j = i;
-            val = renderers[i];
-
-            for (;;) {
-                visited[j] = 1;
-                next = scatterDest[j];
-                if (next === i) {
-                    renderers[next] = val;
-                    break;
-                }
-                saved = renderers[next];
-                renderers[next] = val;
-                val = saved;
-                j = next;
-            }
-        }
-    }
-
-    function render(self, camera, viewport) {
-        viewport.context.fillRect(0,0,100,100);
-
-        var gameObjects = camera.world.retrieve(camera),
-            gameObjectsCount = gameObjects.length,
-            layersCount = config.layersCount,
-            renderer, renderers, renderersCount,
-            i, j, ctx;
-
-        self.M = camera.camera.getWorldToScreen();
-        self.V = camera.camera.getWorldToViewport();
-
-        viewport.context.clearRect(0, 0, viewport.width, viewport.height);
-
-        for (i = 0; i < gameObjectsCount; i++){
-            renderer = gameObjects[i].renderer;
-            if(renderer !== undefined && renderer.enabled && renderer.cullingTest(viewport, self, renderer)) {
-                self.layerBuffers[renderer.layer].push(renderer)
-            }
-        }
-
-        for (i = 0; i < layersCount; i++) {
-            ctx = viewport.layers[i];
-
-            if(~config.noLayerClearMask & 1<<i){
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            }
-
-            renderers = self.layerBuffers[i];
-            renderersCount = renderers.length;
-
-            if (~config.noLayerDepthSortingMask & 1 << i) {
-                depthSort(renderers);
-            }
-
-            for (j = 0; j < renderersCount; j++) {
-                renderer = renderers.pop();
-
-                renderer.render(ctx, self, viewport, renderer);
-            }
-
-            viewport.context.drawImage(ctx.canvas, 0, 0);
-        }
-
-        //if (config.renderOctree && config.useOctree && camera.world.octree.root !== null)
-        //self.renderOctreeNode(camera.world.octree.root, viewport.context);
-
+        return vec3Buffer1[0] <= 1 && vec3Buffer1[0] >= -1 && vec3Buffer1[1] <= 1 && vec3Buffer1[1] >= -1;
     };
 
-    Canvas2dRenderer.render = render;
+    Renderer.prototype.render = function(layer,viewportRenderer,viewport){
+        this.gameObject.transform.getPosition(vec3Buffer1);
+        Vec3.transformMat4(vec3Buffer1, vec3Buffer1, viewportRenderer.V);
 
-    p.graphics = null;
+        glMatrix.vec3.transformMat4(vec3Buffer1, this.gameObject.transform.getPosition(vec3Buffer1), viewportRenderer.M);
 
-    /*
-    p.render = function (camera, viewport) {
-        var gameObjects = camera.world.retrieve(camera),
-            gameObjectsCount = gameObjects.length,
-            layersCount = config.layersCount,
-            renderer, renderers, renderersCount,
-            i, j, ctx;
-
-        this.M = camera.camera.getWorldToScreen();
-        this.V = camera.camera.getWorldToViewport();
-
-        viewport.context.clearRect(0, 0, viewport.width, viewport.height);
-
-        for (i = 0; i < gameObjectsCount; i++){
-            var go = gameObjects[i];
-            if(go.renderer !== undefined && go.renderer.enabled && go.renderer.cullingTest(viewport, this))
-                this.layerBuffers[go.renderer.layer].push(go.renderer)
-        }
-
-        for (i = 0; i < layersCount; i++) {
-            ctx = viewport.layers[i];
-
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            renderers = this.layerBuffers[i];
-            renderersCount = renderers.length;
-
-            if (config.depthSortingMask & (1 << i)) {
-                depthSort(renderers);
-            }
-
-            for (j = 0; j < renderersCount; j++) {
-                renderer = renderers.pop();
-
-                renderer.render(ctx, this, viewport);
-            }
-
-            viewport.context.drawImage(ctx.canvas, 0, 0);
-        }
-
-        //if (config.renderOctree && config.useOctree && camera.world.octree.root !== null)
-        //this.renderOctreeNode(camera.world.octree.root, viewport.context);
-
+        layer.font = "normal 12px arial";
+        layer.fillStyle = "red"
+        layer.textAlign = "center";
+        layer.textBaseline = "middle";
+        layer.fillText("EMPTY RENDERER", vec3Buffer1[0], vec3Buffer1[1]);
     };
-    */
-                           /*
+    Renderer.prototype.layer = 0;
 
-    p.renderAxis = function (gameObject, ctx) {
-        var W = gameObject.transform.getLocalToWorld(),
-            pos0 = gameObject.transform.getPosition();
-
-        glMatrix.vec3.transformMat4(pos0, pos0, this.M);
-
-        var pos = bufferVec3;
-
-        //draw X
-        pos[0] = 100;
-        pos[1] = 0;
-        pos[2] = 0;
-
-        glMatrix.vec3.transformMat4(pos, pos, W);
-        glMatrix.vec3.transformMat4(pos, pos, this.M);
-
-        ctx.beginPath();
-        ctx.moveTo(pos0[0], pos0[1]);
-        ctx.lineTo(pos[0], pos[1]);
-        ctx.closePath();
-        ctx.strokeStyle = '#ff0000';
-        ctx.stroke();
-
-        //draw Y
-        pos[0] = 0;
-        pos[1] = 100;
-        pos[2] = 0;
-
-        glMatrix.vec3.transformMat4(pos, pos, W);
-        glMatrix.vec3.transformMat4(pos, pos, this.M);
-
-        ctx.beginPath();
-        ctx.moveTo(pos0[0], pos0[1]);
-        ctx.lineTo(pos[0], pos[1]);
-        ctx.closePath();
-        ctx.strokeStyle = '#00ff00';
-        ctx.stroke();
-
-        //draw Z
-        pos[0] = 0;
-        pos[1] = 0;
-        pos[2] = 100;
-
-        glMatrix.vec3.transformMat4(pos, pos, W);
-        glMatrix.vec3.transformMat4(pos, pos, this.M);
-
-        ctx.beginPath();
-        ctx.moveTo(pos0[0], pos0[1]);
-        ctx.lineTo(pos[0], pos[1]);
-        ctx.closePath();
-        ctx.strokeStyle = '#0000ff';
-        ctx.stroke();
-    }
-
-    p.renderOctreeNode = function (node, ctx) {
-        if (node.type === 0)
-            this.renderBound(node.x, node.y, node.z, node.ex, node.ey, node.ez, ctx);
-
-        //render childs
-        if (node.type === 1) {
-            if (node.nodesMask & 1)
-                this.renderOctreeNode(node.subnode0, ctx);
-
-            if (node.nodesMask & 2)
-                this.renderOctreeNode(node.subnode1, ctx);
-
-            if (node.nodesMask & 4)
-                this.renderOctreeNode(node.subnode2, ctx);
-
-            if (node.nodesMask & 8)
-                this.renderOctreeNode(node.subnode3, ctx);
-
-            if (node.nodesMask & 16)
-                this.renderOctreeNode(node.subnode4, ctx);
-
-            if (node.nodesMask & 32)
-                this.renderOctreeNode(node.subnode5, ctx);
-
-            if (node.nodesMask & 64)
-                this.renderOctreeNode(node.subnode6, ctx);
-
-            if (node.nodesMask & 128)
-                this.renderOctreeNode(node.subnode7, ctx);
-        }
-    }
-
-
-    p.renderBound = function (x, y, z, ex, ey, ez, ctx) {
-        var min = [x - ex, y - ey, z - ez],
-            max = [x + ex, y + ey, z + ez],
-            w = max[0] - min[0],
-            h = max[1] - min[1],
-            d = max[2] - min[2];
-
-        var m1 = [min[0] + w, min[1], min[2]],
-            m2 = [min[0], min[1] + h , min[2]],
-            m3 = [min[0] + w, min[1] + h, min[2]];
-
-        var mx1 = [min[0], min[1], min[2] + d],
-            mx2 = [min[0] + w, min[1] , min[2] + d],
-            mx3 = [min[0], min[1] + h, min[2] + d];
-
-
-        var p = bufferVec3;
-
-        ctx.beginPath();
-        glMatrix.vec3.transformMat4(p, min, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, m1, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, m3, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, m2, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, min, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx1, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx2, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, max, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx3, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx1, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        glMatrix.vec3.transformMat4(p, m1, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx2, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        glMatrix.vec3.transformMat4(p, m2, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx3, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        glMatrix.vec3.transformMat4(p, m3, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, max, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        var bound = {};
-        ctx.closePath();
-        //ctx.strokeStyle = bound.color || (bound.color = '#' + ((0xFFFFFF * Math.random()) | 0).toString(16));
-        ctx.stroke();
-
+    Renderer.prototype.setGameObject = function(gameObject){
+        Component.prototype.setGameObject.call(this, gameObject);
+        gameObject.renderer = this;
     };
 
+    Renderer.prototype.unsetGameObject = function(){
+        this.gameObject.renderer = null;
+        Component.prototype.unsetGameObject.call(this);
+    };
 
-              */
-    return Canvas2dRenderer;
+    return Renderer;
 });
-define('engine/graphics',["./viewport", "./Canvas2dRenderer"], function (Viewport, Renderer) {
-    /**
-     * @constructor
-     */
-    function Graphics(game) {
-        this.game = game;
-        this.viewports = [];
-        this.renderer = new Renderer(this);
-        this.started = false;
-    }
+define('engine/components/spriterenderer',['require','namespace','./renderer','./transformcomponent','gl-matrix'],function (require) {
+    var namespace = require("namespace");
+    var vec3Buffer1 = new Float32Array(3);
+    var Component = require("./renderer");
+    var Transform = require("./transformcomponent");
+    var glMatrix = require("gl-matrix");
+    var Vec3 = glMatrix.vec3;
 
-    var p = Graphics.prototype;
+    namespace("Isometrica.Engine").SpriteRenderer = Sprite;
 
-    /**
-     * @type {Game}
-     */
-    p.game = null;
+    function Sprite(sprite) {
+        Component.call(this);
 
-    /**
-     * Flag is set when Game was run
-     * @type {boolean}
-     */
-    p.started = false;
-
-    /**
-     * @type {Viewport[]}
-     */
-    p.viewports = null;
-
-    p.start = function(){
-        var viewports = this.viewports,
-            viewportsCount = viewports.length;
-        for(var i = 0; i < viewportsCount; i++){
-            viewports[i].start();
+        this.events = {
+            ready: 0
         }
-        this.started = true;
+
+        this.buf = new Float32Array(3);
+
+        this.enabled = false;
+        this.t = Vec3.transformMat4;
+
+        //Everything culling and drawing read is the sprite's own from the
+        //start, in the same order - defaults kept - so that every sprite has
+        //one shape and the loop over tens of thousands of them stays on V8's
+        //fast path. Filled in later, one at a time and in whatever order,
+        //they left it juggling several.
+        this.gameObject = null;
+        this._sprite = this._sprite;
+        this._pivotX = this._pivotX;
+        this._pivotY = this._pivotY;
+        this.opacity = 1;
+        this.layer = this.layer;
     }
 
-    /**
-     * @param {CameraComponent} camera
-     * @return {Viewport}
-     */
-    p.createViewport = function(canvas){
-        var viewport = new Viewport(this, canvas);
-        this.viewports.push(viewport);
-        if(this.started)
-            viewport.start();
-        return viewport;
-    };
+    var p = Sprite.prototype = Object.create(Component.prototype);
+
+    p.constructor = Sprite;
+
+    p._sprite = null;
+
+    p._pivotX = 0;
+    p._pivotY = 0;
+
+    p.layer = 0;
 
     /**
-     * @return {void}
+     * The world culls a sprite by its picture's size and its pivot, which it
+     * keeps a copy of (see World#slots), so changing either has to tell it -
+     * whether through setSprite and setPivot or by assigning them.
      */
-    p.render = function(){
-        var viewports = this.viewports,
-            viewportsCount = viewports.length,
-            viewport = null;
+    function changed(self) {
+        var gameObject = self.gameObject;
 
-        for(var i = 0; i < viewportsCount; i++){
-            viewport = viewports[i];
-            if(viewport.active() === true && viewport.camera !== null)
-                Renderer.render(this.renderer, viewport.camera, viewports[i]);
+        if (gameObject !== null && gameObject.world !== null)
+            gameObject.world.invalidate(gameObject);
+    }
+
+    Object.defineProperty(p, "sprite", {
+        get: function () {
+            return this._sprite;
+        },
+        set: function (sprite) {
+            this._sprite = sprite;
+            changed(this);
         }
+    });
+
+    Object.defineProperty(p, "pivotX", {
+        get: function () {
+            return this._pivotX;
+        },
+        set: function (x) {
+            this._pivotX = x;
+            changed(this);
+        }
+    });
+
+    Object.defineProperty(p, "pivotY", {
+        get: function () {
+            return this._pivotY;
+        },
+        set: function (y) {
+            this._pivotY = y;
+            changed(this);
+        }
+    });
+
+    p.setGameObject = function (gameObject) {
+        Component.prototype.setGameObject.call(this, gameObject);
+        gameObject.spriteRenderer = this;
+        gameObject.renderer = this;
+        this.opacity = 1;
     };
 
-    return Graphics;
-});
+    p.setSprite = function (sprite) {
+        this.sprite = sprite;
+        this.enabled = true;
 
-define('engine/time',[],function () {
+        return this;
+    };
+
+    p.setPivot = function (x, y) {
+        this.pivotX = x;
+        this.pivotY = y;
+        return this;
+    };
+
+    p.unsetGameObject = function () {
+        this.gameObject.spriteRenderer = undefined;
+        this.gameObject.renderer = null;
+        Component.prototype.unsetGameObject.call(this);
+    };
+
+    var getLocalToWorld = Transform.getLocalToWorld;
+
+    //Canvas2dRenderer culls every sprite that keeps this test with a copy of
+    //it inlined into its own loop, so the two have to stay in step
+    p.cullingTest = function (viewport, viewportRenderer, self) {
+        var m = getLocalToWorld(self.gameObject.transform),
+            M = viewportRenderer.M,
+            x = m[12], y = m[13], z = m[14],
+            sprite = self._sprite,
+            x0 = (M[0] * x + M[4] * y + M[8] * z + M[12] - self._pivotX) | 0,
+            y0 = (M[1] * x + M[5] * y + M[9] * z + M[13] - self._pivotY) | 0;
+
+        return x0 <= viewport.width && x0 + sprite.width >= 0 && y0 <= viewport.height && y0 + sprite.height >= 0;
+    };
+
+    p.render = function (layer, viewportRenderer, viewport, self) {
+        var buffer = self.buf,
+            m = getLocalToWorld(self.gameObject.transform),
+            M = viewportRenderer.M,
+            x = m[12], y = m[13], z = m[14];
+
+        //where on screen it stands is left in buf for a subclass drawing more
+        //over it, see VehicleRenderer
+        buffer[0] = M[0] * x + M[4] * y + M[8] * z + M[12];
+        buffer[1] = M[1] * x + M[5] * y + M[9] * z + M[13];
+
+        draw(layer, self, (buffer[0] - self._pivotX) | 0, (buffer[1] - self._pivotY) | 0);
+    };
+
     /**
-     * @constructor
+     * Draws the sprite with its top left corner at x0, y0 - whole screen
+     * pixels, pivot already taken off. Canvas2dRenderer draws the sprites it
+     * culled itself with this directly, at the spot it worked out culling them.
      */
-    function Time() {
-        // real (wall-clock) timestamp of the last tick, used only to measure dt
-        this._lastReal = Date.now();
-        this.now = Date.now();
+    function draw(layer, self, x0, y0) {
+        var sprite = self._sprite,
+            w = sprite.width,
+            h = sprite.height;
+
+        if (self.opacity !== 1) {
+            layer.save();
+            layer.globalAlpha = self.opacity;
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, x0, y0, w, h);
+            layer.restore();
+        } else
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, x0, y0, w, h);
     }
 
-    var p = Time.prototype;
+    Sprite.draw = draw;
 
-    /**
-     * milliseconds since start
-     * @type {Number}
-     */
-    p.time = 0;
-
-    /**
-     * @type {Number}
-     */
-    p.now = 0;
-
-    /**
-     * milliseconds elapsed since the previous tick, measured against the
-     * wall clock so speeds stay the same regardless of frame rate
-     * @type {Number}
-     */
-    p.dt = 0;
-
-    // Cap a single tick's elapsed time so a stalled tab (backgrounded,
-    // debugger paused, ...) doesn't dump one huge dt on resume and make
-    // everything jump.
-    var MAX_DT = 200;
-
-    p.tick = function(){
-        var real = Date.now();
-        this.dt = Math.min(real - this._lastReal, MAX_DT);
-        this._lastReal = real;
-
-        this.time += this.dt;
-        this.now += this.dt;
-    };
-
-    return Time;
+    return Sprite;
 });
 define('engine/lib/Octree/node',[],function () {
     //single set bit index lookup table
@@ -2364,10 +2082,18 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
         this.logic = logic;
         this.gameObjects = [];
         this.tickers = [];
+        this.slots = new Float64Array(0);
+        this.stale = [];
 
         if (useOctree === true)
             q = this.octree = new Octree(64,1000,45)
     }
+
+    /**
+     * How many numbers each gameObject's slot takes, see p.slots
+     * @type {number}
+     */
+    var SLOT_SIZE = World.SLOT_SIZE = 8;
 
     var p = World.prototype = Object.create(EventManager.prototype);
 
@@ -2447,6 +2173,32 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
     p._holes = 0;
 
     /**
+     * What the renderer culls by, kept flat so that it can go over every
+     * gameObject there is without touching a single one of them: a slot of
+     * SLOT_SIZE numbers per gameObject, the one at gameObjects[i] starting at
+     * i * SLOT_SIZE. What is in a slot is the renderer's business (see
+     * Canvas2dRenderer); the world only keeps the slots lined up with
+     * gameObjects, and lists in p.stale the gameObjects whose slot has gone
+     * out of date - see p.invalidate and p.refreshSlots.
+     * @type {Float64Array}
+     */
+    p.slots = null;
+
+    /**
+     * gameObjects whose slot is out of date, p.staleCount of them; each one
+     * has _staleIn set to this world while it is listed here
+     * @type {GameObject[]}
+     * @private
+     */
+    p.stale = null;
+
+    /**
+     * @type {number}
+     * @private
+     */
+    p.staleCount = 0;
+
+    /**
      * Array with gameObjects
      * @param {GameObject} gameObject
      */
@@ -2458,6 +2210,9 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
         this.gameObjects.push(gameObject);
         this.gameObjectsCount++;
         gameObject.setWorld(this);
+
+        reserveSlots(this, this.gameObjects.length);
+        this.invalidate(gameObject);
 
         if (this.octree !== null) {
             var pos = gameObject.transform.getPosition();
@@ -2541,8 +2296,9 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
 
     function compact(world) {
         var gameObjects = world.gameObjects,
+            slots = world.slots,
             len = gameObjects.length,
-            gameObject, i, n;
+            gameObject, i, n, from, to, k;
 
         if (world._holes === 0)
             return;
@@ -2550,6 +2306,14 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
         for (i = 0, n = 0; i < len; i++) {
             gameObject = gameObjects[i];
             if (gameObject !== null) {
+                //its slot goes along with it
+                if (n !== i) {
+                    from = i * SLOT_SIZE;
+                    to = n * SLOT_SIZE;
+                    for (k = 0; k < SLOT_SIZE; k++)
+                        slots[to + k] = slots[from + k];
+                }
+
                 gameObject._worldIndex = n;
                 gameObjects[n++] = gameObject;
             }
@@ -2558,6 +2322,68 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
         gameObjects.length = n;
         world._holes = 0;
     }
+
+    /**
+     * Makes room in p.slots for count gameObjects - by half again as many, so
+     * a world that keeps growing reallocates now and then, not every time.
+     */
+    function reserveSlots(world, count) {
+        var slots;
+
+        if (count * SLOT_SIZE <= world.slots.length)
+            return;
+
+        slots = new Float64Array(Math.max(count + (count >> 1), 1024) * SLOT_SIZE);
+        slots.set(world.slots);
+        world.slots = slots;
+    }
+
+    /**
+     * Has the slot of gameObject, which is in this world, brought up to date
+     * the next time p.refreshSlots runs. Whatever changes what the renderer
+     * culls a gameObject by calls this: the gameObject coming into the world,
+     * moving (see TransformComponent), getting or losing a component (see
+     * GameObject#addComponent), a sprite changing its picture or pivot (see
+     * SpriteRenderer).
+     * @param {GameObject} gameObject
+     */
+    p.invalidate = function (gameObject) {
+        if (gameObject._staleIn === this)
+            return;
+
+        gameObject._staleIn = this;
+        this.stale[this.staleCount++] = gameObject;
+    };
+
+    /**
+     * Calls refresh(slots, offset, gameObject) for every gameObject still in
+     * the world whose slot went out of date since the last time - offset
+     * being where that slot starts in slots - and forgets them.
+     * @param {function(Float64Array, number, GameObject)} refresh
+     */
+    p.refreshSlots = function (refresh) {
+        var stale = this.stale,
+            count = this.staleCount,
+            gameObject, i;
+
+        compact(this);
+
+        for (i = 0; i < count; i++) {
+            gameObject = stale[i];
+            stale[i] = null;
+
+            //listed twice, or listed by another world since
+            if (gameObject._staleIn !== this)
+                continue;
+
+            gameObject._staleIn = null;
+
+            if (gameObject.world === this)
+                refresh(this.slots, gameObject._worldIndex * SLOT_SIZE, gameObject);
+        }
+
+        this.staleCount = 0;
+    };
 
     p.retrieve = function (gameObject) {
         compact(this);
@@ -2698,6 +2524,761 @@ define('engine/world',['require','./lib/octree','events'],function (require) {
     }
 
     return World;
+});
+//TODO render only dirty areas of screen
+//TODO each GO could have multiple renderers...
+//TODO ...all scene renderers should be grouped in single array.
+define('engine/Canvas2dRenderer',['require','./config','gl-matrix','./components/transformcomponent','./components/renderer','./components/spriterenderer','./world'],function (require) {
+    var config = require("./config");
+    var glMatrix = require("gl-matrix");
+    var Transform = require("./components/transformcomponent");
+    var Renderer = require("./components/renderer");
+    var SpriteRenderer = require("./components/spriterenderer");
+    var World = require("./world");
+
+    function Canvas2dRenderer(graphics) {
+        this.graphics = graphics;
+        this.M = [];
+        this.V = [];
+    }
+
+    var p = Canvas2dRenderer.prototype,
+        getLocalToWorld = Transform.getLocalToWorld,
+        // renderers that still cull and draw the way these do are culled -
+        // and sprites drawn - by cull() and render() themselves, see there
+        pointCullingTest = Renderer.prototype.cullingTest,
+        spriteCullingTest = SpriteRenderer.prototype.cullingTest,
+        spriteRender = SpriteRenderer.prototype.render,
+        drawSprite = SpriteRenderer.draw,
+
+        // What a gameObject's slot in World#slots holds: how it is culled,
+        // where it is in the world, and for a sprite, its pivot and its
+        // picture's size - everything needed to tell whether it is on screen
+        // without touching it. refreshSlot fills it in.
+        SLOT_SIZE = World.SLOT_SIZE,
+        SLOT_KIND = 0,
+        SLOT_X = 1,
+        SLOT_Y = 2,
+        SLOT_Z = 3,
+        SLOT_PIVOT_X = 4,
+        SLOT_PIVOT_Y = 5,
+        SLOT_WIDTH = 6,
+        SLOT_HEIGHT = 7,
+
+        // slot kinds: nothing to draw; a sprite; a sprite whose picture is
+        // not there yet (0x0), which is tested against the renderer itself
+        // until it comes in; a renderer culled by its position alone
+        // (Renderer#cullingTest, text for one); and any other renderer, which
+        // is asked through its own cullingTest
+        KIND_NONE = 0,
+        KIND_SPRITE = 1,
+        KIND_UNSIZED_SPRITE = 2,
+        KIND_POINT = 3,
+        KIND_CUSTOM = 4,
+
+        // how an entry's renderer gets drawn: through its own render(), or as
+        // a plain sprite at the screen position cull() left in drawX/drawY
+        DRAW_CALL = 0,
+        DRAW_SPRITE = 1,
+
+        // Everything a frame knows about what it draws lives in the buffers
+        // below, one entry per renderer that passed culling, in the order
+        // cull() met them. They are allocated at a capacity of however many
+        // gameObjects the world had at most (see reserve), so a frame never
+        // allocates and never grows or shrinks an array of references - the
+        // renderers used to be pushed onto per-layer arrays and popped off
+        // them again, every frame.
+        //
+        // order holds the entries grouped by layer - layer i is
+        // order[layerStarts[i] .. layerStarts[i + 1]) - and, in the layers
+        // that are sorted, by depth within it; each layer is drawn from the
+        // end of its range back to the start.
+        capacity = 0,
+        visibleRenderers = [],
+        entryLayers = new Uint8Array(0),
+        entryDraw = new Uint8Array(0),
+        drawX = new Int32Array(0),
+        drawY = new Int32Array(0),
+        depthKeys = new Float64Array(0),
+        quantizedKeys = new Uint16Array(0),
+        order = new Uint32Array(0),
+        orderScratch = new Uint32Array(0),
+        layerStarts = new Uint32Array(0),
+        layerCursors = new Uint32Array(0),
+
+        // depth keys are sorted by a 2-pass LSD radix sort over an 8-bit
+        // digit each (radix 256) -- no JS comparator callback, full 16-bit
+        // depth resolution, and no 65536-wide histogram (a single pass over
+        // the whole 16-bit key would need one, and clearing/prefix-summing it
+        // every call turned out to cost more than the O(n) work it replaced
+        // for a typical layer's renderer count -- see git history). Two
+        // 256-wide digit passes keep the fixed per-call cost down to ~2*256
+        // regardless of key range. Each pass is a stable counting sort by one
+        // digit, and LSD order (least-significant digit first) makes the
+        // composition of both passes a full, stable sort by the 16-bit key --
+        // equal-key renderers keep their relative order.
+        KEY_MAX = 0xffff,
+        RADIX = 256,
+        digitCounts = new Uint32Array(RADIX);
+
+    /**
+     * Makes room in the per-entry buffers for every one of count gameObjects
+     * passing culling, and in the per-layer ones for layersCount layers.
+     * Grows only, and by half again as much, so a world that keeps growing
+     * reallocates now and then rather than every time a few more are added.
+     */
+    function reserve(count, layersCount) {
+        var i;
+
+        if (count > capacity) {
+            capacity = Math.max(count + (count >> 1), 1024);
+
+            visibleRenderers = [];
+            for (i = 0; i < capacity; i++)
+                visibleRenderers.push(null);
+
+            entryLayers = new Uint8Array(capacity);
+            entryDraw = new Uint8Array(capacity);
+            drawX = new Int32Array(capacity);
+            drawY = new Int32Array(capacity);
+            depthKeys = new Float64Array(capacity);
+            quantizedKeys = new Uint16Array(capacity);
+            order = new Uint32Array(capacity);
+            orderScratch = new Uint32Array(capacity);
+        }
+
+        if (layersCount + 1 > layerStarts.length) {
+            layerStarts = new Uint32Array(layersCount + 1);
+            layerCursors = new Uint32Array(layersCount);
+        }
+    }
+
+    /**
+     * Brings gameObject's slot up to date, see World#refreshSlots.
+     */
+    function refreshSlot(slots, o, gameObject) {
+        var m = getLocalToWorld(gameObject.transform),
+            renderer = gameObject.renderer,
+            cullingTest;
+
+        slots[o + SLOT_X] = m[12];
+        slots[o + SLOT_Y] = m[13];
+        slots[o + SLOT_Z] = m[14];
+
+        if (renderer === undefined || renderer === null) {
+            slots[o + SLOT_KIND] = KIND_NONE;
+            return;
+        }
+
+        cullingTest = renderer.cullingTest;
+
+        if (cullingTest === spriteCullingTest)
+            settleSprite(slots, o, renderer);
+        else
+            slots[o + SLOT_KIND] = cullingTest === pointCullingTest ? KIND_POINT : KIND_CUSTOM;
+    }
+
+    /**
+     * Takes a sprite's pivot and picture size into its slot - once there is a
+     * picture, that is: an empty (0x0) sprite is still being loaded, and is
+     * left for cull() to look at every frame until its size comes in. A
+     * picture is taken not to change size after that (see SpriteCache); a
+     * renderer changing its sprite or its pivot tells the world itself.
+     */
+    function settleSprite(slots, o, renderer) {
+        var sprite = renderer._sprite;
+
+        if (sprite === null || sprite.width === 0) {
+            slots[o + SLOT_KIND] = KIND_UNSIZED_SPRITE;
+            return;
+        }
+
+        slots[o + SLOT_KIND] = KIND_SPRITE;
+        slots[o + SLOT_PIVOT_X] = renderer._pivotX;
+        slots[o + SLOT_PIVOT_Y] = renderer._pivotY;
+        slots[o + SLOT_WIDTH] = sprite.width;
+        slots[o + SLOT_HEIGHT] = sprite.height;
+    }
+
+    /**
+     * Puts every enabled renderer that is on screen in an entry of its own,
+     * and returns how many there are.
+     *
+     * This is the one loop that runs for every gameObject there is, so it
+     * goes over the world's slots rather than over the gameObjects: sprites
+     * and point renderers (text, say) are tested right there, against the
+     * matrices' entries held in locals, and only one that turns out to be on
+     * screen is looked at itself - off screen, a gameObject costs a read of
+     * its slot and nothing else. The tests are SpriteRenderer#cullingTest and
+     * Renderer#cullingTest inlined, and have to stay in step with them; a
+     * renderer that culls some other way is asked through its own
+     * cullingTest.
+     *
+     * gameObjects is what the world retrieved for the camera: all of them,
+     * where slot i is gameObjects[i]'s own, or those the octree picked.
+     */
+    function cull(world, gameObjects, viewport, self) {
+        var slots = world.slots,
+            direct = gameObjects === world.gameObjects,
+            M = self.M,
+            V = self.V,
+            m0 = M[0], m1 = M[1], m4 = M[4], m5 = M[5],
+            m8 = M[8], m9 = M[9], m12 = M[12], m13 = M[13],
+            v0 = V[0], v1 = V[1], v4 = V[4], v5 = V[5],
+            v8 = V[8], v9 = V[9], v12 = V[12], v13 = V[13],
+            width = viewport.width,
+            height = viewport.height,
+            count = gameObjects.length,
+            visible = 0,
+            renderer, sprite, kind, draw, o, x, y, z, sx, sy, i;
+
+        for (i = 0; i < count; i++) {
+            o = (direct ? i : gameObjects[i]._worldIndex) * SLOT_SIZE;
+            kind = slots[o + SLOT_KIND];
+
+            if (kind === KIND_NONE)
+                continue;
+
+            x = slots[o + SLOT_X];
+            y = slots[o + SLOT_Y];
+            z = slots[o + SLOT_Z];
+
+            if (kind === KIND_SPRITE) {
+                sx = (m0 * x + m4 * y + m8 * z + m12 - slots[o + SLOT_PIVOT_X]) | 0;
+                sy = (m1 * x + m5 * y + m9 * z + m13 - slots[o + SLOT_PIVOT_Y]) | 0;
+
+                if (sx > width || sx + slots[o + SLOT_WIDTH] < 0 || sy > height || sy + slots[o + SLOT_HEIGHT] < 0)
+                    continue;
+
+                renderer = gameObjects[i].renderer;
+
+                if (!renderer.enabled)
+                    continue;
+
+                drawX[visible] = sx;
+                drawY[visible] = sy;
+                draw = renderer.render === spriteRender ? DRAW_SPRITE : DRAW_CALL;
+            } else if (kind === KIND_POINT) {
+                sx = v0 * x + v4 * y + v8 * z + v12;
+                sy = v1 * x + v5 * y + v9 * z + v13;
+
+                if (sx > 1 || sx < -1 || sy > 1 || sy < -1)
+                    continue;
+
+                renderer = gameObjects[i].renderer;
+
+                if (!renderer.enabled)
+                    continue;
+
+                draw = DRAW_CALL;
+            } else if (kind === KIND_UNSIZED_SPRITE) {
+                renderer = gameObjects[i].renderer;
+                sprite = renderer._sprite;
+
+                if (!renderer.enabled || sprite === null)
+                    continue;
+
+                //its picture may have come in since; culled from its slot then
+                settleSprite(slots, o, renderer);
+
+                sx = (m0 * x + m4 * y + m8 * z + m12 - renderer._pivotX) | 0;
+                sy = (m1 * x + m5 * y + m9 * z + m13 - renderer._pivotY) | 0;
+
+                if (sx > width || sx + sprite.width < 0 || sy > height || sy + sprite.height < 0)
+                    continue;
+
+                drawX[visible] = sx;
+                drawY[visible] = sy;
+                draw = renderer.render === spriteRender ? DRAW_SPRITE : DRAW_CALL;
+            } else {
+                renderer = gameObjects[i].renderer;
+
+                if (!renderer.enabled || !renderer.cullingTest(viewport, self, renderer))
+                    continue;
+
+                draw = DRAW_CALL;
+            }
+
+            entryDraw[visible] = draw;
+            visibleRenderers[visible] = renderer;
+            entryLayers[visible] = renderer.layer;
+            depthKeys[visible] = x - y + z;
+            visible++;
+        }
+
+        return visible;
+    }
+
+    /**
+     * Fills order with entries 0 .. count, grouped by layer - a counting
+     * sort, so it is stable: within a layer, entries stay in the order they
+     * were culled in, which is the world's order.
+     */
+    function groupLayers(count, layersCount) {
+        var i, layer, sum, c;
+
+        layerStarts.fill(0);
+
+        for (i = 0; i < count; i++)
+            layerStarts[entryLayers[i]]++;
+
+        sum = 0;
+        for (layer = 0; layer < layersCount; layer++) {
+            c = layerStarts[layer];
+            layerStarts[layer] = layerCursors[layer] = sum;
+            sum += c;
+        }
+        layerStarts[layersCount] = sum;
+
+        for (i = 0; i < count; i++)
+            order[layerCursors[entryLayers[i]]++] = i;
+    }
+
+    /**
+     * Sorts order[start .. end) by depth key, keeping the order of the ones
+     * that share a key. The keys are quantized to 16 bits over the range's
+     * own min..max first; the two digit passes go from order to orderScratch
+     * and back, so the result lands in order itself.
+     */
+    function depthSort(start, end) {
+        var min = Infinity,
+            max = -Infinity,
+            i, entry, key, range, scale, q, d, sum, c;
+
+        for (i = start; i < end; i++) {
+            key = depthKeys[order[i]];
+            if (key < min) min = key;
+            if (key > max) max = key;
+        }
+
+        range = max - min;
+        scale = range > 0 ? KEY_MAX / range : 0;
+
+        for (i = start; i < end; i++) {
+            entry = order[i];
+            q = ((depthKeys[entry] - min) * scale) | 0;
+            // guard against fp rounding pushing the max key past the last value
+            if (q > KEY_MAX)
+                q = KEY_MAX;
+            quantizedKeys[entry] = q;
+        }
+
+        // low digit, order -> orderScratch
+        digitCounts.fill(0);
+
+        for (i = start; i < end; i++)
+            digitCounts[quantizedKeys[order[i]] & 0xff]++;
+
+        sum = start;
+        for (d = 0; d < RADIX; d++) {
+            c = digitCounts[d];
+            digitCounts[d] = sum;
+            sum += c;
+        }
+
+        for (i = start; i < end; i++) {
+            entry = order[i];
+            orderScratch[digitCounts[quantizedKeys[entry] & 0xff]++] = entry;
+        }
+
+        // high digit, orderScratch -> order
+        digitCounts.fill(0);
+
+        for (i = start; i < end; i++)
+            digitCounts[quantizedKeys[orderScratch[i]] >> 8]++;
+
+        sum = start;
+        for (d = 0; d < RADIX; d++) {
+            c = digitCounts[d];
+            digitCounts[d] = sum;
+            sum += c;
+        }
+
+        for (i = start; i < end; i++) {
+            entry = orderScratch[i];
+            order[digitCounts[quantizedKeys[entry] >> 8]++] = entry;
+        }
+    }
+
+    function render(self, camera, viewport) {
+        var world = camera.world,
+            gameObjects = world.retrieve(camera),
+            layersCount = config.layersCount,
+            noLayerClearMask = config.noLayerClearMask,
+            noLayerDepthSortingMask = config.noLayerDepthSortingMask,
+            context = viewport.context,
+            renderer, count, start, end, entry,
+            i, j, ctx;
+
+        self.M = camera.camera.getWorldToScreen();
+        self.V = camera.camera.getWorldToViewport();
+
+        reserve(gameObjects.length, layersCount);
+
+        world.refreshSlots(refreshSlot);
+        count = cull(world, gameObjects, viewport, self);
+        groupLayers(count, layersCount);
+
+        context.clearRect(0, 0, viewport.width, viewport.height);
+
+        for (i = 0; i < layersCount; i++) {
+            ctx = viewport.layers[i];
+
+            if (~noLayerClearMask & 1 << i) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
+
+            start = layerStarts[i];
+            end = layerStarts[i + 1];
+
+            if (end - start > 1 && (~noLayerDepthSortingMask & 1 << i)) {
+                depthSort(start, end);
+            }
+
+            for (j = end - 1; j >= start; j--) {
+                entry = order[j];
+                renderer = visibleRenderers[entry];
+                //nothing is kept alive from here until the next frame
+                visibleRenderers[entry] = null;
+
+                if (entryDraw[entry] === DRAW_SPRITE)
+                    drawSprite(ctx, renderer, drawX[entry], drawY[entry]);
+                else
+                    renderer.render(ctx, self, viewport, renderer);
+            }
+
+            context.drawImage(ctx.canvas, 0, 0);
+        }
+
+        //if (config.renderOctree && config.useOctree && camera.world.octree.root !== null)
+        //self.renderOctreeNode(camera.world.octree.root, viewport.context);
+
+    };
+
+    Canvas2dRenderer.render = render;
+
+    p.graphics = null;
+
+    /*
+    p.render = function (camera, viewport) {
+        var gameObjects = camera.world.retrieve(camera),
+            gameObjectsCount = gameObjects.length,
+            layersCount = config.layersCount,
+            renderer, renderers, renderersCount,
+            i, j, ctx;
+
+        this.M = camera.camera.getWorldToScreen();
+        this.V = camera.camera.getWorldToViewport();
+
+        viewport.context.clearRect(0, 0, viewport.width, viewport.height);
+
+        for (i = 0; i < gameObjectsCount; i++){
+            var go = gameObjects[i];
+            if(go.renderer !== undefined && go.renderer.enabled && go.renderer.cullingTest(viewport, this))
+                this.layerBuffers[go.renderer.layer].push(go.renderer)
+        }
+
+        for (i = 0; i < layersCount; i++) {
+            ctx = viewport.layers[i];
+
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            renderers = this.layerBuffers[i];
+            renderersCount = renderers.length;
+
+            if (config.depthSortingMask & (1 << i)) {
+                depthSort(renderers);
+            }
+
+            for (j = 0; j < renderersCount; j++) {
+                renderer = renderers.pop();
+
+                renderer.render(ctx, this, viewport);
+            }
+
+            viewport.context.drawImage(ctx.canvas, 0, 0);
+        }
+
+        //if (config.renderOctree && config.useOctree && camera.world.octree.root !== null)
+        //this.renderOctreeNode(camera.world.octree.root, viewport.context);
+
+    };
+    */
+                           /*
+
+    p.renderAxis = function (gameObject, ctx) {
+        var W = gameObject.transform.getLocalToWorld(),
+            pos0 = gameObject.transform.getPosition();
+
+        glMatrix.vec3.transformMat4(pos0, pos0, this.M);
+
+        var pos = bufferVec3;
+
+        //draw X
+        pos[0] = 100;
+        pos[1] = 0;
+        pos[2] = 0;
+
+        glMatrix.vec3.transformMat4(pos, pos, W);
+        glMatrix.vec3.transformMat4(pos, pos, this.M);
+
+        ctx.beginPath();
+        ctx.moveTo(pos0[0], pos0[1]);
+        ctx.lineTo(pos[0], pos[1]);
+        ctx.closePath();
+        ctx.strokeStyle = '#ff0000';
+        ctx.stroke();
+
+        //draw Y
+        pos[0] = 0;
+        pos[1] = 100;
+        pos[2] = 0;
+
+        glMatrix.vec3.transformMat4(pos, pos, W);
+        glMatrix.vec3.transformMat4(pos, pos, this.M);
+
+        ctx.beginPath();
+        ctx.moveTo(pos0[0], pos0[1]);
+        ctx.lineTo(pos[0], pos[1]);
+        ctx.closePath();
+        ctx.strokeStyle = '#00ff00';
+        ctx.stroke();
+
+        //draw Z
+        pos[0] = 0;
+        pos[1] = 0;
+        pos[2] = 100;
+
+        glMatrix.vec3.transformMat4(pos, pos, W);
+        glMatrix.vec3.transformMat4(pos, pos, this.M);
+
+        ctx.beginPath();
+        ctx.moveTo(pos0[0], pos0[1]);
+        ctx.lineTo(pos[0], pos[1]);
+        ctx.closePath();
+        ctx.strokeStyle = '#0000ff';
+        ctx.stroke();
+    }
+
+    p.renderOctreeNode = function (node, ctx) {
+        if (node.type === 0)
+            this.renderBound(node.x, node.y, node.z, node.ex, node.ey, node.ez, ctx);
+
+        //render childs
+        if (node.type === 1) {
+            if (node.nodesMask & 1)
+                this.renderOctreeNode(node.subnode0, ctx);
+
+            if (node.nodesMask & 2)
+                this.renderOctreeNode(node.subnode1, ctx);
+
+            if (node.nodesMask & 4)
+                this.renderOctreeNode(node.subnode2, ctx);
+
+            if (node.nodesMask & 8)
+                this.renderOctreeNode(node.subnode3, ctx);
+
+            if (node.nodesMask & 16)
+                this.renderOctreeNode(node.subnode4, ctx);
+
+            if (node.nodesMask & 32)
+                this.renderOctreeNode(node.subnode5, ctx);
+
+            if (node.nodesMask & 64)
+                this.renderOctreeNode(node.subnode6, ctx);
+
+            if (node.nodesMask & 128)
+                this.renderOctreeNode(node.subnode7, ctx);
+        }
+    }
+
+
+    p.renderBound = function (x, y, z, ex, ey, ez, ctx) {
+        var min = [x - ex, y - ey, z - ez],
+            max = [x + ex, y + ey, z + ez],
+            w = max[0] - min[0],
+            h = max[1] - min[1],
+            d = max[2] - min[2];
+
+        var m1 = [min[0] + w, min[1], min[2]],
+            m2 = [min[0], min[1] + h , min[2]],
+            m3 = [min[0] + w, min[1] + h, min[2]];
+
+        var mx1 = [min[0], min[1], min[2] + d],
+            mx2 = [min[0] + w, min[1] , min[2] + d],
+            mx3 = [min[0], min[1] + h, min[2] + d];
+
+
+        var p = bufferVec3;
+
+        ctx.beginPath();
+        glMatrix.vec3.transformMat4(p, min, this.M);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, m1, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, m3, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, m2, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, min, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, mx1, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, mx2, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, max, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, mx3, this.M);
+        ctx.lineTo(p[0], p[1]);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, mx1, this.M);
+        ctx.lineTo(p[0], p[1]);
+
+        glMatrix.vec3.transformMat4(p, m1, this.M);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, mx2, this.M);
+        ctx.lineTo(p[0], p[1]);
+
+        glMatrix.vec3.transformMat4(p, m2, this.M);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, mx3, this.M);
+        ctx.lineTo(p[0], p[1]);
+
+        glMatrix.vec3.transformMat4(p, m3, this.M);
+        ctx.moveTo(p[0], p[1]);
+        glMatrix.vec3.transformMat4(p, max, this.M);
+        ctx.lineTo(p[0], p[1]);
+
+        var bound = {};
+        ctx.closePath();
+        //ctx.strokeStyle = bound.color || (bound.color = '#' + ((0xFFFFFF * Math.random()) | 0).toString(16));
+        ctx.stroke();
+
+    };
+
+
+              */
+    return Canvas2dRenderer;
+});
+define('engine/graphics',["./viewport", "./Canvas2dRenderer"], function (Viewport, Renderer) {
+    /**
+     * @constructor
+     */
+    function Graphics(game) {
+        this.game = game;
+        this.viewports = [];
+        this.renderer = new Renderer(this);
+        this.started = false;
+    }
+
+    var p = Graphics.prototype;
+
+    /**
+     * @type {Game}
+     */
+    p.game = null;
+
+    /**
+     * Flag is set when Game was run
+     * @type {boolean}
+     */
+    p.started = false;
+
+    /**
+     * @type {Viewport[]}
+     */
+    p.viewports = null;
+
+    p.start = function(){
+        var viewports = this.viewports,
+            viewportsCount = viewports.length;
+        for(var i = 0; i < viewportsCount; i++){
+            viewports[i].start();
+        }
+        this.started = true;
+    }
+
+    /**
+     * @param {CameraComponent} camera
+     * @return {Viewport}
+     */
+    p.createViewport = function(canvas){
+        var viewport = new Viewport(this, canvas);
+        this.viewports.push(viewport);
+        if(this.started)
+            viewport.start();
+        return viewport;
+    };
+
+    /**
+     * @return {void}
+     */
+    p.render = function(){
+        var viewports = this.viewports,
+            viewportsCount = viewports.length,
+            viewport = null;
+
+        for(var i = 0; i < viewportsCount; i++){
+            viewport = viewports[i];
+            if(viewport.active() === true && viewport.camera !== null)
+                Renderer.render(this.renderer, viewport.camera, viewports[i]);
+        }
+    };
+
+    return Graphics;
+});
+
+define('engine/time',[],function () {
+    /**
+     * @constructor
+     */
+    function Time() {
+        // real (wall-clock) timestamp of the last tick, used only to measure dt
+        this._lastReal = Date.now();
+        this.now = Date.now();
+    }
+
+    var p = Time.prototype;
+
+    /**
+     * milliseconds since start
+     * @type {Number}
+     */
+    p.time = 0;
+
+    /**
+     * @type {Number}
+     */
+    p.now = 0;
+
+    /**
+     * milliseconds elapsed since the previous tick, measured against the
+     * wall clock so speeds stay the same regardless of frame rate
+     * @type {Number}
+     */
+    p.dt = 0;
+
+    // Cap a single tick's elapsed time so a stalled tab (backgrounded,
+    // debugger paused, ...) doesn't dump one huge dt on resume and make
+    // everything jump.
+    var MAX_DT = 200;
+
+    p.tick = function(){
+        var real = Date.now();
+        this.dt = Math.min(real - this._lastReal, MAX_DT);
+        this._lastReal = real;
+
+        this.time += this.dt;
+        this.now += this.dt;
+    };
+
+    return Time;
 });
 define('engine/game',['require','namespace','./graphics','./time','./world'],function (require) {
     var namespace = require("namespace");
@@ -2894,6 +3475,14 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
     p._tickerIndex = undefined;
 
     /**
+     * The world whose list of stale slots this gameObject is on, if any - see
+     * World#invalidate.
+     * @private
+     * @type {World}
+     */
+    p._staleIn = null;
+
+    /**
      * Runs once, before start
      */
     p.awake = function () {
@@ -2940,6 +3529,10 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
 
         component.setGameObject(this);
 
+        //it may be a renderer, which the world culls it by
+        if (this.world !== null)
+            this.world.invalidate(this);
+
         this._started && component.start !== null && component.start();
 
         this.updateSubscription();
@@ -2951,6 +3544,9 @@ define('engine/gameobject',['require','./components/transformcomponent','namespa
         component.unsetGameObject();
         this.removeQueue.push(component);
         this.removeQueueWaiting = true;
+
+        if (this.world !== null)
+            this.world.invalidate(this);
 
         this.updateSubscription();
     };
@@ -3421,180 +4017,6 @@ define('engine/gameObjects/camera',['require','namespace','../gameobject','../co
     return CameraObject;
 });
 
-/**
- * Created with JetBrains WebStorm.
- * User: User
- * Date: 07.04.14
- * Time: 15:21
- * To change this template use File | Settings | File Templates.
- */
-define('engine/components/renderer',['require','namespace','./../component','gl-matrix'],function (require) {
-    var namespace = require("namespace");
-    var Component = require("./../component");
-    var vec3Buffer1 = new Float32Array(3);
-    var glMatrix = require("gl-matrix");
-    var Vec3 = glMatrix.vec3;
-
-    namespace("Isometrica.Engine").Renderer = Renderer;
-
-    function Renderer(){
-        Component.call(this);
-    }
-
-    Renderer.prototype = Object.create(Component.prototype);
-
-    Renderer.prototype.cullingTest = function(viewport, viewportRenderer){
-        this.gameObject.transform.getPosition(vec3Buffer1);
-        Vec3.transformMat4(vec3Buffer1, vec3Buffer1, viewportRenderer.V);
-
-        return vec3Buffer1[0] <= 1 && vec3Buffer1[0] >= -1 && vec3Buffer1[1] <= 1 && vec3Buffer1[1] >= -1;
-    };
-
-    Renderer.prototype.render = function(layer,viewportRenderer,viewport){
-        this.gameObject.transform.getPosition(vec3Buffer1);
-        Vec3.transformMat4(vec3Buffer1, vec3Buffer1, viewportRenderer.V);
-
-        glMatrix.vec3.transformMat4(vec3Buffer1, this.gameObject.transform.getPosition(vec3Buffer1), viewportRenderer.M);
-
-        layer.font = "normal 12px arial";
-        layer.fillStyle = "red"
-        layer.textAlign = "center";
-        layer.textBaseline = "middle";
-        layer.fillText("EMPTY RENDERER", vec3Buffer1[0], vec3Buffer1[1]);
-    };
-    Renderer.prototype.layer = 0;
-
-    Renderer.prototype.setGameObject = function(gameObject){
-        Component.prototype.setGameObject.call(this, gameObject);
-        gameObject.renderer = this;
-    };
-
-    Renderer.prototype.unsetGameObject = function(){
-        this.gameObject.renderer = null;
-        Component.prototype.unsetGameObject.call(this);
-    };
-
-    return Renderer;
-});
-define('engine/components/spriterenderer',['require','namespace','./renderer','./transformcomponent','gl-matrix'],function (require) {
-    var namespace = require("namespace");
-    var vec3Buffer1 = new Float32Array(3);
-    var Component = require("./renderer");
-    var Transform = require("./transformcomponent");
-    var glMatrix = require("gl-matrix");
-    var Vec3 = glMatrix.vec3;
-
-    namespace("Isometrica.Engine").SpriteRenderer = Sprite;
-
-    function Sprite(sprite) {
-        Component.call(this);
-
-        this.events = {
-            ready: 0
-        }
-
-        this.buf = new Float32Array(3);
-
-        this.enabled = false;
-        this.t = Vec3.transformMat4;
-
-        //Everything culling and drawing read is the sprite's own from the
-        //start, in the same order - defaults kept - so that every sprite has
-        //one shape and the loop over tens of thousands of them stays on V8's
-        //fast path. Filled in later, one at a time and in whatever order,
-        //they left it juggling several.
-        this.gameObject = null;
-        this.sprite = this.sprite;
-        this.pivotX = this.pivotX;
-        this.pivotY = this.pivotY;
-        this.opacity = 1;
-        this.layer = this.layer;
-    }
-
-    var p = Sprite.prototype = Object.create(Component.prototype);
-
-    p.constructor = Sprite;
-
-    p.sprite = null;
-
-    p.pivotX = 0;
-    p.pivotY = 0;
-
-    p.layer = 0;
-
-    p.setGameObject = function (gameObject) {
-        Component.prototype.setGameObject.call(this, gameObject);
-        gameObject.spriteRenderer = this;
-        gameObject.renderer = this;
-        this.opacity = 1;
-    };
-
-    p.setSprite = function (sprite) {
-        this.sprite = sprite;
-        this.enabled = true;
-
-        return this;
-    };
-
-    p.setPivot = function (x, y) {
-        this.pivotX = x;
-        this.pivotY = y;
-        return this;
-    };
-
-    p.unsetGameObject = function () {
-        this.gameObject.spriteRenderer = undefined;
-        this.gameObject.renderer = null;
-        Component.prototype.unsetGameObject.call(this);
-    };
-
-    var getPos = Transform.getPosition;
-
-    p.cullingTest = function (viewport, viewportRenderer, self) {
-        var buffer = self.buf;
-
-        //self.gameObject.transform.getPosition(buffer);
-        getPos(self.gameObject.transform, buffer);
-
-        Vec3.transformMat4(buffer, buffer, viewportRenderer.M);
-
-        var sprite = self.sprite;
-        var x0 = (buffer[0] - self.pivotX) | 0;
-        var y0 = (buffer[1] - self.pivotY) | 0;
-
-        return x0 <= viewport.width && x0 + sprite.width >= 0 && y0 <= viewport.height && y0 + sprite.height >= 0;
-    };
-
-    var transformMat4 = function(out, a, m) {
-        var x = a[0], y = a[1], z = a[2];
-        out[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
-        out[1] = m[1] * x + m[5] * y + m[9] * z + m[13];
-        return out;
-    };
-
-    p.render = function (layer, viewportRenderer, viewport, self) {
-        var buffer = self.buf;
-
-        //self.gameObject.transform.getPosition(buffer);
-        getPos(self.gameObject.transform, buffer);
-        transformMat4(buffer, buffer, viewportRenderer.M);
-
-        var sprite = self.sprite;
-        var w = sprite.width;
-        var h = sprite.height;
-
-        if(self.opacity !== 1) {
-            layer.save();
-            layer.globalAlpha = self.opacity;
-
-            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
-            layer.restore();
-        }else
-            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
-    };
-
-    return Sprite;
-});
 /**
  * This class is a wrapper for Image, Audio, Blob objects.
  * It allows to download blob,image,audio,json or text files using xhr, and use progress events of xhr requests.

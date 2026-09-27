@@ -26,9 +26,9 @@ define(function (require) {
         //fast path. Filled in later, one at a time and in whatever order,
         //they left it juggling several.
         this.gameObject = null;
-        this.sprite = this.sprite;
-        this.pivotX = this.pivotX;
-        this.pivotY = this.pivotY;
+        this._sprite = this._sprite;
+        this._pivotX = this._pivotX;
+        this._pivotY = this._pivotY;
         this.opacity = 1;
         this.layer = this.layer;
     }
@@ -37,12 +37,54 @@ define(function (require) {
 
     p.constructor = Sprite;
 
-    p.sprite = null;
+    p._sprite = null;
 
-    p.pivotX = 0;
-    p.pivotY = 0;
+    p._pivotX = 0;
+    p._pivotY = 0;
 
     p.layer = 0;
+
+    /**
+     * The world culls a sprite by its picture's size and its pivot, which it
+     * keeps a copy of (see World#slots), so changing either has to tell it -
+     * whether through setSprite and setPivot or by assigning them.
+     */
+    function changed(self) {
+        var gameObject = self.gameObject;
+
+        if (gameObject !== null && gameObject.world !== null)
+            gameObject.world.invalidate(gameObject);
+    }
+
+    Object.defineProperty(p, "sprite", {
+        get: function () {
+            return this._sprite;
+        },
+        set: function (sprite) {
+            this._sprite = sprite;
+            changed(this);
+        }
+    });
+
+    Object.defineProperty(p, "pivotX", {
+        get: function () {
+            return this._pivotX;
+        },
+        set: function (x) {
+            this._pivotX = x;
+            changed(this);
+        }
+    });
+
+    Object.defineProperty(p, "pivotY", {
+        get: function () {
+            return this._pivotY;
+        },
+        set: function (y) {
+            this._pivotY = y;
+            changed(this);
+        }
+    });
 
     p.setGameObject = function (gameObject) {
         Component.prototype.setGameObject.call(this, gameObject);
@@ -70,50 +112,55 @@ define(function (require) {
         Component.prototype.unsetGameObject.call(this);
     };
 
-    var getPos = Transform.getPosition;
+    var getLocalToWorld = Transform.getLocalToWorld;
 
+    //Canvas2dRenderer culls every sprite that keeps this test with a copy of
+    //it inlined into its own loop, so the two have to stay in step
     p.cullingTest = function (viewport, viewportRenderer, self) {
-        var buffer = self.buf;
-
-        //self.gameObject.transform.getPosition(buffer);
-        getPos(self.gameObject.transform, buffer);
-
-        Vec3.transformMat4(buffer, buffer, viewportRenderer.M);
-
-        var sprite = self.sprite;
-        var x0 = (buffer[0] - self.pivotX) | 0;
-        var y0 = (buffer[1] - self.pivotY) | 0;
+        var m = getLocalToWorld(self.gameObject.transform),
+            M = viewportRenderer.M,
+            x = m[12], y = m[13], z = m[14],
+            sprite = self._sprite,
+            x0 = (M[0] * x + M[4] * y + M[8] * z + M[12] - self._pivotX) | 0,
+            y0 = (M[1] * x + M[5] * y + M[9] * z + M[13] - self._pivotY) | 0;
 
         return x0 <= viewport.width && x0 + sprite.width >= 0 && y0 <= viewport.height && y0 + sprite.height >= 0;
     };
 
-    var transformMat4 = function(out, a, m) {
-        var x = a[0], y = a[1], z = a[2];
-        out[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
-        out[1] = m[1] * x + m[5] * y + m[9] * z + m[13];
-        return out;
+    p.render = function (layer, viewportRenderer, viewport, self) {
+        var buffer = self.buf,
+            m = getLocalToWorld(self.gameObject.transform),
+            M = viewportRenderer.M,
+            x = m[12], y = m[13], z = m[14];
+
+        //where on screen it stands is left in buf for a subclass drawing more
+        //over it, see VehicleRenderer
+        buffer[0] = M[0] * x + M[4] * y + M[8] * z + M[12];
+        buffer[1] = M[1] * x + M[5] * y + M[9] * z + M[13];
+
+        draw(layer, self, (buffer[0] - self._pivotX) | 0, (buffer[1] - self._pivotY) | 0);
     };
 
-    p.render = function (layer, viewportRenderer, viewport, self) {
-        var buffer = self.buf;
+    /**
+     * Draws the sprite with its top left corner at x0, y0 - whole screen
+     * pixels, pivot already taken off. Canvas2dRenderer draws the sprites it
+     * culled itself with this directly, at the spot it worked out culling them.
+     */
+    function draw(layer, self, x0, y0) {
+        var sprite = self._sprite,
+            w = sprite.width,
+            h = sprite.height;
 
-        //self.gameObject.transform.getPosition(buffer);
-        getPos(self.gameObject.transform, buffer);
-        transformMat4(buffer, buffer, viewportRenderer.M);
-
-        var sprite = self.sprite;
-        var w = sprite.width;
-        var h = sprite.height;
-
-        if(self.opacity !== 1) {
+        if (self.opacity !== 1) {
             layer.save();
             layer.globalAlpha = self.opacity;
-
-            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, x0, y0, w, h);
             layer.restore();
-        }else
-            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, (buffer[0] - self.pivotX) | 0, (buffer[1] - self.pivotY) | 0, w, h);
-    };
+        } else
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, x0, y0, w, h);
+    }
+
+    Sprite.draw = draw;
 
     return Sprite;
 });

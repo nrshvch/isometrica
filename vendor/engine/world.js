@@ -18,10 +18,18 @@ define(function (require) {
         this.logic = logic;
         this.gameObjects = [];
         this.tickers = [];
+        this.slots = new Float64Array(0);
+        this.stale = [];
 
         if (useOctree === true)
             q = this.octree = new Octree(64,1000,45)
     }
+
+    /**
+     * How many numbers each gameObject's slot takes, see p.slots
+     * @type {number}
+     */
+    var SLOT_SIZE = World.SLOT_SIZE = 8;
 
     var p = World.prototype = Object.create(EventManager.prototype);
 
@@ -101,6 +109,32 @@ define(function (require) {
     p._holes = 0;
 
     /**
+     * What the renderer culls by, kept flat so that it can go over every
+     * gameObject there is without touching a single one of them: a slot of
+     * SLOT_SIZE numbers per gameObject, the one at gameObjects[i] starting at
+     * i * SLOT_SIZE. What is in a slot is the renderer's business (see
+     * Canvas2dRenderer); the world only keeps the slots lined up with
+     * gameObjects, and lists in p.stale the gameObjects whose slot has gone
+     * out of date - see p.invalidate and p.refreshSlots.
+     * @type {Float64Array}
+     */
+    p.slots = null;
+
+    /**
+     * gameObjects whose slot is out of date, p.staleCount of them; each one
+     * has _staleIn set to this world while it is listed here
+     * @type {GameObject[]}
+     * @private
+     */
+    p.stale = null;
+
+    /**
+     * @type {number}
+     * @private
+     */
+    p.staleCount = 0;
+
+    /**
      * Array with gameObjects
      * @param {GameObject} gameObject
      */
@@ -112,6 +146,9 @@ define(function (require) {
         this.gameObjects.push(gameObject);
         this.gameObjectsCount++;
         gameObject.setWorld(this);
+
+        reserveSlots(this, this.gameObjects.length);
+        this.invalidate(gameObject);
 
         if (this.octree !== null) {
             var pos = gameObject.transform.getPosition();
@@ -195,8 +232,9 @@ define(function (require) {
 
     function compact(world) {
         var gameObjects = world.gameObjects,
+            slots = world.slots,
             len = gameObjects.length,
-            gameObject, i, n;
+            gameObject, i, n, from, to, k;
 
         if (world._holes === 0)
             return;
@@ -204,6 +242,14 @@ define(function (require) {
         for (i = 0, n = 0; i < len; i++) {
             gameObject = gameObjects[i];
             if (gameObject !== null) {
+                //its slot goes along with it
+                if (n !== i) {
+                    from = i * SLOT_SIZE;
+                    to = n * SLOT_SIZE;
+                    for (k = 0; k < SLOT_SIZE; k++)
+                        slots[to + k] = slots[from + k];
+                }
+
                 gameObject._worldIndex = n;
                 gameObjects[n++] = gameObject;
             }
@@ -212,6 +258,68 @@ define(function (require) {
         gameObjects.length = n;
         world._holes = 0;
     }
+
+    /**
+     * Makes room in p.slots for count gameObjects - by half again as many, so
+     * a world that keeps growing reallocates now and then, not every time.
+     */
+    function reserveSlots(world, count) {
+        var slots;
+
+        if (count * SLOT_SIZE <= world.slots.length)
+            return;
+
+        slots = new Float64Array(Math.max(count + (count >> 1), 1024) * SLOT_SIZE);
+        slots.set(world.slots);
+        world.slots = slots;
+    }
+
+    /**
+     * Has the slot of gameObject, which is in this world, brought up to date
+     * the next time p.refreshSlots runs. Whatever changes what the renderer
+     * culls a gameObject by calls this: the gameObject coming into the world,
+     * moving (see TransformComponent), getting or losing a component (see
+     * GameObject#addComponent), a sprite changing its picture or pivot (see
+     * SpriteRenderer).
+     * @param {GameObject} gameObject
+     */
+    p.invalidate = function (gameObject) {
+        if (gameObject._staleIn === this)
+            return;
+
+        gameObject._staleIn = this;
+        this.stale[this.staleCount++] = gameObject;
+    };
+
+    /**
+     * Calls refresh(slots, offset, gameObject) for every gameObject still in
+     * the world whose slot went out of date since the last time - offset
+     * being where that slot starts in slots - and forgets them.
+     * @param {function(Float64Array, number, GameObject)} refresh
+     */
+    p.refreshSlots = function (refresh) {
+        var stale = this.stale,
+            count = this.staleCount,
+            gameObject, i;
+
+        compact(this);
+
+        for (i = 0; i < count; i++) {
+            gameObject = stale[i];
+            stale[i] = null;
+
+            //listed twice, or listed by another world since
+            if (gameObject._staleIn !== this)
+                continue;
+
+            gameObject._staleIn = null;
+
+            if (gameObject.world === this)
+                refresh(this.slots, gameObject._worldIndex * SLOT_SIZE, gameObject);
+        }
+
+        this.staleCount = 0;
+    };
 
     p.retrieve = function (gameObject) {
         compact(this);
