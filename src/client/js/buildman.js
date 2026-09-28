@@ -340,15 +340,25 @@ function placeOverArea(self, go, tile, sizeX, sizeY, height) {
  * @returns {engine.GameObject}
  */
 function createPriceTag(self, tile, sizeX, sizeY, amount, affordable) {
+    return createTag(self, tile, sizeX, sizeY, "-$" + Numeral(amount).format("0,0"), !affordable);
+}
+
+/**
+ * A tag like the price tag with any text on it - grey for something that
+ * cannot be done.
+ *
+ * @returns {engine.GameObject}
+ */
+function createTag(self, tile, sizeX, sizeY, text, grey) {
     var go = new engine.GameObject("price tag"),
         renderer = go.addComponent(new engine.TextRenderer());
 
     renderer.layer = RenderLayer.overlayLayer;
-    renderer.color = affordable ? "rgb(255,64,64)" : "rgb(160,160,160)";
+    renderer.color = grey ? "rgb(160,160,160)" : "rgb(255,64,64)";
     renderer.style = "bold 16px Courier New";
     renderer.strokeStyle = "black";
     renderer.lineWidth = 4;
-    renderer.text = "-$" + Numeral(amount).format("0,0");
+    renderer.text = text;
 
     //placed before it goes in - the world files it by where it stands; up
     //off the ground so the ghost underneath does not hide it
@@ -653,6 +663,26 @@ Buildman.prototype.showText = function (tile, sizeX, sizeY, text) {
  */
 Buildman.prototype.showCost = function (tile, sizeX, sizeY, amount) {
     showCost(this, tile, sizeX, sizeY, amount);
+};
+
+/**
+ * A price tag over the middle of an area of sizeX by sizeY tiles anchored at
+ * tile, the kind a building being placed carries - it stays until destroyed.
+ *
+ * @param affordable {boolean} grey when not
+ * @returns {engine.GameObject}
+ */
+Buildman.prototype.createPriceTag = function (tile, sizeX, sizeY, amount, affordable) {
+    return createPriceTag(this, tile, sizeX, sizeY, amount, affordable);
+};
+
+/**
+ * The same, with text of its own on it in grey - why it cannot be done.
+ *
+ * @returns {engine.GameObject}
+ */
+Buildman.prototype.createTag = function (tile, sizeX, sizeY, text) {
+    return createTag(this, tile, sizeX, sizeY, text, true);
 };
 
 /**

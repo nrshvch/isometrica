@@ -207,9 +207,20 @@ Ambient.prototype.getTree = function (tile) {
     //nothing grows where there are stones
     if (terrainType !== TerrainType.water && terrainType !== TerrainType.shore && resource === null && hasTree(this, tile)
         && rockAt(this, tile) === null)
-        return ([BuildingCode.tree1, BuildingCode.tree2])[Math.ceil(simplex.noise2D(1, tile))];
+        return BuildingCode.tree;
 
     return null;
+};
+
+/**
+ * Which of the tree's looks the world grew on the tile (see tree in
+ * data/buildings) - the same one every time it is asked.
+ *
+ * @param tile {number}
+ * @returns {number}
+ */
+Ambient.prototype.getTreeLook = function (tile) {
+    return simplex.noise2D(1, tile) > 0 ? 1 : 0;
 };
 
 Ambient.prototype.hasTree = function (tile) {

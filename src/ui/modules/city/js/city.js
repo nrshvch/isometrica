@@ -5,9 +5,7 @@ import CityModel from "./models/city";
 
 function getCity(self, id){
     var city = self.game.client.core.cities.getCity(id);
-    return new CityModel({
-        name: city.name()
-    },{
+    return new CityModel({}, {
         city: city
     });
 }
@@ -36,8 +34,7 @@ Module.prototype.mainView = function () {
 
 Module.prototype.infoView = function () {
     return this._infoView || (this._infoView = new InfoView({
-        model: getCity(this, 0),
-        cityView: this
+        model: getCity(this, 0)
     }));
 };
 

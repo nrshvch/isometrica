@@ -20,6 +20,11 @@ function onCityUpdate(s,a,d){
 }
 
 var View = Backbone.View.extend({
+    events: {
+        //the treasury is what the city screen is mostly about - clicked
+        //again, it puts it away
+        "click .money": "toggleCity"
+    },
     initialize: function (options) {
         this.onDispose = Events.event("dispose");
 
@@ -53,6 +58,19 @@ var View = Backbone.View.extend({
     renderMoney: function(){
         var money = this.city.resources.getResources()[Isometrica.Core.ResourceCode.money];
         $(".money", this.$el).text('$'+Numeral(money).format("0,0"));
+    },
+    toggleCity: function(){
+        if (this.options.app.showing() === "city") {
+            this.options.ui.navigate("world");
+            return;
+        }
+
+        //an action owns the world while it runs - opening the city screen from
+        //under it would leave the action with no buttons and no way to finish
+        if (this.options.app.worldScreen().busy())
+            return;
+
+        this.options.ui.navigate("city", [this.city.id()]);
     },
     render: function(){
         this.renderTime();

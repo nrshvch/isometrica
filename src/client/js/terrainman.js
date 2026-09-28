@@ -1,11 +1,15 @@
 /**
  * The terrain mode: pick tiles, then clear them, raise them or lower them -
- * as many times over as the player likes, until they leave with cancel.
+ * each confirmed first, with what it would cost over the tiles, and asked
+ * again once done - as many times over as the player likes, until they leave
+ * with cancel.
  */
 import Core from "core/main";
 import Events from "events";
 import AreaSelector from "./areaselector";
+import Buildman from "./buildman";
 import ErrorCode from "core/errorcode";
+import Numeral from "numeral";
 
 var Terrain = Core.Terrain;
 
@@ -17,6 +21,7 @@ var errorText = {};
 errorText[ErrorCode.NOT_ENOUGH_RES] = "no money";
 errorText[ErrorCode.TILE_TAKEN] = "building in the way";
 errorText[ErrorCode.TERRAFORM_TOO_LARGE] = "too much land";
+errorText[ErrorCode.NOTHING_TO_CLEAR] = "nothing to clear";
 
 //how far around the picked tiles the ground is outlined, so the shape of it is
 //there to see even under water
@@ -26,6 +31,22 @@ var SELECTED_BORDER = "rgba(255,255,255,1)";
 //the rings around the picked tiles, fading outwards
 var HALO_BORDERS = ["rgba(255,255,255,0.45)", "rgba(255,255,255,0.25)", "rgba(255,255,255,0.1)"];
 var HALO_DASH = [4, 4];
+
+/**
+ * The tiles of the buildings standing in the way of the ground moving, in
+ * the red a building that cannot go up is marked with (see Buildman).
+ */
+function blockedHiliteData(tiles) {
+    return tiles.map(function (tile) {
+        return {
+            x: Terrain.extractX(tile),
+            y: Terrain.extractY(tile),
+            fillColor: Buildman.HILITE_BLOCKED_FILL,
+            borderColor: Buildman.HILITE_BLOCKED_BORDER,
+            borderWidth: 2
+        };
+    });
+}
 
 /**
  * One hilite per tile: the picked ones outlined in white and the rings around
@@ -86,12 +107,73 @@ function Terrainman(root) {
 Terrainman.prototype.enter = function () {
     var root = this.root,
         buildman = root.buildman,
-        worldScreen = root.ui.gameScreen().worldScreen(),
+        gameScreen = root.ui.gameScreen(),
+        worldScreen = gameScreen.worldScreen(),
         //the handles follow the ground under water the way the rings do
         ts = new AreaSelector(root, {underwater: true}),
-        tokens = [];
+        tokens = [],
+        //the action waiting to be confirmed, its controls and the price tag
+        //over the selection - null while one is being picked - and the
+        //buildings in its way, marked
+        pending = null,
+        controls = null,
+        tag = null,
+        blockedTokens = [];
 
-    worldScreen.showHint("Drag to place, pull arrows to resize!");
+    function city() {
+        return root.core.cities.getCity(0);
+    }
+
+    //the picked tiles' bounding box, as an anchor tile and a size
+    function area() {
+        var bounds = ts.bounds();
+
+        return {
+            tile: Terrain.convertToIndex(bounds.x0, bounds.y0),
+            sizeX: bounds.x1 - bounds.x0 + 1,
+            sizeY: bounds.y1 - bounds.y0 + 1
+        };
+    }
+
+    function clearTag() {
+        if (tag !== null)
+            tag.destroy();
+        tag = null;
+
+        root.hiliteMan.disable(blockedTokens);
+        blockedTokens = [];
+    }
+
+    //what the pending action would come to for the tiles picked right now,
+    //over them - or why it cannot be done at all
+    function updateQuote() {
+        clearTag();
+
+        if (pending === null)
+            return;
+
+        var quote = pending.quote(ts.tiles()),
+            where = area(),
+            price = "$" + Numeral(quote.cost).format("0,0"),
+            reason = errorText[quote.error] || "can't do that";
+
+        if (quote.error === ErrorCode.NONE || quote.error === ErrorCode.NOT_ENOUGH_RES)
+            tag = buildman.createPriceTag(where.tile, where.sizeX, where.sizeY,
+                quote.cost, quote.error === ErrorCode.NONE);
+        else
+            tag = buildman.createTag(where.tile, where.sizeX, where.sizeY, reason);
+
+        if (quote.blocked !== undefined)
+            blockedTokens = root.hiliteMan.hilite(blockedHiliteData(quote.blocked));
+
+        worldScreen.showHint(quote.error === ErrorCode.NONE
+            ? pending.question + " for " + price + "?"
+            : quote.error === ErrorCode.NOT_ENOUGH_RES
+                ? "You cannot afford " + price + " for this!"
+                : "You cannot " + pending.question.toLowerCase() + " - " + reason + "!");
+
+        controls.canSubmit(quote.error === ErrorCode.NONE);
+    }
 
     function updateHilite() {
         //so that a tower in front of the picked ground does not hide it
@@ -99,42 +181,46 @@ Terrainman.prototype.enter = function () {
 
         root.hiliteMan.disable(tokens);
         tokens = root.hiliteMan.hilite(hiliteData(ts.tiles()));
+
+        //the selection can still be moved while it is being confirmed, and
+        //the price goes with it
+        updateQuote();
     }
 
     var sub = Events.on(ts, AreaSelector.events.change, updateHilite);
 
-    //each action works on what is picked and leaves it picked - going up or
-    //down again is only another tap away. The ground under it may have moved,
-    //so it is drawn over again
-    function act(f) {
-        return function () {
-            f(ts.tiles(), ts.bounds());
-            ts.refresh();
-        };
-    }
+    var clear = {
+        question: "Clear these tiles",
+        quote: function (tiles) {
+            return city().quoteClear(tiles);
+        },
+        apply: function (tiles) {
+            var c = city();
 
-    function bulldoze(tiles) {
-        var city = root.core.cities.getCity(0);
-
-        for (var i = 0; i < tiles.length; i++) {
-            //every tile is charged on its own, so each one that goes gets
-            //its own text
-            if (city.clearTile(tiles[i]))
-                buildman.showCost(tiles[i], 1, 1, Core.Config.clearTileCost);
+            for (var i = 0; i < tiles.length; i++) {
+                //every tile is charged on its own, so each one that goes gets
+                //its own text
+                if (c.clearTile(tiles[i]))
+                    buildman.showCost(tiles[i], 1, 1, Core.Config.clearTileCost);
+            }
         }
-    }
+    };
 
-    function level(direction) {
-        return function (tiles, bounds) {
-            var result = root.core.cities.getCity(0).terraform(tiles, direction);
+    function level(direction, question) {
+        return {
+            question: question,
+            quote: function (tiles) {
+                return city().quoteTerraform(tiles, direction);
+            },
+            apply: function (tiles) {
+                var result = city().terraform(tiles, direction),
+                    where = area();
 
-            if (result.error !== ErrorCode.NONE)
-                buildman.showText(result.tile, 1, 1, errorText[result.error] || "can't do that");
-            else if (result.cost > 0)
-                buildman.showCost(Terrain.convertToIndex(bounds.x0, bounds.y0),
-                    bounds.x1 - bounds.x0 + 1,
-                    bounds.y1 - bounds.y0 + 1,
-                    result.cost);
+                if (result.error !== ErrorCode.NONE)
+                    buildman.showText(result.tile, 1, 1, errorText[result.error] || "can't do that");
+                else if (result.cost > 0)
+                    buildman.showCost(where.tile, where.sizeX, where.sizeY, result.cost);
+            }
         };
     }
 
@@ -144,17 +230,49 @@ Terrainman.prototype.enter = function () {
         root.hiliteMan.disable(tokens);
         Events.off(ts, AreaSelector.events.change, sub);
 
-        root.ui.gameScreen().showWorld();
+        gameScreen.showWorld();
         worldScreen.hideHint();
     }
 
-    root.ui.gameScreen().showToolControls([
-        {icon: "cross-icon", action: leave},
-        //TODO a clearing icon of its own - this is the one that got us here
-        {icon: "bulldozer-icon", action: act(bulldoze)},
-        {icon: "chevron-up-icon", action: act(level(1))},
-        {icon: "chevron-down-icon", action: act(level(-1))}
-    ]);
+    //comes back to when an action is called off
+    //comes back to after each action, confirmed or not
+    function pick() {
+        pending = null;
+        controls = null;
+        clearTag();
+
+        worldScreen.showHint("Drag to place, pull arrows to resize!");
+
+        gameScreen.showToolControls([
+            {icon: "cross-icon", action: leave},
+            //TODO a clearing icon of its own - this is the one that got us here
+            {icon: "bulldozer-icon", action: confirm(clear)},
+            {icon: "chevron-up-icon", action: confirm(level(1, "Raise this land"))},
+            {icon: "chevron-down-icon", action: confirm(level(-1, "Lower this land"))}
+        ]);
+    }
+
+    //an action asks first, with its price over the selection
+    function confirm(action) {
+        return function () {
+            pending = action;
+            controls = gameScreen.showActionControls();
+            controls.canRotate(false);
+
+            //done, it leaves what is picked picked and asks the same again,
+            //priced afresh - going up another step is one more tap away. The
+            //ground under it may have moved, so it is drawn over again
+            controls.onSubmit = function () {
+                action.apply(ts.tiles());
+                ts.refresh();
+            };
+            controls.onDiscard = pick;
+
+            updateQuote();
+        };
+    }
+
+    pick();
 
     //the selection is up from the start, in the middle of the screen
     updateHilite();

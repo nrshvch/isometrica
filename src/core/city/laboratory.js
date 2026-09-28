@@ -13,22 +13,22 @@ var CityService = namespace("Isometrica.Core.CityService");
     var DirectionData = {};
     DirectionData[Direction.municipal] = {
         time: 10000,
-        cost: 100,
+        cost: 1000,
         items: []
     };
     DirectionData[Direction.housing] = {
         time: 10000,
-        cost: 100,
+        cost: 1000,
         items: []
     };
     DirectionData[Direction.industry] = {
         time: 10000,
-        cost: 100,
+        cost: 1000,
         items: []
     };
     DirectionData[Direction.commerce] = {
         time: 10000,
-        cost: 100,
+        cost: 1000,
         items: []
     };
 

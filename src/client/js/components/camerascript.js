@@ -11,8 +11,16 @@ var events = {
     //{gameViewportX, gameViewportY, scale}, see Viewport#events.pinch
     inputPinchStart: 5,
     inputPinch: 6,
-    inputPinchEnd: 7
+    inputPinchEnd: 7,
+    //a second tap straight after the first, in the same spot - it comes
+    //instead of that second tap's inputClick
+    inputDoubleTap: 8
 };
+
+//how soon after one tap the next makes it a double tap, and how near, in
+//page pixels - a finger does not land twice on the same one
+var DOUBLE_TAP_TIME = 300,
+    DOUBLE_TAP_DISTANCE = 24;
 
 function CameraScript() {
     engine.Component.call(this);
@@ -21,7 +29,26 @@ function CameraScript() {
         lastPointerPos = null,
         moveLen = null,
         isDrag = false,
-        lastPointerDownEvent = null;
+        lastPointerDownEvent = null,
+        //the tap before, while the next one could still make it a double
+        lastTap = null;
+
+    function tap(e) {
+        var now = Date.now(),
+            zoom = self.gameObject.camera.zoom,
+            isDouble = lastTap !== null && now - lastTap.time <= DOUBLE_TAP_TIME
+                && Math.sqrt(Math.pow((e.gameViewportX - lastTap.x) * zoom, 2)
+                    + Math.pow((e.gameViewportY - lastTap.y) * zoom, 2)) <= DOUBLE_TAP_DISTANCE;
+
+        if (isDouble) {
+            //a third tap starts over rather than making another double
+            lastTap = null;
+            self.dispatchEvent(self.events.inputDoubleTap, e);
+        } else {
+            lastTap = {time: now, x: e.gameViewportX, y: e.gameViewportY};
+            self.dispatchEvent(self.events.inputClick, e);
+        }
+    }
 
     //These handlers take standard mouse\pointer events and transform them into game specific events like drag/click
 
@@ -38,7 +65,7 @@ function CameraScript() {
                 self.dispatchEvent(self.events.inputDragEnd, e);
                 isDrag = false;
             } else
-                self.dispatchEvent(self.events.inputClick, e);
+                tap(e);
 
 
             moveLen = null;
@@ -58,6 +85,8 @@ function CameraScript() {
 
             if (!isDrag && Math.sqrt(Math.pow(moveLen[0], 2) + Math.pow(moveLen[1], 2)) > 2) {
                 isDrag = true;
+                //a tap, a drag and a tap is no double tap
+                lastTap = null;
                 self.dispatchEvent(self.events.inputDragStart, lastPointerDownEvent);
             }
 
@@ -80,6 +109,7 @@ function CameraScript() {
     }
 
     this.onPinchStart = function (sender, e) {
+        lastTap = null;
         self.dispatchEvent(self.events.inputPinchStart, e);
     };
 
@@ -106,6 +136,33 @@ var tmpctx = document.createElement("canvas").getContext("2d"),
 
 tmpctx.canvas.width = 256;
 tmpctx.canvas.height = 256;
+
+/**
+ * Whether x, y lands on the text drawn at x0, y0 - the box it takes up, as
+ * wide as it is measured to be and as tall as its font, laid out the way
+ * TextRenderer draws it. A label several lines tall is only known roughly,
+ * by the box around the point it hangs off.
+ */
+function textHit(text, x0, y0, x, y) {
+    if (text.lines !== undefined)
+        return x >= x0 - 20 && x <= x0 + 20 && y >= y0 - 20 && y <= y0 + 20;
+
+    tmpctx.font = text.style;
+
+    var size = /(\d+)px/.exec(text.style),
+        //the outline sticks out past the letters by half its width
+        pad = text.strokeStyle ? (text.lineWidth || 4) / 2 : 0,
+        w = tmpctx.measureText(text.text).width + 2 * pad,
+        h = (size !== null ? +size[1] : 12) + 2 * pad,
+        left = text.align === "left" || text.align === "start" ? x0
+            : text.align === "right" || text.align === "end" ? x0 - w
+            : x0 - w / 2,
+        top = text.valign === "top" || text.valign === "hanging" ? y0
+            : text.valign === "middle" ? y0 - h / 2
+            : y0 - h;
+
+    return x >= left && x <= left + w && y >= top && y <= top + h;
+}
 
 /**
  * @type {Transform}
@@ -297,10 +354,7 @@ CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
                 }
             }
         } else if (text !== undefined && text.enabled) {
-            x0 = vec3Buffer1[0];
-            y0 = vec3Buffer1[1];
-
-            if (x >= x0 - 20 && x <= x0 + 20 && y >= y0 - 20 && y <= y0 + 20) {
+            if (textHit(text, vec3Buffer1[0], vec3Buffer1[1], x, y)) {
                 result.push(gameObject);
             }
         }

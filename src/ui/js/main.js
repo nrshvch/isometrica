@@ -160,7 +160,10 @@ UIManager.prototype.log = function (val) {
 };
 
 UIManager.prototype.show = function (name) {
-    this.rootNode.empty();
+    //the screens are kept and put back in time and again - taken out with
+    //empty() they would lose every listener bound in them, the top bar's
+    //click on the money among them, so they are only detached
+    this.rootNode.children().detach();
 
     switch (name) {
         case "game":

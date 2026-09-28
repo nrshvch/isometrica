@@ -19,7 +19,7 @@ var CityService = namespace("Isometrica.Core.CityService");
 CityService.Area = Area;
 
 var BLOCK_SIZE = 5;
-var BLOCK_BASE_PRICE = 100000;
+var BLOCK_BASE_PRICE = 1000000;
 
 var events = {
     change: 0

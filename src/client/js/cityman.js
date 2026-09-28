@@ -11,7 +11,6 @@ import Area from "core/city/area";
 import BuildingCode from "data/buildingcode";
 import BuildingData from "data/buildings";
 import ResourceCode from "core/resourcecode";
-import WorldCamera from "./components/camerascript";
 import CityComponent from "./components/city";
 import Buildman from "./buildman";
 import ErrorCode from "core/errorcode";
@@ -75,22 +74,11 @@ function Cityman(root) {
 }
 
 Cityman.prototype.init = function () {
-    var self = this;
     var root = this.root;
-    var cam = root.camera.cameraScript;
 
+    //a click on the name is a click on the city hall under it - see
+    //ServiceMan#inspect. The city screen opens off the money in the top bar
     Events.on(root.core.cities, Core.CityService.events.cityNew, onNewCity, this);
-    Events.on(cam, WorldCamera.events.inputClick, function(sender, e){
-        //an action owns the world while it runs - opening the city screen from
-        //under it would leave the action with no buttons and no way to finish
-        if (root.ui.gameScreen().worldScreen().busy())
-            return;
-
-        var city = self.pickCity(e.gameViewportX, e.gameViewportY);
-
-        if (city !== null)
-            root.ui.navigate("city", [city.id()]);
-    });
 
     //a city loaded from a save was put into the world before the client came
     //up, so it gets its label here instead of off the event - and the camera

@@ -1,52 +1,21 @@
 import Backbone from "backbone";
 import __templateSource from "../../templates/info.hbs?raw";
 import Handlebars from "handlebars";
-import ResourceBarView from "ui/modules/valbar/js/views/view";
 import $ from "jquery";
 
 var template = Handlebars.compile(__templateSource);
 
 export default Backbone.View.extend({
-    initialize: function (options) {
+    initialize: function () {
         this.setElement(template(this.model.toJSON()));
-        var resBar = new ResourceBarView({
-            collection: this.model.resources
-        });
-        $(".available-resources", this.$el).append(resBar.el);
-        this.listenTo(this.model, "change", function(){
+
+        //the model is worked out again every tick the city updates
+        this.listenTo(this.model, "change", function () {
             this.render();
         });
-
-
-        //vp cam
-        var client = options.cityView.game.client;
-        var cam = client.cameraman.createCamera();
-        var cityId = this.model.city.id();
-        var go = client.cityman.getCityGameObject(cityId);
-        var pos = go.transform.getPosition();
-        cam.transform.setPosition(pos[0], pos[1], pos[2]);
-        var viewport = client.game.graphics.createViewport();
-        viewport.setCamera(cam);
-        $(".bird-eye-container", this.$el).append(viewport.canvas);
-        viewport.setSize(400, 400);
     },
-    render: function(){
-        var city = this.model.city;
-        var water = city.water;
-
-        $(".pop", this.$el).text(city.population.getPopulation());
-        $(".maxPop", this.$el).text(city.population.getCapacity());
-        $(".jobs", this.$el).text(city.jobs.getFilled() + " of " + city.jobs.getJobs() + " filled");
-
-        //why houses are standing empty, if any are
-        var missing = city.getMissingServices();
-
-        $(".towers", this.$el).text(water.getTowerCount());
-        $(".roads", this.$el).text(city.roads.getNetworkSize() + " tiles off the city hall");
-        $(".unserved", this.$el).text(
-            missing.road === 0 && missing.water === 0
-                ? "-"
-                : missing.road + " without a road, " + missing.water + " without water");
+    render: function () {
+        this.$el.html($(template(this.model.toJSON())).html());
 
         return this;
     }
