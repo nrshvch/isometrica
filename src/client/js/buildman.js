@@ -380,7 +380,7 @@ function showCost(self, tile, sizeX, sizeY, amount) {
  * What the player is told when a build is turned down, keyed by ErrorCode.
  */
 var errorText = {};
-errorText[ErrorCode.CITY_HALL_ALREADY_BUILT] = "city hall exists";
+errorText[ErrorCode.CITY_HALL_ALREADY_BUILT] = "town hall exists";
 errorText[ErrorCode.BUILDING_NOT_AVAIL] = "not available";
 errorText[ErrorCode.NOT_ENOUGH_RES] = "no money";
 errorText[ErrorCode.CANT_BUILD_ON_WATER] = "on water";

@@ -9,6 +9,7 @@ import ErrorCode from "../errorcode";
 import Resource from "../resourcecode";
 import Config from "../config";
 import Building from "../building";
+import BuildingState from "../buildingstate";
 import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
 
@@ -244,24 +245,29 @@ CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
 };
 
 /**
- * Puts a building back where a save says it stood: no build test, no bill, and
- * standing finished from the start. What the build test looks at was the
- * player's business back when they built it, and they paid for it then.
+ * Puts a building back where a save says it stood: no build test and no bill,
+ * standing finished from the start - or, if it was still going up, going on
+ * from as far along as it was. What the build test looks at was the player's
+ * business back when they built it, and they paid for it then.
  *
  * @param code {number}
  * @param tile {number}
  * @param [rotation] {number}
  * @param [look] {number}
+ * @param [progress] {number} 0..1, for one saved while going up
  * @returns {Building}
  */
-CityBuildings.prototype.restore = function (code, tile, rotation, look) {
+CityBuildings.prototype.restore = function (code, tile, rotation, look, progress) {
     //saves written before the codes were made numbers carry them as strings
     code = parseInt(code, 10);
 
     var building = new Building();
 
     building.look = lookOf(BuildingData[code], look);
-    building.init(this.city.world, code, tile, rotation, true);
+    //one still going up when it was saved goes on from there - anything else
+    //was up long ago
+    building.init(this.city.world, code, tile, rotation,
+        typeof progress === "number" ? progress : true);
 
     this.city.root.buildings.build(building);
 
@@ -288,7 +294,10 @@ CityBuildings.prototype.save = function () {
             code: building.buildingCode,
             tile: building.tile,
             rotation: building.rotation || 0,
-            look: building.look
+            look: building.look,
+            //how far along it is, for one still going up
+            progress: building.getState() === BuildingState.underConstruction
+                ? building.getProgress() : undefined
         });
     }
 
@@ -300,7 +309,7 @@ CityBuildings.prototype.save = function () {
  */
 CityBuildings.prototype.load = function (list) {
     for (var i = 0; i < list.length; i++)
-        this.restore(list[i].code, list[i].tile, list[i].rotation, list[i].look);
+        this.restore(list[i].code, list[i].tile, list[i].rotation, list[i].look, list[i].progress);
 };
 
 CityBuildings.prototype.destroyBuilding = function () {

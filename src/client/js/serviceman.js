@@ -51,16 +51,20 @@ text[NO_JOBS] = "no jobs";
 //high enough to clear the roof of anything it sits over
 var HEIGHT = Config.tileSize;
 
-function createLabel(self, tile, missing) {
+//a warning is red, and how far along a building going up is, white
+var WARNING_COLOR = "rgb(255,64,64)",
+    PROGRESS_COLOR = "white";
+
+function createLabel(self, tile, words, color) {
     var go = new engine.GameObject("serviceWarning");
     var renderer = go.addComponent(new engine.TextRenderer());
 
     renderer.layer = RenderLayer.overlayLayer;
-    renderer.color = "rgb(255,64,64)";
+    renderer.color = color;
     renderer.style = "bold 16px Courier New";
     renderer.strokeStyle = "black";
     renderer.lineWidth = 4;
-    renderer.text = text[missing];
+    renderer.text = words;
     renderer.opacity = opacityAt(self, tile);
 
     var terrain = self.root.terrain;
@@ -75,13 +79,22 @@ function createLabel(self, tile, missing) {
     return go;
 }
 
-function show(self, tile, missing) {
+function show(self, tile, words, color) {
     var label = self._labels[tile];
 
-    if (label === undefined)
-        self._labels[tile] = createLabel(self, tile, missing);
-    else
-        label.textRenderer.text = text[missing];
+    if (label === undefined) {
+        self._labels[tile] = createLabel(self, tile, words, color);
+    } else {
+        label.textRenderer.text = words;
+        label.textRenderer.color = color;
+    }
+}
+
+/**
+ * How far along a building going up is, in whole percent.
+ */
+function progressText(building) {
+    return Math.floor(building.getProgress() * 100) + "%";
 }
 
 function hide(self, tile) {
@@ -95,8 +108,8 @@ function hide(self, tile) {
 
 /**
  * Goes over everything on screen and puts a word over whatever is going
- * without. Once a tick is plenty - a street or a tower takes longer than that
- * to build.
+ * without, and how far along it is over whatever is going up. Once a tick is
+ * plenty - a street or a tower takes longer than that to build.
  */
 function refresh(self) {
     var city = self.root.core.cities.getCity(0),
@@ -108,6 +121,18 @@ function refresh(self) {
 
     for (tile in views) {
         model = views[tile].model();
+
+        //nothing is missed before it is up - and the one clicked on says how
+        //far along it is with its name instead
+        if (model.getState() === BuildingState.underConstruction) {
+            if (model === self._infoBuilding)
+                hide(self, tile);
+            else
+                show(self, tile, progressText(model), PROGRESS_COLOR);
+
+            continue;
+        }
+
         missing = city.missing(model);
 
         if (missing === null && model.jobs() > 0 && city.jobs.getWorkers(model) === 0)
@@ -118,7 +143,7 @@ function refresh(self) {
         if (missing === null)
             hide(self, tile);
         else
-            show(self, tile, missing);
+            show(self, tile, text[missing], WARNING_COLOR);
     }
 }
 
@@ -176,12 +201,21 @@ function formatMoney(amount) {
 }
 
 /**
- * @returns {Array} the money first, then how full it is if anybody lives or
- *                  works in it
+ * @returns {Array} what it is, then - going up - how far along it is, or -
+ *                  standing - the money it makes or costs and how full it is
+ *                  if anybody lives or works in it
  */
 function infoLines(city, building) {
     var data = building.data,
-        lines = [formatMoney(city.getBuildingIncome(building))];
+        //its name heads it, the way it heads its card in the catalogue
+        lines = [data.name.charAt(0).toUpperCase() + data.name.slice(1)];
+
+    if (building.getState() === BuildingState.underConstruction) {
+        lines.push(progressText(building));
+        return lines;
+    }
+
+    lines.push(formatMoney(city.getBuildingIncome(building)));
 
     if (data.citizenCapacity)
         lines.push("peeps " + city.population.getResidents(building) + "/" + data.citizenCapacity);
@@ -494,6 +528,8 @@ ServiceMan.prototype.showInfo = function (building) {
 
     this._infoBuilding = building;
     refreshInfo(this);
+    //its own label gives way to the info, rather than a tick later
+    refresh(this);
 };
 
 ServiceMan.prototype.hideInfo = function () {
@@ -501,6 +537,8 @@ ServiceMan.prototype.hideInfo = function () {
         this._info.destroy();
         this._info = null;
         this._infoBuilding = null;
+        //and comes back as soon as the info goes
+        refresh(this);
     }
 
     this._inspected = null;

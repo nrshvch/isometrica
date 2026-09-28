@@ -167,11 +167,11 @@ var Core = namespace("Isometrica.Core");
         //it sleeps a couple: the cheapest roof per head there is, paid for
         //with the view
         citizenCapacity: 2,
-        constructionTime: 3000,
+        constructionTime: 30000,
         constructionCost: {
             money: 1500
         },
-        name: "mobile house",
+        name: "shanty",
         sprites: [
             {
                 x: 0,
@@ -218,11 +218,11 @@ var Core = namespace("Isometrica.Core");
         //cheap enough to get by without a job in town, like a trailer
         needsJobs: false,
         citizenCapacity: 3,
-        constructionTime: 3000,
+        constructionTime: 30000,
         constructionCost: {
             money: 3000
         },
-        name: "tiny house",
+        name: "cottage",
         sprites: [
             {
                 x: 0,
@@ -251,11 +251,11 @@ var Core = namespace("Isometrica.Core");
         //than the same people stacked in flats
         taxPerResident: 25,
         citizenCapacity: 8,
-        constructionTime: 3000,
+        constructionTime: 30000,
         constructionCost: {
             money: 12000
         },
-        name: "small residential house",
+        name: "residential house",
         sprites: [
             {
                 x: 0,
@@ -313,11 +313,11 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
-        constructionTime: 5000,
+        constructionTime: 50000,
         constructionCost: {
             money: 22000
         },
-        name: "house",
+        name: "villa",
         //people in a house of their own are worth more a head to the treasury
         //than the same people stacked in flats
         taxPerResident: 25,
@@ -421,10 +421,10 @@ var Core = namespace("Isometrica.Core");
         //a few clerks, so that the first proper house in town has somebody
         //working before there is a shop to work in
         jobs: 4,
-        constructionTime: 3000,
+        constructionTime: 30000,
         //it comes with the city, so there is nobody to bill for it
         constructionCost: {},
-        name: "city hall",
+        name: "town hall",
         sprites: [
             {
                 x: 0,
@@ -445,9 +445,9 @@ var Core = namespace("Isometrica.Core");
     //fortune a block, it is worth sinking years into a tower.
     //
     //                 cost   jobs  /tick  payback  per tile
-    //  shop          10000    20    150      67       150
-    //  big shop      90000   140    960      94       240
-    //  office       250000   200   1100     227      1100
+    //  store         10000    20    150      67       150
+    //  mall          90000   140    960      94       240
+    //  offices      250000   200   1100     227      1100
     //
     //Every citizen in a house that needs jobs needs a job of their own, so the
     //job counts are generous - a street of houses gets by on a couple of
@@ -471,11 +471,11 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
-        constructionTime: 5000,
+        constructionTime: 50000,
         constructionCost: {
             money: 10000
         },
-        name: "shop",
+        name: "store",
         //a small business on the corner, whatever it is - put down as one of
         //these at random, the same building by the numbers (see house)
         looks: [
@@ -522,11 +522,11 @@ var Core = namespace("Isometrica.Core");
     //
     //                   cost  heads  tax   heads   money   payback
     //                                /head /tile   /tile
-    //  mobile house     1500    2    20      2       40       38
-    //  tiny house       3000    3    20      3       60       50
-    //  small house     12000    8    25      4      100       60
-    //  house           22000   12    25      6      150       73
-    //  apartments      50000   50    10     12.5    125      100
+    //  shanty           1500    2    20      2       40       38
+    //  cottage          3000    3    20      3       60       50
+    //  residential     12000    8    25      4      100       60
+    //  villa           22000   12    25      6      150       73
+    //  flats           50000   50    10     12.5    125      100
     //
     //Tax is only half of what a head is worth: everybody in town can hold a
     //job, and a worker in an office is another $6 a tick on top. Counting
@@ -549,11 +549,11 @@ var Core = namespace("Isometrica.Core");
         //their taxes
         taxPerResident: 10,
         citizenCapacity: 50,
-        constructionTime: 15000,
+        constructionTime: 150000,
         constructionCost: {
             money: 50000
         },
-        name: "apartment block",
+        name: "flats",
         sprites: [
             {
                 x: 0,
@@ -608,11 +608,11 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
-        constructionTime: 10000,
+        constructionTime: 100000,
         constructionCost: {
             money: 90000
         },
-        name: "big shop",
+        name: "mall",
         sprites: [
             {
                 x: 0,
@@ -670,11 +670,11 @@ var Core = namespace("Isometrica.Core");
             road: true,
             water: true
         },
-        constructionTime: 20000,
+        constructionTime: 200000,
         constructionCost: {
             money: 250000
         },
-        name: "office tower",
+        name: "offices",
         sprites: [
             {
                 x: 0,
@@ -695,7 +695,7 @@ var Core = namespace("Isometrica.Core");
     //     classCode: BuildingClassCode.industry,
     //     producing: {},
     //     demanding: {},
-    //     constructionTime: 3000,
+    //     constructionTime: 30000,
     //     constructionCost: {},
     //     name: "farm",
     //     requirement: GatherReq.inGrassLand,
@@ -723,7 +723,7 @@ var Core = namespace("Isometrica.Core");
     //     demanding: {
     //         money: 10
     //     },
-    //     constructionTime: 5000,
+    //     constructionTime: 50000,
     //     constructionCost: {
     //         money: 500,
     //         iron: 50
@@ -756,7 +756,7 @@ var Core = namespace("Isometrica.Core");
         },
         //how far it waters, in tiles
         waterRadius: 6,
-        constructionTime: 10000,
+        constructionTime: 100000,
         constructionCost: {
             money: 2500
         },
@@ -785,7 +785,7 @@ var Core = namespace("Isometrica.Core");
     //     demanding: {
     //         money: 20
     //     },
-    //     constructionTime: 10000,
+    //     constructionTime: 100000,
     //     constructionCost: {
     //         money: 1000,
     //         stone: 40,
@@ -814,7 +814,7 @@ var Core = namespace("Isometrica.Core");
     //         money: 1000
     //     },
     //     demanding: {},
-    //     constructionTime: 10000,
+    //     constructionTime: 100000,
     //     constructionCost: {
     //         money: 500
     //     },
@@ -843,7 +843,7 @@ var Core = namespace("Isometrica.Core");
     //         wood: 5
     //     },
     //     demanding: {},
-    //     constructionTime: 3000,
+    //     constructionTime: 30000,
     //     constructionCost: {
     //         money: 1000
     //     },
@@ -873,7 +873,7 @@ var Core = namespace("Isometrica.Core");
     //         oil: 5
     //     },
     //     demanding: {},
-    //     constructionTime: 10000,
+    //     constructionTime: 100000,
     //     constructionCost: {
     //         money: 1000
     //     },
@@ -903,7 +903,7 @@ var Core = namespace("Isometrica.Core");
     //         stone: 5
     //     },
     //     demanding: {},
-    //     constructionTime: 5000,
+    //     constructionTime: 50000,
     //     constructionCost: {
     //         money: 1000
     //     },
@@ -933,7 +933,7 @@ var Core = namespace("Isometrica.Core");
     //         iron: 5
     //     },
     //     demanding: {},
-    //     constructionTime: 5000,
+    //     constructionTime: 50000,
     //     constructionCost: {
     //         money: 1000
     //     },
