@@ -33,8 +33,8 @@ var Core = namespace("Isometrica.Core");
 
     var buildingData = Core.BuildingData = {};
 
-    //one of two trees, picked at random the way a house's looks are (see
-    //house) - and the same two the world grows on its own (see core/ambient)
+    //one of two trees, picked at random the way a house is (see house) - and
+    //the same two the world grows on its own (see core/ambient)
     buildingData[BuildingCode.tree] = {
         sizeX: 1,
         sizeY: 1,
@@ -48,8 +48,10 @@ var Core = namespace("Isometrica.Core");
             money: 200
         },
         name: "tree",
-        looks: [
+        variants: [
             {
+                buildingCode: BuildingCode.tree1,
+                name: "oak",
                 sprites: [
                     {
                         x: 0,
@@ -63,6 +65,8 @@ var Core = namespace("Isometrica.Core");
                 ]
             },
             {
+                buildingCode: BuildingCode.tree2,
+                name: "linden",
                 sprites: [
                     {
                         x: 0,
@@ -298,10 +302,11 @@ var Core = namespace("Isometrica.Core");
         ]
     };
 
-    //A building type rather than a building: the player puts down a house and
-    //it goes up in one of its looks, picked at random - so that a street of
+    //A building type rather than a building: the player puts down a villa and
+    //it goes up as one of its variants, picked at random - so that a street of
     //them need not be the same house over and over, and nobody has to pick
-    //one by one. The looks only differ in how they are drawn.
+    //one by one. The variants are buildings of their own, each with a name,
+    //and only differ from one another in how they are drawn.
     buildingData[BuildingCode.house] = {
         sizeX: 2,
         sizeY: 1,
@@ -322,12 +327,15 @@ var Core = namespace("Isometrica.Core");
         //than the same people stacked in flats
         taxPerResident: 25,
         citizenCapacity: 12,
-        //each what a building has to be drawn by - sprites, and smokeSource
-        //where it has a chimney. One that is turned was painted for the
-        //footprint turned round, and is drawn turned round to fit
-        looks: [
-            //a cottage
+        //each a building of its own - its code and name, and what it has to be
+        //drawn by: sprites, and smokeSource where it has a chimney. One that
+        //is turned was painted for the footprint turned round, and is drawn
+        //turned round to fit
+        variants: [
+            //red roof, one storey
             {
+                buildingCode: BuildingCode.house3,
+                name: "bungalow",
                 sprites: [
                     {
                         x: 0,
@@ -350,8 +358,10 @@ var Core = namespace("Isometrica.Core");
                 ],
                 smokeSource: [1.25, 2.5, 0.85]
             },
-            //two storeys
+            //two storeys, ivy up the front
             {
+                buildingCode: BuildingCode.house4,
+                name: "townhouse",
                 turned: true,
                 sprites: [
                     {
@@ -375,8 +385,10 @@ var Core = namespace("Isometrica.Core");
                 ],
                 smokeSource: [0.75, 3.5, 1.25]
             },
-            //a plain one
+            //dark roof, dormer windows
             {
+                buildingCode: BuildingCode.house5,
+                name: "chalet",
                 sprites: [
                     {
                         x: 0,
@@ -456,10 +468,10 @@ var Core = namespace("Isometrica.Core");
     //A corner shop: nobody lives in it, it just takes the city's money over the
     //counter and pays its share into the treasury - as long as customers can get
     //to it and there is water in the tap.
-    buildingData[BuildingCode.shop] = {
+    buildingData[BuildingCode.smallCommerce] = {
         sizeX: 1,
         sizeY: 1,
-        buildingCode: BuildingCode.shop,
+        buildingCode: BuildingCode.smallCommerce,
         classCode: BuildingClassCode.commerce,
         producing: {
             money: 150
@@ -475,12 +487,13 @@ var Core = namespace("Isometrica.Core");
         constructionCost: {
             money: 10000
         },
-        name: "store",
+        name: "small commerce",
         //a small business on the corner, whatever it is - put down as one of
         //these at random, the same building by the numbers (see house)
-        looks: [
-            //a shop
+        variants: [
             {
+                buildingCode: BuildingCode.shop,
+                name: "store",
                 sprites: [
                     {
                         x: 0,
@@ -493,8 +506,9 @@ var Core = namespace("Isometrica.Core");
                     }
                 ]
             },
-            //a bank
             {
+                buildingCode: BuildingCode.bank,
+                name: "bank",
                 sprites: [
                     {
                         x: 0,
@@ -951,5 +965,43 @@ var Core = namespace("Isometrica.Core");
     //         }
     //     ]
     // };
+
+/**
+ * Each variant of a type (see house) made a building of its own: everything
+ * the type is by the numbers, with the variant's code, name and drawing, and
+ * kept out of the catalogue - that is where the type is picked. The type is
+ * left with its variants' codes, for whatever puts one down to pick from.
+ */
+function expandVariants(data) {
+    var type, variant, building, code, key, i;
+
+    for (code in data) {
+        type = data[code];
+
+        if (type.variants === undefined)
+            continue;
+
+        for (i = 0; i < type.variants.length; i++) {
+            variant = type.variants[i];
+            building = {};
+
+            for (key in type)
+                building[key] = type[key];
+
+            delete building.variants;
+
+            for (key in variant)
+                building[key] = variant[key];
+
+            building.hidden = true;
+            building.variantOf = type.buildingCode;
+            data[variant.buildingCode] = building;
+
+            type.variants[i] = variant.buildingCode;
+        }
+    }
+}
+
+expandVariants(buildingData);
 
 export default buildingData;

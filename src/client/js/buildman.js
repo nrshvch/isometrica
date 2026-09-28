@@ -141,10 +141,10 @@ var PREVIEW_OPACITY = 0.75,
  * be put down - so that what is about to be placed, and which way it faces, is
  * seen before the click rather than after it.
  *
- * @param [look] {number} which of its type's looks it is shown in
+ * @param data {Object} what goes up - for a type, the variant picked there
  * @returns {engine.GameObject}
  */
-function createPreview(self, data, tile, rotation, opacity, look) {
+function createPreview(self, data, tile, rotation, opacity) {
     var terrain = self.root.core.world.terrain,
         tileSize = Config.tileSize,
         x = Terrain.extractX(tile),
@@ -156,7 +156,7 @@ function createPreview(self, data, tile, rotation, opacity, look) {
             : terrain.getGridPointHeight(x + 1, y),
         go = new engine.GameObject("building preview");
 
-    BuildingView.addSprites(go, data, rotation, opacity, RenderLayer.previewLayer, look);
+    BuildingView.addSprites(go, data, rotation, opacity, RenderLayer.previewLayer);
 
     //placed before it goes in - the world files it by where it stands
     go.transform.setPosition(x * tileSize, z * Config.tileZStep, y * tileSize);
@@ -401,9 +401,10 @@ errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
  * across another is turned down where they cross, and that is no news.
  *
  * @param anchors {number[]} the tile each building would stand on
- * @param looks {number[]} which look each of them goes up in
+ * @param codes {number[]} what goes up on each of them - for a type, the
+ *        variant picked there
  */
-function buildSelection(self, code, anchors, rotation, looks) {
+function buildSelection(self, code, anchors, rotation, codes) {
     var root = self.root,
         data = BuildingData[code],
         messaging = root.core.messagingService,
@@ -419,7 +420,7 @@ function buildSelection(self, code, anchors, rotation, looks) {
     try {
         for (i = 0; i < anchors.length; i++) {
             tried++;
-            root.core.cities.getCity(0).buildingService.buildBuilding(code, anchors[i], rotation, looks[i]);
+            root.core.cities.getCity(0).buildingService.buildBuilding(codes[i], anchors[i], rotation);
         }
     } finally {
         Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
@@ -723,17 +724,17 @@ Buildman.prototype.build = function (code) {
         return rotation ? data.sizeX : data.sizeY;
     }
 
-    //the look each footprint of the selection goes up in, by the tile it
-    //starts on: picked the first time the selection covers it and kept from
-    //then on, so that the preview does not shuffle while it is dragged about
-    //and what goes up is what was shown
-    var looks = Object.create(null);
+    //what goes up on each footprint of the selection, by the tile it starts
+    //on - for a type, which of its variants: picked the first time the
+    //selection covers it and kept from then on, so that the preview does not
+    //shuffle while it is dragged about and what goes up is what was shown
+    var variants = Object.create(null);
 
-    function lookAt(tile) {
-        if (looks[tile] === undefined)
-            looks[tile] = CityBuildings.lookOf(data);
+    function variantAt(tile) {
+        if (variants[tile] === undefined)
+            variants[tile] = CityBuildings.variantOf(code);
 
-        return looks[tile];
+        return variants[tile];
     }
 
     //show hint
@@ -820,8 +821,8 @@ Buildman.prototype.build = function (code) {
         var opacity = opacities(quotes);
 
         for (var i = 0; i < tiles.length; i++)
-            previews.push(createPreview(self, data, tiles[i], rotation,
-                opacity[tiles[i]] || PREVIEW_BLOCKED_OPACITY, lookAt(tiles[i])));
+            previews.push(createPreview(self, BuildingData[variantAt(tiles[i])], tiles[i], rotation,
+                opacity[tiles[i]] || PREVIEW_BLOCKED_OPACITY));
     }
 
     //the roads as they would look once laid: each piece joined up with the
@@ -916,7 +917,7 @@ Buildman.prototype.build = function (code) {
     controls.onSubmit = function () {
         var anchors = ts.anchors();
 
-        buildSelection(self, code, anchors, rotation, anchors.map(lookAt));
+        buildSelection(self, code, anchors, rotation, anchors.map(variantAt));
 
         // stay in build mode with the selection where it was, so the next
         // one can be dragged along from it - what is under it now is taken

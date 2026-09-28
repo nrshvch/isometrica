@@ -65,37 +65,36 @@ CityBuildings.prototype.init = function () {
 };
 
 /**
- * What a building of a type with several looks goes up in: the one asked for,
- * or any of them - 0 for a building that has only the one.
+ * What a building of a type goes up as: any of its variants, picked at random
+ * (see variants in data/buildings) - and a building that is no type is itself.
  *
- * @param data {Object} its BuildingData
- * @param [look] {number}
- * @returns {number}
+ * @param code {number}
+ * @returns {number} the code of the building that goes up
  */
-function lookOf(data, look) {
-    var count = data.looks ? data.looks.length : 1;
+function variantOf(code) {
+    var variants = BuildingData[code] && BuildingData[code].variants;
 
-    if (look >= 0 && look < count)
-        return look;
+    if (variants === undefined)
+        return code;
 
-    return Math.floor(Math.random() * count);
+    return variants[Math.floor(Math.random() * variants.length)];
 }
 
-CityBuildings.lookOf = lookOf;
+CityBuildings.variantOf = variantOf;
 
 /**
- * @param code {number}
+ * @param code {number} a building, or a type - which goes up as any of its
+ *        variants
  * @param tile {number}
  * @param [rotate] {boolean}
- * @param [look] {number} which of its looks it goes up in - any, left out
  */
-CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
+CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
     var city = this.city;
     var root = this.city.root;
 
     //the catalogue hands codes over as the strings they are in the markup, and
     //"3" is not BuildingCode.cityHall however much it looks like it
-    code = parseInt(code, 10);
+    code = variantOf(parseInt(code, 10));
 
     var errorCode = buildTest(this, code, tile, rotate);
 
@@ -109,7 +108,6 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
         var clearing = code === BuildingCode.cityHall ? 0 : clearingCost(this, code, tile, rotate);
 
         var building = new Building();
-        building.look = lookOf(data, look);
         building.init(city.world, code, tile, rotate);
 
         //what the player pays for it, set before the build is announced so
@@ -253,17 +251,15 @@ CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
  * @param code {number}
  * @param tile {number}
  * @param [rotation] {number}
- * @param [look] {number}
  * @param [progress] {number} 0..1, for one saved while going up
  * @returns {Building}
  */
-CityBuildings.prototype.restore = function (code, tile, rotation, look, progress) {
+CityBuildings.prototype.restore = function (code, tile, rotation, progress) {
     //saves written before the codes were made numbers carry them as strings
     code = parseInt(code, 10);
 
     var building = new Building();
 
-    building.look = lookOf(BuildingData[code], look);
     //one still going up when it was saved goes on from there - anything else
     //was up long ago
     building.init(this.city.world, code, tile, rotation,
@@ -294,7 +290,6 @@ CityBuildings.prototype.save = function () {
             code: building.buildingCode,
             tile: building.tile,
             rotation: building.rotation || 0,
-            look: building.look,
             //how far along it is, for one still going up
             progress: building.getState() === BuildingState.underConstruction
                 ? building.getProgress() : undefined
@@ -309,7 +304,7 @@ CityBuildings.prototype.save = function () {
  */
 CityBuildings.prototype.load = function (list) {
     for (var i = 0; i < list.length; i++)
-        this.restore(list[i].code, list[i].tile, list[i].rotation, list[i].look, list[i].progress);
+        this.restore(list[i].code, list[i].tile, list[i].rotation, list[i].progress);
 };
 
 CityBuildings.prototype.destroyBuilding = function () {
