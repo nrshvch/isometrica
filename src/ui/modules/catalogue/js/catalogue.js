@@ -69,6 +69,12 @@ function lastRank(code) {
     return LAST.indexOf(parseInt(code, 10));
 }
 
+function orderOf(code) {
+    var variants = BuildingData[code].variants;
+
+    return variants ? Math.min.apply(null, variants) : parseInt(code, 10);
+}
+
 // Buildings still carry a classCode (see data/classcode, data/classes) so the
 // category grouping stays in the data, but the catalogue UI no longer splits
 // on it - everything is shown as one flat list.
@@ -85,9 +91,11 @@ function getBuildings(self) {
             }));
         }
     }
-    //sort is stable, so the rest keep the order the data gives them
+    //the rest go by code - a type where its first variant would be, so that
+    //it stands among the buildings it goes up as
     return r.sort(function (x, y) {
-        return lastRank(x.get("code")) - lastRank(y.get("code"));
+        return lastRank(x.get("code")) - lastRank(y.get("code"))
+            || orderOf(x.get("code")) - orderOf(y.get("code"));
     });
 }
 

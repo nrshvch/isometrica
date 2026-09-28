@@ -48,14 +48,36 @@ text[NO_WORKERS] = "no workers";
 var NO_JOBS = "noJobs";
 text[NO_JOBS] = "no jobs";
 
-//high enough to clear the roof of anything it sits over
-var HEIGHT = Config.tileSize;
+//high enough to clear the roof of anything it sits over - and, over a
+//building still going up, just off the pit dug for it
+var HEIGHT = Config.tileSize,
+    PIT_HEIGHT = Config.tileSize / 4;
 
 //a warning is red, and how far along a building going up is, white
 var WARNING_COLOR = "rgb(255,64,64)",
     PROGRESS_COLOR = "white";
 
-function createLabel(self, tile, words, color) {
+/**
+ * Puts go over the middle of the ground the building stands on, all of its
+ * footprint - high enough to clear its roof, or down by the pit while it is
+ * going up.
+ */
+function placeOver(self, go, building) {
+    var terrain = self.root.terrain,
+        data = building.data,
+        //turned round, the footprint's sides swap
+        sizeX = building.rotation ? data.sizeY : data.sizeX,
+        sizeY = building.rotation ? data.sizeX : data.sizeY,
+        far = building.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
+
+    go.transform.setPosition(
+        (terrain.tileXPos(building.tile) + terrain.tileXPos(far)) / 2,
+        (terrain.tileYPos(building.tile) + terrain.tileYPos(far)) / 2
+            + (building.getState() === BuildingState.underConstruction ? PIT_HEIGHT : HEIGHT),
+        (terrain.tileZPos(building.tile) + terrain.tileZPos(far)) / 2);
+}
+
+function createLabel(self, building, words, color) {
     var go = new engine.GameObject("serviceWarning");
     var renderer = go.addComponent(new engine.TextRenderer());
 
@@ -65,28 +87,25 @@ function createLabel(self, tile, words, color) {
     renderer.strokeStyle = "black";
     renderer.lineWidth = 4;
     renderer.text = words;
-    renderer.opacity = opacityAt(self, tile);
+    renderer.opacity = opacityAt(self, building.tile);
 
-    var terrain = self.root.terrain;
-
-    go.transform.setPosition(
-        terrain.tileXPos(tile),
-        terrain.tileYPos(tile) + HEIGHT,
-        terrain.tileZPos(tile));
+    placeOver(self, go, building);
 
     self.root.game.scene.addGameObject(go);
 
     return go;
 }
 
-function show(self, tile, words, color) {
-    var label = self._labels[tile];
+function show(self, building, words, color) {
+    var label = self._labels[building.tile];
 
     if (label === undefined) {
-        self._labels[tile] = createLabel(self, tile, words, color);
+        self._labels[building.tile] = createLabel(self, building, words, color);
     } else {
         label.textRenderer.text = words;
         label.textRenderer.color = color;
+        //up to the roof once there is one
+        placeOver(self, label, building);
     }
 }
 
@@ -128,7 +147,7 @@ function refresh(self) {
             if (model === self._infoBuilding)
                 hide(self, tile);
             else
-                show(self, tile, progressText(model), PROGRESS_COLOR);
+                show(self, model, progressText(model), PROGRESS_COLOR);
 
             continue;
         }
@@ -143,7 +162,7 @@ function refresh(self) {
         if (missing === null)
             hide(self, tile);
         else
-            show(self, tile, text[missing], WARNING_COLOR);
+            show(self, model, text[missing], WARNING_COLOR);
     }
 }
 
@@ -251,6 +270,8 @@ function refreshInfo(self) {
     }
 
     self._info.textRenderer.lines = infoLines(building.getCity(), building);
+    //down by the pit while it goes up, over the roof once it stands
+    placeOver(self, self._info, building);
 }
 
 function pickTile(root, screenX, screenY) {
@@ -442,9 +463,8 @@ function copyBuilding(self, building) {
         z = terrain.getGridPointHeight(x + 1, y),
         go = new engine.GameObject("inspected building");
 
-    //in the look it went up in, for a type that comes in several
     BuildingView.addSprites(go, building.data, !!building.rotation,
-        1, RenderLayer.inspectedLayer, building.look);
+        1, RenderLayer.inspectedLayer);
 
     go.transform.setPosition(x * Config.tileSize, z * Config.tileZStep, y * Config.tileSize);
     self.root.game.logic.world.addGameObject(go);
@@ -513,18 +533,6 @@ ServiceMan.prototype.showInfo = function (building) {
 
         this.root.game.scene.addGameObject(info);
     }
-
-    var terrain = this.root.terrain,
-        data = building.data,
-        //turned round, the footprint's sides swap
-        sizeX = building.rotation ? data.sizeY : data.sizeX,
-        sizeY = building.rotation ? data.sizeX : data.sizeY,
-        far = building.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
-
-    info.transform.setPosition(
-        (terrain.tileXPos(building.tile) + terrain.tileXPos(far)) / 2,
-        (terrain.tileYPos(building.tile) + terrain.tileYPos(far)) / 2 + HEIGHT,
-        (terrain.tileZPos(building.tile) + terrain.tileZPos(far)) / 2);
 
     this._infoBuilding = building;
     refreshInfo(this);

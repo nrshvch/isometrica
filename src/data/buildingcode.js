@@ -3,7 +3,8 @@
  * @exports BuildingCode
  */
 var BuildingCode = {
-        tree: 0,
+        tree1: 0,
+        tree2: 1,
         cityHall: 3,
         road: 4,
         farm: 5,
@@ -18,11 +19,20 @@ var BuildingCode = {
         house0: 15,
         house1: 16,
         house2: 17,
-        house: 19,
+        house3: 18,
+        house4: 19,
+        house5: 20,
         shop: 21,
+        bank: 23,
         bigShop: 24,
         office: 26,
         apartments: 27,
+
+        //types: what the player puts down, which goes up as one of its
+        //variants picked at random - see variants in data/buildings
+        tree: 28,
+        house: 29,
+        smallCommerce: 30,
 
         //gatherers
         lumberMill: 6,
