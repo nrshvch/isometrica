@@ -17,6 +17,11 @@ function constructor(self){
     self.id = id++;
 }
 
+/**
+ * @param [done] {boolean|number} true for one that stands finished from the
+ *        moment it appears, or how far along it is already, 0..1 - a building
+ *        coming back from a save picks up where it was left
+ */
 function init(self, world, code, tile, rot, done){
     self.data = ConstructionData[code];
     self.world = world;
@@ -24,16 +29,19 @@ function init(self, world, code, tile, rot, done){
     self.buildingCode = code;
     self.rotation = rot || 0;
 
-    //a building coming back from a save was put up long ago - it stands
-    //finished from the moment it appears
-    if(self.data.constructionTime === 0 || done === true){
+    var time = self.data.constructionTime,
+        progress = done === true ? 1 : typeof done === "number" ? done : 0;
+
+    if(time === 0 || progress >= 1){
         self._state = ConstructionState.ready;
     }else{
         self._state = ConstructionState.underConstruction;
+        //as if it had started that long ago, so that it is timed the same
+        self._startedAt = Date.now() - progress * time;
         setTimeout(function(){
             self._state = ConstructionState.ready;
             Events.fire(self, events.stateChange, self._state);
-        }, self.data.constructionTime);
+        }, (1 - progress) * time);
     }
 }
 
@@ -54,6 +62,8 @@ Construction.prototype.buildingCode = -1;
 //which of its type's looks it went up in (see looks in data/buildings)
 Construction.prototype.look = 0;
 Construction.prototype._state = ConstructionState.none;
+//when it started going up, on the clock that times it (see init)
+Construction.prototype._startedAt = 0;
 
 Construction.prototype.init = function(world, code, tile, rot, done){
     return init(this, world, code, tile, rot, done);
@@ -61,6 +71,18 @@ Construction.prototype.init = function(world, code, tile, rot, done){
 
 Construction.prototype.getState = function(){
     return this._state;
+};
+
+/**
+ * How far it has gone up: 1 once it stands finished.
+ *
+ * @returns {number} 0..1
+ */
+Construction.prototype.getProgress = function(){
+    if (this._state !== ConstructionState.underConstruction)
+        return 1;
+
+    return Math.min(1, Math.max(0, (Date.now() - this._startedAt) / this.data.constructionTime));
 };
 
 Construction.prototype.getCity = function(){

@@ -16,6 +16,11 @@ function formatList(parts) {
     return parts.length ? parts.join(", ") : "\u2014";
 }
 
+//a building's name, the way it heads its card: "Town hall"
+function capitalize(name) {
+    return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 function formatMoney(amount) {
     return "$" + Numeral(amount).format("0,0");
 }
@@ -75,7 +80,7 @@ function getBuildings(self) {
             r.push(new Building({
                 code: code,
                 classCode: b.classCode,
-                displayName: b.name,
+                displayName: capitalize(b.name),
                 stats: getStats(b)
             }));
         }
@@ -89,7 +94,7 @@ function getBuildings(self) {
 function getBuilding(self, code) {
     var data = BuildingData[code];
     var model = new Building({
-        displayName: data.name,
+        displayName: capitalize(data.name),
         code: code,
         description: "This is a " + data.name + "! Deal with that!"
     });
