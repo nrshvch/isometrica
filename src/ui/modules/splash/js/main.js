@@ -1,11 +1,9 @@
 import View from "./view";
 
-function Splash(){
-}
+function Splash() {}
 
-
-Splash.prototype.show = function(){
-    return new View().render();
+Splash.prototype.show = function () {
+  return new View().render();
 };
 
 export default Splash;

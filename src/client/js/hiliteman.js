@@ -13,113 +13,111 @@ import Core from "core/main";
 
 var Terrain = Core.Terrain;
 
-
 function createHiliter(me) {
-    var go = new engine.GameObject("hilite");
-    var cmp = new TileHiliteRenderer();
-    cmp.layer = RenderLayer.overlayLayer;
-    go.addComponent(cmp);
-    cmp = new TileHiliteScript();
-    go.addComponent(cmp);
-    me.root.game.logic.world.addGameObject(go);
-    return cmp;
+  var go = new engine.GameObject("hilite");
+  var cmp = new TileHiliteRenderer();
+  cmp.layer = RenderLayer.overlayLayer;
+  go.addComponent(cmp);
+  cmp = new TileHiliteScript();
+  go.addComponent(cmp);
+  me.root.game.logic.world.addGameObject(go);
+  return cmp;
 }
 
 function HiliteMan(root) {
-    //keyed by token, and a token is never handed out twice - so a hiliter
-    //that is disabled is gone for good instead of leaving a hole behind, and
-    //disabling the same token again (buildman does) can't hit a newer one
-    this.hiliters = new Map();
-    this._lastToken = 0;
-    this.root = root;
+  //keyed by token, and a token is never handed out twice - so a hiliter
+  //that is disabled is gone for good instead of leaving a hole behind, and
+  //disabling the same token again (buildman does) can't hit a newer one
+  this.hiliters = new Map();
+  this._lastToken = 0;
+  this.root = root;
 }
 
-function hiliteOne(me, params){
-    var tile = params.tile;
-    delete params.tile;
+function hiliteOne(me, params) {
+  var tile = params.tile;
+  delete params.tile;
 
-    params.x = Terrain.extractX(tile);
-    params.y = Terrain.extractY(tile);
+  params.x = Terrain.extractX(tile);
+  params.y = Terrain.extractY(tile);
 
-    return me._hiliteOne(params);
+  return me._hiliteOne(params);
 }
 
 HiliteMan.prototype._hiliteOne = function (hiliteData) {
-    var hiliter = createHiliter(this);
-    hiliter.setHiliteData(hiliteData);
-    var token = this._lastToken++;
-    this.hiliters.set(token, hiliter);
-    return token;
+  var hiliter = createHiliter(this);
+  hiliter.setHiliteData(hiliteData);
+  var token = this._lastToken++;
+  this.hiliters.set(token, hiliter);
+  return token;
 };
 
 HiliteMan.prototype._hiliteArea = function (hiliteAreaData) {
-    var x0 = hiliteAreaData.x,
-        y0 = hiliteAreaData.y,
-        x1 = x0 + hiliteAreaData.w - 1,
-        y1 = y0 + hiliteAreaData.h - 1,
-        fill = hiliteAreaData.fillColor,
-        border = hiliteAreaData.borderColor,
-        borderWidth = hiliteAreaData.borderWidth;
+  var x0 = hiliteAreaData.x,
+    y0 = hiliteAreaData.y,
+    x1 = x0 + hiliteAreaData.w - 1,
+    y1 = y0 + hiliteAreaData.h - 1,
+    fill = hiliteAreaData.fillColor,
+    border = hiliteAreaData.borderColor,
+    borderWidth = hiliteAreaData.borderWidth;
 
+  x0 = Math.min(x0, x1);
+  y0 = Math.min(y0, y1);
+  x1 = x0 + Math.abs(hiliteAreaData.w - 1);
+  y1 = y0 + Math.abs(hiliteAreaData.h - 1);
 
-    x0 = Math.min(x0, x1);
-    y0 = Math.min(y0, y1);
-    x1 = x0 + Math.abs(hiliteAreaData.w - 1);
-    y1 = y0 + Math.abs(hiliteAreaData.h - 1);
+  var hiliteData = [];
 
-    var hiliteData = [];
-
-    for (var i = x0; i <= x1; i++) {
-        for (var j = y0; j <= y1; j++) {
-            hiliteData.push({
-                x: i,
-                y: j,
-                fillColor: fill,
-                borderColor: border,
-                borderWidth: borderWidth
-            });
-        }
+  for (var i = x0; i <= x1; i++) {
+    for (var j = y0; j <= y1; j++) {
+      hiliteData.push({
+        x: i,
+        y: j,
+        fillColor: fill,
+        borderColor: border,
+        borderWidth: borderWidth,
+      });
     }
+  }
 
-    return this._hiliteMany(hiliteData);
+  return this._hiliteMany(hiliteData);
 };
 
 HiliteMan.prototype._hiliteArea2 = function (data) {
-    if(data.tile0 === -1 || data.tile1 === -1)
-        return [];
+  if (data.tile0 === -1 || data.tile1 === -1) return [];
 
-    var iter = new Core.TileIterator(data.tile0, data.tile1),
-        fill = data.fillColor,
-        border = data.borderColor,
-        borderWidth = data.borderWidth;
+  var iter = new Core.TileIterator(data.tile0, data.tile1),
+    fill = data.fillColor,
+    border = data.borderColor,
+    borderWidth = data.borderWidth;
 
-    var hData = [];
-    while (!iter.done) {
-        var tile = iter.next();
-        hData.push({
-            x: Terrain.extractX(tile),
-            y: Terrain.extractY(tile),
-            fillColor: fill,
-            borderColor: border,
-            borderWidth: borderWidth,
-            underwater: data.underwater
-        })
-    }
+  var hData = [];
+  while (!iter.done) {
+    var tile = iter.next();
+    hData.push({
+      x: Terrain.extractX(tile),
+      y: Terrain.extractY(tile),
+      fillColor: fill,
+      borderColor: border,
+      borderWidth: borderWidth,
+      underwater: data.underwater,
+    });
+  }
 
-    return this._hiliteMany(hData);
+  return this._hiliteMany(hData);
 };
 
 HiliteMan.prototype._hiliteMany = function (hiliteData) {
-    var i = 0,
-        len = hiliteData.length,
-        data, r = [];
+  var i = 0,
+    len = hiliteData.length,
+    data,
+    r = [];
 
-    for (i = 0; i < len; i++) {
-        data = hiliteData[i];
-        r.push(this._hiliteOne(data));
-    }
+  for (i = 0; i < len; i++) {
+    data = hiliteData[i];
+    r.push(this._hiliteOne(data));
+  }
 
-    return r;
+  return r;
 };
 
 /**
@@ -127,37 +125,34 @@ HiliteMan.prototype._hiliteMany = function (hiliteData) {
  * @returns {*}
  */
 HiliteMan.prototype.hilite = function (params) {
-    if (Array.isArray(params))
-        return this._hiliteMany(params);
-    else if (params.w !== undefined && params.h !== undefined)
-        return this._hiliteArea(params);
-    else if(params.tile0 !== undefined && params.tile1 !== undefined)
-        return this._hiliteArea2(params);
-    else if(params.tile !== undefined)
-        return hiliteOne(this, params);
-    else
-        return this._hiliteOne(params);
+  if (Array.isArray(params)) return this._hiliteMany(params);
+  else if (params.w !== undefined && params.h !== undefined)
+    return this._hiliteArea(params);
+  else if (params.tile0 !== undefined && params.tile1 !== undefined)
+    return this._hiliteArea2(params);
+  else if (params.tile !== undefined) return hiliteOne(this, params);
+  else return this._hiliteOne(params);
 };
 
 HiliteMan.prototype.disable = function (tokenData) {
-    if (tokenData !== undefined) {
-        if (Array.isArray(tokenData)) {
-            for (var i = 0; i < tokenData.length; i++) {
-                this.disable(tokenData[i]);
-            }
-        } else {
-            var hiliter = this.hiliters.get(tokenData);
-            if (hiliter !== undefined) {
-                this.hiliters.delete(tokenData);
-                hiliter.gameObject.destroy();
-            }
-        }
+  if (tokenData !== undefined) {
+    if (Array.isArray(tokenData)) {
+      for (var i = 0; i < tokenData.length; i++) {
+        this.disable(tokenData[i]);
+      }
     } else {
-        this.hiliters.forEach(function (hiliter) {
-            hiliter.gameObject.destroy();
-        });
-        this.hiliters.clear();
+      var hiliter = this.hiliters.get(tokenData);
+      if (hiliter !== undefined) {
+        this.hiliters.delete(tokenData);
+        hiliter.gameObject.destroy();
+      }
     }
+  } else {
+    this.hiliters.forEach(function (hiliter) {
+      hiliter.gameObject.destroy();
+    });
+    this.hiliters.clear();
+  }
 };
 
 export default HiliteMan;

@@ -22,7 +22,8 @@ Core.CityStore = CityStore;
 var INDEX_KEY = "isometrica.v3.cities";
 var CITY_KEY_PREFIX = "isometrica.v3.city.";
 var ID_LENGTH = 6;
-var ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+var ID_ALPHABET =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 var VERSION = 1;
 
 var ID_PATTERN = new RegExp("^[0-9A-Za-z]{" + ID_LENGTH + "}$");
@@ -34,45 +35,45 @@ var ID_PATTERN = new RegExp("^[0-9A-Za-z]{" + ID_LENGTH + "}$");
  * a failure is reported rather than raised.
  */
 function read(self, key) {
-    try {
-        var raw = self.storage.getItem(key);
-        return raw === null ? null : JSON.parse(raw);
-    } catch (e) {
-        console.warn("Could not read " + key + " from storage", e);
-        return null;
-    }
+  try {
+    var raw = self.storage.getItem(key);
+    return raw === null ? null : JSON.parse(raw);
+  } catch (e) {
+    console.warn("Could not read " + key + " from storage", e);
+    return null;
+  }
 }
 
 function write(self, key, value) {
-    try {
-        self.storage.setItem(key, JSON.stringify(value));
-        return true;
-    } catch (e) {
-        console.warn("Could not write " + key + " to storage", e);
-        return false;
-    }
+  try {
+    self.storage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (e) {
+    console.warn("Could not write " + key + " to storage", e);
+    return false;
+  }
 }
 
 function drop(self, key) {
-    try {
-        self.storage.removeItem(key);
-        return true;
-    } catch (e) {
-        console.warn("Could not remove " + key + " from storage", e);
-        return false;
-    }
+  try {
+    self.storage.removeItem(key);
+    return true;
+  } catch (e) {
+    console.warn("Could not remove " + key + " from storage", e);
+    return false;
+  }
 }
 
 function emptyIndex() {
-    return {
-        version: VERSION,
-        activeCityId: null,
-        cities: {}
-    };
+  return {
+    version: VERSION,
+    activeCityId: null,
+    cities: {},
+  };
 }
 
 function writeIndex(self, index) {
-    return write(self, INDEX_KEY, index);
+  return write(self, INDEX_KEY, index);
 }
 
 /**
@@ -80,10 +81,11 @@ function writeIndex(self, index) {
  * @constructor
  */
 function CityStore(storage) {
-    this.storage = storage || (typeof localStorage !== "undefined" ? localStorage : null);
+  this.storage =
+    storage || (typeof localStorage !== "undefined" ? localStorage : null);
 
-    if (this.storage === null)
-        console.warn("No storage available, cities will not be saved");
+  if (this.storage === null)
+    console.warn("No storage available, cities will not be saved");
 }
 
 CityStore.INDEX_KEY = INDEX_KEY;
@@ -95,7 +97,7 @@ CityStore.ID_LENGTH = ID_LENGTH;
  * @returns {boolean} whether the string could be a city id at all
  */
 CityStore.isValidId = function (id) {
-    return typeof id === "string" && ID_PATTERN.test(id);
+  return typeof id === "string" && ID_PATTERN.test(id);
 };
 
 /**
@@ -106,43 +108,41 @@ CityStore.isValidId = function (id) {
  * @returns {string}
  */
 CityStore.key = function (id) {
-    return CITY_KEY_PREFIX + id;
+  return CITY_KEY_PREFIX + id;
 };
 
 /**
  * @returns {{version: number, activeCityId: string|null, cities: Object}}
  */
 CityStore.prototype.index = function () {
-    if (this.storage === null)
-        return emptyIndex();
+  if (this.storage === null) return emptyIndex();
 
-    var index = read(this, INDEX_KEY);
+  var index = read(this, INDEX_KEY);
 
-    if (index === null || typeof index !== "object" || index.cities === undefined)
-        return emptyIndex();
+  if (index === null || typeof index !== "object" || index.cities === undefined)
+    return emptyIndex();
 
-    return index;
+  return index;
 };
 
 /**
  * @returns {string|null} the city to open when the url names none
  */
 CityStore.prototype.activeCityId = function () {
-    return this.index().activeCityId || null;
+  return this.index().activeCityId || null;
 };
 
 /**
  * @param id {string}
  */
 CityStore.prototype.setActiveCityId = function (id) {
-    var index = this.index();
+  var index = this.index();
 
-    if (index.activeCityId === id)
-        return true;
+  if (index.activeCityId === id) return true;
 
-    index.activeCityId = id;
+  index.activeCityId = id;
 
-    return writeIndex(this, index);
+  return writeIndex(this, index);
 };
 
 /**
@@ -150,10 +150,12 @@ CityStore.prototype.setActiveCityId = function (id) {
  * @returns {boolean} whether there is a save under that id
  */
 CityStore.prototype.has = function (id) {
-    if (this.storage === null || !CityStore.isValidId(id))
-        return false;
+  if (this.storage === null || !CityStore.isValidId(id)) return false;
 
-    return this.index().cities[id] !== undefined && read(this, CityStore.key(id)) !== null;
+  return (
+    this.index().cities[id] !== undefined &&
+    read(this, CityStore.key(id)) !== null
+  );
 };
 
 /**
@@ -161,10 +163,9 @@ CityStore.prototype.has = function (id) {
  * @returns {Object|null} the saved city data
  */
 CityStore.prototype.read = function (id) {
-    if (this.storage === null || !CityStore.isValidId(id))
-        return null;
+  if (this.storage === null || !CityStore.isValidId(id)) return null;
 
-    return read(this, CityStore.key(id));
+  return read(this, CityStore.key(id));
 };
 
 /**
@@ -176,23 +177,21 @@ CityStore.prototype.read = function (id) {
  * @returns {boolean}
  */
 CityStore.prototype.write = function (id, data, name) {
-    if (this.storage === null || !CityStore.isValidId(id))
-        return false;
+  if (this.storage === null || !CityStore.isValidId(id)) return false;
 
-    var key = CityStore.key(id);
+  var key = CityStore.key(id);
 
-    if (!write(this, key, data))
-        return false;
+  if (!write(this, key, data)) return false;
 
-    var index = this.index();
+  var index = this.index();
 
-    index.cities[id] = {
-        key: key,
-        name: name || "",
-        updatedAt: Date.now()
-    };
+  index.cities[id] = {
+    key: key,
+    name: name || "",
+    updatedAt: Date.now(),
+  };
 
-    return writeIndex(this, index);
+  return writeIndex(this, index);
 };
 
 /**
@@ -200,19 +199,17 @@ CityStore.prototype.write = function (id, data, name) {
  * @returns {boolean}
  */
 CityStore.prototype.remove = function (id) {
-    if (this.storage === null || !CityStore.isValidId(id))
-        return false;
+  if (this.storage === null || !CityStore.isValidId(id)) return false;
 
-    drop(this, CityStore.key(id));
+  drop(this, CityStore.key(id));
 
-    var index = this.index();
+  var index = this.index();
 
-    delete index.cities[id];
+  delete index.cities[id];
 
-    if (index.activeCityId === id)
-        index.activeCityId = null;
+  if (index.activeCityId === id) index.activeCityId = null;
 
-    return writeIndex(this, index);
+  return writeIndex(this, index);
 };
 
 /**
@@ -221,36 +218,37 @@ CityStore.prototype.remove = function (id) {
  * @returns {Object[]} {id, key, name, updatedAt, active}
  */
 CityStore.prototype.list = function () {
-    var index = this.index(),
-        cities = index.cities,
-        r = [];
+  var index = this.index(),
+    cities = index.cities,
+    r = [];
 
-    for (var id in cities) {
-        r.push({
-            id: id,
-            key: cities[id].key,
-            name: cities[id].name || "",
-            updatedAt: cities[id].updatedAt || 0,
-            active: index.activeCityId === id
-        });
-    }
+  for (var id in cities) {
+    r.push({
+      id: id,
+      key: cities[id].key,
+      name: cities[id].name || "",
+      updatedAt: cities[id].updatedAt || 0,
+      active: index.activeCityId === id,
+    });
+  }
 
-    return r;
+  return r;
 };
 
 /**
  * @returns {string} an id no saved city holds yet
  */
 CityStore.prototype.newId = function () {
-    var index = this.index(), id;
+  var index = this.index(),
+    id;
 
-    do {
-        id = "";
-        for (var i = 0; i < ID_LENGTH; i++)
-            id += ID_ALPHABET.charAt(Math.floor(Math.random() * ID_ALPHABET.length));
-    } while (index.cities[id] !== undefined);
+  do {
+    id = "";
+    for (var i = 0; i < ID_LENGTH; i++)
+      id += ID_ALPHABET.charAt(Math.floor(Math.random() * ID_ALPHABET.length));
+  } while (index.cities[id] !== undefined);
 
-    return id;
+  return id;
 };
 
 export default CityStore;

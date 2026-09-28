@@ -10,12 +10,30 @@
  * @type {{heap: boolean, flat: boolean, path: string, pivotX: number, pivotY: number}[]}
  */
 var Rocks = [
-    //five together - the thick of a rock field
-    {heap: true, flat: true, path: "scenery/stone.png", pivotX: 32, pivotY: 24},
-    {heap: true, flat: true, path: "scenery/stone-m.png", pivotX: 32, pivotY: 24},
-    //three strewn about - the thin edges of one, and stones out on their own
-    {heap: false, flat: true, path: "scenery/stone0.png", pivotX: 32, pivotY: 24},
-    {heap: false, flat: true, path: "scenery/stone0-m.png", pivotX: 32, pivotY: 24}
+  //five together - the thick of a rock field
+  { heap: true, flat: true, path: "scenery/stone.png", pivotX: 32, pivotY: 24 },
+  {
+    heap: true,
+    flat: true,
+    path: "scenery/stone-m.png",
+    pivotX: 32,
+    pivotY: 24,
+  },
+  //three strewn about - the thin edges of one, and stones out on their own
+  {
+    heap: false,
+    flat: true,
+    path: "scenery/stone0.png",
+    pivotX: 32,
+    pivotY: 24,
+  },
+  {
+    heap: false,
+    flat: true,
+    path: "scenery/stone0-m.png",
+    pivotX: 32,
+    pivotY: 24,
+  },
 ];
 
 export default Rocks;

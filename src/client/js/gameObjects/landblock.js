@@ -13,27 +13,27 @@ import RenderLayer from "../renderlayer";
  * @param block {Object} block descriptor from CityService.Area
  */
 function LandBlock(terrain, block) {
-    engine.GameObject.call(this, "landBlock");
+  engine.GameObject.call(this, "landBlock");
 
-    this.block = block;
-    this.areaRenderer = this.addComponent(new LandBlockRenderer(terrain, block));
+  this.block = block;
+  this.areaRenderer = this.addComponent(new LandBlockRenderer(terrain, block));
 
-    var label = new engine.GameObject("landPrice"),
-        text = label.addComponent(new engine.TextRenderer());
+  var label = new engine.GameObject("landPrice"),
+    text = label.addComponent(new engine.TextRenderer());
 
-    //written the way everything else over the terrain is - see citylabel and
-    //the floating costs - only in the colour of money
-    text.layer = RenderLayer.overlayLayer;
-    text.style = "bold 16px Courier New";
-    text.color = "rgb(255,220,0)";
-    text.strokeStyle = "black";
-    text.lineWidth = 4;
-    text.text = "";
+  //written the way everything else over the terrain is - see citylabel and
+  //the floating costs - only in the colour of money
+  text.layer = RenderLayer.overlayLayer;
+  text.style = "bold 16px Courier New";
+  text.color = "rgb(255,220,0)";
+  text.strokeStyle = "black";
+  text.lineWidth = 4;
+  text.text = "";
 
-    this.transform.addChild(label.transform);
-    label.transform.setLocalPosition(0, 0, 0);
+  this.transform.addChild(label.transform);
+  label.transform.setLocalPosition(0, 0, 0);
 
-    this.priceRenderer = text;
+  this.priceRenderer = text;
 }
 
 LandBlock.prototype = Object.create(engine.GameObject.prototype);
@@ -46,7 +46,7 @@ LandBlock.prototype.priceRenderer = null;
  * @param text {string} what the block costs, as the player should read it
  */
 LandBlock.prototype.setPrice = function (text) {
-    this.priceRenderer.text = text;
+  this.priceRenderer.text = text;
 };
 
 /**
@@ -56,8 +56,8 @@ LandBlock.prototype.setPrice = function (text) {
  * @param enabled {boolean}
  */
 LandBlock.prototype.renderersEnabled = function (enabled) {
-    this.areaRenderer.enabled = enabled;
-    this.priceRenderer.enabled = enabled;
+  this.areaRenderer.enabled = enabled;
+  this.priceRenderer.enabled = enabled;
 };
 
 export default LandBlock;

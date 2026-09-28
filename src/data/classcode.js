@@ -3,17 +3,17 @@ import namespace from "namespace";
 
 var Core = namespace("Isometrica.Core");
 
-    /**
-     * @exports BuildingClassCode
-     * @enum BuildingClassCode
-     */
-    var BuildingClassCode = Core.BuildingClassCode = {
-        municipal: 0,
-        road: 1,
-        tree: 2,
-        house: 3,
-        industry: 4,
-        commerce: 5
-    };
+/**
+ * @exports BuildingClassCode
+ * @enum BuildingClassCode
+ */
+var BuildingClassCode = (Core.BuildingClassCode = {
+  municipal: 0,
+  road: 1,
+  tree: 2,
+  house: 3,
+  industry: 4,
+  commerce: 5,
+});
 
 export default BuildingClassCode;

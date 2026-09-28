@@ -3,9 +3,9 @@
  * @enum BuildingState
  */
 var BuildingState = {
-    none: 0,
-    underConstruction: 1,
-    ready: 2
+  none: 0,
+  underConstruction: 1,
+  ready: 2,
 };
 
 export default BuildingState;

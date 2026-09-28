@@ -51,11 +51,11 @@ text[NO_JOBS] = "no jobs";
 //high enough to clear the roof of anything it sits over - and, over a
 //building still going up, just off the pit dug for it
 var HEIGHT = Config.tileSize,
-    PIT_HEIGHT = Config.tileSize / 4;
+  PIT_HEIGHT = Config.tileSize / 4;
 
 //a warning is red, and how far along a building going up is, white
 var WARNING_COLOR = "rgb(255,64,64)",
-    PROGRESS_COLOR = "white";
+  PROGRESS_COLOR = "white";
 
 /**
  * Puts go over the middle of the ground the building stands on, all of its
@@ -63,66 +63,69 @@ var WARNING_COLOR = "rgb(255,64,64)",
  * going up.
  */
 function placeOver(self, go, building) {
-    var terrain = self.root.terrain,
-        data = building.data,
-        //turned round, the footprint's sides swap
-        sizeX = building.rotation ? data.sizeY : data.sizeX,
-        sizeY = building.rotation ? data.sizeX : data.sizeY,
-        far = building.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
+  var terrain = self.root.terrain,
+    data = building.data,
+    //turned round, the footprint's sides swap
+    sizeX = building.rotation ? data.sizeY : data.sizeX,
+    sizeY = building.rotation ? data.sizeX : data.sizeY,
+    far = building.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
 
-    go.transform.setPosition(
-        (terrain.tileXPos(building.tile) + terrain.tileXPos(far)) / 2,
-        (terrain.tileYPos(building.tile) + terrain.tileYPos(far)) / 2
-            + (building.getState() === BuildingState.underConstruction ? PIT_HEIGHT : HEIGHT),
-        (terrain.tileZPos(building.tile) + terrain.tileZPos(far)) / 2);
+  go.transform.setPosition(
+    (terrain.tileXPos(building.tile) + terrain.tileXPos(far)) / 2,
+    (terrain.tileYPos(building.tile) + terrain.tileYPos(far)) / 2 +
+      (building.getState() === BuildingState.underConstruction
+        ? PIT_HEIGHT
+        : HEIGHT),
+    (terrain.tileZPos(building.tile) + terrain.tileZPos(far)) / 2,
+  );
 }
 
 function createLabel(self, building, words, color) {
-    var go = new engine.GameObject("serviceWarning");
-    var renderer = go.addComponent(new engine.TextRenderer());
+  var go = new engine.GameObject("serviceWarning");
+  var renderer = go.addComponent(new engine.TextRenderer());
 
-    renderer.layer = RenderLayer.overlayLayer;
-    renderer.color = color;
-    renderer.style = "bold 16px Courier New";
-    renderer.strokeStyle = "black";
-    renderer.lineWidth = 4;
-    renderer.text = words;
-    renderer.opacity = opacityAt(self, building.tile);
+  renderer.layer = RenderLayer.overlayLayer;
+  renderer.color = color;
+  renderer.style = "bold 16px Courier New";
+  renderer.strokeStyle = "black";
+  renderer.lineWidth = 4;
+  renderer.text = words;
+  renderer.opacity = opacityAt(self, building.tile);
 
-    placeOver(self, go, building);
+  placeOver(self, go, building);
 
-    self.root.game.scene.addGameObject(go);
+  self.root.game.scene.addGameObject(go);
 
-    return go;
+  return go;
 }
 
 function show(self, building, words, color) {
-    var label = self._labels[building.tile];
+  var label = self._labels[building.tile];
 
-    if (label === undefined) {
-        self._labels[building.tile] = createLabel(self, building, words, color);
-    } else {
-        label.textRenderer.text = words;
-        label.textRenderer.color = color;
-        //up to the roof once there is one
-        placeOver(self, label, building);
-    }
+  if (label === undefined) {
+    self._labels[building.tile] = createLabel(self, building, words, color);
+  } else {
+    label.textRenderer.text = words;
+    label.textRenderer.color = color;
+    //up to the roof once there is one
+    placeOver(self, label, building);
+  }
 }
 
 /**
  * How far along a building going up is, in whole percent.
  */
 function progressText(building) {
-    return Math.floor(building.getProgress() * 100) + "%";
+  return Math.floor(building.getProgress() * 100) + "%";
 }
 
 function hide(self, tile) {
-    var label = self._labels[tile];
+  var label = self._labels[tile];
 
-    if (label !== undefined) {
-        label.destroy();
-        delete self._labels[tile];
-    }
+  if (label !== undefined) {
+    label.destroy();
+    delete self._labels[tile];
+  }
 }
 
 /**
@@ -131,59 +134,59 @@ function hide(self, tile) {
  * plenty - a street or a tower takes longer than that to build.
  */
 function refresh(self) {
-    var city = self.root.core.cities.getCity(0),
-        views = self._views,
-        tile, model, missing;
+  var city = self.root.core.cities.getCity(0),
+    views = self._views,
+    tile,
+    model,
+    missing;
 
-    if (city === undefined)
-        return;
+  if (city === undefined) return;
 
-    for (tile in views) {
-        model = views[tile].model();
+  for (tile in views) {
+    model = views[tile].model();
 
-        //nothing is missed before it is up - and the one clicked on says how
-        //far along it is with its name instead
-        if (model.getState() === BuildingState.underConstruction) {
-            if (model === self._infoBuilding)
-                hide(self, tile);
-            else
-                show(self, model, progressText(model), PROGRESS_COLOR);
+    //nothing is missed before it is up - and the one clicked on says how
+    //far along it is with its name instead
+    if (model.getState() === BuildingState.underConstruction) {
+      if (model === self._infoBuilding) hide(self, tile);
+      else show(self, model, progressText(model), PROGRESS_COLOR);
 
-            continue;
-        }
-
-        missing = city.missing(model);
-
-        if (missing === null && model.jobs() > 0 && city.jobs.getWorkers(model) === 0)
-            missing = NO_WORKERS;
-        else if (missing === null && city.population.isShortOfJobs(model))
-            missing = NO_JOBS;
-
-        if (missing === null)
-            hide(self, tile);
-        else
-            show(self, model, text[missing], WARNING_COLOR);
+      continue;
     }
+
+    missing = city.missing(model);
+
+    if (
+      missing === null &&
+      model.jobs() > 0 &&
+      city.jobs.getWorkers(model) === 0
+    )
+      missing = NO_WORKERS;
+    else if (missing === null && city.population.isShortOfJobs(model))
+      missing = NO_JOBS;
+
+    if (missing === null) hide(self, tile);
+    else show(self, model, text[missing], WARNING_COLOR);
+  }
 }
 
 function onBuildingLoad(sender, building, self) {
-    self._views[building.model().tile] = building;
+  self._views[building.model().tile] = building;
 }
 
 function onBuildingUnload(sender, building, self) {
-    var tile = building.model().tile;
+  var tile = building.model().tile;
 
-    delete self._views[tile];
-    hide(self, tile);
+  delete self._views[tile];
+  hide(self, tile);
 }
 
 //the word over a building fades with it, so it does not hide what the
 //building was faded to show (see Buildman#fadeAround)
 function onBuildingFade(sender, building, self) {
-    var label = self._labels[building.model().tile];
+  var label = self._labels[building.model().tile];
 
-    if (label !== undefined)
-        label.textRenderer.opacity = building.view.opacity;
+  if (label !== undefined) label.textRenderer.opacity = building.view.opacity;
 }
 
 /**
@@ -191,16 +194,16 @@ function onBuildingFade(sender, building, self) {
  * up over one already faded starts out faded too.
  */
 function opacityAt(self, tile) {
-    var building = self._views[tile];
+  var building = self._views[tile];
 
-    return building !== undefined && building.view.opacity !== undefined
-        ? building.view.opacity
-        : 1;
+  return building !== undefined && building.view.opacity !== undefined
+    ? building.view.opacity
+    : 1;
 }
 
 function onTick(sender, args, self) {
-    refresh(self);
-    refreshInfo(self);
+  refresh(self);
+  refreshInfo(self);
 }
 
 var INCOME_COLOR = "rgb(64,255,64)";
@@ -211,12 +214,15 @@ var EXPENSE_COLOR = "rgb(255,64,64)";
  *                                          what it costs, white for neither
  */
 function formatMoney(amount) {
-    var rounded = Math.round(amount);
+  var rounded = Math.round(amount);
 
-    return {
-        text: (rounded > 0 ? "+" : rounded < 0 ? "-" : "") + "$" + Numeral(Math.abs(rounded)).format("0,0"),
-        color: rounded > 0 ? INCOME_COLOR : rounded < 0 ? EXPENSE_COLOR : "white"
-    };
+  return {
+    text:
+      (rounded > 0 ? "+" : rounded < 0 ? "-" : "") +
+      "$" +
+      Numeral(Math.abs(rounded)).format("0,0"),
+    color: rounded > 0 ? INCOME_COLOR : rounded < 0 ? EXPENSE_COLOR : "white",
+  };
 }
 
 /**
@@ -225,23 +231,28 @@ function formatMoney(amount) {
  *                  if anybody lives or works in it
  */
 function infoLines(city, building) {
-    var data = building.data,
-        //its name heads it, the way it heads its card in the catalogue
-        lines = [data.name.charAt(0).toUpperCase() + data.name.slice(1)];
+  var data = building.data,
+    //its name heads it, the way it heads its card in the catalogue
+    lines = [data.name.charAt(0).toUpperCase() + data.name.slice(1)];
 
-    if (building.getState() === BuildingState.underConstruction) {
-        lines.push(progressText(building));
-        return lines;
-    }
-
-    lines.push(formatMoney(city.getBuildingIncome(building)));
-
-    if (data.citizenCapacity)
-        lines.push("peeps " + city.population.getResidents(building) + "/" + data.citizenCapacity);
-    else if (data.jobs)
-        lines.push("jobs " + city.jobs.getWorkers(building) + "/" + data.jobs);
-
+  if (building.getState() === BuildingState.underConstruction) {
+    lines.push(progressText(building));
     return lines;
+  }
+
+  lines.push(formatMoney(city.getBuildingIncome(building)));
+
+  if (data.citizenCapacity)
+    lines.push(
+      "peeps " +
+        city.population.getResidents(building) +
+        "/" +
+        data.citizenCapacity,
+    );
+  else if (data.jobs)
+    lines.push("jobs " + city.jobs.getWorkers(building) + "/" + data.jobs);
+
+  return lines;
 }
 
 /**
@@ -251,41 +262,44 @@ function infoLines(city, building) {
 //a road's upkeep is all there is to say about it, and that is on the price
 //tag already - clicked, it is ground like any other
 function hasInfo(building) {
-    var classCode = building.data.classCode;
+  var classCode = building.data.classCode;
 
-    return classCode !== BuildingClassCode.tree && classCode !== BuildingClassCode.road
-        && building.getCity() !== null;
+  return (
+    classCode !== BuildingClassCode.tree &&
+    classCode !== BuildingClassCode.road &&
+    building.getCity() !== null
+  );
 }
 
 function refreshInfo(self) {
-    var building = self._infoBuilding;
+  var building = self._infoBuilding;
 
-    if (building === null)
-        return;
+  if (building === null) return;
 
-    //bulldozed while it was being looked at
-    if (self.root.core.buildings.get(building.tile) !== building) {
-        self.hideInfo();
-        return;
-    }
+  //bulldozed while it was being looked at
+  if (self.root.core.buildings.get(building.tile) !== building) {
+    self.hideInfo();
+    return;
+  }
 
-    self._info.textRenderer.lines = infoLines(building.getCity(), building);
-    //down by the pit while it goes up, over the roof once it stands
-    placeOver(self, self._info, building);
+  self._info.textRenderer.lines = infoLines(building.getCity(), building);
+  //down by the pit while it goes up, over the roof once it stands
+  placeOver(self, self._info, building);
 }
 
 function pickTile(root, screenX, screenY) {
-    var gos = root.camera.cameraScript.pickGameObject(screenX, screenY),
-        sprite, i;
+  var gos = root.camera.cameraScript.pickGameObject(screenX, screenY),
+    sprite,
+    i;
 
-    for (i = 0; i < gos.length; i++) {
-        sprite = gos[i].spriteRenderer;
+  for (i = 0; i < gos.length; i++) {
+    sprite = gos[i].spriteRenderer;
 
-        if (sprite !== undefined && sprite.layer === RenderLayer.groundLayer)
-            return root.terrain.getCoordinates(gos[i]);
-    }
+    if (sprite !== undefined && sprite.layer === RenderLayer.groundLayer)
+      return root.terrain.getCoordinates(gos[i]);
+  }
 
-    return -1;
+  return -1;
 }
 
 /**
@@ -294,35 +308,34 @@ function pickTile(root, screenX, screenY) {
  * than being left behind on top of somebody else's business.
  */
 function onBusyChange(sender, busy, self) {
-    if (busy) {
-        self.hideCoverage();
-        self.hideInfo();
-    }
+  if (busy) {
+    self.hideCoverage();
+    self.hideInfo();
+  }
 }
 
 function onClick(sender, e, self) {
-    //while an action owns the world (placing a building, clearing ground) the
-    //clicks are that action's - it passes on the ones it has no use for
-    if (self.root.ui.gameScreen().worldScreen().busy())
-        return;
+  //while an action owns the world (placing a building, clearing ground) the
+  //clicks are that action's - it passes on the ones it has no use for
+  if (self.root.ui.gameScreen().worldScreen().busy()) return;
 
-    self.inspect(e.gameViewportX, e.gameViewportY);
+  self.inspect(e.gameViewportX, e.gameViewportY);
 }
 
 function ServiceMan(root) {
-    this.root = root;
-    this._views = {};
-    this._labels = {};
-    this._coverage = null;
-    this._placementCoverage = null;
-    this._info = null;
-    this._infoBuilding = null;
-    //what a click is showing, info or reach or both - clicked again, it is
-    //put away
-    this._inspected = null;
-    //the building clicked, drawn again over its neighbours, and the line
-    //round its tiles
-    this._raised = [];
+  this.root = root;
+  this._views = {};
+  this._labels = {};
+  this._coverage = null;
+  this._placementCoverage = null;
+  this._info = null;
+  this._infoBuilding = null;
+  //what a click is showing, info or reach or both - clicked again, it is
+  //put away
+  this._inspected = null;
+  //the building clicked, drawn again over its neighbours, and the line
+  //round its tiles
+  this._raised = [];
 }
 
 /**
@@ -336,46 +349,43 @@ function ServiceMan(root) {
  *                    for, rather than on bare ground, a road or a tree
  */
 ServiceMan.prototype.inspect = function (screenX, screenY) {
-    var root = this.root,
-        city = root.cityman.pickCity(screenX, screenY),
-        //a city's name hangs over its city hall and stands for it - clicked,
-        //it is the hall that was clicked
-        building = city !== null && city.buildings.cityHall !== null
-            ? city.buildings.cityHall
-            : root.buildman.pickBuilding(screenX, screenY);
+  var root = this.root,
+    city = root.cityman.pickCity(screenX, screenY),
+    //a city's name hangs over its city hall and stands for it - clicked,
+    //it is the hall that was clicked
+    building =
+      city !== null && city.buildings.cityHall !== null
+        ? city.buildings.cityHall
+        : root.buildman.pickBuilding(screenX, screenY);
 
-    //clicking the ground a tower stands on counts too - its sprite leaves the
-    //corners of its own tile showing
-    if (building === null) {
-        var tile = pickTile(root, screenX, screenY);
-        building = tile === -1 ? null : root.core.buildings.get(tile);
-    }
+  //clicking the ground a tower stands on counts too - its sprite leaves the
+  //corners of its own tile showing
+  if (building === null) {
+    var tile = pickTile(root, screenX, screenY);
+    building = tile === -1 ? null : root.core.buildings.get(tile);
+  }
 
-    var radius = building === null ? 0 : CityWater.radius(building),
-        shown = radius > 0 || (building !== null && hasInfo(building));
+  var radius = building === null ? 0 : CityWater.radius(building),
+    shown = radius > 0 || (building !== null && hasInfo(building));
 
-    //the same one again - it was clicked to put away, which still makes it
-    //something that was there to click
-    if (shown && building === this._inspected) {
-        this.hideCoverage();
-        this.hideInfo();
-        return true;
-    }
+  //the same one again - it was clicked to put away, which still makes it
+  //something that was there to click
+  if (shown && building === this._inspected) {
+    this.hideCoverage();
+    this.hideInfo();
+    return true;
+  }
 
-    if (radius > 0)
-        this.showCoverage(building.tile, radius);
-    else
-        this.hideCoverage();
+  if (radius > 0) this.showCoverage(building.tile, radius);
+  else this.hideCoverage();
 
-    if (building !== null && hasInfo(building))
-        this.showInfo(building);
-    else
-        this.hideInfo();
+  if (building !== null && hasInfo(building)) this.showInfo(building);
+  else this.hideInfo();
 
-    this._inspected = shown ? building : null;
-    raise(this, this._inspected);
+  this._inspected = shown ? building : null;
+  raise(this, this._inspected);
 
-    return shown;
+  return shown;
 };
 
 /**
@@ -384,24 +394,25 @@ ServiceMan.prototype.inspect = function (screenX, screenY) {
  * use.
  */
 function showCoverage(self, key, towers, radius) {
-    var tiles = [],
-        coverage = self[key],
-        i;
+  var tiles = [],
+    coverage = self[key],
+    i;
 
-    for (i = 0; i < towers.length; i++)
-        tiles = tiles.concat(CityWater.coverage(towers[i], radius));
+  for (i = 0; i < towers.length; i++)
+    tiles = tiles.concat(CityWater.coverage(towers[i], radius));
 
-    if (coverage === null) {
-        var go = new engine.GameObject("waterCoverage");
+  if (coverage === null) {
+    var go = new engine.GameObject("waterCoverage");
 
-        coverage = self[key] = go.addComponent(
-            new TileAreaBorderRenderer(self.root.core.terrain, tiles));
-        coverage.layer = RenderLayer.coverageLayer;
+    coverage = self[key] = go.addComponent(
+      new TileAreaBorderRenderer(self.root.core.terrain, tiles),
+    );
+    coverage.layer = RenderLayer.coverageLayer;
 
-        self.root.game.logic.world.addGameObject(go);
-    } else {
-        coverage.setTiles(tiles);
-    }
+    self.root.game.logic.world.addGameObject(go);
+  } else {
+    coverage.setTiles(tiles);
+  }
 }
 
 /**
@@ -409,20 +420,18 @@ function showCoverage(self, key, towers, radius) {
  * own reach too, for a tower - or none again with null.
  */
 function raise(self, building) {
-    var i;
+  var i;
 
-    for (i = 0; i < self._raised.length; i++)
-        self._raised[i].destroy();
-    self._raised = [];
+  for (i = 0; i < self._raised.length; i++) self._raised[i].destroy();
+  self._raised = [];
 
-    if (building === null)
-        return;
+  if (building === null) return;
 
-    self._raised.push(outlineFootprint(self, building));
+  self._raised.push(outlineFootprint(self, building));
 
-    //a site under construction has nothing finished to draw yet
-    if (building.getState() === BuildingState.ready)
-        self._raised.push(copyBuilding(self, building));
+  //a site under construction has nothing finished to draw yet
+  if (building.getState() === BuildingState.ready)
+    self._raised.push(copyBuilding(self, building));
 }
 
 /**
@@ -430,53 +439,64 @@ function raise(self, building) {
  * it, over the neighbours and any reach.
  */
 function outlineFootprint(self, building) {
-    var data = building.data,
-        //turned round, the footprint's sides swap
-        sizeX = building.rotation ? data.sizeY : data.sizeX,
-        sizeY = building.rotation ? data.sizeX : data.sizeY,
-        tiles = [],
-        go = new engine.GameObject("inspected footprint"),
-        x, y, renderer;
+  var data = building.data,
+    //turned round, the footprint's sides swap
+    sizeX = building.rotation ? data.sizeY : data.sizeX,
+    sizeY = building.rotation ? data.sizeX : data.sizeY,
+    tiles = [],
+    go = new engine.GameObject("inspected footprint"),
+    x,
+    y,
+    renderer;
 
-    for (y = 0; y < sizeY; y++)
-        for (x = 0; x < sizeX; x++)
-            tiles.push(building.tile + x + y * Terrain.dy);
+  for (y = 0; y < sizeY; y++)
+    for (x = 0; x < sizeX; x++) tiles.push(building.tile + x + y * Terrain.dy);
 
-    renderer = go.addComponent(
-        //right on the tiles' edges, as the tile under the cursor is hilited
-        new TileAreaBorderRenderer(self.root.core.terrain, tiles, 0));
-    renderer.layer = RenderLayer.footprintLayer;
-    renderer.fillColor = "rgba(255,255,255,0)";
-    renderer.borderColor = "white";
-    renderer.dash = [];
+  renderer = go.addComponent(
+    //right on the tiles' edges, as the tile under the cursor is hilited
+    new TileAreaBorderRenderer(self.root.core.terrain, tiles, 0),
+  );
+  renderer.layer = RenderLayer.footprintLayer;
+  renderer.fillColor = "rgba(255,255,255,0)";
+  renderer.borderColor = "white";
+  renderer.dash = [];
 
-    self.root.game.logic.world.addGameObject(go);
+  self.root.game.logic.world.addGameObject(go);
 
-    return go;
+  return go;
 }
 
 function copyBuilding(self, building) {
-    var terrain = self.root.core.world.terrain,
-        tile = building.tile,
-        x = Terrain.extractX(tile),
-        y = Terrain.extractY(tile),
-        z = terrain.getGridPointHeight(x + 1, y),
-        go = new engine.GameObject("inspected building");
+  var terrain = self.root.core.world.terrain,
+    tile = building.tile,
+    x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    z = terrain.getGridPointHeight(x + 1, y),
+    go = new engine.GameObject("inspected building");
 
-    BuildingView.addSprites(go, building.data, !!building.rotation,
-        1, RenderLayer.inspectedLayer);
+  BuildingView.addSprites(
+    go,
+    building.data,
+    !!building.rotation,
+    1,
+    RenderLayer.inspectedLayer,
+  );
 
-    go.transform.setPosition(x * Config.tileSize, z * Config.tileZStep, y * Config.tileSize);
-    self.root.game.logic.world.addGameObject(go);
+  go.transform.setPosition(
+    x * Config.tileSize,
+    z * Config.tileZStep,
+    y * Config.tileSize,
+  );
+  self.root.game.logic.world.addGameObject(go);
 
-    return go;
+  return go;
 }
 
 function hideCoverage(self, key) {
-    if (self[key] !== null) {
-        self[key].gameObject.destroy();
-        self[key] = null;
-    }
+  if (self[key] !== null) {
+    self[key].gameObject.destroy();
+    self[key] = null;
+  }
 }
 
 /**
@@ -486,14 +506,14 @@ function hideCoverage(self, key) {
  * @param radius {number}
  */
 ServiceMan.prototype.showCoverage = function (tile, radius) {
-    showCoverage(this, "_coverage", [tile], radius);
+  showCoverage(this, "_coverage", [tile], radius);
 };
 
 ServiceMan.prototype.hideCoverage = function () {
-    hideCoverage(this, "_coverage");
-    //put away by whatever means, the next click on it shows it again
-    this._inspected = null;
-    raise(this, null);
+  hideCoverage(this, "_coverage");
+  //put away by whatever means, the next click on it shows it again
+  this._inspected = null;
+  raise(this, null);
 };
 
 /**
@@ -504,11 +524,11 @@ ServiceMan.prototype.hideCoverage = function () {
  * @param radius {number}
  */
 ServiceMan.prototype.showPlacementCoverage = function (tiles, radius) {
-    showCoverage(this, "_placementCoverage", tiles, radius);
+  showCoverage(this, "_placementCoverage", tiles, radius);
 };
 
 ServiceMan.prototype.hidePlacementCoverage = function () {
-    hideCoverage(this, "_placementCoverage");
+  hideCoverage(this, "_placementCoverage");
 };
 
 /**
@@ -518,60 +538,70 @@ ServiceMan.prototype.hidePlacementCoverage = function () {
  * @param building {Building}
  */
 ServiceMan.prototype.showInfo = function (building) {
-    var info = this._info;
+  var info = this._info;
 
-    if (info === null) {
-        info = this._info = new engine.GameObject("buildingInfo");
+  if (info === null) {
+    info = this._info = new engine.GameObject("buildingInfo");
 
-        var renderer = info.addComponent(new MultilineTextRenderer());
+    var renderer = info.addComponent(new MultilineTextRenderer());
 
-        renderer.layer = RenderLayer.overlayLayer;
-        renderer.color = "white";
-        renderer.style = "bold 16px Courier New";
-        renderer.strokeStyle = "black";
-        renderer.lineWidth = 4;
+    renderer.layer = RenderLayer.overlayLayer;
+    renderer.color = "white";
+    renderer.style = "bold 16px Courier New";
+    renderer.strokeStyle = "black";
+    renderer.lineWidth = 4;
 
-        this.root.game.scene.addGameObject(info);
-    }
+    this.root.game.scene.addGameObject(info);
+  }
 
-    this._infoBuilding = building;
-    refreshInfo(this);
-    //its own label gives way to the info, rather than a tick later
-    refresh(this);
+  this._infoBuilding = building;
+  refreshInfo(this);
+  //its own label gives way to the info, rather than a tick later
+  refresh(this);
 };
 
 ServiceMan.prototype.hideInfo = function () {
-    if (this._info !== null) {
-        this._info.destroy();
-        this._info = null;
-        this._infoBuilding = null;
-        //and comes back as soon as the info goes
-        refresh(this);
-    }
+  if (this._info !== null) {
+    this._info.destroy();
+    this._info = null;
+    this._infoBuilding = null;
+    //and comes back as soon as the info goes
+    refresh(this);
+  }
 
-    this._inspected = null;
-    raise(this, null);
+  this._inspected = null;
+  raise(this, null);
 };
 
 ServiceMan.prototype.init = function () {
-    var root = this.root,
-        world = root.core;
+  var root = this.root,
+    world = root.core;
 
-    Events.on(root.buildman, Buildman.events.buildingLoad, onBuildingLoad, this);
-    Events.on(root.buildman, Buildman.events.buildingUnload, onBuildingUnload, this);
-    Events.on(root.buildman, Buildman.events.buildingFade, onBuildingFade, this);
-    Events.on(world, world.events.tick, onTick, this);
-    Events.on(root.camera.cameraScript, WorldCamera.events.inputClick, onClick, this);
+  Events.on(root.buildman, Buildman.events.buildingLoad, onBuildingLoad, this);
+  Events.on(
+    root.buildman,
+    Buildman.events.buildingUnload,
+    onBuildingUnload,
+    this,
+  );
+  Events.on(root.buildman, Buildman.events.buildingFade, onBuildingFade, this);
+  Events.on(world, world.events.tick, onTick, this);
+  Events.on(
+    root.camera.cameraScript,
+    WorldCamera.events.inputClick,
+    onClick,
+    this,
+  );
 
-    root.ui.gameScreen().worldScreen().busy.onChange(onBusyChange, false, this);
+  root.ui.gameScreen().worldScreen().busy.onChange(onBusyChange, false, this);
 
-    //views that were made before this ran are just as much on screen
-    var views = root.buildman.getBuildingViews();
+  //views that were made before this ran are just as much on screen
+  var views = root.buildman.getBuildingViews();
 
-    for (var i = 0; i < views.length; i++)
-        onBuildingLoad(root.buildman, views[i], this);
+  for (var i = 0; i < views.length; i++)
+    onBuildingLoad(root.buildman, views[i], this);
 
-    refresh(this);
+  refresh(this);
 };
 
 export default ServiceMan;

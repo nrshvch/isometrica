@@ -21,31 +21,31 @@ CityService.Jobs = CityJobs;
  * @constructor
  */
 function CityJobs(city) {
-    this.city = city;
+  this.city = city;
 
-    //when the jobs were last handed out - once a day is often enough, and
-    //every building asks during the same tick
-    this._at = null;
-    this._total = 0;
-    this._filled = 0;
-    //building id -> how many work there
-    this._workers = {};
+  //when the jobs were last handed out - once a day is often enough, and
+  //every building asks during the same tick
+  this._at = null;
+  this._total = 0;
+  this._filled = 0;
+  //building id -> how many work there
+  this._workers = {};
 }
 
 /**
  * @returns {number} how many jobs the working businesses offer
  */
 CityJobs.prototype.getJobs = function () {
-    allocate(this);
-    return this._total;
+  allocate(this);
+  return this._total;
 };
 
 /**
  * @returns {number} how many of them have somebody in them
  */
 CityJobs.prototype.getFilled = function () {
-    allocate(this);
-    return this._filled;
+  allocate(this);
+  return this._filled;
 };
 
 /**
@@ -53,8 +53,8 @@ CityJobs.prototype.getFilled = function () {
  * @returns {number} how many work in it
  */
 CityJobs.prototype.getWorkers = function (building) {
-    allocate(this);
-    return this._workers[building.id] || 0;
+  allocate(this);
+  return this._workers[building.id] || 0;
 };
 
 /**
@@ -65,43 +65,42 @@ CityJobs.prototype.getWorkers = function (building) {
  * @returns {number} 0..1
  */
 CityJobs.prototype.getStaffing = function (building) {
-    var jobs = building.jobs();
+  var jobs = building.jobs();
 
-    if (jobs === 0)
-        return building.data.jobs ? 0 : 1;
+  if (jobs === 0) return building.data.jobs ? 0 : 1;
 
-    return this.getWorkers(building) / jobs;
+  return this.getWorkers(building) / jobs;
 };
 
 function allocate(self) {
-    var now = self.city.world.time.now;
+  var now = self.city.world.time.now;
 
-    if (self._at === now)
-        return;
+  if (self._at === now) return;
 
-    var buildings = self.city.buildingService.getBuildings(),
-        left = self.city.population.getPopulation(),
-        total = 0,
-        workers = {},
-        jobs, n, i;
+  var buildings = self.city.buildingService.getBuildings(),
+    left = self.city.population.getPopulation(),
+    total = 0,
+    workers = {},
+    jobs,
+    n,
+    i;
 
-    //the city's buildings are kept in the order they went up
-    for (i = 0; i < buildings.length; i++) {
-        jobs = buildings[i].jobs();
+  //the city's buildings are kept in the order they went up
+  for (i = 0; i < buildings.length; i++) {
+    jobs = buildings[i].jobs();
 
-        if (jobs === 0)
-            continue;
+    if (jobs === 0) continue;
 
-        n = Math.min(jobs, left);
-        left -= n;
-        total += jobs;
-        workers[buildings[i].id] = n;
-    }
+    n = Math.min(jobs, left);
+    left -= n;
+    total += jobs;
+    workers[buildings[i].id] = n;
+  }
 
-    self._at = now;
-    self._total = total;
-    self._filled = self.city.population.getPopulation() - left;
-    self._workers = workers;
+  self._at = now;
+  self._total = total;
+  self._filled = self.city.population.getPopulation() - left;
+  self._workers = workers;
 }
 
 export default CityJobs;

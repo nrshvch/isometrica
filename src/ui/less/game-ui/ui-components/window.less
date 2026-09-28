@@ -38,7 +38,6 @@
           font-size: 0;
 
           .tab:extend(.ui-tab all) {
-
             display: inline-block;
             height: 100%;
             margin: 0 4px;
@@ -82,14 +81,16 @@
         }
 
         .tab-content {
-          @duration: .33s;
+          @duration: 0.33s;
 
           position: absolute;
           height: 100%;
           width: 100%;
           top: 0;
           left: -100%;
-          transition: left @duration, opacity 0s @duration;
+          transition:
+            left @duration,
+            opacity 0s @duration;
           opacity: 0;
 
           &.active ~ .tab-content {
@@ -99,7 +100,9 @@
           &.active {
             opacity: 1;
             left: 0;
-            transition: left @duration, opacity 0s 0s;
+            transition:
+              left @duration,
+              opacity 0s 0s;
           }
         }
       }
@@ -124,14 +127,12 @@
             display: inline-block;
             height: 50%;
             max-width: 25%;
-
           }
           .text {
             display: inline-block;
             vertical-align: middle;
             font-size: 10pt;
           }
-
         }
 
         &.count-5 {
@@ -142,7 +143,6 @@
               font-size: 6pt;
             }
           }
-
         }
         &.count-4 {
           .button {
@@ -152,23 +152,19 @@
               font-size: 7pt;
             }
           }
-
         }
         &.count-3 {
           .button {
             width: 34%;
-
           }
           .button + .button {
             width: 33%;
           }
-
         }
         &.count-2 {
           .button {
             width: 50%;
           }
-
         }
         &.count-1 {
           .button {

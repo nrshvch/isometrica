@@ -30,30 +30,29 @@ CityPopulation.TAX_MONEY = TAX_MONEY;
  * @param data {Object} building data
  * @returns {number} money per tick, per head
  */
-function taxPerResident(data){
-    return data.taxPerResident !== undefined ? data.taxPerResident : TAX_MONEY;
+function taxPerResident(data) {
+  return data.taxPerResident !== undefined ? data.taxPerResident : TAX_MONEY;
 }
 CityPopulation.taxPerResident = taxPerResident;
-
 
 /**
  * @param city {City}
  * @constructor
  */
-function CityPopulation(city){
-    this.city = city;
-    this._population = 0;
+function CityPopulation(city) {
+  this.city = city;
+  this._population = 0;
 
-    //who lives where, worked out once a day like the jobs are (see CityJobs)
-    this._housedAt = null;
-    this._residents = {};
-    this._shortOfJobs = {};
+  //who lives where, worked out once a day like the jobs are (see CityJobs)
+  this._housedAt = null;
+  this._residents = {};
+  this._shortOfJobs = {};
 }
 
-CityPopulation.prototype.init = function(){
-    var world = this.city.world;
+CityPopulation.prototype.init = function () {
+  var world = this.city.world;
 
-    Events.on(world, world.events.tick, onTick, this);
+  Events.on(world, world.events.tick, onTick, this);
 };
 
 /**
@@ -63,8 +62,8 @@ CityPopulation.prototype.init = function(){
  * @param data {Object} building data
  * @returns {boolean}
  */
-function needsJobs(data){
-    return data.needsJobs !== false;
+function needsJobs(data) {
+  return data.needsJobs !== false;
 }
 CityPopulation.needsJobs = needsJobs;
 
@@ -73,26 +72,26 @@ CityPopulation.needsJobs = needsJobs;
  *                   that need no jobs, and as many of the rest as there are
  *                   jobs to go round
  */
-CityPopulation.prototype.getCapacity = function(){
-    return calculateCapacity(this);
+CityPopulation.prototype.getCapacity = function () {
+  return calculateCapacity(this);
 };
 
-CityPopulation.prototype.getPopulation = function(){
-    return Math.max(this._population | 0, 0);
+CityPopulation.prototype.getPopulation = function () {
+  return Math.max(this._population | 0, 0);
 };
 
 /**
  * @returns {number} how many live here, down to the fraction a tick moves
  */
-CityPopulation.prototype.save = function(){
-    return this._population;
+CityPopulation.prototype.save = function () {
+  return this._population;
 };
 
 /**
  * @param population {number}
  */
-CityPopulation.prototype.load = function(population){
-    this._population = population || 0;
+CityPopulation.prototype.load = function (population) {
+  this._population = population || 0;
 };
 
 /**
@@ -103,9 +102,9 @@ CityPopulation.prototype.load = function(population){
  * @param building {Building}
  * @returns {number}
  */
-CityPopulation.prototype.getResidents = function(building){
-    house(this);
-    return this._residents[building.id] || 0;
+CityPopulation.prototype.getResidents = function (building) {
+  house(this);
+  return this._residents[building.id] || 0;
 };
 
 /**
@@ -117,120 +116,121 @@ CityPopulation.prototype.getResidents = function(building){
  * @param building {Building}
  * @returns {boolean}
  */
-CityPopulation.prototype.isShortOfJobs = function(building){
-    house(this);
-    return this._shortOfJobs[building.id] === true;
+CityPopulation.prototype.isShortOfJobs = function (building) {
+  house(this);
+  return this._shortOfJobs[building.id] === true;
 };
 
-CityPopulation.prototype.getTaxIncomeAmount = function(){
-    var buildings = this.city.buildingService.getBuildings(),
-        total = 0, i;
+CityPopulation.prototype.getTaxIncomeAmount = function () {
+  var buildings = this.city.buildingService.getBuildings(),
+    total = 0,
+    i;
 
-    house(this);
+  house(this);
 
-    for (i = 0; i < buildings.length; i++)
-        total += (this._residents[buildings[i].id] || 0)
-            * taxPerResident(buildings[i].data);
+  for (i = 0; i < buildings.length; i++)
+    total +=
+      (this._residents[buildings[i].id] || 0) *
+      taxPerResident(buildings[i].data);
 
-    return total;
+  return total;
 };
 
-function onTick(world, args, self){
-    populationChangePerTick(self);
+function onTick(world, args, self) {
+  populationChangePerTick(self);
 
-    payTaxes(self);
+  payTaxes(self);
 }
 
-function house(self){
-    var now = self.city.world.time.now;
+function house(self) {
+  var now = self.city.world.time.now;
 
-    if (self._housedAt === now)
-        return;
+  if (self._housedAt === now) return;
 
-    var buildings = self.city.buildingService.getBuildings(),
-        left = self.getPopulation(),
-        //beds in houses that need jobs are only good for as many as can work
-        jobs = self.city.jobs.getJobs(),
-        //the same jobs handed to beds rather than people, so that a house
-        //still waiting for its people is known to be short all the same
-        bedJobs = jobs,
-        residents = {},
-        shortOfJobs = {},
-        capacity, n, i;
+  var buildings = self.city.buildingService.getBuildings(),
+    left = self.getPopulation(),
+    //beds in houses that need jobs are only good for as many as can work
+    jobs = self.city.jobs.getJobs(),
+    //the same jobs handed to beds rather than people, so that a house
+    //still waiting for its people is known to be short all the same
+    bedJobs = jobs,
+    residents = {},
+    shortOfJobs = {},
+    capacity,
+    n,
+    i;
 
-    for (i = 0; i < buildings.length; i++) {
-        capacity = buildings[i].citizenCapacity();
+  for (i = 0; i < buildings.length; i++) {
+    capacity = buildings[i].citizenCapacity();
 
-        if (capacity === 0)
-            continue;
+    if (capacity === 0) continue;
 
-        if (needsJobs(buildings[i].data)) {
-            if (bedJobs === 0)
-                shortOfJobs[buildings[i].id] = true;
+    if (needsJobs(buildings[i].data)) {
+      if (bedJobs === 0) shortOfJobs[buildings[i].id] = true;
 
-            bedJobs = Math.max(bedJobs - capacity, 0);
-            capacity = Math.min(capacity, jobs);
-        }
-
-        n = Math.min(capacity, left);
-        left -= n;
-        residents[buildings[i].id] = n;
-
-        if (needsJobs(buildings[i].data))
-            jobs -= n;
+      bedJobs = Math.max(bedJobs - capacity, 0);
+      capacity = Math.min(capacity, jobs);
     }
 
-    self._housedAt = now;
-    self._residents = residents;
-    self._shortOfJobs = shortOfJobs;
+    n = Math.min(capacity, left);
+    left -= n;
+    residents[buildings[i].id] = n;
+
+    if (needsJobs(buildings[i].data)) jobs -= n;
+  }
+
+  self._housedAt = now;
+  self._residents = residents;
+  self._shortOfJobs = shortOfJobs;
 }
 
-function calculateCapacity(self){
-    var free = 0, working = 0;
-    var buildings = self.city.buildingService.getBuildings();
-    for (var key in buildings) {
-        var building = buildings[key];
+function calculateCapacity(self) {
+  var free = 0,
+    working = 0;
+  var buildings = self.city.buildingService.getBuildings();
+  for (var key in buildings) {
+    var building = buildings[key];
 
-        if (needsJobs(building.data))
-            working += building.citizenCapacity();
-        else
-            free += building.citizenCapacity();
-    }
-    return free + Math.min(working, self.city.jobs.getJobs());
+    if (needsJobs(building.data)) working += building.citizenCapacity();
+    else free += building.citizenCapacity();
+  }
+  return free + Math.min(working, self.city.jobs.getJobs());
 }
 
 function populationChangePerTick(self) {
-    var pop = self.getPopulation();
-    var totalCap = calculateCapacity(self);
-    var avgEco = self.city.tilesParams.avgEco();
-    var change = 0;
-    var cap = totalCap - pop;
-    var citizensLeaveDueBadRatings = pop * 0.01; //1% of population
-    var maxCitizensCanJoin = cap > 0 ? Math.max(1, Math.sqrt(cap)) : 0;
+  var pop = self.getPopulation();
+  var totalCap = calculateCapacity(self);
+  var avgEco = self.city.tilesParams.avgEco();
+  var change = 0;
+  var cap = totalCap - pop;
+  var citizensLeaveDueBadRatings = pop * 0.01; //1% of population
+  var maxCitizensCanJoin = cap > 0 ? Math.max(1, Math.sqrt(cap)) : 0;
 
-    //calculate overralEffect
-    var ecoEffect = avgEco / (MAX_PARAM_VAL / 2) - 1; // (-1,1)
-    var ecoWeight = 1;
-    var overallEffect = ecoEffect * ecoWeight; // (-1,1)
+  //calculate overralEffect
+  var ecoEffect = avgEco / (MAX_PARAM_VAL / 2) - 1; // (-1,1)
+  var ecoWeight = 1;
+  var overallEffect = ecoEffect * ecoWeight; // (-1,1)
 
-    //if effect is low , citizens leave
-    if (overallEffect < 0) {
-        change = citizensLeaveDueBadRatings * overallEffect;
-    } else if (cap < 0) {//if capacity is not enough citizens leave by one
-        change = -1;
-    } else {//if effect is high enough , citizens join
-        change = maxCitizensCanJoin * overallEffect;
-    }
+  //if effect is low , citizens leave
+  if (overallEffect < 0) {
+    change = citizensLeaveDueBadRatings * overallEffect;
+  } else if (cap < 0) {
+    //if capacity is not enough citizens leave by one
+    change = -1;
+  } else {
+    //if effect is high enough , citizens join
+    change = maxCitizensCanJoin * overallEffect;
+  }
 
-    //console.log("CAP:"+cap,"AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
+  //console.log("CAP:"+cap,"AECO:"+avgEco,"ECO:"+ecoEffect, "OVRL:"+overallEffect,"CHNG:"+change);
 
-    self._population += change;
+  self._population += change;
 }
 
-function payTaxes(self){
-    var money = {};
-    money[Resource.money] = self.getTaxIncomeAmount();
-    self.city.resourcesModule.add(money);
+function payTaxes(self) {
+  var money = {};
+  money[Resource.money] = self.getTaxIncomeAmount();
+  self.city.resourcesModule.add(money);
 }
 
 export default CityPopulation;

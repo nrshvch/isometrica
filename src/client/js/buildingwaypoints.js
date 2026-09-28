@@ -10,7 +10,6 @@ import BuildingCode from "data/buildingcode";
  также должен вращаться транфсформ объекта.
  */
 
-
 //paths are identified by entrance and exit ID. Both IDs form an ID of path.
 //Id of path is 6 bits long, where:
 //first(most-right) 2 bits - entrance id
@@ -19,10 +18,10 @@ import BuildingCode from "data/buildingcode";
 //last 1 bit - flag that identicated that path lead to exit
 
 var Direction = {
-    NE: 0, // 1 0
-    SE: 1, // 0 -1
-    SW: 2, // -1 0
-    NW: 3 // 0 1
+  NE: 0, // 1 0
+  SE: 1, // 0 -1
+  SW: 2, // -1 0
+  NW: 3, // 0 1
 };
 
 var w = {};
@@ -32,48 +31,88 @@ var w = {};
 //Thats why each gate index should increased by 1.
 
 //generic road
-var road = w[BuildingCode.road] = {};
+var road = (w[BuildingCode.road] = {});
 
-road[(Direction.NE + 1) | (Direction.SE + 1) << 8] = [[12,0,8],[-8,0,8],[-8,0,-12]];
-road[(Direction.NE + 1) | (Direction.SW + 1) << 8] = [[12,0,8],[-12,0,8]];
-road[(Direction.NE + 1) | (Direction.NW + 1) << 8] = [[12,0,8],[8,0,8],[8,0,12]];
+road[(Direction.NE + 1) | ((Direction.SE + 1) << 8)] = [
+  [12, 0, 8],
+  [-8, 0, 8],
+  [-8, 0, -12],
+];
+road[(Direction.NE + 1) | ((Direction.SW + 1) << 8)] = [
+  [12, 0, 8],
+  [-12, 0, 8],
+];
+road[(Direction.NE + 1) | ((Direction.NW + 1) << 8)] = [
+  [12, 0, 8],
+  [8, 0, 8],
+  [8, 0, 12],
+];
 
-road[(Direction.SE + 1) | (Direction.NE + 1) << 8] = [[8,0,-12],[8,0,-8],[12,0,-8]];
-road[(Direction.SE + 1) | (Direction.SW + 1) << 8] = [[8,0,-12],[8,0,8],[-12,0,8]];
-road[(Direction.SE + 1) | (Direction.NW + 1) << 8] = [[8,0,-12],[8,0,12]];
+road[(Direction.SE + 1) | ((Direction.NE + 1) << 8)] = [
+  [8, 0, -12],
+  [8, 0, -8],
+  [12, 0, -8],
+];
+road[(Direction.SE + 1) | ((Direction.SW + 1) << 8)] = [
+  [8, 0, -12],
+  [8, 0, 8],
+  [-12, 0, 8],
+];
+road[(Direction.SE + 1) | ((Direction.NW + 1) << 8)] = [
+  [8, 0, -12],
+  [8, 0, 12],
+];
 
-road[(Direction.SW + 1) | (Direction.NE + 1) << 8] = [[-12,0,-8],[12,0,-8]];
-road[(Direction.SW + 1) | (Direction.SE + 1) << 8] = [[-12,0,-8],[-8,0,-8], [-8,0,-12]];
-road[(Direction.SW + 1) | (Direction.NW + 1) << 8] = [[-12,0,-8],[8,0,-8],[8,0,12]];
+road[(Direction.SW + 1) | ((Direction.NE + 1) << 8)] = [
+  [-12, 0, -8],
+  [12, 0, -8],
+];
+road[(Direction.SW + 1) | ((Direction.SE + 1) << 8)] = [
+  [-12, 0, -8],
+  [-8, 0, -8],
+  [-8, 0, -12],
+];
+road[(Direction.SW + 1) | ((Direction.NW + 1) << 8)] = [
+  [-12, 0, -8],
+  [8, 0, -8],
+  [8, 0, 12],
+];
 
-road[(Direction.NW + 1) | (Direction.NE + 1) << 8] = [[-8,0,12],[-8,0,-8],[12,0,-8]];
-road[(Direction.NW + 1) | (Direction.SE + 1) << 8] = [[-8,0,12],[-8,0,-12]];
-road[(Direction.NW + 1) | (Direction.SW + 1) << 8] = [[-8,0,12],[-8,0,8],[-12,0,8]];
+road[(Direction.NW + 1) | ((Direction.NE + 1) << 8)] = [
+  [-8, 0, 12],
+  [-8, 0, -8],
+  [12, 0, -8],
+];
+road[(Direction.NW + 1) | ((Direction.SE + 1) << 8)] = [
+  [-8, 0, 12],
+  [-8, 0, -12],
+];
+road[(Direction.NW + 1) | ((Direction.SW + 1) << 8)] = [
+  [-8, 0, 12],
+  [-8, 0, 8],
+  [-12, 0, 8],
+];
 
-road[Direction.NE + 1] = [[0,0,0]];
-road[Direction.SE + 1] = [[0,0,0]];
-road[Direction.SW + 1] = [[0,0,0]];
-road[Direction.NW + 1] = [[0,0,0]];
+road[Direction.NE + 1] = [[0, 0, 0]];
+road[Direction.SE + 1] = [[0, 0, 0]];
+road[Direction.SW + 1] = [[0, 0, 0]];
+road[Direction.NW + 1] = [[0, 0, 0]];
 
-road[(Direction.NE + 1) << 8] = [[0,0,0]];
-road[(Direction.SE + 1) << 8] = [[0,0,0]];
-road[(Direction.SW + 1) << 8] = [[0,0,0]];
-road[(Direction.NW + 1) << 8] = [[0,0,0]];
-
+road[(Direction.NE + 1) << 8] = [[0, 0, 0]];
+road[(Direction.SE + 1) << 8] = [[0, 0, 0]];
+road[(Direction.SW + 1) << 8] = [[0, 0, 0]];
+road[(Direction.NW + 1) << 8] = [[0, 0, 0]];
 
 //mobile house
-var house0 = w[BuildingCode.house0] = {};
+var house0 = (w[BuildingCode.house0] = {});
 
-house0[1] = [[0,0,0]];
-house0[2] = [[0,0,0]];
-house0[3] = [[0,0,0]];
-house0[4] = [[0,0,0]];
-house0[1 << 8] = [[0,0,0]];
-house0[2 << 8] = [[0,0,0]];
-house0[3 << 8] = [[0,0,0]];
-house0[4 << 8] = [[0,0,0]];
-
-
-
+house0[1] = [[0, 0, 0]];
+house0[2] = [[0, 0, 0]];
+house0[3] = [[0, 0, 0]];
+house0[4] = [[0, 0, 0]];
+house0[1 << 8] = [[0, 0, 0]];
+house0[2 << 8] = [[0, 0, 0]];
+house0[3 << 8] = [[0, 0, 0]];
+house0[4 << 8] = [[0, 0, 0]];
 
 export default w;

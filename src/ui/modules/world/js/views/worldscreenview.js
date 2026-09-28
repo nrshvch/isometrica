@@ -7,191 +7,177 @@ import BuildingCode from "data/buildingcode";
 var template = Handlebars.compile(__templateSource);
 
 var btns = {
-    confirm: {
-        icon: "tick-icon",
-        action: function (view) {
-
-        }
+  confirm: {
+    icon: "tick-icon",
+    action: function (view) {},
+  },
+  cancel: {
+    icon: "cross-icon",
+    action: function (view) {},
+  },
+  return: {
+    icon: "back-icon",
+    action: function (view) {},
+  },
+  config: {
+    icon: "gear-icon",
+    action: function (view) {},
+  },
+  lab: {
+    icon: "face-icon",
+    action: function (view) {},
+  },
+  destroy: {
+    icon: "bulldozer-icon",
+    action: function (view) {},
+  },
+  build: {
+    icon: "coin-icon",
+    action: function (view) {
+      view.showBuildButtons();
     },
-    cancel: {
-        icon: "cross-icon",
-        action: function (view) {
-
-        }
+  },
+  "build-road": {
+    icon: "clock-icon",
+    action: function (view) {
+      view.showMainButtons();
     },
-    "return": {
-        icon: "back-icon",
-        action: function (view) {
-
-        }
-    },
-    config: {
-        icon: "gear-icon",
-        action: function (view) {
-
-        }
-    },
-    lab: {
-        icon: "face-icon",
-        action: function (view) {
-
-        }
-    },
-    destroy: {
-        icon: "bulldozer-icon",
-        action: function (view) {
-
-        }
-    },
-    build: {
-        icon: "coin-icon",
-        action: function (view) {
-            view.showBuildButtons();
-        }
-    },
-    "build-road": {
-        icon: "clock-icon",
-        action: function (view) {
-            view.showMainButtons();
-        }
-    },
-    pan: {
-        icon: "clock-icon",
-        action: function (view) {
-
-        }
-    }
+  },
+  pan: {
+    icon: "clock-icon",
+    action: function (view) {},
+  },
 };
 
 function setBtn(self, index, icon, f) {
-    var state = self._state;
-    var btn = state[index] || (state[index] = {});
-    btn.icon = icon;
-    btn.action = f;
+  var state = self._state;
+  var btn = state[index] || (state[index] = {});
+  btn.icon = icon;
+  btn.action = f;
 }
 
 function unsetBtn(self, index) {
-    delete self._state[index];
+  delete self._state[index];
 }
 
 function unsetBtns(self) {
-    unsetBtn(self, 0);
-    unsetBtn(self, 1);
-    unsetBtn(self, 2);
-    unsetBtn(self, 3);
-    unsetBtn(self, 4);
+  unsetBtn(self, 0);
+  unsetBtn(self, 1);
+  unsetBtn(self, 2);
+  unsetBtn(self, 3);
+  unsetBtn(self, 4);
 }
 
 function renderBtns(self) {
-    var $btns = $(".btn", self.$el);
+  var $btns = $(".btn", self.$el);
 
-    //reset
-    $btns.removeClass().addClass("btn").off("click");
+  //reset
+  $btns.removeClass().addClass("btn").off("click");
 
-    var state = self._state;
-    for (var key in state) {
-        var btn = state[key];
-        if (btn !== undefined) {
-            var $btn = $btns.eq(parseInt(key, 10));
-            $btn.addClass(btn.icon);
-            $btn.on("click", btn.action);
-        }
+  var state = self._state;
+  for (var key in state) {
+    var btn = state[key];
+    if (btn !== undefined) {
+      var $btn = $btns.eq(parseInt(key, 10));
+      $btn.addClass(btn.icon);
+      $btn.on("click", btn.action);
     }
+  }
 }
 
 function WorldScreenView() {
-    Backbone.View.apply(this, arguments);
+  Backbone.View.apply(this, arguments);
 }
 
 WorldScreenView.prototype = Object.create(Backbone.View.prototype);
 
 WorldScreenView.prototype.initialize = function (options) {
-    this.controller = options.controller;
+  this.controller = options.controller;
 
-    this.mainCanvas = document.createElement("canvas");
-    this.mainCanvas.id = "mainCanvas";
+  this.mainCanvas = document.createElement("canvas");
+  this.mainCanvas.id = "mainCanvas";
 
-    this.setElement(template());
-    $(".body", this.el).append(this.mainCanvas);
+  this.setElement(template());
+  $(".body", this.el).append(this.mainCanvas);
 
-    this.render();
+  this.render();
 
-    this._state = {};
+  this._state = {};
 };
 
 WorldScreenView.prototype.getCanvas = function () {
-    return this.mainCanvas;//$("#mainCanvas", this.el);
+  return this.mainCanvas; //$("#mainCanvas", this.el);
 };
 
 WorldScreenView.prototype.render = function () {
-    renderBtns(this);
-    return this;
+  renderBtns(this);
+  return this;
 };
 
 WorldScreenView.prototype.showInitialButtons = function () {
-    var view = this;
-    unsetBtns(this);
-    setBtn(this, 2, "house-icon", function () {
-        view.controller.client.cityman.establish();
-    });
+  var view = this;
+  unsetBtns(this);
+  setBtn(this, 2, "house-icon", function () {
+    view.controller.client.cityman.establish();
+  });
 
-    renderBtns(this);
+  renderBtns(this);
 };
 
 WorldScreenView.prototype.showBuildButtons = function () {
-    var view = this;
-    unsetBtns(this);
-    setBtn(this, 0, "cross-icon", function () {
-        view.controller.startFresh();
-    });
-    setBtn(this, 1, "house-icon", function () {
-        view.controller.ui.navigate("catalogue");
-    });
-    setBtn(this, 2, "road-icon", function () {
-        view.controller.ui.navigate("build", [BuildingCode.road]);
-    });
-    setBtn(this, 3, "bulldozer-icon", function () {
-        view.controller.ui.navigate("terrain");
-    });
-    setBtn(this, 4, "tile-dollar-icon", function () {
-        view.controller.ui.navigate("land");
-    });
+  var view = this;
+  unsetBtns(this);
+  setBtn(this, 0, "cross-icon", function () {
+    view.controller.startFresh();
+  });
+  setBtn(this, 1, "house-icon", function () {
+    view.controller.ui.navigate("catalogue");
+  });
+  setBtn(this, 2, "road-icon", function () {
+    view.controller.ui.navigate("build", [BuildingCode.road]);
+  });
+  setBtn(this, 3, "bulldozer-icon", function () {
+    view.controller.ui.navigate("terrain");
+  });
+  setBtn(this, 4, "tile-dollar-icon", function () {
+    view.controller.ui.navigate("land");
+  });
 
-    renderBtns(this);
+  renderBtns(this);
 };
 
 WorldScreenView.prototype.showActionButtons = function (controls) {
-    var view = this;
+  var view = this;
 
-    function render() {
-        unsetBtns(view);
+  function render() {
+    unsetBtns(view);
 
-        //an action that is only ever left, never confirmed - picking which block
-        //of land to buy, say - has nothing for a tick to do
-        if (controls.canSubmit()) {
-            setBtn(view, 2, "tick-icon", function () {
-                controls.submit();
-            });
-        }
-        setBtn(view, 0, "cross-icon", function () {
-            controls.discard();
-        });
+    //an action that is only ever left, never confirmed - picking which block
+    //of land to buy, say - has nothing for a tick to do
+    if (controls.canSubmit()) {
+      setBtn(view, 2, "tick-icon", function () {
+        controls.submit();
+      });
+    }
+    setBtn(view, 0, "cross-icon", function () {
+      controls.discard();
+    });
 
-        // canRotate may be set by the caller only after this view was
-        // handed the controls, so keep the button in sync with it instead
-        // of reading it once
-        if (controls.canRotate()) {
-            setBtn(view, 1, "rotation-icon", function () {
-                controls.rotate();
-            });
-        }
-
-        renderBtns(view);
+    // canRotate may be set by the caller only after this view was
+    // handed the controls, so keep the button in sync with it instead
+    // of reading it once
+    if (controls.canRotate()) {
+      setBtn(view, 1, "rotation-icon", function () {
+        controls.rotate();
+      });
     }
 
-    controls.canRotate.onChange(render, false, this);
-    controls.canSubmit.onChange(render, false, this);
-    render();
+    renderBtns(view);
+  }
+
+  controls.canRotate.onChange(render, false, this);
+  controls.canSubmit.onChange(render, false, this);
+  render();
 };
 
 /**
@@ -201,18 +187,18 @@ WorldScreenView.prototype.showActionButtons = function (controls) {
  *                stays empty
  */
 WorldScreenView.prototype.showToolButtons = function (buttons) {
-    unsetBtns(this);
+  unsetBtns(this);
 
-    for (var i = 0; i < buttons.length; i++) {
-        if (buttons[i] !== undefined)
-            setBtn(this, i, buttons[i].icon, buttons[i].action);
-    }
+  for (var i = 0; i < buttons.length; i++) {
+    if (buttons[i] !== undefined)
+      setBtn(this, i, buttons[i].icon, buttons[i].action);
+  }
 
-    renderBtns(this);
+  renderBtns(this);
 };
 
 WorldScreenView.prototype.hint = function (text) {
-    $(".hint", this.$el).text(text);
+  $(".hint", this.$el).text(text);
 };
 
 export default WorldScreenView;

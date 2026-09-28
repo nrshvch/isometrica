@@ -6,8 +6,8 @@
  * @enum BuildingPositioning
  */
 var BuildingPositioning = {
-    flat: 0,
-    resource: 1
+  flat: 0,
+  resource: 1,
 };
 
 export default BuildingPositioning;

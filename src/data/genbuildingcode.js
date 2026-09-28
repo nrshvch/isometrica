@@ -16,7 +16,7 @@ var BASE = 100;
 //a layout is worth 100, a storey 10 and a palette 1: room for nine storeys and
 //ten palettes of each layout before one layout runs into the next
 var LAYOUTS = ["tower", "toweryard", "wall", "wallyard"],
-    PALETTES = ["panel", "sand", "slate"];
+  PALETTES = ["panel", "sand", "slate"];
 
 var NAME = /^apartments-([a-z]+?)(\d+)-([a-z]+)$/;
 
@@ -29,32 +29,54 @@ var NAME = /^apartments-([a-z]+?)(\d+)-([a-z]+)$/;
  * @returns {{code: number, layout: string, storeys: number, palette: string}}
  */
 function genBuildingCode(name) {
-    var parts = NAME.exec(name);
+  var parts = NAME.exec(name);
 
-    if (!parts)
-        throw new Error("generated building '" + name + "' is not named apartments-<layout><storeys>-<palette>");
+  if (!parts)
+    throw new Error(
+      "generated building '" +
+        name +
+        "' is not named apartments-<layout><storeys>-<palette>",
+    );
 
-    var layout = parts[1],
-        storeys = parseInt(parts[2], 10),
-        palette = parts[3],
-        layoutAt = LAYOUTS.indexOf(layout),
-        paletteAt = PALETTES.indexOf(palette);
+  var layout = parts[1],
+    storeys = parseInt(parts[2], 10),
+    palette = parts[3],
+    layoutAt = LAYOUTS.indexOf(layout),
+    paletteAt = PALETTES.indexOf(palette);
 
-    //a layout or a palette nobody has given a slot to would otherwise land on
-    //somebody else's code and quietly take their place
-    if (layoutAt < 0)
-        throw new Error("generated building '" + name + "' has layout '" + layout + "', which data/genbuildingcode has no slot for");
-    if (paletteAt < 0)
-        throw new Error("generated building '" + name + "' has palette '" + palette + "', which data/genbuildingcode has no slot for");
-    if (storeys < 1 || storeys > 9)
-        throw new Error("generated building '" + name + "' has " + storeys + " storeys, which does not fit a code");
+  //a layout or a palette nobody has given a slot to would otherwise land on
+  //somebody else's code and quietly take their place
+  if (layoutAt < 0)
+    throw new Error(
+      "generated building '" +
+        name +
+        "' has layout '" +
+        layout +
+        "', which data/genbuildingcode has no slot for",
+    );
+  if (paletteAt < 0)
+    throw new Error(
+      "generated building '" +
+        name +
+        "' has palette '" +
+        palette +
+        "', which data/genbuildingcode has no slot for",
+    );
+  if (storeys < 1 || storeys > 9)
+    throw new Error(
+      "generated building '" +
+        name +
+        "' has " +
+        storeys +
+        " storeys, which does not fit a code",
+    );
 
-    return {
-        code: BASE + layoutAt * 100 + storeys * 10 + paletteAt,
-        layout: layout,
-        storeys: storeys,
-        palette: palette
-    };
+  return {
+    code: BASE + layoutAt * 100 + storeys * 10 + paletteAt,
+    layout: layout,
+    storeys: storeys,
+    palette: palette,
+  };
 }
 
 export default genBuildingCode;

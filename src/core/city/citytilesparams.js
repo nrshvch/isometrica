@@ -5,27 +5,30 @@ import TileParam from "../world/tileparam";
 import namespace from "namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
-    CityService.TileParams = CityTilesParams;
+CityService.TileParams = CityTilesParams;
 
-    function CityTilesParams(city){
-        this.city = city;
-    }
+function CityTilesParams(city) {
+  this.city = city;
+}
 
-    CityTilesParams.prototype.avgEco = function(){
-        var area = this.city.area.getTiles(),
-            t,
-            worldTilesParams = this.city.world.tileParams,
-            params, eco, ecosum = 0, i = 0;
+CityTilesParams.prototype.avgEco = function () {
+  var area = this.city.area.getTiles(),
+    t,
+    worldTilesParams = this.city.world.tileParams,
+    params,
+    eco,
+    ecosum = 0,
+    i = 0;
 
-        for(var key in area){
-            t = area[key];
-            params = worldTilesParams.get(t);
-            eco = params[TileParam.Ecology] || 0;
-            ecosum += eco;
-            i++;
-        }
+  for (var key in area) {
+    t = area[key];
+    params = worldTilesParams.get(t);
+    eco = params[TileParam.Ecology] || 0;
+    ecosum += eco;
+    i++;
+  }
 
-        return (i > 0 && ecosum / i) || -1;
-    };
+  return (i > 0 && ecosum / i) || -1;
+};
 
 export default CityTilesParams;

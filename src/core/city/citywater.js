@@ -29,19 +29,19 @@ CityService.Water = CityWater;
  * @constructor
  */
 function CityWater(city) {
-    this.city = city;
-    this._covered = {};
-    this._towers = 0;
-    this._stale = true;
+  this.city = city;
+  this._covered = {};
+  this._towers = 0;
+  this._stale = true;
 }
 
 CityWater.prototype.init = function () {
-    var buildings = this.city.world.buildings;
+  var buildings = this.city.world.buildings;
 
-    Events.on(buildings, buildings.events.buildingBuilt, onChange, this);
-    Events.on(buildings, buildings.events.buildingRemoved, onChange, this);
-    //a tower waters nothing until it is finished
-    Events.on(buildings, buildings.events.buildingStateChange, onChange, this);
+  Events.on(buildings, buildings.events.buildingBuilt, onChange, this);
+  Events.on(buildings, buildings.events.buildingRemoved, onChange, this);
+  //a tower waters nothing until it is finished
+  Events.on(buildings, buildings.events.buildingStateChange, onChange, this);
 };
 
 /**
@@ -49,8 +49,8 @@ CityWater.prototype.init = function () {
  * @returns {boolean} whether any of the city's towers reaches that tile
  */
 CityWater.prototype.covers = function (tile) {
-    update(this);
-    return this._covered[tile] === true;
+  update(this);
+  return this._covered[tile] === true;
 };
 
 /**
@@ -58,15 +58,15 @@ CityWater.prototype.covers = function (tile) {
  * @returns {boolean}
  */
 CityWater.prototype.serves = function (building) {
-    return this.covers(building.tile);
+  return this.covers(building.tile);
 };
 
 /**
  * @returns {number} how many towers are pumping
  */
 CityWater.prototype.getTowerCount = function () {
-    update(this);
-    return this._towers;
+  update(this);
+  return this._towers;
 };
 
 /**
@@ -77,11 +77,12 @@ CityWater.prototype.getTowerCount = function () {
  * @returns {number}
  */
 CityWater.radius = function (buildingOrCode) {
-    var code = buildingOrCode !== null && typeof buildingOrCode === "object"
-        ? buildingOrCode.buildingCode
-        : buildingOrCode;
+  var code =
+    buildingOrCode !== null && typeof buildingOrCode === "object"
+      ? buildingOrCode.buildingCode
+      : buildingOrCode;
 
-    return BuildingData[code].waterRadius || 0;
+  return BuildingData[code].waterRadius || 0;
 };
 
 /**
@@ -94,50 +95,49 @@ CityWater.radius = function (buildingOrCode) {
  * @returns {number[]}
  */
 CityWater.coverage = function (tile, radius) {
-    var tiles = [];
+  var tiles = [];
 
-    if (radius <= 0)
-        return tiles;
+  if (radius <= 0) return tiles;
 
-    var iter = new TileIteratorRadial(tile, radius);
+  var iter = new TileIteratorRadial(tile, radius);
 
-    while (!iter.done)
-        tiles.push(TileIteratorRadial.next(iter));
+  while (!iter.done) tiles.push(TileIteratorRadial.next(iter));
 
-    return tiles;
+  return tiles;
 };
 
 function onChange(sender, args, self) {
-    self._stale = true;
+  self._stale = true;
 }
 
 function update(self) {
-    if (!self._stale)
-        return;
+  if (!self._stale) return;
 
-    var buildings = self.city.buildings.getBuildings(),
-        covered = {},
-        towers = 0,
-        building, radius, tiles, i, j;
+  var buildings = self.city.buildings.getBuildings(),
+    covered = {},
+    towers = 0,
+    building,
+    radius,
+    tiles,
+    i,
+    j;
 
-    for (i = 0; i < buildings.length; i++) {
-        building = buildings[i];
-        radius = CityWater.radius(building);
+  for (i = 0; i < buildings.length; i++) {
+    building = buildings[i];
+    radius = CityWater.radius(building);
 
-        if (radius <= 0 || building.getState() !== BuildingState.ready)
-            continue;
+    if (radius <= 0 || building.getState() !== BuildingState.ready) continue;
 
-        towers++;
+    towers++;
 
-        tiles = CityWater.coverage(building.tile, radius);
+    tiles = CityWater.coverage(building.tile, radius);
 
-        for (j = 0; j < tiles.length; j++)
-            covered[tiles[j]] = true;
-    }
+    for (j = 0; j < tiles.length; j++) covered[tiles[j]] = true;
+  }
 
-    self._covered = covered;
-    self._towers = towers;
-    self._stale = false;
+  self._covered = covered;
+  self._towers = towers;
+  self._stale = false;
 }
 
 export default CityWater;

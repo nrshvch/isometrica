@@ -21,8 +21,8 @@ var Core = Namespace("Isometrica.Core");
  * @exports ResourceCode
  * @enum {string}
  */
-var ResourceCode = Core.ResourceCode = {
-    money: "money"
-};
+var ResourceCode = (Core.ResourceCode = {
+  money: "money",
+});
 
 export default ResourceCode;

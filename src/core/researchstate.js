@@ -1,6 +1,6 @@
 export default {
-    unavailable: 0,
-    available: 1,
-    running: 2,
-    finished: 3
+  unavailable: 0,
+  available: 1,
+  running: 2,
+  finished: 3,
 };

@@ -5,36 +5,35 @@ import Tile from "./gameObjects/tile";
 import Core from "core/main";
 
 var events = {
-    tileLoad: 0,
-    tileRemove: 1
+  tileLoad: 0,
+  tileRemove: 1,
 };
 
 function Tilesman(root) {
-    this.chunkSize = Config.chunkSize;
+  this.chunkSize = Config.chunkSize;
 
-    this.events = events;
-    this.events["loadedTiles"] = 0;
-    this.events["removedTiles"] = 1;
+  this.events = events;
+  this.events["loadedTiles"] = 0;
+  this.events["removedTiles"] = 1;
 
-    this.chunks = [];
+  this.chunks = [];
 
-    var self = this;
+  var self = this;
 
-    //the camera moved, or zoomed and sees more or less of the ground
-    this.onCameraMove = function (camera) {
-        var position = camera.gameObject.transform.getPosition(vec3Buffer1),
-            radius = chunkRadius(self, camera),
-            shrunk = radius < self.radius;
+  //the camera moved, or zoomed and sees more or less of the ground
+  this.onCameraMove = function (camera) {
+    var position = camera.gameObject.transform.getPosition(vec3Buffer1),
+      radius = chunkRadius(self, camera),
+      shrunk = radius < self.radius;
 
-        self.currentChunkX = ((position[0] / Config.tileSize / Config.chunkSize) | 0);
-        self.currentChunkY = ((position[2] / Config.tileSize / Config.chunkSize) | 0);
-        self.radius = radius;
+    self.currentChunkX = (position[0] / Config.tileSize / Config.chunkSize) | 0;
+    self.currentChunkY = (position[2] / Config.tileSize / Config.chunkSize) | 0;
+    self.radius = radius;
 
-        self.loadChunks2(self.currentChunkX, self.currentChunkY);
+    self.loadChunks2(self.currentChunkX, self.currentChunkY);
 
-        if (shrunk)
-            self.cleanChunks();
-    };
+    if (shrunk) self.cleanChunks();
+  };
 }
 
 //a tile is this many pixels across on screen, and half as many down
@@ -53,10 +52,10 @@ var TILE_WIDTH = Config.tileSize * Math.SQRT2;
  * a single ring on most.
  */
 function chunkRadius(self, camera) {
-    var corner = camera.frustumSize[1],
-        tiles = corner[0] / TILE_WIDTH + corner[1] / (TILE_WIDTH / 2);
+  var corner = camera.frustumSize[1],
+    tiles = corner[0] / TILE_WIDTH + corner[1] / (TILE_WIDTH / 2);
 
-    return Math.max(1, Math.ceil(tiles / self.chunkSize - 0.5));
+  return Math.max(1, Math.ceil(tiles / self.chunkSize - 0.5));
 }
 
 Tilesman.events = events;
@@ -66,85 +65,108 @@ var vec3Buffer1 = new Float32Array(3);
 Tilesman.prototype.constructor = Tilesman;
 
 Tilesman.prototype.mainCamera = null;
-Tilesman.prototype.chunkSize = 24;// default (24 * ((window.innerWidth * window.innerHeight)/1852800))|0;
+Tilesman.prototype.chunkSize = 24; // default (24 * ((window.innerWidth * window.innerHeight)/1852800))|0;
 Tilesman.prototype.currentChunkX = 0;
 Tilesman.prototype.currentChunkY = 0;
 //how many rings of chunks around the current one are kept loaded
 Tilesman.prototype.radius = 1;
 
 Tilesman.prototype.start = function () {
-    var cam = vkaria.game.logic.world.findByName("mainCamera");
+  var cam = vkaria.game.logic.world.findByName("mainCamera");
 
-    cam.camera.addEventListener(cam.camera.events.update, this.onCameraMove);
-    //only the tiles around the ground that moved have to be drawn again
-    Events.on(vkaria.core.terrain, Core.Terrain.events.gridUpdate, function (terrain, args) {
-        vkaria.terrain.redraw(args.tiles);
-    }, this);
+  cam.camera.addEventListener(cam.camera.events.update, this.onCameraMove);
+  //only the tiles around the ground that moved have to be drawn again
+  Events.on(
+    vkaria.core.terrain,
+    Core.Terrain.events.gridUpdate,
+    function (terrain, args) {
+      vkaria.terrain.redraw(args.tiles);
+    },
+    this,
+  );
 
-    this.onCameraMove(cam.camera);
+  this.onCameraMove(cam.camera);
 };
 
 Tilesman.prototype.updateChunks = function () {
-    var centerX = this.currentChunkX;
-    var centerY = this.currentChunkY;
-    var r = this.radius, side = 2 * r + 1;
+  var centerX = this.currentChunkX;
+  var centerY = this.currentChunkY;
+  var r = this.radius,
+    side = 2 * r + 1;
 
-    for (var i = 0; i < side * side; i++) {
-        var x = (i / side) | 0,
-            y = i - x * side,
-            cx = centerX + x - r,
-            cy = centerY + y - r;
+  for (var i = 0; i < side * side; i++) {
+    var x = (i / side) | 0,
+      y = i - x * side,
+      cx = centerX + x - r,
+      cy = centerY + y - r;
 
-        vkaria.terrain.clear(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
-        vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
-    }
+    vkaria.terrain.clear(
+      cx * this.chunkSize,
+      cy * this.chunkSize,
+      this.chunkSize,
+      this.chunkSize,
+    );
+    vkaria.terrain.draw(
+      cx * this.chunkSize,
+      cy * this.chunkSize,
+      this.chunkSize,
+      this.chunkSize,
+    );
+  }
 };
 
-Tilesman.prototype.getCurrentChunks = function(){
-    var centerX = this.currentChunkX;
-    var centerY = this.currentChunkY;
-    var r = [];
-    var radius = this.radius, side = 2 * radius + 1;
-    for (var i = 0; i < side * side; i++) {
-        var x = (i / side) | 0,
-            y = i - x * side,
-            cx = centerX + x - radius,
-            cy = centerY + y - radius;
+Tilesman.prototype.getCurrentChunks = function () {
+  var centerX = this.currentChunkX;
+  var centerY = this.currentChunkY;
+  var r = [];
+  var radius = this.radius,
+    side = 2 * radius + 1;
+  for (var i = 0; i < side * side; i++) {
+    var x = (i / side) | 0,
+      y = i - x * side,
+      cx = centerX + x - radius,
+      cy = centerY + y - radius;
 
-        r.push({x: cx * this.chunkSize, y: cy * this.chunkSize});
-    }
-    return r;
+    r.push({ x: cx * this.chunkSize, y: cy * this.chunkSize });
+  }
+  return r;
 };
 
 Tilesman.prototype.loadChunks2 = function (centerX, centerY) {
+  console.log("Load chunks");
 
-    console.log("Load chunks");
+  centerX = centerX || this.currentChunkX;
+  centerY = centerY || this.currentChunkY;
 
-    centerX = centerX || this.currentChunkX;
-    centerY = centerY || this.currentChunkY;
+  var r = this.radius,
+    side = 2 * r + 1;
 
-    var r = this.radius, side = 2 * r + 1;
+  for (var i = 0; i < side * side; i++) {
+    var x = (i / side) | 0,
+      y = i - x * side,
+      cx = centerX + x - r,
+      cy = centerY + y - r;
 
-    for (var i = 0; i < side * side; i++) {
-        var x = (i / side) | 0,
-            y = i - x * side,
-            cx = centerX + x - r,
-            cy = centerY + y - r;
-
-
-        if (this.getChunk(cx, cy) === false && cx >= 0 && cy >= 0) {
-            this.makeChunk(cx, cy);
-            var s = this;
-            Events.fire(s, events.tileLoad, {
-                meta: {
-                    x: cx * s.chunkSize, y: cy * s.chunkSize, w: s.chunkSize, h: s.chunkSize
-                }
-            });
-            vkaria.terrain.draw(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
-            this.cleanChunks();
-        }
-
+    if (this.getChunk(cx, cy) === false && cx >= 0 && cy >= 0) {
+      this.makeChunk(cx, cy);
+      var s = this;
+      Events.fire(s, events.tileLoad, {
+        meta: {
+          x: cx * s.chunkSize,
+          y: cy * s.chunkSize,
+          w: s.chunkSize,
+          h: s.chunkSize,
+        },
+      });
+      vkaria.terrain.draw(
+        cx * this.chunkSize,
+        cy * this.chunkSize,
+        this.chunkSize,
+        this.chunkSize,
+      );
+      this.cleanChunks();
     }
+  }
 };
 
 /**
@@ -154,63 +176,73 @@ Tilesman.prototype.loadChunks2 = function (centerX, centerY) {
  * @returns {*}
  */
 Tilesman.prototype.makeChunk = function (cX, cY) {
-    if (!this.getChunk(cX, cY) && cX >= 0 && cY >= 0) {
-        //console.time("makeChunk");
-        var chunk;
+  if (!this.getChunk(cX, cY) && cX >= 0 && cY >= 0) {
+    //console.time("makeChunk");
+    var chunk;
 
-        if (this.chunks[cX] == undefined)
-            this.chunks[cX] = [];
+    if (this.chunks[cX] == undefined) this.chunks[cX] = [];
 
-        chunk = this.chunks[cX][cY] = true;
+    chunk = this.chunks[cX][cY] = true;
 
-        return chunk;
-    }
-    return false;
+    return chunk;
+  }
+  return false;
 };
 
 Tilesman.prototype.getChunk = function (cX, cY) {
-    if (cX >= 0 && cY >= 0 && this.chunks[cX] !== undefined && this.chunks[cX][cY] !== undefined) {
-        return this.chunks[cX][cY];
-    }
-    return false;
+  if (
+    cX >= 0 &&
+    cY >= 0 &&
+    this.chunks[cX] !== undefined &&
+    this.chunks[cX][cY] !== undefined
+  ) {
+    return this.chunks[cX][cY];
+  }
+  return false;
 };
 
 Tilesman.prototype.removeChunk = function (cx, cy) {
-    var chunk = this.getChunk(cx, cy);
+  var chunk = this.getChunk(cx, cy);
 
-    if (chunk !== false) {
+  if (chunk !== false) {
+    this.chunks[cx][cy] = undefined;
+  }
 
-        this.chunks[cx][cy] = undefined;
-    }
-
-    Events.fire(this, this.events.removedTiles, {
-        x: cx * this.chunkSize,
-        y: cy * this.chunkSize,
-        w: this.chunkSize,
-        h: this.chunkSize
-    });
+  Events.fire(this, this.events.removedTiles, {
+    x: cx * this.chunkSize,
+    y: cy * this.chunkSize,
+    w: this.chunkSize,
+    h: this.chunkSize,
+  });
 };
 
 /**
  * Remove old chunks around current position, those that are further than radius from the current one.
  */
 Tilesman.prototype.cleanChunks = function () {
-    var chunks = this.chunks,
-        cx, cy;
+  var chunks = this.chunks,
+    cx,
+    cy;
 
-    for (cx = 0; cx < chunks.length; cx++) {
-        if (chunks[cx] === undefined)
-            continue;
+  for (cx = 0; cx < chunks.length; cx++) {
+    if (chunks[cx] === undefined) continue;
 
-        for (cy = 0; cy < chunks[cx].length; cy++) {
-            if (chunks[cx][cy] !== undefined && (Math.abs(cx - this.currentChunkX) > this.radius || Math.abs(cy - this.currentChunkY) > this.radius)) {
-                this.removeChunk(cx, cy);
-                vkaria.terrain.clear(cx * this.chunkSize, cy * this.chunkSize, this.chunkSize, this.chunkSize);
-            }
-        }
+    for (cy = 0; cy < chunks[cx].length; cy++) {
+      if (
+        chunks[cx][cy] !== undefined &&
+        (Math.abs(cx - this.currentChunkX) > this.radius ||
+          Math.abs(cy - this.currentChunkY) > this.radius)
+      ) {
+        this.removeChunk(cx, cy);
+        vkaria.terrain.clear(
+          cx * this.chunkSize,
+          cy * this.chunkSize,
+          this.chunkSize,
+          this.chunkSize,
+        );
+      }
     }
-
-
+  }
 };
 
 export default Tilesman;

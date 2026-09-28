@@ -1,6 +1,6 @@
 import Engine from "engine";
 
-function City(){}
+function City() {}
 
 City.prototype = Object.create(Engine.Component.prototype);
 

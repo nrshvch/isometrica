@@ -9,51 +9,48 @@ var Core = namespace("Isometrica.Core");
 Core.CityService = CityService;
 
 var events = {
-    cityNew: 0,
-    cityRemove: 1
+  cityNew: 0,
+  cityRemove: 1,
 };
 
-function addCity(self, city){
-    if(self._citiesById[city.id()] === undefined){
-        self._cities.push(city);
-        self._citiesByName[city.name()] = city;
-        self._citiesByTile[city.tile()] = city;
-        self._citiesById[city.id()] = city;
-    }else
-        throw "City with id: "+city.id()+" already exists";
+function addCity(self, city) {
+  if (self._citiesById[city.id()] === undefined) {
+    self._cities.push(city);
+    self._citiesByName[city.name()] = city;
+    self._citiesByTile[city.tile()] = city;
+    self._citiesById[city.id()] = city;
+  } else throw "City with id: " + city.id() + " already exists";
 }
 
-function removeCity(self, city){
-    var index = this._cities.indexOf(city);
-    if(index !== -1)
-        this._cities.splice(index, 1);
-    delete this._citiesByName[city.name()];
-    delete this._citiesById[city.id()];
-    delete this._citiesByTile[city.tile()];
+function removeCity(self, city) {
+  var index = this._cities.indexOf(city);
+  if (index !== -1) this._cities.splice(index, 1);
+  delete this._citiesByName[city.name()];
+  delete this._citiesById[city.id()];
+  delete this._citiesByTile[city.tile()];
 }
 
 function CityService(root) {
-    this.root = root;
-    this._cities = [];
-    this._citiesByName = {};
-    this._citiesByTile = {};
-    this._citiesById = {};
+  this.root = root;
+  this._cities = [];
+  this._citiesByName = {};
+  this._citiesByTile = {};
+  this._citiesById = {};
 
-    this.onNewCity = Events.event(events.cityNew);
+  this.onNewCity = Events.event(events.cityNew);
 }
 
 CityService.events = events;
 
-CityService.prototype.init = function(){};
+CityService.prototype.init = function () {};
 
-CityService.prototype.establishCity = function(tile, name){
-    var city = City.establish(this.root, tile, name);
-    if (city === null)
-        return false;
-    addCity(this, city);
-    Events.fire(this, events.cityNew, city);
-    city.init();
-    return city;
+CityService.prototype.establishCity = function (tile, name) {
+  var city = City.establish(this.root, tile, name);
+  if (city === null) return false;
+  addCity(this, city);
+  Events.fire(this, events.cityNew, city);
+  city.init();
+  return city;
 };
 
 /**
@@ -65,25 +62,25 @@ CityService.prototype.establishCity = function(tile, name){
  * @returns {City}
  */
 CityService.prototype.restoreCity = function (data) {
-    var city = new City(this.root, data.tile);
+  var city = new City(this.root, data.tile);
 
-    addCity(this, city);
-    Events.fire(this, events.cityNew, city);
+  addCity(this, city);
+  Events.fire(this, events.cityNew, city);
 
-    city.load(data);
+  city.load(data);
 
-    return city;
+  return city;
 };
 
 CityService.prototype.getCity = function (id) {
-    return this._citiesById[id];
+  return this._citiesById[id];
 };
 
 /**
  * @returns {City[]}
  */
 CityService.prototype.getCities = function () {
-    return this._cities;
+  return this._cities;
 };
 
 export default CityService;

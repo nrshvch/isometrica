@@ -11,10 +11,10 @@ var layer = RenderLayer.buildingsLayer;
 var renderer = null;
 
 function Tree() {
-    GameObject.init(this, "tree");
-    renderer = new SpriteRenderer();
-    renderer.layer = layer;
-    this.addComponent(renderer);
+  GameObject.init(this, "tree");
+  renderer = new SpriteRenderer();
+  renderer.layer = layer;
+  this.addComponent(renderer);
 }
 
 Tree.prototype = Object.create(GameObject.prototype);
