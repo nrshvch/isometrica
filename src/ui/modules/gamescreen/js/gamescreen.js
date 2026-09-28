@@ -89,7 +89,17 @@ GameScreen.prototype.city = function(){
     return this._city || (this._city = new City(this));
 };
 
+/**
+ * @returns {string|null} what the body shows - "world", "catalogue", "city" -
+ *                        or null before anything has been shown
+ */
+GameScreen.prototype.showing = function () {
+    return this._showing || null;
+};
+
 GameScreen.prototype.show = function (name, args) {
+    this._showing = name;
+
     switch (name) {
         case "world":
             var vs = this.worldScreen();
@@ -114,6 +124,7 @@ GameScreen.prototype.show = function (name, args) {
 
 GameScreen.prototype.showPrompt = function (message, callback, placeholder, onDiscard) {
     var view = this.prompt().open(message, placeholder, callback, onDiscard);
+    this._showing = "prompt";
     this.view.body(view.render());
 };
 

@@ -50,6 +50,25 @@ function onPinchEnd(sender, e, me) {
     me._pinch = null;
 }
 
+//the zoom the game is drawn at unless the player zooms - a double tap goes
+//in from it and back out to it
+var DEFAULT_ZOOM = 1;
+
+/**
+ * A double tap goes a step in from the default zoom, about the spot tapped,
+ * and the next one comes back to it - the way iOS has it. Zoomed any other
+ * way, by a pinch or otherwise, in or out and however far, it comes back to
+ * the default first.
+ */
+function onDoubleTap(sender, e, me) {
+    var cam = me._cam,
+        to = cam.zoom() === DEFAULT_ZOOM
+            ? ZOOMS[ZOOMS.indexOf(DEFAULT_ZOOM) + 1]
+            : DEFAULT_ZOOM;
+
+    cam.zoom(to, e.gameViewportX, e.gameViewportY);
+}
+
 //nearest by ratio: 1.5 is nearer to 2 than to 1, as 0.7 is to 0.5
 function nearestZoom(zoom) {
     var nearest = ZOOMS[0];
@@ -83,11 +102,13 @@ CameraControl.prototype.init = function () {
     var ps = Events.on(cam, WorldCamera.events.inputPinchStart, onPinchStart, this);
     var p = Events.on(cam, WorldCamera.events.inputPinch, onPinch, this);
     var pe = Events.on(cam, WorldCamera.events.inputPinchEnd, onPinchEnd, this);
+    var dt = Events.on(cam, WorldCamera.events.inputDoubleTap, onDoubleTap, this);
 
     Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputDrag, a]);
     Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputPinchStart, ps]);
     Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputPinch, p]);
     Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputPinchEnd, pe]);
+    Events.once(this, events.dispose, onDispose, [cam, WorldCamera.events.inputDoubleTap, dt]);
 };
 
 export default CameraControl;

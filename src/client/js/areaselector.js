@@ -37,6 +37,7 @@ import Config from "./config";
 import WorldCamera from "./components/camerascript";
 import Events from "events";
 import Core from "core/main";
+import * as glMatrix from "gl-matrix";
 
 var Terrain = Core.Terrain;
 
@@ -65,6 +66,96 @@ function pick(me, screenX, screenY) {
             r.preview = true;
         else if (r.tile === -1 && sprite.layer === RenderLayer.groundLayer)
             r.tile = me._terrain.getCoordinates(gos[i]);
+    }
+
+    //the drawn tile only says roughly where - the one under the finger is the
+    //one the selection is drawn on there
+    if (r.tile !== -1)
+        r.tile = outlineAt(me, r.tile, screenX, screenY);
+
+    return r;
+}
+
+//how many tiles out from the drawn one under the finger the outlined one may
+//be - the sea bottom can lie that deep under the surface
+var OUTLINE_REACH = 16;
+
+var cornerBuffer = new Float32Array(3);
+
+/**
+ * The tile whose outline is under screenX, screenY - found near tile, the
+ * ground tile drawn there. The selection is drawn the way the tiles' outlines
+ * are (see TileHiliteScript): on the ground, and under water on the bottom
+ * when it is shaping the ground - so it is told apart from the water drawn
+ * over it by where the ground lies, not by the water's surface, which the
+ * finger would otherwise be on a good way off from the outlines the deeper
+ * the bottom is. Where outlines are drawn over one another, on a hillside, it
+ * is the one in front.
+ */
+function outlineAt(me, tile, screenX, screenY) {
+    var terrain = me.root.core.world.terrain,
+        m = me._cam.gameObject.camera.getWorldToScreen(),
+        ts = Config.tileSize,
+        zStep = Config.tileZStep,
+        x0 = Terrain.extractX(tile),
+        y0 = Terrain.extractY(tile),
+        best = tile,
+        bestDepth = Infinity,
+        //each grid point projected once, by its offset from x0, y0
+        projected = {},
+        x, y, quad, depth, k;
+
+    function corner(gx, gy, flat) {
+        var id = (gx - x0) + "," + (gy - y0) + (flat ? "f" : "");
+
+        if (projected[id] === undefined) {
+            cornerBuffer[0] = (gx - 0.5) * ts;
+            cornerBuffer[1] = flat ? 0 : terrain.getGridPointHeight(gx, gy) * zStep;
+            cornerBuffer[2] = (gy - 0.5) * ts;
+            glMatrix.vec3.transformMat4(cornerBuffer, cornerBuffer, m);
+            projected[id] = [cornerBuffer[0], cornerBuffer[1], cornerBuffer[2]];
+        }
+
+        return projected[id];
+    }
+
+    for (x = x0 - OUTLINE_REACH; x <= x0 + OUTLINE_REACH; x++) {
+        for (y = y0 - OUTLINE_REACH; y <= y0 + OUTLINE_REACH; y++) {
+            //water is outlined flat at its surface, unless it is the bottom
+            //that is being picked
+            var flat = !me._underwater && terrain.getTerrainType(x, y) === Core.TerrainType.water;
+
+            quad = [corner(x, y, flat), corner(x, y + 1, flat), corner(x + 1, y + 1, flat), corner(x + 1, y, flat)];
+
+            if (!inside(quad, screenX, screenY))
+                continue;
+
+            depth = 0;
+            for (k = 0; k < 4; k++)
+                depth += quad[k][2];
+
+            if (depth < bestDepth) {
+                bestDepth = depth;
+                best = Terrain.convertToIndex(x, y);
+            }
+        }
+    }
+
+    return best;
+}
+
+/**
+ * Whether x, y is inside the polygon points on screen.
+ */
+function inside(points, x, y) {
+    var r = false, i, j, a, b;
+
+    for (i = 0, j = points.length - 1; i < points.length; j = i++) {
+        a = points[i];
+        b = points[j];
+
+        if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0])
+            r = !r;
     }
 
     return r;
@@ -602,9 +693,9 @@ function placeAt(me, tile, force) {
 /**
  * A tap on anything with something to show for it - a house, a tower - shows
  * it, the same as it does outside of any action, and one on a city's name
- * does nothing. So does one on the selection, or on what is being placed on
- * it. A tap anywhere else on the ground puts the selection there, back down
- * to one footprint.
+ * shows its city hall. One on the selection, or on what is being placed on
+ * it, does nothing. A tap anywhere else on the ground puts the selection
+ * there, back down to one footprint.
  */
 function onClick(sender, e, me) {
     var x = e.gameViewportX,
@@ -612,10 +703,11 @@ function onClick(sender, e, me) {
         root = me.root,
         hit;
 
-    //the city screen does not open while an action is running - but the name
-    //is still what was tapped, not the ground behind it
-    if (root.cityman.pickCity(x, y) !== null)
+    //the name is what was tapped, not the ground behind it
+    if (root.cityman.pickCity(x, y) !== null) {
+        root.serviceman.inspect(x, y);
         return;
+    }
 
     hit = pick(me, x, y);
 

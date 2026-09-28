@@ -21,6 +21,7 @@
  * is not on screen in the first place.
  */
 import engine from "engine";
+import Numeral from "numeral";
 import Events from "events";
 import Core from "core/main";
 import ServiceCode from "core/servicecode";
@@ -166,10 +167,10 @@ var EXPENSE_COLOR = "rgb(255,64,64)";
  *                                          what it costs, white for neither
  */
 function formatMoney(amount) {
-    var rounded = Math.round(amount * 10) / 10;
+    var rounded = Math.round(amount);
 
     return {
-        text: (rounded > 0 ? "+" : rounded < 0 ? "-" : "") + "$" + Math.abs(rounded),
+        text: (rounded > 0 ? "+" : rounded < 0 ? "-" : "") + "$" + Numeral(Math.abs(rounded)).format("0,0"),
         color: rounded > 0 ? INCOME_COLOR : rounded < 0 ? EXPENSE_COLOR : "white"
     };
 }
@@ -281,7 +282,12 @@ function ServiceMan(root) {
  */
 ServiceMan.prototype.inspect = function (screenX, screenY) {
     var root = this.root,
-        building = root.buildman.pickBuilding(screenX, screenY);
+        city = root.cityman.pickCity(screenX, screenY),
+        //a city's name hangs over its city hall and stands for it - clicked,
+        //it is the hall that was clicked
+        building = city !== null && city.buildings.cityHall !== null
+            ? city.buildings.cityHall
+            : root.buildman.pickBuilding(screenX, screenY);
 
     //clicking the ground a tower stands on counts too - its sprite leaves the
     //corners of its own tile showing
@@ -402,8 +408,9 @@ function copyBuilding(self, building) {
         z = terrain.getGridPointHeight(x + 1, y),
         go = new engine.GameObject("inspected building");
 
+    //in the look it went up in, for a type that comes in several
     BuildingView.addSprites(go, building.data, !!building.rotation,
-        1, RenderLayer.inspectedLayer);
+        1, RenderLayer.inspectedLayer, building.look);
 
     go.transform.setPosition(x * Config.tileSize, z * Config.tileZStep, y * Config.tileSize);
     self.root.game.logic.world.addGameObject(go);

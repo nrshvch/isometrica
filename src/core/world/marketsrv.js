@@ -5,7 +5,7 @@ import Resources from "../resources";
 import Resource from "../resourcecode";
 
     function price(resource){
-        return 10;
+        return 100;
     }
 
     function MarketService(world){

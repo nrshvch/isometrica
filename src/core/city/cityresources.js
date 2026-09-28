@@ -15,7 +15,7 @@ CityService.Resource = CityResources;
 function CityResources(city){
     this.city = city;
     this._resources = {
-        money: 1000
+        money: 10000
     };
 }
 

@@ -190,6 +190,8 @@ function drawingOf(staticData, look) {
     return staticData.looks ? staticData.looks[look || 0] : staticData;
 }
 
+BuildingView.drawingOf = drawingOf;
+
 /**
  * The pivot sits as far from the right edge of a flipped picture as it did from
  * the left edge of the original - which takes the picture's width, and that of

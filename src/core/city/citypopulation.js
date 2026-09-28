@@ -16,9 +16,9 @@ var MAX_PARAM_VAL = TileParamsMan.MAX_PARAM_VAL;
 
 //What one citizen pays per tick. Houses earn nothing by standing there - it is
 //the people in them who pay - so this is what a house is bought for: at around
-//75 to 180 money a head to build, one earns itself back in 40 to 90 ticks
+//750 to 1800 money a head to build, one earns itself back in 40 to 90 ticks
 //once it fills up (an apartment block, dense as it is, takes 150).
-var TAX_MONEY = 2;
+var TAX_MONEY = 20;
 CityPopulation.TAX_MONEY = TAX_MONEY;
 
 /**

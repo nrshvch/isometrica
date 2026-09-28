@@ -11,6 +11,7 @@ import Pool from "shared/object-pool";
 import Rocks from "data/rocks";
 //a rock is drawn the way a tree is: one sprite among the buildings
 import Tree from "./gameObjects/tree";
+import BuildingView from "./buildingview";
 
 var BuildingData = Core.BuildingData;
 var TileIterator = Core.TileIterator;
@@ -25,7 +26,7 @@ function sceneryOf(self, tile) {
         code = service.getTree(tile);
 
     if (code !== null)
-        return BuildingData[code].sprites[0];
+        return BuildingView.drawingOf(BuildingData[code], service.getTreeLook(tile)).sprites[0];
 
     code = service.getRock(tile);
 

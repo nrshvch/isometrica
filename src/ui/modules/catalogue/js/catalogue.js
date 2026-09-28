@@ -6,6 +6,7 @@ import Building from "./models/building";
 import Data from "data/buildings";
 import BuildingCode from "data/buildingcode";
 import CityPopulation from "core/city/citypopulation";
+import Numeral from "numeral";
 
 var BuildingData = Data;
 
@@ -15,15 +16,19 @@ function formatList(parts) {
     return parts.length ? parts.join(", ") : "\u2014";
 }
 
+function formatMoney(amount) {
+    return "$" + Numeral(amount).format("0,0");
+}
+
 function getStats(b) {
     var cost = [], needs = [], benefits = [], res;
     var requires = b.requires || {};
 
     for (res in b.constructionCost) {
-        cost.push((res === "money" ? "$" : res + " ") + b.constructionCost[res]);
+        cost.push(res === "money" ? formatMoney(b.constructionCost[res]) : res + " " + b.constructionCost[res]);
     }
     if (b.demanding && b.demanding.money) {
-        cost.push("$" + b.demanding.money + "/tick upkeep");
+        cost.push(formatMoney(b.demanding.money) + "/tick upkeep");
     }
 
     if (requires.road) needs.push("road");
@@ -31,10 +36,10 @@ function getStats(b) {
     if (b.citizenCapacity && CityPopulation.needsJobs(b)) needs.push("jobs");
 
     if (b.citizenCapacity) {
-        benefits.push("up to +$" + b.citizenCapacity * CityPopulation.taxPerResident(b) + "/tick tax");
+        benefits.push("up to +" + formatMoney(b.citizenCapacity * CityPopulation.taxPerResident(b)) + "/tick tax");
     }
     for (res in b.producing) {
-        benefits.push("+" + (res === "money" ? "$" : res + " ") + b.producing[res] + "/tick"
+        benefits.push("+" + (res === "money" ? formatMoney(b.producing[res]) : res + " " + b.producing[res]) + "/tick"
             + (b.jobs ? " when staffed" : ""));
     }
     if (b.waterRadius) {
@@ -52,7 +57,7 @@ function getStats(b) {
 
 //rarely wanted, so they go after everything the city is actually built from,
 //in this order
-var LAST = [BuildingCode.cityHall, BuildingCode.tree1, BuildingCode.tree2, BuildingCode.cliff];
+var LAST = [BuildingCode.cityHall, BuildingCode.tree, BuildingCode.cliff];
 
 //-1 for everything else, which sorts it ahead of the LAST ones
 function lastRank(code) {

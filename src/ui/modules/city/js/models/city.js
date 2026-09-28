@@ -1,56 +1,93 @@
 import Backbone from "backbone";
-import ValbarItems from "ui/modules/valbar/js/collections/items";
 import Events from "events";
+import Numeral from "numeral";
+import Terrain from "core/terrain";
 import ResourceCode from "core/resourcecode";
 
-var icons = {};
-icons[ResourceCode.money] = "coin";
+function number(amount) {
+    return Numeral(Math.round(amount)).format("0,0");
+}
 
-function icon(resource){
-    return icons[resource] || resource;
+function money(amount) {
+    return "$" + number(amount);
+}
+
+//with a plus for what comes in and a minus for what goes out
+function signed(amount) {
+    var rounded = Math.round(amount);
+
+    return (rounded > 0 ? "+" : rounded < 0 ? "-" : "") + money(Math.abs(rounded));
+}
+
+/**
+ * Everything the info tab shows, as it reads - worked out afresh every time
+ * the city updates.
+ *
+ * @param city {City}
+ * @returns {Object}
+ */
+function stats(city) {
+    var budget = city.getBudget(),
+        population = city.population.getPopulation(),
+        jobs = city.jobs.getJobs(),
+        filled = city.jobs.getFilled(),
+        //everybody in town can hold a job, whether their house asks it of
+        //them or not - whoever has none is out of work
+        unemployed = Math.max(0, population - filled),
+        missing = city.getMissingServices(),
+        tile = city.tile();
+
+    return {
+        name: city.name(),
+        x: Terrain.extractX(tile),
+        y: Terrain.extractY(tile),
+
+        balance: money(city.resources.getResources()[ResourceCode.money] || 0),
+        net: signed(budget.net),
+        netClass: Math.round(budget.net) < 0 ? "expense" : "income",
+        income: signed(budget.income),
+        taxes: money(budget.taxes),
+        commerce: money(budget.commerce),
+        upkeep: signed(-budget.upkeep),
+        roadsUpkeep: money(budget.roads),
+        waterUpkeep: money(budget.water),
+        landUpkeep: money(budget.land),
+        cityHallUpkeep: money(budget.cityHall),
+        otherUpkeep: budget.other > 0 ? money(budget.other) : null,
+
+        population: number(population),
+        slots: number(city.getHousingSlots()),
+        jobs: number(jobs),
+        filled: number(filled),
+        available: number(jobs - filled),
+        unemployment: population === 0 ? "-"
+            : Numeral(unemployed / population).format("0.0%") + " (" + number(unemployed) + " peeps)",
+
+        towers: number(city.water.getTowerCount()),
+        roads: number(city.roads.getNetworkSize()),
+        unserved: missing.road === 0 && missing.water === 0
+            ? "-"
+            : missing.road + " without a road, " + missing.water + " without water"
+    };
 }
 
 export default Backbone.Model.extend({
-    initialize: function(attributes, options) {
+    initialize: function (attributes, options) {
         this.onDispose = Events.event("dispose");
 
-        this.resources =  new ValbarItems();
-
-        //bind resource update to icon-value bar of resources
         var city = this.city = options.city;
-        var models = {};
 
-        var token = city.update().on(function(s,a,d){
-            var r = city.resources.getResources();
-            for(var key in r) {
-                if (typeof models[key] === "undefined")
-                    models[key] = d.resources.add({
-                        icon: icon(key),
-                        title: key,
-                        value: Math.round(r[key])
-                    });
-                else
-                    models[key].set("value", Math.round(r[key]));
-            }
+        this.set(stats(city));
 
-            //population
-            d.set("pop", city.population.getPopulation());
-            d.set("maxPop", city.population.getCapacity());
+        var token = city.update().on(function (s, a, d) {
+            d.set(stats(city));
         }, this);
 
-        this.set("tile", city.tile());
-
-        this.onDispose().once(function(s,a,d){
+        this.onDispose().once(function () {
             city.update().off(token);
         });
-
-
     },
-    dispose: function(){
-      this.onDispose(this, null);
-    },
-    defaults: {
-        id: -1,
-        name: "Unnamed"
+    dispose: function () {
+        this.onDispose(this, null);
     }
 });

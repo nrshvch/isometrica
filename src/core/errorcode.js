@@ -14,7 +14,9 @@ var ErrorCode = {
     FLAT_LAND_REQUIRED: 8,
     TILE_TAKEN: 9,
     OUTSIDE_CITY: 10,
-    TERRAFORM_TOO_LARGE: 11
+    TERRAFORM_TOO_LARGE: 11,
+    //clearing tiles that have nothing on them to clear
+    NOTHING_TO_CLEAR: 12
 };
 
 export default ErrorCode;

@@ -3,8 +3,7 @@
  * @exports BuildingCode
  */
 var BuildingCode = {
-        tree1: 0,
-        tree2: 1,
+        tree: 0,
         cityHall: 3,
         road: 4,
         farm: 5,

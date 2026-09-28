@@ -1,29 +1,41 @@
-<div class="info-tab-content active">
-    <div class="bird-eye-container"></div>
-    <div class="info-container">
-        Name: {{name}}
-        <br>Tile: {{tile}}
-        <br>Mayor: -
-        <br>Population: <span class="pop"></span>
-        <br>Max pop.: <span class="maxPop"></span>
-        <br>Jobs: <span class="jobs"></span>
-        <br>Water towers: <span class="towers"></span>
-        <br>Roads: <span class="roads"></span>
-        <br>Not served: <span class="unserved"></span>
-        <br>
-    </div>
-    <div class="ui-hr hr"></div>
-    <div class="res-cnt">
-        Resources
-        <div class="ui-list res-list">
-            <div class="item">
-                <div class="key">
-                    Available resources
-                </div>
-                <div class="val available-resources">
+<div class="info-tab-content">
+    <div class="city-stats">
+        <div class="section">
+            <div class="stat"><span class="label">Name</span><span class="value">{{name}}</span></div>
+            <div class="stat"><span class="label">Location</span><span class="value">{{x}}, {{y}}</span></div>
+        </div>
 
-                </div>
-            </div>
+        <div class="section">
+            <div class="heading">Money</div>
+            <div class="stat"><span class="label">Balance</span><span class="value">{{balance}}</span></div>
+            <div class="stat"><span class="label">Net</span><span class="value {{netClass}}">{{net}}/tick</span></div>
+            <div class="stat"><span class="label">Income</span><span class="value income">{{income}}/tick</span></div>
+            <div class="stat sub"><span class="label">Houses</span><span class="value">{{taxes}}</span></div>
+            <div class="stat sub"><span class="label">Commerce</span><span class="value">{{commerce}}</span></div>
+            <div class="stat"><span class="label">Upkeep</span><span class="value expense">{{upkeep}}/tick</span></div>
+            <div class="stat sub"><span class="label">Roads</span><span class="value">{{roadsUpkeep}}</span></div>
+            <div class="stat sub"><span class="label">Water towers</span><span class="value">{{waterUpkeep}}</span></div>
+            <div class="stat sub"><span class="label">Land</span><span class="value">{{landUpkeep}}</span></div>
+            <div class="stat sub"><span class="label">City hall</span><span class="value">{{cityHallUpkeep}}</span></div>
+            {{#if otherUpkeep}}
+            <div class="stat sub"><span class="label">Other</span><span class="value">{{otherUpkeep}}</span></div>
+            {{/if}}
+        </div>
+
+        <div class="section">
+            <div class="heading">People</div>
+            <div class="stat"><span class="label">Population</span><span class="value">{{population}} peeps</span></div>
+            <div class="stat"><span class="label">Homes</span><span class="value">{{slots}} peeps slots</span></div>
+            <div class="stat"><span class="label">Jobs</span><span class="value">{{filled}} of {{jobs}} filled</span></div>
+            <div class="stat"><span class="label">Available jobs</span><span class="value">{{available}}</span></div>
+            <div class="stat"><span class="label">Unemployment</span><span class="value">{{unemployment}}</span></div>
+        </div>
+
+        <div class="section">
+            <div class="heading">Services</div>
+            <div class="stat"><span class="label">Water towers</span><span class="value">{{towers}}</span></div>
+            <div class="stat"><span class="label">Roads</span><span class="value">{{roads}} tiles off the city hall</span></div>
+            <div class="stat"><span class="label">Not served</span><span class="value">{{unserved}}</span></div>
         </div>
     </div>
 </div>

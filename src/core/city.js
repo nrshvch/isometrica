@@ -123,6 +123,79 @@ City.prototype.getBuildingIncome = function (building) {
 };
 
 /**
+ * Where the city's money came from and went on the last tick, the way the
+ * buildings were paid and billed for it (see Building): the taxes of the
+ * people in the houses, what the businesses took over the counter, and the
+ * upkeep of the roads, the water towers and the city hall - which is billed
+ * for the offices themselves and for every tile of land bought on top of the
+ * block the city was founded on.
+ *
+ * @returns {{taxes: number, commerce: number, income: number, roads: number,
+ *          water: number, land: number, cityHall: number, other: number,
+ *          upkeep: number, net: number}} money per tick, upkeep as what is paid
+ */
+City.prototype.getBudget = function () {
+    var buildings = this.buildingService.getBuildings(),
+        r = {
+            taxes: this.populationService.getTaxIncomeAmount(),
+            commerce: 0,
+            roads: 0,
+            water: 0,
+            land: 0,
+            cityHall: 0,
+            other: 0
+        },
+        building, data, paid, flat, i;
+
+    for (i = 0; i < buildings.length; i++) {
+        building = buildings[i];
+        data = building.data;
+
+        r.commerce += building.producing[Resource.money] || 0;
+
+        paid = building.demanding[Resource.money] || 0;
+
+        if (paid === 0)
+            continue;
+
+        if (data.classCode === BuildingClassCode.road) {
+            r.roads += paid;
+        } else if (building.buildingCode === BuildingCode.waterTower) {
+            r.water += paid;
+        } else if (building.buildingCode === BuildingCode.cityHall) {
+            //the flat part is the offices, the rest is the land
+            flat = Math.min(paid, (data.demanding && data.demanding[Resource.money]) || 0);
+            r.cityHall += flat;
+            r.land += paid - flat;
+        } else {
+            r.other += paid;
+        }
+    }
+
+    r.income = r.taxes + r.commerce;
+    r.upkeep = r.roads + r.water + r.land + r.cityHall + r.other;
+    r.net = r.income - r.upkeep;
+
+    return r;
+};
+
+/**
+ * How many people all the houses have room for, jobs or no jobs - unlike
+ * CityPopulation#getCapacity, which only counts the beds there is work for.
+ *
+ * @returns {number}
+ */
+City.prototype.getHousingSlots = function () {
+    var buildings = this.buildingService.getBuildings(),
+        r = 0, i;
+
+    for (i = 0; i < buildings.length; i++)
+        r += buildings[i].citizenCapacity();
+
+    return r;
+};
+
+/**
  * How many of the city's buildings are going without, per service.
  *
  * @returns {Object} ServiceCode -> count
@@ -150,21 +223,50 @@ City.prototype.onTick = function (sender, args, meta) {
     Events.fire(self, self.events.update, self);
 };
 
-City.prototype.clearTile = function (tile) {
-    var building = this.world.buildingService.get(tile),
-        //roads may be laid outside of the borders, so they have to be
-        //removable out there as well - any other building is city land only.
-        //A tree or a rock is part of the world, not of the city, so it can go
-        //anywhere
-        allowed = building === null
-            || this.areaService.contains(tile)
-            || BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
+/**
+ * Whether there is anything on the tile the city may clear away.
+ */
+function clearable(self, tile) {
+    var building = self.world.buildingService.get(tile);
 
     //bare ground has nothing to clear away, so it is free and does nothing
-    if (building === null && !this.world.envService.hasScenery(tile))
-        return false;
+    if (building === null)
+        return self.world.envService.hasScenery(tile);
 
-    if (!allowed || !this.resourcesService.hasEnoughResource(Resource.money, Config.clearTileCost))
+    //roads may be laid outside of the borders, so they have to be
+    //removable out there as well - any other building is city land only.
+    //A tree or a rock is part of the world, not of the city, so it can go
+    //anywhere
+    return self.areaService.contains(tile)
+        || BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
+}
+
+/**
+ * What clearing these tiles would come to - one clearTileCost for each that
+ * has anything on it to clear - without clearing any of them.
+ *
+ * @param tiles {number[]}
+ * @returns {{error: number, tile: number, cost: number}} as #quoteTerraform
+ */
+City.prototype.quoteClear = function (tiles) {
+    var cost = 0, i;
+
+    for (i = 0; i < tiles.length; i++) {
+        if (clearable(this, tiles[i]))
+            cost += Config.clearTileCost;
+    }
+
+    return {
+        error: cost === 0 ? ErrorCode.NOTHING_TO_CLEAR
+            : this.resourcesService.hasEnoughResource(Resource.money, cost) ? ErrorCode.NONE
+            : ErrorCode.NOT_ENOUGH_RES,
+        tile: tiles[0],
+        cost: cost
+    };
+};
+
+City.prototype.clearTile = function (tile) {
+    if (!clearable(this, tile) || !this.resourcesService.hasEnoughResource(Resource.money, Config.clearTileCost))
         return false;
 
     this.world.terrain.clear(tile);
@@ -190,13 +292,47 @@ City.prototype.clearTile = function (tile) {
  *          ErrorCode, and tile the tile it is about; cost is what was paid
  */
 City.prototype.terraform = function (tiles, direction) {
+    var quote = this.quoteTerraform(tiles, direction),
+        terrain = this.world.terrain,
+        i;
+
+    if (quote.error !== ErrorCode.NONE)
+        return {error: quote.error, tile: quote.tile, cost: 0};
+
+    //cleared by hand, since the ground only clears the tiles it never did
+    //before
+    for (i = 0; i < quote.planted.length; i++)
+        terrain.clearTile(quote.planted[i]);
+
+    terrain.modify(quote.plan);
+    this.resourcesModule.subResource(Resource.money, quote.cost);
+
+    return {error: ErrorCode.NONE, tile: quote.tile, cost: quote.cost};
+};
+
+/**
+ * What #terraform would do and charge, without doing it: cost is the price
+ * even when the city cannot afford it (NOT_ENOUGH_RES), and 0 when it cannot
+ * be done at all.
+ *
+ * @param tiles {number[]}
+ * @param direction {number} 1 to raise, -1 to lower
+ * @returns {{error: number, tile: number, cost: number, plan: Object,
+ *          planted: number[], blocked: number[]}} plan and planted are for
+ *          #terraform to carry out: the ground to move and the trees put down
+ *          in its way. blocked is, with TILE_TAKEN, every tile the buildings
+ *          in the way stand on - the whole of each of them
+ */
+City.prototype.quoteTerraform = function (tiles, direction) {
     var world = this.world,
         terrain = world.terrain,
         plan = terrain.planLevel(tiles, direction),
         tile0 = tiles[0],
         cost = 0,
         planted = [],
-        tile, building, i;
+        blocked = [],
+        blockers = Object.create(null),
+        tile, building, occupied, i;
 
     if (plan === null)
         return {error: ErrorCode.TERRAFORM_TOO_LARGE, tile: tile0, cost: 0};
@@ -208,8 +344,19 @@ City.prototype.terraform = function (tiles, direction) {
 
         //a tree or cliff the player put down goes the way a wild one does
         if (building !== null) {
-            if (BuildingData[building.buildingCode].classCode !== BuildingClassCode.tree)
-                return {error: ErrorCode.TILE_TAKEN, tile: tile, cost: 0};
+            //every one of them, so that the player sees all there is to
+            //move out of the way rather than one at a time
+            if (BuildingData[building.buildingCode].classCode !== BuildingClassCode.tree) {
+                if (blockers[building.tile] !== true) {
+                    blockers[building.tile] = true;
+
+                    occupied = building.occupiedTiles();
+                    while (!occupied.done)
+                        blocked.push(occupied.next());
+                }
+
+                continue;
+            }
 
             planted.push(building.tile);
             cost += Config.clearTileCost;
@@ -225,18 +372,17 @@ City.prototype.terraform = function (tiles, direction) {
             cost += Config.clearTileCost;
     }
 
-    if (!this.resourcesService.hasEnoughResource(Resource.money, cost))
-        return {error: ErrorCode.NOT_ENOUGH_RES, tile: tile0, cost: 0};
+    if (blocked.length > 0)
+        return {error: ErrorCode.TILE_TAKEN, tile: blocked[0], cost: 0, blocked: blocked};
 
-    //cleared by hand, since the ground only clears the tiles it never did
-    //before
-    for (i = 0; i < planted.length; i++)
-        terrain.clearTile(planted[i]);
-
-    terrain.modify(plan);
-    this.resourcesModule.subResource(Resource.money, cost);
-
-    return {error: ErrorCode.NONE, tile: tile0, cost: cost};
+    return {
+        error: this.resourcesService.hasEnoughResource(Resource.money, cost)
+            ? ErrorCode.NONE : ErrorCode.NOT_ENOUGH_RES,
+        tile: tile0,
+        cost: cost,
+        plan: plan,
+        planted: planted
+    };
 };
 
 /**

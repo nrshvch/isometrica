@@ -33,53 +33,47 @@ var Core = namespace("Isometrica.Core");
 
     var buildingData = Core.BuildingData = {};
 
-    buildingData[BuildingCode.tree1] = {
+    //one of two trees, picked at random the way a house's looks are (see
+    //house) - and the same two the world grows on its own (see core/ambient)
+    buildingData[BuildingCode.tree] = {
         sizeX: 1,
         sizeY: 1,
-        buildingCode: BuildingCode.tree1,
+        buildingCode: BuildingCode.tree,
         classCode: BuildingClassCode.tree,
         producing: {},
         demanding: {},
         constructionTime: 0,
         //a sapling costs a little less than felling a grown tree (Config.clearTileCost)
         constructionCost: {
-            money: 20
+            money: 200
         },
         name: "tree",
-        sprites: [
+        looks: [
             {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 34,
-                pivotY: 53,
-                path: "tree1.png",
-                layer: RenderLayer.buildingsLayer
-            }
-        ]
-    };
-
-    buildingData[BuildingCode.tree2] = {
-        sizeX: 1,
-        sizeY: 1,
-        buildingCode: BuildingCode.tree2,
-        classCode: BuildingClassCode.tree,
-        producing: {},
-        demanding: {},
-        constructionTime: 0,
-        constructionCost: {
-            money: 20
-        },
-        name: "tree",
-        sprites: [
+                sprites: [
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        pivotX: 34,
+                        pivotY: 53,
+                        path: "tree1.png",
+                        layer: RenderLayer.buildingsLayer
+                    }
+                ]
+            },
             {
-                x: 0,
-                y: 0,
-                z: 0,
-                pivotX: 34,
-                pivotY: 53,
-                path: "tree2.png",
-                layer: RenderLayer.buildingsLayer
+                sprites: [
+                    {
+                        x: 0,
+                        y: 0,
+                        z: 0,
+                        pivotX: 34,
+                        pivotY: 53,
+                        path: "tree2.png",
+                        layer: RenderLayer.buildingsLayer
+                    }
+                ]
             }
         ]
     };
@@ -94,7 +88,7 @@ var Core = namespace("Isometrica.Core");
         constructionTime: 0,
         //rock is hauled in, so it costs more than a tree
         constructionCost: {
-            money: 50
+            money: 500
         },
         researchState: ResearchState.available,
         researchTime: 0,
@@ -125,11 +119,11 @@ var Core = namespace("Isometrica.Core");
         producing: {},
         //a street is the city's to keep up, and there are always a lot of them
         demanding: {
-            money: 0.5
+            money: 5
         },
         constructionTime: 0,
         constructionCost: {
-            money: 25
+            money: 500
         },
         name: "road",
         sprites: [
@@ -175,7 +169,7 @@ var Core = namespace("Isometrica.Core");
         citizenCapacity: 2,
         constructionTime: 3000,
         constructionCost: {
-            money: 150
+            money: 1500
         },
         name: "mobile house",
         sprites: [
@@ -226,7 +220,7 @@ var Core = namespace("Isometrica.Core");
         citizenCapacity: 3,
         constructionTime: 3000,
         constructionCost: {
-            money: 300
+            money: 3000
         },
         name: "tiny house",
         sprites: [
@@ -255,11 +249,11 @@ var Core = namespace("Isometrica.Core");
         },
         //people in a house of their own are worth more a head to the treasury
         //than the same people stacked in flats
-        taxPerResident: 2.5,
+        taxPerResident: 25,
         citizenCapacity: 8,
         constructionTime: 3000,
         constructionCost: {
-            money: 1200
+            money: 12000
         },
         name: "small residential house",
         sprites: [
@@ -321,12 +315,12 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 2200
+            money: 22000
         },
         name: "house",
         //people in a house of their own are worth more a head to the treasury
         //than the same people stacked in flats
-        taxPerResident: 2.5,
+        taxPerResident: 25,
         citizenCapacity: 12,
         //each what a building has to be drawn by - sprites, and smokeSource
         //where it has a chimney. One that is turned was painted for the
@@ -419,11 +413,11 @@ var Core = namespace("Isometrica.Core");
         //just cover: the first house keeps the town afloat, the second one
         //starts earning (nothing is due while the town stands empty)...
         demanding: {
-            money: 4
+            money: 40
         },
         //...and so much for every tile of land bought on top of that, which is
         //what makes sprawl expensive and a tight, tall city cheap to run
-        upkeepPerTile: 1.5,
+        upkeepPerTile: 15,
         //a few clerks, so that the first proper house in town has somebody
         //working before there is a shop to work in
         jobs: 4,
@@ -450,10 +444,10 @@ var Core = namespace("Isometrica.Core");
     //money and has land to spare, so it builds shops; once land costs a
     //fortune a block, it is worth sinking years into a tower.
     //
-    //                cost   jobs  /tick  payback  per tile
-    //  shop          1000    20     15      67       15
-    //  big shop      9000   140     96      94       24
-    //  office       25000   200    110     227      110
+    //                 cost   jobs  /tick  payback  per tile
+    //  shop          10000    20    150      67       150
+    //  big shop      90000   140    960      94       240
+    //  office       250000   200   1100     227      1100
     //
     //Every citizen in a house that needs jobs needs a job of their own, so the
     //job counts are generous - a street of houses gets by on a couple of
@@ -468,7 +462,7 @@ var Core = namespace("Isometrica.Core");
         buildingCode: BuildingCode.shop,
         classCode: BuildingClassCode.commerce,
         producing: {
-            money: 15
+            money: 150
         },
         //how many citizens it takes to run - it only makes its money with them in
         jobs: 20,
@@ -479,7 +473,7 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 5000,
         constructionCost: {
-            money: 1000
+            money: 10000
         },
         name: "shop",
         //a small business on the corner, whatever it is - put down as one of
@@ -528,16 +522,16 @@ var Core = namespace("Isometrica.Core");
     //
     //                   cost  heads  tax   heads   money   payback
     //                                /head /tile   /tile
-    //  mobile house      150    2    2      2        4        38
-    //  tiny house        300    3    2      3        6        50
-    //  small house      1200    8    2.5    4       10        60
-    //  house            2200   12    2.5    6       15        73
-    //  apartments       5000   50    1     12.5     12.5     100
+    //  mobile house     1500    2    20      2       40       38
+    //  tiny house       3000    3    20      3       60       50
+    //  small house     12000    8    25      4      100       60
+    //  house           22000   12    25      6      150       73
+    //  apartments      50000   50    10     12.5    125      100
     //
     //Tax is only half of what a head is worth: everybody in town can hold a
-    //job, and a worker in an office is another $0.60 a tick on top. Counting
-    //that, a tile of houses is worth about 18 a tick and a tile of
-    //flats about 20 - near enough the same money, with the flats holding
+    //job, and a worker in an office is another $6 a tick on top. Counting
+    //that, a tile of houses is worth about 180 a tick and a tile of
+    //flats about 200 - near enough the same money, with the flats holding
     //twice the people and the houses paying for themselves sooner.
     buildingData[BuildingCode.apartments] = {
         sizeX: 2,
@@ -553,11 +547,11 @@ var Core = namespace("Isometrica.Core");
         //the cheapest roof per head in the city, and the rents to match: what
         //the treasury gets out of a block of flats is its people's work, not
         //their taxes
-        taxPerResident: 1,
+        taxPerResident: 10,
         citizenCapacity: 50,
         constructionTime: 15000,
         constructionCost: {
-            money: 5000
+            money: 50000
         },
         name: "apartment block",
         sprites: [
@@ -606,7 +600,7 @@ var Core = namespace("Isometrica.Core");
         buildingCode: BuildingCode.bigShop,
         classCode: BuildingClassCode.commerce,
         producing: {
-            money: 96
+            money: 960
         },
         jobs: 140,
         demanding: {},
@@ -616,7 +610,7 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 10000,
         constructionCost: {
-            money: 9000
+            money: 90000
         },
         name: "big shop",
         sprites: [
@@ -667,7 +661,7 @@ var Core = namespace("Isometrica.Core");
         buildingCode: BuildingCode.office,
         classCode: BuildingClassCode.commerce,
         producing: {
-            money: 110
+            money: 1100
         },
         //five apartment blocks' worth of people go to work in it
         jobs: 180,
@@ -678,7 +672,7 @@ var Core = namespace("Isometrica.Core");
         },
         constructionTime: 20000,
         constructionCost: {
-            money: 25000
+            money: 250000
         },
         name: "office tower",
         sprites: [
@@ -727,11 +721,11 @@ var Core = namespace("Isometrica.Core");
     //         electricity: 5
     //     },
     //     demanding: {
-    //         money: 1
+    //         money: 10
     //     },
     //     constructionTime: 5000,
     //     constructionCost: {
-    //         money: 50,
+    //         money: 500,
     //         iron: 50
     //     },
     //     name: "wind turbine",
@@ -758,13 +752,13 @@ var Core = namespace("Isometrica.Core");
         classCode: BuildingClassCode.municipal,
         producing: {},
         demanding: {
-            money: 5
+            money: 50
         },
         //how far it waters, in tiles
         waterRadius: 6,
         constructionTime: 10000,
         constructionCost: {
-            money: 250
+            money: 2500
         },
         name: "water tower",
         sprites: [
@@ -789,11 +783,11 @@ var Core = namespace("Isometrica.Core");
     //         water: 15
     //     },
     //     demanding: {
-    //         money: 2
+    //         money: 20
     //     },
     //     constructionTime: 10000,
     //     constructionCost: {
-    //         money: 100,
+    //         money: 1000,
     //         stone: 40,
     //         iron: 40
     //     },
@@ -817,12 +811,12 @@ var Core = namespace("Isometrica.Core");
     //     buildingCode: BuildingCode.smallMarket,
     //     classCode: BuildingClassCode.commerce,
     //     producing: {
-    //         money: 100
+    //         money: 1000
     //     },
     //     demanding: {},
     //     constructionTime: 10000,
     //     constructionCost: {
-    //         money: 50
+    //         money: 500
     //     },
     //     name: "small market",
     //     sprites: [
@@ -851,7 +845,7 @@ var Core = namespace("Isometrica.Core");
     //     demanding: {},
     //     constructionTime: 3000,
     //     constructionCost: {
-    //         money: 100
+    //         money: 1000
     //     },
     //     name: "lumber mill",
     //     requirement: GatherReq.nearTree,
@@ -881,7 +875,7 @@ var Core = namespace("Isometrica.Core");
     //     demanding: {},
     //     constructionTime: 10000,
     //     constructionCost: {
-    //         money: 100
+    //         money: 1000
     //     },
     //     requirement: GatherReq.oilTile,
     //     name: "oil rig",
@@ -911,7 +905,7 @@ var Core = namespace("Isometrica.Core");
     //     demanding: {},
     //     constructionTime: 5000,
     //     constructionCost: {
-    //         money: 100
+    //         money: 1000
     //     },
     //     requirement: GatherReq.stoneTile,
     //     name: "stone quarry",
@@ -941,7 +935,7 @@ var Core = namespace("Isometrica.Core");
     //     demanding: {},
     //     constructionTime: 5000,
     //     constructionCost: {
-    //         money: 100
+    //         money: 1000
     //     },
     //     requirement: GatherReq.ironTile,
     //     name: "iron mine",
