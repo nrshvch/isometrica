@@ -97,6 +97,18 @@ GameScreen.prototype.showing = function () {
   return this._showing || null;
 };
 
+/**
+ * Back from the city screen to the world as it was left. The city screen can
+ * be opened in the middle of an action - placing buildings, shaping the
+ * ground, buying land - and that action is still running, so the world comes
+ * back with its buttons, its hint and its selection just as they were; only
+ * a world nothing was going on in goes back to its own buttons.
+ */
+GameScreen.prototype.leaveCity = function () {
+  if (this.worldScreen().busy()) this.show("world");
+  else this.ui.navigate("world");
+};
+
 GameScreen.prototype.show = function (name, args) {
   this._showing = name;
 

@@ -13,7 +13,7 @@ export default Backbone.View.extend({
       this.show(id);
     },
     "click .button.close": function () {
-      this.ui.navigate("world");
+      this.ui.gameScreen().leaveCity();
     },
   },
   initialize: function (options) {

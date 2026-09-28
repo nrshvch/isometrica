@@ -65,17 +65,11 @@ var View = Backbone.View.extend({
       this.city.resources.getResources()[Isometrica.Core.ResourceCode.money];
     $(".money", this.$el).text("$" + Numeral(money).format("0,0"));
   },
+  //whatever is going on in the world - an action running or not - it is
+  //still there to come back to (see GameScreen#leaveCity)
   toggleCity: function () {
-    if (this.options.app.showing() === "city") {
-      this.options.ui.navigate("world");
-      return;
-    }
-
-    //an action owns the world while it runs - opening the city screen from
-    //under it would leave the action with no buttons and no way to finish
-    if (this.options.app.worldScreen().busy()) return;
-
-    this.options.ui.navigate("city", [this.city.id()]);
+    if (this.options.app.showing() === "city") this.options.app.leaveCity();
+    else this.options.ui.navigate("city", [this.city.id()]);
   },
   render: function () {
     this.renderTime();
