@@ -1,0 +1,6 @@
+dist/
+vendor/
+.wrangler/
+package-lock.json
+src/public/gfx/
+assets/

@@ -14,7 +14,9 @@
     "preview": "vite preview",
     "build:vendor": "node vendor/build.js",
     "generate:terrain": "node tools/genterrain.js && node tools/packterrain.js",
-    "generate:trees": "node tools/gentrees.js"
+    "generate:trees": "node tools/gentrees.js",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "backbone": "1.1.2",
@@ -34,6 +36,7 @@
     "almond": "^0.3.3",
     "less": "^4.2.0",
     "pngjs": "^7.0.0",
+    "prettier": "3.9.9",
     "requirejs": "2.3.7",
     "vite": "^6.4.3",
     "wrangler": "^4.142.0"
