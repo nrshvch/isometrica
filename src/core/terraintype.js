@@ -7,9 +7,9 @@ var Core = namespace("Isometrica.Core");
  * @exports TerrainType
  */
 var TerrainType = {
-    water: 0,
-    grass: 1,
-    shore: 2
+  water: 0,
+  grass: 1,
+  shore: 2,
 };
 
 Core.TerrainType = TerrainType;

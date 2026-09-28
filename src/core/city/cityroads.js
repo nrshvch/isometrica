@@ -25,17 +25,17 @@ CityService.Roads = CityRoads;
  * @constructor
  */
 function CityRoads(city) {
-    this.city = city;
-    this._network = {};
-    this._stale = true;
+  this.city = city;
+  this._network = {};
+  this._stale = true;
 }
 
 CityRoads.prototype.init = function () {
-    var buildings = this.city.world.buildings;
+  var buildings = this.city.world.buildings;
 
-    //the network is only ever changed by something being built or pulled down
-    Events.on(buildings, buildings.events.buildingBuilt, onChange, this);
-    Events.on(buildings, buildings.events.buildingRemoved, onChange, this);
+  //the network is only ever changed by something being built or pulled down
+  Events.on(buildings, buildings.events.buildingBuilt, onChange, this);
+  Events.on(buildings, buildings.events.buildingRemoved, onChange, this);
 };
 
 /**
@@ -43,34 +43,32 @@ CityRoads.prototype.init = function () {
  * @returns {boolean} whether the city's streets reach it
  */
 CityRoads.prototype.reaches = function (building) {
-    update(this);
+  update(this);
 
-    //the hall is where the network is measured from, so it is always reached
-    if (building === this.city.buildings.cityHall)
-        return true;
+  //the hall is where the network is measured from, so it is always reached
+  if (building === this.city.buildings.cityHall) return true;
 
-    var sides = alongside(building), i;
+  var sides = alongside(building),
+    i;
 
-    for (i = 0; i < sides.length; i++) {
-        if (this._network[sides[i]] === true)
-            return true;
-    }
+  for (i = 0; i < sides.length; i++) {
+    if (this._network[sides[i]] === true) return true;
+  }
 
-    return false;
+  return false;
 };
 
 /**
  * @returns {number} how many road tiles hang together off the city hall
  */
 CityRoads.prototype.getNetworkSize = function () {
-    update(this);
+  update(this);
 
-    var n = 0;
+  var n = 0;
 
-    for (var tile in this._network)
-        n++;
+  for (var tile in this._network) n++;
 
-    return n;
+  return n;
 };
 
 /**
@@ -82,44 +80,46 @@ CityRoads.prototype.getNetworkSize = function () {
  * @returns {number[]}
  */
 function alongside(building) {
-    var iter = building.occupiedTiles(),
-        footprint = {},
-        tiles = [],
-        sides = [],
-        tile, i;
+  var iter = building.occupiedTiles(),
+    footprint = {},
+    tiles = [],
+    sides = [],
+    tile,
+    i;
 
-    while (!iter.done) {
-        tile = TileIterator.next(iter);
-        footprint[tile] = true;
-        tiles.push(tile);
-    }
+  while (!iter.done) {
+    tile = TileIterator.next(iter);
+    footprint[tile] = true;
+    tiles.push(tile);
+  }
 
-    for (i = 0; i < tiles.length; i++) {
-        tile = tiles[i];
+  for (i = 0; i < tiles.length; i++) {
+    tile = tiles[i];
 
-        offer(sides, footprint, tile + 1);
-        offer(sides, footprint, tile - 1);
-        offer(sides, footprint, tile + Terrain.dy);
-        offer(sides, footprint, tile - Terrain.dy);
-    }
+    offer(sides, footprint, tile + 1);
+    offer(sides, footprint, tile - 1);
+    offer(sides, footprint, tile + Terrain.dy);
+    offer(sides, footprint, tile - Terrain.dy);
+  }
 
-    return sides;
+  return sides;
 }
 
 function offer(sides, footprint, tile) {
-    if (footprint[tile] !== true && sides.indexOf(tile) === -1)
-        sides.push(tile);
+  if (footprint[tile] !== true && sides.indexOf(tile) === -1) sides.push(tile);
 }
 
 function isRoad(world, tile) {
-    var building = world.buildings.get(tile);
+  var building = world.buildings.get(tile);
 
-    return building !== null &&
-        BuildingData[building.buildingCode].classCode === BuildingClassCode.road;
+  return (
+    building !== null &&
+    BuildingData[building.buildingCode].classCode === BuildingClassCode.road
+  );
 }
 
 function onChange(sender, args, self) {
-    self._stale = true;
+  self._stale = true;
 }
 
 /**
@@ -127,45 +127,45 @@ function onChange(sender, args, self) {
  * to. Everything else may be paved, but it is not this city's network.
  */
 function update(self) {
-    if (!self._stale)
-        return;
+  if (!self._stale) return;
 
-    var world = self.city.world,
-        hall = self.city.buildings.cityHall,
-        network = {};
+  var world = self.city.world,
+    hall = self.city.buildings.cityHall,
+    network = {};
 
-    self._network = network;
-    self._stale = false;
+  self._network = network;
+  self._stale = false;
 
-    if (hall === null || hall === undefined)
-        return;
+  if (hall === null || hall === undefined) return;
 
-    //the roads that touch the hall are where the network starts
-    var open = [], seeds = alongside(hall), tile, i;
+  //the roads that touch the hall are where the network starts
+  var open = [],
+    seeds = alongside(hall),
+    tile,
+    i;
 
-    for (i = 0; i < seeds.length; i++) {
-        if (isRoad(world, seeds[i]) && network[seeds[i]] !== true) {
-            network[seeds[i]] = true;
-            open.push(seeds[i]);
-        }
+  for (i = 0; i < seeds.length; i++) {
+    if (isRoad(world, seeds[i]) && network[seeds[i]] !== true) {
+      network[seeds[i]] = true;
+      open.push(seeds[i]);
     }
+  }
 
-    while (open.length > 0) {
-        tile = open.pop();
+  while (open.length > 0) {
+    tile = open.pop();
 
-        step(world, network, open, tile + 1);
-        step(world, network, open, tile - 1);
-        step(world, network, open, tile + Terrain.dy);
-        step(world, network, open, tile - Terrain.dy);
-    }
+    step(world, network, open, tile + 1);
+    step(world, network, open, tile - 1);
+    step(world, network, open, tile + Terrain.dy);
+    step(world, network, open, tile - Terrain.dy);
+  }
 }
 
 function step(world, network, open, tile) {
-    if (network[tile] === true || !isRoad(world, tile))
-        return;
+  if (network[tile] === true || !isRoad(world, tile)) return;
 
-    network[tile] = true;
-    open.push(tile);
+  network[tile] = true;
+  open.push(tile);
 }
 
 export default CityRoads;

@@ -6,8 +6,8 @@
  * @exports TileParam
  */
 var TileParam = {
-    Crime: "crime",
-    Ecology : "eco"
+  Crime: "crime",
+  Ecology: "eco",
 };
 
 export default TileParam;

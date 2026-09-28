@@ -39,11 +39,11 @@ var SHADOW_TOLERANCE = 0.05;
 var SHADOW_LENGTH = 6;
 
 function read(file) {
-    return PNG.sync.read(fs.readFileSync(file));
+  return PNG.sync.read(fs.readFileSync(file));
 }
 
 function write(image, name) {
-    fs.writeFileSync(path.join(OUT_DIR, name + ".png"), PNG.sync.write(image));
+  fs.writeFileSync(path.join(OUT_DIR, name + ".png"), PNG.sync.write(image));
 }
 
 /**
@@ -52,17 +52,20 @@ function write(image, name) {
  * null where it is neither - that is a stone.
  */
 function darkening(picture, ground, i) {
-    var ratios = [0, 1, 2].map(function (c) {
-            return picture.data[i + c] / Math.max(1, ground.data[i + c]);
-        }),
-        mean = (ratios[0] + ratios[1] + ratios[2]) / 3;
+  var ratios = [0, 1, 2].map(function (c) {
+      return picture.data[i + c] / Math.max(1, ground.data[i + c]);
+    }),
+    mean = (ratios[0] + ratios[1] + ratios[2]) / 3;
 
-    if (ratios.some(function (r) {
-            return Math.abs(r - mean) > SHADOW_TOLERANCE;
-        }) || mean > 1 + SHADOW_TOLERANCE)
-        return null;
+  if (
+    ratios.some(function (r) {
+      return Math.abs(r - mean) > SHADOW_TOLERANCE;
+    }) ||
+    mean > 1 + SHADOW_TOLERANCE
+  )
+    return null;
 
-    return Math.max(0, 1 - mean);
+  return Math.max(0, 1 - mean);
 }
 
 /**
@@ -73,40 +76,41 @@ function darkening(picture, ground, i) {
  *          stone pixels, and shade is the alpha of the shadows
  */
 function cutOut(picture, ground) {
-    var w = picture.width,
-        h = picture.height,
-        image = new PNG({width: w, height: h}),
-        stone = new Uint8Array(w * h),
-        shadow = [],
-        shade = 0,
-        p, i, d;
+  var w = picture.width,
+    h = picture.height,
+    image = new PNG({ width: w, height: h }),
+    stone = new Uint8Array(w * h),
+    shadow = [],
+    shade = 0,
+    p,
+    i,
+    d;
 
-    for (p = 0; p < w * h; p++) {
-        i = p * 4;
+  for (p = 0; p < w * h; p++) {
+    i = p * 4;
 
-        if (picture.data[i + 3] === 0)
-            continue;
+    if (picture.data[i + 3] === 0) continue;
 
-        //painted past the edge of the tile - there is no ground to be
-        //anything but stone
-        d = ground.data[i + 3] === 0 ? null : darkening(picture, ground, i);
+    //painted past the edge of the tile - there is no ground to be
+    //anything but stone
+    d = ground.data[i + 3] === 0 ? null : darkening(picture, ground, i);
 
-        if (d === null) {
-            stone[p] = 1;
-            picture.data.copy(image.data, i, i, i + 4);
-        } else if (Math.round(d * 255) > 0) {
-            shadow.push(p);
-            shade += d;
-        }
+    if (d === null) {
+      stone[p] = 1;
+      picture.data.copy(image.data, i, i, i + 4);
+    } else if (Math.round(d * 255) > 0) {
+      shadow.push(p);
+      shade += d;
     }
+  }
 
-    shade = shadow.length > 0 ? Math.round(shade / shadow.length * 255) : 0;
+  shade = shadow.length > 0 ? Math.round((shade / shadow.length) * 255) : 0;
 
-    shadow.forEach(function (q) {
-        image.data[q * 4 + 3] = shade;
-    });
+  shadow.forEach(function (q) {
+    image.data[q * 4 + 3] = shade;
+  });
 
-    return {image: image, stone: stone, shade: shade};
+  return { image: image, stone: stone, shade: shade };
 }
 
 /**
@@ -114,61 +118,67 @@ function cutOut(picture, ground) {
  * cast again on the ground to the left of them, as dark as the shadows were.
  */
 function mirror(cut, ground) {
-    var src = cut.image,
-        w = src.width,
-        h = src.height,
-        image = new PNG({width: w, height: h}),
-        stone = new Uint8Array(w * h),
-        x, y, k, p, i, j;
+  var src = cut.image,
+    w = src.width,
+    h = src.height,
+    image = new PNG({ width: w, height: h }),
+    stone = new Uint8Array(w * h),
+    x,
+    y,
+    k,
+    p,
+    i,
+    j;
 
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            p = y * w + x;
-            j = y * w + (w - 1 - x);
+  for (y = 0; y < h; y++) {
+    for (x = 0; x < w; x++) {
+      p = y * w + x;
+      j = y * w + (w - 1 - x);
 
-            if (cut.stone[j] === 1) {
-                stone[p] = 1;
-                src.data.copy(image.data, p * 4, j * 4, j * 4 + 4);
-            }
-        }
+      if (cut.stone[j] === 1) {
+        stone[p] = 1;
+        src.data.copy(image.data, p * 4, j * 4, j * 4 + 4);
+      }
     }
+  }
 
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            p = y * w + x;
-            i = p * 4;
+  for (y = 0; y < h; y++) {
+    for (x = 0; x < w; x++) {
+      p = y * w + x;
+      i = p * 4;
 
-            //shadows fall on the tile only, and never over a stone
-            if (stone[p] === 1 || ground.data[i + 3] === 0)
-                continue;
+      //shadows fall on the tile only, and never over a stone
+      if (stone[p] === 1 || ground.data[i + 3] === 0) continue;
 
-            for (k = 1; k <= SHADOW_LENGTH && x + k < w; k++) {
-                if (stone[p + k] === 1) {
-                    image.data[i + 3] = cut.shade;
-                    break;
-                }
-            }
+      for (k = 1; k <= SHADOW_LENGTH && x + k < w; k++) {
+        if (stone[p + k] === 1) {
+          image.data[i + 3] = cut.shade;
+          break;
         }
+      }
     }
+  }
 
-    return image;
+  return image;
 }
 
 var ground = read(GROUND);
 
-fs.mkdirSync(OUT_DIR, {recursive: true});
+fs.mkdirSync(OUT_DIR, { recursive: true });
 
 SOURCES.forEach(function (name) {
-    var picture = read(path.join(SOURCE_DIR, name + ".png")),
-        cut;
+  var picture = read(path.join(SOURCE_DIR, name + ".png")),
+    cut;
 
-    if (picture.width !== ground.width || picture.height !== ground.height)
-        throw new Error(name + ".png is not the size of the tile it was painted on");
+  if (picture.width !== ground.width || picture.height !== ground.height)
+    throw new Error(
+      name + ".png is not the size of the tile it was painted on",
+    );
 
-    cut = cutOut(picture, ground);
+  cut = cutOut(picture, ground);
 
-    write(cut.image, name);
-    write(mirror(cut, ground), name + "-m");
+  write(cut.image, name);
+  write(mirror(cut, ground), name + "-m");
 
-    console.log("scenery/" + name + ".png", "scenery/" + name + "-m.png");
+  console.log("scenery/" + name + ".png", "scenery/" + name + "-m.png");
 });

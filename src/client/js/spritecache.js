@@ -19,16 +19,16 @@ var ImageType = engine.AssetManager.Resource.ResourceTypeEnum.image;
 var ResourceState = engine.AssetManager.Resource.ResourceStateEnum;
 
 function SpriteCache(assets) {
-    this.assets = assets;
-    this.frames = {};
-    this.atlas = null;
-    this.sprites = {};
-    this.waiting = new Map();
+  this.assets = assets;
+  this.frames = {};
+  this.atlas = null;
+  this.sprites = {};
+  this.waiting = new Map();
 }
 
 SpriteCache.prototype.setSpritesheet = function (frames, atlas) {
-    this.frames = frames;
-    this.atlas = atlas;
+  this.frames = frames;
+  this.atlas = atlas;
 };
 
 /**
@@ -41,21 +41,19 @@ SpriteCache.prototype.setSpritesheet = function (frames, atlas) {
  * @returns {Isometrica.Engine.SpriteManager.Sprite}
  */
 SpriteCache.prototype.getSprite = function (name, mirrored) {
-    var key = mirrored ? name + "#mirrored" : name,
-        sprite = this.sprites[key];
+  var key = mirrored ? name + "#mirrored" : name,
+    sprite = this.sprites[key];
 
-    if (sprite === undefined) {
-        sprite = this.sprites[key] = new engine.SpriteManager.Sprite();
+  if (sprite === undefined) {
+    sprite = this.sprites[key] = new engine.SpriteManager.Sprite();
 
-        if (mirrored)
-            fromMirror(this, sprite, this.getSprite(name));
-        else if (this.frames[name] !== undefined)
-            fromSpritesheet(this, sprite, this.frames[name].frame);
-        else
-            fromImage(this, sprite, ROOT + name);
-    }
+    if (mirrored) fromMirror(this, sprite, this.getSprite(name));
+    else if (this.frames[name] !== undefined)
+      fromSpritesheet(this, sprite, this.frames[name].frame);
+    else fromImage(this, sprite, ROOT + name);
+  }
 
-    return sprite;
+  return sprite;
 };
 
 /**
@@ -64,77 +62,86 @@ SpriteCache.prototype.getSprite = function (name, mirrored) {
  * needs its size, which an empty sprite does not have yet.
  */
 SpriteCache.prototype.whenReady = function (sprite, callback) {
-    if (sprite.width > 0) {
-        callback(sprite);
-        return;
-    }
+  if (sprite.width > 0) {
+    callback(sprite);
+    return;
+  }
 
-    var list = this.waiting.get(sprite);
+  var list = this.waiting.get(sprite);
 
-    if (list === undefined)
-        this.waiting.set(sprite, list = []);
+  if (list === undefined) this.waiting.set(sprite, (list = []));
 
-    list.push(callback);
+  list.push(callback);
 };
 
 function fromSpritesheet(self, sprite, frame) {
-    fill(self, sprite, prerender(self.atlas, frame.x, frame.y, frame.w, frame.h));
+  fill(self, sprite, prerender(self.atlas, frame.x, frame.y, frame.w, frame.h));
 }
 
 function fromMirror(self, sprite, original) {
-    self.whenReady(original, function () {
-        var canvas = prerender(original.sourceImage, 0, 0, original.width, original.height, true);
-        fill(self, sprite, canvas);
-    });
+  self.whenReady(original, function () {
+    var canvas = prerender(
+      original.sourceImage,
+      0,
+      0,
+      original.width,
+      original.height,
+      true,
+    );
+    fill(self, sprite, canvas);
+  });
 }
 
 function fromImage(self, sprite, path) {
-    self.assets.getAsset(path, ImageType).done(function (resource) {
-        if (resource.state !== ResourceState.ready) {
-            console.warn("Sprite not found: " + path);
-            return;
-        }
+  self.assets.getAsset(path, ImageType).done(function (resource) {
+    if (resource.state !== ResourceState.ready) {
+      console.warn("Sprite not found: " + path);
+      return;
+    }
 
-        var image = resource.data;
-        fill(self, sprite, prerender(image, 0, 0, image.width, image.height));
+    var image = resource.data;
+    fill(self, sprite, prerender(image, 0, 0, image.width, image.height));
 
-        //the canvas is all anybody draws from now on
-        self.assets.releaseAsset(path);
-    });
+    //the canvas is all anybody draws from now on
+    self.assets.releaseAsset(path);
+  });
 }
 
 function prerender(source, x, y, w, h, mirrored) {
-    var canvas = typeof OffscreenCanvas !== "undefined" ?
-        new OffscreenCanvas(w, h) :
-        Object.assign(document.createElement("canvas"), {width: w, height: h});
+  var canvas =
+    typeof OffscreenCanvas !== "undefined"
+      ? new OffscreenCanvas(w, h)
+      : Object.assign(document.createElement("canvas"), {
+          width: w,
+          height: h,
+        });
 
-    var ctx = canvas.getContext("2d");
+  var ctx = canvas.getContext("2d");
 
-    if (mirrored) {
-        ctx.translate(w, 0);
-        ctx.scale(-1, 1);
-    }
+  if (mirrored) {
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+  }
 
-    ctx.drawImage(source, x, y, w, h, 0, 0, w, h);
+  ctx.drawImage(source, x, y, w, h, 0, 0, w, h);
 
-    return canvas;
+  return canvas;
 }
 
 function fill(self, sprite, canvas) {
-    sprite.sourceImage = canvas;
-    sprite.offsetX = 0;
-    sprite.offsetY = 0;
-    sprite.width = canvas.width;
-    sprite.height = canvas.height;
+  sprite.sourceImage = canvas;
+  sprite.offsetX = 0;
+  sprite.offsetY = 0;
+  sprite.width = canvas.width;
+  sprite.height = canvas.height;
 
-    var list = self.waiting.get(sprite);
+  var list = self.waiting.get(sprite);
 
-    if (list !== undefined) {
-        self.waiting.delete(sprite);
+  if (list !== undefined) {
+    self.waiting.delete(sprite);
 
-        for (var i = 0; i < list.length; i++)
-            list[i](sprite);
-    }
+    for (var i = 0; i < list.length; i++) list[i](sprite);
+  }
 }
 
 export default SpriteCache;

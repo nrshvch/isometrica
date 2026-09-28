@@ -16,11 +16,11 @@ var START_SPREAD_TILES = 10000;
 var START_AT_KEY = "isometrica.startAt";
 
 var events = {
-    ready: 0
+  ready: 0,
 };
 
 function UIManager() {
-    this.rootNode = $(".game-ui");
+  this.rootNode = $(".game-ui");
 }
 
 UIManager.events = events;
@@ -29,38 +29,40 @@ UIManager.prototype._gameScreen = null;
 UIManager.prototype._cityId = null;
 
 UIManager.prototype.init = function () {
-    //console.log("HAPPEN NOTHING!");
-    //return;
-    var self = this;
-    var f = function () {
-        self.router = new MainRouter({
-            ui: self
-        });
+  //console.log("HAPPEN NOTHING!");
+  //return;
+  var self = this;
+  var f = function () {
+    self.router = new MainRouter({
+      ui: self,
+    });
 
-        Backbone.history.start();
-    };
+    Backbone.history.start();
+  };
 
-    if(typeof SHOW_SPLASH !== "undefined" && SHOW_SPLASH === false) {
-        f();
-    }else{
-        this.show("splash");
-        setTimeout(f, Config.splashTime);
-    }
+  if (typeof SHOW_SPLASH !== "undefined" && SHOW_SPLASH === false) {
+    f();
+  } else {
+    this.show("splash");
+    setTimeout(f, Config.splashTime);
+  }
 };
 
 UIManager.prototype.game = function (callback) {
-    var self = this;
-    if (this._core && this._client) {
-        callback(this._core, this._client);
-        return;
-    }
-    Promise.all([import("client/main"), import("core/main")]).then(function (modules) {
-        var Vkaria = modules[0].default.Vkaria;
-        var Core = modules[1].default;
-        var core = self._core = new Core.Logic();
-        var client = self._client = new Vkaria(core, self);
-        callback(core, client);
-    });
+  var self = this;
+  if (this._core && this._client) {
+    callback(this._core, this._client);
+    return;
+  }
+  Promise.all([import("client/main"), import("core/main")]).then(
+    function (modules) {
+      var Vkaria = modules[0].default.Vkaria;
+      var Core = modules[1].default;
+      var core = (self._core = new Core.Logic());
+      var client = (self._client = new Vkaria(core, self));
+      callback(core, client);
+    },
+  );
 };
 
 /**
@@ -71,10 +73,9 @@ UIManager.prototype.game = function (callback) {
  * @returns {string|null}
  */
 UIManager.prototype.cityId = function (value) {
-    if (value !== undefined)
-        this._cityId = value;
+  if (value !== undefined) this._cityId = value;
 
-    return this._cityId || null;
+  return this._cityId || null;
 };
 
 /**
@@ -84,18 +85,17 @@ UIManager.prototype.cityId = function (value) {
  * @param id {string}
  */
 UIManager.prototype.showCityInUrl = function (id) {
-    this.cityId(id);
+  this.cityId(id);
 
-    if (!this.router || !Backbone.History.started)
-        return;
+  if (!this.router || !Backbone.History.started) return;
 
-    //keeps the router's idea of where we are in step, so the hash below does
-    //not send it round the route again
-    this.router.navigate("/" + id, {trigger: false, replace: true});
+  //keeps the router's idea of where we are in step, so the hash below does
+  //not send it round the route again
+  this.router.navigate("/" + id, { trigger: false, replace: true });
 
-    //Backbone writes the fragment back without its leading slash, and the
-    //address we want to hand out is /#/pA4b1c
-    window.history.replaceState(null, "", "#/" + id);
+  //Backbone writes the fragment back without its leading slash, and the
+  //address we want to hand out is /#/pA4b1c
+  window.history.replaceState(null, "", "#/" + id);
 };
 
 /**
@@ -107,8 +107,8 @@ UIManager.prototype.showCityInUrl = function (id) {
  * @param id {string|null} null opens whichever city is the active one
  */
 UIManager.prototype.reopen = function (id) {
-    window.location.hash = id === null ? "" : "/" + id;
-    window.location.reload();
+  window.location.hash = id === null ? "" : "/" + id;
+  window.location.reload();
 };
 
 /**
@@ -116,67 +116,70 @@ UIManager.prototype.reopen = function (id) {
  * The old one stays in storage, to be come back to by its own address.
  */
 UIManager.prototype.startFreshCity = function () {
-    var core = this.core(),
-        client = this.client();
+  var core = this.core(),
+    client = this.client();
 
-    //the new city is not dropped right where the player stands, but somewhere
-    //within a 10k by 10k tiles square around it - cityman picks it up after
-    //the reload and opens the camera there
-    if (client !== null) {
-        var pos = client.camera.transform.getPosition(),
-            span = START_SPREAD_TILES * ClientConfig.tileSize;
+  //the new city is not dropped right where the player stands, but somewhere
+  //within a 10k by 10k tiles square around it - cityman picks it up after
+  //the reload and opens the camera there
+  if (client !== null) {
+    var pos = client.camera.transform.getPosition(),
+      span = START_SPREAD_TILES * ClientConfig.tileSize;
 
-        try {
-            window.sessionStorage.setItem(START_AT_KEY, JSON.stringify({
-                x: pos[0] + (Math.random() - 0.5) * span,
-                z: pos[2] + (Math.random() - 0.5) * span
-            }));
-        } catch (e) {
-            //no storage - the new city just opens where the camera defaults to
-        }
+    try {
+      window.sessionStorage.setItem(
+        START_AT_KEY,
+        JSON.stringify({
+          x: pos[0] + (Math.random() - 0.5) * span,
+          z: pos[2] + (Math.random() - 0.5) * span,
+        }),
+      );
+    } catch (e) {
+      //no storage - the new city just opens where the camera defaults to
     }
+  }
 
-    this.reopen(core === null ? null : core.persistence.newCityId());
+  this.reopen(core === null ? null : core.persistence.newCityId());
 };
 
 UIManager.prototype.core = function () {
-    return this._core || null;
+  return this._core || null;
 };
 
 UIManager.prototype.client = function () {
-    return this._client || null;
+  return this._client || null;
 };
 
 UIManager.prototype.gameScreen = function () {
-    return this._gameScreen || (this._gameScreen = new GameScreen(this));
+  return this._gameScreen || (this._gameScreen = new GameScreen(this));
 };
 
 UIManager.prototype.splashScreen = function () {
-    return this._splashScreen || (this._splashScreen = new SplashScreen(this));
+  return this._splashScreen || (this._splashScreen = new SplashScreen(this));
 };
 
 UIManager.prototype.log = function (val) {
-    console.log(val);
+  console.log(val);
 };
 
 UIManager.prototype.show = function (name) {
-    //the screens are kept and put back in time and again - taken out with
-    //empty() they would lose every listener bound in them, the top bar's
-    //click on the money among them, so they are only detached
-    this.rootNode.children().detach();
+  //the screens are kept and put back in time and again - taken out with
+  //empty() they would lose every listener bound in them, the top bar's
+  //click on the money among them, so they are only detached
+  this.rootNode.children().detach();
 
-    switch (name) {
-        case "game":
-            this.rootNode.append(this.gameScreen().view.el);
-            break;
-        case "splash":
-            this.rootNode.append(this.splashScreen().show().el)
-    }
+  switch (name) {
+    case "game":
+      this.rootNode.append(this.gameScreen().view.el);
+      break;
+    case "splash":
+      this.rootNode.append(this.splashScreen().show().el);
+  }
 };
 
 UIManager.prototype.navigate = function (module, args) {
-    this.show("game");
-    this.gameScreen().execute(module, args);
+  this.show("game");
+  this.gameScreen().execute(module, args);
 };
 
 export default UIManager;

@@ -7,28 +7,26 @@ import City from "ui/modules/city/js/city";
 import Events from "events";
 
 function GameScreen(ui) {
-    this.ui = ui;
+  this.ui = ui;
 
-    this.onReady = Events.event("ready");
+  this.onReady = Events.event("ready");
 
-    this.view = new View({
-        controller: this
+  this.view = new View({
+    controller: this,
+  });
+
+  this.onReady().on(function (s, a, d) {
+    var cities = d.client.core.cities;
+
+    //a city out of a save is already standing by the time the client is
+    //ready, so the bar goes up straight away rather than waiting on an
+    //event that has been and gone
+    if (cities.getCities().length > 0) showTopBar(d);
+
+    cities.onNewCity().on(function (citysrv, city) {
+      showTopBar(d);
     });
-
-    this.onReady().on(function(s,a,d){
-        var cities = d.client.core.cities;
-
-        //a city out of a save is already standing by the time the client is
-        //ready, so the bar goes up straight away rather than waiting on an
-        //event that has been and gone
-        if (cities.getCities().length > 0)
-            showTopBar(d);
-
-        cities.onNewCity().on(function(citysrv, city){
-
-            showTopBar(d);
-        });
-    }, this);
+  }, this);
 }
 
 /**
@@ -38,55 +36,57 @@ function GameScreen(ui) {
  * picture jumps.
  */
 function showTopBar(gameScreen) {
-    gameScreen.view.head(gameScreen.topBar().view);
-    gameScreen.worldScreen().updateSize();
+  gameScreen.view.head(gameScreen.topBar().view);
+  gameScreen.worldScreen().updateSize();
 }
 
 GameScreen.prototype.init = function (callback) {
-    if (this.ready === true)
-        callback(this);
-    else {
-        var self = this;
-        this.ui.game(function (core, client) {
-            self.ready = true;
-            self.client = client;
-            //loads assets
-            client.prepare(function () {
-                core.start();
+  if (this.ready === true) callback(this);
+  else {
+    var self = this;
+    this.ui.game(function (core, client) {
+      self.ready = true;
+      self.client = client;
+      //loads assets
+      client.prepare(function () {
+        core.start();
 
-                //the saved city goes into the world before the client puts
-                //anything on screen, so that what is drawn is drawn once
-                self.ui.showCityInUrl(core.persistence.open(self.ui.cityId()));
+        //the saved city goes into the world before the client puts
+        //anything on screen, so that what is drawn is drawn once
+        self.ui.showCityInUrl(core.persistence.open(self.ui.cityId()));
 
-                client.start();
-                callback(self);
-                client.startServices();
-                self.onReady(this, null);
-            });
-        });
-    }
+        client.start();
+        callback(self);
+        client.startServices();
+        self.onReady(this, null);
+      });
+    });
+  }
 };
 
 GameScreen.prototype.view = null;
 
 GameScreen.prototype.worldScreen = function () {
-    return this._worldScreen || (this._worldScreen = new WorldScreen(this.ui, this.client));
+  return (
+    this._worldScreen ||
+    (this._worldScreen = new WorldScreen(this.ui, this.client))
+  );
 };
 
 GameScreen.prototype.topBar = function () {
-    return this._topBar || (this._topBar = new TopBar(this));
+  return this._topBar || (this._topBar = new TopBar(this));
 };
 
 GameScreen.prototype.catalogue = function () {
-    return this._catalogue || (this._catalogue = new Catalogue(this));
+  return this._catalogue || (this._catalogue = new Catalogue(this));
 };
 
 GameScreen.prototype.prompt = function () {
-    return this._prompt || (this._prompt = new Prompt(this));
+  return this._prompt || (this._prompt = new Prompt(this));
 };
 
-GameScreen.prototype.city = function(){
-    return this._city || (this._city = new City(this));
+GameScreen.prototype.city = function () {
+  return this._city || (this._city = new City(this));
 };
 
 /**
@@ -94,83 +94,88 @@ GameScreen.prototype.city = function(){
  *                        or null before anything has been shown
  */
 GameScreen.prototype.showing = function () {
-    return this._showing || null;
+  return this._showing || null;
 };
 
 GameScreen.prototype.show = function (name, args) {
-    this._showing = name;
+  this._showing = name;
 
-    switch (name) {
-        case "world":
-            var vs = this.worldScreen();
-            this.view.body(vs.view);
-            vs.updateSize();
-            break;
-        case "catalogue":
-            var catalogue = this.catalogue();
-            var view = catalogue.execute.apply(catalogue, args);
-            this.view.body(view);
-            return catalogue;
-            break;
-        case "city":
-            var city = this.city();
-            var view = city.execute.apply(city, args);
-            if(view) {
-                this.view.body(view);
-                return city;
-            }
-    }
+  switch (name) {
+    case "world":
+      var vs = this.worldScreen();
+      this.view.body(vs.view);
+      vs.updateSize();
+      break;
+    case "catalogue":
+      var catalogue = this.catalogue();
+      var view = catalogue.execute.apply(catalogue, args);
+      this.view.body(view);
+      return catalogue;
+      break;
+    case "city":
+      var city = this.city();
+      var view = city.execute.apply(city, args);
+      if (view) {
+        this.view.body(view);
+        return city;
+      }
+  }
 };
 
-GameScreen.prototype.showPrompt = function (message, callback, placeholder, onDiscard) {
-    var view = this.prompt().open(message, placeholder, callback, onDiscard);
-    this._showing = "prompt";
-    this.view.body(view.render());
+GameScreen.prototype.showPrompt = function (
+  message,
+  callback,
+  placeholder,
+  onDiscard,
+) {
+  var view = this.prompt().open(message, placeholder, callback, onDiscard);
+  this._showing = "prompt";
+  this.view.body(view.render());
 };
 
 GameScreen.prototype.execute = function (module, args) {
-    this.init(function (gs) {
-        switch (module) {
-            case "world":
-                gs.show("world");
-                var world = gs.worldScreen();
-                world.show.apply(world, args);
-                break;
-            case "catalogue":
-                gs.show("catalogue", args);
-                break;
-            case "build":
-                gs.show("world");
-                gs.client.buildman.build(args[0]);
-                //gs.worldScreen().show("build");
-                //gs.client.tools.selectTool(ToolCode.builder).setBuilding(args[0]);
-                break;
-            case "terrain":
-                gs.show("world");
-                gs.client.terrainman.enter();
-                break;
-            case "land":
-                gs.show("world");
-                gs.client.landman.enter();
-                break;
-            case "city":
-                gs.show("city", args);
-                break;
-        }
-    });
+  this.init(function (gs) {
+    switch (module) {
+      case "world":
+        gs.show("world");
+        var world = gs.worldScreen();
+        world.show.apply(world, args);
+        break;
+      case "catalogue":
+        gs.show("catalogue", args);
+        break;
+      case "build":
+        gs.show("world");
+        gs.client.buildman.build(args[0]);
+        //gs.worldScreen().show("build");
+        //gs.client.tools.selectTool(ToolCode.builder).setBuilding(args[0]);
+        break;
+      case "terrain":
+        gs.show("world");
+        gs.client.terrainman.enter();
+        break;
+      case "land":
+        gs.show("world");
+        gs.client.landman.enter();
+        break;
+      case "city":
+        gs.show("city", args);
+        break;
+    }
+  });
 };
 
 GameScreen.prototype.showActionControls = function () {
-    return this.worldScreen().showControls();
+  return this.worldScreen().showControls();
 };
 
 GameScreen.prototype.showToolControls = function (buttons) {
-    return this.worldScreen().showTools(buttons);
+  return this.worldScreen().showTools(buttons);
 };
 
 GameScreen.prototype.showWorld = function () {
-    this.show("world");
-    this.worldScreen().show();
+  this.show("world");
+  this.worldScreen().show();
 };
 
 export default GameScreen;

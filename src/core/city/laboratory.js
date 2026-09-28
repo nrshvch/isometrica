@@ -8,185 +8,190 @@ import VTime from "../vtime";
 import namespace from "namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
-    CityService.Laboratory = Lab;
+CityService.Laboratory = Lab;
 
-    var DirectionData = {};
-    DirectionData[Direction.municipal] = {
-        time: 10000,
-        cost: 1000,
-        items: []
-    };
-    DirectionData[Direction.housing] = {
-        time: 10000,
-        cost: 1000,
-        items: []
-    };
-    DirectionData[Direction.industry] = {
-        time: 10000,
-        cost: 1000,
-        items: []
-    };
-    DirectionData[Direction.commerce] = {
-        time: 10000,
-        cost: 1000,
-        items: []
-    };
+var DirectionData = {};
+DirectionData[Direction.municipal] = {
+  time: 10000,
+  cost: 1000,
+  items: [],
+};
+DirectionData[Direction.housing] = {
+  time: 10000,
+  cost: 1000,
+  items: [],
+};
+DirectionData[Direction.industry] = {
+  time: 10000,
+  cost: 1000,
+  items: [],
+};
+DirectionData[Direction.commerce] = {
+  time: 10000,
+  cost: 1000,
+  items: [],
+};
 
-    for (var code in BuildingData) {
-        var b = BuildingData[code];
-        var dir = b.researchDirection || Direction.municipal;
-        var lvl = b.researchLevel || 0;
-        var a = DirectionData[dir];
-        var b = a.items[lvl] || (a.items[lvl] = []);
+for (var code in BuildingData) {
+  var b = BuildingData[code];
+  var dir = b.researchDirection || Direction.municipal;
+  var lvl = b.researchLevel || 0;
+  var a = DirectionData[dir];
+  var b = a.items[lvl] || (a.items[lvl] = []);
 
-        b.push(parseInt(code, 10));
+  b.push(parseInt(code, 10));
+}
+
+function openItems(self, direction, level, quiet) {
+  quiet = quiet || false;
+  var data = DirectionData[direction];
+  if (
+    data === undefined ||
+    data.items === undefined ||
+    data.items[level] === undefined
+  )
+    return false;
+
+  var items = data.items[level],
+    isNew;
+
+  for (var key in items) {
+    isNew = self.researchedItems[items[key]] !== true;
+
+    if (isNew) {
+      self.researchedItems[items[key]] = true;
+
+      quiet ||
+        Events.fire(self, events.buildingInvented, parseInt(items[key], 10));
     }
+  }
+}
 
-    function openItems(self, direction, level, quiet) {
-        quiet = quiet || false;
-        var data = DirectionData[direction];
-        if (data === undefined || data.items === undefined || data.items[level] === undefined)
-            return false;
+var events = {
+  researchComplete: 0,
+  researchUpdate: 1,
+  researchStart: 2,
+  buildingInvented: 3,
+};
 
-        var items = data.items[level], isNew;
+function Lab(city) {
+  this.world = city.world;
+  this.city = city;
 
-        for (var key in items) {
-            isNew = self.researchedItems[items[key]] !== true;
+  this.dirData = {};
 
-            if (isNew) {
-                self.researchedItems[items[key]] = true;
+  this.dirData[Direction.municipal] = {
+    level: 0,
+    direction: Direction.municipal,
+    state: ResearchState.available,
+  };
 
-                quiet || Events.fire(self, events.buildingInvented, parseInt(items[key], 10));
-            }
-        }
-    }
+  this.dirData[Direction.housing] = {
+    level: 0,
+    direction: Direction.housing,
+    state: ResearchState.available,
+  };
 
-    var events = {
-        researchComplete: 0,
-        researchUpdate: 1,
-        researchStart: 2,
-        buildingInvented: 3
-    };
+  this.dirData[Direction.commerce] = {
+    level: 0,
+    direction: Direction.commerce,
+    state: ResearchState.available,
+  };
 
-    function Lab(city) {
-        this.world = city.world;
-        this.city = city;
+  this.dirData[Direction.industry] = {
+    level: 0,
+    direction: Direction.industry,
+    state: ResearchState.available,
+  };
 
-        this.dirData = {};
+  this.researchedItems = [];
 
-        this.dirData[Direction.municipal] = {
-            level: 0,
-            direction: Direction.municipal,
-            state: ResearchState.available,
-        };
+  openItems(this, Direction.municipal, 0, true);
+  openItems(this, Direction.housing, 0, true);
+  openItems(this, Direction.commerce, 0, true);
+  openItems(this, Direction.industry, 0, true);
+}
 
-        this.dirData[Direction.housing] = {
-            level: 0,
-            direction: Direction.housing,
-            state: ResearchState.available,
-        };
+Lab.events = events;
 
-        this.dirData[Direction.commerce] = {
-            level: 0,
-            direction: Direction.commerce,
-            state: ResearchState.available,
-        };
+Lab.prototype.research = function (direction) {
+  var research = this.dirData[direction];
+  var data = DirectionData[direction];
 
-        this.dirData[Direction.industry] = {
-            level: 0,
-            direction: Direction.industry,
-            state: ResearchState.available,
-        };
+  if (research.state === ResearchState.available) {
+    research(this, direction);
+  } else if (research.state === ResearchState.running) {
+    //throw "Research is already going on!";
+  } else if (research.state === ResearchState.unavailable) {
+    //throw "Research is unavailable!";
+  }
 
-        this.researchedItems = [];
+  var lvl = research.level + 1;
+  var time = lvl * data.time;
+  var cost = lvl * data.cost;
 
-        openItems(this, Direction.municipal, 0, true);
-        openItems(this, Direction.housing, 0, true);
-        openItems(this, Direction.commerce, 0, true);
-        openItems(this, Direction.industry, 0, true);
-    }
+  research.state = ResearchState.running;
+  research.startTime = Date.now();
+  research.endTime = research.startTime + time;
 
-    Lab.events = events;
+  this.city.resourcesService.subMoney(cost);
 
-    Lab.prototype.research = function (direction) {
-        var research = this.dirData[direction];
-        var data = DirectionData[direction];
+  var self = this;
 
-        if (research.state === ResearchState.available) {
-            research(this, direction);
-        } else if (research.state === ResearchState.running) {
-            //throw "Research is already going on!";
-        } else if (research.state === ResearchState.unavailable) {
-            //throw "Research is unavailable!";
-        }
+  setTimeout(function () {
+    research.state = ResearchState.available;
+    research.level = lvl;
 
-        var lvl = research.level + 1;
-        var time = lvl * data.time;
-        var cost = lvl * data.cost;
+    openItems(self, direction, lvl);
+  }, time);
+};
 
-        research.state = ResearchState.running;
-        research.startTime = Date.now();
-        research.endTime = research.startTime + time;
+Lab.prototype.getAvailableBuildings = function () {
+  return this.researchedItems;
+};
 
-        this.city.resourcesService.subMoney(cost);
+Lab.prototype.getResearchProgress = function (direction) {
+  var research = this.dirData[direction];
+  var time = research.endTime - research.startTime;
+  return (Date.now() - research.startTime) / time;
+};
 
-        var self = this;
+Lab.prototype.getResearchData = function () {
+  return this.dirData;
+};
 
-        setTimeout(function () {
-            research.state = ResearchState.available;
-            research.level = lvl;
+/**
+ * How far each direction got. What that opened up follows from it, so the
+ * list of invented buildings is not saved along.
+ *
+ * @returns {Object} direction -> level
+ */
+Lab.prototype.save = function () {
+  var levels = {};
 
-            openItems(self, direction, lvl);
-        }, time);
-    };
+  for (var direction in this.dirData)
+    levels[direction] = this.dirData[direction].level;
 
-    Lab.prototype.getAvailableBuildings = function () {
-        return this.researchedItems;
-    };
+  return levels;
+};
 
-    Lab.prototype.getResearchProgress = function (direction) {
-        var research = this.dirData[direction];
-        var time = research.endTime - research.startTime;
-        return (Date.now() - research.startTime) / time;
-    };
+/**
+ * @param levels {Object} direction -> level
+ */
+Lab.prototype.load = function (levels) {
+  for (var direction in levels) {
+    var research = this.dirData[direction];
 
-    Lab.prototype.getResearchData = function () {
-        return this.dirData;
-    };
+    if (research === undefined) continue;
 
-    /**
-     * How far each direction got. What that opened up follows from it, so the
-     * list of invented buildings is not saved along.
-     *
-     * @returns {Object} direction -> level
-     */
-    Lab.prototype.save = function () {
-        var levels = {};
+    research.level = levels[direction];
+    research.state = ResearchState.available;
 
-        for (var direction in this.dirData)
-            levels[direction] = this.dirData[direction].level;
-
-        return levels;
-    };
-
-    /**
-     * @param levels {Object} direction -> level
-     */
-    Lab.prototype.load = function (levels) {
-        for (var direction in levels) {
-            var research = this.dirData[direction];
-
-            if (research === undefined)
-                continue;
-
-            research.level = levels[direction];
-            research.state = ResearchState.available;
-
-            //a research opens up its own level and every level below it, and a
-            //loaded city has no one watching yet, so it happens quietly
-            for (var level = 0; level <= research.level; level++)
-                openItems(this, direction, level, true);
-        }
-    };
+    //a research opens up its own level and every level below it, and a
+    //loaded city has no one watching yet, so it happens quietly
+    for (var level = 0; level <= research.level; level++)
+      openItems(this, direction, level, true);
+  }
+};
 
 export default Lab;

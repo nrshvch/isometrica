@@ -27,13 +27,15 @@ CityService.Buildings = CityBuildings;
  * of the city. Everything else stays inside the borders.
  */
 function placeableOutside(data) {
-    return data.classCode === BuildingClassCode.road
-        || data.classCode === BuildingClassCode.tree;
+  return (
+    data.classCode === BuildingClassCode.road ||
+    data.classCode === BuildingClassCode.tree
+  );
 }
 
 function CityBuildings(city) {
-    this._buildings = [];
-    this.city = this._city = city;
+  this._buildings = [];
+  this.city = this._city = city;
 }
 
 /**
@@ -50,18 +52,23 @@ CityBuildings.prototype._buildings = null;
 
 CityBuildings.prototype.cityHall = null;
 
-var events = CityBuildings.prototype.events = {
-    "new": 0,
-    "remove": 1
-};
+var events = (CityBuildings.prototype.events = {
+  new: 0,
+  remove: 1,
+});
 
 CityBuildings.prototype.init = function () {
-    var buildings = this.city.root.buildings;
+  var buildings = this.city.root.buildings;
 
-    //whatever takes a building down - a bulldozer, the terrain being cleared -
-    //goes through the world's register, and the city's own list has to follow
-    //it, or a save would put razed buildings back up
-    Events.on(buildings, buildings.events.buildingRemoved, onBuildingRemoved, this);
+  //whatever takes a building down - a bulldozer, the terrain being cleared -
+  //goes through the world's register, and the city's own list has to follow
+  //it, or a save would put razed buildings back up
+  Events.on(
+    buildings,
+    buildings.events.buildingRemoved,
+    onBuildingRemoved,
+    this,
+  );
 };
 
 /**
@@ -72,12 +79,11 @@ CityBuildings.prototype.init = function () {
  * @returns {number} the code of the building that goes up
  */
 function variantOf(code) {
-    var variants = BuildingData[code] && BuildingData[code].variants;
+  var variants = BuildingData[code] && BuildingData[code].variants;
 
-    if (variants === undefined)
-        return code;
+  if (variants === undefined) return code;
 
-    return variants[Math.floor(Math.random() * variants.length)];
+  return variants[Math.floor(Math.random() * variants.length)];
 }
 
 CityBuildings.variantOf = variantOf;
@@ -89,47 +95,52 @@ CityBuildings.variantOf = variantOf;
  * @param [rotate] {boolean}
  */
 CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
-    var city = this.city;
-    var root = this.city.root;
+  var city = this.city;
+  var root = this.city.root;
 
-    //the catalogue hands codes over as the strings they are in the markup, and
-    //"3" is not BuildingCode.cityHall however much it looks like it
-    code = variantOf(parseInt(code, 10));
+  //the catalogue hands codes over as the strings they are in the markup, and
+  //"3" is not BuildingCode.cityHall however much it looks like it
+  code = variantOf(parseInt(code, 10));
 
-    var errorCode = buildTest(this, code, tile, rotate);
+  var errorCode = buildTest(this, code, tile, rotate);
 
-    if (errorCode === ErrorCode.NONE) {
-        var data = BuildingData[code];
+  if (errorCode === ErrorCode.NONE) {
+    var data = BuildingData[code];
 
-        //the trees and rocks the site stands on are cleared by the build itself,
-        //and the clearing goes on the bill - counted before, while they are
-        //still there. Not for the city hall: it comes with the city, and
-        //founding one is free
-        var clearing = code === BuildingCode.cityHall ? 0 : clearingCost(this, code, tile, rotate);
+    //the trees and rocks the site stands on are cleared by the build itself,
+    //and the clearing goes on the bill - counted before, while they are
+    //still there. Not for the city hall: it comes with the city, and
+    //founding one is free
+    var clearing =
+      code === BuildingCode.cityHall
+        ? 0
+        : clearingCost(this, code, tile, rotate);
 
-        var building = new Building();
-        building.init(city.world, code, tile, rotate);
+    var building = new Building();
+    building.init(city.world, code, tile, rotate);
 
-        //what the player pays for it, set before the build is announced so
-        //that whoever shows it over the site has it in hand
-        building.expense = (data.constructionCost[Resource.money] || 0) + clearing;
+    //what the player pays for it, set before the build is announced so
+    //that whoever shows it over the site has it in hand
+    building.expense = (data.constructionCost[Resource.money] || 0) + clearing;
 
-        root.buildings.build(building);
+    root.buildings.build(building);
 
-        city.resources.sub(data.constructionCost);
+    city.resources.sub(data.constructionCost);
 
-        if (clearing > 0)
-            city.resources.subResource(Resource.money, clearing);
+    if (clearing > 0) city.resources.subResource(Resource.money, clearing);
 
-        this._buildings.push(building);
+    this._buildings.push(building);
 
-        if (code === BuildingCode.cityHall)
-            this.cityHall = building;
+    if (code === BuildingCode.cityHall) this.cityHall = building;
 
-        Events.fire(this, events.new, building);
-    } else {
-        root.messagingService.sendTileMessage(tile, Isometrica.Core.MessageType.tileError, errorCode);
-    }
+    Events.fire(this, events.new, building);
+  } else {
+    root.messagingService.sendTileMessage(
+      tile,
+      Isometrica.Core.MessageType.tileError,
+      errorCode,
+    );
+  }
 };
 
 /**
@@ -148,98 +159,113 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
  * @returns {{tile: number, cost: number, error: number}[]}
  */
 CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
-    code = parseInt(code, 10);
+  code = parseInt(code, 10);
 
-    var data = BuildingData[code],
-        sizeX = rotation ? data.sizeY : data.sizeX,
-        sizeY = rotation ? data.sizeX : data.sizeY,
-        resources = this.city.resources.getResources(),
-        cost = data.constructionCost || {},
-        spent = Object.create(null),
-        cityHall = this.cityHall !== null,
-        r = [],
-        tile, errorCode, clearing, money, key, enough, i;
+  var data = BuildingData[code],
+    sizeX = rotation ? data.sizeY : data.sizeX,
+    sizeY = rotation ? data.sizeX : data.sizeY,
+    resources = this.city.resources.getResources(),
+    cost = data.constructionCost || {},
+    spent = Object.create(null),
+    cityHall = this.cityHall !== null,
+    r = [],
+    tile,
+    errorCode,
+    clearing,
+    money,
+    key,
+    enough,
+    i;
 
-    for (i = 0; i < anchors.length; i++) {
-        tile = anchors[i];
+  for (i = 0; i < anchors.length; i++) {
+    tile = anchors[i];
 
-        errorCode = this.city.root.buildingService.test(code, tile, rotation);
+    errorCode = this.city.root.buildingService.test(code, tile, rotation);
 
-        //the rest of buildTest, less what is about money - that is held
-        //against what the buildings before would have spent instead
-        if (errorCode === ErrorCode.NONE) {
-            if (this.city.laboratoryService.getAvailableBuildings()[code] !== true)
-                errorCode = ErrorCode.BUILDING_NOT_AVAIL;
-            else if (code === BuildingCode.cityHall && cityHall)
-                errorCode = ErrorCode.CITY_HALL_ALREADY_BUILT;
-            else if (!placeableOutside(data) && !this.city.area.contains(
-                    Terrain.extractX(tile), Terrain.extractY(tile), sizeX, sizeY))
-                errorCode = ErrorCode.OUTSIDE_CITY;
-        }
-
-        if (errorCode !== ErrorCode.NONE)
-            continue;
-
-        clearing = clearingCost(this, code, tile, rotation);
-        money = (cost[Resource.money] || 0) + clearing;
-
-        enough = (resources[Resource.money] || 0) - (spent[Resource.money] || 0) >= money;
-        for (key in cost) {
-            if (key !== Resource.money && (resources[key] || 0) - (spent[key] || 0) < cost[key])
-                enough = false;
-        }
-
-        if (!enough) {
-            r.push({tile: tile, cost: money, error: ErrorCode.NOT_ENOUGH_RES});
-            continue;
-        }
-
-        for (key in cost)
-            spent[key] = (spent[key] || 0) + cost[key];
-        spent[Resource.money] = (spent[Resource.money] || 0) + clearing;
-
-        if (code === BuildingCode.cityHall)
-            cityHall = true;
-
-        r.push({tile: tile, cost: money, error: ErrorCode.NONE});
+    //the rest of buildTest, less what is about money - that is held
+    //against what the buildings before would have spent instead
+    if (errorCode === ErrorCode.NONE) {
+      if (this.city.laboratoryService.getAvailableBuildings()[code] !== true)
+        errorCode = ErrorCode.BUILDING_NOT_AVAIL;
+      else if (code === BuildingCode.cityHall && cityHall)
+        errorCode = ErrorCode.CITY_HALL_ALREADY_BUILT;
+      else if (
+        !placeableOutside(data) &&
+        !this.city.area.contains(
+          Terrain.extractX(tile),
+          Terrain.extractY(tile),
+          sizeX,
+          sizeY,
+        )
+      )
+        errorCode = ErrorCode.OUTSIDE_CITY;
     }
 
-    return r;
+    if (errorCode !== ErrorCode.NONE) continue;
+
+    clearing = clearingCost(this, code, tile, rotation);
+    money = (cost[Resource.money] || 0) + clearing;
+
+    enough =
+      (resources[Resource.money] || 0) - (spent[Resource.money] || 0) >= money;
+    for (key in cost) {
+      if (
+        key !== Resource.money &&
+        (resources[key] || 0) - (spent[key] || 0) < cost[key]
+      )
+        enough = false;
+    }
+
+    if (!enough) {
+      r.push({ tile: tile, cost: money, error: ErrorCode.NOT_ENOUGH_RES });
+      continue;
+    }
+
+    for (key in cost) spent[key] = (spent[key] || 0) + cost[key];
+    spent[Resource.money] = (spent[Resource.money] || 0) + clearing;
+
+    if (code === BuildingCode.cityHall) cityHall = true;
+
+    r.push({ tile: tile, cost: money, error: ErrorCode.NONE });
+  }
+
+  return r;
 };
 
-CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
-    code = parseInt(code, 10);
+CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
+  code = parseInt(code, 10);
 
-    var city = this.city;
-    var root = city.root;
-    var data = BuildingData[code];
-    var iter = new TileIterator(tile0, tile1);
-    var bs = [];
-    while(!iter.done){
-        var tile = TileIterator.next(iter);
-        var errorCode = buildTest(this, code, tile);
+  var city = this.city;
+  var root = city.root;
+  var data = BuildingData[code];
+  var iter = new TileIterator(tile0, tile1);
+  var bs = [];
+  while (!iter.done) {
+    var tile = TileIterator.next(iter);
+    var errorCode = buildTest(this, code, tile);
 
-
-
-        if(errorCode !== ErrorCode.NONE){
-            root.messagingService.sendTileMessage(tile, Isometrica.Core.MessageType.tileError, errorCode);
-            continue;
-        }
-
-        var building = new Building();
-        building.init(root, code, tile);
-
-        root.buildings.build(building);
-
-        city.resources.sub(data.constructionCost);
-
-        this._buildings.push(building);
-
-        bs.push(building);
+    if (errorCode !== ErrorCode.NONE) {
+      root.messagingService.sendTileMessage(
+        tile,
+        Isometrica.Core.MessageType.tileError,
+        errorCode,
+      );
+      continue;
     }
 
-    for(var i in bs)
-        Events.fire(this, events.new, bs[i]);
+    var building = new Building();
+    building.init(root, code, tile);
+
+    root.buildings.build(building);
+
+    city.resources.sub(data.constructionCost);
+
+    this._buildings.push(building);
+
+    bs.push(building);
+  }
+
+  for (var i in bs) Events.fire(this, events.new, bs[i]);
 };
 
 /**
@@ -255,64 +281,76 @@ CityBuildings.prototype.buildRoad = function(code, tile0, tile1){
  * @returns {Building}
  */
 CityBuildings.prototype.restore = function (code, tile, rotation, progress) {
-    //saves written before the codes were made numbers carry them as strings
-    code = parseInt(code, 10);
+  //saves written before the codes were made numbers carry them as strings
+  code = parseInt(code, 10);
 
-    var building = new Building();
+  var building = new Building();
 
-    //one still going up when it was saved goes on from there - anything else
-    //was up long ago
-    building.init(this.city.world, code, tile, rotation,
-        typeof progress === "number" ? progress : true);
+  //one still going up when it was saved goes on from there - anything else
+  //was up long ago
+  building.init(
+    this.city.world,
+    code,
+    tile,
+    rotation,
+    typeof progress === "number" ? progress : true,
+  );
 
-    this.city.root.buildings.build(building);
+  this.city.root.buildings.build(building);
 
-    this._buildings.push(building);
+  this._buildings.push(building);
 
-    if (code === BuildingCode.cityHall)
-        this.cityHall = building;
+  if (code === BuildingCode.cityHall) this.cityHall = building;
 
-    Events.fire(this, events.new, building);
+  Events.fire(this, events.new, building);
 
-    return building;
+  return building;
 };
 
 /**
  * @returns {Object[]} what stands in the city, as it goes into a save
  */
 CityBuildings.prototype.save = function () {
-    var r = [], building;
+  var r = [],
+    building;
 
-    for (var i = 0; i < this._buildings.length; i++) {
-        building = this._buildings[i];
+  for (var i = 0; i < this._buildings.length; i++) {
+    building = this._buildings[i];
 
-        r.push({
-            code: building.buildingCode,
-            tile: building.tile,
-            rotation: building.rotation || 0,
-            //how far along it is, for one still going up
-            progress: building.getState() === BuildingState.underConstruction
-                ? building.getProgress() : undefined
-        });
-    }
+    r.push({
+      code: building.buildingCode,
+      tile: building.tile,
+      rotation: building.rotation || 0,
+      //how far along it is, for one still going up
+      progress:
+        building.getState() === BuildingState.underConstruction
+          ? building.getProgress()
+          : undefined,
+    });
+  }
 
-    return r;
+  return r;
 };
 
 /**
  * @param list {Object[]}
  */
 CityBuildings.prototype.load = function (list) {
-    for (var i = 0; i < list.length; i++)
-        this.restore(list[i].code, list[i].tile, list[i].rotation, list[i].progress);
+  for (var i = 0; i < list.length; i++)
+    this.restore(
+      list[i].code,
+      list[i].tile,
+      list[i].rotation,
+      list[i].progress,
+    );
 };
 
 CityBuildings.prototype.destroyBuilding = function () {
-    throw "Not implemented";
+  throw "Not implemented";
 };
 
 CityBuildings.prototype.getBuildings = function () {
-    return this._buildings;
+  return this._buildings;
 };
 
 /**
@@ -322,61 +360,69 @@ CityBuildings.prototype.getBuildings = function () {
  * @returns {number}
  */
 function clearingCost(self, code, tile, rotation) {
-    var world = self.city.world,
-        data = BuildingData[code],
-        sizeX = rotation ? data.sizeY : data.sizeX,
-        sizeY = rotation ? data.sizeX : data.sizeY,
-        iter = new TileIterator(tile, tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy),
-        cleared = 0;
+  var world = self.city.world,
+    data = BuildingData[code],
+    sizeX = rotation ? data.sizeY : data.sizeX,
+    sizeY = rotation ? data.sizeX : data.sizeY,
+    iter = new TileIterator(
+      tile,
+      tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy,
+    ),
+    cleared = 0;
 
-    while (!iter.done) {
-        if (world.envService.hasScenery(TileIterator.next(iter)))
-            cleared++;
-    }
+  while (!iter.done) {
+    if (world.envService.hasScenery(TileIterator.next(iter))) cleared++;
+  }
 
-    return cleared * Config.clearTileCost;
+  return cleared * Config.clearTileCost;
 }
 
 function onBuildingRemoved(sender, building, self) {
-    var index = self._buildings.indexOf(building);
+  var index = self._buildings.indexOf(building);
 
-    if (index === -1)
-        return;
+  if (index === -1) return;
 
-    self._buildings.splice(index, 1);
+  self._buildings.splice(index, 1);
 
-    if (self.cityHall === building)
-        self.cityHall = null;
+  if (self.cityHall === building) self.cityHall = null;
 }
 
 function buildTest(self, code, tile, rotation) {
-    var test = self.city.root.buildingService.test(code, tile, rotation);
+  var test = self.city.root.buildingService.test(code, tile, rotation);
 
-    if(test !== ErrorCode.NONE)
-        return test;
+  if (test !== ErrorCode.NONE) return test;
 
-    var city = self.city;
+  var city = self.city;
 
-    var data = BuildingData[code],
-        availableBuildingList = city.laboratoryService.getAvailableBuildings();
+  var data = BuildingData[code],
+    availableBuildingList = city.laboratoryService.getAvailableBuildings();
 
-    if (availableBuildingList[code] !== true)
-        return ErrorCode.BUILDING_NOT_AVAIL;
-    else if (code === BuildingCode.cityHall && self.cityHall !== null)
-        return ErrorCode.CITY_HALL_ALREADY_BUILT;
-    //turned round, the footprint's sides swap
-    else if (!placeableOutside(data) && !city.area.contains(
-            Terrain.extractX(tile), Terrain.extractY(tile),
-            rotation ? data.sizeY : data.sizeX,
-            rotation ? data.sizeX : data.sizeY))
-        return ErrorCode.OUTSIDE_CITY;
-    else if (!city.resources.hasEnough(data.constructionCost))
-        return ErrorCode.NOT_ENOUGH_RES;
-    else if (!city.resources.hasEnoughResource(Resource.money,
-            (data.constructionCost[Resource.money] || 0) + clearingCost(self, code, tile, rotation)))
-        return ErrorCode.NOT_ENOUGH_RES;
+  if (availableBuildingList[code] !== true) return ErrorCode.BUILDING_NOT_AVAIL;
+  else if (code === BuildingCode.cityHall && self.cityHall !== null)
+    return ErrorCode.CITY_HALL_ALREADY_BUILT;
+  //turned round, the footprint's sides swap
+  else if (
+    !placeableOutside(data) &&
+    !city.area.contains(
+      Terrain.extractX(tile),
+      Terrain.extractY(tile),
+      rotation ? data.sizeY : data.sizeX,
+      rotation ? data.sizeX : data.sizeY,
+    )
+  )
+    return ErrorCode.OUTSIDE_CITY;
+  else if (!city.resources.hasEnough(data.constructionCost))
+    return ErrorCode.NOT_ENOUGH_RES;
+  else if (
+    !city.resources.hasEnoughResource(
+      Resource.money,
+      (data.constructionCost[Resource.money] || 0) +
+        clearingCost(self, code, tile, rotation),
+    )
+  )
+    return ErrorCode.NOT_ENOUGH_RES;
 
-    return ErrorCode.NONE;
+  return ErrorCode.NONE;
 }
 
 export default CityBuildings;

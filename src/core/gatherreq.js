@@ -6,11 +6,11 @@
  * @enum GatherReq
  */
 var GatherReq = {
-    none: "none",
-    nearWater: "waterTile",
-    nearTree: "tree",
-    inGrassLand: "grassLand",
-    inDesert: "desert",
+  none: "none",
+  nearWater: "waterTile",
+  nearTree: "tree",
+  inGrassLand: "grassLand",
+  inDesert: "desert",
 };
 
 export default GatherReq;

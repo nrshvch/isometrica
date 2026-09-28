@@ -1,15 +1,13 @@
 import engine from "engine";
 import EvaporatingText from "../components/EvaporatingText";
-    //CityScript = require("../cityscript");
+//CityScript = require("../cityscript");
 
-function TileMessage(text, color){
-    engine.GameObject.call(this, "tileMessage");
+function TileMessage(text, color) {
+  engine.GameObject.call(this, "tileMessage");
 
+  this.addComponent(new EvaporatingText(text, color));
 
-
-    this.addComponent(new EvaporatingText(text, color));
-
-    //this.cityScript = this.addComponent(new CityScript(x,y));
+  //this.cityScript = this.addComponent(new CityScript(x,y));
 }
 
 TileMessage.prototype = Object.create(engine.GameObject.prototype);

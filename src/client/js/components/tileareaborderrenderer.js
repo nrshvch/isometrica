@@ -10,7 +10,7 @@
 import Engine from "engine";
 import * as glMatrix from "gl-matrix";
 import RenderLayer from "../renderlayer";
-import {outline} from "../tileoutline";
+import { outline } from "../tileoutline";
 
 var Vec3 = glMatrix.vec3;
 var float32Buffer = new Float32Array(3);
@@ -22,12 +22,12 @@ var float32Buffer = new Float32Array(3);
  * @constructor
  */
 function TileAreaBorderRenderer(terrain, tiles, padding) {
-    Engine.Renderer.call(this);
+  Engine.Renderer.call(this);
 
-    this.layer = RenderLayer.groundDrawLayer;
-    this.terrain = terrain;
-    this.padding = padding;
-    this.paths = outline(tiles || [], terrain, padding);
+  this.layer = RenderLayer.groundDrawLayer;
+  this.terrain = terrain;
+  this.padding = padding;
+  this.paths = outline(tiles || [], terrain, padding);
 }
 
 TileAreaBorderRenderer.prototype = Object.create(Engine.Renderer.prototype);
@@ -42,65 +42,67 @@ TileAreaBorderRenderer.prototype.paths = null;
  * @param tiles {number[]}
  */
 TileAreaBorderRenderer.prototype.setTiles = function (tiles) {
-    this.paths = outline(tiles || [], this.terrain, this.padding);
+  this.paths = outline(tiles || [], this.terrain, this.padding);
 };
 
 TileAreaBorderRenderer.prototype.cullingTest = function (viewport, vprender) {
-    var buffer = float32Buffer,
-        paths = this.paths,
-        path, i, j;
+  var buffer = float32Buffer,
+    paths = this.paths,
+    path,
+    i,
+    j;
 
-    for (i = 0; i < paths.length; i++) {
-        path = paths[i];
+  for (i = 0; i < paths.length; i++) {
+    path = paths[i];
 
-        for (j = 0; j < path.length; j++) {
-            Vec3.transformMat4(buffer, path[j], vprender.V);
+    for (j = 0; j < path.length; j++) {
+      Vec3.transformMat4(buffer, path[j], vprender.V);
 
-            if (buffer[0] > -1 && buffer[0] < 1 && buffer[1] > -1 && buffer[1] < 1)
-                return true;
-        }
+      if (buffer[0] > -1 && buffer[0] < 1 && buffer[1] > -1 && buffer[1] < 1)
+        return true;
     }
+  }
 
-    return false;
+  return false;
 };
 
 TileAreaBorderRenderer.prototype.render = function (ctx, viewportrenderer) {
-    var paths = this.paths,
-        m = viewportrenderer.M,
-        buffer = float32Buffer,
-        path, i, j;
+  var paths = this.paths,
+    m = viewportrenderer.M,
+    buffer = float32Buffer,
+    path,
+    i,
+    j;
 
-    if (paths.length === 0)
-        return;
+  if (paths.length === 0) return;
 
-    ctx.beginPath();
+  ctx.beginPath();
 
-    for (i = 0; i < paths.length; i++) {
-        path = paths[i];
+  for (i = 0; i < paths.length; i++) {
+    path = paths[i];
 
-        if (path.length === 0)
-            continue;
+    if (path.length === 0) continue;
 
-        Vec3.transformMat4(buffer, path[0], m);
-        ctx.moveTo(buffer[0], buffer[1]);
+    Vec3.transformMat4(buffer, path[0], m);
+    ctx.moveTo(buffer[0], buffer[1]);
 
-        for (j = 1; j < path.length; j++) {
-            Vec3.transformMat4(buffer, path[j], m);
-            ctx.lineTo(buffer[0], buffer[1]);
-        }
-
-        ctx.closePath();
+    for (j = 1; j < path.length; j++) {
+      Vec3.transformMat4(buffer, path[j], m);
+      ctx.lineTo(buffer[0], buffer[1]);
     }
 
-    ctx.save();
-    //this layer is shared with the city border, so the dash is always set
-    ctx.setLineDash(this.dash);
-    ctx.fillStyle = this.fillColor;
-    ctx.fill();
-    ctx.strokeStyle = this.borderColor;
-    ctx.lineWidth = this.borderWidth;
-    ctx.stroke();
-    ctx.restore();
+    ctx.closePath();
+  }
+
+  ctx.save();
+  //this layer is shared with the city border, so the dash is always set
+  ctx.setLineDash(this.dash);
+  ctx.fillStyle = this.fillColor;
+  ctx.fill();
+  ctx.strokeStyle = this.borderColor;
+  ctx.lineWidth = this.borderWidth;
+  ctx.stroke();
+  ctx.restore();
 };
 
 export default TileAreaBorderRenderer;

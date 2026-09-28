@@ -8,14 +8,14 @@ var layer = RenderLayer.groundLayer;
 var renderer = null;
 
 function Tile() {
-    GameObject.init(this, "tile");
+  GameObject.init(this, "tile");
 
-    renderer = new SpriteRenderer();
+  renderer = new SpriteRenderer();
 
-    renderer.setPivot(32, 24);
-    renderer.layer = layer;
+  renderer.setPivot(32, 24);
+  renderer.layer = layer;
 
-    this.addComponent(renderer);
+  this.addComponent(renderer);
 }
 
 Tile.prototype = Object.create(GameObject.prototype);

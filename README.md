@@ -7,24 +7,30 @@ Keeping it alive for historical reference only.
 ![Isoville](public/miniville.gif)
 
 ### Live demo
+
 https://peeps.land
 
 ### Features
 
-* Procedurally generated, endless world
-* Minimalistic hand-rolled canvas2d game engine
+- Procedurally generated, endless world
+- Minimalistic hand-rolled canvas2d game engine
 
 ### How to run
-* Install dependencies
+
+- Install dependencies
+
 > npm install
 
-* Start a local dev server and open the game
+- Start a local dev server and open the game
+
 > npm start
 
 This runs Vite, rooted at `app/`, with the game served at `/`.
 
-* Build an optimized bundle into `/dist`
+- Build an optimized bundle into `/dist`
+
 > npm run build
 
-* Preview the production build locally
+- Preview the production build locally
+
 > npm run preview

@@ -10,14 +10,14 @@ import SimplexNoise from "simplex-noise";
  * @param {number[]} permutation 256 entries
  */
 export default function SeededSimplexNoise(permutation) {
-    var noise = new SimplexNoise();
+  var noise = new SimplexNoise();
 
-    noise.p = new Uint8Array(permutation);
+  noise.p = new Uint8Array(permutation);
 
-    for (var i = 0; i < 512; i++) {
-        noise.perm[i] = noise.p[i & 255];
-        noise.permMod12[i] = noise.perm[i] % 12;
-    }
+  for (var i = 0; i < 512; i++) {
+    noise.perm[i] = noise.p[i & 255];
+    noise.permMod12[i] = noise.perm[i] % 12;
+  }
 
-    return noise;
+  return noise;
 }

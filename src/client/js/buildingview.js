@@ -15,7 +15,7 @@ import Core from "core/main";
 var Terrain = Core.Terrain;
 
 function BuildingView() {
-    this.gameObject = new engine.GameObject("building");
+  this.gameObject = new engine.GameObject("building");
 }
 
 BuildingView.prototype.gameObject = null;
@@ -25,7 +25,7 @@ BuildingView.prototype.building = null;
 BuildingView.prototype.opacity = 1;
 
 BuildingView.prototype.setBuilding = function (building) {
-    this.building = building;
+  this.building = building;
 };
 
 /**
@@ -33,91 +33,103 @@ BuildingView.prototype.setBuilding = function (building) {
  * that way when it is drawn over, say as it is finished.
  */
 BuildingView.prototype.setOpacity = function (opacity) {
-    var children = this.gameObject.transform.children,
-        renderer, i;
+  var children = this.gameObject.transform.children,
+    renderer,
+    i;
 
-    this.opacity = opacity;
+  this.opacity = opacity;
 
-    for (i = 0; i < children.length; i++) {
-        renderer = children[i].gameObject.spriteRenderer;
+  for (i = 0; i < children.length; i++) {
+    renderer = children[i].gameObject.spriteRenderer;
 
-        if (renderer)
-            renderer.opacity = opacity;
-    }
+    if (renderer) renderer.opacity = opacity;
+  }
 };
 
 BuildingView.prototype.update = function () {
-    var b = this.building;
-    if (b !== null && b.staticData !== null) {
-        var staticData = b.staticData,
-            tileSize = Config.tileSize,
-            tileZStep = Config.tileZStep;
+  var b = this.building;
+  if (b !== null && b.staticData !== null) {
+    var staticData = b.staticData,
+      tileSize = Config.tileSize,
+      tileZStep = Config.tileZStep;
 
-        //clear old GOs - each one lets go of the view as it is destroyed, so
-        //off a copy of the list
-        var children = this.gameObject.transform.children.slice();
-        for (var i = 0; i < children.length; i++)
-            children[i].gameObject.destroy();
+    //clear old GOs - each one lets go of the view as it is destroyed, so
+    //off a copy of the list
+    var children = this.gameObject.transform.children.slice();
+    for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
 
-        if (b.data.getState() === BuildingState.underConstruction) {
-            var sizeX = 0,
-                sizeY = 0;
+    if (b.data.getState() === BuildingState.underConstruction) {
+      var sizeX = 0,
+        sizeY = 0;
 
-            if (this.building.data.rotation) {
-                sizeX = staticData.sizeY;
-                sizeY = staticData.sizeX;
-            } else {
-                sizeX = staticData.sizeX;
-                sizeY = staticData.sizeY;
-            }
+      if (this.building.data.rotation) {
+        sizeX = staticData.sizeY;
+        sizeY = staticData.sizeX;
+      } else {
+        sizeX = staticData.sizeX;
+        sizeY = staticData.sizeY;
+      }
 
+      for (var x = 0; x < sizeX; x++) {
+        for (var y = 0; y < sizeY; y++) {
+          var part = new engine.GameObject(),
+            sprite = new engine.SpriteRenderer();
 
-            for (var x = 0; x < sizeX; x++) {
-                for (var y = 0; y < sizeY; y++) {
-                    var part = new engine.GameObject(),
-                        sprite = new engine.SpriteRenderer();
+          sprite.layer = RenderLayer.buildingsLayer;
+          sprite
+            .setSprite(vkaria.sprites.getSprite("site.png"))
+            .setPivot(32, 24);
 
-                    sprite.layer = RenderLayer.buildingsLayer;
-                    sprite.setSprite(vkaria.sprites.getSprite("site.png")).setPivot(32, 24);
-
-                    part.addComponent(sprite);
-                    //the renderer resets its opacity once it is attached
-                    sprite.opacity = this.opacity;
-                    this.gameObject.transform.addChild(part.transform);
-                    part.transform.translate(x * Config.tileSize, 0, y * Config.tileSize);
-                }
-            }
-        } else if (b.data.getState() === BuildingState.ready) {
-            //drawn the way it was painted, see addSprites
-            var rotated = !!b.data.rotation !== !!staticData.turned;
-
-            addSprites(this.gameObject, staticData, !!b.data.rotation, this.opacity);
-
-            //add smoke
-            if (staticData.smokeSource !== undefined) {
-                var smoke = staticData.smokeSource,
-                    smokeSource = new engine.GameObject();
-
-                //the chimney turns round with the rest of the house
-                if (rotated)
-                    smokeSource.transform.setLocalPosition(smoke[2] * tileSize, smoke[1] * tileZStep, smoke[0] * tileSize);
-                else
-                    smokeSource.transform.setLocalPosition(smoke[0] * tileSize, smoke[1] * tileZStep, smoke[2] * tileSize);
-
-                smokeSource.addComponent(new SmokeSource(b.data));
-                this.gameObject.transform.addChild(smokeSource.transform);
-            }
+          part.addComponent(sprite);
+          //the renderer resets its opacity once it is attached
+          sprite.opacity = this.opacity;
+          this.gameObject.transform.addChild(part.transform);
+          part.transform.translate(x * Config.tileSize, 0, y * Config.tileSize);
         }
+      }
+    } else if (b.data.getState() === BuildingState.ready) {
+      //drawn the way it was painted, see addSprites
+      var rotated = !!b.data.rotation !== !!staticData.turned;
 
-        //position gameObject
-        var data = this.building.data,
-            //this.building.tile.gameObject.transform.getPosition()[1] + this.building.tile.subpositionZ(data.subPosX, data.subPosY),
-            x = Terrain.extractX(data.tile),// + data.subPosX,
-            y = Terrain.extractY(data.tile),// + data.subPosY,
-            z = vkaria.core.world.terrain.getGridPointHeight(x+1, y);
+      addSprites(this.gameObject, staticData, !!b.data.rotation, this.opacity);
 
-        this.gameObject.transform.setPosition(x * tileSize, z * tileZStep, y * tileSize);
+      //add smoke
+      if (staticData.smokeSource !== undefined) {
+        var smoke = staticData.smokeSource,
+          smokeSource = new engine.GameObject();
+
+        //the chimney turns round with the rest of the house
+        if (rotated)
+          smokeSource.transform.setLocalPosition(
+            smoke[2] * tileSize,
+            smoke[1] * tileZStep,
+            smoke[0] * tileSize,
+          );
+        else
+          smokeSource.transform.setLocalPosition(
+            smoke[0] * tileSize,
+            smoke[1] * tileZStep,
+            smoke[2] * tileSize,
+          );
+
+        smokeSource.addComponent(new SmokeSource(b.data));
+        this.gameObject.transform.addChild(smokeSource.transform);
+      }
     }
+
+    //position gameObject
+    var data = this.building.data,
+      //this.building.tile.gameObject.transform.getPosition()[1] + this.building.tile.subpositionZ(data.subPosX, data.subPosY),
+      x = Terrain.extractX(data.tile), // + data.subPosX,
+      y = Terrain.extractY(data.tile), // + data.subPosY,
+      z = vkaria.core.world.terrain.getGridPointHeight(x + 1, y);
+
+    this.gameObject.transform.setPosition(
+      x * tileSize,
+      z * tileZStep,
+      y * tileSize,
+    );
+  }
 };
 
 /**
@@ -128,48 +140,53 @@ BuildingView.prototype.update = function () {
  * @param [layer] {number} every piece goes on this one rather than its own
  */
 function addSprites(parent, staticData, rotated, opacity, layer) {
-    //a building painted for the footprint turned round is drawn turned round,
-    //so that it covers the footprint it actually has
-    if (staticData.turned)
-        rotated = !rotated;
+  //a building painted for the footprint turned round is drawn turned round,
+  //so that it covers the footprint it actually has
+  if (staticData.turned) rotated = !rotated;
 
-    var spritesData = staticData.sprites,
-        tileSize = Config.tileSize,
-        tileZStep = Config.tileZStep,
-        //a building nobody painted turned round is drawn flipped over
-        mirrored = rotated && !staticData.spritesRotate;
+  var spritesData = staticData.sprites,
+    tileSize = Config.tileSize,
+    tileZStep = Config.tileZStep,
+    //a building nobody painted turned round is drawn flipped over
+    mirrored = rotated && !staticData.spritesRotate;
 
-    if (rotated && staticData.spritesRotate)
-        spritesData = staticData.spritesRotate;
+  if (rotated && staticData.spritesRotate)
+    spritesData = staticData.spritesRotate;
 
-    var len = spritesData.length;
-    for (var i = 0; i < len; i++) {
-        var spriteData = spritesData[i];
+  var len = spritesData.length;
+  for (var i = 0; i < len; i++) {
+    var spriteData = spritesData[i];
 
-        var spriteRenderer = new engine.SpriteRenderer();
-        spriteRenderer.layer = layer !== undefined ? layer : spriteData.layer;
-        spriteRenderer.pivotY = spriteData.pivotY;
+    var spriteRenderer = new engine.SpriteRenderer();
+    spriteRenderer.layer = layer !== undefined ? layer : spriteData.layer;
+    spriteRenderer.pivotY = spriteData.pivotY;
 
-        var sprite = vkaria.sprites.getSprite(spriteData.path, mirrored);
-        spriteRenderer.setSprite(sprite);
+    var sprite = vkaria.sprites.getSprite(spriteData.path, mirrored);
+    spriteRenderer.setSprite(sprite);
 
-        if (mirrored)
-            mirrorPivot(spriteRenderer, sprite, spriteData.pivotX);
-        else
-            spriteRenderer.pivotX = spriteData.pivotX;
+    if (mirrored) mirrorPivot(spriteRenderer, sprite, spriteData.pivotX);
+    else spriteRenderer.pivotX = spriteData.pivotX;
 
-        var spriteGO = new engine.GameObject();
-        spriteGO.addComponent(spriteRenderer);
-        //the renderer resets its opacity once it is attached
-        spriteRenderer.opacity = opacity;
-        parent.transform.addChild(spriteGO.transform);
+    var spriteGO = new engine.GameObject();
+    spriteGO.addComponent(spriteRenderer);
+    //the renderer resets its opacity once it is attached
+    spriteRenderer.opacity = opacity;
+    parent.transform.addChild(spriteGO.transform);
 
-        //flipped over, the piece over tile (x, y) is the one over (y, x)
-        if (mirrored)
-            spriteGO.transform.setLocalPosition(spriteData.z * tileSize, spriteData.y * tileZStep, spriteData.x * tileSize);
-        else
-            spriteGO.transform.setLocalPosition(spriteData.x * tileSize, spriteData.y * tileZStep, spriteData.z * tileSize);
-    }
+    //flipped over, the piece over tile (x, y) is the one over (y, x)
+    if (mirrored)
+      spriteGO.transform.setLocalPosition(
+        spriteData.z * tileSize,
+        spriteData.y * tileZStep,
+        spriteData.x * tileSize,
+      );
+    else
+      spriteGO.transform.setLocalPosition(
+        spriteData.x * tileSize,
+        spriteData.y * tileZStep,
+        spriteData.z * tileSize,
+      );
+  }
 }
 
 BuildingView.addSprites = addSprites;
@@ -180,15 +197,14 @@ BuildingView.addSprites = addSprites;
  * one still loading is not known yet.
  */
 function mirrorPivot(spriteRenderer, sprite, pivotX) {
-    vkaria.sprites.whenReady(sprite, function () {
-        spriteRenderer.pivotX = sprite.width - pivotX;
-    });
+  vkaria.sprites.whenReady(sprite, function () {
+    spriteRenderer.pivotX = sprite.width - pivotX;
+  });
 }
 
 BuildingView.prototype.render = function () {
-    if (this.gameObject.world === null)
-        vkaria.game.logic.world.addGameObject(this.gameObject);
+  if (this.gameObject.world === null)
+    vkaria.game.logic.world.addGameObject(this.gameObject);
 };
-
 
 export default BuildingView;

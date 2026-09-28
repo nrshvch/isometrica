@@ -1,92 +1,91 @@
 .city-view {
   .map-tab-content {
+    overflow-y: auto;
+    height: 100%;
 
-        overflow-y: auto;
-        height: 100%;
+    & > .map-tab-content-container {
+      padding: 2%;
+      height: 100%;
 
-        & > .map-tab-content-container {
-            padding: 2%;
-            height: 100%;
+      & > .map-container {
+        &:extend(.ui-block-inset);
 
-            & > .map-container {
-                &:extend(.ui-block-inset);
+        background-color: #fff;
 
-                background-color: #fff;
-
-                &:after {
-                    content: "";
-                    display: block;
-                    padding-top: 100%;
-                }
-            }
-
-            & > .map-buttons {
-                .map-button {
-                    .ui-button;
-                    float: left;
-                    padding: 2%;
-                    margin: 0 2% 2% 0;
-                }
-
-                margin-top: 2%;
-            }
+        &:after {
+          content: "";
+          display: block;
+          padding-top: 100%;
         }
+      }
+
+      & > .map-buttons {
+        .map-button {
+          .ui-button;
+          float: left;
+          padding: 2%;
+          margin: 0 2% 2% 0;
+        }
+
+        margin-top: 2%;
+      }
+    }
+  }
+
+  .info-tab-content {
+    overflow-y: auto;
+    height: 100%;
+
+    .city-stats {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 2% 4%;
+
+      font-family: "Courier New", Courier, monospace;
+      line-height: 1.6;
     }
 
-    .info-tab-content {
-        overflow-y: auto;
-        height: 100%;
-
-        .city-stats {
-            max-width: 640px;
-            margin: 0 auto;
-            padding: 2% 4%;
-
-            font-family: "Courier New", Courier, monospace;
-            line-height: 1.6;
-        }
-
-        .section {
-            margin-bottom: 16px;
-        }
-
-        .heading {
-            font-weight: bold;
-            text-transform: uppercase;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-            margin-bottom: 4px;
-        }
-
-        .stat {
-            display: flex;
-            justify-content: space-between;
-
-            .label {
-                opacity: 0.8;
-            }
-
-            .value {
-                text-align: right;
-                font-weight: bold;
-            }
-
-            //what one of the lines above it is made of
-            &.sub {
-                padding-left: 24px;
-                font-size: 90%;
-
-                .value {
-                    font-weight: normal;
-                }
-            }
-        }
-
-        .income {
-            color: #1f7a1f;
-        }
-
-        .expense {
-            color: #b02020;
-        }
+    .section {
+      margin-bottom: 16px;
     }
+
+    .heading {
+      font-weight: bold;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+      margin-bottom: 4px;
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+
+      .label {
+        opacity: 0.8;
+      }
+
+      .value {
+        text-align: right;
+        font-weight: bold;
+      }
+
+      //what one of the lines above it is made of
+      &.sub {
+        padding-left: 24px;
+        font-size: 90%;
+
+        .value {
+          font-weight: normal;
+        }
+      }
+    }
+
+    .income {
+      color: #1f7a1f;
+    }
+
+    .expense {
+      color: #b02020;
+    }
+  }
 }

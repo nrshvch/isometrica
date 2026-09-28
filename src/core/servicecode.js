@@ -13,9 +13,9 @@ var Core = Namespace("Isometrica.Core");
  * @exports ServiceCode
  * @enum {string}
  */
-var ServiceCode = Core.ServiceCode = {
-    road: "road",
-    water: "water"
-};
+var ServiceCode = (Core.ServiceCode = {
+  road: "road",
+  water: "water",
+});
 
 export default ServiceCode;

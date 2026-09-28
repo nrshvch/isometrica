@@ -31,20 +31,17 @@ var VERSION = 1;
 var SAVE_EVERY_TICKS = 5;
 
 function onNewCity(sender, city, self) {
-    //one city per save - the rest of the game assumes as much
-    if (self._city === null)
-        self._city = city;
+  //one city per save - the rest of the game assumes as much
+  if (self._city === null) self._city = city;
 }
 
 function onTick(sender, args, self) {
-    if (self._city === null)
-        return;
+  if (self._city === null) return;
 
-    if (++self._ticks < SAVE_EVERY_TICKS)
-        return;
+  if (++self._ticks < SAVE_EVERY_TICKS) return;
 
-    self._ticks = 0;
-    self.save();
+  self._ticks = 0;
+  self.save();
 }
 
 /**
@@ -53,13 +50,13 @@ function onTick(sender, args, self) {
  * @constructor
  */
 function CityPersistence(world, store) {
-    this.world = world;
-    this._store = store || new CityStore();
-    this._id = null;
-    this._city = null;
-    this._ticks = 0;
-    this._subscriptions = null;
-    this._onUnload = null;
+  this.world = world;
+  this._store = store || new CityStore();
+  this._id = null;
+  this._city = null;
+  this._ticks = 0;
+  this._subscriptions = null;
+  this._onUnload = null;
 }
 
 CityPersistence.VERSION = VERSION;
@@ -70,14 +67,14 @@ CityPersistence.VERSION = VERSION;
  * @returns {string|null}
  */
 CityPersistence.prototype.cityId = function () {
-    return this._id;
+  return this._id;
 };
 
 /**
  * @returns {CityStore} for a saves listing to read and manage
  */
 CityPersistence.prototype.store = function () {
-    return this._store;
+  return this._store;
 };
 
 /**
@@ -87,40 +84,43 @@ CityPersistence.prototype.store = function () {
  * @returns {string} the id the game is now playing under - for the address bar
  */
 CityPersistence.prototype.open = function (requestedId) {
-    var store = this._store,
-        world = this.world,
-        id = CityStore.isValidId(requestedId) ? requestedId : null,
-        data = null;
+  var store = this._store,
+    world = this.world,
+    id = CityStore.isValidId(requestedId) ? requestedId : null,
+    data = null;
 
-    if (id !== null && store.has(id)) {
-        //the player followed a link to a city of theirs, so that is the one
-        //they are playing from now on
-        data = store.read(id);
-        store.setActiveCityId(id);
-    } else if (id === null) {
-        var activeId = store.activeCityId();
+  if (id !== null && store.has(id)) {
+    //the player followed a link to a city of theirs, so that is the one
+    //they are playing from now on
+    data = store.read(id);
+    store.setActiveCityId(id);
+  } else if (id === null) {
+    var activeId = store.activeCityId();
 
-        if (activeId !== null && store.has(activeId)) {
-            id = activeId;
-            data = store.read(activeId);
-        } else {
-            //nothing of the player's own to come back to
-            id = store.newId();
-            //the template may be a whole save row or just the city in it
-            data = InitialCity === null ? null
-                : (InitialCity.city === undefined ? {city: InitialCity} : InitialCity);
-        }
+    if (activeId !== null && store.has(activeId)) {
+      id = activeId;
+      data = store.read(activeId);
+    } else {
+      //nothing of the player's own to come back to
+      id = store.newId();
+      //the template may be a whole save row or just the city in it
+      data =
+        InitialCity === null
+          ? null
+          : InitialCity.city === undefined
+            ? { city: InitialCity }
+            : InitialCity;
     }
+  }
 
-    this._id = id;
+  this._id = id;
 
-    //everything below has to hear about the city the restoring brings in
-    this.watch();
+  //everything below has to hear about the city the restoring brings in
+  this.watch();
 
-    if (data !== null)
-        restore(this, data);
+  if (data !== null) restore(this, data);
 
-    return this._id;
+  return this._id;
 };
 
 /**
@@ -129,76 +129,78 @@ CityPersistence.prototype.open = function (requestedId) {
  * @returns {boolean} whether it went to storage
  */
 CityPersistence.prototype.save = function () {
-    var city = this._city;
+  var city = this._city;
 
-    if (city === null || this._id === null)
-        return false;
+  if (city === null || this._id === null) return false;
 
-    var data = {
-        version: VERSION,
-        id: this._id,
-        savedAt: Date.now(),
-        time: this.world.time.now,
-        //the ground is the world's, whoever paid for shaping it
-        terrain: this.world.terrain.save(),
-        city: city.save()
-    };
+  var data = {
+    version: VERSION,
+    id: this._id,
+    savedAt: Date.now(),
+    time: this.world.time.now,
+    //the ground is the world's, whoever paid for shaping it
+    terrain: this.world.terrain.save(),
+    city: city.save(),
+  };
 
-    if (!this._store.write(this._id, data, data.city.name))
-        return false;
+  if (!this._store.write(this._id, data, data.city.name)) return false;
 
-    //a city is only really the player's once it has been written, so this is
-    //where it becomes the one they come back to
-    this._store.setActiveCityId(this._id);
+  //a city is only really the player's once it has been written, so this is
+  //where it becomes the one they come back to
+  this._store.setActiveCityId(this._id);
 
-    return true;
+  return true;
 };
 
 /**
  * Starts saving. Called by #open, and safe to call twice.
  */
 CityPersistence.prototype.watch = function () {
-    if (this._subscriptions !== null)
-        return;
+  if (this._subscriptions !== null) return;
 
-    var world = this.world, self = this;
+  var world = this.world,
+    self = this;
 
-    this._subscriptions = [
-        Events.on(world.cities, CityService.events.cityNew, onNewCity, this),
-        Events.on(world, world.events.tick, onTick, this)
-    ];
+  this._subscriptions = [
+    Events.on(world.cities, CityService.events.cityNew, onNewCity, this),
+    Events.on(world, world.events.tick, onTick, this),
+  ];
 
-    //a closed tab is still the player leaving off where they left off
-    this._onUnload = function () {
-        self.save();
-    };
+  //a closed tab is still the player leaving off where they left off
+  this._onUnload = function () {
+    self.save();
+  };
 
-    if (typeof window !== "undefined")
-        window.addEventListener("beforeunload", this._onUnload);
+  if (typeof window !== "undefined")
+    window.addEventListener("beforeunload", this._onUnload);
 };
 
 /**
  * Saves once more and lets go of the city - for switching to another save.
  */
 CityPersistence.prototype.close = function () {
-    this.save();
+  this.save();
 
-    var world = this.world;
+  var world = this.world;
 
-    if (this._subscriptions !== null) {
-        Events.off(world.cities, CityService.events.cityNew, this._subscriptions[0]);
-        Events.off(world, world.events.tick, this._subscriptions[1]);
-        this._subscriptions = null;
-    }
+  if (this._subscriptions !== null) {
+    Events.off(
+      world.cities,
+      CityService.events.cityNew,
+      this._subscriptions[0],
+    );
+    Events.off(world, world.events.tick, this._subscriptions[1]);
+    this._subscriptions = null;
+  }
 
-    if (this._onUnload !== null && typeof window !== "undefined") {
-        window.removeEventListener("beforeunload", this._onUnload);
-        this._onUnload = null;
-    }
+  if (this._onUnload !== null && typeof window !== "undefined") {
+    window.removeEventListener("beforeunload", this._onUnload);
+    this._onUnload = null;
+  }
 
-    this._city = null;
-    this._id = null;
-    this._ticks = 0;
+  this._city = null;
+  this._id = null;
+  this._ticks = 0;
 };
 
 /**
@@ -207,7 +209,7 @@ CityPersistence.prototype.close = function () {
  * @returns {string}
  */
 CityPersistence.prototype.newCityId = function () {
-    return this._store.newId();
+  return this._store.newId();
 };
 
 /**
@@ -216,7 +218,7 @@ CityPersistence.prototype.newCityId = function () {
  * @returns {Object[]}
  */
 CityPersistence.prototype.list = function () {
-    return this._store.list();
+  return this._store.list();
 };
 
 /**
@@ -227,22 +229,21 @@ CityPersistence.prototype.list = function () {
  * @returns {boolean}
  */
 CityPersistence.prototype.remove = function (id) {
-    if (id === this._id)
-        return false;
+  if (id === this._id) return false;
 
-    return this._store.remove(id);
+  return this._store.remove(id);
 };
 
 function restore(self, data) {
-    if (data.time !== undefined && data.time !== null)
-        self.world.time.load(data.time);
+  if (data.time !== undefined && data.time !== null)
+    self.world.time.load(data.time);
 
-    //the ground goes back first - everything else stands on it
-    if (data.terrain !== undefined && data.terrain !== null)
-        self.world.terrain.load(data.terrain);
+  //the ground goes back first - everything else stands on it
+  if (data.terrain !== undefined && data.terrain !== null)
+    self.world.terrain.load(data.terrain);
 
-    if (data.city !== undefined && data.city !== null)
-        self.world.cities.restoreCity(data.city);
+  if (data.city !== undefined && data.city !== null)
+    self.world.cities.restoreCity(data.city);
 }
 
 export default CityPersistence;

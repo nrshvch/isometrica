@@ -13,10 +13,10 @@ var Core = Namespace("Isometrica.Core");
  * @exports DepositCode
  * @enum {string}
  */
-var DepositCode = Core.DepositCode = {
-    stone: "stone",
-    iron: "iron",
-    oil: "oil"
-};
+var DepositCode = (Core.DepositCode = {
+  stone: "stone",
+  iron: "iron",
+  oil: "oil",
+});
 
 export default DepositCode;

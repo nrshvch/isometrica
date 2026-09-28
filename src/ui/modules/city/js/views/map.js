@@ -4,13 +4,9 @@ import Handlebars from "handlebars";
 
 var template = Handlebars.compile(__templateSource);
 
-
-
 export default Backbone.View.extend({
-    initialize: function (options) {
-        this.setElement(template());
-    },
-    render: function () {
-
-    },
+  initialize: function (options) {
+    this.setElement(template());
+  },
+  render: function () {},
 });

@@ -1,37 +1,50 @@
 <div class="building-list-view ui-list-window">
-    <div class="row body">
-        <div class="cell">
-            <div class="body">
-                {{#buildings}}
-                    <a class="item" data-build="{{code}}">
-                        <div class="name">{{ displayName }}</div>
-                        <div class="img-space">
-                            <div class="space">
-                                <div class="img" style="background-image: url('ui/img/buildings/{{code}}.png');"></div>
-                            </div>
-                        </div>
-                        <div class="stats">
-                            <div class="stat" title="{{stats.cost}}"><span class="label">Cost</span>{{stats.cost}}</div>
-                            <div class="stat" title="{{stats.citizens}}"><span class="label">Citizens</span>{{stats.citizens}}</div>
-                            <div class="stat" title="{{stats.jobs}}"><span class="label">Jobs</span>{{stats.jobs}}</div>
-                            <div class="stat" title="{{stats.needs}}"><span class="label">Needs</span>{{stats.needs}}</div>
-                            <div class="stat" title="{{stats.benefits}}"><span class="label">Gives</span>{{stats.benefits}}</div>
-                        </div>
-                    </a>
-                {{/buildings}}
+  <div class="row body">
+    <div class="cell">
+      <div class="body">
+        {{#buildings}}
+          <a class="item" data-build="{{code}}">
+            <div class="name">{{displayName}}</div>
+            <div class="img-space">
+              <div class="space">
+                <div
+                  class="img"
+                  style="background-image: url('ui/img/buildings/{{code}}.png');"
+                ></div>
+              </div>
             </div>
-        </div>
+            <div class="stats">
+              <div class="stat" title="{{stats.cost}}"><span
+                  class="label"
+                >Cost</span>{{stats.cost}}</div>
+              <div class="stat" title="{{stats.citizens}}"><span
+                  class="label"
+                >Citizens</span>{{stats.citizens}}</div>
+              <div class="stat" title="{{stats.jobs}}"><span
+                  class="label"
+                >Jobs</span>{{stats.jobs}}</div>
+              <div class="stat" title="{{stats.needs}}"><span
+                  class="label"
+                >Needs</span>{{stats.needs}}</div>
+              <div class="stat" title="{{stats.benefits}}"><span
+                  class="label"
+                >Gives</span>{{stats.benefits}}</div>
+            </div>
+          </a>
+        {{/buildings}}
+      </div>
     </div>
-    <div class="row">
-        <div class="cell">
-            <div class="buttons count-1">
-                <a class="button ui-button back">
-                    <img class="icon cross-icon" src='ui/img/onebyone.gif'/>
+  </div>
+  <div class="row">
+    <div class="cell">
+      <div class="buttons count-1">
+        <a class="button ui-button back">
+          <img class="icon cross-icon" src="ui/img/onebyone.gif" />
 
-                    <div class="text">Close</div>
-                </a>
-            </div>
-        </div>
+          <div class="text">Close</div>
+        </a>
+      </div>
     </div>
+  </div>
 
 </div>

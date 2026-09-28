@@ -13,12 +13,12 @@ import namespace from "namespace";
 namespace("Isometrica.Core").CityLand = CityLand;
 
 var events = {
-    areaChange: 0
+  areaChange: 0,
 };
 
 function CityLand(world) {
-    this.world = world;
-    this._owners = {};
+  this.world = world;
+  this._owners = {};
 }
 
 CityLand.events = events;
@@ -36,16 +36,16 @@ CityLand.prototype.world = null;
  * @param tile1 {number}
  */
 CityLand.prototype.claim = function (cityId, tile0, tile1) {
-    var iter = new TileIterator(tile0, tile1),
-        owners = this._owners,
-        tile;
+  var iter = new TileIterator(tile0, tile1),
+    owners = this._owners,
+    tile;
 
-    while (!iter.done) {
-        tile = iter.next();
-        owners[tile] = cityId;
-    }
+  while (!iter.done) {
+    tile = iter.next();
+    owners[tile] = cityId;
+  }
 
-    Events.fire(this, events.areaChange, cityId);
+  Events.fire(this, events.areaChange, cityId);
 };
 
 /**
@@ -53,8 +53,8 @@ CityLand.prototype.claim = function (cityId, tile0, tile1) {
  * @returns {number} city id, or -1 when the tile belongs to nobody
  */
 CityLand.prototype.getTileOwner = function (tile) {
-    var owner = this._owners[tile];
-    return owner === undefined ? -1 : owner;
+  var owner = this._owners[tile];
+  return owner === undefined ? -1 : owner;
 };
 
 /**
@@ -65,17 +65,16 @@ CityLand.prototype.getTileOwner = function (tile) {
  * @returns {boolean}
  */
 CityLand.prototype.isFree = function (tile0, tile1, cityId) {
-    var iter = new TileIterator(tile0, tile1),
-        owners = this._owners,
-        owner;
+  var iter = new TileIterator(tile0, tile1),
+    owners = this._owners,
+    owner;
 
-    while (!iter.done) {
-        owner = owners[iter.next()];
-        if (owner !== undefined && owner !== cityId)
-            return false;
-    }
+  while (!iter.done) {
+    owner = owners[iter.next()];
+    if (owner !== undefined && owner !== cityId) return false;
+  }
 
-    return true;
+  return true;
 };
 
 export default CityLand;

@@ -1,3 +1,3 @@
 export default {
-    splashTime: 2000
-}
+  splashTime: 2000,
+};

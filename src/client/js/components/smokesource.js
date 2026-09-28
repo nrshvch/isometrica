@@ -3,22 +3,21 @@ import SmokeScript from "./smokeScript";
 
 var pool = [];
 
-var killSmoke = function(){
-    this.world.removeGameObject(this);
-    pool.push(this);
-}
+var killSmoke = function () {
+  this.world.removeGameObject(this);
+  pool.push(this);
+};
 
-var getSmoke = function(){
-    if(pool.length>0)
-        return pool.pop();
-    else{
-        var smoke = new engine.GameObject(),
-            script = new SmokeScript();
-        smoke.addComponent(script);
-        smoke.smoke = script;
-        smoke.destroy = killSmoke;
-        return smoke;
-    }
+var getSmoke = function () {
+  if (pool.length > 0) return pool.pop();
+  else {
+    var smoke = new engine.GameObject(),
+      script = new SmokeScript();
+    smoke.addComponent(script);
+    smoke.smoke = script;
+    smoke.destroy = killSmoke;
+    return smoke;
+  }
 };
 
 /**
@@ -28,38 +27,41 @@ var getSmoke = function(){
  *                            (a trolley) it smokes regardless.
  */
 function SmokeSourceScript(building) {
-    engine.Component.call(this);
-    this.building = building || null;
-};
+  engine.Component.call(this);
+  this.building = building || null;
+}
 
 var vec3Buffer = new Float32Array(3);
 
 SmokeSourceScript.prototype = Object.create(engine.Component.prototype);
 
 SmokeSourceScript.prototype.start = function () {
-    this.time = this.gameObject.world.logic.time.now;
+  this.time = this.gameObject.world.logic.time.now;
 };
 
 SmokeSourceScript.prototype.tick = function (time) {
-    if(time.now - this.time > 300){
-        if (isLit(this.building))
-            this.spawnSmoke();
-        this.time = time.now;
-    }
+  if (time.now - this.time > 300) {
+    if (isLit(this.building)) this.spawnSmoke();
+    this.time = time.now;
+  }
 };
 
 function isLit(building) {
-    if (building === null)
-        return true;
+  if (building === null) return true;
 
-    var city = building.getCity();
+  var city = building.getCity();
 
-    return city !== null && city.missing(building) === null;
+  return city !== null && city.missing(building) === null;
 }
 
-SmokeSourceScript.prototype.spawnSmoke = function(){
-    this.gameObject.transform.getPosition(vec3Buffer);
-    SmokeSourceScript.puff(this.gameObject.world, vec3Buffer[0], vec3Buffer[1], vec3Buffer[2]);
+SmokeSourceScript.prototype.spawnSmoke = function () {
+  this.gameObject.transform.getPosition(vec3Buffer);
+  SmokeSourceScript.puff(
+    this.gameObject.world,
+    vec3Buffer[0],
+    vec3Buffer[1],
+    vec3Buffer[2],
+  );
 };
 
 /**
@@ -70,11 +72,10 @@ SmokeSourceScript.prototype.spawnSmoke = function(){
  * @param [looks] {string[]} SmokeScript.steam, the default, or SmokeScript.soot
  */
 SmokeSourceScript.puff = function (world, x, y, z, looks) {
-    var smoke = getSmoke();
-    smoke.smoke.looks = looks || SmokeScript.steam;
-    smoke.transform.setPosition(x, y, z);
-    world.addGameObject(smoke);
+  var smoke = getSmoke();
+  smoke.smoke.looks = looks || SmokeScript.steam;
+  smoke.transform.setPosition(x, y, z);
+  world.addGameObject(smoke);
 };
-
 
 export default SmokeSourceScript;

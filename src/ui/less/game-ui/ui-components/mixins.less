@@ -1,16 +1,16 @@
 // main: ../main.less
-.pixelated{
-      image-rendering:optimizeSpeed;             /* Legal fallback */
-      image-rendering:-moz-crisp-edges;          /* Firefox        */
-      image-rendering:-o-crisp-edges;            /* Opera          */
-      image-rendering:-webkit-optimize-contrast; /* Safari         */
-      image-rendering:optimize-contrast;         /* CSS3 Proposed  */
-      image-rendering:crisp-edges;               /* CSS4 Proposed  */
-      image-rendering:pixelated;                 /* CSS4 Proposed  */
-      -ms-interpolation-mode:nearest-neighbor;   /* IE8+           */
+.pixelated {
+  image-rendering: optimizeSpeed; /* Legal fallback */
+  image-rendering: -moz-crisp-edges; /* Firefox        */
+  image-rendering: -o-crisp-edges; /* Opera          */
+  image-rendering: -webkit-optimize-contrast; /* Safari         */
+  image-rendering: optimize-contrast; /* CSS3 Proposed  */
+  image-rendering: crisp-edges; /* CSS4 Proposed  */
+  image-rendering: pixelated; /* CSS4 Proposed  */
+  -ms-interpolation-mode: nearest-neighbor; /* IE8+           */
 }
 
-.block(@color){
+.block(@color) {
   @light: lighten(@color, 10%);
   @dark: darken(@color, 10%);
 
@@ -20,7 +20,7 @@
   border-right-color: @dark;
 }
 
-.block-inset(@color){
+.block-inset(@color) {
   @light: lighten(@color, 10%);
   @dark: darken(@color, 10%);
 
@@ -31,7 +31,7 @@
 }
 
 .ui-block {
-  .block(@ui-color)
+  .block(@ui-color);
 }
 
 .ui-block-inset {
@@ -39,62 +39,62 @@
 }
 
 .ui-button {
-    .block(@button-color);
+  .block(@button-color);
 
-    color: #fff;
+  color: #fff;
 
+  &.active {
+    .block-inset(@button-color);
+  }
+
+  &.danger {
+    .block(@color-warning);
     &.active {
-        .block-inset(@button-color);
+      .block-inset(@color-warning);
     }
+  }
 
-    &.danger{
-      .block(@color-warning);
-      &.active {
-        .block-inset(@color-warning);
-      }
+  &.success {
+    .block(@color-success);
+    &.active {
+      .block-inset(@color-success);
     }
+  }
 
-    &.success{
-      .block(@color-success);
-      &.active {
-        .block-inset(@color-success);
-      }
+  &.warning {
+    .block(@color-warning);
+    &.active {
+      .block-inset(@color-warning);
     }
-
-    &.warning{
-      .block(@color-warning);
-      &.active {
-        .block-inset(@color-warning);
-      }
-    }
+  }
 }
 
 .ui-tab {
-    .ui-block;
+  .ui-block;
 
-    &.active {
-        @color: @button-color;
-        @light: lighten(@color, 20%);
-        @dark: darken(@color, 20%);
+  &.active {
+    @color: @button-color;
+    @light: lighten(@color, 20%);
+    @dark: darken(@color, 20%);
 
-        background-color: @color;
-        border: 1px solid @light;
-        border-bottom-color: @dark;
-        border-right-color: @dark;
-    }
+    background-color: @color;
+    border: 1px solid @light;
+    border-bottom-color: @dark;
+    border-right-color: @dark;
+  }
 }
 
 .middle-position {
-    &:before{
-        content: "";
-        display: inline-block;
-        height: 100%;
-        vertical-align: middle;
-    }
+  &:before {
+    content: "";
+    display: inline-block;
+    height: 100%;
+    vertical-align: middle;
+  }
 }
 
 .box-shadow {
-    box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
 }
 
 .ui-hr {
