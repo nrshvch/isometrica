@@ -17,12 +17,13 @@ import * as Stones from "shared/gen/stones";
 //what it is kept under. The painting cannot, so it has VERSION: bump it
 //whenever a change under shared/gen, or here, changes what comes out, and
 //every browser holding the old paint throws it away and paints anew.
-export var VERSION = 1;
+export var VERSION = 2;
 
-//the kinds of ground the terrain is drawn with: the land, and the water its
-//shore runs into
+//the kinds of ground the terrain is drawn with: the land, the water its shore
+//runs into, and the water further out, too deep to see the bottom of
 var LAND = "grass",
-  WATER = "water_shallow";
+  WATER = "water_shallow",
+  DEEP = "water_deep";
 
 var SOURCES = {
   grass: "terrain/grass/",
@@ -158,18 +159,19 @@ function paintTerrain(pixels) {
         water: source(pixels, "water"),
         shore: source(pixels, "shore"),
       },
-      { tilesets: [LAND, WATER], diffuse: false },
+      { tilesets: [LAND, WATER, DEEP], diffuse: false },
     ),
     sets = painted.manifest.tilesets,
     images = {},
     data = {
       land: LAND,
       water: WATER,
+      deep: DEEP,
       variants: {},
       shores: {},
     };
 
-  [LAND, WATER].forEach(function (id) {
+  [LAND, WATER, DEEP].forEach(function (id) {
     var base = sets[id].base;
 
     Object.keys(base).forEach(function (slope) {
@@ -205,22 +207,42 @@ function tileName(set, slope, variant) {
  * Which sprite a tile is drawn with.
  *
  * @param terrain {Object} what prepare worked out for it
- * @param kind {string} "land", "shore" or "water"
+ * @param kind {string} "land", "shore", "water" - the shallows along the
+ *        land - or "deep", the water further out
  * @param slope {string|number} the tile's slope code
  * @param x {number} where the tile is, which picks one of the variants
  * @param y {number}
  */
 function pickTile(terrain, kind, slope, x, y) {
-  var set = kind === "water" ? terrain.water : terrain.land;
+  var own =
+      kind === "water"
+        ? terrain.water
+        : kind === "deep"
+          ? terrain.deep
+          : terrain.land,
+    set = own;
 
   //a flat shore has no water painted on it
   if (kind === "shore" && terrain.shores[slope] === true)
     set = terrain.land + "+" + terrain.water;
 
-  var n = terrain.variants[kind === "water" ? terrain.water : terrain.land],
-    v = n > 1 ? (Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0 : 0;
+  var n = terrain.variants[own];
 
-  return tileName(set, slope, v % n);
+  return tileName(set, slope, n > 1 ? scatter(x, y) % n : 0);
+}
+
+/**
+ * A number for a spot that looks random but is always the same there - its
+ * low bits as mixed as its high ones, so that neighbours do not fall into a
+ * pattern.
+ */
+function scatter(x, y) {
+  var h = Math.imul(x, 0x9e3779b1) ^ Math.imul(y, 0x85ebca6b);
+
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
+
+  return (h ^ (h >>> 15)) >>> 0;
 }
 
 function paintStones(pixels) {
