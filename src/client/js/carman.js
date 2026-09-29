@@ -7,7 +7,6 @@ import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
 import VTime from "core/vtime";
 import CoreConfig from "core/config";
-import Vehicles from "data/vehicles";
 import BuildingClassCode from "data/classcode";
 
 var Terrain = Core.Terrain;
@@ -25,8 +24,8 @@ var SlopeType = Terrain.SlopeType;
 //the middle of the tile, to the right of the way it is going.
 //
 //Each one is some body type - a sedan, a van, a bus... - in some colour, with
-//a picture for each of the four ways it can drive, all out of one image that
-//tools/genvehicles.js paints (see data/vehicles.js). Bigger ones drive slower.
+//a picture for each of the four ways it can drive, all painted as the game
+//starts by shared/gen/vehicles (see client/generated). Bigger ones drive slower.
 //
 //Where one goes depends on what it is. A light car drives by the clock: to
 //work in the morning, home in the evening, wherever in the afternoon. Between
@@ -1172,79 +1171,73 @@ Carman.prototype.countLight = function () {
 };
 
 /**
- * Cuts the pictures out of the vehicles image once it is loaded; no car goes
- * out before that.
+ * The body types, as painted when the game started (see client/generated),
+ * with the sprites of every colour and heading. No car goes out without them.
  */
 function loadTypes(self) {
   var sprites = self.root.sprites,
-    image = sprites.getSprite(Vehicles.image);
+    generated = self.root.generated,
+    types = [],
+    total = 0,
+    night = 0;
 
-  sprites.whenReady(image, function () {
-    var types = [],
-      total = 0,
-      night = 0;
+  if (generated === null) return;
 
-    //one picture out of the vehicles image, by where the data says it is
-    function cut(f) {
-      var sprite = new engine.SpriteManager.Sprite();
+  function look(f) {
+    return {
+      sprite: sprites.getSprite(f.sprite),
+      pivotX: f.pivotX,
+      pivotY: f.pivotY,
+    };
+  }
 
-      sprite.sourceImage = image.sourceImage;
-      sprite.offsetX = image.offsetX + f[0];
-      sprite.offsetY = image.offsetY + f[1];
-      sprite.width = f[2];
-      sprite.height = f[3];
+  Object.keys(generated.vehicles).forEach(function (name) {
+    var data = generated.vehicles[name],
+      type = {
+        name: name,
+        speed: data.speed,
+        weight: data.weight,
+        traffic: TRAFFIC[name] !== undefined ? TRAFFIC[name] : COMMUTER,
+        frames: {},
+        //what is lit on it, a flash at a time: [{"x+": picture, ...}]
+        lamps: null,
+      };
 
-      return { sprite: sprite, pivotX: f[4], pivotY: f[5] };
-    }
+    Object.keys(data.colors).forEach(function (color) {
+      var looks = (type.frames[color] = {});
 
-    Object.keys(Vehicles.types).forEach(function (name) {
-      var data = Vehicles.types[name],
-        type = {
-          name: name,
-          speed: data.speed,
-          weight: data.weight,
-          traffic: TRAFFIC[name] !== undefined ? TRAFFIC[name] : COMMUTER,
-          frames: {},
-          //what is lit on it, a flash at a time: [{"x+": picture, ...}]
-          lamps: null,
-        };
+      Object.keys(data.colors[color]).forEach(function (heading) {
+        var f = data.colors[color][heading],
+          l = (looks[heading] = look(f));
 
-      Object.keys(data.colors).forEach(function (color) {
-        var looks = (type.frames[color] = {});
-
-        Object.keys(data.colors[color]).forEach(function (heading) {
-          var f = data.colors[color][heading],
-            look = (looks[heading] = cut(f));
-
-          look.engine = [f[6], f[7], f[8]];
-          look.tailpipe = [f[9], f[10], f[11]];
-        });
+        l.engine = f.engine;
+        l.tailpipe = f.tailpipe;
       });
-
-      if (data.lamps !== undefined) {
-        type.lamps = data.lamps.map(function (phase) {
-          var pictures = {};
-
-          Object.keys(phase).forEach(function (heading) {
-            pictures[heading] = cut(phase[heading]);
-          });
-
-          return pictures;
-        });
-      }
-
-      types.push(type);
-      total += type.weight;
-
-      //what still runs in the small hours: the vans and the lorries,
-      //the cabs and the police
-      if (type.traffic === ERRAND) night += type.weight;
     });
 
-    self.types = types;
-    self.totalWeight = total;
-    self.nightWeight = night;
+    if (data.lamps !== undefined) {
+      type.lamps = data.lamps.map(function (phase) {
+        var pictures = {};
+
+        Object.keys(phase).forEach(function (heading) {
+          pictures[heading] = look(phase[heading]);
+        });
+
+        return pictures;
+      });
+    }
+
+    types.push(type);
+    total += type.weight;
+
+    //what still runs in the small hours: the vans and the lorries,
+    //the cabs and the police
+    if (type.traffic === ERRAND) night += type.weight;
   });
+
+  self.types = types;
+  self.totalWeight = total;
+  self.nightWeight = night;
 }
 
 export default Carman;
