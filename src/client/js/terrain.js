@@ -11,6 +11,29 @@ var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
 var CoreTerrain = Core.Terrain;
 
+//how deep water has to be to be drawn as deep water, see waterDepth: the
+//first level along the shore stays the shallows
+var DEEP_WATER = 2;
+
+/**
+ * How many levels down the water over a tile goes, counted from its highest
+ * corner: 1 where a corner is at the water line, as it is all along the
+ * shore, and one more for every step down from there.
+ */
+function waterDepth(x, y) {
+  var terrain = vkaria.core.world.terrain;
+
+  return (
+    1 -
+    Math.max(
+      terrain.getGridPointHeight(x, y),
+      terrain.getGridPointHeight(x + 1, y),
+      terrain.getGridPointHeight(x, y + 1),
+      terrain.getGridPointHeight(x + 1, y + 1),
+    )
+  );
+}
+
 /**
  * The sprite of a tile of that terrain type and slope - painted as the game
  * started, see client/generated.
@@ -19,7 +42,9 @@ function tileSprite(x, y, type, slope) {
   var terrain = vkaria.generated !== null ? vkaria.generated.terrain : null,
     kind =
       type === TerrainType.water
-        ? "water"
+        ? waterDepth(x, y) >= DEEP_WATER
+          ? "deep"
+          : "water"
         : type === TerrainType.shore
           ? "shore"
           : "land";
