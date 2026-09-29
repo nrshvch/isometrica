@@ -740,10 +740,17 @@ CarScript.prototype.place = function () {
  * over the car, the way it is facing now.
  */
 CarScript.prototype.showLamp = function () {
-  var lamps = this.type.lamps;
+  var lamps = this.type.lamps,
+    heading = this.heading;
+
+  if (lamps === null) {
+    this.gameObject.spriteRenderer.setLit(null);
+    return;
+  }
 
   this.gameObject.spriteRenderer.setLit(
-    lamps === null ? null : lamps[this.lamp][this.heading],
+    lamps[this.lamp][heading],
+    this.type.flashes[heading],
   );
 };
 
@@ -853,8 +860,18 @@ VehicleRenderer.prototype.constructor = VehicleRenderer;
 //{sprite, pivotX, pivotY}, or null for a vehicle with nothing lit on it
 VehicleRenderer.prototype.lit = null;
 
-VehicleRenderer.prototype.setLit = function (lit) {
+//every flash of it the way the vehicle is facing, the one showing among them
+VehicleRenderer.prototype.flashes = null;
+
+/**
+ * @param lit {Object|null} what is lit on it now
+ * @param [flashes] {Object[]} every flash it goes through, lit among them -
+ *        kept cached while the one showing is drawn, so that none of them is
+ *        put away between one flash and the next
+ */
+VehicleRenderer.prototype.setLit = function (lit, flashes) {
   this.lit = lit;
+  this.flashes = flashes || null;
 };
 
 VehicleRenderer.prototype.render = function (
@@ -875,9 +892,14 @@ VehicleRenderer.prototype.render = function (
 
   if (lit === null) return;
 
-  var sprite = lit.sprite;
+  var sprite = lit.sprite,
+    flashes = self.flashes;
 
-  if (sprite.width === 0) return;
+  if (flashes !== null)
+    for (var i = 0; i < flashes.length; i++)
+      if (flashes[i] !== lit) flashes[i].sprite.keep();
+
+  if (sprite.width === 0 || !sprite.acquire()) return;
 
   //where the vehicle itself was just drawn; the lamp was painted standing on
   //the car, about the same point, so its own pivot puts it back there
@@ -1201,6 +1223,8 @@ function loadTypes(self) {
         frames: {},
         //what is lit on it, a flash at a time: [{"x+": picture, ...}]
         lamps: null,
+        //and every flash by the way it faces: {"x+": [picture, ...]}
+        flashes: null,
       };
 
     Object.keys(data.colors).forEach(function (color) {
@@ -1224,6 +1248,13 @@ function loadTypes(self) {
         });
 
         return pictures;
+      });
+
+      type.flashes = {};
+      Object.keys(type.lamps[0]).forEach(function (heading) {
+        type.flashes[heading] = type.lamps.map(function (phase) {
+          return phase[heading];
+        });
       });
     }
 

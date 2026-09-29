@@ -22,6 +22,12 @@ define(function () {
     p.now = 0;
 
     /**
+     * how many ticks - and so frames drawn - there have been
+     * @type {Number}
+     */
+    p.frame = 0;
+
+    /**
      * milliseconds elapsed since the previous tick, measured against the
      * wall clock so speeds stay the same regardless of frame rate
      * @type {Number}
@@ -40,6 +46,7 @@ define(function () {
 
         this.time += this.dt;
         this.now += this.dt;
+        this.frame++;
     };
 
     return Time;

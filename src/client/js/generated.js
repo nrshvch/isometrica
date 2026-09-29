@@ -17,7 +17,7 @@ import * as Stones from "shared/gen/stones";
 //what it is kept under. The painting cannot, so it has VERSION: bump it
 //whenever a change under shared/gen, or here, changes what comes out, and
 //every browser holding the old paint throws it away and paints anew.
-export var VERSION = 2;
+export var VERSION = 3;
 
 //the kinds of ground the terrain is drawn with: the land, the water its shore
 //runs into, and the water further out, too deep to see the bottom of
@@ -39,7 +39,7 @@ var SOURCES = {
  * @param sprites {SpriteCache} with gfx/manifest.json loaded
  * @returns {Promise<Object>} what the painting worked out besides the
  *          pictures: terrain, which sprite a tile of each kind and slope is
- *          drawn with (see pickTile), and vehicles, every body type as
+ *          drawn with (see tileParts), and vehicles, every body type as
  *          shared/gen/vehicles describes it
  */
 function prepare(sprites) {
@@ -75,18 +75,13 @@ function restore(sprites, record) {
   return Promise.all(
     record.sheets.map(function (sheet) {
       return createImageBitmap(sheet.blob).then(function (image) {
-        var canvas = SpriteCache.canvas(image.width, image.height);
-
-        canvas.getContext("2d").drawImage(image, 0, 0);
-        image.close();
-
-        return { name: sheet.name, canvas: canvas, frames: sheet.frames };
+        return { name: sheet.name, image: image, frames: sheet.frames };
       });
     }),
   ).then(function (sheets) {
     //all or nothing: a sheet that failed leaves the rest unused
     sheets.forEach(function (sheet) {
-      sprites.addSheet(sheet.name, sheet.canvas, sheet.frames);
+      sprites.addSheet(sheet.name, sheet.image, sheet.frames);
     });
 
     return record.data;
@@ -148,9 +143,9 @@ function source(pixels, kind) {
 }
 
 /**
- * The land's tiles, the water's, and the land's tiles with the shore of the
- * water over them - put together here once rather than drawn one over the
- * other on every frame.
+ * The land's tiles, the water's, and the shore of the water, which is laid
+ * over a tile of land - by the tile, which puts the two together (see
+ * tileParts).
  */
 function paintTerrain(pixels) {
   var painted = Terrain.generate(
@@ -184,15 +179,7 @@ function paintTerrain(pixels) {
   });
 
   Object.keys(sets[WATER].shore).forEach(function (slope) {
-    var shore = painted.images[sets[WATER].shore[slope]];
-
-    sets[LAND].base[slope].forEach(function (file, v) {
-      images[tileName(LAND + "+" + WATER, slope, v)] = over(
-        painted.images[file],
-        shore,
-      );
-    });
-
+    images[shoreName(WATER, slope)] = painted.images[sets[WATER].shore[slope]];
     data.shores[slope] = true;
   });
 
@@ -203,8 +190,13 @@ function tileName(set, slope, variant) {
   return "gen/terrain/" + set + "/" + slope + "_" + variant;
 }
 
+function shoreName(water, slope) {
+  return "gen/terrain/" + water + "/shore/" + slope;
+}
+
 /**
- * Which sprite a tile is drawn with.
+ * What a tile is drawn with: the sprites laid over one another, bottom
+ * first, for SpriteCache#getComposite.
  *
  * @param terrain {Object} what prepare worked out for it
  * @param kind {string} "land", "shore", "water" - the shallows along the
@@ -213,22 +205,22 @@ function tileName(set, slope, variant) {
  * @param x {number} where the tile is, which picks one of the variants
  * @param y {number}
  */
-function pickTile(terrain, kind, slope, x, y) {
-  var own =
+function tileParts(terrain, kind, slope, x, y) {
+  var set =
       kind === "water"
         ? terrain.water
         : kind === "deep"
           ? terrain.deep
           : terrain.land,
-    set = own;
+    n = terrain.variants[set],
+    base = tileName(set, slope, n > 1 ? scatter(x, y) % n : 0);
 
-  //a flat shore has no water painted on it
+  //the land with the water's shore over it - a flat shore has no water
+  //painted on it
   if (kind === "shore" && terrain.shores[slope] === true)
-    set = terrain.land + "+" + terrain.water;
+    return [base, shoreName(terrain.water, slope)];
 
-  var n = terrain.variants[own];
-
-  return tileName(set, slope, n > 1 ? scatter(x, y) % n : 0);
+  return [base];
 }
 
 /**
@@ -257,28 +249,6 @@ function paintStones(pixels) {
   });
 
   return out;
-}
-
-/**
- * src laid over dst, each {width, height, data}, into a new picture.
- */
-function over(dst, src) {
-  var out = new Uint8ClampedArray(dst.data),
-    s = src.data;
-
-  for (var k = 0; k < out.length; k += 4) {
-    var a = s[k + 3] / 255,
-      b = (out[k + 3] / 255) * (1 - a),
-      alpha = a + b;
-
-    if (alpha === 0) continue;
-
-    for (var c = 0; c < 3; c++)
-      out[k + c] = (s[k + c] * a + out[k + c] * b) / alpha;
-    out[k + 3] = alpha * 255;
-  }
-
-  return { width: dst.width, height: dst.height, data: out };
 }
 
 /**
@@ -323,4 +293,4 @@ function toBlob(canvas) {
   });
 }
 
-export default { prepare: prepare, pickTile: pickTile, VERSION: VERSION };
+export default { prepare: prepare, tileParts: tileParts, VERSION: VERSION };

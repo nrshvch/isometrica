@@ -52,8 +52,8 @@ function tileSprite(x, y, type, slope) {
   //nothing was painted: draws nothing, and says so once
   if (terrain === null) return vkaria.sprites.getSprite("gen/terrain");
 
-  return vkaria.sprites.getSprite(
-    Generated.pickTile(terrain, kind, slope, x, y),
+  return vkaria.sprites.getComposite(
+    Generated.tileParts(terrain, kind, slope, x, y),
   );
 }
 
