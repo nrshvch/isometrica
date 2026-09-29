@@ -151,6 +151,12 @@ define(function (require) {
             w = sprite.width,
             h = sprite.height;
 
+        //a sprite kept somewhere it can be put away from - a cache of what is
+        //on screen - is fetched back first, and marked as still wanted; one
+        //that cannot be just now is not drawn
+        if (sprite.acquire !== undefined && !sprite.acquire())
+            return;
+
         if (self.opacity !== 1) {
             layer.save();
             layer.globalAlpha = self.opacity;

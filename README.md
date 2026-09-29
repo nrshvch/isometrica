@@ -46,6 +46,13 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   (`src/shared/gen`, `src/client/js/generated.js`) and kept in the browser.
   Bump `VERSION` in `src/client/js/generated.js` whenever a change to the
   painting changes what it paints, so browsers throw away what they kept.
+- What is on screen is drawn from a few big canvas pages
+  (`src/client/js/canvascache.js`), not from the sheets: a sprite is copied
+  there the first time it is drawn, and whatever has gone undrawn longest
+  makes room when the pages are full. Something made of several pictures,
+  like a shore tile, is put together there once
+  (`sprites.getComposite([...])`); something that changes every frame, like
+  a police car's lamp, is drawn over it as a sprite of its own.
 - To look at what the painting makes without starting the game, run
   `npm run generate:terrain`, `generate:vehicles` or `generate:stones`. They
   run the same code the game does and write pictures to `assets/terrain/terraingen`

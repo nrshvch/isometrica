@@ -35,6 +35,12 @@ define(function (require) {
 
             this.currentFrame = index;
             this.setSprite(this.frames[index]);
+
+            //the frames not showing are kept wherever they are cached, or
+            //they would be put away and back again every time round
+            for (var i = 0; i < this.frames.length; i++)
+                if (i !== index && this.frames[i].keep !== undefined)
+                    this.frames[i].keep();
         }
     };
 

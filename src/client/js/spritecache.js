@@ -1,40 +1,51 @@
-import engine from "engine";
+import CanvasCache from "./canvascache";
+import CachedSprite from "./cachedsprite";
 
 //Sits between the pictures the game has and the renderers that draw them.
 //
-//Every picture is a sprite, found by its name somewhere on a sheet. The ones
-//somebody drew are on the sheets tools/packsprites.js put under gfx/ and
-//listed in gfx/manifest.json; the ones the game paints itself it painted onto
-//sheets of its own as it started (client/generated). Either way how big every
-//sprite is and where it is on its sheet is known from the start, so nothing
-//ever has to wait for a picture to find out its size.
+//Every picture is a sprite, found by its name on a sheet - a picture drawn on
+//its own is a sheet with just the one sprite on it. The ones somebody drew
+//are on the sheets tools/packsprites.js put under gfx/ and listed in
+//gfx/manifest.json; the ones the game paints itself it painted onto sheets of
+//its own as it started (client/generated). Either way how big every sprite
+//is and where it is on its sheet is known from the start, so nothing ever
+//has to wait for a picture to find out its size.
 //
-//A sheet is loaded the first time something draws a sprite on it, straight
-//into a canvas of the sheet's size that its sprites already point into:
-//browsers draw from a canvas, which lives on the GPU, faster than from a png.
-//Until the picture is in, the canvas is empty and its sprites draw nothing.
+//The sheets are only where pictures are taken from. What is drawn is drawn
+//from the canvas cache: a few big pages that only what is on screen is put
+//onto - see CachedSprite and CanvasCache. A sheet is loaded the first time a
+//sprite on it is wanted there.
 
 var ROOT = "gfx/";
 var MANIFEST = ROOT + "manifest.json";
 
-function SpriteCache() {
+/**
+ * @param clock {{frame: number}} counts the frames drawn - engine Time
+ * @param [options] {Object} for the canvas cache: pageSize, maxPages
+ */
+function SpriteCache(clock, options) {
   //name -> {sheet, x, y, w, h}
   this.frames = {};
   //sheet name -> Sheet
   this.sheets = {};
+  //key -> CachedSprite
   this.sprites = {};
+
+  this.cache = new CanvasCache(
+    clock,
+    Object.assign({ canvas: canvas }, options),
+  );
 }
 
 /**
  * @param [url] {string} where the picture is, for a sheet loaded as needed
- * @param [source] {CanvasImageSource} the picture, for one painted here
+ * @param [image] {CanvasImageSource} the picture, for one painted here
  */
-function Sheet(width, height, url, source) {
-  this.width = width;
-  this.height = height;
+function Sheet(url, image) {
   this.url = url || null;
-  this.canvas = source || null;
-  this.image = source ? Promise.resolve(source) : null;
+  //the picture once it has loaded
+  this.image = image || null;
+  this.loading = image ? Promise.resolve(image) : null;
 }
 
 /**
@@ -55,12 +66,8 @@ SpriteCache.prototype.load = function () {
     })
     .then(function (manifest) {
       Object.keys(manifest.sheets).forEach(function (file) {
-        var sheet = manifest.sheets[file];
-
         self.sheets[file] = new Sheet(
-          sheet.width,
-          sheet.height,
-          ROOT + file + "?v=" + sheet.hash,
+          ROOT + file + "?v=" + manifest.sheets[file].hash,
         );
       });
 
@@ -72,11 +79,11 @@ SpriteCache.prototype.load = function () {
  * Makes the sprites on a sheet painted here drawable by name.
  *
  * @param name {string} the sheet's own name, e.g. "gen/vehicles"
- * @param canvas {HTMLCanvasElement|OffscreenCanvas} the sheet
+ * @param image {CanvasImageSource} the sheet
  * @param frames {Object} sprite name -> {x, y, w, h} on it
  */
-SpriteCache.prototype.addSheet = function (name, canvas, frames) {
-  this.sheets[name] = new Sheet(canvas.width, canvas.height, null, canvas);
+SpriteCache.prototype.addSheet = function (name, image, frames) {
+  this.sheets[name] = new Sheet(null, image);
 
   for (var sprite in frames) {
     var f = frames[sprite];
@@ -115,30 +122,102 @@ SpriteCache.prototype.version = function (name) {
  * of its picture from the start.
  *
  * @param name {string} e.g. "buildings/shop.png"
- * @returns {Isometrica.Engine.SpriteManager.Sprite}
+ * @returns {CachedSprite}
  */
 SpriteCache.prototype.getSprite = function (name) {
-  var sprite = this.sprites[name];
+  return this.sprites[name] || this.getComposite([name]);
+};
+
+/**
+ * One picture made of several sprites laid over one another, bottom first,
+ * put together once and drawn as one - shared by everything that asks for the
+ * same parts in the same places.
+ *
+ * @param parts {Array<string|{name: string, x: number, y: number}>} a name
+ *        alone is at 0, 0; x, y are where the part's top left corner goes,
+ *        never left of or above the picture's
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.getComposite = function (parts) {
+  var key = parts
+      .map(function (part) {
+        return typeof part === "string" || (!part.x && !part.y)
+          ? part.name || part
+          : part.name + "@" + part.x + "," + part.y;
+      })
+      .join("+"),
+    sprite = this.sprites[key];
 
   if (sprite !== undefined) return sprite;
 
-  var frame = this.frames[name];
+  var resolved = [],
+    width = 0,
+    height = 0;
 
-  sprite = this.sprites[name] = new engine.SpriteManager.Sprite();
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i],
+      name = typeof part === "string" ? part : part.name,
+      frame = this.frames[name],
+      x = part.x || 0,
+      y = part.y || 0;
 
-  //0x0, which the renderers draw nothing for
-  if (frame === undefined) {
-    console.warn("No such sprite: " + name);
-    return sprite;
+    //drawn without it, which draws nothing for a sprite of one part
+    if (frame === undefined) {
+      console.warn("No such sprite: " + name);
+      continue;
+    }
+
+    resolved.push({
+      sheet: this.sheets[frame.sheet],
+      frame: frame,
+      x: x,
+      y: y,
+    });
+    width = Math.max(width, x + frame.w);
+    height = Math.max(height, y + frame.h);
   }
 
-  sprite.sourceImage = canvasOf(this.sheets[frame.sheet]);
-  sprite.offsetX = frame.x;
-  sprite.offsetY = frame.y;
-  sprite.width = frame.w;
-  sprite.height = frame.h;
+  return (this.sprites[key] = new CachedSprite(
+    this,
+    key,
+    resolved,
+    width,
+    height,
+  ));
+};
 
-  return sprite;
+/**
+ * Starts loading a sheet, unless it is loading or loaded already.
+ *
+ * @returns {Promise} its picture
+ */
+SpriteCache.prototype.loadSheet = function (sheet) {
+  if (sheet.loading === null) {
+    sheet.loading = fetch(sheet.url)
+      .then(function (response) {
+        if (!response.ok) throw new Error(sheet.url + ": " + response.status);
+
+        return response.blob();
+      })
+      .then(function (blob) {
+        return createImageBitmap(blob);
+      })
+      .then(
+        function (image) {
+          return (sheet.image = image);
+        },
+        function (e) {
+          console.warn("Sheet not loaded: " + e.message);
+          throw e;
+        },
+      );
+
+    //a sprite asking for it every frame does not wait for it; readPixels,
+    //which does, still sees it fail
+    sheet.loading.catch(function () {});
+  }
+
+  return sheet.loading;
 };
 
 /**
@@ -157,7 +236,7 @@ SpriteCache.prototype.readPixels = function (names) {
       if (frame === undefined)
         return Promise.reject(new Error("No such sprite: " + name));
 
-      return imageOf(self.sheets[frame.sheet]).then(function (image) {
+      return self.loadSheet(self.sheets[frame.sheet]).then(function (image) {
         var ctx = canvas(frame.w, frame.h).getContext("2d", {
           willReadFrequently: true,
         });
@@ -179,49 +258,6 @@ SpriteCache.prototype.readPixels = function (names) {
     return out;
   });
 };
-
-/**
- * The picture of a sheet, loaded the first time it is asked for.
- */
-function imageOf(sheet) {
-  if (sheet.image === null)
-    sheet.image = fetch(sheet.url)
-      .then(function (response) {
-        if (!response.ok) throw new Error(sheet.url + ": " + response.status);
-
-        return response.blob();
-      })
-      .then(function (blob) {
-        return createImageBitmap(blob);
-      });
-
-  return sheet.image;
-}
-
-/**
- * The canvas the sprites of a sheet are drawn from - empty until the sheet
- * has loaded, and the sheet's picture from then on.
- */
-function canvasOf(sheet) {
-  if (sheet.canvas !== null) return sheet.canvas;
-
-  var target = (sheet.canvas = canvas(sheet.width, sheet.height));
-
-  imageOf(sheet).then(
-    function (image) {
-      target.getContext("2d").drawImage(image, 0, 0);
-
-      //the canvas is all anybody needs of it from now on. Not closed: a
-      //readPixels already waiting on it is handed the same picture
-      sheet.image = Promise.resolve(target);
-    },
-    function (e) {
-      console.warn("Sheet not loaded: " + e.message);
-    },
-  );
-
-  return target;
-}
 
 function canvas(w, h) {
   return typeof OffscreenCanvas !== "undefined"
