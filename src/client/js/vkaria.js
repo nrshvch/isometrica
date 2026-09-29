@@ -23,6 +23,7 @@ import Player from "./player";
 import CameraMan from "./cameraman";
 import Carman from "./carman";
 import SpriteCache from "./spritecache";
+import Generated from "./generated";
 
 function Vkaria(core, ui, callback) {
   // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -50,9 +51,10 @@ function Vkaria(core, ui, callback) {
   engine.Config.noLayerDepthSortingMask = 3;
   engine.Config.noLayerClearMask = 0;
 
-  //assets
-  this.assets = new engine.AssetManager();
-  this.sprites = new SpriteCache(this.assets);
+  //every picture there is, by name - see prepare
+  this.sprites = new SpriteCache();
+  //what was worked out painting the pictures the game paints for itself
+  this.generated = null;
 
   //init engine
   this.game = new engine.Game();
@@ -76,40 +78,31 @@ function Vkaria(core, ui, callback) {
   this.player = new Player(this);
 }
 
+/**
+ * Gets every picture ready to be drawn by name, and starts the game once it
+ * is: the hand-drawn ones are listed in gfx/manifest.json and load as they
+ * are first drawn; the ground, the cars and the stones are painted now, or
+ * loaded as painted the last time.
+ */
 Vkaria.prototype.prepare = function (callback) {
-  //preload assets and, when done, start game
   var self = this;
 
-  //todo: use promises
-  //прелоадинг ресурсов не нужен, т.к. идея прелоадинга идёт в разрез с идеей того, чтобы загружать ресурсы по мере необходимисти, а не все сразу.
-  //Try to load spritesheet. If it is not available, then start game anyway, it will then use sprites each separately.
-  //FF won't run game before any resource is ready. Empty "new Image()" shim is not helpful.
-  this.assets
-    .getAsset(
-      "gfx/spritesheet.json",
-      engine.AssetManager.Resource.ResourceTypeEnum.json,
+  this.sprites
+    .load()
+    .then(function () {
+      return Generated.prepare(self.sprites);
+    })
+    .then(
+      function (generated) {
+        self.generated = generated;
+      },
+      //the game goes on without whatever is missing, and draws nothing for it
+      function (e) {
+        console.error("Sprites not ready:", e);
+      },
     )
-    .done(function (resourceJSON) {
-      if (
-        resourceJSON.state === resourceJSON.constructor.ResourceStateEnum.ready
-      ) {
-        self.assets
-          .getAsset(
-            "gfx/spritesheet.png",
-            engine.AssetManager.Resource.ResourceTypeEnum.image,
-          )
-          .done(function (resourceImage) {
-            self.sprites.setSpritesheet(
-              resourceJSON.data.frames,
-              resourceImage.data,
-            );
-            //self.start();
-            callback && callback();
-          });
-      } else {
-        //self.start();
-        callback && callback();
-      }
+    .then(function () {
+      callback && callback();
     });
 };
 

@@ -144,14 +144,12 @@ function addSprites(parent, staticData, rotated, opacity, layer) {
   //so that it covers the footprint it actually has
   if (staticData.turned) rotated = !rotated;
 
-  var spritesData = staticData.sprites,
+  var spritesData =
+      rotated && staticData.spritesRotate
+        ? staticData.spritesRotate
+        : staticData.sprites,
     tileSize = Config.tileSize,
-    tileZStep = Config.tileZStep,
-    //a building nobody painted turned round is drawn flipped over
-    mirrored = rotated && !staticData.spritesRotate;
-
-  if (rotated && staticData.spritesRotate)
-    spritesData = staticData.spritesRotate;
+    tileZStep = Config.tileZStep;
 
   var len = spritesData.length;
   for (var i = 0; i < len; i++) {
@@ -159,13 +157,9 @@ function addSprites(parent, staticData, rotated, opacity, layer) {
 
     var spriteRenderer = new engine.SpriteRenderer();
     spriteRenderer.layer = layer !== undefined ? layer : spriteData.layer;
+    spriteRenderer.pivotX = spriteData.pivotX;
     spriteRenderer.pivotY = spriteData.pivotY;
-
-    var sprite = vkaria.sprites.getSprite(spriteData.path, mirrored);
-    spriteRenderer.setSprite(sprite);
-
-    if (mirrored) mirrorPivot(spriteRenderer, sprite, spriteData.pivotX);
-    else spriteRenderer.pivotX = spriteData.pivotX;
+    spriteRenderer.setSprite(vkaria.sprites.getSprite(spriteData.path));
 
     var spriteGO = new engine.GameObject();
     spriteGO.addComponent(spriteRenderer);
@@ -173,34 +167,15 @@ function addSprites(parent, staticData, rotated, opacity, layer) {
     spriteRenderer.opacity = opacity;
     parent.transform.addChild(spriteGO.transform);
 
-    //flipped over, the piece over tile (x, y) is the one over (y, x)
-    if (mirrored)
-      spriteGO.transform.setLocalPosition(
-        spriteData.z * tileSize,
-        spriteData.y * tileZStep,
-        spriteData.x * tileSize,
-      );
-    else
-      spriteGO.transform.setLocalPosition(
-        spriteData.x * tileSize,
-        spriteData.y * tileZStep,
-        spriteData.z * tileSize,
-      );
+    spriteGO.transform.setLocalPosition(
+      spriteData.x * tileSize,
+      spriteData.y * tileZStep,
+      spriteData.z * tileSize,
+    );
   }
 }
 
 BuildingView.addSprites = addSprites;
-
-/**
- * The pivot sits as far from the right edge of a flipped picture as it did from
- * the left edge of the original - which takes the picture's width, and that of
- * one still loading is not known yet.
- */
-function mirrorPivot(spriteRenderer, sprite, pivotX) {
-  vkaria.sprites.whenReady(sprite, function () {
-    spriteRenderer.pivotX = sprite.width - pivotX;
-  });
-}
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)

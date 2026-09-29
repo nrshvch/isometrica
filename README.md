@@ -34,3 +34,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - Preview the production build locally
 
 > npm run preview
+
+### Sprites
+
+- Hand-drawn pictures live in `assets/sprites`, named by their path there
+  (`buildings/shop.png`). `npm run build:sprites` (run before `start`, `dev`
+  and `build`) packs them into `src/public/gfx`, grouping related pictures
+  onto shared sheets, and writes `gfx/manifest.json` with every sprite's size.
+  After changing a picture while the dev server runs, run it again.
+- The ground, the cars and the stones are painted by the game as it starts
+  (`src/shared/gen`, `src/client/js/generated.js`) and kept in the browser.
+  Bump `VERSION` in `src/client/js/generated.js` whenever a change to the
+  painting changes what it paints, so browsers throw away what they kept.
