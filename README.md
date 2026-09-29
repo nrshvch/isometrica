@@ -46,3 +46,7 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   (`src/shared/gen`, `src/client/js/generated.js`) and kept in the browser.
   Bump `VERSION` in `src/client/js/generated.js` whenever a change to the
   painting changes what it paints, so browsers throw away what they kept.
+- To look at what the painting makes without starting the game, run
+  `npm run generate:terrain`, `generate:vehicles` or `generate:stones`. They
+  run the same code the game does and write pictures to `assets/terrain/terraingen`
+  and `assets/previews` (not committed).
