@@ -1,6 +1,6 @@
 /**
- * Paints buildings out of sections, the way tools/genvehicles.js paints cars
- * out of boxes: flat colours, one light for everything, no noise.
+ * Paints buildings out of sections, the way src/shared/gen/vehicles.js paints
+ * cars out of boxes: flat colours, one light for everything, no noise.
  *
  * A building is put together like toy bricks, from pieces that each take one
  * tile, the same pieces for every block whatever its size:

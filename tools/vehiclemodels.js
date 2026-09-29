@@ -1,9 +1,9 @@
 /**
  * The cars, vans, trucks and buses that drive about the roads, as boxes: what
- * tools/genvehicles.js paints them from, and what tools/genbuildings.js parks
+ * src/shared/gen/vehicles.js paints them from, and what tools/genbuildings.js parks
  * in its car parks, so a parked car is the same car as a driving one.
  *
- * Units as in genvehicles: one along the ground is one pixel across the
+ * Units as in shared/gen/vehicles: one along the ground is one pixel across the
  * screen, a tile 32 each way; heights in pixels.
  */
 

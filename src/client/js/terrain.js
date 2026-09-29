@@ -5,58 +5,32 @@ import Core from "core/main";
 import Tile from "./gameObjects/tile";
 import Config from "./config";
 import Events from "events";
+import Generated from "./generated";
 
 var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
 var CoreTerrain = Core.Terrain;
 
-var grass = {
-  2222: "grass/2222.png",
-  2111: "grass/2111.png",
-  2223: "grass/2223.png",
-  2112: "grass/2112.png",
-  2232: "grass/2232.png",
-  2121: "grass/2121.png",
-  2233: "grass/2233.png",
-  2122: "grass/2122.png",
-  2322: "grass/2322.png",
-  2211: "grass/2211.png",
-  2323: "grass/2323.png",
-  2212: "grass/2212.png",
-  2332: "grass/2332.png",
-  2221: "grass/2221.png",
-  2333: "grass/2333.png",
-  2321: "grass/2321.png",
-  2123: "grass/2123.png",
-  2101: "grass/2101.png",
-  2343: "grass/2343.png",
-};
+/**
+ * The sprite of a tile of that terrain type and slope - painted as the game
+ * started, see client/generated.
+ */
+function tileSprite(x, y, type, slope) {
+  var terrain = vkaria.generated !== null ? vkaria.generated.terrain : null,
+    kind =
+      type === TerrainType.water
+        ? "water"
+        : type === TerrainType.shore
+          ? "shore"
+          : "land";
 
-var shore = {
-  2222: "shore/2222.png",
-  2111: "shore/2111.png",
-  2223: "shore/2223.png",
-  2112: "shore/2112.png",
-  2232: "shore/2232.png",
-  2121: "shore/2121.png",
-  2233: "shore/2233.png",
-  2122: "shore/2122.png",
-  2322: "shore/2322.png",
-  2211: "shore/2211.png",
-  2323: "shore/2323.png",
-  2212: "shore/2212.png",
-  2332: "shore/2332.png",
-  2221: "shore/2221.png",
-  2333: "shore/2333.png",
-  2321: "shore/2321.png",
-  2123: "shore/2123.png",
-  2101: "shore/2101.png",
-  2343: "shore/2343.png",
-};
+  //nothing was painted: draws nothing, and says so once
+  if (terrain === null) return vkaria.sprites.getSprite("gen/terrain");
 
-var water = {
-  2222: "water/2222.png",
-};
+  return vkaria.sprites.getSprite(
+    Generated.pickTile(terrain, kind, slope, x, y),
+  );
+}
 
 var events = {};
 
@@ -164,11 +138,7 @@ var routine = function (iter, self) {
         y * Config.tileSize,
       );
 
-      if (type === TerrainType.grass)
-        sprite = vkaria.sprites.getSprite(grass[slope.toString()]);
-      else if (type === TerrainType.shore)
-        sprite = vkaria.sprites.getSprite(shore[slope.toString()]);
-      else sprite = vkaria.sprites.getSprite(water["2222"]);
+      sprite = tileSprite(x, y, type, slope);
 
       t.renderer.setSprite(sprite);
       vkaria.game.logic.world.addGameObject(t);
@@ -209,11 +179,7 @@ function shapeTile(self, t, index) {
     y * Config.tileSize,
   );
 
-  if (type === TerrainType.grass)
-    sprite = vkaria.sprites.getSprite(grass[slope]);
-  else if (type === TerrainType.shore)
-    sprite = vkaria.sprites.getSprite(shore[slope]);
-  else sprite = vkaria.sprites.getSprite(water[2222]);
+  sprite = tileSprite(x, y, type, slope);
 
   t.renderer.setSprite(sprite);
 }
