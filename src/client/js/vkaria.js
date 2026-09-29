@@ -51,13 +51,15 @@ function Vkaria(core, ui, callback) {
   engine.Config.noLayerDepthSortingMask = 3;
   engine.Config.noLayerClearMask = 0;
 
-  //every picture there is, by name - see prepare
-  this.sprites = new SpriteCache();
-  //what was worked out painting the pictures the game paints for itself
-  this.generated = null;
-
   //init engine
   this.game = new engine.Game();
+
+  //every picture there is, by name - see prepare. What is on screen is kept
+  //on a few big canvases, and what has gone unseen longest is put away from
+  //there first, going by the frames the game counts
+  this.sprites = new SpriteCache(this.game.time);
+  //what was worked out painting the pictures the game paints for itself
+  this.generated = null;
 
   this.hiliteMan = new HiliteMan(this);
   this.buildman = new BuildMan(this);

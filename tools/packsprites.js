@@ -7,12 +7,13 @@
  * starts (src/client/js/generated), mostly out of pictures from here.
  *
  * A sprite is named by its path under assets/sprites: "buildings/shop.png".
- * Most go out as a file of their own and are loaded the first time something
- * draws them. Pictures that belong together - the slopes of one ground, the
- * frames of one puff of smoke, the pieces of one building - are put on one
- * sheet instead, a request for all of them, laid out by shared/gen/pack with
- * a pixel of nothing between any two so that none bleeds into the next.
- * SHEETS says which go together.
+ * Every sprite is on a sheet, loaded the first time something draws one of
+ * its sprites. Pictures that belong together - the slopes of one ground, the
+ * frames of one puff of smoke, the pieces of one building - share one, a
+ * request for all of them, laid out by shared/gen/pack with a pixel of
+ * nothing between any two so that none bleeds into the next; SHEETS says
+ * which go together. A picture that goes with nothing else is a sheet with
+ * just itself on it.
  *
  * manifest.json has every sprite's size and where it is, so the game knows
  * how big a picture is before it has loaded - and every file's hash, which it
@@ -36,9 +37,8 @@ var SOURCE = path.join(ROOT, "assets/sprites");
 var OUT = path.join(ROOT, "src/public/gfx");
 var MANIFEST = "manifest.json";
 
-//a sprite whose whole name matches goes on the sheet the match names, under
-//sheets/ so that no sheet is ever called what a sprite is; a sheet only one
-//sprite ends up on is written as that sprite's own file instead
+//a sprite whose whole name matches goes on the sheet the match names; one
+//that matches nothing is a sheet of its own, sheets/<its name>
 var SHEETS = [
   //the slopes of the ground, the shore and the water the generator is
   //given, all needed at once
@@ -74,32 +74,18 @@ function main() {
     .sort()
     .forEach(function (sheet) {
       var members = groups[sheet],
-        file = members.length === 1 ? members[0] : sheet,
-        bytes;
-
-      if (members.length === 1) {
-        var image = read(members[0]);
-
-        bytes = fs.readFileSync(path.join(SOURCE, members[0]));
-        manifest.sprites[members[0]] = frame(file, 0, 0, image);
-        manifest.sheets[file] = describe(image, bytes);
-      } else {
-        if (names.indexOf(sheet) !== -1)
-          throw new Error(sheet + " is both a sheet and a sprite");
-
-        var packed = pack(members);
-
+        packed = pack(members),
         bytes = PNG.sync.write(packed.image);
-        members.forEach(function (name) {
-          var at = packed.frames[name];
 
-          manifest.sprites[name] = frame(file, at.x, at.y, at.image);
-        });
-        manifest.sheets[file] = describe(packed.image, bytes);
-      }
+      members.forEach(function (name) {
+        var at = packed.frames[name];
 
-      save(file, bytes);
-      written.push(file);
+        manifest.sprites[name] = frame(sheet, at.x, at.y, at.image);
+      });
+      manifest.sheets[sheet] = describe(packed.image, bytes);
+
+      save(sheet, bytes);
+      written.push(sheet);
     });
 
   var previous = readManifest();
@@ -145,7 +131,7 @@ function sheetOf(name) {
     if (SHEETS[i][0].test(name))
       return name.replace(SHEETS[i][0], SHEETS[i][1]);
 
-  return name;
+  return "sheets/" + name;
 }
 
 /**
