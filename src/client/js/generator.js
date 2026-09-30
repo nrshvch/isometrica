@@ -18,6 +18,8 @@
 
 //pictures kept in memory at most
 var LIMIT = 128;
+//how long after a picture failed it may be asked for again, in ms
+var RETRY = 3000;
 
 /**
  * @param inputs {Object} every hand-drawn picture, by sprite name: {url, x, y,
@@ -94,6 +96,11 @@ function receive(self, message) {
   if (message.type !== "picture") {
     console.warn("Not painted: " + message.name + ": " + message.error);
     settle.reject(new Error(message.error));
+
+    //asked for again, a while later, the next time it is wanted
+    setTimeout(function () {
+      if (sheet.image === null) sheet.loading = null;
+    }, RETRY);
     return;
   }
 

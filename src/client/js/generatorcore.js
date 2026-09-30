@@ -49,14 +49,25 @@ GeneratorCore.prototype.init = function (message) {
  */
 GeneratorCore.prototype.paint = function (message) {
   var self = this,
-    name = message.name;
-
-  var painted = false;
+    name = message.name,
+    painted = false;
 
   this.store
     .get(name, message.version)
-    .then(function (blob) {
-      if (blob !== null) return createImageBitmap(blob);
+    .then(function (kept) {
+      if (kept === null) return null;
+
+      return (
+        picture(kept.width, kept.height, new Uint8ClampedArray(kept.data))
+          //kept wrong somehow: painted again, and kept again
+          .catch(function (e) {
+            console.warn("Kept picture of " + name + " unusable: " + e);
+            return null;
+          })
+      );
+    })
+    .then(function (image) {
+      if (image !== null) return image;
 
       painted = true;
       return paint(self, message);
@@ -75,34 +86,26 @@ GeneratorCore.prototype.paint = function (message) {
 };
 
 function paint(self, message) {
-  return self.painter.paint(message).then(function (picture) {
-    var data = new ImageData(
-      new Uint8ClampedArray(picture.data),
-      picture.width,
-      picture.height,
-    );
+  return self.painter.paint(message).then(function (painted) {
+    var data = new Uint8ClampedArray(painted.data);
 
-    keep(self, message, data);
+    //kept for next time without holding up the one who asked for it
+    self.store.put(message.name, message.version, {
+      width: painted.width,
+      height: painted.height,
+      data: data,
+    });
 
-    return createImageBitmap(data);
+    return picture(painted.width, painted.height, data);
   });
 }
 
 /**
- * Keeps a picture just painted for next time, without holding up the one who
- * asked for it.
+ * An ImageBitmap of the pixels - the same way for a picture just painted and
+ * one kept from before.
  */
-function keep(self, message, data) {
-  var canvas = makeCanvas(data.width, data.height);
-
-  canvas.getContext("2d").putImageData(data, 0, 0);
-  toBlob(canvas)
-    .then(function (blob) {
-      return self.store.put(message.name, message.version, blob);
-    })
-    .catch(function (e) {
-      console.warn("Generated picture not kept: " + e);
-    });
+function picture(width, height, data) {
+  return createImageBitmap(new ImageData(data, width, height));
 }
 
 /**
@@ -177,14 +180,6 @@ function makeCanvas(w, h) {
   return typeof OffscreenCanvas !== "undefined"
     ? new OffscreenCanvas(w, h)
     : Object.assign(document.createElement("canvas"), { width: w, height: h });
-}
-
-function toBlob(canvas) {
-  if (canvas.convertToBlob) return canvas.convertToBlob({ type: "image/png" });
-
-  return new Promise(function (resolve) {
-    canvas.toBlob(resolve, "image/png");
-  });
 }
 
 export default GeneratorCore;
