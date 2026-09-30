@@ -147,6 +147,78 @@ function mirror(cut, ground) {
 }
 
 /**
+ * Paints the stones one picture at a time, as they are asked for, cutting
+ * each painted picture out only once for both ways round.
+ *
+ * @param pictures {Object} the painted pictures by name, "stone"
+ * @param ground {Object} the grass tile they were painted on
+ */
+export function createPainter(pictures, ground) {
+  var cuts = {};
+
+  function cut(name) {
+    var picture = pictures[name];
+
+    if (picture === undefined) throw new Error("no such stones: " + name);
+
+    if (cuts[name] === undefined) {
+      if (picture.width !== ground.width || picture.height !== ground.height)
+        throw new Error(
+          name + " is not the size of the tile it was painted on",
+        );
+
+      //cut out of a copy, the picture itself is left as it is
+      cuts[name] = cutOut(
+        {
+          width: picture.width,
+          height: picture.height,
+          data: Uint8ClampedArray.from(picture.data),
+        },
+        ground,
+      );
+    }
+
+    return cuts[name];
+  }
+
+  return {
+    /**
+     * @param name {string} "stone", or "stone-m" for it the other way round
+     */
+    paint: function (name) {
+      return /-m$/.test(name)
+        ? mirror(cut(name.slice(0, -2)), ground)
+        : cut(name).image;
+    },
+  };
+}
+
+/**
+ * What generate paints, without painting it: the name and size of every
+ * picture - each painted one as it is and the other way round, the size of
+ * the tile they were painted on.
+ *
+ * @param pictures {Object} the painted pictures by name, "stone"
+ * @param ground {Object} the grass tile they were painted on
+ * @returns {Object} {w, h} by name, "stone" and "stone-m" for each
+ */
+export function describe(pictures, ground) {
+  var sizes = {};
+
+  Object.keys(pictures).forEach(function (name) {
+    if (
+      pictures[name].width !== ground.width ||
+      pictures[name].height !== ground.height
+    )
+      throw new Error(name + " is not the size of the tile it was painted on");
+
+    sizes[name] = sizes[name + "-m"] = { w: ground.width, h: ground.height };
+  });
+
+  return sizes;
+}
+
+/**
  * Cuts out every painted picture of stones and paints it the other way round.
  *
  * @param pictures {Object} the painted pictures by name, "stone"
@@ -154,27 +226,12 @@ function mirror(cut, ground) {
  * @returns {Object} the stones by name, "stone" and "stone-m" for each
  */
 export function generate(pictures, ground) {
-  var out = {};
+  var painter = createPainter(pictures, ground),
+    out = {};
 
   Object.keys(pictures).forEach(function (name) {
-    var picture = pictures[name],
-      cut;
-
-    if (picture.width !== ground.width || picture.height !== ground.height)
-      throw new Error(name + " is not the size of the tile it was painted on");
-
-    //cut out of a copy, the picture itself is left as it is
-    cut = cutOut(
-      {
-        width: picture.width,
-        height: picture.height,
-        data: Uint8ClampedArray.from(picture.data),
-      },
-      ground,
-    );
-
-    out[name] = cut.image;
-    out[name + "-m"] = mirror(cut, ground);
+    out[name] = painter.paint(name);
+    out[name + "-m"] = painter.paint(name + "-m");
   });
 
   return out;

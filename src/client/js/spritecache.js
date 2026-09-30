@@ -1,13 +1,15 @@
 import CanvasCache from "./canvascache";
 import CachedSprite from "./cachedsprite";
+import Generator from "./generator";
 
 //Sits between the pictures the game has and the renderers that draw them.
 //
 //Every picture is a sprite, found by its name on a sheet - a picture drawn on
 //its own is a sheet with just the one sprite on it. The ones somebody drew
 //are on the sheets tools/packsprites.js put under gfx/ and listed in
-//gfx/manifest.json; the ones the game paints itself it painted onto sheets of
-//its own as it started (client/generated). Either way how big every sprite
+//gfx/manifest.json. The ones the game paints for itself are listed in
+//gfx/generated/<generator>.json, and each is a sheet of its own, painted the
+//first time it is wanted (client/generator). Either way how big every sprite
 //is and where it is on its sheet is known from the start, so nothing ever
 //has to wait for a picture to find out its size.
 //
@@ -30,6 +32,11 @@ function SpriteCache(clock, options) {
   this.sheets = {};
   //key -> CachedSprite
   this.sprites = {};
+  //what else the generators worked out, by generator: see
+  //shared/gen/catalog describe
+  this.generated = {};
+  //paints the generated sprites, once the manifest is in
+  this.generator = null;
 
   this.cache = new CanvasCache(
     clock,
@@ -38,83 +45,102 @@ function SpriteCache(clock, options) {
 }
 
 /**
- * @param [url] {string} where the picture is, for a sheet loaded as needed
- * @param [image] {CanvasImageSource} the picture, for one painted here
+ * @param url {string|null} where the picture is, or null for one painted here
+ * @param [generated] {{name, gen, key}} for one painted here: the sprite, and
+ *        how its generator knows it
  */
-function Sheet(url, image) {
-  this.url = url || null;
+function Sheet(url, generated) {
+  this.url = url;
+  this.generated = generated || null;
   //the picture once it has loaded
-  this.image = image || null;
-  this.loading = image ? Promise.resolve(image) : null;
+  this.image = null;
+  this.loading = null;
 }
 
 /**
- * Reads gfx/manifest.json: every sprite drawn by hand, and the sheet it is on.
- * A sheet is asked for by its hash, so a browser holding an older one fetches
- * the new one rather than drawing what it has.
+ * Reads gfx/manifest.json: every sprite drawn by hand, and the sheet it is on
+ * - and what every generator says it paints. A file is asked for by its
+ * hash, so a browser holding an older one fetches the new one rather than
+ * drawing what it has.
  *
  * @returns {Promise}
  */
 SpriteCache.prototype.load = function () {
   var self = this;
 
-  return fetch(MANIFEST, { cache: "no-cache" })
-    .then(function (response) {
-      if (!response.ok) throw new Error(MANIFEST + ": " + response.status);
+  return json(MANIFEST, { cache: "no-cache" }).then(function (manifest) {
+    var inputs = {},
+      gens = Object.keys(manifest.generated);
 
-      return response.json();
-    })
-    .then(function (manifest) {
-      Object.keys(manifest.sheets).forEach(function (file) {
-        self.sheets[file] = new Sheet(
-          ROOT + file + "?v=" + manifest.sheets[file].hash,
-        );
+    Object.keys(manifest.sheets).forEach(function (file) {
+      self.sheets[file] = new Sheet(
+        ROOT + file + "?v=" + manifest.sheets[file].hash,
+      );
+    });
+
+    Object.assign(self.frames, manifest.sprites);
+
+    //where the generators find what they paint from
+    Object.keys(manifest.sprites).forEach(function (name) {
+      var f = manifest.sprites[name];
+
+      inputs[name] = {
+        url: new URL(self.sheets[f.sheet].url, document.baseURI).href,
+        x: f.x,
+        y: f.y,
+        w: f.w,
+        h: f.h,
+      };
+    });
+
+    return Promise.all(
+      gens.map(function (gen) {
+        var file = manifest.generated[gen];
+
+        return json(ROOT + file.file + "?v=" + file.hash);
+      }),
+    ).then(function (metas) {
+      var versions = {};
+
+      metas.forEach(function (meta) {
+        addGenerated(self, meta);
+        versions[meta.generator] = meta.version;
       });
 
-      Object.assign(self.frames, manifest.sprites);
+      self.generator = new Generator(inputs, versions);
     });
+  });
 };
 
 /**
- * Makes the sprites on a sheet painted here drawable by name.
- *
- * @param name {string} the sheet's own name, e.g. "gen/vehicles"
- * @param image {CanvasImageSource} the sheet
- * @param frames {Object} sprite name -> {x, y, w, h} on it
+ * Makes every sprite a generator paints drawable by name - each a sheet of
+ * its own, with nothing on it until it is painted.
  */
-SpriteCache.prototype.addSheet = function (name, image, frames) {
-  this.sheets[name] = new Sheet(null, image);
+function addGenerated(self, meta) {
+  Object.keys(meta.sprites).forEach(function (name) {
+    var s = meta.sprites[name];
 
-  for (var sprite in frames) {
-    var f = frames[sprite];
+    self.sheets[name] = new Sheet(null, {
+      name: name,
+      gen: meta.generator,
+      key: s.key,
+    });
+    self.frames[name] = { sheet: name, x: 0, y: 0, w: s.w, h: s.h };
+  });
 
-    this.frames[sprite] = { sheet: name, x: f.x, y: f.y, w: f.w, h: f.h };
-  }
-};
+  self.generated[meta.generator] = meta.data;
+}
+
+function json(url, options) {
+  return fetch(url, options).then(function (response) {
+    if (!response.ok) throw new Error(url + ": " + response.status);
+
+    return response.json();
+  });
+}
 
 SpriteCache.prototype.has = function (name) {
   return this.frames[name] !== undefined;
-};
-
-/**
- * Every sprite whose name starts with prefix, sorted.
- */
-SpriteCache.prototype.names = function (prefix) {
-  return Object.keys(this.frames)
-    .filter(function (name) {
-      return name.indexOf(prefix) === 0;
-    })
-    .sort();
-};
-
-/**
- * The hash of the sheet a sprite is on, which changes whenever the sheet does
- * - for whoever keeps something made out of it.
- */
-SpriteCache.prototype.version = function (name) {
-  var sheet = this.sheets[this.frames[name].sheet];
-
-  return sheet.url === null ? null : sheet.url.split("?v=")[1];
 };
 
 /**
@@ -192,6 +218,8 @@ SpriteCache.prototype.getComposite = function (parts) {
  * @returns {Promise} its picture
  */
 SpriteCache.prototype.loadSheet = function (sheet) {
+  if (sheet.generated !== null) return this.generator.load(sheet);
+
   if (sheet.loading === null) {
     sheet.loading = fetch(sheet.url)
       .then(function (response) {
@@ -212,51 +240,11 @@ SpriteCache.prototype.loadSheet = function (sheet) {
         },
       );
 
-    //a sprite asking for it every frame does not wait for it; readPixels,
-    //which does, still sees it fail
+    //nobody waits for it: a sprite asks for it every frame until it is in
     sheet.loading.catch(function () {});
   }
 
   return sheet.loading;
-};
-
-/**
- * The pixels of some sprites, for painting something else out of them.
- *
- * @param names {string[]}
- * @returns {Promise<Object>} name -> {width, height, data}, data RGBA
- */
-SpriteCache.prototype.readPixels = function (names) {
-  var self = this;
-
-  return Promise.all(
-    names.map(function (name) {
-      var frame = self.frames[name];
-
-      if (frame === undefined)
-        return Promise.reject(new Error("No such sprite: " + name));
-
-      return self.loadSheet(self.sheets[frame.sheet]).then(function (image) {
-        var ctx = canvas(frame.w, frame.h).getContext("2d", {
-          willReadFrequently: true,
-        });
-
-        ctx.drawImage(image, -frame.x, -frame.y);
-
-        var data = ctx.getImageData(0, 0, frame.w, frame.h);
-
-        return { width: data.width, height: data.height, data: data.data };
-      });
-    }),
-  ).then(function (images) {
-    var out = {};
-
-    names.forEach(function (name, i) {
-      out[name] = images[i];
-    });
-
-    return out;
-  });
 };
 
 function canvas(w, h) {

@@ -17,7 +17,10 @@
  *
  * manifest.json has every sprite's size and where it is, so the game knows
  * how big a picture is before it has loaded - and every file's hash, which it
- * asks for the file by, so a browser never draws a stale one.
+ * asks for the file by, so a browser never draws a stale one. Under
+ * generated it has the same for every picture the game paints for itself,
+ * and what else the painting works out, see shared/gen/catalog - painted
+ * here once only to find that out; nothing painted is written.
  *
  * Usage:
  *   node tools/packsprites.js
@@ -31,11 +34,14 @@ var path = require("path");
 var crypto = require("crypto");
 var PNG = require("pngjs").PNG;
 var layout = require("../src/shared/gen/pack.js").layout;
+var catalog = require("../src/shared/gen/catalog.js");
 
 var ROOT = path.resolve(__dirname, "..");
 var SOURCE = path.join(ROOT, "assets/sprites");
 var OUT = path.join(ROOT, "src/public/gfx");
 var MANIFEST = "manifest.json";
+//the painting of what the game paints for itself
+var GEN = path.join(ROOT, "src/shared/gen");
 
 //a sprite whose whole name matches goes on the sheet the match names; one
 //that matches nothing is a sheet of its own, sheets/<its name>
@@ -88,12 +94,11 @@ function main() {
       written.push(sheet);
     });
 
+  manifest.generated = generated(names, manifest, written);
+
   var previous = readManifest();
 
-  fs.writeFileSync(
-    path.join(OUT, MANIFEST),
-    JSON.stringify(manifest, null, 2) + "\n",
-  );
+  fs.writeFileSync(path.join(OUT, MANIFEST), JSON.stringify(manifest) + "\n");
   removeStale(previous, written);
 
   console.log(
@@ -104,6 +109,61 @@ function main() {
       " files in " +
       path.relative(ROOT, OUT),
   );
+}
+
+/**
+ * What the game paints for itself, one file for each generator:
+ * generated/<generator>.json, what shared/gen/catalog describes it will
+ * paint - every picture by name with its size - and what else its painting
+ * works out, with the version of all of it: a hash of the generator's code
+ * and of the pictures it paints from, so that a browser keeping what it
+ * painted knows when that is stale. Nothing is painted here.
+ *
+ * @returns {Object} generator -> {file, hash}, for the manifest
+ */
+function generated(names, manifest, written) {
+  var out = {};
+
+  catalog.GENERATORS.forEach(function (gen) {
+    var pixels = {},
+      hash = crypto.createHash("sha1");
+
+    catalog.INPUTS[gen].forEach(function (prefix) {
+      names.forEach(function (name) {
+        if (name.indexOf(prefix) === 0 && pixels[name] === undefined)
+          pixels[name] = read(name);
+      });
+    });
+
+    catalog.CODE[gen].forEach(function (file) {
+      hash.update(file).update(fs.readFileSync(path.join(GEN, file)));
+    });
+
+    Object.keys(pixels)
+      .sort()
+      .forEach(function (name) {
+        hash
+          .update(name)
+          .update(manifest.sheets[manifest.sprites[name].sheet].hash);
+      });
+
+    var described = catalog.describe(gen, pixels),
+      file = "generated/" + gen + ".json",
+      bytes = Buffer.from(
+        JSON.stringify({
+          generator: gen,
+          version: hash.digest("hex").slice(0, 12),
+          sprites: described.sprites,
+          data: described.data,
+        }) + "\n",
+      );
+
+    save(file, bytes);
+    written.push(file);
+    out[gen] = { file: file, hash: digest(bytes) };
+  });
+
+  return out;
 }
 
 /**
@@ -159,11 +219,11 @@ function frame(file, x, y, image) {
 }
 
 function describe(image, bytes) {
-  return {
-    width: image.width,
-    height: image.height,
-    hash: crypto.createHash("sha1").update(bytes).digest("hex").slice(0, 10),
-  };
+  return { width: image.width, height: image.height, hash: digest(bytes) };
+}
+
+function digest(bytes) {
+  return crypto.createHash("sha1").update(bytes).digest("hex").slice(0, 10);
 }
 
 function pack(names) {
@@ -222,7 +282,13 @@ function removeStale(previous, written) {
     keep[file] = true;
   });
 
-  Object.keys(previous.sheets || {}).forEach(function (file) {
+  var files = Object.keys(previous.sheets || {});
+
+  Object.keys(previous.generated || {}).forEach(function (gen) {
+    files.push(previous.generated[gen].file);
+  });
+
+  files.forEach(function (file) {
     var abs = path.join(OUT, file);
 
     if (keep[file] || !fs.existsSync(abs)) return;
