@@ -47,10 +47,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   it, in a web worker (`src/client/js/generator.js`). At build time each
   generator describes what it will paint - every picture's name and size,
   and data such as car pivots - into `gfx/generated/<generator>.json`, so
-  the game knows every sprite's size before it is painted. What was painted
-  is kept in the browser (a fixed number of pictures, least recently used
-  go first) under a version hashed from the generator's code and inputs, so
-  a change to either repaints it on its own.
+  the game knows every sprite's size before it is painted. Nothing painted
+  is kept between visits: painting a picture takes a few milliseconds, so
+  each visit paints just what it draws.
 - What is on screen is drawn from a few big canvas pages
   (`src/client/js/canvascache.js`), not from the sheets: a sprite is copied
   there the first time it is drawn, and whatever has gone undrawn longest

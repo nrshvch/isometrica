@@ -100,14 +100,11 @@ SpriteCache.prototype.load = function () {
         return json(ROOT + file.file + "?v=" + file.hash);
       }),
     ).then(function (metas) {
-      var versions = {};
-
       metas.forEach(function (meta) {
         addGenerated(self, meta);
-        versions[meta.generator] = meta.version;
       });
 
-      self.generator = new Generator(inputs, versions);
+      self.generator = new Generator(inputs);
     });
   });
 };

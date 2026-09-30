@@ -5,8 +5,8 @@
 //They are painted by the generator worker (generator.worker, generatorcore),
 //so painting never holds up a frame; until a picture comes back whatever
 //draws it draws nothing - its size is known all along, from the build (see
-//shared/gen/catalog). The worker keeps what it painted in the browser, so a
-//picture asked for again is only ever painted once.
+//shared/gen/catalog). Nothing is kept between visits: painting a picture
+//again takes a few milliseconds, off the main thread.
 //
 //The pictures that came back are kept here too, as ImageBitmaps, but only so
 //many of them: past limit the one used longest ago is closed, and asked for
@@ -24,11 +24,9 @@ var RETRY = 3000;
 /**
  * @param inputs {Object} every hand-drawn picture, by sprite name: {url, x, y,
  *        w, h} - for the generators that paint from them
- * @param versions {Object} the version of each generator, by its name
  */
-function Generator(inputs, versions) {
+function Generator(inputs) {
   this.inputs = inputs;
-  this.versions = versions;
   this.limit = LIMIT;
   this.port = null;
   //sheets asked for and not come back yet, by sprite name
@@ -36,9 +34,8 @@ function Generator(inputs, versions) {
   //sheets with their picture in memory, by sprite name, used longest ago
   //first
   this.memory = new Map();
-  //how many pictures came back painted just now, and kept from before
+  //how many pictures have come back
   this.painted = 0;
-  this.kept = 0;
 }
 
 /**
@@ -64,7 +61,6 @@ Generator.prototype.load = function (sheet) {
     name: g.name,
     gen: g.gen,
     key: g.key,
-    version: this.versions[g.gen],
   });
 
   return sheet.loading;
@@ -106,8 +102,7 @@ function receive(self, message) {
 
   sheet.image = message.image;
   self.memory.set(message.name, sheet);
-  if (message.painted) self.painted++;
-  else self.kept++;
+  self.painted++;
 
   while (self.memory.size > self.limit) {
     var oldest = self.memory.keys().next().value,
@@ -184,7 +179,6 @@ function onMainThread(self, why) {
       name: g.name,
       gen: g.gen,
       key: g.key,
-      version: self.versions[g.gen],
     });
   });
 }

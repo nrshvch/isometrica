@@ -32,14 +32,6 @@ export var INPUTS = {
   stones: ["scenery/stones/", "terrain/grass/2222.png"],
 };
 
-//the code each generator paints with, next to this file - what, with its
-//inputs, its version is made of
-export var CODE = {
-  terrain: ["catalog.js", "names.js", "terrain.js"],
-  vehicles: ["catalog.js", "vehicles.js"],
-  stones: ["catalog.js", "stones.js"],
-};
-
 /**
  * The pictures under a prefix, by what they are called after it - "2222" for
  * "terrain/grass/2222.png".

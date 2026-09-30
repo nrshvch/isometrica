@@ -40,8 +40,6 @@ var ROOT = path.resolve(__dirname, "..");
 var SOURCE = path.join(ROOT, "assets/sprites");
 var OUT = path.join(ROOT, "src/public/gfx");
 var MANIFEST = "manifest.json";
-//the painting of what the game paints for itself
-var GEN = path.join(ROOT, "src/shared/gen");
 
 //a sprite whose whole name matches goes on the sheet the match names; one
 //that matches nothing is a sheet of its own, sheets/<its name>
@@ -94,7 +92,7 @@ function main() {
       written.push(sheet);
     });
 
-  manifest.generated = generated(names, manifest, written);
+  manifest.generated = generated(names, written);
 
   var previous = readManifest();
 
@@ -115,18 +113,15 @@ function main() {
  * What the game paints for itself, one file for each generator:
  * generated/<generator>.json, what shared/gen/catalog describes it will
  * paint - every picture by name with its size - and what else its painting
- * works out, with the version of all of it: a hash of the generator's code
- * and of the pictures it paints from, so that a browser keeping what it
- * painted knows when that is stale. Nothing is painted here.
+ * works out. Nothing is painted here.
  *
  * @returns {Object} generator -> {file, hash}, for the manifest
  */
-function generated(names, manifest, written) {
+function generated(names, written) {
   var out = {};
 
   catalog.GENERATORS.forEach(function (gen) {
-    var pixels = {},
-      hash = crypto.createHash("sha1");
+    var pixels = {};
 
     catalog.INPUTS[gen].forEach(function (prefix) {
       names.forEach(function (name) {
@@ -135,24 +130,11 @@ function generated(names, manifest, written) {
       });
     });
 
-    catalog.CODE[gen].forEach(function (file) {
-      hash.update(file).update(fs.readFileSync(path.join(GEN, file)));
-    });
-
-    Object.keys(pixels)
-      .sort()
-      .forEach(function (name) {
-        hash
-          .update(name)
-          .update(manifest.sheets[manifest.sprites[name].sheet].hash);
-      });
-
     var described = catalog.describe(gen, pixels),
       file = "generated/" + gen + ".json",
       bytes = Buffer.from(
         JSON.stringify({
           generator: gen,
-          version: hash.digest("hex").slice(0, 12),
           sprites: described.sprites,
           data: described.data,
         }) + "\n",
