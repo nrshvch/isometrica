@@ -15,6 +15,9 @@
 //a width, a height and paint(ctx, x, y), which puts its picture on a page at
 //x, y; the cache writes where it put it back onto it (slot, sourceImage,
 //offsetX, offsetY), and sets slot to -1 when it takes the slot away again.
+//An entry that can be drawn from somewhere else as well says so with direct:
+//it does without a slot when there is none, and gives its slot up, even
+//while it is being drawn, to one that cannot.
 //
 //A page is cut into shelves, rows of one height across the page, and a shelf
 //into slots along it. Everything about them is kept in typed arrays, indexed
@@ -75,12 +78,23 @@ function CanvasCache(clock, options) {
   //scratch for reclaim, one per shelf
   this.newest = new Int32Array(16);
 
-  //the frame an allocation found no room in, so that no other one looks
-  //again before the next
-  this.failedAt = -1;
+  //how many times a slot has been given up. Once an entry has found no room,
+  //no entry looks again until a slot has been given up since, or one has
+  //gone undrawn long enough to be evicted - there is no room otherwise, and
+  //a scene that stays the same would look every frame for nothing. Kept
+  //apart for entries that can be drawn directly and ones that cannot, which
+  //can evict more
+  this.changes = 0;
+  this.failed = [false, false];
+  this.failedChanges = [0, 0];
+  //whether a slot could be evicted for going undrawn, worked out once a
+  //frame
+  this.staleFrame = -1;
+  this.staleAny = false;
 
   this.painted = 0;
   this.evicted = 0;
+  this.searches = 0;
 }
 
 /**
@@ -97,14 +111,25 @@ CanvasCache.prototype.acquire = function (entry) {
     return true;
   }
 
-  if (this.failedAt === frame) return false;
+  var steal = entry.direct === false ? 1 : 0;
 
-  slot = allocate(this, entry.width, entry.height, frame);
+  if (
+    this.failed[steal] &&
+    this.failedChanges[steal] === this.changes &&
+    !anyStale(this, frame)
+  )
+    return false;
+
+  this.searches++;
+  slot = allocate(this, entry.width, entry.height, frame, steal === 1);
 
   if (slot < 0) {
-    this.failedAt = frame;
+    this.failed[steal] = true;
+    this.failedChanges[steal] = this.changes;
     return false;
   }
+
+  this.failed[steal] = false;
 
   var shelf = this.slotShelf[slot],
     page = this.shelfPage[shelf],
@@ -171,17 +196,52 @@ CanvasCache.prototype.stats = function () {
     used: area / (this.pageSize * this.pageSize * this.maxPages),
     painted: this.painted,
     evicted: this.evicted,
+    searches: this.searches,
   };
 };
+
+/**
+ * Whether any slot holds an entry that was not drawn this frame or the one
+ * before, and so could be evicted.
+ */
+function anyStale(self, frame) {
+  if (self.staleFrame !== frame) {
+    var stale = frame - 1;
+
+    self.staleFrame = frame;
+    self.staleAny = false;
+
+    for (var i = 0; i < self.slotCount; i++)
+      if (self.slotState[i] === TAKEN && self.slotUsed[i] < stale) {
+        self.staleAny = true;
+        break;
+      }
+  }
+
+  return self.staleAny;
+}
+
+/**
+ * Whether the entry in slot i may be evicted: it was not drawn this frame or
+ * the one before - or, for one that cannot do without a slot (steal), it
+ * can be drawn without its own.
+ */
+function evictable(self, i, stale, steal) {
+  if (self.slotState[i] !== TAKEN) return false;
+
+  return self.slotUsed[i] < stale || (steal && self.owners[i].direct === true);
+}
 
 /**
  * A slot for a picture of w by h, or -1. Taking one, in the order of what it
  * costs: a free slot of about that height; a new slot along a shelf of about
  * that height; a new shelf; a new page; the least recently drawn picture's
  * slot, if it is big enough and was not drawn this frame or the one before;
- * a whole shelf of such pictures, cleared.
+ * a whole shelf of such pictures, cleared. For one that cannot be drawn
+ * without a slot (steal), the last two again, with pictures that can be
+ * drawn without theirs counted as such too.
  */
-function allocate(self, w, h, frame) {
+function allocate(self, w, h, frame, steal) {
   var needW = w + GAP,
     needH = Math.ceil((h + GAP) / STEP) * STEP,
     size = self.pageSize,
@@ -225,19 +285,35 @@ function allocate(self, w, h, frame) {
   if (self.pages.length < self.maxPages)
     return carve(self, addShelf(self, addPage(self), needH), needW);
 
-  //full: evict the least recently drawn picture whose slot it fits in
+  //full: evict the least recently drawn picture whose slot it fits in, or
+  //whole shelves of them, one over the other, when no one slot is big enough
+  //- and failing that, for a picture that cannot do without a slot, the same
+  //with pictures that can
+  var slot = evict(self, needW, needH, stale, false);
+
+  return slot < 0 && steal ? evict(self, needW, needH, stale, true) : slot;
+}
+
+/**
+ * @returns {number} the slot made free, or -1 when there is none
+ */
+function evict(self, needW, needH, stale, steal) {
+  var best = -1,
+    oldest = Infinity,
+    i,
+    s;
+
   for (i = 0; i < self.slotCount; i++) {
     if (
-      self.slotState[i] !== TAKEN ||
-      self.slotUsed[i] >= stale ||
+      !evictable(self, i, stale, steal) ||
       self.slotW[i] < needW ||
       self.shelfH[self.slotShelf[i]] < needH
     )
       continue;
 
-    if (self.slotUsed[i] < bestCost) {
+    if (self.slotUsed[i] < oldest) {
       best = i;
-      bestCost = self.slotUsed[i];
+      oldest = self.slotUsed[i];
     }
   }
 
@@ -246,9 +322,7 @@ function allocate(self, w, h, frame) {
     return best;
   }
 
-  //or whole shelves of them, one over the other, when no one slot is big
-  //enough
-  s = reclaim(self, needH, stale);
+  s = reclaim(self, needH, stale, steal);
 
   return s >= 0 ? carve(self, s, needW) : -1;
 }
@@ -260,6 +334,10 @@ function free(self, slot) {
     owner.slot = -1;
     self.evicted++;
   }
+
+  self.changes++;
+  //what anyStale found may have been this slot
+  self.staleFrame = -1;
 
   self.owners[slot] = null;
   self.slotState[slot] = FREE;
@@ -336,12 +414,12 @@ function carve(self, shelf, w) {
 /**
  * Clears the run of shelves, one right under the other on a page, that is at
  * least h high and whose pictures were all drawn longest ago - none of them
- * since stale - and makes one shelf of h out of it, and another out of what is
- * left over.
+ * since stale, unless steal and it can be drawn without its slot - and makes
+ * one shelf of h out of it, and another out of what is left over.
  *
  * @returns {number} the shelf of h, or -1 when there is no such run
  */
-function reclaim(self, h, stale) {
+function reclaim(self, h, stale, steal) {
   var n = self.shelfCount,
     newest,
     bestStart = -1,
@@ -360,7 +438,8 @@ function reclaim(self, h, stale) {
 
     s = self.slotShelf[i];
 
-    if (self.slotUsed[i] >= stale) newest[s] = 0x7fffffff;
+    if (self.slotUsed[i] >= stale && !(steal && self.owners[i].direct === true))
+      newest[s] = 0x7fffffff;
     else if (self.slotUsed[i] > newest[s]) newest[s] = self.slotUsed[i];
   }
 
