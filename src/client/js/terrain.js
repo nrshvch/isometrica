@@ -35,8 +35,8 @@ function waterDepth(x, y) {
 }
 
 /**
- * The sprite of a tile of that terrain type and slope - painted as the game
- * started, see client/generated.
+ * The sprite of a tile of that terrain type and slope - painted the first
+ * time it is drawn, see client/generated and client/generator.
  */
 function tileSprite(x, y, type, slope) {
   var terrain = vkaria.generated !== null ? vkaria.generated.terrain : null,

@@ -512,19 +512,17 @@ function cast(boxes, sx, sy) {
  * @param [lit] {boolean} true for something that gives off light: no darkened
  *        edge round it, which would only dirty a lamp of three pixels
  */
-function render(boxes, lit) {
+/**
+ * Where on the screen the boxes are, as a picture of them would be cut: its
+ * top left corner off the origin, and its size - without painting it.
+ */
+function measure(boxes) {
   var minX = Infinity,
     maxX = -Infinity,
     minY = Infinity,
     maxY = -Infinity,
     corners,
-    i,
-    j,
-    p,
-    w,
-    h,
-    pixels,
-    color;
+    p;
 
   boxes.forEach(function (b) {
     corners = [
@@ -549,9 +547,25 @@ function render(boxes, lit) {
 
   minX = Math.floor(minX);
   minY = Math.floor(minY);
-  w = Math.ceil(maxX) - minX;
-  h = Math.ceil(maxY) - minY;
-  pixels = [];
+
+  return {
+    x: minX,
+    y: minY,
+    w: Math.ceil(maxX) - minX,
+    h: Math.ceil(maxY) - minY,
+  };
+}
+
+function render(boxes, lit) {
+  var at = measure(boxes),
+    minX = at.x,
+    minY = at.y,
+    w = at.w,
+    h = at.h,
+    pixels = [],
+    color,
+    i,
+    j;
 
   for (j = 0; j < h; j++) {
     for (i = 0; i < w; i++) {
@@ -611,13 +625,53 @@ function outline(pixels, w, h) {
  *          the pictures laid over it, one set per flash.
  */
 export function generate() {
-  var images = {},
-    types = {};
+  var images = {};
 
-  function picture(name, rendered) {
-    images[name] = toImage(rendered);
+  return {
+    images: images,
+    types: walk(function (name, boxes, lit) {
+      var rendered = render(boxes, lit);
 
-    return { sprite: name, pivotX: rendered.pivotX, pivotY: rendered.pivotY };
+      images[name] = toImage(rendered);
+
+      return { pivotX: rendered.pivotX, pivotY: rendered.pivotY };
+    }),
+  };
+}
+
+/**
+ * What generate paints, without painting it: every picture's size, and the
+ * body types as generate gives them.
+ *
+ * @returns {{sizes: Object, types: Object}} sizes, {w, h} by picture name
+ */
+export function describe() {
+  var sizes = {};
+
+  return {
+    sizes: sizes,
+    types: walk(function (name, boxes) {
+      var at = measure(boxes);
+
+      sizes[name] = { w: at.w, h: at.h };
+
+      return { pivotX: -at.x, pivotY: -at.y };
+    }),
+  };
+}
+
+/**
+ * Goes through every picture there is, handing see(name, boxes, lit) the
+ * boxes of each placed the way it drives, and puts together the body types
+ * out of what see says the pivot of each is.
+ */
+function walk(see) {
+  var types = {};
+
+  function picture(name, boxes, lit) {
+    var look = see(name, boxes, lit);
+
+    return { sprite: name, pivotX: look.pivotX, pivotY: look.pivotY };
   }
 
   Object.keys(TYPES).forEach(function (type) {
@@ -634,7 +688,7 @@ export function generate() {
       Object.keys(DIRECTIONS).forEach(function (d) {
         var look = picture(
           "gen/vehicles/" + type + "/" + color + "/" + d,
-          render(place(boxes, t.length, t.width, DIRECTIONS[d])),
+          place(boxes, t.length, t.width, DIRECTIONS[d]),
         );
 
         look.engine = placePoint(t.engine, t.length, t.width, DIRECTIONS[d]);
@@ -656,7 +710,8 @@ export function generate() {
         Object.keys(DIRECTIONS).forEach(function (d) {
           at[d] = picture(
             "gen/vehicles/" + type + "/lamp" + i + "/" + d,
-            render(place(phase, t.length, t.width, DIRECTIONS[d]), true),
+            place(phase, t.length, t.width, DIRECTIONS[d]),
+            true,
           );
         });
 
@@ -665,7 +720,42 @@ export function generate() {
     }
   });
 
-  return { images: images, types: types };
+  return types;
+}
+
+/**
+ * One picture, by the name generate gives it: "gen/vehicles/sedan/red/x+",
+ * or "gen/vehicles/police/lamp1/y-" for a flash of what is lit on it.
+ *
+ * @returns {{width, height, data}}
+ */
+export function paint(name) {
+  var parts = name.split("/"),
+    t = TYPES[parts[2]],
+    dir = DIRECTIONS[parts[4]],
+    lamp = /^lamp(\d+)$/.exec(parts[3] || "");
+
+  if (parts.length !== 5 || t === undefined || dir === undefined)
+    throw new Error("no such vehicle picture: " + name);
+
+  if (lamp !== null) {
+    var phase = t.lamps !== undefined ? t.lamps()[+lamp[1]] : undefined;
+
+    if (phase === undefined)
+      throw new Error("no such vehicle picture: " + name);
+
+    return toImage(render(place(phase, t.length, t.width, dir), true));
+  }
+
+  if (
+    COLORS[parts[3]] === undefined ||
+    (t.colors && t.colors.indexOf(parts[3]) === -1)
+  )
+    throw new Error("no such vehicle picture: " + name);
+
+  return toImage(
+    render(place(t.build(COLORS[parts[3]]), t.length, t.width, dir)),
+  );
 }
 
 function toImage(p) {

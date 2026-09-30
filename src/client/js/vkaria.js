@@ -23,7 +23,6 @@ import Player from "./player";
 import CameraMan from "./cameraman";
 import Carman from "./carman";
 import SpriteCache from "./spritecache";
-import Generated from "./generated";
 
 function Vkaria(core, ui, callback) {
   // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -83,20 +82,19 @@ function Vkaria(core, ui, callback) {
 /**
  * Gets every picture ready to be drawn by name, and starts the game once it
  * is: the hand-drawn ones are listed in gfx/manifest.json and load as they
- * are first drawn; the ground, the cars and the stones are painted now, or
- * loaded as painted the last time.
+ * are first drawn; the ones the game paints for itself - the ground, the
+ * cars, the stones - are listed with their sizes by what each generator
+ * described at build time, and are painted as they are first drawn, off the
+ * main thread (client/generator). Nothing is painted before the game starts.
  */
 Vkaria.prototype.prepare = function (callback) {
   var self = this;
 
   this.sprites
     .load()
-    .then(function () {
-      return Generated.prepare(self.sprites);
-    })
     .then(
-      function (generated) {
-        self.generated = generated;
+      function () {
+        self.generated = self.sprites.generated;
       },
       //the game goes on without whatever is missing, and draws nothing for it
       function (e) {
