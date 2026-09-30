@@ -42,10 +42,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   and `build`) packs them into `src/public/gfx`, grouping related pictures
   onto shared sheets, and writes `gfx/manifest.json` with every sprite's size.
   After changing a picture while the dev server runs, run it again.
-- The ground, the cars and the stones are painted by the game as it starts
-  (`src/shared/gen`, `src/client/js/generated.js`) and kept in the browser.
-  Bump `VERSION` in `src/client/js/generated.js` whenever a change to the
-  painting changes what it paints, so browsers throw away what they kept.
+- The ground, the cars and the stones are painted by the game itself
+  (`src/shared/gen`), one picture at a time, the first time something draws
+  it, in a web worker (`src/client/js/generator.js`). At build time each
+  generator describes what it will paint - every picture's name and size,
+  and data such as car pivots - into `gfx/generated/<generator>.json`, so
+  the game knows every sprite's size before it is painted. What was painted
+  is kept in the browser (a fixed number of pictures, least recently used
+  go first) under a version hashed from the generator's code and inputs, so
+  a change to either repaints it on its own.
 - What is on screen is drawn from a few big canvas pages
   (`src/client/js/canvascache.js`), not from the sheets: a sprite is copied
   there the first time it is drawn, and whatever has gone undrawn longest

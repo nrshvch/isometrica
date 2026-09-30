@@ -24,8 +24,9 @@ var SlopeType = Terrain.SlopeType;
 //the middle of the tile, to the right of the way it is going.
 //
 //Each one is some body type - a sedan, a van, a bus... - in some colour, with
-//a picture for each of the four ways it can drive, all painted as the game
-//starts by shared/gen/vehicles (see client/generated). Bigger ones drive slower.
+//a picture for each of the four ways it can drive, all painted by
+//shared/gen/vehicles as they are first drawn (see client/generator). Bigger
+//ones drive slower.
 //
 //Where one goes depends on what it is. A light car drives by the clock: to
 //work in the morning, home in the evening, wherever in the afternoon. Between
@@ -1193,8 +1194,10 @@ Carman.prototype.countLight = function () {
 };
 
 /**
- * The body types, as painted when the game started (see client/generated),
- * with the sprites of every colour and heading. No car goes out without them.
+ * The body types, as the generator described them at build time
+ * (gfx/generated/vehicles.json), with the sprites of every colour and heading
+ * - each painted the first time a car of it is drawn. No car goes out without
+ * them.
  */
 function loadTypes(self) {
   var sprites = self.root.sprites,

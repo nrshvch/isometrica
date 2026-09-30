@@ -100,6 +100,9 @@ CachedSprite.prototype.paint = function (ctx, x, y) {
     var part = this.parts[i],
       f = part.frame;
 
+    //a painted picture used just now is the last to be let go of
+    if (part.sheet.generated !== null) this.sprites.generator.use(part.sheet);
+
     ctx.drawImage(
       part.sheet.image,
       f.x,

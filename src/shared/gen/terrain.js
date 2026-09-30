@@ -1484,36 +1484,158 @@ function hex(c) {
   );
 }
 
+var DEFAULTS = {
+  seed: "isometrica",
+  variants: 2,
+  diffuseVariants: 2,
+  diffuse: true,
+  tilesets: null,
+};
+
 /**
- * Paints the tilesets.
+ * Paints one tile at a time, as it is asked for, out of the pictures the
+ * game started with - and only what that tile takes: the light is measured
+ * off the grass once, and a base or a shore another tile is painted from is
+ * painted once and kept.
  *
  * @param sources {{grass: Object, water: Object, shore: Object}} the pictures
  *        the game started with, each by slope code, as {width, height, data}:
  *        the grass of every slope, the water of the flat one, and the shore
  *        of every slope that has one
  * @param [o] {Object} seed, "isometrica" unless given; variants, of every
- *        painted base tile, 2; diffuseVariants, 2, and diffuse, false for none
- *        at all; tilesets, the ids to paint, every one unless given - with
- *        any water, the shallows its shore is painted from come as well
- * @returns {{manifest: Object, images: Object}} every picture by where the
- *          manifest says it is, "grass/base/2222_0.png"
+ *        painted base tile, 2; diffuseVariants, 2
  */
-export function generate(sources, o) {
-  o = Object.assign(
-    {
-      seed: "isometrica",
-      variants: 2,
-      diffuseVariants: 2,
-      diffuse: true,
-      tilesets: null,
-    },
-    o,
-  );
+export function createPainter(sources, o) {
+  o = Object.assign({}, DEFAULTS, o);
 
-  var images = {},
-    grass = sources.grass,
+  var grass = sources.grass,
     slopes = Object.keys(grass).sort(),
     surfaces = {},
+    light = null,
+    bases = {},
+    cuts = {},
+    waterMean = null;
+
+  function surfaceOf(slope) {
+    return surfaces[slope] || (surfaces[slope] = surface(slope, grass[slope]));
+  }
+
+  function lightOf() {
+    if (light === null) {
+      slopes.forEach(surfaceOf);
+      light = measureLight(grass, surfaces);
+    }
+
+    return light;
+  }
+
+  function variantsOf(id) {
+    return TILESETS[id].source ? 1 : o.variants;
+  }
+
+  /**
+   * A tileset's ground as it is on that slope, variant v.
+   */
+  function base(id, slope, v) {
+    var key = id + "/" + slope + "/" + v,
+      set = TILESETS[id];
+
+    if (bases[key] === undefined)
+      bases[key] = set.source
+        ? sources[set.source][slope]
+        : paintBase(set, slope, v, surfaceOf(slope), lightOf(), o.seed);
+
+    return bases[key];
+  }
+
+  /**
+   * The water and the beach of the shore pictures on that slope, or null.
+   */
+  function cut(slope) {
+    if (cuts[slope] === undefined)
+      cuts[slope] = cutShore(sources.shore[slope], grass[slope]);
+
+    return cuts[slope];
+  }
+
+  function diffuse(id, slope, dir, v) {
+    return paintDiffuse(
+      TILESETS[id],
+      base(id, slope, v % variantsOf(id)),
+      slope,
+      dir,
+      v,
+      surfaceOf(slope),
+      o.seed,
+    );
+  }
+
+  function shore(id, slope) {
+    var set = TILESETS[id],
+      shore = cut(slope);
+
+    if (shore === null || set.source) return shore;
+
+    if (waterMean === null) waterMean = mean(base("water_shallow", FLAT, 0));
+
+    return repaintShore(shore, slope, surfaceOf(slope), set, waterMean, o.seed);
+  }
+
+  return {
+    slopes: slopes,
+    variantsOf: variantsOf,
+    base: base,
+    diffuse: diffuse,
+    shore: shore,
+    hasShore: function (slope) {
+      return cut(slope) !== null;
+    },
+
+    /**
+     * One tile, by where the manifest says it is - "grass/base/2222_0.png",
+     * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png".
+     */
+    paint: function (rel) {
+      var m =
+        /^([a-z_]+)\/(base|diffuse|shore)\/(\d{4})(?:_([a-z]+))?(?:_(\d+))?\.png$/.exec(
+          rel,
+        );
+
+      if (m === null || TILESETS[m[1]] === undefined)
+        throw new Error("no such tile: " + rel);
+
+      if (m[2] === "base") return base(m[1], m[3], +m[5]);
+      if (m[2] === "diffuse") return diffuse(m[1], m[3], m[4], +m[5]);
+
+      var picture = shore(m[1], m[3]);
+
+      if (picture === null) throw new Error("no such tile: " + rel);
+
+      return picture;
+    },
+  };
+}
+
+/**
+ * What generate paints, without painting it: the manifest of the tilesets -
+ * every tile of them, where it goes and how they fit together - and every
+ * tile's size. Only the shore pictures are looked at, for which slopes have
+ * water on them.
+ *
+ * @param sources {Object} as createPainter takes them
+ * @param [o] {Object} as createPainter takes it; and diffuse, false for no
+ *        diffuse tiles at all; tilesets, the ids to paint, every one unless
+ *        given - with any water, the shallows its shore is painted from come
+ *        as well
+ * @returns {{manifest: Object, sizes: Object}} sizes, {w, h} of every tile
+ *          by where the manifest says it is, "grass/base/2222_0.png"
+ */
+export function describe(sources, o) {
+  o = Object.assign({}, DEFAULTS, o);
+
+  var painter = createPainter(sources, o),
+    slopes = painter.slopes,
+    sizes = {},
     ids = PRECEDENCE.filter(function (id) {
       return (
         o.tilesets === null ||
@@ -1523,13 +1645,7 @@ export function generate(sources, o) {
             return TILESETS[other].kind === "water";
           }))
       );
-    });
-
-  slopes.forEach(function (slope) {
-    surfaces[slope] = surface(slope, grass[slope]);
-  });
-
-  var light = measureLight(grass, surfaces),
+    }),
     manifest = {
       generator: "src/shared/gen/terrain.js",
       seed: o.seed,
@@ -1557,13 +1673,17 @@ export function generate(sources, o) {
       transitions: {},
     };
 
-  function save(image, rel) {
-    images[rel] = image;
+  //every tile is the size of a tile, the grass the game started with too
+  slopes.forEach(function (slope) {
+    if (sources.grass[slope].width !== WIDTH)
+      throw new Error("grass " + slope + " is not " + WIDTH + " wide");
+  });
+
+  function tile(rel) {
+    sizes[rel] = { w: WIDTH, h: HEIGHT };
 
     return rel;
   }
-
-  var bases = {};
 
   ids.forEach(function (id) {
     var set = TILESETS[id],
@@ -1579,20 +1699,13 @@ export function generate(sources, o) {
         diffuse: {},
       };
 
-    set.id = id;
     if (set.waterBody) entry.waterBody = set.waterBody;
 
-    bases[id] = {};
     own.forEach(function (slope) {
-      var variants = set.source ? [sources[set.source][slope]] : [];
+      entry.base[slope] = [];
 
-      for (var v = variants.length; v < (set.source ? 1 : o.variants); v++)
-        variants.push(paintBase(set, slope, v, surfaces[slope], light, o.seed));
-
-      bases[id][slope] = variants;
-      entry.base[slope] = variants.map(function (image, v) {
-        return save(image, id + "/base/" + slope + "_" + v + ".png");
-      });
+      for (var v = 0; v < painter.variantsOf(id); v++)
+        entry.base[slope].push(tile(id + "/base/" + slope + "_" + v + ".png"));
 
       if (!o.diffuse) return;
 
@@ -1602,48 +1715,28 @@ export function generate(sources, o) {
 
         for (var v = 0; v < o.diffuseVariants; v++)
           entry.diffuse[slope][dir].push(
-            save(
-              paintDiffuse(
-                set,
-                variants[v % variants.length],
-                slope,
-                dir,
-                v,
-                surfaces[slope],
-                o.seed,
-              ),
-              id + "/diffuse/" + slope + "_" + dir + "_" + v + ".png",
-            ),
+            tile(id + "/diffuse/" + slope + "_" + dir + "_" + v + ".png"),
           );
       });
     });
 
-    entry.color = hex(mean(bases[id][FLAT][0]));
     manifest.tilesets[id] = entry;
   });
 
   //shores: cut out of the pictures for the water the game has, and painted
   //over from that for every other water
   var waters = ids.filter(function (id) {
-      return TILESETS[id].kind === "water";
-    }),
-    waterMean = waters.length > 0 ? mean(bases.water_shallow[FLAT][0]) : null;
+    return TILESETS[id].kind === "water";
+  });
 
   waters.forEach(function (id) {
     manifest.tilesets[id].shore = {};
   });
   slopes.forEach(function (slope) {
-    var shore = cutShore(sources.shore[slope], grass[slope]);
-
-    if (shore === null) return;
+    if (!painter.hasShore(slope)) return;
 
     waters.forEach(function (id) {
-      var set = TILESETS[id];
-
-      manifest.tilesets[id].shore[slope] = save(
-        set.source
-          ? shore
-          : repaintShore(shore, slope, surfaces[slope], set, waterMean, o.seed),
+      manifest.tilesets[id].shore[slope] = tile(
         id + "/shore/" + slope + ".png",
       );
     });
@@ -1661,7 +1754,39 @@ export function generate(sources, o) {
     });
   });
 
-  return { manifest: manifest, images: images };
+  return { manifest: manifest, sizes: sizes };
 }
+
+/**
+ * Paints the tilesets, every tile describe lists - and the colour of each,
+ * the mean of its flat ground.
+ *
+ * @param sources {Object} as createPainter takes them
+ * @param [o] {Object} as describe takes it
+ * @returns {{manifest: Object, images: Object}} every picture by where the
+ *          manifest says it is, "grass/base/2222_0.png"
+ */
+export function generate(sources, o) {
+  var described = describe(sources, o),
+    painter = createPainter(sources, o),
+    images = {};
+
+  Object.keys(described.sizes).forEach(function (rel) {
+    images[rel] = painter.paint(rel);
+  });
+
+  Object.keys(described.manifest.tilesets).forEach(function (id) {
+    described.manifest.tilesets[id].color = hex(
+      mean(painter.base(id, FLAT, 0)),
+    );
+  });
+
+  return { manifest: described.manifest, images: images };
+}
+
+//a tileset knows its own id, which its painting is seeded with
+Object.keys(TILESETS).forEach(function (id) {
+  TILESETS[id].id = id;
+});
 
 export { WIDTH, HEIGHT, FLAT, PRECEDENCE };
