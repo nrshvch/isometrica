@@ -1,29 +1,24 @@
 import { createPainter } from "shared/gen/catalog";
-import PictureStore from "./picturestore";
 
 /**
  * Paints generated pictures one at a time, as they are asked for - off the
  * main thread, in the generator worker, or on it where there is no worker.
  *
- * Asked for a picture, it looks in the browser first (PictureStore) for one
- * painted by the same version of its generator; only when there is none does
- * it paint it (shared/gen/catalog), hand it over, and keep it for next time.
- * The hand-drawn pictures a generator paints from are loaded the first time
- * that generator paints anything, and only those.
+ * Nothing painted is kept here, nor between visits: a picture is quicker to
+ * paint again (a few milliseconds, off the main thread) than anything that
+ * would keep it is to look after. The hand-drawn pictures a generator paints
+ * from are loaded the first time that generator paints anything, and only
+ * those.
  *
  * @param post {function(Object, Transferable[])} how answers get back
  */
 function GeneratorCore(post) {
   this.post = post;
   this.inputs = null;
-  this.store = null;
   this.painter = null;
   //url -> Promise of the decoded sheet, one load of each
   this.sheets = {};
 }
-
-//pictures kept in the browser at most
-GeneratorCore.LIMIT = 1024;
 
 /**
  * @param message {{inputs: Object}} every hand-drawn picture a generator may
@@ -33,80 +28,46 @@ GeneratorCore.prototype.init = function (message) {
   var self = this;
 
   this.inputs = message.inputs;
-  this.store = new PictureStore(message.limit || GeneratorCore.LIMIT);
   this.painter = createPainter(function (prefixes) {
     return loadPixels(self, prefixes);
   });
+
+  //what earlier versions of the game kept in the browser, gone with them
+  if (typeof indexedDB !== "undefined")
+    indexedDB.deleteDatabase("isometrica-generated");
 };
 
 /**
- * Answers with {type: "picture", name, image, painted} - an ImageBitmap,
- * handed over, and whether it was painted just now rather than kept from
- * before - or {type: "failed", name, error}.
+ * Answers with {type: "picture", name, image} - an ImageBitmap, handed over
+ * - or {type: "failed", name, error}.
  *
- * @param message {{name: string, gen: string, key: string, version: string}}
- *        the sprite, and how its generator and the version of it know it
+ * @param message {{name: string, gen: string, key: string}} the sprite, and
+ *        how its generator knows it
  */
 GeneratorCore.prototype.paint = function (message) {
   var self = this,
-    name = message.name,
-    painted = false;
+    name = message.name;
 
-  this.store
-    .get(name, message.version)
-    .then(function (kept) {
-      if (kept === null) return null;
-
-      return (
-        picture(kept.width, kept.height, new Uint8ClampedArray(kept.data))
-          //kept wrong somehow: painted again, and kept again
-          .catch(function (e) {
-            console.warn("Kept picture of " + name + " unusable: " + e);
-            return null;
-          })
+  this.painter
+    .paint(message)
+    .then(function (painted) {
+      return createImageBitmap(
+        new ImageData(
+          new Uint8ClampedArray(painted.data),
+          painted.width,
+          painted.height,
+        ),
       );
-    })
-    .then(function (image) {
-      if (image !== null) return image;
-
-      painted = true;
-      return paint(self, message);
     })
     .then(
       function (image) {
-        self.post(
-          { type: "picture", name: name, image: image, painted: painted },
-          [image],
-        );
+        self.post({ type: "picture", name: name, image: image }, [image]);
       },
       function (e) {
         self.post({ type: "failed", name: name, error: String(e) }, []);
       },
     );
 };
-
-function paint(self, message) {
-  return self.painter.paint(message).then(function (painted) {
-    var data = new Uint8ClampedArray(painted.data);
-
-    //kept for next time without holding up the one who asked for it
-    self.store.put(message.name, message.version, {
-      width: painted.width,
-      height: painted.height,
-      data: data,
-    });
-
-    return picture(painted.width, painted.height, data);
-  });
-}
-
-/**
- * An ImageBitmap of the pixels - the same way for a picture just painted and
- * one kept from before.
- */
-function picture(width, height, data) {
-  return createImageBitmap(new ImageData(data, width, height));
-}
 
 /**
  * The pixels of every input whose name starts with one of the prefixes, by
