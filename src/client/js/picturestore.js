@@ -3,6 +3,12 @@
  * that a picture is never painted twice: not later in the game, once it has
  * gone out of memory, and not the next time the game starts.
  *
+ * A picture is kept as its pixels - {width, height, data}, data an
+ * ArrayBuffer of RGBA - which come back exactly as they went in, in any
+ * browser, and are made into a picture the same way one just painted is. When
+ * each was last used is kept apart from it, so that using one never writes
+ * the picture again.
+ *
  * Only so many are kept: past limit, the ones used longest ago go. Every
  * picture is kept with the version of the generator that painted it, and one
  * painted by any other version counts as not there.
@@ -12,8 +18,12 @@
  * everything is painted as often as it is asked for.
  */
 
+//how long a picture is looked for before it is painted instead, in ms
+var WAIT = 1000;
+
 var DB = "isometrica-generated",
-  STORE = "pictures",
+  PICTURES = "pixels",
+  USED = "used",
   BY_USE = "used";
 
 function PictureStore(limit) {
@@ -24,26 +34,43 @@ function PictureStore(limit) {
 function open(self) {
   if (self.db === null)
     self.db = new Promise(function (resolve, reject) {
-      var request = indexedDB.open(DB, 2);
+      var request = indexedDB.open(DB, 3);
 
       request.onupgradeneeded = function () {
         var db = request.result;
 
-        //what the game kept before it painted one picture at a time
-        if (db.objectStoreNames.contains("sheets"))
-          db.deleteObjectStore("sheets");
+        //what was kept before: whole sheets, then pictures as pngs
+        ["sheets", "pictures"].forEach(function (old) {
+          if (db.objectStoreNames.contains(old)) db.deleteObjectStore(old);
+        });
 
-        if (!db.objectStoreNames.contains(STORE))
-          db.createObjectStore(STORE, { keyPath: "name" }).createIndex(
+        if (!db.objectStoreNames.contains(PICTURES))
+          db.createObjectStore(PICTURES, { keyPath: "name" });
+
+        if (!db.objectStoreNames.contains(USED))
+          db.createObjectStore(USED, { keyPath: "name" }).createIndex(
             BY_USE,
             "used",
           );
       };
       request.onsuccess = function () {
-        resolve(request.result);
+        var db = request.result;
+
+        //a page with another version of the game wants the database: this
+        //one lets go, rather than keep that page waiting forever
+        db.onversionchange = function () {
+          db.close();
+          self.db = null;
+        };
+        resolve(db);
       };
       request.onerror = function () {
         reject(request.error);
+      };
+      //held open at another version by a page that does not let go: kept
+      //from nothing rather than waited on
+      request.onblocked = function () {
+        reject(new Error("the database is held open by another page"));
       };
     });
 
@@ -60,59 +87,84 @@ function done(tx) {
 }
 
 /**
- * @returns {Promise<Blob|null>} the picture, painted by that version - and
- *          marked as used just now
+ * @returns {Promise<{width, height, data}|null>} the picture's pixels, as
+ *          painted by that version - and marks it as used just now
  */
 PictureStore.prototype.get = function (name, version) {
-  return open(this)
+  var read = open(this)
     .then(function (db) {
-      var tx = db.transaction(STORE, "readwrite"),
-        store = tx.objectStore(STORE),
-        blob = null;
+      var tx = db.transaction([PICTURES, USED], "readwrite"),
+        found = null;
 
-      store.get(name).onsuccess = function (e) {
+      tx.objectStore(PICTURES).get(name).onsuccess = function (e) {
         var record = e.target.result;
 
-        if (record === undefined || record.version !== version) return;
+        if (
+          record === undefined ||
+          record.version !== version ||
+          !(record.data instanceof ArrayBuffer) ||
+          record.data.byteLength !== record.width * record.height * 4
+        )
+          return;
 
-        blob = record.blob;
-        record.used = Date.now();
-        store.put(record);
+        found = record;
+        tx.objectStore(USED).put({ name: name, used: Date.now() });
       };
 
       return done(tx).then(function () {
-        return blob;
+        return found;
       });
     })
     .catch(function (e) {
       console.warn("Generated picture not read from the browser: " + e);
       return null;
     });
+
+  //never waited on for long: painting it again is quicker than that
+  return Promise.race([
+    read,
+    new Promise(function (resolve) {
+      setTimeout(resolve, WAIT, null);
+    }),
+  ]);
 };
 
 /**
- * Keeps a picture, and lets the ones used longest ago go past the limit.
+ * Keeps a picture's pixels, and lets the ones used longest ago go past the
+ * limit.
+ *
+ * @param picture {{width, height, data: Uint8ClampedArray}}
  */
-PictureStore.prototype.put = function (name, version, blob) {
+PictureStore.prototype.put = function (name, version, picture) {
   var limit = this.limit;
 
   return open(this)
     .then(function (db) {
-      var tx = db.transaction(STORE, "readwrite"),
-        store = tx.objectStore(STORE);
+      var tx = db.transaction([PICTURES, USED], "readwrite"),
+        pictures = tx.objectStore(PICTURES),
+        used = tx.objectStore(USED);
 
-      store.put({ name: name, version: version, blob: blob, used: Date.now() });
+      pictures.put({
+        name: name,
+        version: version,
+        width: picture.width,
+        height: picture.height,
+        //a copy of just its own bytes
+        data: picture.data.slice().buffer,
+      });
+      used.put({ name: name, used: Date.now() });
 
-      store.count().onsuccess = function (e) {
+      used.count().onsuccess = function (e) {
         var over = e.target.result - limit;
 
         if (over <= 0) return;
 
-        store.index(BY_USE).openCursor().onsuccess = function (e) {
+        used.index(BY_USE).openCursor().onsuccess = function (e) {
           var cursor = e.target.result;
 
           if (cursor === null || over-- <= 0) return;
 
+          pictures.delete(cursor.value.name);
           cursor.delete();
           cursor.continue();
         };
