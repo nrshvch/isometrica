@@ -25,6 +25,10 @@ function CachedSprite(sprites, key, parts, width, height) {
   this.width = width;
   this.height = height;
 
+  //one part can be drawn straight from its sheet when there is no room for
+  //it on the pages - and so gives its slot up to one that cannot
+  this.direct = parts.length === 1;
+
   //where it is while it is on a page, set by the canvas cache
   this.slot = -1;
   this.sourceImage = null;
@@ -51,8 +55,8 @@ CachedSprite.prototype.acquire = function () {
   if (cache.acquire(this)) return true;
 
   //no room left: a picture of one part is drawn straight from its sheet,
-  //and tries for a slot again next frame
-  if (this.parts.length === 1) {
+  //and tries for a slot again once there may be one
+  if (this.direct) {
     var part = this.parts[0];
 
     this.sourceImage = part.sheet.image;
