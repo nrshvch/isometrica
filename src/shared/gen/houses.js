@@ -21,9 +21,9 @@
  *     house end on to the street on two tiles, its drive along its side to a
  *     garage at the back and a garden there; and one on three, room enough
  *     on its drive for the car, and a long garden;
- *   - semi-detached and terraced houses: a pair on four tiles, each half with
- *     its own parking space and gate and fence round it; on six, a pair or a
- *     row of three, each with its own back garden too;
+ *   - semi-detached houses: a pair on four tiles, each half with its own
+ *     parking space and gate and fence round it; and on six, two along the
+ *     street and three deep, each half with its own back garden too;
  *   - villas: two storeys on a terrace up a flight of steps, behind a wrought
  *     iron gate between pillars in a high hedge or a wall, in a garden of
  *     lawns, cypresses and clipped box - in the middle of it with a fountain
@@ -2037,17 +2037,31 @@ function long(o, rnd, stage) {
 }
 
 /**
- * The fence round one house of a pair or a row, from x0 to x1: along the
- * front - its drive from d0 to d1 through gates swung open, the path from
- * p0 to p1 through a gate of its own - down either side, where `sides` says,
- * leaving out the stretch the houses stand on, as far as `back`, and along
- * the back if it gets that far.
+ * The fence round one half of a pair, from x0 to x1: along the front - its
+ * drive from d0 to d1 through gates swung open, the path from p0 to p1
+ * through a gate of its own - down either side, where `sides` says, leaving
+ * out the stretch the house stands on, as far as `back` - and along the
+ * back there, for one with a back garden.
  *
  * @param sides {[boolean, boolean]} whether there is a fence on the left, on
  *        the right
  * @param house {[number, number]} from where to where along y the house is
  */
-function plot(b, kind, x0, x1, d0, d1, p0, p1, sides, house, back, color) {
+function plot(
+  b,
+  kind,
+  x0,
+  x1,
+  d0,
+  d1,
+  p0,
+  p1,
+  sides,
+  house,
+  back,
+  closed,
+  color,
+) {
   fence(
     b,
     kind,
@@ -2063,7 +2077,7 @@ function plot(b, kind, x0, x1, d0, d1, p0, p1, sides, house, back, color) {
   );
   driveGate(b, d0, d1, 1, kind, color);
   wicket(b, p0, p1, 1, kind, color);
-  if (back > 62) fence(b, kind, "x", 63, x0 + 0.5, x1 - 0.5, [], color);
+  if (closed) fence(b, kind, "x", back + 0.5, x0 + 0.5, x1 - 0.5, [], color);
   if (sides[0]) fence(b, kind, "y", x0 + 0.8, 1.8, back, [house], color);
   if (sides[1]) fence(b, kind, "y", x1 - 0.8, 1.8, back, [house], color);
 }
@@ -2125,24 +2139,13 @@ function terrace(b, o, P, n, w, x0, y0, y1) {
 }
 
 /**
- * Semi-detached houses on four tiles: one pair under one roof at the back,
- * each half nine metres by nine, with its parking space in front on the
- * outside, a path from its own gate through its front garden, and a fence
- * round it.
+ * The two halves of a pair on two tiles along the street, the house r a
+ * storey or two back from it: each half's parking space on the outside with
+ * a car on it, the path from its own gate to its door by the party wall, a
+ * flower bed and a tree between - and the fence round it, as far back as
+ * `back`, closed there for halves with a back garden of their own.
  */
-function semi(o, rnd, stage) {
-  var r = { x0: 3, x1: 61, y0: 34, y1: 61 };
-
-  if (stage)
-    return site(2 * TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
-
-  var b = [],
-    P = CITY[o.pal],
-    kind = o.fence;
-
-  lawn(b, 0, 2 * TILE, 0, 2 * TILE);
-  terrace(b, o, P, 2, 29, 3, r.y0, r.y1);
-
+function pairFronts(b, P, kind, r, back, closed, rnd) {
   [0, 1].forEach(function (u) {
     var flip = u === 1,
       x0 = u * 32,
@@ -2159,11 +2162,12 @@ function semi(o, rnd, stage) {
       b,
       Math.min(mirror(13), mirror(23)),
       Math.max(mirror(13), mirror(23)),
-      28.5,
-      31.5,
+      r.y0 - 5.5,
+      r.y0 - 2.5,
       rnd,
     );
-    gardenTree(b, mirror(17), 10, 3.4, 13);
+    if (r.y0 > 28) gardenTree(b, mirror(17), 10, 3.4, 13);
+    else bush(b, mirror(17), 9, 2.4);
     plot(
       b,
       kind,
@@ -2175,124 +2179,102 @@ function semi(o, rnd, stage) {
       door + 3.5,
       [!flip, true],
       [r.y0 - 1, r.y1 + 1],
-      r.y0 - 0.5,
+      back,
+      closed,
       P.picket,
     );
   });
+}
+
+/**
+ * Semi-detached houses on four tiles: one pair under one roof at the back,
+ * each half nine metres by nine, with its parking space in front on the
+ * outside, a path from its own gate through its front garden, and a fence
+ * round it.
+ */
+function semi(o, rnd, stage) {
+  var r = { x0: 3, x1: 61, y0: 34, y1: 61 };
+
+  if (stage)
+    return site(2 * TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
+
+  var b = [],
+    P = CITY[o.pal];
+
+  lawn(b, 0, 2 * TILE, 0, 2 * TILE);
+  terrace(b, o, P, 2, 29, 3, r.y0, r.y1);
+  pairFronts(b, P, o.fence, r, r.y0 - 0.5, false, rnd);
 
   return { boxes: b, bays: [bayAt(6.75, 15), bayAt(57.25, 15)] };
 }
 
-/**
- * A pair of houses on six tiles, each half fourteen metres wide: its parking
- * space and its front garden, and behind the house a back garden of its own.
- */
-function pair(o, rnd, stage) {
-  var r = { x0: 4, x1: 92, y0: 20, y1: 46 };
+//a swing: two posts at each end, the bar over them, two seats hanging off it
+function swing(b, x0, x1, y) {
+  var rope = [200, 200, 200];
 
-  if (stage)
-    return site(3 * TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
-
-  var b = [],
-    P = CITY[o.pal],
-    kind = o.fence;
-
-  lawn(b, 0, 3 * TILE, 0, 2 * TILE);
-  terrace(b, o, P, 2, 44, 4, r.y0, r.y1);
-
-  [0, 1].forEach(function (u) {
-    var flip = u === 1,
-      x0 = u * 48,
-      x1 = x0 + 48,
-      d0 = flip ? x1 - 12 : x0 + 2.5,
-      door = flip ? 51 : 41.5;
-
-    paved(b, d0, d0 + 9.5, 0.3, r.y0, DRIVE);
-    paved(b, door, door + 3.5, 0.5, r.y0, PAVING);
-    flowers(b, flip ? 58 : 18, flip ? 78 : 38, 15.5, 18.5, rnd);
-    gardenTree(b, flip ? 70 : 26, 8, 3.4, 13);
-    plot(
-      b,
-      kind,
-      x0,
-      x1,
-      d0,
-      d0 + 9.5,
-      door,
-      door + 3.5,
-      [!flip, true],
-      [r.y0 - 1, r.y1 + 1],
-      62.5,
-      P.picket,
-    );
+  [x0, x1 - 0.5].forEach(function (x) {
+    b.push(box(x, x + 0.5, y - 1.6, y - 1.1, 1, 9, METAL));
+    b.push(box(x, x + 0.5, y + 1.1, y + 1.6, 1, 9, METAL));
   });
+  b.push(box(x0, x1, y - 0.3, y + 0.3, 8.6, 9.2, METAL));
+  [x0 + (x1 - x0) * 0.25, x0 + (x1 - x0) * 0.6].forEach(function (x) {
+    b.push(box(x, x + 0.15, y - 0.08, y + 0.08, 3.6, 8.6, rope));
+    b.push(box(x + 1.4, x + 1.55, y - 0.08, y + 0.08, 3.6, 8.6, rope));
+    b.push(box(x, x + 1.55, y - 0.5, y + 0.5, 3.2, 3.6, [210, 60, 50]));
+  });
+}
 
-  //the back gardens: a patio and a tree; a trampoline, a shed, the washing
-  paved(b, 5, 26, 46, 52, PAVING);
-  parasol(b, 14, 49.5, [60, 120, 190]);
-  gardenTree(b, 38, 56, 4.5, 16);
-  flowers(b, 5, 20, 58.5, 61.5, rnd);
-  trampoline(b, 60, 55.5, 3.5);
-  shed(b, 82, 92, 52, 61.5);
-  washing(b, 66, 78, 60);
-
-  return { boxes: b, bays: [bayAt(7.25, 10), bayAt(88.75, 10)] };
+//a sandpit in a frame of boards
+function sandpit(b, x0, x1, y0, y1) {
+  b.push(box(x0, x1, y0, y1, 1, 2, WOOD));
+  b.push(box(x0 + 0.5, x1 - 0.5, y0 + 0.5, y1 - 0.5, 1, 1.8, [230, 210, 150]));
 }
 
 /**
- * A row of three terraced houses on six tiles, ten metres wide each: a
- * parking space and a path from the gate in front, a back garden each
- * behind.
+ * Semi-detached houses on six tiles, end on to the street: two tiles along
+ * it and three deep. The pair stands in the middle under one roof, each half
+ * nine metres by nine; in front its parking space, its gate and its path,
+ * and behind it a back garden of its own, fourteen metres long - a patio, a
+ * lawn and a shed, vegetables and a greenhouse; or a trampoline, a swing and
+ * a sandpit for the children next door to a patio and a shed.
  */
-function row(o, rnd, stage) {
-  var r = { x0: 2, x1: 94, y0: 20, y1: 46 };
+function pair(o, rnd, stage) {
+  var D = 3 * TILE,
+    r = { x0: 3, x1: 61, y0: 24, y1: 52 };
 
-  if (stage)
-    return site(3 * TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
+  if (stage) return site(2 * TILE, D, [{ rect: r, storeys: 2 }], stage, rnd);
 
   var b = [],
-    P = CITY[o.pal],
-    kind = o.fence,
-    w = 92 / 3,
-    bays = [];
+    P = CITY[o.pal];
 
-  lawn(b, 0, 3 * TILE, 0, 2 * TILE);
-  terrace(b, o, P, 3, w, 2, r.y0, r.y1);
+  lawn(b, 0, 2 * TILE, 0, D);
+  terrace(b, o, P, 2, 29, 3, r.y0, r.y1);
+  pairFronts(b, P, o.fence, r, D - 1.5, true, rnd);
 
-  [0, 1, 2].forEach(function (u) {
-    var x0 = u * 32,
-      x1 = x0 + 32,
-      flip = u % 2 === 1,
-      a = 2 + u * w,
-      door = flip ? a + 3 : a + w - 6.5,
-      d0 = flip ? x1 - 11 : x0 + 2;
+  if (o.back === "garden") {
+    paved(b, 4, 28, r.y1, r.y1 + 7, PAVING);
+    parasol(b, 12, r.y1 + 3.5, [60, 120, 190]);
+    gardenTree(b, 23, 74, 4.5, 16);
+    flowers(b, 3, 15, 70, 73, rnd);
+    shed(b, 3, 13, 84, 94);
+    washing(b, 36, 47, 58);
+    vegetables(b, 35, 49, 66, 80, rnd);
+    greenhouse(b, 52, 61, 64, 76);
+    gardenTree(b, 42, 88, 4, 15);
+  } else {
+    flowers(b, 3, 29, r.y1 + 1.5, r.y1 + 3.5, rnd);
+    trampoline(b, 12, 66, 3.5);
+    swing(b, 4, 14, 82);
+    sandpit(b, 18, 26, 87, 93);
+    gardenTree(b, 24, 72, 4.5, 16);
+    paved(b, 36, 60, r.y1, r.y1 + 7, PAVING);
+    parasol(b, 48, r.y1 + 3.5, [214, 60, 60]);
+    gardenTree(b, 41, 76, 4.5, 16);
+    shed(b, 51, 61, 84, 94);
+    bench(b, 36, 90);
+  }
 
-    paved(b, d0, d0 + 9.5, 0.3, r.y0, DRIVE);
-    paved(b, door, door + 3.5, 0.5, r.y0, PAVING);
-    bush(b, flip ? x0 + 13 : x0 + 16, 13, 2.2);
-    plot(
-      b,
-      kind,
-      x0,
-      x1,
-      d0,
-      d0 + 9.5,
-      door,
-      door + 3.5,
-      [u === 0, true],
-      [r.y0 - 1, r.y1 + 1],
-      62.5,
-      P.picket,
-    );
-    bays.push(bayAt(d0 + 4.75, 10));
-  });
-
-  gardenTree(b, 9, 55, 4.2, 15);
-  trampoline(b, 48, 55.5, 3.5);
-  shed(b, 66, 76, 51, 61);
-  flowers(b, 80, 92, 49, 52, rnd);
-
-  return { boxes: b, bays: bays };
+  return { boxes: b, bays: [bayAt(6.75, 11), bayAt(57.25, 11)] };
 }
 
 /**
@@ -2708,7 +2690,6 @@ var DESIGNS = {
   long: long,
   semi: semi,
   pair: pair,
-  row: row,
   villa2: villa("2x2"),
   villa3: villa("3x2"),
 };
@@ -2813,7 +2794,7 @@ var FOOTPRINTS = {
       tiles: tilesOf(2, 2, "houses/semi/std/{pal}/{roof}/{fence}"),
     },
   ],
-  "town-3x2": [
+  "town-2x3": [
     {
       design: "pair",
       weight: 1,
@@ -2821,18 +2802,9 @@ var FOOTPRINTS = {
         pal: CITY_AXES.pal,
         roof: CITY_AXES.roof,
         fence: ["picket", "railing"],
+        back: ["garden", "play"],
       },
-      tiles: tilesOf(3, 2, "houses/pair/std/{pal}/{roof}/{fence}"),
-    },
-    {
-      design: "row",
-      weight: 1,
-      axes: {
-        pal: CITY_AXES.pal,
-        roof: CITY_AXES.roof,
-        fence: ["picket", "railing"],
-      },
-      tiles: tilesOf(3, 2, "houses/row/std/{pal}/{roof}/{fence}"),
+      tiles: tilesOf(2, 3, "houses/pair/std/{pal}/{roof}/{fence}/{back}"),
     },
   ],
   "villa-2x2": [
@@ -2869,8 +2841,7 @@ var OPTIONS = {
   deep: ["pal", "roof", "fence", "back"],
   long: ["pal", "roof", "fence"],
   semi: ["pal", "roof", "fence"],
-  pair: ["pal", "roof", "fence"],
-  row: ["pal", "roof", "fence"],
+  pair: ["pal", "roof", "fence", "back"],
   villa2: ["style", "bound"],
   villa3: ["style", "bound"],
 };
