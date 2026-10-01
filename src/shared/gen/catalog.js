@@ -18,6 +18,7 @@ import * as Flats from "./flats.js";
 import * as Offices from "./offices.js";
 import * as Sites from "./sites.js";
 import * as Shops from "./shops.js";
+import * as Houses from "./houses.js";
 import { tileName, shoreName } from "./names.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
@@ -34,12 +35,19 @@ export var GENERATORS = [
   "offices",
   "sites",
   "shops",
+  "houses",
 ];
 
 //the generators of blocks put together out of parts (shared/gen/blocks)
 //the generators of parts that buildings are put together out of: the blocks
 //(shared/gen/blocks) and the building sites every building goes up on
-var BLOCKS = { flats: Flats, offices: Offices, sites: Sites, shops: Shops };
+var BLOCKS = {
+  flats: Flats,
+  offices: Offices,
+  sites: Sites,
+  shops: Shops,
+  houses: Houses,
+};
 
 //the hand-drawn pictures each generator paints from, by what their names
 //start with
@@ -50,6 +58,7 @@ export var INPUTS = {
   offices: [],
   sites: [],
   shops: [],
+  houses: [],
   stones: ["scenery/stones/", "terrain/grass/2222.png"],
 };
 
@@ -84,7 +93,7 @@ function terrainSources(pixels) {
  *        name, as {width, height, data}
  * @returns {{sprites: Object, data: Object}} sprites, every picture it
  *          paints by sprite name: {w, h, key} - its size and what the
- *          generator calls it; data, what the game needs to know besides:
+ *          generator calls it, where that is not its name; data, what the game needs to know besides:
  *          for terrain, which tiles there are to draw a tile of each kind and
  *          slope with (see client/generated tileParts); for vehicles, every
  *          body type as shared/gen/vehicles describes it; for blocks -
@@ -97,7 +106,10 @@ export function describe(gen, pixels) {
     data = null;
 
   function add(name, size, key) {
-    sprites[name] = { w: size.w, h: size.h, key: key };
+    sprites[name] = { w: size.w, h: size.h };
+
+    //left out where it is the sprite's own name, as for most of them
+    if (key !== name) sprites[name].key = key;
 
     //a part of something put together - where in it the tile it stands on is
     if (size.pivotX !== undefined) {

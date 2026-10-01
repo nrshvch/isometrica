@@ -40,7 +40,9 @@ SiteRenderer.prototype.constructor = SiteRenderer;
  * What goes over the tile, as client/compoundbuilding pieces resolves it:
  * {vehicle, looks: [{sprite, pivotX, pivotY}], move: [x, y]|null} for a
  * machine - as it faces, and as it turns to dig, for one that moves by move -
- * or {frames: [{sprite, pivotX, pivotY}]} for the jib.
+ * or a car parked, which does not; or {frames: [{sprite, pivotX, pivotY}]}
+ * for the jib - or, one frame only, what of a house stands in front of the
+ * cars on its drive, drawn over them in the order they come.
  *
  * @type {Object[]}
  */

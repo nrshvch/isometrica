@@ -31,6 +31,7 @@ import BuildingPositioning from "core/buildingpositioning";
 import Flats from "./flats";
 import Offices from "./offices";
 import Shops from "./shops";
+import Houses from "./houses";
 
 var Core = namespace("Isometrica.Core");
 
@@ -1243,6 +1244,7 @@ Object.assign(
   Flats.buildings(),
   Offices.buildings(),
   Shops.buildings(),
+  Houses.buildings(),
 );
 
 export default buildingData;
