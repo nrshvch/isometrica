@@ -20,7 +20,7 @@
 //(shared/gen/stacking lifts), put together once on the canvas cache's pages
 //(SpriteCache#getComposite) - and shared with every other block that has the
 //same parts on a tile.
-import { lifts, kindOf, siteTiles } from "shared/gen/stacking";
+import { lifts, kindOf, siteTiles, lotTiles } from "shared/gen/stacking";
 
 /**
  * What a block of the kind looks like - its look, kept as it is, or picked
@@ -142,9 +142,26 @@ function pick(sprites, compound, random, showcase) {
  *
  * @param look {{tiles: Object[]}} the finished block's
  * @param stage {number} shared/gen/stacking stageOf
+ * @param seed {number} the same for the same block every time - where it
+ *        stands
  */
-function siteLook(look, stage) {
-  return { tiles: siteTiles(look.tiles, stage) };
+function siteLook(look, stage, seed) {
+  return { tiles: siteTiles(look.tiles, stage, seed) };
+}
+
+/**
+ * What every tile of the building site of a building drawn by hand is drawn
+ * with - a house, a shop - its footprint sizeX by sizeY as it is turned:
+ * the same parts the blocks go up on to begin with (shared/gen/sites), and
+ * the same pieces as pieces gives.
+ *
+ * @param seed {number} the same for the same building every time
+ * @returns {Object[]|null} null while the sites are not described yet
+ */
+function lotPieces(sprites, sizeX, sizeY, seed) {
+  if (!sprites.generated.sites) return null;
+
+  return tilePieces(sprites, lotTiles(sizeX, sizeY, seed), sizeX, sizeY, 0);
 }
 
 /**
@@ -179,12 +196,24 @@ function spriteOf(part, turns) {
  *          the block; overlays, what is drawn over it (overlaysOf)
  */
 function pieces(sprites, look, compound, turns) {
-  var storey = sprites.generated[compound.gen].storey,
-    //the footprint, not turned: sections along x, the yard in front
-    sizeX = compound.cells,
-    sizeY = compound.yard ? 2 : 1;
+  //the footprint, not turned: sections along x, the yard in front
+  return tilePieces(
+    sprites,
+    look.tiles,
+    compound.cells,
+    compound.yard ? 2 : 1,
+    turns,
+  );
+}
 
-  return look.tiles.map(function (tile) {
+/**
+ * What every tile of something put together out of parts is drawn with: its
+ * tiles, {x, y, parts}, on a footprint sizeX by sizeY, turned - its parts
+ * of whichever generator.
+ */
+function tilePieces(sprites, tiles, sizeX, sizeY, turns) {
+  return tiles.map(function (tile) {
+    var storey = sprites.generated[tile.parts[0].split("/")[0]].storey;
     var up = lifts(tile.parts.map(kindOf), storey),
       laid = tile.parts.map(function (part, i) {
         var name = spriteOf(part, turns),
@@ -211,7 +240,7 @@ function pieces(sprites, look, compound, turns) {
       z: at[1],
       pivotX: -minX,
       pivotY: -minY,
-      overlays: overlaysOf(sprites, compound.gen, tile.parts, up, turns),
+      overlays: overlaysOf(sprites, tile.parts, up, turns),
       sprite: sprites.getComposite(
         laid.map(function (p) {
           return { name: p.name, x: p.left - minX, y: p.top - minY };
@@ -222,20 +251,21 @@ function pieces(sprites, look, compound, turns) {
 }
 
 /**
- * What is drawn over a tile with these parts (shared/gen/blocks overlays),
+ * What is drawn over a tile with these parts (shared/gen/sites overlays),
  * ready for client/siterenderer: a machine with the vehicle generator's
- * picture of it, the jib with its frames - each with its pivot taken from
- * where the tile's middle is.
+ * pictures of it - the way it faces, and the way it turns to, for one that
+ * moves - the jib with its frames; each with its pivot taken from where the
+ * tile's middle is.
  *
  * @param up {number[]} how far each part is laid higher than it was painted
  */
-function overlaysOf(sprites, gen, parts, up, turns) {
-  var meta = sprites.generated[gen],
-    vehicles = sprites.generated.vehicles,
+function overlaysOf(sprites, parts, up, turns) {
+  var vehicles = sprites.generated.vehicles,
     out = [];
 
   parts.forEach(function (part, i) {
-    var listed = meta.overlays && meta.overlays[part + "/r" + turns];
+    var meta = sprites.generated[part.split("/")[0]],
+      listed = meta && meta.overlays && meta.overlays[part + "/r" + turns];
 
     if (!listed) return;
 
@@ -255,17 +285,29 @@ function overlaysOf(sprites, gen, parts, up, turns) {
         return;
       }
 
-      var type = vehicles && vehicles[o.vehicle],
-        look = type && type.colors[o.color] && type.colors[o.color][o.heading];
+      var colors =
+          vehicles && vehicles[o.vehicle] && vehicles[o.vehicle].colors,
+        looks = colors && colors[o.color];
 
-      if (!look) return;
+      if (!looks || !looks[o.heading]) return;
+
+      function at(heading) {
+        var look = looks[heading];
+
+        return {
+          sprite: sprites.getSprite(look.sprite),
+          pivotX: look.pivotX - o.x,
+          pivotY: look.pivotY - o.y + up[i],
+        };
+      }
 
       out.push({
         vehicle: o.vehicle,
-        sprite: sprites.getSprite(look.sprite),
-        pivotX: look.pivotX - o.x,
-        pivotY: look.pivotY - o.y + up[i],
-        move: o.move,
+        looks:
+          o.turn !== undefined && looks[o.turn]
+            ? [at(o.heading), at(o.turn)]
+            : [at(o.heading)],
+        move: o.move || null,
       });
     });
   });
@@ -397,6 +439,7 @@ export default {
   lookOf: lookOf,
   sampleLook: sampleLook,
   siteLook: siteLook,
+  lotPieces: lotPieces,
   pieces: pieces,
   preview: preview,
 };

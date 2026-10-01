@@ -12,7 +12,9 @@
  * sites.png has every kind going up: a row per kind, its stages across
  * (shared/gen/stacking stageOf) and the finished block last, each as it is
  * and turned a quarter turn - with what the game draws over a site, the
- * machines at rest and the crane's jib straight along its track.
+ * machines at rest and the crane's jib straight along its track. The last
+ * row is the site of a building drawn by hand, 1x1, 2x1 and 2x2, each dealt
+ * what stands on it two ways.
  *
  * Usage:
  *   node tools/genbuildings.js [outDir]
@@ -26,11 +28,20 @@ var PNG = require("pngjs").PNG;
 var iso = require("../src/shared/gen/isobox.js");
 var stacking = require("../src/shared/gen/stacking.js");
 var Vehicles = require("../src/shared/gen/vehicles.js");
+var compose = require("../src/shared/gen/compose.js");
 
 var GENERATORS = {
   flats: require("../src/shared/gen/flats.js"),
   offices: require("../src/shared/gen/offices.js"),
+  sites: require("../src/shared/gen/sites.js"),
 };
+
+//what each generator describes, once
+var DESCRIBED = {};
+
+function described(gen) {
+  return (DESCRIBED[gen] = DESCRIBED[gen] || GENERATORS[gen].describe());
+}
 
 var ROOT = path.resolve(__dirname, "..");
 var DEFAULT_OUT = path.join(ROOT, "assets/previews");
@@ -136,13 +147,17 @@ var vehicleTypes = Vehicles.describe().types;
  * What is drawn over a tile with these parts, turned - the pictures at rest,
  * each with its pivot where the tile's middle is.
  */
-function overlays(gen, parts, turns) {
-  var g = GENERATORS[gen],
-    data = g.describe(),
+function overlays(parts, turns) {
+  var up = stacking.lifts(parts.map(stacking.kindOf), 12),
     out = [];
 
-  parts.forEach(function (part) {
-    (data.data.overlays[part + "/r" + turns] || []).forEach(function (o) {
+  parts.forEach(function (part, i) {
+    var gen = part.split("/")[0],
+      g = GENERATORS[gen],
+      data = described(gen),
+      listed = (data.data.overlays || {})[part + "/r" + turns] || [];
+
+    listed.forEach(function (o) {
       if (o.vehicle !== undefined) {
         var look = vehicleTypes[o.vehicle].colors[o.color][o.heading];
 
@@ -158,7 +173,7 @@ function overlays(gen, parts, turns) {
         var name = o.frames[(o.frames.length - 1) / 2],
           size = data.sizes[name];
 
-        out.push(picture(g.paint(name), size.pivotX, size.pivotY));
+        out.push(picture(g.paint(name), size.pivotX, size.pivotY + up[i]));
       }
     });
   });
@@ -184,7 +199,7 @@ function draw(png, gen, tiles, p, turns, col, row) {
   var sizeX = turns % 2 ? p.sizeY : p.sizeX,
     sizeY = turns % 2 ? p.sizeX : p.sizeY,
     pieces = iso.paintTiles(
-      GENERATORS[gen].model(tiles, p.sizeX, p.sizeY, turns),
+      compose.model(tiles, p.sizeX, p.sizeY, turns),
       sizeX,
       sizeY,
     ),
@@ -212,7 +227,7 @@ function draw(png, gen, tiles, p, turns, col, row) {
 
         if (at[0] !== piece.x || at[1] !== piece.y) return;
 
-        overlays(gen, tile.parts, turns).forEach(function (o) {
+        overlays(tile.parts, turns).forEach(function (o) {
           iso.blit(
             png,
             o,
@@ -246,7 +261,7 @@ function main() {
   });
 
   var blocks = canvas(cols, rows.length),
-    sites = canvas((stages + 1) * 2, rows.length);
+    sites = canvas((stages + 1) * 2, rows.length + 1);
 
   rows.forEach(function (r, row) {
     r.palettes.forEach(function (palette, n) {
@@ -264,13 +279,34 @@ function main() {
         draw(
           sites,
           r.kind.gen,
-          stage < stages ? stacking.siteTiles(p.tiles, stage) : p.tiles,
+          stage < stages ? stacking.siteTiles(p.tiles, stage, 7) : p.tiles,
           p,
           turns,
           stage * 2 + turns,
           row,
         );
       });
+  });
+
+  //the sites of buildings drawn by hand
+  [
+    [1, 1],
+    [2, 1],
+    [2, 2],
+  ].forEach(function (size, n) {
+    [3, 11].forEach(function (seed, k) {
+      var footprint = { sizeX: size[0], sizeY: size[1] };
+
+      draw(
+        sites,
+        "sites",
+        stacking.lotTiles(size[0], size[1], seed),
+        footprint,
+        0,
+        n * 2 + k,
+        rows.length,
+      );
+    });
   });
 
   write(blocks, path.join(out, "buildings.png"));

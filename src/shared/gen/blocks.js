@@ -40,7 +40,6 @@
  */
 import * as iso from "./isobox.js";
 import * as Vehicles from "./vehicles.js";
-import { lifts } from "./stacking.js";
 
 export var box = iso.box,
   darker = iso.darker,
@@ -63,18 +62,9 @@ export var GRASS = [112, 158, 84],
   DOOR = [86, 72, 64],
   VENT = [150, 152, 156];
 
-//on a building site
-var DIRT = [152, 124, 92],
-  GRAVEL = [170, 162, 150],
-  SAND = [196, 164, 112],
-  CONCRETE = [168, 166, 160],
-  MACHINE = [236, 178, 36],
-  TRACK = [44, 44, 48],
-  CAB_GLASS = [112, 156, 186],
-  BRICK = [176, 84, 64],
-  HOARDING = [214, 214, 206],
-  CABIN = [236, 236, 228],
-  CABIN_TRIM = [70, 110, 160];
+//the bare earth of a building site, and what is poured on it
+export var DIRT = [152, 124, 92],
+  CONCRETE = [168, 166, 160];
 
 //what a surface is like, for the boxes of a style that has it (see iso
 //finish): concrete, stone and painted metal with a faint grain to them, and
@@ -134,20 +124,147 @@ export function ends(s, e) {
   return [s.x0 - (s.start ? e : 0), s.x1 + (s.end ? e : 0)];
 }
 
-export function tree(b, x, y, size) {
-  var z = 4;
+/* --- Light ----------------------------------------------------------- */
 
-  b.push(box(x - 0.5, x + 0.5, y - 0.5, y + 0.5, 1, z + 1, TRUNK));
-  [
-    [size - 1, 2],
-    [size, size + 1],
-    [size - 1, 2],
-    [size - 2, 1.5],
-  ].forEach(function (tier) {
-    var r = tier[0];
-    b.push(box(x - r, x + r, y - r, y + r, z, z + tier[1], LEAF));
-    z += tier[1];
+//where the light comes from, for what is shaded by its own surface: above,
+//and from the side the faces looking towards -x are lit from (see iso shade)
+var LIGHT = (function () {
+  var l = [-0.45, 0.35, 1],
+    n = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
+
+  return [l[0] / n, l[1] / n, l[2] / n];
+})();
+
+//how much light falls on a face looking up, towards -x and towards -y - and
+//how much lighter or darker iso shade paints each of them
+var LIT_UP = LIGHT[2],
+  LIT_LEFT = -LIGHT[0],
+  LIT_RIGHT = -LIGHT[1];
+
+//painted the colour it is, see iso finish
+export var LIT = { lit: true };
+
+/**
+ * The colour of something round where its surface looks along nx, ny, nz -
+ * lit the way iso shade lights a box's faces, so a round thing sits among
+ * the boxes as if it were lit by the same sun: as light as a box's top where
+ * it looks straight up, as dark as its right side where it looks that way.
+ */
+export function shaded(color, nx, ny, nz) {
+  var n = Math.sqrt(nx * nx + ny * ny + nz * nz),
+    lit = (nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]) / n,
+    k;
+
+  if (lit >= LIT_LEFT)
+    k = -0.1 + ((lit - LIT_LEFT) / (LIT_UP - LIT_LEFT)) * 0.32;
+  else k = -0.3 + ((lit - LIT_RIGHT) / (LIT_LEFT - LIT_RIGHT)) * 0.2;
+
+  return k > 0 ? lighter(color, k) : darker(color, -k);
+}
+
+//0..1, the same for the same whole numbers every time
+function speckle(i, j) {
+  var h = Math.imul(i | 0, 374761393) ^ Math.imul(j | 0, 668265263);
+
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * Something round laid out in columns half a pixel across, as far as `top`
+ * says it reaches at each spot - each column the colour of the surface
+ * there (shaded), so it comes out round rather than in steps.
+ *
+ * @param at {function(u, v): Array|null} for the spot u, v off x, y: [z0, z1,
+ *        nx, ny, nz] - from where to where the column goes, and which way
+ *        the surface looks at its top - or null where there is nothing
+ * @param grain {number} how far a column is lighter or darker than the next
+ */
+export function round(b, x, y, r, color, grain, at) {
+  var step = 0.5,
+    i,
+    j;
+
+  for (i = -r; i < r; i += step)
+    for (j = -r; j < r; j += step) {
+      var c = at(i + step / 2, j + step / 2);
+
+      if (c === null) continue;
+
+      var g = (speckle((x + i) * 2, (y + j) * 2) - 0.5) * 2 * grain,
+        col = shaded(color, c[2], c[3], c[4]);
+
+      b.push(
+        box(
+          x + i,
+          x + i + step,
+          y + j,
+          y + j + step,
+          c[0],
+          c[1],
+          g > 0 ? lighter(col, g) : darker(col, -g),
+          LIT,
+        ),
+      );
+    }
+}
+
+/**
+ * A small tree: its trunk, and its crown round over it - wider than it is
+ * tall, flatter underneath.
+ */
+export function tree(b, x, y, size) {
+  var trunk = 4,
+    r = size + 0.5,
+    up = size * 1.05 + 1,
+    down = size * 0.6,
+    mid = trunk + down + 0.5;
+
+  b.push(box(x - 0.5, x + 0.5, y - 0.5, y + 0.5, 1, trunk + 1, TRUNK));
+
+  round(b, x, y, r, LEAF, 0.07, function (u, v) {
+    var d = (u * u + v * v) / (r * r);
+
+    if (d >= 1) return null;
+
+    var k = Math.sqrt(1 - d);
+
+    return [mid - down * k, mid + up * k, u / (r * r), v / (r * r), k / up];
   });
+}
+
+/**
+ * A hedge along x from x0 to x1, from y0 to y1 deep and h high, its top
+ * rounded across, a little higher here and lower there along it.
+ */
+export function hedge(b, x0, x1, y0, y1, z, h) {
+  var mid = (y0 + y1) / 2,
+    half = (y1 - y0) / 2,
+    x,
+    y;
+
+  for (x = x0; x < x1; x += 1)
+    for (y = y0; y < y1; y += 0.5) {
+      var v = (y + 0.25 - mid) / half,
+        k = Math.sqrt(Math.max(0, 1 - v * v)),
+        top = z + h * (0.7 + 0.3 * k) - speckle(x, 7) * 0.5,
+        col = shaded(HEDGE, 0, v / half, k / (h * 0.3)),
+        g = (speckle(x * 2, y * 2) - 0.5) * 0.12;
+
+      b.push(
+        box(
+          x,
+          x + 1,
+          y,
+          y + 0.5,
+          z,
+          top,
+          g > 0 ? lighter(col, g) : darker(col, -g),
+          LIT,
+        ),
+      );
+    }
 }
 
 export function bench(b, x, y) {
@@ -226,286 +343,18 @@ export function parking(b, cx, rnd) {
 /* --- Building sites -------------------------------------------------- */
 
 /**
- * A pallet of bricks at x, y on ground z.
- */
-function pallet(b, x, y, z) {
-  b.push(box(x, x + 5, y, y + 4, z, z + 1, WOOD));
-  b.push(box(x + 0.3, x + 4.7, y + 0.3, y + 3.7, z + 1, z + 4, BRICK));
-}
-
-/**
- * A stack of steel bars or pipes along x, from x to x1, at y on ground z.
- */
-function bars(b, x, x1, y, z) {
-  b.push(box(x + 1, x + 2, y - 0.5, y + 3.5, z, z + 1, WOOD));
-  b.push(box(x1 - 2, x1 - 1, y - 0.5, y + 3.5, z, z + 1, WOOD));
-  b.push(box(x, x1, y, y + 3, z + 1, z + 2.5, METAL));
-}
-
-//where the light comes from, for what is shaded by its own surface: above,
-//and from the side the faces looking towards -x are lit from (see iso shade)
-var LIGHT = (function () {
-  var l = [-0.45, 0.35, 1],
-    n = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
-
-  return [l[0] / n, l[1] / n, l[2] / n];
-})();
-
-/**
- * A heap of sand with its middle at x, y on ground z, r across and h high: a
- * mound, round and low at its foot. It is built of columns half a pixel
- * across, each lit by which way the mound's surface faces where it stands -
- * not by its own flat faces, which would draw rings round it - and each
- * grain a little lighter or darker than the next.
- */
-function heap(b, x, y, z, r, h, rnd) {
-  var step = 0.5,
-    i,
-    j;
-
-  function height(u, v) {
-    var d = Math.sqrt(u * u + v * v) / r;
-
-    return d >= 1 ? 0 : h * Math.pow(1 - d * d, 0.75);
-  }
-
-  for (i = -r; i < r; i += step)
-    for (j = -r; j < r; j += step) {
-      var u = i + step / 2,
-        v = j + step / 2,
-        top = height(u, v);
-
-      if (top <= 0) continue;
-
-      //the surface's slope there, and how much of the light falls on it
-      var gx = (height(u + 0.25, v) - height(u - 0.25, v)) / 0.5,
-        gy = (height(u, v + 0.25) - height(u, v - 0.25)) / 0.5,
-        n = Math.sqrt(gx * gx + gy * gy + 1),
-        lit = (-gx * LIGHT[0] - gy * LIGHT[1] + LIGHT[2]) / n,
-        color =
-          lit > 0.9
-            ? lighter(SAND, (lit - 0.9) * 2.2)
-            : darker(SAND, (0.9 - lit) * 0.6),
-        grain = (rnd() - 0.5) * 0.08;
-
-      b.push(
-        box(
-          x + i,
-          x + i + step,
-          y + j,
-          y + j + step,
-          z,
-          z + Math.max(top, 0.3),
-          grain > 0 ? lighter(color, grain) : darker(color, -grain),
-          LIT,
-        ),
-      );
-    }
-}
-
-//painted the colour it is, see iso finish
-var LIT = { lit: true };
-
-/**
- * The ground of a building site under a section: bare earth, the plinth
- * poured where the block will stand. Whatever works on it - the digger, the
- * lorry - is drawn over it (SITE_MACHINES). Once the structure goes up on it
- * (build) nothing else stands on the tile: the structure is laid over this,
- * and would be drawn over whatever should hide its foot, whichever side it
- * is seen from - what it is built of waits on the yard (SITE_YARDS).
+ * The ground under a section once its structure goes up (build): bare earth
+ * and the plinth poured where the block will stand. Nothing else stands on
+ * the tile: the structure is laid over this, and would be drawn over
+ * whatever should hide its foot, whichever side it is seen from. What a site
+ * is before that, and what stands about it, is the same for every building
+ * there is (shared/gen/sites).
  */
 function siteBase(b, s) {
   var x = ends(s, 0.3);
 
   b.push(box(0, TILE, 0, TILE, 0, 1, DIRT));
   b.push(box(x[0], x[1], s.front - 0.3, s.back + 0.3, 1, PLINTH, CONCRETE));
-}
-
-//where on its tile a tower crane's mast stands, and how high its jib turns:
-//over a block of five storeys
-var CRANE = { x: 9, y: 18, top: PLINTH + 5 * STOREY + 6 };
-
-//which ways the jib points as it turns back and forth, in degrees off x
-var JIB_ANGLES = [-45, -30, -15, 0, 15, 30, 45];
-
-/**
- * The tower crane's mast, with its cab at the top, as far as the jib: the
- * jib turns, and is painted on its own (jib).
- */
-function crane(b) {
-  var x = CRANE.x,
-    y = CRANE.y,
-    top = CRANE.top,
-    dark = darker(MACHINE, 0.2),
-    z;
-
-  b.push(box(x - 3, x + 3, y - 3, y + 3, 1, 2, CONCRETE));
-  //the mast, its lattice in bands
-  for (z = 2; z < top; z += 4)
-    b.push(
-      box(
-        x - 1.5,
-        x + 1.5,
-        y - 1.5,
-        y + 1.5,
-        z,
-        Math.min(z + 4, top),
-        z % 8 < 4 ? MACHINE : dark,
-      ),
-    );
-  b.push(box(x - 1.5, x + 2, y - 2.5, y + 1.5, top - 4, top, CABIN));
-  b.push(box(x - 1.8, x + 2.2, y - 2.7, y - 2.4, top - 3, top - 1, CAB_GLASS));
-}
-
-/**
- * The part of the tower crane that turns, pointing `angle` degrees off x:
- * the jib out over the site, the counter-jib behind with its weights, the
- * peak over the mast, the hook hanging near the end - in steps along the
- * way it points, each a little box, the way the ground is drawn in pixels.
- */
-function jib(angle) {
-  var b = [],
-    a = (angle * Math.PI) / 180,
-    dx = Math.cos(a),
-    dy = Math.sin(a),
-    top = CRANE.top,
-    s,
-    px,
-    py;
-
-  function at(d) {
-    return [CRANE.x + d * dx, CRANE.y + d * dy];
-  }
-
-  for (s = -8; s <= 22; s += 0.75) {
-    var p = at(s);
-
-    b.push(
-      box(
-        p[0] - 0.7,
-        p[0] + 0.7,
-        p[1] - 0.7,
-        p[1] + 0.7,
-        top,
-        top + 1.5,
-        MACHINE,
-      ),
-    );
-  }
-
-  for (s = -7.5; s <= -4.5; s += 0.75) {
-    var w = at(s);
-
-    b.push(
-      box(
-        w[0] - 1.1,
-        w[0] + 1.1,
-        w[1] - 1.1,
-        w[1] + 1.1,
-        top - 3,
-        top,
-        CONCRETE,
-      ),
-    );
-  }
-
-  b.push(
-    box(
-      CRANE.x - 1,
-      CRANE.x + 1,
-      CRANE.y - 1,
-      CRANE.y + 1,
-      top + 1.5,
-      top + 6,
-      MACHINE,
-    ),
-  );
-
-  var hook = at(17);
-
-  px = hook[0];
-  py = hook[1];
-  b.push(box(px - 0.2, px + 0.2, py - 0.2, py + 0.2, top - 24, top, METAL));
-  b.push(
-    box(
-      px - 1.2,
-      px + 1.2,
-      py - 1,
-      py + 1,
-      top - 26,
-      top - 24,
-      darker(MACHINE, 0.2),
-    ),
-  );
-
-  return b;
-}
-
-/**
- * The site office: a cabin, with its door and window, at x, y on ground z.
- */
-function cabin(b, x, y, z) {
-  b.push(box(x, x + 14, y, y + 6, z, z + 7, CABIN));
-  b.push(box(x - 0.2, x + 14.2, y - 0.2, y + 6.2, z + 7, z + 7.6, CABIN_TRIM));
-  b.push(box(x + 2, x + 4, y - 0.2, y, z, z + 5.5, CABIN_TRIM));
-  b.push(box(x + 6, x + 12, y - 0.2, y, z + 3, z + 5.5, CAB_GLASS));
-}
-
-//where the yard will be, while the block goes up
-var SITE_YARDS = {
-  //the heap of gravel a lorry tipped, and room for it beside (SITE_MACHINES)
-  trucks: function (b, rnd) {
-    heap(b, 23, 17, 1, 7, 5.5, rnd);
-  },
-  crane: function (b) {
-    crane(b);
-    pallet(b, 20, 20, 1);
-    pallet(b, 22, 11, 1);
-  },
-  materials: function (b) {
-    cabin(b, 4, 20, 1);
-    bars(b, 6, 26, 9, 1);
-    pallet(b, 22, 18, 1);
-  },
-};
-
-/**
- * What works on a building site, by the part it works on: one machine to a
- * tile, from the vehicle generator's pictures - which is where the game
- * draws them from - with its middle at x, y on ground z of the part's own
- * tile, facing heading, and going back and forth by move along it.
- *
- * @param s {Object} the section the part is under, for the site's parts
- */
-function siteMachines(kind, s) {
-  if (kind === "dig")
-    return [
-      {
-        vehicle: "excavator",
-        x: 12,
-        y: s.front + 9.5,
-        z: PLINTH,
-        heading: "x+",
-        move: 1.5,
-      },
-    ];
-
-  if (kind === "haul")
-    return [
-      {
-        vehicle: "lorry",
-        x: TILE / 2,
-        y: s.front / 2,
-        z: 1,
-        heading: "x-",
-        move: 3,
-      },
-    ];
-
-  if (kind === "trucks")
-    return [{ vehicle: "lorry", x: 10, y: 16, z: 1, heading: "y-", move: 3 }];
-
-  return [];
 }
 
 /* --- Parts ----------------------------------------------------------- */
@@ -515,17 +364,7 @@ var ENDS = { both: [true, true], start: [true, false], end: [false, true] };
 
 //the ways a part is painted: as it is, and turned one, two and three
 //quarter turns - so that a block shows whichever side faces the camera
-var TURNS = [0, 1, 2, 3];
-
-//what a building site under a section is at: digging, carting the earth away,
-//or building
-var SITE_KINDS = ["dig", "haul", "build"];
-
-//how a heading turns with the part, a quarter turn at a time: what faced +x
-//faces -y (see iso.rotate)
-var HEADING_TURN = { "x+": "y-", "y-": "x-", "x-": "y+", "y+": "x+" };
-
-var HEADING = { "x+": [1, 0], "x-": [-1, 0], "y+": [0, 1], "y-": [0, -1] };
+export var TURNS = [0, 1, 2, 3];
 
 /**
  * A generator of blocks in a style.
@@ -547,7 +386,7 @@ var HEADING = { "x+": [1, 0], "x-": [-1, 0], "y+": [0, 1], "y-": [0, -1] };
  *        frame(b, s, z, rnd): the bare structure of a storey from z;
  *        finish: what every box without a finish of its own is like, if
  *        anything (MATTE) - flat colour otherwise
- * @returns {{describe, paint, model, PARTS}}
+ * @returns {{describe, paint, partBoxes, PARTS}}
  */
 export function blocks(style) {
   var gen = style.name,
@@ -601,19 +440,8 @@ export function blocks(style) {
     });
 
     Object.keys(ENDS).forEach(function (ends) {
-      SITE_KINDS.forEach(function (site) {
-        out[gen + "/site/" + ends + "/" + site] = {
-          kind: "site",
-          ends: ends,
-          site: site,
-        };
-      });
-
+      out[gen + "/site/" + ends + "/build"] = { kind: "site", ends: ends };
       out[gen + "/frame/" + ends] = { kind: "frame", ends: ends };
-    });
-
-    Object.keys(SITE_YARDS).forEach(function (yard) {
-      out[gen + "/siteyard/" + yard] = { kind: "siteyard", yard: yard };
     });
 
     return out;
@@ -648,12 +476,6 @@ export function blocks(style) {
     if (p.kind === "yard") {
       b.push(box(0, TILE, 0, TILE, 0, 1, GRASS));
       style.yards[p.yard](b, 0, rnd);
-      return finished(b);
-    }
-
-    if (p.kind === "siteyard") {
-      b.push(box(0, TILE, 0, TILE, 0, 1, DIRT));
-      SITE_YARDS[p.yard](b, rnd);
       return finished(b);
     }
 
@@ -696,57 +518,6 @@ export function blocks(style) {
   }
 
   /**
-   * What is drawn over a part as the game draws it, rather than painted
-   * into it - what moves: the machines working on a building site, the jib
-   * of a tower crane turning. Each where it is on the screen from the
-   * middle of the part's tile, the part turned `turns` times:
-   *
-   *   - {vehicle, color, heading, x, y, move}: a picture of the vehicle
-   *     generator's (gfx/generated/vehicles.json), its middle at x, y, going
-   *     back and forth from there by as far as move, [x, y] on the screen;
-   *   - {frames}: pictures to go through and back, the jib from one side to
-   *     the other, each with its pivot where the tile's middle is.
-   */
-  function overlays(key, p, turns) {
-    var rnd = random(key + "/machines"),
-      machines =
-        p.kind === "site"
-          ? siteMachines(p.site, tileSection(p.ends))
-          : p.kind === "siteyard"
-            ? siteMachines(p.yard)
-            : [],
-      out = machines.map(function (m) {
-        var at = turnPoint(m.x, m.y, turns),
-          heading = m.heading,
-          t;
-
-        for (t = 0; t < turns; t++) heading = HEADING_TURN[heading];
-
-        var v = HEADING[heading],
-          screen = iso.project(at[0] - TILE / 2, at[1] - TILE / 2, m.z),
-          move = iso.project(v[0] * m.move, v[1] * m.move, 0);
-
-        return {
-          vehicle: m.vehicle,
-          color: pick(rnd, Vehicles.TYPES[m.vehicle].colors),
-          heading: heading,
-          x: screen[0],
-          y: screen[1],
-          move: move,
-        };
-      });
-
-    if (p.kind === "siteyard" && p.yard === "crane")
-      out.push({
-        frames: JIB_ANGLES.map(function (a, i) {
-          return "gen/" + gen + "/jib/" + i + "/r" + turns;
-        }),
-      });
-
-    return out;
-  }
-
-  /**
    * The boxes of a part by its full name, turned the way the name says: what
    * the part is called, then /r and its turns - "flats/roof/slate/end/1/r1".
    */
@@ -763,47 +534,18 @@ export function blocks(style) {
   }
 
   /**
-   * The boxes of a frame of the crane's jib by its name - "flats/jib/3/r1",
-   * the fourth way it points, turned once - or null for a name that is not.
-   */
-  function jibOf(name) {
-    var m = /^[a-z]+\/jib\/(\d+)\/r(\d)$/.exec(name);
-
-    if (
-      m === null ||
-      JIB_ANGLES[+m[1]] === undefined ||
-      TURNS.indexOf(+m[2]) === -1
-    )
-      return null;
-
-    return iso.rotate(jib(JIB_ANGLES[+m[1]]), 1, 1, +m[2]);
-  }
-
-  /**
    * Every part, by sprite name - "gen/flats/upper/sand/start/01/r0" - with
    * its size and pivot, without painting it; and what whoever puts a block
    * together needs to know of them.
    */
   function describe() {
-    var sizes = {},
-      over = {};
+    var sizes = {};
 
     Object.keys(PARTS).forEach(function (key) {
       TURNS.forEach(function (turns) {
-        var boxes = iso.rotate(partBoxes(key, PARTS[key]), 1, 1, turns),
-          drawn = overlays(key, PARTS[key], turns);
+        var boxes = iso.rotate(partBoxes(key, PARTS[key]), 1, 1, turns);
 
         sizes["gen/" + key + "/r" + turns] = measureOnTile(boxes);
-
-        if (drawn.length > 0) over[key + "/r" + turns] = drawn;
-      });
-    });
-
-    JIB_ANGLES.forEach(function (a, i) {
-      TURNS.forEach(function (turns) {
-        var name = gen + "/jib/" + i + "/r" + turns;
-
-        sizes["gen/" + name] = measureFree(jibOf(name));
       });
     });
 
@@ -816,12 +558,7 @@ export function blocks(style) {
         roofs: style.roofs,
         yards: Object.keys(style.yards),
         yardVariants: style.yardVariants,
-        sites: SITE_KINDS,
-        siteYards: Object.keys(SITE_YARDS),
         turns: TURNS,
-        //what is drawn over a part, by its sprite name without gen/: see
-        //overlays
-        overlays: over,
       },
     };
   }
@@ -832,61 +569,18 @@ export function blocks(style) {
    * @returns {{width, height, data}}
    */
   function paint(name) {
-    var key = name.replace(/^gen\//, ""),
-      boxes = jibOf(key);
-
-    return iso.toImage(boxes !== null ? free(boxes) : onTile(boxesOf(key)));
-  }
-
-  /**
-   * A whole block in one, every box of it in place - to look at, and to hold
-   * the parts against: what the game draws out of the parts has to come out
-   * the same as this, painted tile by tile.
-   *
-   * @param plan {Object[]} what stands on each tile: {x, y, parts}, x along
-   *        the wall, y from the front, parts the names of what is laid there
-   *        bottom first, without their turns - as client/compoundbuilding
-   *        keeps them
-   * @param sizeX {number}
-   * @param sizeY {number}
-   * @param turns {number}
-   */
-  function model(plan, sizeX, sizeY, turns) {
-    var b = [];
-
-    plan.forEach(function (tile) {
-      var up = lifts(
-        tile.parts.map(function (key) {
-          return PARTS[key].kind;
-        }),
-        STOREY,
-      );
-
-      tile.parts.forEach(function (key, i) {
-        partBoxes(key, PARTS[key]).forEach(function (c) {
-          b.push(
-            iso.box(
-              c.x0 + tile.x * TILE,
-              c.x1 + tile.x * TILE,
-              c.y0 + tile.y * TILE,
-              c.y1 + tile.y * TILE,
-              c.z0 + up[i],
-              c.z1 + up[i],
-              c.color,
-              c.finish,
-            ),
-          );
-        });
-      });
-    });
-
-    return iso.rotate(b, sizeX, sizeY, turns);
+    return iso.toImage(onTile(boxesOf(name.replace(/^gen\//, ""))));
   }
 
   return {
     describe: describe,
     paint: paint,
-    model: model,
+    //the boxes of a part by its name without its turn, as it is painted
+    partBoxes: function (key) {
+      if (PARTS[key] === undefined) throw new Error("no such part: " + key);
+
+      return partBoxes(key, PARTS[key]);
+    },
     PARTS: PARTS,
   };
 }
@@ -895,7 +589,7 @@ export function blocks(style) {
  * Where a point on a tile goes, the tile turned a quarter turn at a time on
  * the spot - the way iso.rotate turns the boxes on it.
  */
-function turnPoint(x, y, turns) {
+export function turnPoint(x, y, turns) {
   switch (turns % 4) {
     case 1:
       return [y, TILE - x];
@@ -912,7 +606,7 @@ function turnPoint(x, y, turns) {
  * Boxes painted whole, not cut to a tile - for what is drawn over a tile and
  * may reach past it - the pivot where the tile's middle is.
  */
-function free(boxes) {
+export function free(boxes) {
   var picture = iso.render(boxes),
     middle = iso.project(TILE / 2, TILE / 2, 0);
 
@@ -923,7 +617,7 @@ function free(boxes) {
 }
 
 //the size and pivot free would paint the boxes with
-function measureFree(boxes) {
+export function measureFree(boxes) {
   var m = iso.measure(boxes),
     middle = iso.project(TILE / 2, TILE / 2, 0);
 
@@ -939,14 +633,14 @@ function measureFree(boxes) {
  * What its tile shows of the boxes - everything clipped to the tile, the
  * way iso.paintTiles cuts a building up.
  */
-function onTile(boxes) {
+export function onTile(boxes) {
   return iso.paintTiles(boxes, 1, 1)[0];
 }
 
 /**
  * The size and pivot onTile would paint the boxes with, without painting.
  */
-function measureOnTile(boxes) {
+export function measureOnTile(boxes) {
   var clipped = [];
 
   boxes.forEach(function (b) {
