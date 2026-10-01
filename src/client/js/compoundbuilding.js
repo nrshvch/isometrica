@@ -42,8 +42,18 @@ function lookOf(sprites, building, compound) {
 }
 
 /**
- * The look of a block in the catalogue, or about to be put down: the same
- * every time, for it is no block yet - only the kind of block it will be.
+ * A look for a block about to be put down - one of its own, at random, the
+ * one it will keep once it goes up (Buildman hands it to the build).
+ *
+ * @returns {{tiles: Object[]}|null} null while there are no parts to pick
+ */
+function pickLook(sprites, compound) {
+  return pick(sprites, compound, Math.random);
+}
+
+/**
+ * The look of a block in the catalogue: the same every time, for it is no
+ * block - only the kind of block it is.
  * Its yards are taken in order - the kind's own, or the ones that look most
  * like a yard, the playground first, rather than a lawn that could be any
  * grass.
@@ -438,6 +448,7 @@ function drawPreview(sprites, compound, tries) {
 export default {
   lookOf: lookOf,
   sampleLook: sampleLook,
+  pickLook: pickLook,
   siteLook: siteLook,
   lotPieces: lotPieces,
   pieces: pieces,

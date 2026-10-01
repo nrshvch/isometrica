@@ -20,6 +20,7 @@ import ResourceCode from "core/resourcecode";
 import ErrorCode from "core/errorcode";
 import Numeral from "numeral";
 import Rotation from "core/rotation";
+import CompoundBuilding from "./compoundbuilding";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -145,7 +146,7 @@ var PREVIEW_OPACITY = 0.75,
  * @param data {Object} what goes up - for a type, the variant picked there
  * @returns {engine.GameObject}
  */
-function createPreview(self, data, tile, rotation, opacity) {
+function createPreview(self, data, tile, rotation, opacity, look) {
   var terrain = self.root.core.world.terrain,
     tileSize = Config.tileSize,
     x = Terrain.extractX(tile),
@@ -164,6 +165,7 @@ function createPreview(self, data, tile, rotation, opacity) {
     rotation,
     opacity,
     RenderLayer.previewLayer,
+    look,
   );
 
   //placed before it goes in - the world files it by where it stands
@@ -429,8 +431,10 @@ errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
  * @param anchors {number[]} the tile each building would stand on
  * @param codes {number[]} what goes up on each of them - for a type, the
  *        variant picked there
+ * @param looks {Array<Object|null>} and for a building put together out of
+ *        parts, the look it was shown with - see client/compoundbuilding
  */
-function buildSelection(self, code, anchors, rotation, codes) {
+function buildSelection(self, code, anchors, rotation, codes, looks) {
   var root = self.root,
     data = BuildingData[code],
     messaging = root.core.messagingService,
@@ -452,7 +456,12 @@ function buildSelection(self, code, anchors, rotation, codes) {
       tried++;
       root.core.cities
         .getCity(0)
-        .buildingService.buildBuilding(codes[i], anchors[i], rotation);
+        .buildingService.buildBuilding(
+          codes[i],
+          anchors[i],
+          rotation,
+          looks[i],
+        );
     }
   } finally {
     Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
@@ -814,6 +823,22 @@ Buildman.prototype.build = function (code) {
     return variants[tile];
   }
 
+  //and for a building put together out of parts, the look of the one going
+  //up there - picked, and kept, the same way, so that every block of the
+  //selection shows the block it will be
+  var looks = Object.create(null);
+
+  function lookAt(tile) {
+    var compound = BuildingData[variantAt(tile)].compound;
+
+    if (compound === undefined) return null;
+
+    if (!looks[tile])
+      looks[tile] = CompoundBuilding.pickLook(root.sprites, compound);
+
+    return looks[tile];
+  }
+
   //show hint
   root.ui
     .gameScreen()
@@ -916,6 +941,7 @@ Buildman.prototype.build = function (code) {
           tiles[i],
           rotation,
           opacity[tiles[i]] || PREVIEW_BLOCKED_OPACITY,
+          lookAt(tiles[i]),
         ),
       );
   }
@@ -1023,7 +1049,20 @@ Buildman.prototype.build = function (code) {
   controls.onSubmit = function () {
     var anchors = ts.anchors();
 
-    buildSelection(self, code, anchors, rotation, anchors.map(variantAt));
+    buildSelection(
+      self,
+      code,
+      anchors,
+      rotation,
+      anchors.map(variantAt),
+      anchors.map(lookAt),
+    );
+
+    //a block that went up has its look; another put down there next is
+    //a block of its own. One turned down keeps the look it was shown with
+    anchors.forEach(function (tile) {
+      if (root.core.world.buildings.get(tile)) delete looks[tile];
+    });
 
     // stay in build mode with the selection where it was, so the next
     // one can be dragged along from it - what is under it now is taken
