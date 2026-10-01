@@ -16,6 +16,10 @@
  * row is the site of a building drawn by hand, 1x1, 2x1 and 2x2, each dealt
  * what stands on it two ways.
  *
+ * shops.png has the shops of shared/gen/shops: a row for each footprint,
+ * shops of it put together at random across - each as it is and turned a
+ * quarter turn - and under each footprint's row the same shops going up.
+ *
  * Usage:
  *   node tools/genbuildings.js [outDir]
  *
@@ -34,6 +38,7 @@ var GENERATORS = {
   flats: require("../src/shared/gen/flats.js"),
   offices: require("../src/shared/gen/offices.js"),
   sites: require("../src/shared/gen/sites.js"),
+  shops: require("../src/shared/gen/shops.js"),
 };
 
 //what each generator describes, once
@@ -143,6 +148,9 @@ function picture(image, pivotX, pivotY) {
 
 var vehicleTypes = Vehicles.describe().types;
 
+//what parks in a car park
+var PARKED = ["sedan", "hatchback", "pickup", "van"];
+
 /**
  * What is drawn over a tile with these parts, turned - the pictures at rest,
  * each with its pivot where the tile's middle is.
@@ -157,8 +165,40 @@ function overlays(parts, turns) {
       data = described(gen),
       listed = (data.data.overlays || {})[part + "/r" + turns] || [];
 
-    listed.forEach(function (o) {
-      if (o.vehicle !== undefined) {
+    listed.forEach(function (o, k) {
+      if (o.bays !== undefined) {
+        //cars in the bays, some of them empty, as a shop or a block might
+        //have them
+        o.bays
+          .map(function (bay, n) {
+            return { bay: bay, n: n };
+          })
+          .sort(function (a, b) {
+            return a.bay.y - b.bay.y;
+          })
+          .forEach(function (q) {
+            var bay = q.bay,
+              n = q.n;
+            var r = (n * 7 + k * 3 + parts.length) % 8;
+
+            if (r < 2) return;
+
+            var type = PARKED[r % PARKED.length],
+              colors = Object.keys(vehicleTypes[type].colors),
+              look =
+                vehicleTypes[type].colors[colors[(r * 5 + n) % colors.length]][
+                  bay.headings[n % bay.headings.length]
+                ];
+
+            out.push(
+              picture(
+                Vehicles.paint(look.sprite),
+                look.pivotX - bay.x,
+                look.pivotY - bay.y + up[i],
+              ),
+            );
+          });
+      } else if (o.vehicle !== undefined) {
         var look = vehicleTypes[o.vehicle].colors[o.color][o.heading];
 
         out.push(
@@ -245,6 +285,84 @@ function write(png, file) {
   console.log("Wrote " + path.relative(process.cwd(), file));
 }
 
+/**
+ * A shop of a footprint put together the way client/compoundbuilding picks
+ * one - a design by its weight, every option at random - with numbers that
+ * are the same for the same seed.
+ */
+function shopLook(designs, seed) {
+  var s = seed;
+
+  function rnd() {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  }
+
+  var total = designs.reduce(function (a, d) {
+      return a + d.weight;
+    }, 0),
+    roll = rnd() * total,
+    d = designs[0];
+
+  for (var i = 0; i < designs.length; i++) {
+    d = designs[i];
+    if ((roll -= d.weight) < 0) break;
+  }
+
+  var options = {};
+
+  Object.keys(d.axes).forEach(function (axis) {
+    options[axis] = d.axes[axis][Math.floor(rnd() * d.axes[axis].length)];
+  });
+
+  return d.tiles.map(function (t) {
+    return {
+      x: t.x,
+      y: t.y,
+      parts: t.parts.map(function (p) {
+        for (var pass = 0; pass < 2; pass++)
+          p = p.replace(/\{(\w+)\}/g, function (m, a) {
+            return options[a];
+          });
+        return p;
+      }),
+    };
+  });
+}
+
+function shops() {
+  var footprints = described("shops").data.footprints,
+    names = Object.keys(footprints),
+    per = 5,
+    png = canvas(per * 2, names.length * 2);
+
+  names.forEach(function (fp, row) {
+    var size = fp.split("x").map(Number),
+      p = { sizeX: size[0], sizeY: size[1] };
+
+    for (var n = 0; n < per; n++) {
+      var tiles = shopLook(footprints[fp], 7 + n * 101 + row * 13);
+
+      [0, 1].forEach(function (turns) {
+        draw(png, "shops", tiles, p, turns, n * 2 + turns, row * 2);
+      });
+
+      //going up, half the way there
+      draw(
+        png,
+        "shops",
+        stacking.siteTiles(tiles, 1 + (n % 2), 3 + n),
+        p,
+        0,
+        n * 2,
+        row * 2 + 1,
+      );
+    }
+  });
+
+  return png;
+}
+
 function main() {
   var out = path.resolve(process.argv[2] || DEFAULT_OUT),
     stages = stacking.STAGES.length + 1,
@@ -310,6 +428,7 @@ function main() {
   });
 
   write(blocks, path.join(out, "buildings.png"));
+  write(shops(), path.join(out, "shops.png"));
   write(sites, path.join(out, "sites.png"));
 }
 

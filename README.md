@@ -64,6 +64,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   random when it is first drawn and keeps the parts it is made of in the
   save (`src/client/js/compoundbuilding.js`); the catalogue shows one of
   each kind (`src/data/flats.js`, `offices.js`).
+- Shops are painted the same way (`src/shared/gen/shops.js`), but one
+  catalogue entry per footprint (`src/data/shops.js`) stands for several
+  designs: a 1x1 corner shop (flat, gable or shed roof, striped awning,
+  sign or side board), a 1x2 shop with a car park, a 2x2 superstore and a
+  2x3 shopping centre or covered market, the big ones with a pole sign.
+  Which design, colours and details a shop gets is picked when it is
+  placed, so the ghost already shows what will be built. Car parks - the
+  shops' and the blocks' - are filled with cars from the vehicle
+  generator, different for every building.
 - Every building goes up on a building site - the same parts for all of
   them (`src/shared/gen/sites.js`): bare earth, and on each tile one of an
   excavator, a lorry, a heap of sand, the site office or a tower crane,

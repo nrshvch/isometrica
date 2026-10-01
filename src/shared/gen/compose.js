@@ -10,12 +10,13 @@ import * as iso from "./isobox.js";
 import * as Flats from "./flats.js";
 import * as Offices from "./offices.js";
 import * as Sites from "./sites.js";
+import * as Shops from "./shops.js";
 import { lifts, kindOf } from "./stacking.js";
 
 var TILE = iso.TILE;
 
 //the generators of parts, by what their parts' names start with
-var GENERATORS = { flats: Flats, offices: Offices, sites: Sites };
+var GENERATORS = { flats: Flats, offices: Offices, sites: Sites, shops: Shops };
 
 /**
  * The boxes of a part by its name without its turn - "sites/mast" - as it is

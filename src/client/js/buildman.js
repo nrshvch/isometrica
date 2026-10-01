@@ -166,6 +166,8 @@ function createPreview(self, data, tile, rotation, opacity, look) {
     opacity,
     RenderLayer.previewLayer,
     look,
+    //the cars in its car park, as the building that goes up there has them
+    tile,
   );
 
   //placed before it goes in - the world files it by where it stands

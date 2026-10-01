@@ -482,6 +482,7 @@ function copyBuilding(self, building) {
     1,
     RenderLayer.inspectedLayer,
     building.look,
+    building.tile,
   );
 
   go.transform.setPosition(
