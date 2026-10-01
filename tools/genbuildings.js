@@ -19,6 +19,8 @@
  * shops.png has the shops of shared/gen/shops: a row for each footprint,
  * shops of it put together at random across - each as it is and turned a
  * quarter turn - and under each footprint's row the same shops going up.
+ * houses.png has the houses of shared/gen/houses the same way, a row for
+ * every kind of house and footprint.
  *
  * Usage:
  *   node tools/genbuildings.js [outDir]
@@ -39,6 +41,7 @@ var GENERATORS = {
   offices: require("../src/shared/gen/offices.js"),
   sites: require("../src/shared/gen/sites.js"),
   shops: require("../src/shared/gen/shops.js"),
+  houses: require("../src/shared/gen/houses.js"),
 };
 
 //what each generator describes, once
@@ -330,27 +333,35 @@ function shopLook(designs, seed) {
   });
 }
 
-function shops() {
-  var footprints = described("shops").data.footprints,
+/**
+ * A row of buildings put together at random for every footprint of a
+ * generator that has them - the shops, the houses - and under each the same
+ * buildings going up.
+ */
+function footprintSheet(gen) {
+  var footprints = described(gen).data.footprints,
     names = Object.keys(footprints),
     per = 5,
     png = canvas(per * 2, names.length * 2);
 
   names.forEach(function (fp, row) {
-    var size = fp.split("x").map(Number),
+    var size = fp
+        .match(/(\d+)x(\d+)$/)
+        .slice(1)
+        .map(Number),
       p = { sizeX: size[0], sizeY: size[1] };
 
     for (var n = 0; n < per; n++) {
       var tiles = shopLook(footprints[fp], 7 + n * 101 + row * 13);
 
       [0, 1].forEach(function (turns) {
-        draw(png, "shops", tiles, p, turns, n * 2 + turns, row * 2);
+        draw(png, gen, tiles, p, turns, n * 2 + turns, row * 2);
       });
 
       //going up, half the way there
       draw(
         png,
-        "shops",
+        gen,
         stacking.siteTiles(tiles, 1 + (n % 2), 3 + n),
         p,
         0,
@@ -428,7 +439,8 @@ function main() {
   });
 
   write(blocks, path.join(out, "buildings.png"));
-  write(shops(), path.join(out, "shops.png"));
+  write(footprintSheet("shops"), path.join(out, "shops.png"));
+  write(footprintSheet("houses"), path.join(out, "houses.png"));
   write(sites, path.join(out, "sites.png"));
 }
 

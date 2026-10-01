@@ -224,8 +224,10 @@ function fenced(tiles) {
  * @returns {Object[]} the tiles as they are at that stage
  */
 export function siteTiles(tiles, stage, seed) {
-  if (tiles[0].parts[0].split("/")[0] === "shops")
-    return fenced(shopSite(tiles, stage, seed));
+  var gen = tiles[0].parts[0].split("/")[0];
+
+  if (gen === "shops") return fenced(shopSite(tiles, stage, seed));
+  if (gen === "houses") return fenced(houseSite(tiles, stage, seed));
 
   var dealt = deal(tiles.length, seed),
     yards = [],
@@ -315,6 +317,38 @@ function shopSite(tiles, stage, seed) {
       ];
 
     return { x: tile.x, y: tile.y, parts: parts };
+  });
+}
+
+/**
+ * What a house looks like while it goes up: a building site like any other to
+ * begin with; then its walls going up on their slab, as high as its windows,
+ * and then to the eaves (shared/gen/houses site) - a part of them for every
+ * tile, by the design of the house and where its buildings stand.
+ */
+function houseSite(tiles, stage, seed) {
+  var dealt = deal(tiles.length, seed);
+
+  return tiles.map(function (tile, i) {
+    var p = tile.parts[0].split("/");
+
+    return {
+      x: tile.x,
+      y: tile.y,
+      parts:
+        stage === 0
+          ? lot(dealt[i], CRANE_LOW)
+          : [
+              [
+                "houses/frame",
+                p[1],
+                p[2],
+                stage,
+                p[p.length - 2],
+                p[p.length - 1],
+              ].join("/"),
+            ],
+    };
   });
 }
 

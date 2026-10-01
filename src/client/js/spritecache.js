@@ -120,7 +120,7 @@ function addGenerated(self, meta) {
     self.sheets[name] = new Sheet(null, {
       name: name,
       gen: meta.generator,
-      key: s.key,
+      key: s.key !== undefined ? s.key : name,
     });
     self.frames[name] = {
       sheet: name,
