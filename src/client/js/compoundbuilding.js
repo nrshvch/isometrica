@@ -175,7 +175,8 @@ function spriteOf(part, turns) {
  * @param compound {Object}
  * @param turns {number} quarter turns, 0..3
  * @returns {{x: number, z: number, pivotX: number, pivotY: number,
- *            sprite: CachedSprite}[]} x, z the tile in the block
+ *            sprite: CachedSprite, overlays: Object[]}[]} x, z the tile in
+ *          the block; overlays, what is drawn over it (overlaysOf)
  */
 function pieces(sprites, look, compound, turns) {
   var storey = sprites.generated[compound.gen].storey,
@@ -210,6 +211,7 @@ function pieces(sprites, look, compound, turns) {
       z: at[1],
       pivotX: -minX,
       pivotY: -minY,
+      overlays: overlaysOf(sprites, compound.gen, tile.parts, up, turns),
       sprite: sprites.getComposite(
         laid.map(function (p) {
           return { name: p.name, x: p.left - minX, y: p.top - minY };
@@ -217,6 +219,58 @@ function pieces(sprites, look, compound, turns) {
       ),
     };
   });
+}
+
+/**
+ * What is drawn over a tile with these parts (shared/gen/blocks overlays),
+ * ready for client/siterenderer: a machine with the vehicle generator's
+ * picture of it, the jib with its frames - each with its pivot taken from
+ * where the tile's middle is.
+ *
+ * @param up {number[]} how far each part is laid higher than it was painted
+ */
+function overlaysOf(sprites, gen, parts, up, turns) {
+  var meta = sprites.generated[gen],
+    vehicles = sprites.generated.vehicles,
+    out = [];
+
+  parts.forEach(function (part, i) {
+    var listed = meta.overlays && meta.overlays[part + "/r" + turns];
+
+    if (!listed) return;
+
+    listed.forEach(function (o) {
+      if (o.frames !== undefined) {
+        out.push({
+          frames: o.frames.map(function (name) {
+            var f = sprites.frame(name);
+
+            return {
+              sprite: sprites.getSprite(name),
+              pivotX: f.pivotX,
+              pivotY: f.pivotY + up[i],
+            };
+          }),
+        });
+        return;
+      }
+
+      var type = vehicles && vehicles[o.vehicle],
+        look = type && type.colors[o.color] && type.colors[o.color][o.heading];
+
+      if (!look) return;
+
+      out.push({
+        vehicle: o.vehicle,
+        sprite: sprites.getSprite(look.sprite),
+        pivotX: look.pivotX - o.x,
+        pivotY: look.pivotY - o.y + up[i],
+        move: o.move,
+      });
+    });
+  });
+
+  return out;
 }
 
 /**

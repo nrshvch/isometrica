@@ -64,10 +64,13 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   random when it is first drawn and keeps the parts it is made of in the
   save (`src/client/js/compoundbuilding.js`); the catalogue shows one of
   each kind (`src/data/flats.js`, `offices.js`).
-- While a block goes up it is drawn as a building site of its own shape:
-  diggers and trucks, then its structure with a crane by it from a quarter
-  of the way, then its lower storeys finished under the structure from
-  halfway (`src/shared/gen/stacking.js`).
+- While a block goes up it is drawn as a building site of its own shape: a
+  digger or a lorry on each tile, then its structure with a tower crane by
+  it from a quarter of the way, then its lower storeys finished under the
+  structure from halfway (`src/shared/gen/stacking.js`). The machines - the
+  vehicle generator's lorry and excavator, which never drive the streets -
+  shift back and forth as they work, and the crane's jib swings to and fro
+  (`src/client/js/siterenderer.js`).
 - Any building can be turned four ways (`src/core/rotation.js`). Blocks are
   painted from all four sides; a building drawn by hand shows its front for
   its back and its side for the other side.
