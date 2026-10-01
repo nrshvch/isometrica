@@ -1028,7 +1028,8 @@ Buildman.prototype.build = function (code) {
         if (road === null || seen[next] === true) continue;
 
         seen[next] = true;
-        id = Road.profile(terrain, next, isRoad);
+        //a street stays a street, joined up with the new road
+        id = Road.profile(terrain, next, isRoad, roadman.paved(next));
 
         if (id !== road.typeCode) {
           road.view.showPiece(id);

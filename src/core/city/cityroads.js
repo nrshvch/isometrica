@@ -57,6 +57,17 @@ CityRoads.prototype.reaches = function (building) {
 };
 
 /**
+ * @param tile {number}
+ * @returns {boolean} whether the road on tile is part of the city's network -
+ *          the biggest stretch of its roads that hangs together
+ */
+CityRoads.prototype.inNetwork = function (tile) {
+  update(this);
+
+  return this._network[tile] === true;
+};
+
+/**
  * @returns {number} how many road tiles the network has
  */
 CityRoads.prototype.getNetworkSize = function () {
