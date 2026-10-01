@@ -19,6 +19,7 @@ import * as Offices from "./offices.js";
 import * as Sites from "./sites.js";
 import * as Shops from "./shops.js";
 import * as Houses from "./houses.js";
+import * as Utilities from "./utilities.js";
 import { tileName, shoreName } from "./names.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
@@ -36,6 +37,7 @@ export var GENERATORS = [
   "sites",
   "shops",
   "houses",
+  "utilities",
 ];
 
 //the generators of blocks put together out of parts (shared/gen/blocks)
@@ -47,6 +49,7 @@ var BLOCKS = {
   sites: Sites,
   shops: Shops,
   houses: Houses,
+  utilities: Utilities,
 };
 
 //the hand-drawn pictures each generator paints from, by what their names
@@ -59,6 +62,7 @@ export var INPUTS = {
   sites: [],
   shops: [],
   houses: [],
+  utilities: [],
   stones: ["scenery/stones/", "terrain/grass/2222.png"],
 };
 

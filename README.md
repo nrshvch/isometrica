@@ -86,12 +86,24 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   a tile is about 10 m across and a storey 12 high - and what does not fit
   a footprint is left to a bigger one: the bungalow has a drive to its
   garage but no room to park on it; the two-storey houses on two and three
-  tiles park in front and keep their back gardens shut off, out of their
+  tiles take the whole width of their plot, the car on a hard standing in
+  the front garden, and keep their back gardens to themselves, out of their
   back doors. Smoke rises from the chimneys of every
   house lived in. Whatever of a house stands in front of the cars on its
   drive is drawn again over them, so a car behind a hedge stays behind it
   whichever way the house is turned - and the front of a building site's
   fence over its digger and lorry the same way.
+- The water tower is painted too (`src/shared/gen/utilities.js`): the
+  American small-town kind, a round tank on four braced steel legs with a
+  catwalk, a ladder and the riser pipe down into the ground.
+- The catalogue offers only what is painted: the hand-drawn houses, shops,
+  offices, flats, town hall, trees and cliff are kept for the cities that
+  already have them, but no longer offered.
+- A town starts without a town hall. Its name hangs over the middle of the
+  land it owns, and its road network is the biggest stretch of its roads
+  that hangs together - a building is on the road when it is next to that;
+  a lane off on its own does not count. With no town hall to bill it to,
+  the land is billed by the city itself.
 - The backs of buildings are not left bare (`src/shared/gen/blocks.js`
   backs): a shop has a steel door out to its bins - and a skip, behind a
   big one - the air conditioning's units on the wall, rain streaks, the odd

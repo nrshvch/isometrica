@@ -4,7 +4,7 @@
  * City land, bought block by block.
  *
  * A city starts off owning a single BLOCK_SIZE x BLOCK_SIZE block of tiles
- * centered on its city hall, and grows only when the player pays for another
+ * centered on where it was founded, and grows only when the player pays for another
  * block. Buildings do not claim land on their own anymore - that used to creep
  * the border one tile at a time, which both swallowed water tiles nobody can
  * build on and never opened up enough room at once for the bigger buildings.
@@ -30,7 +30,7 @@ function Area(city) {
   this._blocks = {};
 
   //the block grid is anchored on the city origin, so that the very first
-  //block is centered on the city hall instead of landing on it at random
+  //block is centered on where the city was founded
   this._originX = Terrain.extractX(city.tile()) - (BLOCK_SIZE >> 1);
   this._originY = Terrain.extractY(city.tile()) - (BLOCK_SIZE >> 1);
 }
@@ -86,6 +86,31 @@ Area.prototype.contains = function (a, b, c, d) {
   }
 
   return true;
+};
+
+/**
+ * The middle of all the land the city owns.
+ *
+ * @returns {{x: number, y: number}} in tiles, not whole ones - the middle of
+ *          a tile is at its own x and y
+ */
+Area.prototype.center = function () {
+  var tiles = this.getTiles(),
+    x = 0,
+    y = 0;
+
+  if (tiles.length === 0)
+    return {
+      x: Terrain.extractX(this._city.tile()),
+      y: Terrain.extractY(this._city.tile()),
+    };
+
+  for (var i = 0; i < tiles.length; i++) {
+    x += Terrain.extractX(tiles[i]);
+    y += Terrain.extractY(tiles[i]);
+  }
+
+  return { x: x / tiles.length, y: y / tiles.length };
 };
 
 /**
@@ -225,8 +250,9 @@ Area.prototype.buyBlock = function (bx, by) {
 };
 
 /**
- * @deprecated land is billed through the city hall now - see the upkeepPerTile
- *             of the city hall in data/buildings
+ * @deprecated land is billed through the town hall, or by the city where
+ *             there is none - see the upkeepPerTile of the town hall in
+ *             data/buildings, and City landUpkeep
  */
 Area.prototype.getAreaCost = function () {
   return 0;
