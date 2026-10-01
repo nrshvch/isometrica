@@ -40,6 +40,8 @@ var buildingData = (Core.BuildingData = {});
 //one of two trees, picked at random the way a house is (see house) - and
 //the same two the world grows on its own (see core/ambient)
 buildingData[BuildingCode.tree] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.tree,
@@ -109,6 +111,8 @@ buildingData[BuildingCode.tree] = {
 };
 
 buildingData[BuildingCode.cliff] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.cliff,
@@ -193,6 +197,8 @@ buildingData[BuildingCode.road] = {
 };
 
 buildingData[BuildingCode.house0] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.house0,
@@ -245,6 +251,8 @@ buildingData[BuildingCode.house0] = {
 };
 
 buildingData[BuildingCode.house1] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.house1,
@@ -288,6 +296,8 @@ buildingData[BuildingCode.house1] = {
 };
 
 buildingData[BuildingCode.house2] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 2,
   buildingCode: BuildingCode.house2,
@@ -355,6 +365,8 @@ buildingData[BuildingCode.house2] = {
 //one by one. The variants are buildings of their own, each with a name,
 //and only differ from one another in how they are drawn.
 buildingData[BuildingCode.house] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 2,
   sizeY: 1,
   buildingCode: BuildingCode.house,
@@ -521,6 +533,8 @@ buildingData[BuildingCode.house] = {
 };
 
 buildingData[BuildingCode.cityHall] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.cityHall,
@@ -586,6 +600,8 @@ buildingData[BuildingCode.cityHall] = {
 //counter and pays its share into the treasury - as long as customers can get
 //to it and there is water in the tap.
 buildingData[BuildingCode.smallCommerce] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.smallCommerce,
@@ -687,6 +703,8 @@ buildingData[BuildingCode.smallCommerce] = {
 //flats about 200 - near enough the same money, with the flats holding
 //twice the people and the houses paying for themselves sooner.
 buildingData[BuildingCode.apartments] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 2,
   sizeY: 2,
   buildingCode: BuildingCode.apartments,
@@ -786,6 +804,8 @@ buildingData[BuildingCode.apartments] = {
 };
 
 buildingData[BuildingCode.bigShop] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 2,
   sizeY: 2,
   buildingCode: BuildingCode.bigShop,
@@ -885,6 +905,8 @@ buildingData[BuildingCode.bigShop] = {
 //nothing makes more money than an office tower, and nothing costs more to
 //put up - a late-game building, not a first one
 buildingData[BuildingCode.office] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.office,
@@ -1001,28 +1023,13 @@ buildingData[BuildingCode.waterTower] = {
     money: 2500,
   },
   name: "water tower",
-  sprites: [
-    {
-      x: 0,
-      y: 0,
-      z: 0,
-      pivotX: 18,
-      pivotY: 64,
-      path: "buildings/watertower.png",
-      layer: RenderLayer.buildingsLayer,
-    },
-  ],
-  spritesRotate: [
-    {
-      x: 0,
-      y: 0,
-      z: 0,
-      pivotX: 19,
-      pivotY: 64,
-      path: "buildings/watertowerr.png",
-      layer: RenderLayer.buildingsLayer,
-    },
-  ],
+  //drawn out of parts, see shared/gen/utilities and client/compoundbuilding
+  compound: {
+    gen: "utilities",
+    footprint: "watertower",
+    sizeX: 1,
+    sizeY: 1,
+  },
 };
 
 // buildingData[BuildingCode.waterPump] = {

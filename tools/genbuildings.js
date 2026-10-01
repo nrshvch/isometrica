@@ -20,7 +20,7 @@
  * shops of it put together at random across - each as it is and turned a
  * quarter turn - and under each footprint's row the same shops going up.
  * houses.png has the houses of shared/gen/houses the same way, a row for
- * every kind of house and footprint.
+ * every kind of house and footprint; utilities.png the water tower.
  *
  * Usage:
  *   node tools/genbuildings.js [outDir]
@@ -42,6 +42,7 @@ var GENERATORS = {
   sites: require("../src/shared/gen/sites.js"),
   shops: require("../src/shared/gen/shops.js"),
   houses: require("../src/shared/gen/houses.js"),
+  utilities: require("../src/shared/gen/utilities.js"),
 };
 
 //what each generator describes, once
@@ -345,11 +346,22 @@ function footprintSheet(gen) {
     png = canvas(per * 2, names.length * 2);
 
   names.forEach(function (fp, row) {
-    var size = fp
-        .match(/(\d+)x(\d+)$/)
-        .slice(1)
-        .map(Number),
-      p = { sizeX: size[0], sizeY: size[1] };
+    //as big as its tiles reach
+    var tiles0 = footprints[fp][0].tiles,
+      p = {
+        sizeX: Math.max.apply(
+          null,
+          tiles0.map(function (t) {
+            return t.x + 1;
+          }),
+        ),
+        sizeY: Math.max.apply(
+          null,
+          tiles0.map(function (t) {
+            return t.y + 1;
+          }),
+        ),
+      };
 
     for (var n = 0; n < per; n++) {
       var tiles = shopLook(footprints[fp], 7 + n * 101 + row * 13);
@@ -441,6 +453,7 @@ function main() {
   write(blocks, path.join(out, "buildings.png"));
   write(footprintSheet("shops"), path.join(out, "shops.png"));
   write(footprintSheet("houses"), path.join(out, "houses.png"));
+  write(footprintSheet("utilities"), path.join(out, "utilities.png"));
   write(sites, path.join(out, "sites.png"));
 }
 
