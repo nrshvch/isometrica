@@ -115,8 +115,11 @@ function patch(b, ramp, x0, x1, y0, y1, z, thick, color, finish) {
 
   for (var a = a0; a < a1 - 1e-6; a += 0.5) {
     var e = Math.min(a + 0.5, a1),
-      m = (a + e) / 2,
-      h = alongY ? rampHeight(ramp, 0, m) : rampHeight(ramp, m, 0);
+      //as high as its upper end, so that it meets the road where the ramp
+      //comes out on top without a gap showing the edge of it
+      h = alongY
+        ? Math.max(rampHeight(ramp, 0, a), rampHeight(ramp, 0, e))
+        : Math.max(rampHeight(ramp, a, 0), rampHeight(ramp, e, 0));
 
     b.push(
       alongY
@@ -158,15 +161,17 @@ function centreLines(b, joins, ramp, z) {
   //a bend, or a lone end: no line
   if (alongX === alongY) return;
 
-  for (var a = 1; a < TILE; a += 6) {
+  //a dash every eight, so that they keep the same step from one tile to
+  //the next
+  for (var a = 2; a < TILE; a += 8) {
     var from = alongX ? joins["-x"] : joins["-y"],
       to = alongX ? joins["+x"] : joins["+y"];
 
     //a dead end stops short of the end of its arm
-    if ((!from && a < A0) || (!to && a + 3 > A1)) continue;
+    if ((!from && a < A0) || (!to && a + 4 > A1)) continue;
 
-    if (alongX) patch(b, ramp, a, a + 3.5, 15.4, 16.6, z + 0.05, 0.1, STRIPE);
-    else patch(b, ramp, 15.4, 16.6, a, a + 3.5, z + 0.05, 0.1, STRIPE);
+    if (alongX) patch(b, ramp, a, a + 4, 15.4, 16.6, z + 0.05, 0.1, STRIPE);
+    else patch(b, ramp, 15.4, 16.6, a, a + 4, z + 0.05, 0.1, STRIPE);
   }
 }
 
@@ -275,15 +280,16 @@ function piece(joins, ramp, paved) {
   var b = [];
 
   if (!paved)
-    //a strip of gravel along the edges of the asphalt
+    //a strip of gravel along the edges of the asphalt - kept on the tile,
+    //or it would lie across the next tile's asphalt where they meet
     asphaltRects(joins).forEach(function (r) {
       patch(
         b,
         ramp,
-        r[0] - 1,
-        r[1] + 1,
-        r[2] - 1,
-        r[3] + 1,
+        Math.max(0, r[0] - 1),
+        Math.min(TILE, r[1] + 1),
+        Math.max(0, r[2] - 1),
+        Math.min(TILE, r[3] + 1),
         0.15,
         0.15,
         GRAVEL,
