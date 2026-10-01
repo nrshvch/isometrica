@@ -11,7 +11,8 @@
  *
  * sites.png has every kind going up: a row per kind, its stages across
  * (shared/gen/stacking stageOf) and the finished block last, each as it is
- * and turned a quarter turn.
+ * and turned a quarter turn - with what the game draws over a site, the
+ * machines at rest and the crane's jib straight along its track.
  *
  * Usage:
  *   node tools/genbuildings.js [outDir]
@@ -24,6 +25,7 @@ var path = require("path");
 var PNG = require("pngjs").PNG;
 var iso = require("../src/shared/gen/isobox.js");
 var stacking = require("../src/shared/gen/stacking.js");
+var Vehicles = require("../src/shared/gen/vehicles.js");
 
 var GENERATORS = {
   flats: require("../src/shared/gen/flats.js"),
@@ -108,9 +110,75 @@ for (var j = 0; j < 32; j++)
         : null,
     );
 
+//a painted picture, {width, height, data}, as iso.blit takes one
+function picture(image, pivotX, pivotY) {
+  var pixels = [];
+
+  for (var k = 0; k < image.data.length; k += 4)
+    pixels.push(
+      image.data[k + 3] === 0
+        ? null
+        : [image.data[k], image.data[k + 1], image.data[k + 2]],
+    );
+
+  return {
+    w: image.width,
+    h: image.height,
+    pixels: pixels,
+    pivotX: pivotX,
+    pivotY: pivotY,
+  };
+}
+
+var vehicleTypes = Vehicles.describe().types;
+
+/**
+ * What is drawn over a tile with these parts, turned - the pictures at rest,
+ * each with its pivot where the tile's middle is.
+ */
+function overlays(gen, parts, turns) {
+  var g = GENERATORS[gen],
+    data = g.describe(),
+    out = [];
+
+  parts.forEach(function (part) {
+    (data.data.overlays[part + "/r" + turns] || []).forEach(function (o) {
+      if (o.vehicle !== undefined) {
+        var look = vehicleTypes[o.vehicle].colors[o.color][o.heading];
+
+        out.push(
+          picture(
+            Vehicles.paint(look.sprite),
+            look.pivotX - o.x,
+            look.pivotY - o.y,
+          ),
+        );
+      } else {
+        //the jib straight along its track, halfway through its turn
+        var name = o.frames[(o.frames.length - 1) / 2],
+          size = data.sizes[name];
+
+        out.push(picture(g.paint(name), size.pivotX, size.pivotY));
+      }
+    });
+  });
+
+  return out;
+}
+
+//where tile x, y of a footprint sizeX by sizeY goes, turned
+function turnTile(x, y, sizeX, sizeY, turns) {
+  return [
+    [x, y],
+    [y, sizeX - 1 - x],
+    [sizeX - 1 - x, sizeY - 1 - y],
+    [sizeY - 1 - y, x],
+  ][turns];
+}
+
 /**
  * Draws the block on tiles, turned, in the cell at col, row: on the grass
- * around it, its tiles back to front.
+ * around it, its tiles back to front, each with what is drawn over it.
  */
 function draw(png, gen, tiles, p, turns, col, row) {
   var sizeX = turns % 2 ? p.sizeY : p.sizeX,
@@ -134,12 +202,25 @@ function draw(png, gen, tiles, p, turns, col, row) {
       return b.x + b.y - (a.x + a.y);
     })
     .forEach(function (piece) {
-      iso.blit(
-        png,
-        piece,
-        ox + (piece.x - piece.y) * 32 - piece.pivotX,
-        oy - (piece.x + piece.y) * 16 - piece.pivotY,
-      );
+      var mx = ox + (piece.x - piece.y) * 32,
+        my = oy - (piece.x + piece.y) * 16;
+
+      iso.blit(png, piece, mx - piece.pivotX, my - piece.pivotY);
+
+      tiles.forEach(function (tile) {
+        var at = turnTile(tile.x, tile.y, p.sizeX, p.sizeY, turns);
+
+        if (at[0] !== piece.x || at[1] !== piece.y) return;
+
+        overlays(gen, tile.parts, turns).forEach(function (o) {
+          iso.blit(
+            png,
+            o,
+            Math.round(mx - o.pivotX),
+            Math.round(my - o.pivotY),
+          );
+        });
+      });
     });
 }
 

@@ -14,6 +14,9 @@
  *
  * and in front of it, a yard tile: a car park, or a plaza with a fountain or
  * a sculpture among planted trees.
+ *
+ * Nothing of it is quite flat colour: its glass has the sky in it, and
+ * everything else a faint grain (blocks MATTE, GLASSY).
  */
 import {
   blocks,
@@ -27,6 +30,8 @@ import {
   parking,
   STOREY,
   PLINTH,
+  MATTE,
+  GLASSY,
   METAL,
   VENT,
 } from "./blocks.js";
@@ -83,7 +88,7 @@ var SECTION = {
 function curtain(b, s, z0, z1, glass, frame, step) {
   var x;
 
-  b.push(box(s.x0, s.x1, s.front, s.back, z0, z1, glass));
+  b.push(box(s.x0, s.x1, s.front, s.back, z0, z1, glass, GLASSY));
 
   for (x = s.cell + step / 2; x < s.cell + 32; x += step) {
     if (x < s.x0 || x + 0.5 > s.x1) continue;
@@ -130,6 +135,7 @@ function groundStorey(b, s, pal) {
       PLINTH,
       PLINTH + 7,
       darker(pal.glass, 0.3),
+      GLASSY,
     ),
   );
   b.push(
@@ -387,6 +393,7 @@ var offices = blocks({
   upper: upperStorey,
   roof: roof,
   frame: frame,
+  finish: MATTE,
 });
 
 export var describe = offices.describe,

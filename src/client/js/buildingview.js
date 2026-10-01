@@ -14,6 +14,7 @@ import Core from "core/main";
 import CompoundBuilding from "./compoundbuilding";
 import Rotation from "core/rotation";
 import { stageOf, STAGES } from "shared/gen/stacking";
+import SiteRenderer from "./siterenderer";
 
 var Terrain = Core.Terrain;
 
@@ -270,8 +271,14 @@ function addParts(parent, compound, turns, opacity, layer, look) {
 
   CompoundBuilding.pieces(sprites, look, compound, turns).forEach(
     function (piece) {
-      var renderer = new engine.SpriteRenderer(),
+      //a tile of a site with something moving over it draws that too
+      var renderer =
+          piece.overlays.length > 0
+            ? new SiteRenderer()
+            : new engine.SpriteRenderer(),
         go = new engine.GameObject();
+
+      if (piece.overlays.length > 0) renderer.overlays = piece.overlays;
 
       renderer.layer = layer !== undefined ? layer : RenderLayer.buildingsLayer;
       renderer.pivotX = piece.pivotX;
