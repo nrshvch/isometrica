@@ -28,9 +28,10 @@ var ORDER = ["tower", "toweryard", "wall", "wallyard"];
 
 var STOREYS = [2, 3];
 
-//the heights the catalogue offers: the others stay buildable from a save
-//that has them, and are not offered any more
-var OFFERED = [3];
+//what the catalogue offers: the blocks with a yard, three storeys high. The
+//others stay buildable from a save that has them, and are not offered any
+//more
+var OFFERED = { toweryard: [3], wallyard: [3] };
 
 //how many live in a section, each storey of it
 var PER_STOREY = 8;
@@ -72,7 +73,7 @@ function buildings() {
           money: capacity * 1000 + (l.yard ? l.cells * PER_STOREY * 1000 : 0),
         },
         name: storeys + "-storey " + l.name,
-        hidden: OFFERED.indexOf(storeys) === -1,
+        hidden: (OFFERED[layout] || []).indexOf(storeys) === -1,
         //drawn out of parts, see client/compoundbuilding
         compound: {
           gen: "flats",

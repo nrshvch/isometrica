@@ -34,8 +34,6 @@ var BLOCKS = [
     storeys: 4,
     yards: ["parking", "plaza"],
     name: "office block",
-    //not offered any more; there for a save that has one
-    hidden: true,
   },
 ];
 
@@ -72,7 +70,6 @@ function buildings() {
         money: jobs * COST_PER_JOB,
       },
       name: block.storeys + "-storey " + block.name,
-      hidden: block.hidden === true,
       //drawn out of parts, see client/compoundbuilding
       compound: {
         gen: "offices",
