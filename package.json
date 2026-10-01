@@ -17,6 +17,7 @@
     "generate:terrain": "node tools/genterrain.js",
     "generate:vehicles": "node tools/genvehicles.js",
     "generate:stones": "node tools/genstones.js",
+    "generate:buildings": "node tools/genbuildings.js",
     "generate:trees": "node tools/gentrees.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

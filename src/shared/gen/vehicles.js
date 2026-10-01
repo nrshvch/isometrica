@@ -776,3 +776,6 @@ function toImage(p) {
 
   return { width: p.w, height: p.h, data: data };
 }
+
+//for whatever else is painted with cars in it: a car park full of them
+export { TYPES, COLORS, DIRECTIONS, place };

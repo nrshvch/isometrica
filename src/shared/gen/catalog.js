@@ -14,6 +14,7 @@
 import * as Terrain from "./terrain.js";
 import * as Vehicles from "./vehicles.js";
 import * as Stones from "./stones.js";
+import * as Flats from "./flats.js";
 import { tileName, shoreName } from "./names.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
@@ -22,13 +23,14 @@ var LAND = "grass",
   WATER = "water_shallow",
   DEEP = "water_deep";
 
-export var GENERATORS = ["terrain", "vehicles", "stones"];
+export var GENERATORS = ["terrain", "vehicles", "stones", "flats"];
 
 //the hand-drawn pictures each generator paints from, by what their names
 //start with
 export var INPUTS = {
   terrain: ["terrain/grass/", "terrain/water/", "terrain/shore/"],
   vehicles: [],
+  flats: [],
   stones: ["scenery/stones/", "terrain/grass/2222.png"],
 };
 
@@ -66,7 +68,10 @@ function terrainSources(pixels) {
  *          generator calls it; data, what the game needs to know besides:
  *          for terrain, which tiles there are to draw a tile of each kind and
  *          slope with (see client/generated tileParts); for vehicles, every
- *          body type as shared/gen/vehicles describes it
+ *          body type as shared/gen/vehicles describes it; for flats, what
+ *          parts there are to put a block together out of, and how high a
+ *          storey is - and each of their sprites has pivotX/pivotY too,
+ *          where the middle of its tile is in it
  */
 export function describe(gen, pixels) {
   var sprites = {},
@@ -74,6 +79,12 @@ export function describe(gen, pixels) {
 
   function add(name, size, key) {
     sprites[name] = { w: size.w, h: size.h, key: key };
+
+    //a part of something put together - where in it the tile it stands on is
+    if (size.pivotX !== undefined) {
+      sprites[name].pivotX = size.pivotX;
+      sprites[name].pivotY = size.pivotY;
+    }
   }
 
   if (gen === "terrain") {
@@ -118,6 +129,13 @@ export function describe(gen, pixels) {
     Object.keys(stones).forEach(function (name) {
       add("gen/scenery/" + name, stones[name], name);
     });
+  } else if (gen === "flats") {
+    var flats = Flats.describe();
+
+    Object.keys(flats.sizes).forEach(function (name) {
+      add(name, flats.sizes[name], name);
+    });
+    data = flats.data;
   } else throw new Error("no such generator: " + gen);
 
   return { sprites: sprites, data: data };
@@ -145,6 +163,7 @@ export function createPainter(loadPixels) {
               under(pixels, "scenery/stones/"),
               pixels["terrain/grass/2222.png"],
             );
+          if (gen === "flats") return { paint: Flats.paint };
           return { paint: Vehicles.paint };
         },
         function (e) {
