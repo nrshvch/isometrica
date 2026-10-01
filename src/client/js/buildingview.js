@@ -73,9 +73,24 @@ BuildingView.prototype.update = function () {
     var children = this.gameObject.transform.children.slice();
     for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
 
+    var lots =
+      b.data.getState() === BuildingState.underConstruction && !look
+        ? CompoundBuilding.lotPieces(
+            vkaria.sprites,
+            Rotation.sizeX(staticData, b.data.rotation),
+            Rotation.sizeY(staticData, b.data.rotation),
+            b.data.tile,
+          )
+        : null;
+
     if (b.data.getState() === BuildingState.underConstruction && look) {
       drawSite(this, staticData, look);
+    } else if (lots !== null) {
+      //any other building goes up on a building site like the blocks' -
+      //the same all the while
+      addPieces(this.gameObject, lots, this.opacity);
     } else if (b.data.getState() === BuildingState.underConstruction) {
+      //the sites not described yet: a placeholder on each tile
       var sizeX = Rotation.sizeX(staticData, b.data.rotation),
         sizeY = Rotation.sizeY(staticData, b.data.rotation);
 
@@ -163,7 +178,7 @@ function drawSite(self, staticData, look) {
     Rotation.turns(data.rotation),
     self.opacity,
     undefined,
-    CompoundBuilding.siteLook(look, stage),
+    CompoundBuilding.siteLook(look, stage, data.tile),
   );
 
   if (stage < STAGES.length)
@@ -269,33 +284,44 @@ function addParts(parent, compound, turns, opacity, layer, look) {
   //nothing to put it together out of
   if (look === null) return;
 
-  CompoundBuilding.pieces(sprites, look, compound, turns).forEach(
-    function (piece) {
-      //a tile of a site with something moving over it draws that too
-      var renderer =
-          piece.overlays.length > 0
-            ? new SiteRenderer()
-            : new engine.SpriteRenderer(),
-        go = new engine.GameObject();
-
-      if (piece.overlays.length > 0) renderer.overlays = piece.overlays;
-
-      renderer.layer = layer !== undefined ? layer : RenderLayer.buildingsLayer;
-      renderer.pivotX = piece.pivotX;
-      renderer.pivotY = piece.pivotY;
-      renderer.setSprite(piece.sprite);
-
-      go.addComponent(renderer);
-      //the renderer resets its opacity once it is attached
-      renderer.opacity = opacity;
-      parent.transform.addChild(go.transform);
-      go.transform.setLocalPosition(
-        piece.x * Config.tileSize,
-        0,
-        piece.z * Config.tileSize,
-      );
-    },
+  addPieces(
+    parent,
+    CompoundBuilding.pieces(sprites, look, compound, turns),
+    opacity,
+    layer,
   );
+}
+
+/**
+ * Hangs the pieces of something put together out of parts under parent -
+ * see client/compoundbuilding pieces - each tile at its own place.
+ */
+function addPieces(parent, pieces, opacity, layer) {
+  pieces.forEach(function (piece) {
+    //a tile of a site with something moving over it draws that too
+    var renderer =
+        piece.overlays.length > 0
+          ? new SiteRenderer()
+          : new engine.SpriteRenderer(),
+      go = new engine.GameObject();
+
+    if (piece.overlays.length > 0) renderer.overlays = piece.overlays;
+
+    renderer.layer = layer !== undefined ? layer : RenderLayer.buildingsLayer;
+    renderer.pivotX = piece.pivotX;
+    renderer.pivotY = piece.pivotY;
+    renderer.setSprite(piece.sprite);
+
+    go.addComponent(renderer);
+    //the renderer resets its opacity once it is attached
+    renderer.opacity = opacity;
+    parent.transform.addChild(go.transform);
+    go.transform.setLocalPosition(
+      piece.x * Config.tileSize,
+      0,
+      piece.z * Config.tileSize,
+    );
+  });
 }
 
 BuildingView.prototype.render = function () {

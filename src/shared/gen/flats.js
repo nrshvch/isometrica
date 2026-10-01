@@ -13,6 +13,9 @@
  * a car park with the same cars in it that drive the roads, or a lawn with
  * trees.
  *
+ * Its walls have a faint grain to them, and its windows the sky in them
+ * (blocks MATTE, GLASSY).
+ *
  * Every part comes in every palette, and its details in a few variants: which
  * windows of a storey have balconies, front and back; where a roof's vents
  * are; how a yard is laid out.
@@ -30,7 +33,9 @@ import {
   PLINTH,
   WOOD,
   METAL,
-  HEDGE,
+  hedge,
+  MATTE,
+  GLASSY,
   DOOR,
   VENT,
 } from "./blocks.js";
@@ -123,6 +128,7 @@ function storey(b, s, z0, z1, zf, upper, pal, front, back) {
         landing - 2,
         landing + 2,
         GLASS,
+        GLASSY,
       ),
     );
   b.push(
@@ -134,6 +140,7 @@ function storey(b, s, z0, z1, zf, upper, pal, front, back) {
       landing - 2,
       landing + 2,
       GLASS,
+      GLASSY,
     ),
   );
 }
@@ -264,7 +271,7 @@ function facade(b, cell, balconies, y, out, zf, pal) {
       w1 = cell + w[1];
 
     if (balconies.indexOf(i) >= 0) balcony(b, w0, w1, y, out, zf, pal);
-    else b.push(box(w0, w1, y, y + out * 0.2, zf + 3, zf + 9, GLASS));
+    else b.push(box(w0, w1, y, y + out * 0.2, zf + 3, zf + 9, GLASS, GLASSY));
   });
 }
 
@@ -275,7 +282,7 @@ function balcony(b, w0, w1, y, out, zf, pal) {
     a1 = w1 + 1,
     d = y + out * 3;
 
-  b.push(box(w0, w1, y, y + out * 0.2, zf + 1, zf + 9, GLASS));
+  b.push(box(w0, w1, y, y + out * 0.2, zf + 1, zf + 9, GLASS, GLASSY));
   b.push(box(a0, a1, y, d, zf, zf + 1, pal.plinth));
   b.push(box(a0, a1, d, d - out * 0.5, zf + 1, zf + 4.5, pal.trim));
   b.push(box(a0, a0 + 0.5, y, d, zf + 1, zf + 4.5, pal.trim));
@@ -375,7 +382,7 @@ var YARDS = {
       ];
 
     //a hedge round the front
-    b.push(box(cx + 1, cx + 31, 1, 3, 1, 3.5, HEDGE));
+    hedge(b, cx + 1, cx + 31, 1, 3.5, 1, 3);
     spots.sort(function () {
       return rnd() - 0.5;
     });
@@ -407,11 +414,12 @@ var flats = blocks({
   upper: upperStorey,
   roof: roof,
   frame: frame,
+  finish: MATTE,
 });
 
 export var describe = flats.describe,
   paint = flats.paint,
-  model = flats.model,
+  partBoxes = flats.partBoxes,
   PARTS = flats.PARTS;
 
 export { STOREY };

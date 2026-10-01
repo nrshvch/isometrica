@@ -4,20 +4,20 @@
  */
 
 /**
- * How high each part laid on a tile of a block goes - the one rule both the
- * generators (shared/gen/blocks, putting a whole block together to check
- * the parts against) and the game (client/compoundbuilding, drawing the
- * parts) go by.
+ * How high each part laid on a tile goes - the one rule both the generators
+ * (shared/gen/compose, putting a whole building together to check the parts
+ * against) and the game (client/compoundbuilding, drawing the parts) go by.
  *
- * A part is painted standing where it would on a block one storey high: the
- * ground storey and a building site on the ground, a storey - finished
- * (upper) or bare (frame) - as the first one up, a roof on top of one
- * storey, a yard on the ground. Laid on a tile, bottom first:
+ * A part is painted standing where it would on a building one storey high:
+ * the ground storey, and the ground of a building site, on the ground; a
+ * storey - finished (upper), bare (frame), or of a crane's mast (mast) - as
+ * the first one up; a roof, or the top of a crane, on top of one storey; a
+ * yard on the ground. Laid on a tile, bottom first:
  *
  *   - ground: the ground storey, one storey;
- *   - site: the ground of a building site, nothing on it yet;
- *   - upper, frame: a storey on whatever is under it;
- *   - roof: on top of whatever is under it;
+ *   - site, lot: the ground of a building site, nothing on it yet;
+ *   - upper, frame, mast: a storey on whatever is under it;
+ *   - roof, cranetop: on top of whatever is under it;
  *   - anything else stays on the ground.
  *
  * A storey or a roof with nothing under it stays where it was painted, so a
@@ -35,11 +35,12 @@ export function lifts(kinds, storey) {
     var lift = 0;
 
     if (kind === "ground") level = 1;
-    else if (kind === "site") level = 0;
-    else if (kind === "upper" || kind === "frame") {
+    else if (kind === "site" || kind === "lot") level = 0;
+    else if (kind === "upper" || kind === "frame" || kind === "mast") {
       if (level < 0) level = 1;
       lift = (level++ - 1) * storey;
-    } else if (kind === "roof" && level >= 0) lift = (level - 1) * storey;
+    } else if ((kind === "roof" || kind === "cranetop") && level >= 0)
+      lift = (level - 1) * storey;
 
     return lift;
   });
@@ -61,10 +62,10 @@ export var STAGES = [0.25, 0.5];
  * Which stage of going up a block is at.
  *
  * @param progress {number} 0..1
- * @returns {number} 0: dug, the plinth poured, a digger or a lorry at it;
- *          1: the structure going up, half its storeys high; 2: past
- *          halfway, the lower half of it finished, the structure up to its
- *          full height over that
+ * @returns {number} 0: a building site like any other, nothing of the block
+ *          on it yet; 1: the structure going up, half its storeys high; 2:
+ *          past halfway, the lower half of it finished, the structure up to
+ *          its full height over that
  */
 export function stageOf(progress) {
   var stage = 0;
@@ -74,46 +75,161 @@ export function stageOf(progress) {
   return stage;
 }
 
+//what a tile of a building site can have on it (shared/gen/sites LOTS): a
+//site has one of each at most, in whatever order it was dealt - and where
+//there are more tiles than that, materials and heaps of sand
+var LOTS = ["dig", "haul", "pile", "cabin", "crane"],
+  SPARE = ["materials", "pile"];
+
+//how many storeys high a crane's mast is while there is nothing it has to
+//reach over yet, and on the site of a building not put together out of parts
+//- a house, a shop
+var CRANE_LOW = 2,
+  CRANE = 4;
+
 /**
- * What a block looks like while it goes up, tile by tile: the same shape as
- * the finished one, out of the parts of a building site.
+ * Numbers that look random, the same ones for the same seed every time.
+ *
+ * @param seed {number}
+ */
+function seeded(seed) {
+  var s = Math.imul(seed | 0, 0x9e3779b1) | 0;
+
+  return function () {
+    s = (s + 0x6d2b79f5) | 0;
+
+    var t = Math.imul(s ^ (s >>> 15), 1 | s);
+
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * What stands on each of `count` tiles of a site, dealt out for the seed: a
+ * digger, a lorry, a heap, the office, the crane, each once at most - the
+ * office always, on a site of more than one tile.
+ */
+function deal(count, seed) {
+  var rnd = seeded(seed),
+    pool = LOTS.slice(),
+    out = [],
+    i;
+
+  for (i = pool.length - 1; i > 0; i--) {
+    var j = Math.floor(rnd() * (i + 1)),
+      t = pool[i];
+
+    pool[i] = pool[j];
+    pool[j] = t;
+  }
+
+  if (count > 1 && pool.indexOf("cabin") >= count) {
+    var at = Math.floor(rnd() * count);
+
+    pool[pool.indexOf("cabin")] = pool[at];
+    pool[at] = "cabin";
+  }
+
+  for (i = 0; i < count; i++)
+    out.push(i < pool.length ? pool[i] : SPARE[Math.floor(rnd() * 2)]);
+
+  return out;
+}
+
+/**
+ * The parts of a tile with that on it - a crane with its mast so many
+ * storeys high, and its top.
+ */
+function lot(what, masts) {
+  if (what !== "crane") return ["sites/lot/" + what];
+
+  return ["sites/lot/crane"].concat(repeat("sites/mast", masts), [
+    "sites/cranetop",
+  ]);
+}
+
+/**
+ * The building site of a building that is not put together out of parts -
+ * a house, a shop: every tile of its footprint, as it is turned, dealt
+ * what stands on it.
+ *
+ * @param seed {number} the same for the same building every time - where it
+ *        stands will do
+ * @returns {Object[]} {x, y, parts} for every tile
+ */
+export function lotTiles(sizeX, sizeY, seed) {
+  var dealt = deal(sizeX * sizeY, seed),
+    tiles = [],
+    x,
+    y;
+
+  for (y = 0; y < sizeY; y++)
+    for (x = 0; x < sizeX; x++)
+      tiles.push({ x: x, y: y, parts: lot(dealt[tiles.length], CRANE) });
+
+  return tiles;
+}
+
+/**
+ * What a block looks like while it goes up, tile by tile. To begin with it
+ * is a building site like any other, its tiles dealt what stands on them;
+ * then its structure goes up where the block will stand, and the crane
+ * stands on the yard, if there is one, a couple of storeys over whatever
+ * of the block is up - and the rest of the yard keeps what it had, less
+ * the digger, which is done.
  *
  * @param tiles {Object[]} the finished block's tiles: {x, y, parts}, as
  *        client/compoundbuilding keeps them
  * @param stage {number} see stageOf
+ * @param seed {number} the same for the same block every time
  * @returns {Object[]} the tiles as they are at that stage
  */
-export function siteTiles(tiles, stage) {
-  var cranes = 0;
+export function siteTiles(tiles, stage, seed) {
+  var dealt = deal(tiles.length, seed),
+    yards = [],
+    storeys = 0;
 
-  return tiles.map(function (tile) {
-    var first = tile.parts[0],
-      gen = first.split("/")[0],
-      parts;
-
-    if (kindOf(first) === "yard") {
-      //trucks while it is dug; then a crane, and the materials by it
-      parts = [
-        gen +
-          "/siteyard/" +
-          (stage === 0 ? "trucks" : cranes++ === 0 ? "crane" : "materials"),
-      ];
-    } else {
-      var ends = first.split("/")[3],
-        storeys = tile.parts.filter(function (part) {
+  tiles.forEach(function (tile, i) {
+    if (kindOf(tile.parts[0]) === "yard") yards.push(i);
+    else
+      storeys = Math.max(
+        storeys,
+        tile.parts.filter(function (part) {
           return kindOf(part) !== "roof";
         }).length,
-        half = Math.ceil(storeys / 2),
+      );
+  });
+
+  var half = Math.ceil(storeys / 2),
+    crane = yards.length > 0 ? yards[Math.abs(seed) % yards.length] : -1;
+
+  return tiles.map(function (tile, i) {
+    var first = tile.parts[0],
+      parts;
+
+    if (stage === 0) parts = lot(dealt[i], CRANE_LOW);
+    else if (kindOf(first) === "yard") {
+      var what =
+        dealt[i] === "dig" || dealt[i] === "crane" ? "materials" : dealt[i];
+
+      parts =
+        i === crane
+          ? lot("crane", (stage === 1 ? half : storeys) + 2)
+          : lot(what);
+    } else {
+      var gen = first.split("/")[0],
+        ends = first.split("/")[3],
+        built = tile.parts.filter(function (part) {
+          return kindOf(part) !== "roof";
+        }).length,
+        up = Math.ceil(built / 2),
         frame = gen + "/frame/" + ends;
 
-      //a digger at work on every other section, a lorry carting the earth
-      //away from the ones between
-      if (stage === 0)
-        parts = [gen + "/site/" + ends + (tile.x % 2 ? "/haul" : "/dig")];
-      else if (stage === 1)
-        parts = [gen + "/site/" + ends + "/build"].concat(repeat(frame, half));
-      else
-        parts = tile.parts.slice(0, half).concat(repeat(frame, storeys - half));
+      if (stage === 1)
+        parts = [gen + "/site/" + ends + "/build"].concat(repeat(frame, up));
+      else parts = tile.parts.slice(0, up).concat(repeat(frame, built - up));
     }
 
     return { x: tile.x, y: tile.y, parts: parts };

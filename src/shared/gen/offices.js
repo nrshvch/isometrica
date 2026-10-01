@@ -398,7 +398,7 @@ var offices = blocks({
 
 export var describe = offices.describe,
   paint = offices.paint,
-  model = offices.model,
+  partBoxes = offices.partBoxes,
   PARTS = offices.PARTS;
 
 export { STOREY };
