@@ -12,27 +12,50 @@ import Core from "core/main";
 
 var Terrain = Core.Terrain;
 
-var roadSprite = {
-  90001: "road/straight1.png",
-  90010: "road/straight2.png",
-  90011: "road/turn3.png",
-  90100: "road/straight1.png",
-  90101: "road/straight1.png",
-  90110: "road/turn2.png",
-  90111: "road/t2.png",
-  91000: "road/straight2.png",
-  91001: "road/turn1.png",
-  91010: "road/straight2.png",
-  91011: "road/t3.png",
-  91100: "road/turn4.png",
-  91101: "road/t4.png",
-  91110: "road/t1.png",
-  91111: "road/x1.png",
-  1: "road/elevation1.png",
-  2: "road/elevation2.png",
-  3: "road/elevation3.png",
-  4: "road/elevation4.png",
-};
+//what a road's piece number (see Road.profile) is drawn with: the roads
+//generator's pieces (shared/gen/roads) - plain or paved, by how the road
+//joins up with its neighbours, or a ramp
+function spriteOf(id) {
+  var shape = id % Road_PAVED,
+    kind = id >= Road_PAVED ? "paved" : "plain";
+
+  if (shape < 10) return "gen/roads/" + kind + "/ramp" + shape;
+
+  return "gen/roads/" + kind + "/" + String(shape - 90000 + 10000).slice(1);
+}
+
+//where a paved street has its street light, if it has one there: beside a
+//road along x, along y, or at the corner of anything else - every other tile
+//along a street, and never on a ramp
+function lightOf(id, tile) {
+  var shape = id % Road_PAVED;
+
+  if (id < Road_PAVED || shape < 10) return null;
+  if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
+
+  var a = Math.floor(shape / 1000) % 10,
+    b = Math.floor(shape / 100) % 10,
+    c = Math.floor(shape / 10) % 10,
+    d = shape % 10,
+    alongX = a || c,
+    alongY = b || d;
+
+  return (
+    "gen/roads/light/" +
+    (alongX && !alongY ? "x" : alongY && !alongX ? "y" : "corner")
+  );
+}
+
+//a sprite of the generator's, its pivot where its tile's middle is
+function setPiece(renderer, name) {
+  var frame = vkaria.sprites.frame(name);
+
+  renderer.setSprite(vkaria.sprites.getSprite(name));
+  renderer.setPivot(frame.pivotX, frame.pivotY);
+}
+
+//added to a road's piece number for the paved one (see Road.profile)
+var Road_PAVED = 100000;
 
 function BuildingView() {
   this.gameObject = new engine.GameObject("building");
@@ -49,18 +72,38 @@ BuildingView.prototype.update = function () {
   var b = this.road;
 
   if (b !== null && b.staticData !== null) {
-    //
-    if (this.gameObject.transform.children.length === 0) {
+    var children = this.gameObject.transform.children;
+
+    if (children.length === 0)
       addSprite(this.gameObject, this.road.typeCode, 1, RenderLayer.roadLayer);
-    } else {
-      this.gameObject.transform.children[0].gameObject.spriteRenderer.setSprite(
-        vkaria.sprites.getSprite(roadSprite[this.road.typeCode]),
+    else
+      setPiece(
+        children[0].gameObject.spriteRenderer,
+        spriteOf(this.road.typeCode),
       );
-    }
+
+    //the street light, among the buildings and the cars it stands with
+    var light = lightOf(this.road.typeCode, b.data.tile);
+
+    if (light === null && children.length > 1) children[1].gameObject.destroy();
+    else if (light !== null && children.length > 1)
+      setPiece(children[1].gameObject.spriteRenderer, light);
+    else if (light !== null) addLight(this.gameObject, light);
 
     place(this.gameObject, b.data.tile);
   }
 };
+
+//hangs a street light under parent
+function addLight(parent, name) {
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer();
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  part.addComponent(sprite);
+  setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+}
 
 /**
  * Draws piece id in place of the road's own - what it would turn into once
@@ -73,9 +116,7 @@ BuildingView.prototype.showPiece = function (id) {
   var children = this.gameObject.transform.children;
 
   if (children.length > 0)
-    children[0].gameObject.spriteRenderer.setSprite(
-      vkaria.sprites.getSprite(roadSprite[id]),
-    );
+    setPiece(children[0].gameObject.spriteRenderer, spriteOf(id));
 };
 
 /**
@@ -91,7 +132,7 @@ function addSprite(parent, id, opacity, layer) {
     sprite = new engine.SpriteRenderer();
 
   sprite.layer = layer;
-  sprite.setSprite(vkaria.sprites.getSprite(roadSprite[id])).setPivot(32, 24);
+  setPiece(sprite, spriteOf(id));
   part.addComponent(sprite);
   //the renderer resets its opacity once it is attached
   sprite.opacity = opacity;
@@ -114,6 +155,7 @@ function place(go, tile) {
 }
 
 BuildingView.addSprite = addSprite;
+BuildingView.PAVED = Road_PAVED;
 BuildingView.place = place;
 
 BuildingView.prototype.render = function () {
