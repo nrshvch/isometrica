@@ -96,6 +96,14 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - The water tower is painted too (`src/shared/gen/utilities.js`): the
   American small-town kind, a round tank on four braced steel legs with a
   catwalk, a ladder and the riser pipe down into the ground.
+- Roads are painted too (`src/shared/gen/roads.js`): a piece for every way
+  a tile joins up with its neighbours and a ramp for every slope, each
+  plain - asphalt with a dashed line and gravel edges - or paved, with
+  kerbs, pavements and zebra crossings over junctions, and street lights
+  along it. A road is paved where it is part of the city's road network
+  and has a building next to it (`src/client/js/roadman.js` paved); out in
+  the country, or on a stretch that does not join the network, it stays
+  plain, and it changes back and forth as buildings go up and come down.
 - The catalogue offers only what is painted: the hand-drawn houses, shops,
   offices, flats, town hall, trees and cliff are kept for the cities that
   already have them, but no longer offered.
