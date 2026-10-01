@@ -62,6 +62,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   picks its colours and details at random when it is first drawn and keeps
   the parts it is made of in the save (`src/client/js/compoundbuilding.js`);
   the catalogue shows one of each kind (`src/data/flats.js`).
+- Any building can be turned four ways (`src/core/rotation.js`). Blocks of
+  flats are painted from all four sides; a building drawn by hand shows its
+  front for its back and its side for the other side.
 - To look at what the painting makes without starting the game, run
   `npm run generate:terrain`, `generate:vehicles`, `generate:stones` or
   `generate:buildings`. They

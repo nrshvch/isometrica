@@ -392,6 +392,8 @@ function parkedCar(b, x, y, z, rnd) {
 }
 
 //the ground of one yard tile at cell x = cx (the yard is always the front row)
+//- the ones most plainly a yard first, which is the order a catalogue
+//picture takes them in (client/compoundbuilding)
 var YARDS = {
   playground: function (b, cx, rnd) {
     var sx = cx + 4 + Math.floor(rnd() * 4),
@@ -418,6 +420,19 @@ var YARDS = {
     bench(b, cx + 5, 22);
     tree(b, cx + 25, 7, 3);
   },
+  //three bays against the block, the way in along the front
+  parking: function (b, cx, rnd) {
+    var i, x;
+
+    b.push(box(cx + 1, cx + 31, 2, 30, 1, 1.2, ASPHALT));
+    for (i = 0; i < 4; i++) {
+      x = cx + 3 + i * 9;
+      b.push(box(x, x + 0.6, 14, 30, 1.2, 1.25, STRIPE));
+    }
+    for (i = 0; i < 3; i++) {
+      if (rnd() < 0.75) parkedCar(b, cx + 7.8 + i * 9, 22, 1.2, rnd);
+    }
+  },
   lawn: function (b, cx, rnd) {
     var n = 2 + Math.floor(rnd() * 2),
       i,
@@ -437,19 +452,6 @@ var YARDS = {
       tree(b, cx + spots[i][0], spots[i][1], 3 + Math.floor(rnd() * 2));
     bench(b, cx + 12, 27);
   },
-  //three bays against the block, the way in along the front
-  parking: function (b, cx, rnd) {
-    var i, x;
-
-    b.push(box(cx + 1, cx + 31, 2, 30, 1, 1.2, ASPHALT));
-    for (i = 0; i < 4; i++) {
-      x = cx + 3 + i * 9;
-      b.push(box(x, x + 0.6, 14, 30, 1.2, 1.25, STRIPE));
-    }
-    for (i = 0; i < 3; i++) {
-      if (rnd() < 0.75) parkedCar(b, cx + 7.8 + i * 9, 22, 1.2, rnd);
-    }
-  },
 };
 
 /* --- Parts ----------------------------------------------------------- */
@@ -462,8 +464,9 @@ var ROOF_VARIANTS = 2,
 //where a section stands in its wall: alone, or at its start or end
 var ENDS = { both: [true, true], start: [true, false], end: [false, true] };
 
-//the two ways a part is painted: as it is, and turned a quarter turn
-var TURNS = [0, 1];
+//the ways a part is painted: as it is, and turned one, two and three
+//quarter turns - so that a block shows whichever side faces the camera
+var TURNS = [0, 1, 2, 3];
 
 /**
  * Every part there is, by name without its turn: "flats/upper/sand/start/01"
