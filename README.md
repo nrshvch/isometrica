@@ -79,8 +79,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   orchard or a well, a farmstead on 1x2 with a barn, a field or sheep;
   town houses with hedges or picket fences - a bungalow with its garage on
   2x1, a two-storey house end on to the street on 1x2 and 1x3;
-  semi-detached houses on 2x2 and a pair or a row of three on 3x2, each
-  with its own drive, gate and garden; and villas on 2x2 and 3x2 behind a
+  semi-detached houses on 2x2, and on 2x3 end on to the street with a back
+  garden behind each half, each half with its own parking space and gate; and villas on 2x2 and 3x2 behind a
   gate in a high hedge or a wall, with a fountain or a pool. Houses are
   built to the scale of the cars and roads - a car is about 4.5 m long, so
   a tile is about 10 m across and a storey 12 high - and what does not fit
