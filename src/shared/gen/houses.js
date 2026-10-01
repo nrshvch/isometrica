@@ -627,8 +627,14 @@ function pitched(b, r, z, roof, wall) {
   };
 }
 
+//the tops of the chimneys of the house being painted, for its smoke to come
+//out of (describe smoke) - null while no house is
+var smoking = null;
+
 //a chimney at x, y going up through the roof - height, the roof's there
 function chimney(b, x, y, z, height, color) {
+  if (smoking !== null) smoking.push([x + 1.2, y + 1.2, z + height + 3.6]);
+
   b.push(box(x, x + 2.4, y, y + 2.4, z, z + height + 3, color || BRICK, MATTE));
   b.push(
     box(
@@ -1969,14 +1975,16 @@ function deep(o, rnd, stage) {
 
 /**
  * A two-storey house on three tiles end on to the street, a lower kitchen
- * out at the back, its drive along the side - long enough for a car in front
- * and another by the house - to a garage at the end of it, and behind it all
- * a long garden: trees, a greenhouse, vegetables and the washing out.
+ * out at the back. Its drive runs along the side as far as the front of the
+ * house, the car on it, the bins at the end of it - and there a fence and a
+ * gate shut off the back: the long back garden behind is the house's own,
+ * out of its back door - a patio, trees, a shed, a greenhouse, vegetables
+ * and the washing out.
  */
 function long(o, rnd, stage) {
   var r = { x0: 2.5, x1: 21.5, y0: 20, y1: 47 },
     e = { x0: 2.5, x1: 15, y0: 47, y1: 56 },
-    g = { x0: 22.5, x1: 31.5, y0: 62, y1: 81 };
+    end = 24;
 
   if (stage)
     return site(
@@ -1985,7 +1993,6 @@ function long(o, rnd, stage) {
       [
         { rect: r, storeys: 2 },
         { rect: e, storeys: 1 },
-        { rect: g, storeys: 1 },
       ],
       stage,
       rnd,
@@ -1996,7 +2003,7 @@ function long(o, rnd, stage) {
     kind = o.fence;
 
   lawn(b, 0, TILE, 0, 3 * TILE);
-  paved(b, 23, 31, 0.3, g.y0, DRIVE);
+  paved(b, 23, 31, 0.3, end, DRIVE);
 
   var top = walls(b, r, 1, 2, P);
 
@@ -2008,32 +2015,37 @@ function long(o, rnd, stage) {
 
   chimney(b, 12, 28, top, height(13.2, 29.2));
 
-  //the kitchen out at the back, its roof flat
+  //the kitchen out at the back, its roof flat, the back door out of it and
+  //a patio before it
   var etop = walls(b, e, 1, 1, P);
 
   windowsOn(b, e, "-x", [49], 4, 1 + SILL, PANE, P);
   windowsOn(b, e, "+y", [4.5, 10], 3.5, 1 + SILL, PANE, P);
   doorOn(b, e, "+x", 49, 3.5, 1.2, DOOR, P);
   flatRoof(b, e, etop, P.trim, 0.6);
+  paved(b, 15, 30, 47, 58, PAVING);
+  parasol(b, 24, 52, [214, 60, 60]);
 
-  //the garage at the end of the drive
-  var gtop = walls(b, g, 1, 1, P, null, 10);
-
-  garageDoor(b, g, 23.5, 30.5);
-  flatRoof(b, g, gtop, P.trim, 0.5);
+  //the end of the drive: the bins, and the fence across to the house with
+  //a gate in it, shut
+  bins(b, 23.5, end - 2.5);
+  fence(b, kind, "x", end + 0.5, 21.5, 31.5, [[25, 29]], P.picket);
+  wicket(b, 25, 29, end + 0.5, kind, P.picket);
 
   fence(b, kind, "y", 1, 2, 95.5, [], P.picket);
   fence(b, kind, "x", 95, 0.5, 31.5, [], P.picket);
-  fence(b, kind, "y", 31, 81, 95, [], P.picket);
+  fence(b, kind, "y", 31, end + 1, 95, [], P.picket);
 
-  gardenTree(b, 9, 66, 4.5, 16);
+  bush(b, 27, 34, 2.4);
+  gardenTree(b, 9, 64, 4.5, 16);
+  shed(b, 23, 31, 64, 73);
   gardenTree(b, 26, 89.5, 4, 15);
   greenhouse(b, 3, 11, 78, 90);
   vegetables(b, 13, 21, 76, 92, rnd);
-  washing(b, 22.5, 31, 84);
+  washing(b, 22.5, 31, 80);
   bench(b, 4, 59);
 
-  return { boxes: b, bays: [bayAt(27, 9), bayAt(27, 54)] };
+  return { boxes: b, bays: [bayAt(27, 10)] };
 }
 
 /**
@@ -2924,7 +2936,10 @@ function house(id) {
     OPTIONS[p[1]].forEach(function (axis, k) {
       o[axis] = p[3 + k];
     });
+    smoking = [];
     built = DESIGNS[p[1]](o, random(id));
+    built.chimneys = smoking;
+    smoking = null;
   }
 
   //every edge on a grid of 1/1024, so that moving the house a tile over -
@@ -3086,14 +3101,28 @@ function cover(key, turns) {
  * Every part, by sprite name - "gen/houses/semi/std/brick/hip/picket/1/0/r2" -
  * with its size and pivot, without painting it; and for a tile with bays,
  * what of it covers the cars in them, the same size; what every kind of house
- * can be, for whoever puts one together; and the bays with what covers them.
+ * can be, for whoever puts one together; the bays with what covers them; and
+ * the tops of every house's chimneys, for its smoke.
  */
 export function describe() {
   var sizes = {},
-    over = {};
+    over = {},
+    smoke = {};
 
   Object.keys(PARTS).forEach(function (key) {
-    var bays = key.indexOf("houses/frame/") === 0 ? [] : tileBays(key);
+    var frame = key.indexOf("houses/frame/") === 0,
+      bays = frame ? [] : tileBays(key),
+      id = key.split("/").slice(0, -2).join("/"),
+      tops = frame ? [] : house(id).chimneys;
+
+    //where the smoke comes out of a house, by the house - on its footprint
+    //as it is painted, not turned: [x, y, how high]
+    if (tops.length > 0)
+      smoke[id] = tops.map(function (t) {
+        return t.map(function (v) {
+          return Math.round(v * 10) / 10;
+        });
+      });
 
     TURNS.forEach(function (turns) {
       var name = "gen/" + key + "/r" + turns,
@@ -3105,7 +3134,7 @@ export function describe() {
         sizes["gen/" + key + "/cover/r" + turns] = size;
         over[key + "/r" + turns] = [
           baysOverlay(bays, turns),
-          { frames: ["gen/" + key + "/cover/r" + turns] },
+          { frames: ["gen/" + key + "/cover/r" + turns], cover: true },
         ];
       }
     });
@@ -3118,6 +3147,7 @@ export function describe() {
       footprints: FOOTPRINTS,
       turns: TURNS,
       overlays: over,
+      smoke: smoke,
     },
   };
 }

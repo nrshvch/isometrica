@@ -379,6 +379,230 @@ export function baysOverlay(bays, turns) {
   };
 }
 
+/* --- The backs of buildings ------------------------------------------- */
+
+//what the back of a building has about it: the bins, a steel door, the air
+//conditioning's units on the wall, a service fence
+var BIN = [52, 116, 64],
+  BIN_LID = [38, 88, 48],
+  DUMPSTER = [40, 92, 120],
+  STEEL = [118, 124, 132],
+  SPRAY = [
+    [232, 58, 92],
+    [250, 196, 40],
+    [60, 170, 230],
+    [130, 220, 70],
+    [170, 80, 210],
+    [250, 120, 40],
+  ];
+
+/**
+ * Something on a face of the walls r - {x0, x1, y0, y1} - looking towards
+ * -y, +y, -x or +x: from a0 to a1 along it (x for a face looking along y, y
+ * for one looking along x), z0 to z1 high, standing d0 to d1 out of it.
+ */
+export function onFace(r, f, a0, a1, z0, z1, d0, d1, color, finish) {
+  if (f === "-y")
+    return box(a0, a1, r.y0 - d1, r.y0 - d0, z0, z1, color, finish);
+  if (f === "+y")
+    return box(a0, a1, r.y1 + d0, r.y1 + d1, z0, z1, color, finish);
+  if (f === "-x")
+    return box(r.x0 - d1, r.x0 - d0, a0, a1, z0, z1, color, finish);
+
+  return box(r.x1 + d0, r.x1 + d1, a0, a1, z0, z1, color, finish);
+}
+
+/**
+ * A steel door at a along the face, from z: its frame, a light over it, a
+ * step before it.
+ */
+export function backDoor(b, r, f, a, z, trim) {
+  b.push(onFace(r, f, a - 0.4, a + 3.9, z, z + 8.8, 0, 0.2, trim || STEEL));
+  b.push(onFace(r, f, a, a + 3.5, z, z + 8.4, 0.2, 0.3, darker(STEEL, 0.25)));
+  b.push(onFace(r, f, a + 2.6, a + 3.1, z + 4, z + 4.6, 0.3, 0.45, METAL));
+  b.push(
+    onFace(r, f, a + 1.2, a + 2.3, z + 9.4, z + 10.2, 0, 0.6, [250, 236, 180]),
+  );
+  b.push(onFace(r, f, a - 0.8, a + 4.3, 1, z, 0, 1.4, darker(STEEL, 0.1)));
+}
+
+/**
+ * The outside unit of an air conditioner on its brackets at a along the
+ * face, z up: its fan behind a grille, a pipe down the wall into it - and
+ * the stain the drip has left down the wall under it.
+ */
+export function wallUnit(b, r, f, a, z, wall) {
+  b.push(onFace(r, f, a, a + 4.2, z, z + 3.2, 0, 1.8, [212, 214, 210]));
+  b.push(
+    onFace(r, f, a + 0.5, a + 2.9, z + 0.4, z + 2.8, 1.8, 1.9, [96, 100, 104]),
+  );
+  b.push(
+    onFace(r, f, a + 3.2, a + 3.8, z + 0.6, z + 2.6, 1.8, 1.9, [150, 152, 150]),
+  );
+  b.push(onFace(r, f, a + 0.4, a + 0.8, z - 0.6, z, 0, 1.6, METAL));
+  b.push(onFace(r, f, a + 3.4, a + 3.8, z - 0.6, z, 0, 1.6, METAL));
+  b.push(onFace(r, f, a + 4.2, a + 4.6, z + 1, z + 5, 0, 0.4, [236, 236, 230]));
+  if (wall && z > 3)
+    b.push(
+      onFace(
+        r,
+        f,
+        a + 1.2,
+        a + 2.2,
+        Math.max(1.5, z - 5),
+        z,
+        0,
+        0.04,
+        darker(wall, 0.14),
+      ),
+    );
+}
+
+/**
+ * Streaks down the face from z1 - rain off the roof, rust off a pipe - here
+ * and there along it from a0 to a1.
+ */
+export function smears(b, r, f, a0, a1, z0, z1, wall, rnd) {
+  for (var a = a0 + 1 + rnd() * 4; a < a1 - 1.5; a += 3 + rnd() * 7) {
+    var w = 0.5 + rnd() * 1.2,
+      long = (z1 - z0) * (0.25 + rnd() * 0.6);
+
+    b.push(
+      onFace(
+        r,
+        f,
+        a,
+        a + w,
+        z1 - long,
+        z1,
+        0,
+        0.03,
+        darker(wall, 0.08 + rnd() * 0.08),
+      ),
+    );
+  }
+}
+
+/**
+ * A tag sprayed on the face from a, z up: w by h of bubbly letters in one
+ * colour, outlined in another, the odd drip under them.
+ */
+export function graffiti(b, r, f, a, z, w, h, rnd) {
+  var fill = SPRAY[Math.floor(rnd() * SPRAY.length)],
+    line = rnd() < 0.5 ? [30, 30, 36] : SPRAY[Math.floor(rnd() * SPRAY.length)],
+    seed = Math.floor(rnd() * 1e6),
+    cells = [],
+    i,
+    j;
+
+  function on(i, j) {
+    if (i < 0 || j < 0 || i >= w || j >= h) return false;
+
+    var k = i % 4;
+
+    if (k === 3) return false;
+
+    var hh =
+      Math.imul(Math.floor(i / 4) + seed, 73856093) ^
+      Math.imul(k * 7 + j, 19349663);
+
+    hh = Math.imul(hh ^ (hh >>> 13), 0x5bd1e995);
+
+    return ((hh ^ (hh >>> 15)) >>> 0) / 4294967296 < 0.7 || j === 1;
+  }
+
+  for (i = -1; i <= w; i++)
+    for (j = -1; j <= h; j++) {
+      var inside = on(i, j),
+        edge =
+          !inside &&
+          (on(i - 1, j) || on(i + 1, j) || on(i, j - 1) || on(i, j + 1));
+
+      if (inside) cells.push([i, j, fill]);
+      else if (edge) cells.push([i, j, line]);
+    }
+
+  cells.forEach(function (c) {
+    var u = a + c[0] * 0.5,
+      v = z + c[1] * 0.5;
+
+    b.push(onFace(r, f, u, u + 0.5, v, v + 0.5, 0, 0.05, c[2]));
+  });
+
+  for (i = 0; i < 3; i++) {
+    var d = a + rnd() * w * 0.5;
+
+    b.push(onFace(r, f, d, d + 0.4, z - 0.6 - rnd() * 1.5, z, 0, 0.05, fill));
+  }
+}
+
+/**
+ * Wheelie bins in a row from x, y along x (axis "x") or y, n of them, green
+ * with their lids darker - or for a big building, a skip of a bin with its
+ * lid up.
+ */
+export function bins(b, x, y, n, axis) {
+  for (var i = 0; i < n; i++) {
+    var bx = axis === "y" ? x : x + i * 1.9,
+      by = axis === "y" ? y + i * 1.9 : y;
+
+    b.push(box(bx, bx + 1.5, by, by + 1.5, 1, 3.6, BIN));
+    b.push(box(bx - 0.1, bx + 1.6, by - 0.1, by + 1.6, 3.6, 4, BIN_LID));
+  }
+}
+
+export function dumpster(b, x, y, axis) {
+  var l = 6,
+    d = 3,
+    x1 = axis === "y" ? x + d : x + l,
+    y1 = axis === "y" ? y + l : y + d;
+
+  b.push(box(x, x1, y, y1, 1.4, 5, DUMPSTER));
+  b.push(
+    box(x - 0.1, x1 + 0.1, y - 0.1, y1 + 0.1, 5, 5.4, darker(DUMPSTER, 0.25)),
+  );
+  b.push(box(x + 0.3, x + 0.8, y + 0.3, y + 0.8, 1, 1.4, METAL));
+  b.push(box(x1 - 0.8, x1 - 0.3, y1 - 0.8, y1 - 0.3, 1, 1.4, METAL));
+}
+
+/**
+ * A chain-link fence along x at y (axis "x") or along y at x from a0 to a1:
+ * posts, a rail along the top and wires strung between - leaving the
+ * gaps out.
+ */
+export function wireFence(b, axis, at, a0, a1, gaps) {
+  var runs = [[a0, a1]];
+
+  (gaps || []).forEach(function (g) {
+    var next = [];
+
+    runs.forEach(function (q) {
+      if (g[1] <= q[0] || g[0] >= q[1]) next.push(q);
+      else {
+        if (g[0] > q[0]) next.push([q[0], g[0]]);
+        if (g[1] < q[1]) next.push([g[1], q[1]]);
+      }
+    });
+    runs = next;
+  });
+
+  runs.forEach(function (q) {
+    function bx(l0, l1, c0, c1, z0, z1, col) {
+      return axis === "x"
+        ? box(l0, l1, at + c0, at + c1, z0, z1, col)
+        : box(at + c0, at + c1, l0, l1, z0, z1, col);
+    }
+
+    for (var p = q[0]; p <= q[1] - 0.4; p += 6)
+      b.push(bx(p, p + 0.4, -0.2, 0.2, 1, 7, METAL));
+    b.push(bx(q[1] - 0.4, q[1], -0.2, 0.2, 1, 7, METAL));
+    b.push(bx(q[0], q[1], -0.1, 0.1, 6.6, 7, METAL));
+    [2.4, 4.5].forEach(function (z) {
+      b.push(bx(q[0], q[1], -0.05, 0.05, z, z + 0.2, [176, 180, 184]));
+    });
+  });
+}
+
 /* --- Building sites -------------------------------------------------- */
 
 /**
@@ -427,6 +651,25 @@ export var TURNS = [0, 1, 2, 3];
  *        anything (MATTE) - flat colour otherwise
  * @returns {{describe, paint, partBoxes, PARTS}}
  */
+/**
+ * The blank end of a block of a style with walls - not all glass - on a
+ * storey from z: the air conditioning's unit on it, now and then, and rain
+ * streaks down it.
+ */
+function backs(b, s, z, pal, rnd) {
+  if (pal.wall === undefined) return;
+
+  var r = { x0: s.x0, x1: s.x1, y0: s.front, y1: s.back };
+
+  [s.start ? "-x" : null, s.end ? "+x" : null].forEach(function (f) {
+    if (f === null) return;
+
+    if (rnd() < 0.6)
+      wallUnit(b, r, f, s.front + 4 + Math.floor(rnd() * 8), z + 3, pal.wall);
+    smears(b, r, f, s.front, s.back, z, z + STOREY, pal.wall, rnd);
+  });
+}
+
 export function blocks(style) {
   var gen = style.name,
     PARTS = parts();
@@ -536,9 +779,12 @@ export function blocks(style) {
         ),
       );
       style.ground(b, s, pal, rnd);
-    } else if (p.kind === "upper")
+      //the bins out at the back
+      bins(b, s.x1 - 6, s.back + 0.6, 2, "x");
+    } else if (p.kind === "upper") {
       style.upper(b, s, PLINTH + STOREY, pal, p.detail, rnd);
-    else if (p.kind === "roof")
+      backs(b, s, PLINTH + STOREY, pal, rnd);
+    } else if (p.kind === "roof")
       style.roof(b, s, PLINTH + STOREY, pal, rnd, p.variant);
     else if (p.kind === "site") siteBase(b, s);
     else style.frame(b, s, PLINTH + STOREY, rnd);

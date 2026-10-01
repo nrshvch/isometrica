@@ -125,6 +125,25 @@ BuildingView.prototype.update = function () {
         b.data.tile,
       );
 
+      //smoke out of the chimneys of a house put together out of parts
+      if (look)
+        CompoundBuilding.chimneys(
+          vkaria.sprites,
+          look,
+          staticData.compound,
+          Rotation.turns(b.data.rotation),
+        ).forEach(function (top) {
+          var source = new engine.GameObject();
+
+          source.transform.setLocalPosition(
+            top[0] * tileSize,
+            top[1] * tileZStep,
+            top[2] * tileSize,
+          );
+          source.addComponent(new SmokeSource(b.data));
+          this.gameObject.transform.addChild(source.transform);
+        }, this);
+
       //add smoke
       if (staticData.smokeSource !== undefined) {
         var smoke = staticData.smokeSource,

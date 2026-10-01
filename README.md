@@ -86,9 +86,19 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   a tile is about 10 m across and a storey 12 high - and what does not fit
   a footprint is left to a bigger one: the bungalow and the two-storey
   house on two tiles have a drive to their garage but no room to park on
-  it. Whatever of a house stands in front of the cars on its drive is
-  drawn again over them, so a car behind a hedge stays behind it whichever
-  way the house is turned.
+  it; the house on three tiles parks in front and keeps its back garden
+  shut off, out of its back door. Smoke rises from the chimneys of every
+  house lived in. Whatever of a house stands in front of the cars on its
+  drive is drawn again over them, so a car behind a hedge stays behind it
+  whichever way the house is turned - and the front of a building site's
+  fence over its digger and lorry the same way.
+- The backs of buildings are not left bare (`src/shared/gen/blocks.js`
+  backs): a shop has a steel door out to its bins - and a skip, behind a
+  big one - the air conditioning's units on the wall, rain streaks, the odd
+  tag sprayed on it and a wire fence round its service yard; blocks of
+  flats have their bins out at the back and units on their end walls.
+- While a selection is dragged about, the buildings in it keep the looks
+  they were shown with; only a selection of another size picks again.
 - Every building goes up on a building site - the same parts for all of
   them (`src/shared/gen/sites.js`): bare earth, and on each tile one of an
   excavator, a lorry, a heap of sand, the site office or a tower crane,
