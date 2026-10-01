@@ -5,7 +5,7 @@
  *
  * buildings.png has every block standing on grass, put together from its
  * parts tile by tile the way the game draws it - back to front - a row per
- * layout and height, its palettes across, each as it is and turned round.
+ * layout and height, its palettes across, each from all four sides.
  * The details - balconies, roofs, yards - are a fixed pick for each palette;
  * in the game they are picked at random for every block built.
  *
@@ -70,7 +70,7 @@ function main() {
     palettes = flats.describe().data.palettes,
     cellW = 200,
     cellH = 230,
-    cols = palettes.length * 2,
+    cols = palettes.length * 4,
     rows = Object.keys(LAYOUTS).length * STOREYS.length,
     png = new PNG({ width: cols * cellW, height: rows * cellH }),
     ground = { w: 64, h: 32, pixels: [] },
@@ -97,15 +97,15 @@ function main() {
       palettes.forEach(function (palette, n) {
         var p = plan(layout, storeys, palette, n);
 
-        [0, 1].forEach(function (turns) {
-          var sizeX = turns ? p.sizeY : p.sizeX,
-            sizeY = turns ? p.sizeX : p.sizeY,
+        [0, 1, 2, 3].forEach(function (turns) {
+          var sizeX = turns % 2 ? p.sizeY : p.sizeX,
+            sizeY = turns % 2 ? p.sizeX : p.sizeY,
             pieces = iso.paintTiles(
               flats.model(p.tiles, p.sizeX, p.sizeY, turns),
               sizeX,
               sizeY,
             ),
-            ox = (n * 2 + turns) * cellW + cellW / 2,
+            ox = (n * 4 + turns) * cellW + cellW / 2,
             oy = row * cellH + cellH - 50,
             gx,
             gy;

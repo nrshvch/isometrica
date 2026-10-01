@@ -35,6 +35,7 @@ import RenderLayer from "client/renderlayer";
 import Config from "./config";
 import BuildingView from "./buildingview";
 import BuildingState from "core/buildingstate";
+import Rotation from "core/rotation";
 
 var Terrain = Core.Terrain;
 
@@ -66,8 +67,8 @@ function placeOver(self, go, building) {
   var terrain = self.root.terrain,
     data = building.data,
     //turned round, the footprint's sides swap
-    sizeX = building.rotation ? data.sizeY : data.sizeX,
-    sizeY = building.rotation ? data.sizeX : data.sizeY,
+    sizeX = Rotation.sizeX(data, building.rotation),
+    sizeY = Rotation.sizeY(data, building.rotation),
     far = building.tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy;
 
   go.transform.setPosition(
@@ -441,8 +442,8 @@ function raise(self, building) {
 function outlineFootprint(self, building) {
   var data = building.data,
     //turned round, the footprint's sides swap
-    sizeX = building.rotation ? data.sizeY : data.sizeX,
-    sizeY = building.rotation ? data.sizeX : data.sizeY,
+    sizeX = Rotation.sizeX(data, building.rotation),
+    sizeY = Rotation.sizeY(data, building.rotation),
     tiles = [],
     go = new engine.GameObject("inspected footprint"),
     x,
@@ -477,7 +478,7 @@ function copyBuilding(self, building) {
   BuildingView.addSprites(
     go,
     building.data,
-    !!building.rotation,
+    building.rotation,
     1,
     RenderLayer.inspectedLayer,
     building.look,

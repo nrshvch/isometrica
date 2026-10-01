@@ -12,6 +12,7 @@ import Config from "./config";
 import BuildingState from "core/buildingstate";
 import Core from "core/main";
 import CompoundBuilding from "./compoundbuilding";
+import Rotation from "core/rotation";
 
 var Terrain = Core.Terrain;
 
@@ -66,16 +67,8 @@ BuildingView.prototype.update = function () {
     for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
 
     if (b.data.getState() === BuildingState.underConstruction) {
-      var sizeX = 0,
-        sizeY = 0;
-
-      if (this.building.data.rotation) {
-        sizeX = staticData.sizeY;
-        sizeY = staticData.sizeX;
-      } else {
-        sizeX = staticData.sizeX;
-        sizeY = staticData.sizeY;
-      }
+      var sizeX = Rotation.sizeX(staticData, b.data.rotation),
+        sizeY = Rotation.sizeY(staticData, b.data.rotation);
 
       for (var x = 0; x < sizeX; x++) {
         for (var y = 0; y < sizeY; y++) {
@@ -96,12 +89,12 @@ BuildingView.prototype.update = function () {
       }
     } else if (b.data.getState() === BuildingState.ready) {
       //drawn the way it was painted, see addSprites
-      var rotated = !!b.data.rotation !== !!staticData.turned;
+      var rotated = mirrored(staticData, b.data.rotation);
 
       addSprites(
         this.gameObject,
         staticData,
-        !!b.data.rotation,
+        b.data.rotation,
         this.opacity,
         undefined,
         look,
@@ -150,30 +143,40 @@ BuildingView.prototype.update = function () {
  * Hangs the finished building's sprites under parent, laid out relative to the
  * tile it stands on - shared with the see-through preview shown while placing.
  *
+ * A building put together out of parts is drawn from whichever of its four
+ * sides faces the camera. One drawn by hand has two pictures at most, as it
+ * is and turned round (flipped over, for most): its back is drawn as its
+ * front, and the side turned the other way as the side.
+ *
+ * @param rotation {number} quarter turns, 0..3 - see core/rotation
  * @param opacity {number} 1 for the real thing
  * @param [layer] {number} every piece goes on this one rather than its own
  * @param [look] {Object} for a building put together out of parts, what it
  *        looks like - see client/compoundbuilding; the look of the kind of
  *        building it is, for one that is not a building yet
  */
-function addSprites(parent, staticData, rotated, opacity, layer, look) {
+function addSprites(parent, staticData, rotation, opacity, layer, look) {
   if (staticData.compound) {
-    addParts(parent, staticData.compound, rotated, opacity, layer, look);
+    addParts(
+      parent,
+      staticData.compound,
+      Rotation.turns(rotation),
+      opacity,
+      layer,
+      look,
+    );
     return;
   }
 
-  //a building painted for the footprint turned round is drawn turned round,
-  //so that it covers the footprint it actually has
-  if (staticData.turned) rotated = !rotated;
-
-  var spritesData =
+  var rotated = mirrored(staticData, rotation),
+    spritesData =
       rotated && staticData.spritesRotate
         ? staticData.spritesRotate
         : staticData.sprites,
     tileSize = Config.tileSize,
-    tileZStep = Config.tileZStep;
+    tileZStep = Config.tileZStep,
+    len = spritesData.length;
 
-  var len = spritesData.length;
   for (var i = 0; i < len; i++) {
     var spriteData = spritesData[i];
 
@@ -200,10 +203,19 @@ function addSprites(parent, staticData, rotated, opacity, layer, look) {
 BuildingView.addSprites = addSprites;
 
 /**
+ * Whether a building drawn by hand shows its turned-round picture, turned
+ * the way it is - one painted for the footprint turned round does so when
+ * not turned, so that it covers the footprint it actually has.
+ */
+function mirrored(staticData, rotation) {
+  return ((Rotation.turns(rotation) & 1) === 1) !== !!staticData.turned;
+}
+
+/**
  * Hangs a building put together out of parts under parent: a sprite for each
  * of its tiles, each the parts of that tile put together.
  */
-function addParts(parent, compound, rotated, opacity, layer, look) {
+function addParts(parent, compound, turns, opacity, layer, look) {
   var sprites = vkaria.sprites;
 
   look = look || CompoundBuilding.sampleLook(sprites, compound);
@@ -211,7 +223,7 @@ function addParts(parent, compound, rotated, opacity, layer, look) {
   //nothing to put it together out of
   if (look === null) return;
 
-  CompoundBuilding.pieces(sprites, look, compound, rotated).forEach(
+  CompoundBuilding.pieces(sprites, look, compound, turns).forEach(
     function (piece) {
       var renderer = new engine.SpriteRenderer(),
         go = new engine.GameObject();

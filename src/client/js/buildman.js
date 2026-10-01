@@ -19,6 +19,7 @@ import RenderLayer from "./renderlayer";
 import ResourceCode from "core/resourcecode";
 import ErrorCode from "core/errorcode";
 import Numeral from "numeral";
+import Rotation from "core/rotation";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -470,8 +471,8 @@ function buildSelection(self, code, anchors, rotation, codes) {
     showText(
       self,
       errors[i].tile,
-      rotation ? data.sizeY : data.sizeX,
-      rotation ? data.sizeX : data.sizeY,
+      Rotation.sizeX(data, rotation),
+      Rotation.sizeY(data, rotation),
       errorText[reason] || "can't build",
     );
   }
@@ -504,8 +505,8 @@ function showConstructionCost(self, model) {
   showCost(
     self,
     model.tile,
-    model.rotation ? data.sizeY : data.sizeX,
-    model.rotation ? data.sizeX : data.sizeY,
+    Rotation.sizeX(data, model.rotation),
+    Rotation.sizeY(data, model.rotation),
     cost,
   );
 }
@@ -786,17 +787,18 @@ Buildman.prototype.build = function (code) {
   //tower is placed by what it will reach rather than by guesswork
   var waterRadius = CityWater.radius(code);
 
-  var rotation = false;
+  //quarter turns, 0..3
+  var rotation = 0;
 
   //the building's footprint the way it is turned - Construction#occupiedTiles
   //and the under-construction site placeholder (buildingview.js) swap
   //sizeX/sizeY the same way when rotated
   function sizeX() {
-    return rotation ? data.sizeY : data.sizeX;
+    return Rotation.sizeX(data, rotation);
   }
 
   function sizeY() {
-    return rotation ? data.sizeX : data.sizeY;
+    return Rotation.sizeY(data, rotation);
   }
 
   //what goes up on each footprint of the selection, by the tile it starts
@@ -1013,7 +1015,7 @@ Buildman.prototype.build = function (code) {
   //flipped over (see BuildingView) - unless it says otherwise
   controls.canRotate(data.canRotate !== false);
   controls.onRotate = function () {
-    rotation = !rotation;
+    rotation = Rotation.next(rotation);
     //the whole selection turns with the buildings on it - which redraws
     //it all
     ts.rotate();

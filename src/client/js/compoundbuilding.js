@@ -38,9 +38,16 @@ function lookOf(sprites, building, compound) {
 /**
  * The look of a block in the catalogue, or about to be put down: the same
  * every time, for it is no block yet - only the kind of block it will be.
+ * Its yards are the ones that look most like a yard, the playground first,
+ * rather than a lawn that could be any grass.
  */
 function sampleLook(sprites, compound) {
-  return pick(sprites, compound, seeded(compound.layout + compound.storeys));
+  return pick(
+    sprites,
+    compound,
+    seeded(compound.layout + compound.storeys),
+    true,
+  );
 }
 
 /**
@@ -68,8 +75,10 @@ function seeded(seed) {
  * of its own for every section, and no yard the same as the one next to it.
  *
  * @param random {function(): number} 0..1
+ * @param [showcase] {boolean} the yards in the order the generator lists
+ *        them, best seen first, rather than any
  */
-function pick(sprites, compound, random) {
+function pick(sprites, compound, random, showcase) {
   var meta = sprites.generated.flats;
 
   if (!meta) return null;
@@ -98,7 +107,7 @@ function pick(sprites, compound, random) {
     tiles.push({ x: c, y: compound.yard ? 1 : 0, parts: parts });
 
     if (compound.yard) {
-      var yard = yards.splice(any(yards.length), 1)[0];
+      var yard = yards.splice(showcase ? 0 : any(yards.length), 1)[0];
 
       tiles.push({
         x: c,
@@ -132,17 +141,20 @@ function spriteOf(part, turns) {
 
 /**
  * What every tile of a block is drawn with, where it stands in the block -
- * turned round, the footprint is cells by rows the other way.
+ * each tile's parts painted from the side the block is turned to, and the
+ * tiles moved round with it the way shared/gen/isobox turns a building.
  *
  * @param look {{tiles: Object[]}}
  * @param compound {Object}
- * @param rotated {boolean}
+ * @param turns {number} quarter turns, 0..3
  * @returns {{x: number, z: number, pivotX: number, pivotY: number,
  *            sprite: CachedSprite}[]} x, z the tile in the block
  */
-function pieces(sprites, look, compound, rotated) {
-  var turns = rotated ? 1 : 0,
-    storey = sprites.generated.flats.storey;
+function pieces(sprites, look, compound, turns) {
+  var storey = sprites.generated.flats.storey,
+    //the footprint, not turned: sections along x, the yard in front
+    sizeX = compound.cells,
+    sizeY = compound.yard ? 2 : 1;
 
   return look.tiles.map(function (tile) {
     var level = 0,
@@ -172,11 +184,11 @@ function pieces(sprites, look, compound, rotated) {
       minY = Math.min(minY, p.top);
     });
 
+    var at = turn(tile.x, tile.y, sizeX, sizeY, turns);
+
     return {
-      //turned a quarter turn, what stood along x stands along y, its first
-      //cell last - the way shared/gen/isobox turns a building
-      x: rotated ? tile.y : tile.x,
-      z: rotated ? compound.cells - 1 - tile.x : tile.y,
+      x: at[0],
+      z: at[1],
       pivotX: -minX,
       pivotY: -minY,
       sprite: sprites.getComposite(
@@ -186,6 +198,23 @@ function pieces(sprites, look, compound, rotated) {
       ),
     };
   });
+}
+
+/**
+ * Where the tile at x, y of a footprint sizeX by sizeY is, turned - a
+ * quarter turn takes what faced -y to face -x.
+ */
+function turn(x, y, sizeX, sizeY, turns) {
+  switch (turns) {
+    case 1:
+      return [y, sizeX - 1 - x];
+    case 2:
+      return [sizeX - 1 - x, sizeY - 1 - y];
+    case 3:
+      return [sizeY - 1 - y, x];
+    default:
+      return [x, y];
+  }
 }
 
 //the catalogue's pictures, by kind of building, once drawn
@@ -215,7 +244,7 @@ function drawPreview(sprites, compound, tries) {
 
   if (look === null) return Promise.reject(new Error("no parts to draw"));
 
-  var list = pieces(sprites, look, compound, false),
+  var list = pieces(sprites, look, compound, 0),
     loads = [];
 
   list.forEach(function (piece) {
