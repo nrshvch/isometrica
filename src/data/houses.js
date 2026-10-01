@@ -7,8 +7,9 @@
  *
  *   - village houses need no street and no water, and their people no job in
  *     town: a cottage, a farmstead - what a village is before it is a town;
- *   - town houses, semi-detached and terraced houses: a house of one's own
- *     on its own land, worth more a head to the treasury than flats;
+ *   - town houses and semi-detached houses: a house of one's own on its own
+ *     land, worth more a head to the treasury than flats - the more garden
+ *     the more;
  *   - villas: few people on a lot of land, and the richest of them.
  *
  * Measured against the rest the way data/buildings measures them:
@@ -21,7 +22,7 @@
  *  two-storey house    13000    8    25      4      100       65
  *  house, long garden  18000   10    25     3.3      83       72
  *  semi-detached       28000   16    25      4      100       70
- *  terraced houses     40000   22    25     3.7      92       73
+ *   with gardens       34000   16    30     2.7      80       71
  *  villa               60000   10    70     2.5     175       86
  *  grand villa         95000   14    75     2.3     175       90
  */
@@ -89,12 +90,12 @@ var HOUSES = [
   },
   {
     kind: "town",
-    footprint: "3x2",
-    name: "terraced houses",
-    heads: 22,
-    cost: 40000,
-    tax: 25,
-    time: 90000,
+    footprint: "2x3",
+    name: "semi-detached with gardens",
+    heads: 16,
+    cost: 34000,
+    tax: 30,
+    time: 80000,
   },
   {
     kind: "villa",
