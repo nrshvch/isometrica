@@ -383,7 +383,7 @@ function createTag(self, tile, sizeX, sizeY, text, grey) {
   var go = new engine.GameObject("price tag"),
     renderer = go.addComponent(new engine.TextRenderer());
 
-  renderer.layer = RenderLayer.overlayLayer;
+  renderer.layer = RenderLayer.tagLayer;
   renderer.color = grey ? "rgb(160,160,160)" : "rgb(255,64,64)";
   renderer.style = "bold 16px Courier New";
   renderer.strokeStyle = "black";
@@ -812,17 +812,59 @@ Buildman.prototype.build = function (code) {
     return Rotation.sizeY(data, rotation);
   }
 
-  //what goes up on each footprint of the selection, by the tile it starts
-  //on - for a type, which of its variants: picked the first time the
-  //selection covers it and kept from then on, so that the preview does not
-  //shuffle while it is dragged about and what goes up is what was shown
-  var variants = Object.create(null);
+  //what goes up on each footprint of the selection, by where in the
+  //selection it is - for a type, which of its variants: picked the first
+  //time the selection has a footprint there, and kept while it is dragged
+  //about, so that the preview does not shuffle under the finger and what
+  //goes up is what was shown. Only a selection of another size - another
+  //row or column of them - picks again
+  var variants = Object.create(null),
+    //the footprint of the selection each tile it covers starts, by tile -
+    //"column,row" from its corner - and the selection's size
+    slots = Object.create(null),
+    shape = "";
+
+  /**
+   * Finds where in the selection each of its footprints is - and when the
+   * selection is not the size it was, lets go of what was picked for it.
+   */
+  function layout(anchors) {
+    var x0 = Infinity,
+      y0 = Infinity,
+      cols = 0,
+      rows = 0;
+
+    anchors.forEach(function (tile) {
+      x0 = Math.min(x0, Terrain.extractX(tile));
+      y0 = Math.min(y0, Terrain.extractY(tile));
+    });
+
+    slots = Object.create(null);
+    anchors.forEach(function (tile) {
+      var c = Math.round((Terrain.extractX(tile) - x0) / sizeX()),
+        r = Math.round((Terrain.extractY(tile) - y0) / sizeY());
+
+      slots[tile] = c + "," + r;
+      cols = Math.max(cols, c + 1);
+      rows = Math.max(rows, r + 1);
+    });
+
+    var now = anchors.length + ":" + cols + "x" + rows;
+
+    if (now !== shape) {
+      shape = now;
+      variants = Object.create(null);
+      looks = Object.create(null);
+    }
+  }
 
   function variantAt(tile) {
-    if (variants[tile] === undefined)
-      variants[tile] = CityBuildings.variantOf(code);
+    var slot = slots[tile];
 
-    return variants[tile];
+    if (variants[slot] === undefined)
+      variants[slot] = CityBuildings.variantOf(code);
+
+    return variants[slot];
   }
 
   //and for a building put together out of parts, the look of the one going
@@ -831,14 +873,15 @@ Buildman.prototype.build = function (code) {
   var looks = Object.create(null);
 
   function lookAt(tile) {
-    var compound = BuildingData[variantAt(tile)].compound;
+    var compound = BuildingData[variantAt(tile)].compound,
+      slot = slots[tile];
 
     if (compound === undefined) return null;
 
-    if (!looks[tile])
-      looks[tile] = CompoundBuilding.pickLook(root.sprites, compound);
+    if (!looks[slot])
+      looks[slot] = CompoundBuilding.pickLook(root.sprites, compound);
 
-    return looks[tile];
+    return looks[slot];
   }
 
   //show hint
@@ -998,9 +1041,12 @@ Buildman.prototype.build = function (code) {
   function updateHilite() {
     //where the buildings would stand, one to a footprint of the selection
     var tiles = ts.anchors(),
-      quotes = root.core.cities
-        .getCity(0)
-        .buildingService.quoteSelection(code, tiles, rotation);
+      quotes;
+
+    layout(tiles);
+    quotes = root.core.cities
+      .getCity(0)
+      .buildingService.quoteSelection(code, tiles, rotation);
 
     clearPreview();
 
@@ -1051,6 +1097,7 @@ Buildman.prototype.build = function (code) {
   controls.onSubmit = function () {
     var anchors = ts.anchors();
 
+    layout(anchors);
     buildSelection(
       self,
       code,
@@ -1063,7 +1110,10 @@ Buildman.prototype.build = function (code) {
     //a block that went up has its look; another put down there next is
     //a block of its own. One turned down keeps the look it was shown with
     anchors.forEach(function (tile) {
-      if (root.core.world.buildings.get(tile)) delete looks[tile];
+      if (root.core.world.buildings.get(tile)) {
+        delete looks[slots[tile]];
+        delete variants[slots[tile]];
+      }
     });
 
     // stay in build mode with the selection where it was, so the next

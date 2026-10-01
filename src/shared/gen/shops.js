@@ -55,6 +55,14 @@ import {
   tree,
   bench,
   baysOverlay,
+  onFace,
+  backDoor,
+  wallUnit,
+  smears,
+  graffiti,
+  bins,
+  dumpster,
+  wireFence,
   onTile,
   measureOnTile,
   TURNS,
@@ -157,13 +165,14 @@ var MALL = {
 
 //where each design's building stands on its footprint, and how high - far
 //enough back from the car park that nothing of it reaches over the tile's
-//edge onto it: a tile's parts are only ever painted on that tile
+//edge onto it: a tile's parts are only ever painted on that tile - and far
+//enough from the back for the service yard behind it (back)
 var RECT = {
   small: { x0: 3, x1: 29, y0: 9, y1: 28, h: 13 },
-  store: { x0: 2, x1: 30, y0: 38, y1: 61, h: 14 },
-  bigbox: { x0: 2, x1: 62, y0: 38, y1: 62, h: 18 },
-  mall: { x0: 2, x1: 62, y0: 38, y1: 93, h: 20 },
-  market: { x0: 2, x1: 62, y0: 38, y1: 93, h: 10 },
+  store: { x0: 2, x1: 30, y0: 38, y1: 58, h: 14 },
+  bigbox: { x0: 2, x1: 62, y0: 38, y1: 56, h: 18 },
+  mall: { x0: 2, x1: 62, y0: 38, y1: 88, h: 20 },
+  market: { x0: 2, x1: 62, y0: 38, y1: 88, h: 10 },
 };
 
 /* --- Pictures -------------------------------------------------------- */
@@ -383,6 +392,55 @@ function vault(b, x0, x1, y0, y1, z0, color, rib) {
   }
 }
 
+/**
+ * The back of a shop and its sides, where nobody is meant to look: a steel
+ * door out to the bins - a skip as well behind a big one - the air
+ * conditioning's units on the wall, rain streaks down it, a tag or two
+ * sprayed on it, and a wire fence along the back of the lot, a gate in it
+ * for the bins to go out by.
+ *
+ * @param R {{x0, x1, y0, y1}} the walls
+ * @param h {number} how high they are
+ * @param edge {number} where the lot ends behind the shop
+ */
+function back(b, R, h, wall, edge, rnd) {
+  var big = R.x1 - R.x0 > 40,
+    door = R.x0 + 3 + Math.floor(rnd() * 4),
+    units = big ? 3 : 1 + Math.floor(rnd() * 2),
+    i;
+
+  backDoor(b, R, "+y", door, 1);
+  bins(b, door + 5, R.y1 + 0.5, big ? 3 : 2, "x");
+  if (big) {
+    dumpster(b, door + 12, R.y1 + 0.6, "x");
+    backDoor(b, R, "+y", R.x1 - 14, 1);
+  }
+
+  for (i = 0; i < units; i++)
+    wallUnit(
+      b,
+      R,
+      "+y",
+      R.x1 - 7 - i * (big ? 13 : 7) - Math.floor(rnd() * 2),
+      Math.min(h - 5, 5.5 + Math.floor(rnd() * 3)),
+      wall,
+    );
+
+  smears(b, R, "+y", R.x0, R.x1, 1.5, h, wall, rnd);
+  ["-x", "+x"].forEach(function (f) {
+    smears(b, R, f, R.y0, R.y1, 1.5, h, wall, rnd);
+  });
+  wallUnit(b, R, rnd() < 0.5 ? "-x" : "+x", R.y1 - 7, 5, wall);
+
+  if (rnd() < 0.75)
+    graffiti(b, R, "+y", door + (big ? 20 : 9), 2.2, big ? 14 : 8, 5, rnd);
+  if (rnd() < 0.5)
+    graffiti(b, R, rnd() < 0.5 ? "-x" : "+x", R.y1 - 14, 2, 10, 4, rnd);
+
+  //the fence along the back, a gate's width left open by the bins
+  wireFence(b, "x", edge - 0.6, R.x0 - 1, R.x1 + 1, [[door + 4, door + 11]]);
+}
+
 /* --- The designs ----------------------------------------------------- */
 
 function smallShop(o, rnd) {
@@ -527,10 +585,11 @@ function smallShop(o, rnd) {
   if (rnd() < 0.5) bench(b, 24, 3);
   else tree(b, 28, 4, 2);
 
+  back(b, R, h, P.wall, TILE, rnd);
   return b;
 }
 
-function store(o) {
+function store(o, rnd) {
   var b = [],
     P = STORE[o.pal],
     R = RECT.store,
@@ -587,6 +646,7 @@ function store(o) {
   airConditioner(b, 5, R.y1 - 9, h + 0.4);
   airConditioner(b, 21, R.y1 - 7, h + 0.4);
 
+  back(b, R, h, P.wall, 2 * TILE, rnd);
   return b;
 }
 
@@ -665,6 +725,7 @@ function bigbox(o, rnd) {
       h + 0.4,
     );
 
+  back(b, R, h, S.wall, 2 * TILE, rnd);
   return b;
 }
 
@@ -714,6 +775,7 @@ function mall(o, rnd) {
       h + 0.4,
     );
 
+  back(b, R, h, S.wall, 3 * TILE, rnd);
   return b;
 }
 
@@ -841,6 +903,7 @@ function market(o, rnd) {
     );
   });
 
+  back(b, R, h, brick, 3 * TILE, rnd);
   return b;
 }
 

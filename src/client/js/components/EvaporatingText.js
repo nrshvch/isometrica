@@ -21,7 +21,7 @@ EvaporatingTextScript.prototype.startedAt = 0;
 
 EvaporatingTextScript.prototype.start = function () {
   var textRenderer = this.gameObject.addComponent(new engine.TextRenderer());
-  textRenderer.layer = vkaria.layers.overlayLayer;
+  textRenderer.layer = vkaria.layers.tagLayer;
   textRenderer.text = this.text;
   textRenderer.color = this.color;
   textRenderer.style = "bold 16px Courier New";
