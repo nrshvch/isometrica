@@ -34,6 +34,10 @@ import {
   WOOD,
   METAL,
   hedge,
+  deepenPalettes,
+  PANELS,
+  BRICKS,
+  GRAVEL,
   MATTE,
   GLASSY,
   DOOR,
@@ -48,7 +52,7 @@ var RUBBER = [184, 108, 88],
 
 //what a block is built of: its walls, the plinth under them, the stairwells
 //up the front, the balconies and canopies, and the roof
-var PALETTES = {
+var PALETTES = deepenPalettes({
   panel: {
     wall: [240, 226, 204],
     plinth: [126, 116, 110],
@@ -84,7 +88,7 @@ var PALETTES = {
     trim: [252, 240, 232],
     roof: [128, 80, 70],
   },
-};
+});
 
 /**
  * The one section every block of flats is built of. It is a tile wide along
@@ -126,7 +130,7 @@ var SECTION = {
 function storey(b, s, z0, z1, zf, upper, pal, front, back) {
   var landing = zf + STOREY / 2;
 
-  b.push(box(s.x0, s.x1, s.front, s.back, z0, z1, pal.wall));
+  b.push(box(s.x0, s.x1, s.front, s.back, z0, z1, pal.wall, PANELS));
 
   facade(b, s.cell, upper ? front : [], s.front, -1, zf, pal);
   facade(b, s.cell, upper ? back : [], s.back, 1, zf, pal);
@@ -164,7 +168,9 @@ function groundStorey(b, s, pal) {
   var x = ends(s, 0.3);
 
   storey(b, s, 1, PLINTH + STOREY, PLINTH, false, pal, [], []);
-  b.push(box(x[0], x[1], s.front - 0.3, s.back + 0.3, 1, PLINTH, pal.plinth));
+  b.push(
+    box(x[0], x[1], s.front - 0.3, s.back + 0.3, 1, PLINTH, pal.plinth, BRICKS),
+  );
 
   b.push(box(s.mid - 3, s.mid + 3, s.front - 4, s.front, 1, 1.6, pal.plinth));
   b.push(
@@ -236,7 +242,7 @@ function roof(b, s, z, pal, rnd) {
     vx,
     vy;
 
-  b.push(box(s.x0, s.x1, s.front, s.back, z, z + 0.4, pal.roof));
+  b.push(box(s.x0, s.x1, s.front, s.back, z, z + 0.4, pal.roof, GRAVEL));
   b.push(box(s.x0, s.x1, s.front, s.front + 1.5, z, z + 2, pal.wall));
   b.push(box(s.x0, s.x1, s.back - 1.5, s.back, z, z + 2, pal.wall));
   if (s.start)

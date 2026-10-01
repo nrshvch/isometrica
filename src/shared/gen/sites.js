@@ -39,6 +39,7 @@ import {
   METAL,
   DIRT,
   CONCRETE,
+  GRAVEL,
   TURNS,
   random,
   pick,
@@ -493,7 +494,7 @@ export function partBoxes(key, turns) {
         fence(b, edge, c === "2");
     });
   } else if (p.kind === "lot") {
-    b.push(box(0, TILE, 0, TILE, 0, 1, DIRT));
+    b.push(box(0, TILE, 0, TILE, 0, 1, DIRT, GRAVEL));
     LOTS[p.lot](b, random(key));
   } else if (p.kind === "mast") mastSection(b, TOP, TOP + STOREY);
   else {

@@ -33,13 +33,16 @@ import {
   PLINTH,
   MATTE,
   GLASSY,
+  deepen,
+  deepenPalettes,
+  GRAVEL,
   METAL,
   VENT,
 } from "./blocks.js";
 
 var CONCRETE = [168, 166, 160],
   STEEL = [70, 84, 104],
-  STONE = [200, 196, 186],
+  STONE = deepen([200, 196, 186]),
   WATER = [96, 160, 210],
   PLANTER = [140, 132, 122],
   FAN = [60, 62, 66],
@@ -47,7 +50,7 @@ var CONCRETE = [168, 166, 160],
 
 //what a block is built of: its panes, the frames and spandrels between them,
 //its plinth, its canopy and sign, and its roof
-var PALETTES = {
+var PALETTES = deepenPalettes({
   azure: {
     glass: [58, 140, 222],
     frame: [214, 222, 232],
@@ -80,7 +83,7 @@ var PALETTES = {
     accent: [244, 108, 160],
     roof: [124, 136, 128],
   },
-};
+});
 
 //what a billboard's picture is painted in: strong colours, to be seen
 var INKS = [
@@ -366,7 +369,7 @@ function roof(b, s, z, pal, rnd, variant) {
     n,
     i;
 
-  b.push(box(s.x0, s.x1, s.front, s.back, z, z + 0.4, pal.roof));
+  b.push(box(s.x0, s.x1, s.front, s.back, z, z + 0.4, pal.roof, GRAVEL));
   b.push(box(s.x0, s.x1, s.front, s.front + 1, z, z + 2, pal.frame));
   b.push(box(s.x0, s.x1, s.back - 1, s.back, z, z + 2, pal.frame));
   if (s.start)

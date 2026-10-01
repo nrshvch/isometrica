@@ -90,12 +90,15 @@ function project(x, y, z) {
   return [x - y, -(x + y) / 2 - z];
 }
 
-//a face looking up is lit the most, one looking down and to the left (-x)
-//less, down and to the right (-y) the least
+//how a face is lit: one looking up lighter than its colour, one looking down
+//and to the left (-x) darker, down and to the right (-y) darker still - with
+//as much between them as the hand-drawn buildings have, near enough
+var SHADE = { up: 0.16, left: 0.15, right: 0.375 };
+
 function shade(color, face) {
-  if (face === 2) return lighter(color, 0.22);
-  else if (face === 0) return darker(color, 0.1);
-  else return darker(color, 0.3);
+  if (face === 2) return lighter(color, SHADE.up);
+  else if (face === 0) return darker(color, SHADE.left);
+  else return darker(color, SHADE.right);
 }
 
 function screenBounds(b) {
@@ -128,7 +131,7 @@ function screenBounds(b) {
  * point that lands on the same pixel lies on. Of two boxes hit at the same
  * spot the one listed later wins, so details go after what they sit on.
  */
-function cast(boxes, sx, sy) {
+function cast(boxes, sx, sy, at) {
   var y = -1000,
     x = y + sx,
     z = -(x + y) / 2 - sy,
@@ -169,6 +172,14 @@ function cast(boxes, sx, sy) {
   }
 
   if (hit === null) return null;
+
+  //how far along the ray, and where, for the outline (see outline)
+  if (at !== undefined) {
+    at.t = best;
+    at.x = x + best;
+    at.y = y + best;
+    at.z = z - best;
+  }
 
   //a box lit already is its own colour on every face
   if (hit.finish !== undefined && hit.finish.lit) return hit.color;
@@ -248,6 +259,69 @@ function shadowed(boxes, hit, px, py, pz) {
   return false;
 }
 
+//a little lighter or darker by k, -1..1 of it
+function tint(c, k) {
+  return k > 0 ? lighter(c, k) : darker(c, -k);
+}
+
+/**
+ * A material on a surface at lx, ly, lz on its tile and storey:
+ *
+ *   - panels: precast concrete, a joint between one panel and the next every
+ *     eight along a wall and at every floor, each panel a shade of its own;
+ *   - bricks: courses half a brick apart, the mortar lighter, each brick a
+ *     shade of its own;
+ *   - slabs: paving, a joint every four each way on top, each slab a shade of
+ *     its own;
+ *   - gravel: speckled, a pebble here and there lighter or darker.
+ *
+ * Walls go by the way along them and up, tops by both ways along the ground.
+ */
+function pattern(c, face, kind, lx, ly, lz) {
+  var u = face === 1 ? lx : ly,
+    v = face === 2 ? lx : lz,
+    r;
+
+  if (kind === "panels") {
+    if (face === 2) return c;
+    if (mod(u, 8) < 0.55 || lz < 0.55) return darker(c, 0.16);
+
+    return tint(c, (hash(Math.floor(u / 8), face, 3) - 0.5) * 0.08);
+  }
+
+  if (kind === "bricks") {
+    if (face === 2) return c;
+
+    var row = Math.floor(lz / 1.5),
+      along = u + (row % 2 ? 1.5 : 0);
+
+    if (mod(lz, 1.5) < 0.35 || mod(along, 3) < 0.35) return lighter(c, 0.2);
+
+    return tint(c, (hash(Math.floor(along / 3), row, 5) - 0.5) * 0.16);
+  }
+
+  if (kind === "slabs") {
+    if (face !== 2) return c;
+    if (mod(lx, 4) < 0.4 || mod(ly, 4) < 0.4) return darker(c, 0.14);
+
+    return tint(
+      c,
+      (hash(Math.floor(lx / 4), Math.floor(ly / 4), 7) - 0.5) * 0.1,
+    );
+  }
+
+  if (kind === "gravel") {
+    r = hash(Math.floor(u * 2), Math.floor(v * 2), face + 11);
+
+    if (r > 0.94) return lighter(c, 0.22);
+    if (r < 0.06) return darker(c, 0.28);
+
+    return tint(c, (r - 0.5) * 0.12);
+  }
+
+  return c;
+}
+
 //what comes out of a hash of whole numbers: 0..1, the same every time
 function hash(i, j, k) {
   var h =
@@ -270,6 +344,9 @@ function mod(v, n) {
  * from the tile's corner, z from the floor of the storey it is on - so a part
  * painted on a tile of its own comes out the same as it does in a whole
  * building put together out of it, whichever tile and storey it is laid on.
+ *
+ * A finish with a pattern is a material, laid out the same way (see
+ * pattern): concrete panels, brick, paving slabs, gravel.
  *
  * A finish with shadow set has the shadows of the other boxes of its group
  * with shadow set fall on it (see shadowed) - the members of a steel
@@ -301,6 +378,8 @@ function finish(color, face, f, x, y, z) {
     if (s < 1.4) c = lighter(c, 0.2);
     else if (s < 2.4) c = lighter(c, 0.09);
   }
+
+  if (f.pattern !== undefined) c = pattern(c, face, f.pattern, lx, ly, lz);
 
   if (f.noise) {
     var n =
@@ -344,11 +423,90 @@ function measure(boxes) {
   };
 }
 
+//how much darker the outline is: round the edge of what is painted, and
+//where something stands well in front of what is behind it
+var OUTLINE = 0.42,
+  CONTOUR = 0.25,
+  //how much further away what is behind has to be for a contour
+  CONTOUR_DEPTH = 4;
+
+/**
+ * Darkens the pixels round the edge of the picture - next to one with
+ * nothing in it - and those in front of something much further away,
+ * the way the hand-drawn buildings are outlined.
+ *
+ * Not where the edge is not the edge of the thing but of the picture of it:
+ * where the tile it is cut to ends (clip x0, x1, y0, y1), for the tile next
+ * to it carries on from there; and at the foot of a part laid on another
+ * (clip base, over the ground), which stands on what is under it.
+ *
+ * @param at {Object[]} for each pixel with anything in it, {t, x, y, z}:
+ *        how far along the ray it was hit, and where
+ * @param [clip] {{x0, x1, y0, y1, base}} what the picture was cut to
+ */
+function outline(pixels, at, w, h, clip) {
+  var dark = new Float32Array(w * h),
+    i,
+    j,
+    k;
+
+  function seam(p) {
+    if (clip === undefined) return false;
+
+    return (
+      p.x - clip.x0 < 1 ||
+      clip.x1 - p.x < 1 ||
+      p.y - clip.y0 < 1 ||
+      clip.y1 - p.y < 1 ||
+      (clip.base > 1 && p.z - clip.base < 1)
+    );
+  }
+
+  for (j = 0; j < h; j++)
+    for (i = 0; i < w; i++) {
+      k = j * w + i;
+
+      var p = at[k];
+
+      if (p === null) continue;
+
+      var near = [
+          i > 0 ? at[k - 1] : null,
+          i < w - 1 ? at[k + 1] : null,
+          j > 0 ? at[k - w] : null,
+          j < h - 1 ? at[k + w] : null,
+        ],
+        edge = false,
+        behind = false;
+
+      for (var n = 0; n < 4; n++) {
+        if (near[n] === null) edge = true;
+        else if (near[n].t - p.t > CONTOUR_DEPTH) behind = true;
+      }
+
+      if (edge && !seam(p)) dark[k] = OUTLINE;
+      else if (behind) dark[k] = CONTOUR;
+    }
+
+  for (k = 0; k < pixels.length; k++)
+    if (dark[k] > 0) pixels[k] = darker(pixels[k], dark[k]);
+}
+
+//whether pictures are outlined - off only to check that the parts of a
+//building lay together exactly as the whole of it (see shared/gen/compose)
+var outlining = true;
+
+function setOutlining(on) {
+  outlining = on;
+}
+
 /**
  * The picture of the boxes, with pivotX/pivotY where the world's origin lands
- * in it.
+ * in it - outlined (see outline).
+ *
+ * @param [clip] {Object} what the boxes were cut to, see outline
  */
-function render(boxes) {
+function render(boxes, clip) {
   var minX = Infinity,
     maxX = -Infinity,
     minY = Infinity,
@@ -389,10 +547,19 @@ function render(boxes) {
   h = Math.ceil(maxY) - minY;
   pixels = [];
 
+  var at = [];
+
   for (j = 0; j < h; j++) {
-    for (i = 0; i < w; i++)
-      pixels.push(cast(boxes, minX + i + 0.5, minY + j + 0.5));
+    for (i = 0; i < w; i++) {
+      var p = {},
+        c = cast(boxes, minX + i + 0.5, minY + j + 0.5, p);
+
+      pixels.push(c);
+      at.push(c === null ? null : p);
+    }
   }
+
+  if (outlining) outline(pixels, at, w, h, clip);
 
   return { w: w, h: h, pixels: pixels, pivotX: -minX, pivotY: -minY };
 }
@@ -441,7 +608,18 @@ function paintTiles(boxes, sizeX, sizeY) {
 
       if (clipped.length === 0) continue;
 
-      picture = render(clipped);
+      picture = render(clipped, {
+        x0: x0,
+        x1: x1,
+        y0: y0,
+        y1: y1,
+        base: Math.min.apply(
+          null,
+          clipped.map(function (c) {
+            return c.z0;
+          }),
+        ),
+      });
       middle = project(x0 + TILE / 2, y0 + TILE / 2, 0);
 
       pieces.push({
@@ -518,6 +696,8 @@ function blit(png, picture, x, y) {
 }
 
 export {
+  setOutlining,
+  SHADE,
   TILE,
   TILE_W,
   TILE_H,

@@ -64,6 +64,11 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   random when it is first drawn and keeps the parts it is made of in the
   save (`src/client/js/compoundbuilding.js`); the catalogue shows one of
   each kind (`src/data/flats.js`, `offices.js`).
+- The generated buildings are drawn to sit among the hand-drawn ones
+  (`src/shared/gen/isobox.js`): outlined round their edges and where one
+  thing stands in front of another, shaded about as strongly, their colours
+  deepened halfway to the hand-drawn ones' lightness, and their surfaces
+  given materials - concrete panels, brick, paving slabs, gravel.
 - Every building goes up on a building site - the same parts for all of
   them (`src/shared/gen/sites.js`): bare earth, and on each tile one of an
   excavator, a lorry, a heap of sand, the site office or a tower crane,

@@ -41,6 +41,69 @@
 import * as iso from "./isobox.js";
 import * as Vehicles from "./vehicles.js";
 
+/**
+ * A colour as dark as the hand-drawn buildings' halfway: anything lighter
+ * than they mostly are is brought halfway down to it, its hue and as much
+ * colour as it has kept.
+ */
+export function deepen(c) {
+  var r = c[0] / 255,
+    g = c[1] / 255,
+    b = c[2] / 255,
+    mx = Math.max(r, g, b),
+    mn = Math.min(r, g, b),
+    l = (mx + mn) / 2,
+    target = 0.4;
+
+  if (l <= target) return c;
+
+  var d = mx - mn,
+    s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1)),
+    h = 0;
+
+  if (d > 0) {
+    if (mx === r) h = ((g - b) / d + 6) % 6;
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+  }
+
+  //the same hue and as much colour in it, halfway down to the hand-drawn
+  //lightness - only as much as there is room for at that lightness
+  l -= (l - target) / 2;
+
+  var cc = Math.min(d, 1 - Math.abs(2 * l - 1)),
+    x = cc * (1 - Math.abs((h % 2) - 1)),
+    m = l - cc / 2,
+    rgb = [
+      [cc, x, 0],
+      [x, cc, 0],
+      [0, cc, x],
+      [0, x, cc],
+      [x, 0, cc],
+      [cc, 0, x],
+    ][Math.floor(h) % 6];
+
+  return rgb.map(function (v) {
+    return Math.round((v + m) * 255);
+  });
+}
+
+/**
+ * Every colour of a style's palettes deepened (deepen).
+ */
+export function deepenPalettes(palettes) {
+  var out = {};
+
+  Object.keys(palettes).forEach(function (name) {
+    out[name] = {};
+    Object.keys(palettes[name]).forEach(function (key) {
+      out[name][key] = deepen(palettes[name][key]);
+    });
+  });
+
+  return out;
+}
+
 export var box = iso.box,
   darker = iso.darker,
   lighter = iso.lighter,
@@ -51,7 +114,7 @@ export var STOREY = 12,
   PLINTH = 3;
 
 export var GRASS = [112, 158, 84],
-  PAVING = [178, 176, 168],
+  PAVING = deepen([178, 176, 168]),
   ASPHALT = [96, 98, 104],
   STRIPE = [232, 232, 226],
   WOOD = [150, 104, 68],
@@ -64,14 +127,20 @@ export var GRASS = [112, 158, 84],
 
 //the bare earth of a building site, and what is poured on it
 export var DIRT = [152, 124, 92],
-  CONCRETE = [168, 166, 160];
+  CONCRETE = deepen([168, 166, 160]);
 
 //what a surface is like, for the boxes of a style that has it (see iso
 //finish): concrete, stone and painted metal with a faint grain to them, and
 //glass with the sky in it - laid out by storey, so that a storey looks the
 //same whichever one it is
 export var MATTE = { noise: 0.035, base: PLINTH, storey: STOREY },
-  GLASSY = { noise: 0.012, sheen: true, base: PLINTH, storey: STOREY };
+  GLASSY = { noise: 0.012, sheen: true, base: PLINTH, storey: STOREY },
+  //materials (see iso pattern): concrete panels, brick, paving slabs and
+  //gravel - concrete with a grain to it besides
+  PANELS = { pattern: "panels", noise: 0.025, base: PLINTH, storey: STOREY },
+  BRICKS = { pattern: "bricks", noise: 0.015, base: PLINTH, storey: STOREY },
+  SLABS = { pattern: "slabs", noise: 0.02, base: PLINTH, storey: STOREY },
+  GRAVEL = { pattern: "gravel", noise: 0.02, base: PLINTH, storey: STOREY };
 
 //a random number generator that gives the same numbers for the same seed, so
 //running this again paints the same pictures
@@ -156,8 +225,15 @@ export function shaded(color, nx, ny, nz) {
     k;
 
   if (lit >= LIT_LEFT)
-    k = -0.1 + ((lit - LIT_LEFT) / (LIT_UP - LIT_LEFT)) * 0.32;
-  else k = -0.3 + ((lit - LIT_RIGHT) / (LIT_LEFT - LIT_RIGHT)) * 0.2;
+    k =
+      -iso.SHADE.left +
+      ((lit - LIT_LEFT) / (LIT_UP - LIT_LEFT)) *
+        (iso.SHADE.up + iso.SHADE.left);
+  else
+    k =
+      -iso.SHADE.right +
+      ((lit - LIT_RIGHT) / (LIT_LEFT - LIT_RIGHT)) *
+        (iso.SHADE.right - iso.SHADE.left);
 
   return k > 0 ? lighter(color, k) : darker(color, -k);
 }
@@ -330,7 +406,7 @@ export function parkedCar(b, x, y, z, rnd) {
 export function parking(b, cx, rnd) {
   var i, x;
 
-  b.push(box(cx + 1, cx + 31, 2, 30, 1, 1.2, ASPHALT));
+  b.push(box(cx + 1, cx + 31, 2, 30, 1, 1.2, ASPHALT, GRAVEL));
   for (i = 0; i < 4; i++) {
     x = cx + 3 + i * 9;
     b.push(box(x, x + 0.6, 14, 30, 1.2, 1.25, STRIPE));
@@ -353,7 +429,7 @@ export function parking(b, cx, rnd) {
 function siteBase(b, s) {
   var x = ends(s, 0.3);
 
-  b.push(box(0, TILE, 0, TILE, 0, 1, DIRT));
+  b.push(box(0, TILE, 0, TILE, 0, 1, DIRT, GRAVEL));
   b.push(box(x[0], x[1], s.front - 0.3, s.back + 0.3, 1, PLINTH, CONCRETE));
 }
 
@@ -494,6 +570,7 @@ export function blocks(style) {
           1,
           1.2,
           PAVING,
+          SLABS,
         ),
       );
       style.ground(b, s, pal, rnd);
