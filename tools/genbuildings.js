@@ -1,147 +1,199 @@
 /**
- * Writes out the blocks of flats src/shared/gen/flats paints the parts of -
- * the same parts the game puts its blocks together out of - to look at, and
- * to try a change to the painting on before the game gets it.
+ * Writes out the blocks src/shared/gen/flats and src/shared/gen/offices paint
+ * the parts of - the same parts the game puts its blocks together out of - to
+ * look at, and to try a change to the painting on before the game gets it.
  *
  * buildings.png has every block standing on grass, put together from its
  * parts tile by tile the way the game draws it - back to front - a row per
- * layout and height, its palettes across, each from all four sides.
- * The details - balconies, roofs, yards - are a fixed pick for each palette;
- * in the game they are picked at random for every block built.
+ * kind and height, its palettes across, each from all four sides. The
+ * details - storeys, roofs, yards - are a fixed pick for each palette; in the
+ * game they are picked at random for every block built.
+ *
+ * sites.png has every kind going up: a row per kind, its stages across
+ * (shared/gen/stacking stageOf) and the finished block last, each as it is
+ * and turned a quarter turn.
  *
  * Usage:
- *   node tools/genbuildings.js [outFile]
+ *   node tools/genbuildings.js [outDir]
  *
- * outFile is assets/previews/buildings.png unless given.
+ * outDir is assets/previews unless given.
  */
 
 var fs = require("fs");
 var path = require("path");
 var PNG = require("pngjs").PNG;
-var flats = require("../src/shared/gen/flats.js");
 var iso = require("../src/shared/gen/isobox.js");
+var stacking = require("../src/shared/gen/stacking.js");
+
+var GENERATORS = {
+  flats: require("../src/shared/gen/flats.js"),
+  offices: require("../src/shared/gen/offices.js"),
+};
 
 var ROOT = path.resolve(__dirname, "..");
-var DEFAULT_OUT = path.join(ROOT, "assets/previews/buildings.png");
+var DEFAULT_OUT = path.join(ROOT, "assets/previews");
 
-//as in data/flats: how many sections side by side, and a yard in front
-var LAYOUTS = {
-  tower: { cells: 1, yard: false },
-  toweryard: { cells: 1, yard: true },
-  wall: { cells: 2, yard: false },
-  wallyard: { cells: 2, yard: true },
-};
-var STOREYS = [2, 3, 4];
+//as in data/flats and data/offices: which generator, how many sections side
+//by side, whether there is a row of yard in front and which yards
+var KINDS = [
+  { gen: "flats", cells: 1, yard: false, storeys: [2, 3, 4] },
+  { gen: "flats", cells: 1, yard: true, storeys: [2, 3, 4] },
+  { gen: "flats", cells: 2, yard: false, storeys: [2, 3, 4] },
+  { gen: "flats", cells: 2, yard: true, storeys: [2, 3, 4] },
+  { gen: "offices", cells: 1, yard: true, storeys: [3], yards: ["parking"] },
+  {
+    gen: "offices",
+    cells: 2,
+    yard: true,
+    storeys: [4],
+    yards: ["parking", "plaza"],
+  },
+];
 var GRASS = [112, 158, 84];
+var CELL_W = 200,
+  CELL_H = 230;
 
 /**
  * What stands on each tile of a block, as client/compoundbuilding picks it -
  * here the same pick every time for a palette.
  */
-function plan(layout, storeys, palette, n) {
-  var l = LAYOUTS[layout],
-    yards = ["playground", "lawn", "parking"],
+function plan(kind, storeys, palette, n) {
+  var data = GENERATORS[kind.gen].describe().data,
+    yards = kind.yards || data.yards,
+    detail = data.details[n % data.details.length],
     tiles = [];
 
-  for (var c = 0; c < l.cells; c++) {
-    var ends = l.cells === 1 ? "both" : c === 0 ? "start" : "end",
+  for (var c = 0; c < kind.cells; c++) {
+    var ends = kind.cells === 1 ? "both" : c === 0 ? "start" : "end",
       section = palette + "/" + ends + "/",
-      parts = ["flats/ground/" + section + (l.yard ? "yard" : "street")];
+      gen = kind.gen,
+      parts = [gen + "/ground/" + section + (kind.yard ? "yard" : "street")];
 
     for (var k = 1; k < storeys; k++)
-      parts.push("flats/upper/" + section + (n % 2) + ((n + 1) % 2));
+      parts.push(gen + "/upper/" + section + detail);
 
-    parts.push("flats/roof/" + section + (n % 2));
-    tiles.push({ x: c, y: l.yard ? 1 : 0, parts: parts });
+    parts.push(gen + "/roof/" + section + ((n + c) % data.roofs));
+    tiles.push({ x: c, y: kind.yard ? 1 : 0, parts: parts });
 
-    if (l.yard)
+    if (kind.yard)
       tiles.push({
         x: c,
         y: 0,
-        parts: ["flats/yard/" + yards[(n + c) % 3] + "/" + (c % 2)],
+        parts: [gen + "/yard/" + yards[(n + c) % yards.length] + "/" + (c % 2)],
       });
   }
 
-  return { tiles: tiles, sizeX: l.cells, sizeY: l.yard ? 2 : 1 };
+  return { tiles: tiles, sizeX: kind.cells, sizeY: kind.yard ? 2 : 1 };
 }
 
-function main() {
-  var out = path.resolve(process.argv[2] || DEFAULT_OUT),
-    palettes = flats.describe().data.palettes,
-    cellW = 200,
-    cellH = 230,
-    cols = palettes.length * 4,
-    rows = Object.keys(LAYOUTS).length * STOREYS.length,
-    png = new PNG({ width: cols * cellW, height: rows * cellH }),
-    ground = { w: 64, h: 32, pixels: [] },
-    row = 0,
-    i,
-    j;
+function canvas(cols, rows) {
+  var png = new PNG({ width: cols * CELL_W, height: rows * CELL_H });
 
-  for (i = 0; i < png.data.length; i += 4) {
+  for (var i = 0; i < png.data.length; i += 4) {
     png.data[i] = png.data[i + 1] = png.data[i + 2] = 40;
     png.data[i + 3] = 255;
   }
 
-  //a grass tile's diamond, lit from above
-  for (j = 0; j < 32; j++)
-    for (i = 0; i < 64; i++)
-      ground.pixels.push(
-        Math.abs(i + 0.5 - 32) / 2 + Math.abs(j + 0.5 - 16) <= 16
-          ? iso.lighter(GRASS, 0.22)
-          : null,
+  return png;
+}
+
+//a grass tile's diamond, lit from above
+var ground = { w: 64, h: 32, pixels: [] };
+
+for (var j = 0; j < 32; j++)
+  for (var i = 0; i < 64; i++)
+    ground.pixels.push(
+      Math.abs(i + 0.5 - 32) / 2 + Math.abs(j + 0.5 - 16) <= 16
+        ? iso.lighter(GRASS, 0.22)
+        : null,
+    );
+
+/**
+ * Draws the block on tiles, turned, in the cell at col, row: on the grass
+ * around it, its tiles back to front.
+ */
+function draw(png, gen, tiles, p, turns, col, row) {
+  var sizeX = turns % 2 ? p.sizeY : p.sizeX,
+    sizeY = turns % 2 ? p.sizeX : p.sizeY,
+    pieces = iso.paintTiles(
+      GENERATORS[gen].model(tiles, p.sizeX, p.sizeY, turns),
+      sizeX,
+      sizeY,
+    ),
+    ox = col * CELL_W + CELL_W / 2,
+    oy = row * CELL_H + CELL_H - 50,
+    gx,
+    gy;
+
+  for (gx = -1; gx <= 2; gx++)
+    for (gy = -1; gy <= 2; gy++)
+      iso.blit(png, ground, ox + (gx - gy) * 32 - 32, oy - (gx + gy) * 16 - 16);
+
+  pieces
+    .sort(function (a, b) {
+      return b.x + b.y - (a.x + a.y);
+    })
+    .forEach(function (piece) {
+      iso.blit(
+        png,
+        piece,
+        ox + (piece.x - piece.y) * 32 - piece.pivotX,
+        oy - (piece.x + piece.y) * 16 - piece.pivotY,
       );
+    });
+}
 
-  Object.keys(LAYOUTS).forEach(function (layout) {
-    STOREYS.forEach(function (storeys) {
-      palettes.forEach(function (palette, n) {
-        var p = plan(layout, storeys, palette, n);
+function write(png, file) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, PNG.sync.write(png));
+  console.log("Wrote " + path.relative(process.cwd(), file));
+}
 
-        [0, 1, 2, 3].forEach(function (turns) {
-          var sizeX = turns % 2 ? p.sizeY : p.sizeX,
-            sizeY = turns % 2 ? p.sizeX : p.sizeY,
-            pieces = iso.paintTiles(
-              flats.model(p.tiles, p.sizeX, p.sizeY, turns),
-              sizeX,
-              sizeY,
-            ),
-            ox = (n * 4 + turns) * cellW + cellW / 2,
-            oy = row * cellH + cellH - 50,
-            gx,
-            gy;
+function main() {
+  var out = path.resolve(process.argv[2] || DEFAULT_OUT),
+    stages = stacking.STAGES.length + 1,
+    rows = [],
+    cols = 0;
 
-          //the tiles around it, so it can be seen standing among them
-          for (gx = -1; gx <= 2; gx++)
-            for (gy = -1; gy <= 2; gy++)
-              iso.blit(
-                png,
-                ground,
-                ox + (gx - gy) * 32 - 32,
-                oy - (gx + gy) * 16 - 16,
-              );
+  KINDS.forEach(function (kind) {
+    var palettes = GENERATORS[kind.gen].describe().data.palettes;
 
-          pieces
-            .sort(function (a, b) {
-              return b.x + b.y - (a.x + a.y);
-            })
-            .forEach(function (piece) {
-              iso.blit(
-                png,
-                piece,
-                ox + (piece.x - piece.y) * 32 - piece.pivotX,
-                oy - (piece.x + piece.y) * 16 - piece.pivotY,
-              );
-            });
-        });
-      });
-
-      row++;
+    kind.storeys.forEach(function (storeys) {
+      rows.push({ kind: kind, storeys: storeys, palettes: palettes });
+      cols = Math.max(cols, palettes.length * 4);
     });
   });
 
-  fs.mkdirSync(path.dirname(out), { recursive: true });
-  fs.writeFileSync(out, PNG.sync.write(png));
-  console.log("Wrote " + path.relative(process.cwd(), out));
+  var blocks = canvas(cols, rows.length),
+    sites = canvas((stages + 1) * 2, rows.length);
+
+  rows.forEach(function (r, row) {
+    r.palettes.forEach(function (palette, n) {
+      var p = plan(r.kind, r.storeys, palette, n);
+
+      [0, 1, 2, 3].forEach(function (turns) {
+        draw(blocks, r.kind.gen, p.tiles, p, turns, n * 4 + turns, row);
+      });
+    });
+
+    var p = plan(r.kind, r.storeys, r.palettes[0], 0);
+
+    for (var stage = 0; stage <= stages; stage++)
+      [0, 1].forEach(function (turns) {
+        draw(
+          sites,
+          r.kind.gen,
+          stage < stages ? stacking.siteTiles(p.tiles, stage) : p.tiles,
+          p,
+          turns,
+          stage * 2 + turns,
+          row,
+        );
+      });
+  });
+
+  write(blocks, path.join(out, "buildings.png"));
+  write(sites, path.join(out, "sites.png"));
 }
 
 main();

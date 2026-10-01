@@ -1,60 +1,45 @@
 /**
- * Paints blocks of flats out of parts, the way shared/gen/vehicles paints cars
- * out of boxes: flat colours, one light for everything, no noise.
- *
- * A block is put together like toy bricks, out of sections that each take one
- * tile, the same sections for every block whatever its size: a 1x1 tower is
- * one section with both its ends, a two tile wall two sections side by side.
- * A section is built up of parts, each painted on its own:
+ * Blocks of flats, put together out of parts the way shared/gen/blocks puts
+ * every block together:
  *
  *   - ground: the ground storey on its plinth, with the way in under a canopy
  *     at the front, and the pavement in front of it;
  *   - upper: a storey stacked on that, with windows and balconies;
  *   - roof: the roof on top, with its parapet, the way out onto it and vents;
+ *   - frame: a storey going up - concrete columns and floor, the stairwell
+ *     poured first, scaffolding along the front;
  *
  * and in front of the wall, for a block with one, a yard tile: a playground,
- * a lawn with trees, or a car park with the same cars in it that drive the
- * roads.
+ * a car park with the same cars in it that drive the roads, or a lawn with
+ * trees.
  *
  * Every part comes in every palette, and its details in a few variants: which
  * windows of a storey have balconies, front and back; where a roof's vents
- * are; how a yard is laid out. A part is painted standing on a tile of its
- * own, its pivot the middle of that tile on the ground, and the parts of one
- * tile are put together by laying each upper storey STOREY pixels higher than
- * the one under it and the roof on top - which is what whoever draws a block
- * does (client/compoundbuilding), picking the parts at random for every block
- * built. It is painted twice: as it is, its front looking towards -y, and
- * turned a quarter turn, its front looking towards -x.
- *
- * Units as in the vehicles: a tile is 32 along the ground each way, heights in
- * pixels. Colours are kept to 16 bits.
+ * are; how a yard is laid out.
  */
-import * as iso from "./isobox.js";
-import * as Vehicles from "./vehicles.js";
+import {
+  blocks,
+  box,
+  darker,
+  ends,
+  pick,
+  tree,
+  bench,
+  parking,
+  STOREY,
+  PLINTH,
+  WOOD,
+  METAL,
+  HEDGE,
+  DOOR,
+  VENT,
+} from "./blocks.js";
 
-var box = iso.box,
-  darker = iso.darker,
-  lighter = iso.lighter,
-  TILE = iso.TILE;
-
-//how high a storey is, and the plinth under the ground floor
-var STOREY = 12,
-  PLINTH = 3;
-
-var GRASS = [112, 158, 84],
-  PAVING = [178, 176, 168],
-  ASPHALT = [96, 98, 104],
-  STRIPE = [232, 232, 226],
-  RUBBER = [184, 108, 88],
+var RUBBER = [184, 108, 88],
   SAND = [226, 204, 142],
-  WOOD = [150, 104, 68],
-  METAL = [92, 96, 104],
-  TRUNK = [112, 84, 60],
-  LEAF = [70, 128, 66],
-  HEDGE = [84, 136, 70],
   GLASS = [88, 124, 156],
-  DOOR = [86, 72, 64],
-  VENT = [150, 152, 156];
+  CONCRETE = [168, 166, 160],
+  REBAR = [96, 74, 62];
 
 //what a block is built of: its walls, the plinth under them, the stairwells
 //up the front, the balconies and canopies, and the roof
@@ -82,35 +67,11 @@ var PALETTES = {
   },
 };
 
-//a random number generator that gives the same numbers for the same seed, so
-//running this again paints the same pictures
-function random(seed) {
-  var s = 0,
-    i;
-
-  for (i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) | 0;
-
-  return function () {
-    s = (s + 0x6d2b79f5) | 0;
-    var t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function pick(rnd, list) {
-  return list[Math.floor(rnd() * list.length)];
-}
-
 /**
- * The one section every block is built of. It is a tile wide along the wall,
- * so the next one carries straight on, and less than a tile deep, which leaves
- * room inside the tile for the entrance and canopy in front and balconies on
- * both long sides.
- *
- * Every block has the same sections - a 1x1 tower is a single one of them, a
- * two tile wall two of them side by side - so they all look like the same
- * block, only longer or taller.
+ * The one section every block of flats is built of. It is a tile wide along
+ * the wall, so the next one carries straight on, and less than a tile deep,
+ * which leaves room inside the tile for the entrance and canopy in front and
+ * balconies on both long sides.
  */
 var SECTION = {
   //how far the wall stands back from the front of its tile, and how deep
@@ -133,44 +94,23 @@ var SECTION = {
 };
 
 /**
- * Where section c of a wall `cells` tiles long stands, its front on row: the
- * same for every storey stacked on it and the roof on top. start and end say
- * whether it ends the wall that way - both, for a wall of one.
- */
-function section(c, cells, row, balconies, backBalconies) {
-  var start = c === 0,
-    end = c === cells - 1,
-    cell = c * TILE;
-
-  return {
-    cell: cell,
-    mid: cell + TILE / 2,
-    x0: start ? cell + SECTION.inset : cell,
-    x1: end ? cell + TILE - SECTION.inset : cell + TILE,
-    front: row + SECTION.front,
-    back: row + SECTION.front + SECTION.depth,
-    start: start,
-    end: end,
-    balconies: balconies,
-    backBalconies: backBalconies,
-  };
-}
-
-/**
  * One storey of a section, its wall from z0 up to z1 and its floor at zf: the
  * windows and balconies along both long sides, and its piece of the stairwell
  * up the middle of the front - a strip of colour with a window on the landing
  * halfway up the storey, which shows through at the back too. The ends are
  * blank. On the ground storey (upper false) there are no balconies, and the
  * way in is where the landing window would be.
+ *
+ * @param front {number[]} the windows with balconies at the front
+ * @param back {number[]} and at the back
  */
-function storey(b, s, z0, z1, zf, upper, pal) {
+function storey(b, s, z0, z1, zf, upper, pal, front, back) {
   var landing = zf + STOREY / 2;
 
   b.push(box(s.x0, s.x1, s.front, s.back, z0, z1, pal.wall));
 
-  facade(b, s.cell, upper ? s.balconies : [], s.front, -1, zf, pal);
-  facade(b, s.cell, upper ? s.backBalconies : [], s.back, 1, zf, pal);
+  facade(b, s.cell, upper ? front : [], s.front, -1, zf, pal);
+  facade(b, s.cell, upper ? back : [], s.back, 1, zf, pal);
 
   b.push(box(s.mid - 2, s.mid + 2, s.front - 0.5, s.front, zf, z1, pal.accent));
   if (upper)
@@ -198,16 +138,11 @@ function storey(b, s, z0, z1, zf, upper, pal) {
   );
 }
 
-//how far the plinth and the floor lines stand out of a section's ends
-function ends(s, e) {
-  return [s.x0 - (s.start ? e : 0), s.x1 + (s.end ? e : 0)];
-}
-
 //the ground storey: on a plinth, with the way in under a canopy at the front
 function groundStorey(b, s, pal) {
   var x = ends(s, 0.3);
 
-  storey(b, s, 1, PLINTH + STOREY, PLINTH, false, pal);
+  storey(b, s, 1, PLINTH + STOREY, PLINTH, false, pal, [], []);
   b.push(box(x[0], x[1], s.front - 0.3, s.back + 0.3, 1, PLINTH, pal.plinth));
 
   b.push(box(s.mid - 3, s.mid + 3, s.front - 4, s.front, 1, 1.6, pal.plinth));
@@ -235,11 +170,26 @@ function groundStorey(b, s, pal) {
   );
 }
 
-//a storey stacked on the one under it, from z: a line where its floor is
-function upperStorey(b, s, z, pal) {
+/**
+ * A storey stacked on the one under it, from z: a line where its floor is.
+ *
+ * @param detail {string} which of SECTION.balconies are at the front and at
+ *        the back: "01" for the first at the front, the second at the back
+ */
+function upperStorey(b, s, z, pal, detail) {
   var x = ends(s, 0.2);
 
-  storey(b, s, z, z + STOREY, z, true, pal);
+  storey(
+    b,
+    s,
+    z,
+    z + STOREY,
+    z,
+    true,
+    pal,
+    SECTION.balconies[+detail[0]],
+    SECTION.balconies[+detail[1]],
+  );
   b.push(
     box(
       x[0],
@@ -332,68 +282,61 @@ function balcony(b, w0, w1, y, out, zf, pal) {
   b.push(box(a1 - 0.5, a1, y, d, zf + 1, zf + 4.5, pal.trim));
 }
 
-function tree(b, x, y, size) {
-  var z = 4;
-
-  b.push(box(x - 0.5, x + 0.5, y - 0.5, y + 0.5, 1, z + 1, TRUNK));
-  [
-    [size - 1, 2],
-    [size, size + 1],
-    [size - 1, 2],
-    [size - 2, 1.5],
-  ].forEach(function (tier) {
-    var r = tier[0];
-    b.push(box(x - r, x + r, y - r, y + r, z, z + tier[1], LEAF));
-    z += tier[1];
-  });
-}
-
-function bench(b, x, y) {
-  b.push(box(x, x + 5, y, y + 2, 2, 2.6, WOOD));
-  b.push(box(x, x + 5, y + 1.6, y + 2, 2.6, 4, WOOD));
-  b.push(box(x + 0.5, x + 1, y + 0.5, y + 1.5, 1, 2, METAL));
-  b.push(box(x + 4, x + 4.5, y + 0.5, y + 1.5, 1, 2, METAL));
-}
-
-//the cars that park at home - no trucks or buses - each as often as it turns
-//up on the roads
-var PARKED = ["sedan", "hatchback", "pickup", "van"];
-
 /**
- * A car from shared/gen/vehicles - the same boxes the driving ones are
- * painted from - parked with its middle at x, y on ground z high, nose in
- * towards +y or backed in.
+ * A storey of the block going up, from its floor at z: the floor slab, the
+ * concrete columns between the windows-to-be, front and back, the stairwell
+ * already up the middle, bars sticking out of the columns for the storey
+ * over it, and scaffolding along the front.
  */
-function parkedCar(b, x, y, z, rnd) {
-  var total = 0,
-    roll,
-    type,
-    t,
-    colors = Object.keys(Vehicles.COLORS);
+function frame(b, s, z) {
+  var x = ends(s, 0.3),
+    top = z + STOREY,
+    columns = [s.x0, s.cell + 7.4, s.cell + 12.4, s.cell + 18.4, s.cell + 23.4];
 
-  PARKED.forEach(function (name) {
-    total += Vehicles.TYPES[name].weight;
-  });
-  roll = rnd() * total;
-  for (type = 0; roll >= Vehicles.TYPES[PARKED[type]].weight; type++)
-    roll -= Vehicles.TYPES[PARKED[type]].weight;
-  t = Vehicles.TYPES[PARKED[type]];
+  b.push(
+    box(x[0], x[1], s.front - 0.3, s.back + 0.3, z - 0.5, z + 0.5, CONCRETE),
+  );
 
-  Vehicles.place(
-    t.build(Vehicles.COLORS[pick(rnd, colors)]),
-    t.length,
-    t.width,
-    Vehicles.DIRECTIONS[rnd() < 0.7 ? "y+" : "y-"],
-  ).forEach(function (c) {
-    b.push(
-      box(c.x0 + x, c.x1 + x, c.y0 + y, c.y1 + y, c.z0 + z, c.z1 + z, c.color),
-    );
+  if (s.end) columns.push(s.x1 - 1.2);
+  columns.forEach(function (cx) {
+    if (cx < s.x0 || cx + 1.2 > s.x1) return;
+
+    [s.front, s.back - 1.2].forEach(function (cy) {
+      b.push(box(cx, cx + 1.2, cy, cy + 1.2, z + 0.5, top - 0.5, CONCRETE));
+      b.push(
+        box(
+          cx + 0.4,
+          cx + 0.8,
+          cy + 0.4,
+          cy + 0.8,
+          top - 0.5,
+          top + 1.5,
+          REBAR,
+        ),
+      );
+    });
   });
+
+  //the stairwell, poured ahead of the rest
+  b.push(
+    box(
+      s.mid - 3,
+      s.mid + 3,
+      s.front,
+      s.front + 6,
+      z + 0.5,
+      top - 0.5,
+      darker(CONCRETE, 0.1),
+    ),
+  );
+
+  //scaffolding: poles, a board to stand on, a rail to hold
+  for (var px = s.x0 + 1; px < s.x1; px += 7.5)
+    b.push(box(px, px + 0.4, s.front - 3.4, s.front - 3, z, top, METAL));
+  b.push(box(s.x0, s.x1, s.front - 3.6, s.front - 1, z + 0.5, z + 1, WOOD));
+  b.push(box(s.x0, s.x1, s.front - 3.5, s.front - 3.1, z + 5, z + 5.4, METAL));
 }
 
-//the ground of one yard tile at cell x = cx (the yard is always the front row)
-//- the ones most plainly a yard first, which is the order a catalogue
-//picture takes them in (client/compoundbuilding)
 var YARDS = {
   playground: function (b, cx, rnd) {
     var sx = cx + 4 + Math.floor(rnd() * 4),
@@ -420,19 +363,7 @@ var YARDS = {
     bench(b, cx + 5, 22);
     tree(b, cx + 25, 7, 3);
   },
-  //three bays against the block, the way in along the front
-  parking: function (b, cx, rnd) {
-    var i, x;
-
-    b.push(box(cx + 1, cx + 31, 2, 30, 1, 1.2, ASPHALT));
-    for (i = 0; i < 4; i++) {
-      x = cx + 3 + i * 9;
-      b.push(box(x, x + 0.6, 14, 30, 1.2, 1.25, STRIPE));
-    }
-    for (i = 0; i < 3; i++) {
-      if (rnd() < 0.75) parkedCar(b, cx + 7.8 + i * 9, 22, 1.2, rnd);
-    }
-  },
+  parking: parking,
   lawn: function (b, cx, rnd) {
     var n = 2 + Math.floor(rnd() * 2),
       i,
@@ -454,278 +385,33 @@ var YARDS = {
   },
 };
 
-/* --- Parts ----------------------------------------------------------- */
+//which windows have balconies, front and back: every pairing of them
+var DETAILS = [];
 
-//how many variants of the details there are: roofs and yards are painted from
-//a seed of their own each
-var ROOF_VARIANTS = 2,
-  YARD_VARIANTS = 2;
-
-//where a section stands in its wall: alone, or at its start or end
-var ENDS = { both: [true, true], start: [true, false], end: [false, true] };
-
-//the ways a part is painted: as it is, and turned one, two and three
-//quarter turns - so that a block shows whichever side faces the camera
-var TURNS = [0, 1, 2, 3];
-
-/**
- * Every part there is, by name without its turn: "flats/upper/sand/start/01"
- * - and what it is: kind, palette, ends, front and back balconies, variant,
- * yard and whether its pavement runs up to a yard.
- */
-function parts() {
-  var out = {};
-
-  Object.keys(PALETTES).forEach(function (pal) {
-    Object.keys(ENDS).forEach(function (ends) {
-      ["street", "yard"].forEach(function (pavement) {
-        out["flats/ground/" + pal + "/" + ends + "/" + pavement] = {
-          kind: "ground",
-          palette: pal,
-          ends: ends,
-          pavement: pavement,
-        };
-      });
-
-      SECTION.balconies.forEach(function (f, front) {
-        SECTION.balconies.forEach(function (b, back) {
-          out["flats/upper/" + pal + "/" + ends + "/" + front + back] = {
-            kind: "upper",
-            palette: pal,
-            ends: ends,
-            front: front,
-            back: back,
-          };
-        });
-      });
-
-      for (var v = 0; v < ROOF_VARIANTS; v++)
-        out["flats/roof/" + pal + "/" + ends + "/" + v] = {
-          kind: "roof",
-          palette: pal,
-          ends: ends,
-          variant: v,
-        };
-    });
+SECTION.balconies.forEach(function (f, front) {
+  SECTION.balconies.forEach(function (k, back) {
+    DETAILS.push("" + front + back);
   });
+});
 
-  Object.keys(YARDS).forEach(function (yard) {
-    for (var v = 0; v < YARD_VARIANTS; v++)
-      out["flats/yard/" + yard + "/" + v] = {
-        kind: "yard",
-        yard: yard,
-        variant: v,
-      };
-  });
+var flats = blocks({
+  name: "flats",
+  palettes: PALETTES,
+  shape: SECTION,
+  details: DETAILS,
+  //roofs and yards are painted from a seed of their own each
+  roofs: 2,
+  yards: YARDS,
+  yardVariants: 2,
+  ground: groundStorey,
+  upper: upperStorey,
+  roof: roof,
+  frame: frame,
+});
 
-  return out;
-}
+export var describe = flats.describe,
+  paint = flats.paint,
+  model = flats.model,
+  PARTS = flats.PARTS;
 
-/**
- * A section standing alone on a tile, its front on the tile's front row.
- */
-function tileSection(ends, front, back) {
-  var e = ENDS[ends],
-    s = section(
-      0,
-      1,
-      0,
-      SECTION.balconies[front || 0],
-      SECTION.balconies[back || 0],
-    );
-
-  s.start = e[0];
-  s.end = e[1];
-  s.x0 = e[0] ? SECTION.inset : 0;
-  s.x1 = e[1] ? TILE - SECTION.inset : TILE;
-
-  return s;
-}
-
-/**
- * The boxes of a part, standing on a tile of its own - storeys and roofs at
- * the height of the first upper storey and of a roof on one storey: the rest
- * are the same pictures, laid higher.
- */
-function partBoxes(name, p) {
-  var b = [],
-    pal = PALETTES[p.palette],
-    rnd = random(name),
-    s;
-
-  if (p.kind === "yard") {
-    b.push(box(0, TILE, 0, TILE, 0, 1, GRASS));
-    YARDS[p.yard](b, 0, rnd);
-    return b;
-  }
-
-  s = tileSection(p.ends, p.front, p.back);
-
-  if (p.kind === "ground") {
-    //the lot, and the pavement in front of the block - up to the yard, or
-    //short of the street
-    b.push(box(0, TILE, 0, TILE, 0, 1, GRASS));
-    b.push(
-      box(
-        s.start ? 1 : 0,
-        s.end ? TILE - 1 : TILE,
-        p.pavement === "yard" ? 0 : 1,
-        SECTION.front,
-        1,
-        1.2,
-        PAVING,
-      ),
-    );
-    groundStorey(b, s, pal);
-  } else if (p.kind === "upper") upperStorey(b, s, PLINTH + STOREY, pal);
-  else roof(b, s, PLINTH + STOREY, pal, rnd);
-
-  return b;
-}
-
-var PARTS = parts();
-
-/**
- * The boxes of a part by its full name, turned the way the name says: what
- * the part is called, then /r and its turns - "flats/roof/slate/end/1/r1".
- */
-function boxesOf(name) {
-  var at = name.lastIndexOf("/r"),
-    key = name.slice(0, at),
-    turns = parseInt(name.slice(at + 2), 10),
-    p = PARTS[key];
-
-  if (p === undefined || TURNS.indexOf(turns) === -1)
-    throw new Error("no such part: " + name);
-
-  return iso.rotate(partBoxes(key, p), 1, 1, turns);
-}
-
-/**
- * What its tile shows of the boxes - everything clipped to the tile, the
- * way iso.paintTiles cuts a building up.
- */
-function onTile(boxes) {
-  return iso.paintTiles(boxes, 1, 1)[0];
-}
-
-/**
- * Every part, by sprite name - "gen/flats/upper/sand/start/01/r0" - with its
- * size and pivot, without painting it; and what whoever puts a block
- * together needs to know of them.
- */
-export function describe() {
-  var sizes = {};
-
-  Object.keys(PARTS).forEach(function (key) {
-    TURNS.forEach(function (turns) {
-      var name = key + "/r" + turns,
-        boxes = iso.rotate(partBoxes(key, PARTS[key]), 1, 1, turns),
-        m = measureOnTile(boxes);
-
-      sizes["gen/" + name] = m;
-    });
-  });
-
-  return {
-    sizes: sizes,
-    data: {
-      storey: STOREY,
-      palettes: Object.keys(PALETTES),
-      balconies: SECTION.balconies.length,
-      roofs: ROOF_VARIANTS,
-      yards: Object.keys(YARDS),
-      yardVariants: YARD_VARIANTS,
-      turns: TURNS,
-    },
-  };
-}
-
-/**
- * The size and pivot onTile would paint the boxes with, without painting.
- */
-function measureOnTile(boxes) {
-  var clipped = [];
-
-  boxes.forEach(function (b) {
-    var c = iso.box(
-      Math.max(b.x0, 0),
-      Math.min(b.x1, TILE),
-      Math.max(b.y0, 0),
-      Math.min(b.y1, TILE),
-      b.z0,
-      b.z1,
-      b.color,
-    );
-
-    if (c.x0 < c.x1 && c.y0 < c.y1) clipped.push(c);
-  });
-
-  var m = iso.measure(clipped),
-    middle = iso.project(TILE / 2, TILE / 2, 0);
-
-  return {
-    w: m.w,
-    h: m.h,
-    pivotX: m.pivotX + middle[0],
-    pivotY: m.pivotY + middle[1],
-  };
-}
-
-/**
- * One part, by sprite name.
- *
- * @returns {{width, height, data}}
- */
-export function paint(name) {
-  return iso.toImage(onTile(boxesOf(name.replace(/^gen\//, ""))));
-}
-
-/**
- * A whole block in one, every box of it in place - to look at, and to hold
- * the parts against: what the game draws out of the parts has to come out
- * the same as this, painted tile by tile.
- *
- * @param plan {Object[]} what stands on each tile: {x, y, parts}, x along the
- *        wall, y from the front, parts the names of what is laid there bottom
- *        first, without their turns - as client/compoundbuilding keeps them
- * @param sizeX {number}
- * @param sizeY {number}
- * @param turns {number}
- */
-export function model(plan, sizeX, sizeY, turns) {
-  var b = [];
-
-  plan.forEach(function (tile) {
-    var level = 0;
-
-    tile.parts.forEach(function (key) {
-      var p = PARTS[key],
-        lift = 0;
-
-      //the first storey up is painted where it stands, the roof where it
-      //would on one storey; the rest stand a storey higher each
-      if (p.kind === "ground") level = 1;
-      else if (p.kind === "upper") lift = Math.max(level++ - 1, 0) * STOREY;
-      else if (p.kind === "roof") lift = Math.max(level - 1, 0) * STOREY;
-
-      partBoxes(key, p).forEach(function (c) {
-        b.push(
-          iso.box(
-            c.x0 + tile.x * TILE,
-            c.x1 + tile.x * TILE,
-            c.y0 + tile.y * TILE,
-            c.y1 + tile.y * TILE,
-            c.z0 + lift,
-            c.z1 + lift,
-            c.color,
-          ),
-        );
-      });
-    });
-  });
-
-  return iso.rotate(b, sizeX, sizeY, turns);
-}
-
-export { PARTS, STOREY };
+export { STOREY };

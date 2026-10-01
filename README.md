@@ -57,14 +57,20 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   like a shore tile, is put together there once
   (`sprites.getComposite([...])`); something that changes every frame, like
   a police car's lamp, is drawn over it as a sprite of its own.
-- Blocks of flats are put together out of parts the game paints - ground
-  storey, upper storeys, roof, yard (`src/shared/gen/flats.js`). Each block
-  picks its colours and details at random when it is first drawn and keeps
-  the parts it is made of in the save (`src/client/js/compoundbuilding.js`);
-  the catalogue shows one of each kind (`src/data/flats.js`).
-- Any building can be turned four ways (`src/core/rotation.js`). Blocks of
-  flats are painted from all four sides; a building drawn by hand shows its
-  front for its back and its side for the other side.
+- Blocks of flats and offices are put together out of parts the game
+  paints - ground storey, upper storeys, roof, yard - in a style each
+  (`src/shared/gen/flats.js`, `offices.js`) on what all blocks share
+  (`src/shared/gen/blocks.js`). Each block picks its colours and details at
+  random when it is first drawn and keeps the parts it is made of in the
+  save (`src/client/js/compoundbuilding.js`); the catalogue shows one of
+  each kind (`src/data/flats.js`, `offices.js`).
+- While a block goes up it is drawn as a building site of its own shape:
+  diggers and trucks, then its structure with a crane by it from a quarter
+  of the way, then its lower storeys finished under the structure from
+  halfway (`src/shared/gen/stacking.js`).
+- Any building can be turned four ways (`src/core/rotation.js`). Blocks are
+  painted from all four sides; a building drawn by hand shows its front for
+  its back and its side for the other side.
 - To look at what the painting makes without starting the game, run
   `npm run generate:terrain`, `generate:vehicles`, `generate:stones` or
   `generate:buildings`. They

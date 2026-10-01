@@ -70,6 +70,7 @@ function buildings() {
         name: storeys + "-storey " + l.name,
         //drawn out of parts, see client/compoundbuilding
         compound: {
+          gen: "flats",
           layout: layout,
           cells: l.cells,
           yard: l.yard,

@@ -36,6 +36,7 @@ Building.prototype.setData = function (data) {
 };
 
 Building.prototype.destroy = function () {
+  this.view.dispose();
   this.view.gameObject.destroy();
 };
 
