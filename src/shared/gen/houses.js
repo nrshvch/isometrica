@@ -12,18 +12,18 @@
  *   - village houses, for a village with no streets or water yet: a cottage
  *     on one tile - whitewashed under its beams, of logs, of stone or
  *     ochre, under thatch, red tiles or slate - with a vegetable patch and
- *     hens, a cow and a haystack, an orchard and beehives, or a well, a
- *     woodpile and a goat; and a farmstead on two, its farmyard behind it a
- *     pasture with a barn and cows, a field of wheat or a flock of sheep.
- *     No fences: many of them together are a village;
- *   - town houses, with fences or hedges round them and a garden at best, or
- *     a car on the drive: a bungalow on two tiles along the street, with its
- *     garage; a two-storey house end on to the street on two tiles, a garden
- *     at the back; and one on three, with a garage at the end of the drive
- *     and a long garden;
+ *     hens, an orchard and beehives, a well, a woodpile and a goat, or
+ *     flowers; and a farmstead on two, its farmyard behind it a pasture with
+ *     a barn and cows, a field of wheat or a flock of sheep. No fences: many
+ *     of them together are a village;
+ *   - town houses, with fences or hedges round them and a garden at best: a
+ *     bungalow on two tiles along the street, with its garage; a two-storey
+ *     house end on to the street on two tiles, its drive along its side to a
+ *     garage at the back and a garden there; and one on three, room enough
+ *     on its drive for the car, and a long garden;
  *   - semi-detached and terraced houses: a pair on four tiles, each half with
- *     its own drive and gate and fence round it; on six, a pair or a row of
- *     three, each with its own back garden too;
+ *     its own parking space and gate and fence round it; on six, a pair or a
+ *     row of three, each with its own back garden too;
  *   - villas: two storeys on a terrace up a flight of steps, behind a wrought
  *     iron gate between pillars in a high hedge or a wall, in a garden of
  *     lawns, cypresses and clipped box - in the middle of it with a fountain
@@ -36,6 +36,14 @@
  *
  * While a house goes up its tiles are the same building site as anybody's
  * (shared/gen/sites), then its walls going up on their slab (site).
+ *
+ * The scale is the cars' and the roads': a car is 13 long and 6 wide, about
+ * 4.5 by 2 metres, and a road with its two lanes 20 across - so a unit along
+ * the ground is about a third of a metre, a tile about ten metres across,
+ * and a storey of three metres 12 high. A house is as big as a house of
+ * that size would be: what does not fit on a footprint is left for a
+ * bigger one - no car on a drive too short for it, no cow on a cottage's
+ * patch of yard.
  */
 import * as iso from "./isobox.js";
 import {
@@ -57,7 +65,6 @@ import {
   LIT,
   shaded,
   random,
-  tree,
   round,
   bench,
   baysOverlay,
@@ -85,8 +92,9 @@ var GLASS = [92, 126, 160],
   LAWN = [118, 166, 86],
   STRIPE_LAWN = [104, 152, 76];
 
-//how high a storey of a house is
-var SH = 9.5;
+//how high a storey of a house is: as high as a block's (blocks STOREY),
+//about three metres the way the cars go - see the scale above
+var SH = STOREY;
 
 /* --- Colours ---------------------------------------------------------- */
 
@@ -770,13 +778,38 @@ function cypress(b, x, y, h) {
   });
 }
 
-//a tree with fruit on it: blocks tree, and the fruit dotted over its crown
-function fruitTree(b, x, y, size, fruit, rnd) {
-  tree(b, x, y, size);
+/**
+ * A tree in a garden, h high, its crown r across from the middle: a trunk,
+ * and a round crown over it, flatter underneath - as tall as a tree is
+ * beside a house, where blocks tree is a sapling in a yard.
+ *
+ * @returns {{mid, up}} where the middle of its crown is, and how far it
+ *          reaches up from there
+ */
+function gardenTree(b, x, y, r, h) {
+  var up = r * 0.85,
+    down = r * 0.7,
+    mid = h - up;
 
-  var r = size + 0.5,
-    up = size * 1.05 + 1,
-    mid = 4 + size * 0.6 + 0.5;
+  b.push(box(x - 0.6, x + 0.6, y - 0.6, y + 0.6, 1, mid, TRUNK));
+  round(b, x, y, r, LEAF, 0.07, function (u, v) {
+    var d = (u * u + v * v) / (r * r);
+
+    if (d >= 1) return null;
+
+    var k = Math.sqrt(1 - d);
+
+    return [mid - down * k, mid + up * k, u / (r * r), v / (r * r), k / up];
+  });
+
+  return { mid: mid, up: up };
+}
+
+//a tree with fruit on it: a garden tree, the fruit dotted over its crown
+function fruitTree(b, x, y, r, h, fruit, rnd) {
+  var crown = gardenTree(b, x, y, r, h),
+    up = crown.up,
+    mid = crown.mid;
 
   for (var i = 0; i < 7; i++) {
     var u = (rnd() - 0.5) * r * 1.4,
@@ -1221,11 +1254,11 @@ function scarecrow(b, x, y) {
 function shed(b, x0, x1, y0, y1, color) {
   var c = color || [120, 140, 104];
 
-  b.push(box(x0, x1, y0, y1, 1, 6.5, c, MATTE));
+  b.push(box(x0, x1, y0, y1, 1, 9, c, MATTE));
   for (var x = x0 + 1; x < x1 - 0.5; x += 1.2)
-    b.push(box(x, x + 0.2, y0 - 0.1, y0, 1, 6.5, darker(c, 0.15)));
-  b.push(box(x0 + 1.2, x0 + 3.4, y0 - 0.2, y0, 1, 5.4, darker(c, 0.35)));
-  b.push(box(x0 - 0.5, x1 + 0.5, y0 - 0.6, y1 + 0.4, 6.5, 7.2, [80, 80, 86]));
+    b.push(box(x, x + 0.2, y0 - 0.1, y0, 1, 9, darker(c, 0.15)));
+  b.push(box(x0 + 1.2, x0 + 4, y0 - 0.2, y0, 1, 8, darker(c, 0.35)));
+  b.push(box(x0 - 0.5, x1 + 0.5, y0 - 0.6, y1 + 0.4, 9, 9.7, [80, 80, 86]));
 }
 
 //a table under a parasol, chairs either side
@@ -1451,7 +1484,14 @@ function site(W, D, specs, stage, rnd) {
     hole = [74, 70, 66];
 
   specs.forEach(function (s) {
-    var r = s.rect,
+    //kept clear of the site's fence along the edges (shared/gen/sites),
+    //which is laid over the tile and would cut through it otherwise
+    var r = {
+        x0: Math.max(s.rect.x0, 2),
+        x1: Math.min(s.rect.x1, W - 2),
+        y0: Math.max(s.rect.y0, 2),
+        y1: Math.min(s.rect.y1, D - 2),
+      },
       z0 = (s.z || 1) + 0.6,
       full = s.storeys * SH,
       h = stage === 1 ? 4.5 : full,
@@ -1560,6 +1600,12 @@ function site(W, D, specs, stage, rnd) {
 
 /* --- The designs ------------------------------------------------------ */
 
+//windows and doors, the way the cars go: a door 3.5 wide (a metre and a
+//bit) and 8.5 high, windows 3.5 or 4 wide and 5 high, sills 3.5 up
+var DOOR = 8.5,
+  SILL = 3.5,
+  PANE = 5;
+
 //the roof of a village house - thatch thicker and steeper
 function villageRoof(o, axis) {
   var R = VILLAGE_ROOF[o.roof];
@@ -1567,7 +1613,7 @@ function villageRoof(o, axis) {
   return {
     kind: "gable",
     axis: axis,
-    rise: R.thatch ? 8.5 : 7,
+    rise: R.thatch ? 10 : 8.5,
     over: R.thatch ? 1.6 : 1.2,
     color: R.color,
     thatch: R.thatch,
@@ -1575,11 +1621,13 @@ function villageRoof(o, axis) {
 }
 
 /**
- * A village house on one tile: the house at the back on the left, a path of
- * beaten earth to its door, and in the yard round it what keeps it.
+ * A village house on one tile, seven metres by five and a half: the house at
+ * the back on the left, a path of beaten earth to its door, and in the strip
+ * of yard round it what keeps it - a vegetable patch and hens, an orchard
+ * and beehives, a well and a woodpile and a goat, or flowers.
  */
 function cottage(o, rnd, stage) {
-  var r = { x0: 4, x1: 20, y0: 15, y1: 28 };
+  var r = { x0: 3, x1: 24, y0: 12, y1: 29 };
 
   if (stage) return site(TILE, TILE, [{ rect: r, storeys: 1 }], stage, rnd);
 
@@ -1588,62 +1636,61 @@ function cottage(o, rnd, stage) {
     roof = villageRoof(o, "x");
 
   lawn(b, 0, TILE, 0, TILE);
-  paved(b, 10, 13.5, 0.5, 14, PATH);
+  paved(b, 11.5, 15, 0.5, r.y0, PATH);
 
   var top = walls(b, r, 1, 1, P);
 
-  doorOn(b, r, "-y", 10, 3.5, 1.2, 7, P);
-  windowsOn(b, r, "-y", [5.5, 15.5], 3, 4, 3.5, P);
-  windowsOn(b, r, "+y", [6, 14.5], 3, 4, 3.5, P);
-  windowsOn(b, r, "-x", [20], 3, 4, 3.5, P);
-  windowsOn(b, r, "+x", [20], 3, 4, 3.5, P);
+  doorOn(b, r, "-y", 11.5, 3.5, 1.2, DOOR, P);
+  windowsOn(b, r, "-y", [5, 18], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "+y", [6, 15], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "-x", [19], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "+x", [19], 3.5, 1 + SILL, PANE, P);
 
   var height = pitched(b, r, top, roof, P.wall);
 
-  if (!roof.thatch) chimney(b, 15.5, 22.5, top, height(16.7, 23.7));
+  if (!roof.thatch) chimney(b, 18, 21.5, top, height(19.2, 22.7));
 
   //window boxes of flowers under the front windows
-  [5.5, 15.5].forEach(function (a) {
-    b.push(box(a - 0.3, a + 3.3, r.y0 - 1.2, r.y0, 3, 3.6, WOOD));
-    for (var x = a; x < a + 3; x += 0.8)
+  [5, 18].forEach(function (a) {
+    b.push(box(a - 0.3, a + 3.8, r.y0 - 1.2, r.y0, 3.4, 4, WOOD));
+    for (var x = a; x < a + 3.5; x += 0.8)
       b.push(
         box(
           x,
           x + 0.6,
           r.y0 - 1,
           r.y0 - 0.2,
-          3.6,
-          4.2,
+          4,
+          4.6,
           rnd() < 0.5 ? [214, 56, 64] : [236, 196, 60],
         ),
       );
   });
 
   if (o.yard === "veg") {
-    vegetables(b, 16, 30, 2, 11, rnd);
-    henhouse(b, 23, 29, 18, 22);
-    hen(b, 22, 14.5, false);
-    hen(b, 25.5, 13.8, true);
-    hen(b, 28.5, 15.2, false);
-    hen(b, 29.5, 25.5, true);
-  } else if (o.yard === "cow") {
-    cow(b, 26, 21.5, "y", rnd() < 0.4);
-    haystack(b, 25, 7, 4, 6.5);
-    trough(b, 21, 27, 13, 14.6);
+    vegetables(b, 17, 31, 1.5, 10, rnd);
+    henhouse(b, 26, 31, 15, 20);
+    hen(b, 25.5, 11.5, false);
+    hen(b, 28, 12, true);
+    hen(b, 29.5, 24.5, false);
+    hen(b, 26.5, 27, true);
   } else if (o.yard === "orchard") {
-    fruitTree(b, 25.5, 9, 3, [210, 40, 40], rnd);
-    fruitTree(b, 26.5, 23, 3, [240, 170, 40], rnd);
-    beehive(b, 16, 3);
-    beehive(b, 19.5, 3);
+    fruitTree(b, 28, 6, 3.6, 13, [210, 40, 40], rnd);
+    fruitTree(b, 28, 22, 3.6, 13, [240, 170, 40], rnd);
+    beehive(b, 17, 2.5);
+    beehive(b, 20.5, 2.5);
+  } else if (o.yard === "well") {
+    well(b, 27.5, 6.5);
+    woodpile(b, 26, 28, 13, 20, 3.6);
+    goat(b, 28.5, 25);
   } else {
-    well(b, 25, 8);
-    woodpile(b, 21.5, 23.5, 16, 27, 3.4);
-    goat(b, 28, 19.5);
-    sheep(b, 28.5, 26, [1, 0]);
+    flowers(b, 17, 31, 2, 5, rnd);
+    flowers(b, 26.5, 30.5, 13, 28, rnd);
+    bench(b, 19, 7);
   }
 
-  tree(b, 4, 5, 2.5);
-  bench(b, 4.5, 11.5);
+  gardenTree(b, 4.5, 5, 3.4, 13);
+  bench(b, 3, 9.5);
 
   return { boxes: b, bays: [] };
 }
@@ -1654,8 +1701,8 @@ function cottage(o, rnd, stage) {
  * field of wheat with a scarecrow in it, or sheep about a shed.
  */
 function farm(o, rnd, stage) {
-  var r = { x0: 3, x1: 22, y0: 8, y1: 22 },
-    barn = { x0: 17, x1: 30, y0: 34, y1: 48 };
+  var r = { x0: 3, x1: 25, y0: 7, y1: 24 },
+    barn = { x0: 12, x1: 30, y0: 36, y1: 58 };
 
   if (stage)
     return site(
@@ -1673,26 +1720,25 @@ function farm(o, rnd, stage) {
     roof = villageRoof(o, "x");
 
   lawn(b, 0, TILE, 0, 2 * TILE);
-  paved(b, 11, 14.5, 0.5, 7, PATH);
+  paved(b, 12, 15.5, 0.5, r.y0, PATH);
 
-  var top = walls(b, r, 1, 1, P);
+  //a storey, and a knee wall over it for the rooms in the roof
+  var top = walls(b, r, 1, 1, P, null, SH + 2);
 
-  top += 1.5;
-  b.push(box(r.x0, r.x1, r.y0, r.y1, top - 1.5, top, P.wall, MATTE));
-  doorOn(b, r, "-y", 11, 3.5, 1.2, 7, P);
-  windowsOn(b, r, "-y", [5, 16.5], 3, 4.5, 4, P);
-  windowsOn(b, r, "+y", [5, 11, 16.5], 3, 4.5, 4, P);
-  windowsOn(b, r, "-x", [13.5], 3, 4.5, 4, P);
-  windowsOn(b, r, "+x", [13.5], 3, 4.5, 4, P);
+  doorOn(b, r, "-y", 12, 3.5, 1.2, DOOR, P);
+  windowsOn(b, r, "-y", [5, 19], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "+y", [5, 12, 19], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "-x", [14], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "+x", [14], 3.5, 1 + SILL, PANE, P);
 
   var height = pitched(b, r, top, roof, P.wall);
 
-  if (!roof.thatch) chimney(b, 6, 15.5, top, height(7.2, 16.7));
+  if (!roof.thatch) chimney(b, 6.5, 17, top, height(7.7, 18.2));
 
-  flowers(b, 4, 10, r.y0 - 2.2, r.y0 - 0.6, rnd);
-  flowers(b, 15.5, 21, r.y0 - 2.2, r.y0 - 0.6, rnd);
-  woodpile(b, 24.5, 26.5, 10, 21, 3.6);
-  tree(b, 28, 5, 2.8);
+  flowers(b, 4, 10.5, r.y0 - 2.2, r.y0 - 0.6, rnd);
+  flowers(b, 17, 24, r.y0 - 2.2, r.y0 - 0.6, rnd);
+  woodpile(b, 27.5, 29.5, 9, 22, 3.6);
+  gardenTree(b, 28.5, 3.5, 3, 12);
 
   if (o.layout === "barn") {
     //a pasture, a red barn, cows on it and a haystack
@@ -1702,30 +1748,33 @@ function farm(o, rnd, stage) {
         trim: [244, 240, 230],
         door: [130, 50, 40],
       },
-      btop = walls(b, barn, 1, 1, red);
+      btop = walls(b, barn, 1, 1, red, null, 13);
 
-    b.push(face(barn, "-y", 20, 27, 1, 8.5, 0, 0.25, red.trim));
-    b.push(face(barn, "-y", 20.5, 26.5, 1, 8, 0.25, 0.35, [120, 46, 36]));
-    b.push(face(barn, "-y", 20.5, 26.5, 4.3, 4.7, 0.35, 0.45, red.trim));
-    windowsOn(b, barn, "+x", [39], 2.5, 4, 3, red);
-    windowsOn(b, barn, "-x", [39], 2.5, 4, 3, red);
+    b.push(face(barn, "-y", 16.5, 25.5, 1, 11.5, 0, 0.25, red.trim));
+    b.push(face(barn, "-y", 17, 25, 1, 11, 0.25, 0.35, [120, 46, 36]));
+    b.push(face(barn, "-y", 17, 25, 5.8, 6.2, 0.35, 0.45, red.trim));
+    b.push(
+      face(barn, "-y", 19.5, 22.5, btop + 1, btop + 4.5, 0, 0.3, red.trim),
+    );
+    windowsOn(b, barn, "+x", [45], 3, 1 + SILL, 4, red);
+    windowsOn(b, barn, "-x", [45], 3, 1 + SILL, 4, red);
     pitched(
       b,
       barn,
       btop,
-      { kind: "gable", axis: "y", rise: 7.5, over: 1, color: [92, 90, 96] },
+      { kind: "gable", axis: "y", rise: 10, over: 1, color: [92, 90, 96] },
       red.wall,
     );
-    cow(b, 7, 37, "x", false);
-    cow(b, 9.5, 52, "y", rnd() < 0.5);
-    haystack(b, 25, 57, 4, 6);
-    trough(b, 3, 9, 59, 60.6);
+    cow(b, 6, 40, "y", false);
+    cow(b, 5, 52.5, "y", rnd() < 0.5);
+    haystack(b, 22, 30.5, 3.5, 5.5);
+    trough(b, 2, 9, 60, 61.6);
   } else if (o.layout === "field") {
     wheat(b, 1, 31, 27, 63);
     b.push(box(15, 17.5, 27, 63, 0.9, 1.05, DIRT));
     scarecrow(b, 16.2, 45);
-    b.push(box(24, 28, 24, 26, 1, 3, STRAW));
-    b.push(box(24.5, 27.5, 24.4, 25.6, 3, 4.6, STRAW));
+    b.push(box(27.5, 31, 24.5, 26.5, 1, 3, STRAW));
+    b.push(box(28, 30.5, 24.9, 26.1, 3, 4.6, STRAW));
   } else {
     lawn(b, 0, TILE, 26, 2 * TILE, [124, 170, 88]);
     shed(b, 21, 30, 51, 61, WOOD);
@@ -1734,7 +1783,7 @@ function farm(o, rnd, stage) {
     sheep(b, 6.5, 48, [1, 0]);
     sheep(b, 13, 55, [-1, 0]);
     sheep(b, 20, 44, [0, -1]);
-    tree(b, 26, 36, 3);
+    gardenTree(b, 26, 37, 3.6, 13);
   }
 
   return { boxes: b, bays: [] };
@@ -1745,7 +1794,7 @@ function cityRoof(o, P, axis) {
   return {
     kind: o.roof,
     axis: axis,
-    rise: o.roof === "hip" ? 6.5 : 7.5,
+    rise: o.roof === "hip" ? 8 : 9,
     over: 1.2,
     color: P.roof,
   };
@@ -1757,13 +1806,14 @@ function bayAt(x, y) {
 }
 
 /**
- * A bungalow on two tiles along the street, its garage beside it and a car
- * on the drive; in front a garden behind a hedge or a picket fence, or a
- * hard standing for two more cars.
+ * A bungalow on two tiles along the street, twelve metres by six, its garage
+ * beside it and the drive up to the garage door - too short for a car to
+ * stand on; in front a garden behind a hedge, a picket fence or a low wall
+ * with railings.
  */
 function wide(o, rnd, stage) {
-  var r = { x0: 4, x1: 38, y0: 14, y1: 29 },
-    g = { x0: 40, x1: 56, y0: 13, y1: 29 };
+  var r = { x0: 3, x1: 39, y0: 11, y1: 30 },
+    g = { x0: 41, x1: 54, y0: 11, y1: 30 };
 
   if (stage)
     return site(
@@ -1779,67 +1829,52 @@ function wide(o, rnd, stage) {
 
   var b = [],
     P = CITY[o.pal],
-    hedged = o.front === "hedge",
-    bays = [bayAt(48, 6.5)];
+    kind = o.front;
 
   lawn(b, 0, 2 * TILE, 0, TILE);
-  paved(b, 41, 55, 0.3, 13, DRIVE);
+  paved(b, 42, 53, 0.3, g.y0, DRIVE);
+  paved(b, 18.5, 22, 0.5, r.y0, PAVING);
 
-  var top = walls(b, r, 1, 1, P, null, SH + 0.5);
+  var top = walls(b, r, 1, 1, P);
 
-  doorOn(b, r, "-y", 19, 3.5, 1.2, 7.5, P);
-  windowsOn(b, r, "-y", [6.5, 12, 26, 31.5], 3.5, 4, 4, P);
-  windowsOn(b, r, "+y", [7, 15, 23, 31], 3.5, 4, 4, P);
-  windowsOn(b, r, "-x", [19.5], 3.5, 4, 4, P);
-  b.push(box(17.5, 24, r.y0 - 2.6, r.y0, 9, 9.6, P.trim));
+  doorOn(b, r, "-y", 18.5, 3.5, 1.2, DOOR, P);
+  b.push(box(17, 23.5, r.y0 - 2.4, r.y0, 10, 10.6, P.trim));
+  windowsOn(b, r, "-y", [5.5, 11.5, 25.5, 31.5], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "+y", [6, 13, 24, 31], 3.5, 1 + SILL, PANE, P);
+  windowsOn(b, r, "-x", [18.5], 3.5, 1 + SILL, PANE, P);
 
   var height = pitched(b, r, top, cityRoof(o, P, "x"), P.wall);
 
-  chimney(b, 9, 23, top, height(10.2, 24.2));
+  chimney(b, 8, 22, top, height(9.2, 23.2));
 
   //the garage: its door up and over, a flat roof
-  var gtop = walls(b, g, 1, 1, P, null, 8);
+  var gtop = walls(b, g, 1, 1, P, null, 10);
 
-  garageDoor(b, g, 42, 54);
-  windowsOn(b, g, "+x", [19], 3, 4, 3, P);
+  garageDoor(b, g, 43.5, 51.5);
+  windowsOn(b, g, "+x", [18.5], 3, 1 + SILL, 4, P);
   flatRoof(b, g, gtop, P.trim, 0.5);
 
-  if (o.front === "parking") {
-    paved(b, 2, 39, 0.3, 12.5, DRIVE);
-    paved(b, 19, 22.5, 12.5, 14, DRIVE);
-    bays.push(bayAt(11, 6.5), bayAt(27, 6.5));
-    bush(b, 35, 7, 2.2);
-  } else {
-    paved(b, 19, 22.5, 0.5, 14, PAVING);
-    flowers(b, 5, 17, 10.5, 12.5, rnd);
-    flowers(b, 24.5, 37, 10.5, 12.5, rnd);
-    tree(b, 9, 6, 3);
-    bush(b, 31, 5.5, 2);
-    if (hedged) fence(b, "hedge", "x", 1.5, 0.5, 39.5, [[18.5, 23]]);
-    else fence(b, "picket", "x", 1, 0.5, 39.5, [[18.5, 23]], P.picket);
-  }
+  flowers(b, 4, 16.5, 7.5, 9.5, rnd);
+  flowers(b, 24, 38, 7.5, 9.5, rnd);
+  gardenTree(b, 9, 4, 3.2, 12);
+  bush(b, 31, 4.5, 2);
 
-  //down the near side, along the back
-  if (hedged) {
-    fence(b, "hedge", "y", 1.5, 2.5, 30);
-    fence(b, "hedge", "x", 31, 0.5, 63.5);
-  } else {
-    fence(b, "picket", "y", 0.8, 1.4, 31.5, [], P.picket);
-    fence(b, "picket", "x", 31, 0.5, 63.5, [], P.picket);
-  }
-  tree(b, 60.5, 23, 2.5);
-  bins(b, 57.5, 13.5);
+  fence(b, kind, "x", 1.4, 0.5, 40.5, [[18, 22.5]], P.picket);
+  fence(b, kind, "y", 1.4, 2.8, 31, [], P.picket);
+  fence(b, kind, "y", 62.6, 1.8, 31, [], P.picket);
+  gardenTree(b, 58.5, 21, 3.6, 14);
+  bins(b, 56, 3.5);
 
-  return { boxes: b, bays: bays };
+  return { boxes: b, bays: [] };
 }
 
 //a garage door, up and over, from a0 to a1 along the front of g
 function garageDoor(b, g, a0, a1) {
-  b.push(face(g, "-y", a0, a1, 1, 8, 0, 0.25, WHITE));
+  b.push(face(g, "-y", a0, a1, 1, DOOR + 0.5, 0, 0.25, WHITE));
   b.push(
-    face(g, "-y", a0 + 0.5, a1 - 0.5, 1.1, 7.5, 0.25, 0.35, [226, 226, 222]),
+    face(g, "-y", a0 + 0.5, a1 - 0.5, 1.1, DOOR, 0.25, 0.35, [226, 226, 222]),
   );
-  for (var z = 2.5; z < 7.5; z += 1.5)
+  for (var z = 2.5; z < DOOR; z += 1.5)
     b.push(
       face(
         g,
@@ -1856,78 +1891,92 @@ function garageDoor(b, g, a0, a1) {
 }
 
 /**
- * The front of a house end on to the street from x 2.5 to 20, its front at
- * y0: its door with a canopy over it, a window by it, two over them - and
+ * The front of a house end on to the street from x 2.5 to 21.5, its front at
+ * r.y0: its door with a canopy over it, a window by it, two over them - and
  * the garden in front, behind a fence along the street.
  */
 function frontGarden(b, r, P, kind, rnd) {
-  paved(b, 11.5, 15, 0.5, r.y0, PAVING);
-  doorOn(b, r, "-y", 11.5, 3.5, 1.2, 7.5, P);
-  b.push(box(10, 16.5, r.y0 - 2.4, r.y0, 9.2, 9.8, P.trim));
-  windowsOn(b, r, "-y", [4.5], 4, 4, 4, P);
-  windowsOn(b, r, "-y", [4.5, 12], 4, 3.5 + SH, 4, P);
-  flowers(b, 2.5, 10, r.y0 - 4, r.y0 - 1.5, rnd);
-  bush(b, 6, 5, 2.4);
-  fence(b, kind, "x", 1, 0.5, 21, [[11, 15.5]], P.picket);
+  paved(b, 11, 14.5, 0.5, r.y0, PAVING);
+  doorOn(b, r, "-y", 11, 3.5, 1.2, DOOR, P);
+  b.push(box(9.5, 16, r.y0 - 2.4, r.y0, 10, 10.6, P.trim));
+  windowsOn(b, r, "-y", [4.5], 4, 1 + SILL, PANE, P);
+  windowsOn(b, r, "-y", [4.5, 13], 4, 1 + SH + SILL, PANE, P);
+  flowers(b, 2.5, 9.5, r.y0 - 4, r.y0 - 1.5, rnd);
+  bush(b, 5.5, 5, 2.4);
+  fence(b, kind, "x", 1.2, 0.5, 22.5, [[10.5, 15]], P.picket);
 }
 
 /**
- * A two-storey house on two tiles, end on to the street: the front garden
- * behind a fence or a hedge, the drive along its side with the car on it,
- * and at the back a lawn with a tree and a shed, or a patio and a
- * trampoline.
+ * A two-storey house on two tiles, end on to the street, six metres by
+ * nine: the front garden behind a fence or a hedge, the drive along its side
+ * to the garage at the back - too narrow to leave a car on beside the house
+ * - and the back garden: a lawn with a tree and the washing out, or a patio
+ * and a trampoline.
  */
 function deep(o, rnd, stage) {
-  var r = { x0: 2.5, x1: 20, y0: 14, y1: 40 };
+  var r = { x0: 2.5, x1: 21.5, y0: 15, y1: 42 },
+    g = { x0: 23, x1: 31.5, y0: 46, y1: 63.5 };
 
-  if (stage) return site(TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
+  if (stage)
+    return site(
+      TILE,
+      2 * TILE,
+      [
+        { rect: r, storeys: 2 },
+        { rect: g, storeys: 1 },
+      ],
+      stage,
+      rnd,
+    );
 
   var b = [],
     P = CITY[o.pal],
     kind = o.fence;
 
   lawn(b, 0, TILE, 0, 2 * TILE);
-  paved(b, 21.5, 31, 0.3, 46, DRIVE);
+  paved(b, 23.5, 31, 0.3, g.y0, DRIVE);
 
   var top = walls(b, r, 1, 2, P);
 
   frontGarden(b, r, P, kind, rnd);
-  windowsAround(b, r, 1, 2, 3.5, 4, P, { "-y": "all" });
+  windowsAround(b, r, 1, 2, 3.5, PANE, P, { "-y": "all" });
 
   var height = pitched(b, r, top, cityRoof(o, P, "y"), P.wall);
 
-  chimney(b, 13, 30, top, height(14.2, 31.2));
+  chimney(b, 12, 33, top, height(13.2, 34.2));
 
-  fence(b, kind, "y", 0.8, 1.5, 63.5, [], P.picket);
-  fence(b, kind, "x", 63, 0.5, 31.5, [], P.picket);
-  fence(b, kind, "y", 31.2, 46, 63, [], P.picket);
-  fence(b, kind, "x", 46, 21.5, 31.5, [], P.picket);
+  var gtop = walls(b, g, 1, 1, P, null, 10);
+
+  garageDoor(b, g, 24, 30.5);
+  flatRoof(b, g, gtop, P.trim, 0.4);
+
+  fence(b, kind, "y", 1, 2, 63, [], P.picket);
+  fence(b, kind, "x", 63, 0.5, 22.5, [], P.picket);
 
   if (o.back === "garden") {
-    tree(b, 8, 53, 3.5);
-    shed(b, 21.5, 29.5, 51, 60);
-    flowers(b, 2.5, 18, 42, 44, rnd);
-    washing(b, 13, 20.5, 58);
+    gardenTree(b, 9, 53, 4, 15);
+    flowers(b, 2.5, 21, 43.5, 45.5, rnd);
+    washing(b, 13, 21.5, 59);
   } else {
-    paved(b, 2.5, 20, 40, 49, PAVING);
-    parasol(b, 9, 45, [214, 60, 60]);
-    trampoline(b, 22, 55.5, 4);
-    bush(b, 6, 58, 2.5);
+    paved(b, 2.5, 21.5, 42, 50, PAVING);
+    parasol(b, 9, 46, [214, 60, 60]);
+    trampoline(b, 15.5, 57, 3.5);
+    bush(b, 5, 58, 2.2);
   }
 
-  return { boxes: b, bays: [bayAt(26.3, 7)] };
+  return { boxes: b, bays: [] };
 }
 
 /**
  * A two-storey house on three tiles end on to the street, a lower kitchen
- * out at the back, its drive along the side to a garage at the end of it,
- * and behind it all a long garden: a tree, a greenhouse, vegetables and the
- * washing out.
+ * out at the back, its drive along the side - long enough for a car in front
+ * and another by the house - to a garage at the end of it, and behind it all
+ * a long garden: trees, a greenhouse, vegetables and the washing out.
  */
 function long(o, rnd, stage) {
-  var r = { x0: 2.5, x1: 20, y0: 14, y1: 44 },
-    e = { x0: 2.5, x1: 15, y0: 44, y1: 54 },
-    g = { x0: 21, x1: 31, y0: 58, y1: 72 };
+  var r = { x0: 2.5, x1: 21.5, y0: 20, y1: 47 },
+    e = { x0: 2.5, x1: 15, y0: 47, y1: 56 },
+    g = { x0: 22.5, x1: 31.5, y0: 62, y1: 81 };
 
   if (stage)
     return site(
@@ -1947,57 +1996,58 @@ function long(o, rnd, stage) {
     kind = o.fence;
 
   lawn(b, 0, TILE, 0, 3 * TILE);
-  paved(b, 21.5, 31, 0.3, 58, DRIVE);
+  paved(b, 23, 31, 0.3, g.y0, DRIVE);
 
   var top = walls(b, r, 1, 2, P);
 
   frontGarden(b, r, P, kind, rnd);
-  windowsAround(b, r, 1, 2, 3.5, 4, P, { "-y": "all", "+y": "all" });
-  windowsOn(b, r, "+y", [5, 12], 4, 3.5 + SH, 4, P);
+  windowsAround(b, r, 1, 2, 3.5, PANE, P, { "-y": "all", "+y": "all" });
+  windowsOn(b, r, "+y", [5, 13], 4, 1 + SH + SILL, PANE, P);
 
   var height = pitched(b, r, top, cityRoof(o, P, "y"), P.wall);
 
-  chimney(b, 13, 22, top, height(14.2, 23.2));
+  chimney(b, 12, 28, top, height(13.2, 29.2));
 
   //the kitchen out at the back, its roof flat
   var etop = walls(b, e, 1, 1, P);
 
-  windowsOn(b, e, "-x", [46.5], 4, 4, 4, P);
-  windowsOn(b, e, "+y", [5, 10], 3.5, 4, 4, P);
-  doorOn(b, e, "+x", 47, 3.5, 1.2, 7.5, P);
+  windowsOn(b, e, "-x", [49], 4, 1 + SILL, PANE, P);
+  windowsOn(b, e, "+y", [4.5, 10], 3.5, 1 + SILL, PANE, P);
+  doorOn(b, e, "+x", 49, 3.5, 1.2, DOOR, P);
   flatRoof(b, e, etop, P.trim, 0.6);
 
   //the garage at the end of the drive
-  var gtop = walls(b, g, 1, 1, P, null, 8);
+  var gtop = walls(b, g, 1, 1, P, null, 10);
 
-  garageDoor(b, g, 22.5, 29.5);
+  garageDoor(b, g, 23.5, 30.5);
   flatRoof(b, g, gtop, P.trim, 0.5);
 
-  fence(b, kind, "y", 0.8, 1.5, 95.5, [], P.picket);
+  fence(b, kind, "y", 1, 2, 95.5, [], P.picket);
   fence(b, kind, "x", 95, 0.5, 31.5, [], P.picket);
-  fence(b, kind, "y", 31.2, 72, 95, [], P.picket);
+  fence(b, kind, "y", 31, 81, 95, [], P.picket);
 
-  tree(b, 9, 64, 3.5);
-  tree(b, 25, 88, 3);
+  gardenTree(b, 9, 66, 4.5, 16);
+  gardenTree(b, 26, 89.5, 4, 15);
   greenhouse(b, 3, 11, 78, 90);
-  vegetables(b, 13, 20, 76, 92, rnd);
-  washing(b, 21.5, 30.5, 76);
-  bench(b, 4, 58);
+  vegetables(b, 13, 21, 76, 92, rnd);
+  washing(b, 22.5, 31, 84);
+  bench(b, 4, 59);
 
-  return { boxes: b, bays: [bayAt(26.3, 7), bayAt(26.3, 48)] };
+  return { boxes: b, bays: [bayAt(27, 9), bayAt(27, 54)] };
 }
 
 /**
  * The fence round one house of a pair or a row, from x0 to x1: along the
  * front - its drive from d0 to d1 through gates swung open, the path from
  * p0 to p1 through a gate of its own - down either side, where `sides` says,
- * leaving out the stretch the houses stand on, and along the back.
+ * leaving out the stretch the houses stand on, as far as `back`, and along
+ * the back if it gets that far.
  *
  * @param sides {[boolean, boolean]} whether there is a fence on the left, on
  *        the right
  * @param house {[number, number]} from where to where along y the house is
  */
-function plot(b, kind, x0, x1, d0, d1, p0, p1, sides, house, color) {
+function plot(b, kind, x0, x1, d0, d1, p0, p1, sides, house, back, color) {
   fence(
     b,
     kind,
@@ -2013,9 +2063,9 @@ function plot(b, kind, x0, x1, d0, d1, p0, p1, sides, house, color) {
   );
   driveGate(b, d0, d1, 1, kind, color);
   wicket(b, p0, p1, 1, kind, color);
-  fence(b, kind, "x", 63, x0 + 0.5, x1 - 0.5, [], color);
-  if (sides[0]) fence(b, kind, "y", x0 + 0.8, 1.8, 62.5, [house], color);
-  if (sides[1]) fence(b, kind, "y", x1 - 0.8, 1.8, 62.5, [house], color);
+  if (back > 62) fence(b, kind, "x", 63, x0 + 0.5, x1 - 0.5, [], color);
+  if (sides[0]) fence(b, kind, "y", x0 + 0.8, 1.8, back, [house], color);
+  if (sides[1]) fence(b, kind, "y", x1 - 0.8, 1.8, back, [house], color);
 }
 
 /**
@@ -2033,21 +2083,21 @@ function terrace(b, o, P, n, w, x0, y0, y1) {
       flip = u % 2 === 1,
       door = flip ? a + 3 : a + w - 6.5;
 
-    doorOn(b, r, "-y", door, 3.5, 1.2, 7.5, P);
-    b.push(box(door - 1.5, door + 5, y0 - 2.4, y0, 9.2, 9.8, P.trim));
-    windowsOn(b, r, "-y", [flip ? a + w - 11 : a + 4], 7, 4, 4, P);
+    doorOn(b, r, "-y", door, 3.5, 1.2, DOOR, P);
+    b.push(box(door - 1.5, door + 5, y0 - 2.4, y0, 10, 10.6, P.trim));
+    windowsOn(b, r, "-y", [flip ? a + w - 12 : a + 4], 8, 1 + SILL, PANE, P);
     windowsOn(
       b,
       r,
       "-y",
-      [a + 3.5, a + w / 2 - 2, a + w - 7.5],
+      [a + 4, a + w / 2 - 2, a + w - 8],
       4,
-      3.5 + SH,
-      4,
+      1 + SH + SILL,
+      PANE,
       P,
     );
-    windowsOn(b, r, "+y", [a + 4, a + w - 8], 4, 4, 4, P);
-    windowsOn(b, r, "+y", [a + 4, a + w - 8], 4, 3.5 + SH, 4, P);
+    windowsOn(b, r, "+y", [a + 4, a + w - 8], 4, 1 + SILL, PANE, P);
+    windowsOn(b, r, "+y", [a + 4, a + w - 8], 4, 1 + SH + SILL, PANE, P);
     if (u > 0)
       b.push(
         box(
@@ -2063,8 +2113,8 @@ function terrace(b, o, P, n, w, x0, y0, y1) {
   }
 
   ["-x", "+x"].forEach(function (f) {
-    windowsOn(b, r, f, [y0 + 4, y1 - 8], 4, 4, 4, P);
-    windowsOn(b, r, f, [y0 + 4, y1 - 8], 4, 3.5 + SH, 4, P);
+    windowsOn(b, r, f, [y0 + 5, y1 - 9], 4, 1 + SILL, PANE, P);
+    windowsOn(b, r, f, [y0 + 5, y1 - 9], 4, 1 + SH + SILL, PANE, P);
   });
 
   var height = pitched(b, r, top, cityRoof(o, P, "x"), P.wall),
@@ -2076,11 +2126,12 @@ function terrace(b, o, P, n, w, x0, y0, y1) {
 
 /**
  * Semi-detached houses on four tiles: one pair under one roof at the back,
- * each half with its drive and its car on the outside, a path from its own
- * gate through its front garden, and a fence round it.
+ * each half nine metres by nine, with its parking space in front on the
+ * outside, a path from its own gate through its front garden, and a fence
+ * round it.
  */
 function semi(o, rnd, stage) {
-  var r = { x0: 4, x1: 60, y0: 30, y1: 55 };
+  var r = { x0: 3, x1: 61, y0: 34, y1: 61 };
 
   if (stage)
     return site(2 * TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
@@ -2090,7 +2141,7 @@ function semi(o, rnd, stage) {
     kind = o.fence;
 
   lawn(b, 0, 2 * TILE, 0, 2 * TILE);
-  terrace(b, o, P, 2, 28, 4, 30, 55);
+  terrace(b, o, P, 2, 29, 3, r.y0, r.y1);
 
   [0, 1].forEach(function (u) {
     var flip = u === 1,
@@ -2102,17 +2153,17 @@ function semi(o, rnd, stage) {
         return flip ? 64 - x : x;
       };
 
-    paved(b, d0, d0 + 9.5, 0.3, 30, DRIVE);
-    paved(b, door, door + 3.5, 0.5, 30, PAVING);
+    paved(b, d0, d0 + 9.5, 0.3, r.y0, DRIVE);
+    paved(b, door, door + 3.5, 0.5, r.y0, PAVING);
     flowers(
       b,
       Math.min(mirror(13), mirror(23)),
       Math.max(mirror(13), mirror(23)),
-      25,
-      28,
+      28.5,
+      31.5,
       rnd,
     );
-    bush(b, mirror(17), 10, 2.6);
+    gardenTree(b, mirror(17), 10, 3.4, 13);
     plot(
       b,
       kind,
@@ -2124,22 +2175,20 @@ function semi(o, rnd, stage) {
       door + 3.5,
       [!flip, true],
       [r.y0 - 1, r.y1 + 1],
+      r.y0 - 0.5,
       P.picket,
     );
   });
 
-  trampoline(b, 18, 59, 3);
-  bins(b, 40, 57.5);
-
-  return { boxes: b, bays: [bayAt(6.8, 12), bayAt(57.2, 12)] };
+  return { boxes: b, bays: [bayAt(6.75, 15), bayAt(57.25, 15)] };
 }
 
 /**
- * A pair of houses on six tiles, each half a tile and a half wide: its drive
- * and its front garden, and behind the house a back garden of its own.
+ * A pair of houses on six tiles, each half fourteen metres wide: its parking
+ * space and its front garden, and behind the house a back garden of its own.
  */
 function pair(o, rnd, stage) {
-  var r = { x0: 7, x1: 89, y0: 22, y1: 44 };
+  var r = { x0: 4, x1: 92, y0: 20, y1: 46 };
 
   if (stage)
     return site(3 * TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
@@ -2149,7 +2198,7 @@ function pair(o, rnd, stage) {
     kind = o.fence;
 
   lawn(b, 0, 3 * TILE, 0, 2 * TILE);
-  terrace(b, o, P, 2, 41, 7, 22, 44);
+  terrace(b, o, P, 2, 44, 4, r.y0, r.y1);
 
   [0, 1].forEach(function (u) {
     var flip = u === 1,
@@ -2158,10 +2207,10 @@ function pair(o, rnd, stage) {
       d0 = flip ? x1 - 12 : x0 + 2.5,
       door = flip ? 51 : 41.5;
 
-    paved(b, d0, d0 + 9.5, 0.3, 22, DRIVE);
-    paved(b, door, door + 3.5, 0.5, 22, PAVING);
-    flowers(b, flip ? 58 : 18, flip ? 78 : 38, 17, 20, rnd);
-    tree(b, flip ? 70 : 26, 9, 3);
+    paved(b, d0, d0 + 9.5, 0.3, r.y0, DRIVE);
+    paved(b, door, door + 3.5, 0.5, r.y0, PAVING);
+    flowers(b, flip ? 58 : 18, flip ? 78 : 38, 15.5, 18.5, rnd);
+    gardenTree(b, flip ? 70 : 26, 8, 3.4, 13);
     plot(
       b,
       kind,
@@ -2173,28 +2222,30 @@ function pair(o, rnd, stage) {
       door + 3.5,
       [!flip, true],
       [r.y0 - 1, r.y1 + 1],
+      62.5,
       P.picket,
     );
   });
 
   //the back gardens: a patio and a tree; a trampoline, a shed, the washing
-  paved(b, 8, 30, 44, 51, PAVING);
-  parasol(b, 16, 48, [60, 120, 190]);
-  tree(b, 38, 56, 3.5);
-  flowers(b, 4, 20, 58, 61, rnd);
-  trampoline(b, 60, 55, 4);
-  shed(b, 80, 91, 51, 60);
-  washing(b, 66, 78, 59.5);
+  paved(b, 5, 26, 46, 52, PAVING);
+  parasol(b, 14, 49.5, [60, 120, 190]);
+  gardenTree(b, 38, 56, 4.5, 16);
+  flowers(b, 5, 20, 58.5, 61.5, rnd);
+  trampoline(b, 60, 55.5, 3.5);
+  shed(b, 82, 92, 52, 61.5);
+  washing(b, 66, 78, 60);
 
-  return { boxes: b, bays: [bayAt(7.3, 9.5), bayAt(88.7, 9.5)] };
+  return { boxes: b, bays: [bayAt(7.25, 10), bayAt(88.75, 10)] };
 }
 
 /**
- * A row of three terraced houses on six tiles, a tile wide each: a drive and
- * a path from the gate in front, a back garden each behind.
+ * A row of three terraced houses on six tiles, ten metres wide each: a
+ * parking space and a path from the gate in front, a back garden each
+ * behind.
  */
 function row(o, rnd, stage) {
-  var r = { x0: 2, x1: 94, y0: 22, y1: 44 };
+  var r = { x0: 2, x1: 94, y0: 20, y1: 46 };
 
   if (stage)
     return site(3 * TILE, 2 * TILE, [{ rect: r, storeys: 2 }], stage, rnd);
@@ -2206,7 +2257,7 @@ function row(o, rnd, stage) {
     bays = [];
 
   lawn(b, 0, 3 * TILE, 0, 2 * TILE);
-  terrace(b, o, P, 3, w, 2, 22, 44);
+  terrace(b, o, P, 3, w, 2, r.y0, r.y1);
 
   [0, 1, 2].forEach(function (u) {
     var x0 = u * 32,
@@ -2216,8 +2267,8 @@ function row(o, rnd, stage) {
       door = flip ? a + 3 : a + w - 6.5,
       d0 = flip ? x1 - 11 : x0 + 2;
 
-    paved(b, d0, d0 + 9.5, 0.3, 22, DRIVE);
-    paved(b, door, door + 3.5, 0.5, 22, PAVING);
+    paved(b, d0, d0 + 9.5, 0.3, r.y0, DRIVE);
+    paved(b, door, door + 3.5, 0.5, r.y0, PAVING);
     bush(b, flip ? x0 + 13 : x0 + 16, 13, 2.2);
     plot(
       b,
@@ -2230,14 +2281,15 @@ function row(o, rnd, stage) {
       door + 3.5,
       [u === 0, true],
       [r.y0 - 1, r.y1 + 1],
+      62.5,
       P.picket,
     );
-    bays.push(bayAt(d0 + 4.75, 9.5));
+    bays.push(bayAt(d0 + 4.75, 10));
   });
 
-  tree(b, 9, 55, 3);
+  gardenTree(b, 9, 55, 4.2, 15);
   trampoline(b, 48, 55.5, 3.5);
-  shed(b, 66, 76, 51, 60);
+  shed(b, 66, 76, 51, 61);
   flowers(b, 80, 92, 49, 52, rnd);
 
   return { boxes: b, bays: bays };
@@ -2446,10 +2498,13 @@ function villa(size) {
           face(r, f, sp[1] - 7, sp[1], z0 + SH, top, 0, 0.4, P.wood, MATTE),
         );
       });
-    } else windowsAround(b, r, z0, 2, 3.5, 5, P, { "-y": [mid - 7, mid + 7] });
+    } else
+      windowsAround(b, r, z0, 2, 3.5, PANE + 1, P, {
+        "-y": [mid - 7, mid + 7],
+      });
 
     //the way in: double doors, a porch of columns, a balcony over it
-    doorOn(b, r, "-y", mid - 2.5, 5, z0 + 0.1, 8, P);
+    doorOn(b, r, "-y", mid - 2.5, 5, z0 + 0.1, DOOR + 1, P);
     if (modern) {
       b.push(
         box(mid - 7, mid + 7, r.y0 - 4, r.y0, z0 + SH, z0 + SH + 0.8, P.wall),
@@ -2466,7 +2521,7 @@ function villa(size) {
           GLASSY,
         ),
       );
-      windowOn(b, r, "-y", mid - 5, 10, z0 + SH + 1.2, 6.5, P);
+      windowOn(b, r, "-y", mid - 5, 10, z0 + SH + 1.2, 8, P);
     } else {
       [mid - 6, mid - 2.5, mid + 2.5, mid + 6].forEach(function (x) {
         column(b, x, r.y0 - 3, z0, z0 + SH, WHITE);
@@ -2483,7 +2538,7 @@ function villa(size) {
         ),
       );
       balustrade(b, mid - 7.3, mid + 7.3, r.y0 - 4, z0 + SH + 1, WHITE);
-      windowOn(b, r, "-y", mid - 2, 4, z0 + SH + 1.2, 6.5, P);
+      windowOn(b, r, "-y", mid - 2, 4, z0 + SH + 1.2, 8, P);
     }
 
     if (modern) {
@@ -2536,7 +2591,7 @@ function villa(size) {
         z0,
         1,
         3,
-        5,
+        PANE + 1,
         P,
         i === 0 ? { "+x": "all" } : { "-x": "all" },
       );
@@ -2602,7 +2657,7 @@ function villa(size) {
           );
         });
 
-        if (clear) cypress(b, x, y, 13);
+        if (clear) cypress(b, x, y, 21);
       }
     });
     //shrubs along the back
@@ -2622,7 +2677,8 @@ function villa(size) {
     }
     flowers(b, t.x0 + 1, mid - 8, r.y0 - 7, r.y0 - 4.5, rnd);
     flowers(b, mid + 8, t.x1 - 1, r.y0 - 7, r.y0 - 4.5, rnd);
-    if (!p || p.loungers === "left") tree(b, r.x1 + (p ? -4 : 6), D - 5, 3.5);
+    if (!p || p.loungers === "left")
+      gardenTree(b, r.x1 + (p ? -4 : 6.5), D - 6.5, 4.5, 18);
 
     //round it all, the gate in front
     fence(
@@ -2691,7 +2747,7 @@ var FOOTPRINTS = {
       axes: {
         pal: Object.keys(VILLAGE),
         roof: Object.keys(VILLAGE_ROOF),
-        yard: ["veg", "cow", "orchard", "well"],
+        yard: ["veg", "orchard", "well", "flowers"],
       },
       tiles: tilesOf(1, 1, "houses/cottage/std/{pal}/{roof}/{yard}"),
     },
@@ -2715,7 +2771,7 @@ var FOOTPRINTS = {
       axes: {
         pal: CITY_AXES.pal,
         roof: CITY_AXES.roof,
-        front: ["hedge", "picket", "parking"],
+        front: ["hedge", "picket", "railing"],
       },
       tiles: tilesOf(2, 1, "houses/wide/std/{pal}/{roof}/{front}"),
     },
@@ -2899,6 +2955,14 @@ function house(id) {
     });
     built = DESIGNS[p[1]](o, random(id));
   }
+
+  //every edge on a grid of 1/1024, so that moving the house a tile over -
+  //and turning it - is exact, and each tile comes out as the whole does
+  built.boxes.forEach(function (c) {
+    ["x0", "x1", "y0", "y1", "z0", "z1"].forEach(function (k) {
+      c[k] = Math.round(c[k] * 1024) / 1024;
+    });
+  });
 
   whole.unshift({ id: id, house: built });
   if (whole.length > KEEP) whole.pop();
