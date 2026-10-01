@@ -13,6 +13,7 @@ import BuildingState from "core/buildingstate";
 import Core from "core/main";
 import CompoundBuilding from "./compoundbuilding";
 import Rotation from "core/rotation";
+import { stageOf, STAGES } from "shared/gen/stacking";
 
 var Terrain = Core.Terrain;
 
@@ -25,6 +26,8 @@ BuildingView.prototype.building = null;
 //1 for solid - less while something being placed nearby needs to be seen
 //through it (see Buildman)
 BuildingView.prototype.opacity = 1;
+//the next redraw of a block going up, for when its site moves on a stage
+BuildingView.prototype.stageTimer = null;
 
 BuildingView.prototype.setBuilding = function (building) {
   this.building = building;
@@ -61,12 +64,17 @@ BuildingView.prototype.update = function () {
       ? CompoundBuilding.lookOf(vkaria.sprites, b.data, staticData.compound)
       : null;
 
+    clearTimeout(this.stageTimer);
+    this.stageTimer = null;
+
     //clear old GOs - each one lets go of the view as it is destroyed, so
     //off a copy of the list
     var children = this.gameObject.transform.children.slice();
     for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
 
-    if (b.data.getState() === BuildingState.underConstruction) {
+    if (b.data.getState() === BuildingState.underConstruction && look) {
+      drawSite(this, staticData, look);
+    } else if (b.data.getState() === BuildingState.underConstruction) {
       var sizeX = Rotation.sizeX(staticData, b.data.rotation),
         sizeY = Rotation.sizeY(staticData, b.data.rotation);
 
@@ -137,6 +145,43 @@ BuildingView.prototype.update = function () {
       y * tileSize,
     );
   }
+};
+
+/**
+ * A block going up, as the building site it is at the moment - and the
+ * redraw for when it moves on to the next stage.
+ */
+function drawSite(self, staticData, look) {
+  var data = self.building.data,
+    progress = data.getProgress(),
+    stage = stageOf(progress);
+
+  addParts(
+    self.gameObject,
+    staticData.compound,
+    Rotation.turns(data.rotation),
+    self.opacity,
+    undefined,
+    CompoundBuilding.siteLook(look, stage),
+  );
+
+  if (stage < STAGES.length)
+    self.stageTimer = setTimeout(
+      function () {
+        self.stageTimer = null;
+        self.update();
+      },
+      //a moment past it, so that it is there by then
+      (STAGES[stage] - progress) * staticData.constructionTime + 50,
+    );
+}
+
+/**
+ * Lets go of what it was waiting to do, for a building that is gone.
+ */
+BuildingView.prototype.dispose = function () {
+  clearTimeout(this.stageTimer);
+  this.stageTimer = null;
 };
 
 /**
