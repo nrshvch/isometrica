@@ -326,8 +326,9 @@ export function parkedCar(b, x, y, z, rnd) {
 }
 
 //a yard tile at cell x = cx: three bays against the block, the way in along
-//the front
-export function parking(b, cx, rnd) {
+//the front - empty: what is parked in them is drawn over it, different for
+//every block (PARKING_BAYS)
+export function parking(b, cx) {
   var i, x;
 
   b.push(box(cx + 1, cx + 31, 2, 30, 1, 1.2, ASPHALT));
@@ -335,9 +336,47 @@ export function parking(b, cx, rnd) {
     x = cx + 3 + i * 9;
     b.push(box(x, x + 0.6, 14, 30, 1.2, 1.25, STRIPE));
   }
-  for (i = 0; i < 3; i++) {
-    if (rnd() < 0.75) parkedCar(b, cx + 7.8 + i * 9, 22, 1.2, rnd);
-  }
+}
+
+//the bays of parking: where a car's middle is, on the ground how high, and
+//which ways it may stand in it - nose in or backed in
+export var PARKING_BAYS = [0, 1, 2].map(function (i) {
+  return { x: 7.8 + i * 9, y: 22, z: 1.2, headings: ["y+", "y-"] };
+});
+
+//how a heading turns with a part, a quarter turn at a time: what faced +x
+//faces -y (see iso.rotate)
+var HEADING_TURN = { "x+": "y-", "y-": "x-", "x-": "y+", "y+": "x+" };
+
+export function turnHeading(heading, turns) {
+  for (var t = 0; t < turns; t++) heading = HEADING_TURN[heading];
+
+  return heading;
+}
+
+/**
+ * Bays to park in, drawn over a part (client/compoundbuilding overlays): each
+ * where its car's middle is on the screen from the middle of the part's
+ * tile, the part turned `turns` times, and which ways a car may stand in it
+ * then. Which cars are parked there, if any, is up to each building.
+ *
+ * @param bays {{x, y, z, headings}[]} on the part's tile as it is painted
+ */
+export function baysOverlay(bays, turns) {
+  return {
+    bays: bays.map(function (bay) {
+      var at = turnPoint(bay.x, bay.y, turns),
+        screen = iso.project(at[0] - TILE / 2, at[1] - TILE / 2, bay.z);
+
+      return {
+        x: screen[0],
+        y: screen[1],
+        headings: bay.headings.map(function (h) {
+          return turnHeading(h, turns);
+        }),
+      };
+    }),
+  };
 }
 
 /* --- Building sites -------------------------------------------------- */
@@ -539,13 +578,21 @@ export function blocks(style) {
    * together needs to know of them.
    */
   function describe() {
-    var sizes = {};
+    var sizes = {},
+      over = {};
 
     Object.keys(PARTS).forEach(function (key) {
       TURNS.forEach(function (turns) {
         var boxes = iso.rotate(partBoxes(key, PARTS[key]), 1, 1, turns);
 
         sizes["gen/" + key + "/r" + turns] = measureOnTile(boxes);
+
+        //a car park's bays
+        if (
+          PARTS[key].kind === "yard" &&
+          style.yards[PARTS[key].yard] === parking
+        )
+          over[key + "/r" + turns] = [baysOverlay(PARKING_BAYS, turns)];
       });
     });
 
@@ -559,6 +606,9 @@ export function blocks(style) {
         yards: Object.keys(style.yards),
         yardVariants: style.yardVariants,
         turns: TURNS,
+        //what is drawn over a part, by its sprite name without gen/: see
+        //baysOverlay
+        overlays: over,
       },
     };
   }
@@ -644,17 +694,15 @@ export function measureOnTile(boxes) {
   var clipped = [];
 
   boxes.forEach(function (b) {
-    var c = iso.box(
-      Math.max(b.x0, 0),
-      Math.min(b.x1, TILE),
-      Math.max(b.y0, 0),
-      Math.min(b.y1, TILE),
-      b.z0,
-      b.z1,
-      b.color,
-    );
+    var x0 = Math.max(b.x0, 0),
+      x1 = Math.min(b.x1, TILE),
+      y0 = Math.max(b.y0, 0),
+      y1 = Math.min(b.y1, TILE);
 
-    if (c.x0 < c.x1 && c.y0 < c.y1) clipped.push(c);
+    //a box off the tile altogether is not on it - building one of what is
+    //left would turn it the right way round instead
+    if (x0 < x1 && y0 < y1)
+      clipped.push(iso.box(x0, x1, y0, y1, b.z0, b.z1, b.color));
   });
 
   var m = iso.measure(clipped),

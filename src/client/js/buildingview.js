@@ -122,6 +122,7 @@ BuildingView.prototype.update = function () {
         this.opacity,
         undefined,
         look,
+        b.data.tile,
       );
 
       //add smoke
@@ -179,6 +180,7 @@ function drawSite(self, staticData, look) {
     self.opacity,
     undefined,
     CompoundBuilding.siteLook(look, stage, data.tile),
+    data.tile,
   );
 
   if (stage < STAGES.length)
@@ -215,8 +217,10 @@ BuildingView.prototype.dispose = function () {
  * @param [look] {Object} for a building put together out of parts, what it
  *        looks like - see client/compoundbuilding; the look of the kind of
  *        building it is, for one that is not a building yet
+ * @param [seed] {number} for one put together out of parts, the same for the
+ *        same building every time - where it stands: the cars in its car park
  */
-function addSprites(parent, staticData, rotation, opacity, layer, look) {
+function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
   if (staticData.compound) {
     addParts(
       parent,
@@ -225,6 +229,7 @@ function addSprites(parent, staticData, rotation, opacity, layer, look) {
       opacity,
       layer,
       look,
+      seed,
     );
     return;
   }
@@ -276,7 +281,7 @@ function mirrored(staticData, rotation) {
  * Hangs a building put together out of parts under parent: a sprite for each
  * of its tiles, each the parts of that tile put together.
  */
-function addParts(parent, compound, turns, opacity, layer, look) {
+function addParts(parent, compound, turns, opacity, layer, look, seed) {
   var sprites = vkaria.sprites;
 
   look = look || CompoundBuilding.sampleLook(sprites, compound);
@@ -286,7 +291,7 @@ function addParts(parent, compound, turns, opacity, layer, look) {
 
   addPieces(
     parent,
-    CompoundBuilding.pieces(sprites, look, compound, turns),
+    CompoundBuilding.pieces(sprites, look, compound, turns, seed),
     opacity,
     layer,
   );

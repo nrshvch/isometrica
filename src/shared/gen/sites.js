@@ -44,6 +44,7 @@ import {
   pick,
   round,
   turnPoint,
+  turnHeading,
   free,
   measureFree,
   onTile,
@@ -356,18 +357,6 @@ var MACHINES = {
   haul: [{ vehicle: "lorry", x: 16, y: 16, heading: "x-" }],
 };
 
-//how a heading turns with the part, a quarter turn at a time: what faced +x
-//faces -y (see iso.rotate)
-var HEADING_TURN = { "x+": "y-", "y-": "x-", "x-": "y+", "y+": "x+" };
-
-var HEADING = { "x+": [1, 0], "x-": [-1, 0], "y+": [0, 1], "y-": [0, -1] };
-
-function turnHeading(heading, turns) {
-  for (var t = 0; t < turns; t++) heading = HEADING_TURN[heading];
-
-  return heading;
-}
-
 //the tarp, creased a little all over
 var CREASED = { noise: 0.07, base: 0, storey: STOREY };
 
@@ -432,6 +421,9 @@ function atBack(edge, turns) {
 
   return Math.max(p[0], p[1]) > TILE - 1;
 }
+
+//which way along the ground a heading goes
+var HEADING = { "x+": [1, 0], "x-": [-1, 0], "y+": [0, 1], "y-": [0, -1] };
 
 /**
  * Every part there is, by name without its turn: "sites/lot/pile",
