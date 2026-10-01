@@ -73,6 +73,18 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   placed, so the ghost already shows what will be built. Car parks - the
   shops' and the blocks' - are filled with cars from the vehicle
   generator, different for every building.
+- Houses are painted the same way (`src/shared/gen/houses.js`), one
+  catalogue entry per kind and footprint (`src/data/houses.js`): village
+  houses that need no road or water - a cottage on 1x1 with hens, a cow, an
+  orchard or a well, a farmstead on 1x2 with a barn, a field or sheep;
+  town houses with hedges or picket fences - a bungalow with its garage on
+  2x1, a two-storey house end on to the street on 1x2 and 1x3;
+  semi-detached houses on 2x2 and a pair or a row of three on 3x2, each
+  with its own drive, gate and garden; and villas on 2x2 and 3x2 behind a
+  gate in a high hedge or a wall, with a fountain or a pool. Whatever of a
+  house stands in front of the cars on its drive is drawn again over them,
+  so a car behind a hedge stays behind it whichever way the house is
+  turned.
 - Every building goes up on a building site - the same parts for all of
   them (`src/shared/gen/sites.js`): bare earth, and on each tile one of an
   excavator, a lorry, a heap of sand, the site office or a tower crane,

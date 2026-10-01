@@ -344,8 +344,10 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed) {
  * ready for client/siterenderer: a machine with the vehicle generator's
  * pictures of it - the way it faces, and the way it turns to, for one that
  * moves - the jib with its frames; and in the bays of a car park whatever
- * cars the seed has parked there, the vehicle generator's own; each with its
- * pivot taken from where the tile's middle is.
+ * cars the seed has parked there, the vehicle generator's own - and over
+ * them, for a drive by a house, a frame of its own: what of the house stands
+ * in front of them (shared/gen/houses cover). Each with its pivot taken from
+ * where the tile's middle is.
  *
  * @param up {number[]} how far each part is laid higher than it was painted
  * @param seed {number} the same for the same tile of the same building
@@ -526,14 +528,18 @@ function drawPreview(sprites, compound, tries) {
   var list = pieces(sprites, look, compound, 0, 1),
     loads = [];
 
-  //what stands still over a tile is in the picture too - the cars parked
+  //what stands still over a tile is in the picture too - the cars parked,
+  //and what of the tile stands in front of them over them
   function still(piece) {
     return piece.overlays
       .filter(function (o) {
-        return o.looks !== undefined;
+        return (
+          o.looks !== undefined ||
+          (o.frames !== undefined && o.frames.length === 1)
+        );
       })
       .map(function (o) {
-        return o.looks[0];
+        return o.looks !== undefined ? o.looks[0] : o.frames[0];
       });
   }
 
