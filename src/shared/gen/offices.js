@@ -18,6 +18,7 @@
  * Nothing of it is quite flat colour: its glass has the sky in it, and
  * everything else a faint grain (blocks MATTE, GLASSY).
  */
+import * as iso from "./isobox.js";
 import {
   blocks,
   box,
@@ -48,30 +49,48 @@ var CONCRETE = [168, 166, 160],
 //its plinth, its canopy and sign, and its roof
 var PALETTES = {
   azure: {
-    glass: [92, 146, 196],
-    frame: [200, 206, 214],
-    spandrel: [62, 84, 112],
-    plinth: [96, 100, 108],
-    accent: [232, 234, 238],
-    roof: [132, 136, 142],
+    glass: [58, 140, 222],
+    frame: [214, 222, 232],
+    spandrel: [32, 72, 140],
+    plinth: [88, 96, 112],
+    accent: [244, 246, 250],
+    roof: [132, 138, 150],
   },
   teal: {
-    glass: [84, 158, 160],
-    frame: [214, 218, 216],
-    spandrel: [46, 92, 98],
-    plinth: [104, 108, 106],
-    accent: [238, 196, 72],
-    roof: [128, 134, 132],
+    glass: [36, 172, 172],
+    frame: [226, 232, 228],
+    spandrel: [20, 98, 106],
+    plinth: [92, 106, 104],
+    accent: [252, 196, 40],
+    roof: [124, 138, 136],
   },
   bronze: {
-    glass: [146, 128, 104],
-    frame: [72, 68, 66],
-    spandrel: [94, 78, 64],
-    plinth: [86, 82, 80],
-    accent: [210, 90, 60],
-    roof: [120, 116, 112],
+    glass: [186, 132, 70],
+    frame: [64, 54, 50],
+    spandrel: [122, 76, 40],
+    plinth: [82, 72, 68],
+    accent: [232, 80, 44],
+    roof: [128, 116, 108],
+  },
+  emerald: {
+    glass: [44, 168, 104],
+    frame: [232, 236, 230],
+    spandrel: [18, 96, 64],
+    plinth: [86, 100, 92],
+    accent: [244, 108, 160],
+    roof: [124, 136, 128],
   },
 };
+
+//what a billboard's picture is painted in: strong colours, to be seen
+var INKS = [
+  [232, 56, 64],
+  [252, 188, 32],
+  [36, 136, 232],
+  [40, 176, 96],
+  [236, 104, 188],
+  [250, 132, 36],
+];
 
 //a little deeper than the flats, and nearer the street
 var SECTION = {
@@ -200,10 +219,146 @@ function airConditioner(b, x, y, z) {
 }
 
 /**
+ * A billboard on the roof at z, across the front of the section: a picture
+ * on a panel in a frame, up on legs, lit by a lamp at either end. The
+ * picture, a pixel to a cell, is one of a few for the variant's seed: a sun
+ * going down over the sea, a brand's round logo by its name, or bold
+ * stripes.
+ */
+function billboard(b, s, z, pal, rnd) {
+  var w = Math.min(20, s.x1 - s.x0 - 4),
+    h = 9,
+    x0 = Math.round(s.mid - w / 2),
+    face = s.front + 2.5,
+    z0 = z + 4.5,
+    inks = INKS.slice().sort(function () {
+      return rnd() - 0.5;
+    }),
+    design = Math.floor(rnd() * 3),
+    i,
+    j;
+
+  //the legs behind it, the panel, the frame round it
+  [x0 + 3, x0 + w - 4].forEach(function (x) {
+    b.push(box(x, x + 1, face + 0.6, face + 1.6, z, z0, METAL));
+    b.push(box(x, x + 1, face + 1.6, face + 5, z, z + 1, METAL));
+  });
+  b.push(box(x0, x0 + w, face, face + 0.6, z0, z0 + h, pal.frame));
+  b.push(
+    box(
+      x0 - 0.5,
+      x0 + w + 0.5,
+      face - 0.2,
+      face + 0.6,
+      z0 - 0.5,
+      z0,
+      darker(pal.frame, 0.3),
+    ),
+  );
+  b.push(
+    box(
+      x0 - 0.5,
+      x0 + w + 0.5,
+      face - 0.2,
+      face + 0.6,
+      z0 + h,
+      z0 + h + 0.5,
+      darker(pal.frame, 0.3),
+    ),
+  );
+  b.push(
+    box(
+      x0 - 0.5,
+      x0,
+      face - 0.2,
+      face + 0.6,
+      z0,
+      z0 + h,
+      darker(pal.frame, 0.3),
+    ),
+  );
+  b.push(
+    box(
+      x0 + w,
+      x0 + w + 0.5,
+      face - 0.2,
+      face + 0.6,
+      z0,
+      z0 + h,
+      darker(pal.frame, 0.3),
+    ),
+  );
+
+  //the lamps over it, on arms
+  [x0 + 2, x0 + w - 3].forEach(function (x) {
+    b.push(
+      box(
+        x + 0.3,
+        x + 0.7,
+        face - 1.5,
+        face,
+        z0 + h + 0.5,
+        z0 + h + 0.9,
+        METAL,
+      ),
+    );
+    b.push(
+      box(x, x + 1, face - 2, face - 1.2, z0 + h, z0 + h + 1, [250, 240, 200]),
+    );
+  });
+
+  function ink(u, v) {
+    var aspect = w / h,
+      du,
+      dv;
+
+    if (design === 0) {
+      //the sun going down over the sea
+      du = (u - 0.5) * aspect;
+      dv = v - 0.38;
+      if (v < 0.3)
+        return Math.floor(v * h + u * w) % 3 === 0
+          ? [96, 168, 232]
+          : [32, 88, 168];
+      if (du * du + dv * dv < 0.12) return [255, 236, 120];
+      return iso.mix([250, 120, 60], [252, 196, 96], (v - 0.3) / 0.7);
+    }
+
+    if (design === 1) {
+      //a round logo by the name, on white
+      du = (u - 0.2) * aspect;
+      dv = v - 0.5;
+      if (du * du + dv * dv < 0.14)
+        return du * du + dv * dv < 0.035 ? [250, 250, 250] : inks[0];
+      if (u > 0.42 && u < 0.92 && v > 0.55 && v < 0.75) return [40, 44, 56];
+      if (u > 0.42 && u < 0.78 && v > 0.28 && v < 0.42) return inks[1];
+      return [246, 246, 240];
+    }
+
+    //bold stripes across it
+    return inks[Math.floor((u * w + v * h * 1.5) / 3) % 3];
+  }
+
+  for (i = 0; i < w; i++)
+    for (j = 0; j < h; j++)
+      b.push(
+        box(
+          x0 + i,
+          x0 + i + 1,
+          face - 0.15,
+          face,
+          z0 + j,
+          z0 + j + 1,
+          ink((i + 0.5) / w, (j + 0.5) / h),
+        ),
+      );
+}
+
+/**
  * The roof on top of a section at z: its parapet, which runs round the edge
  * of the whole roof as the flats' does, the lift's machine room at the back,
- * and on the rest of it either air conditioning units (variant 0) or a
- * telecom mast and a dish (1).
+ * and on the rest of it air conditioning units (variant 0), a telecom mast
+ * and a dish (1), or a billboard (2).
  */
 function roof(b, s, z, pal, rnd, variant) {
   var x0 = s.x0 + 3,
@@ -233,7 +388,8 @@ function roof(b, s, z, pal, rnd, variant) {
     ),
   );
 
-  if (variant === 0) {
+  if (variant === 2) billboard(b, s, z, pal, rnd);
+  else if (variant === 0) {
     n = 2 + Math.floor(rnd() * 2);
     for (i = 0; i < n; i++)
       airConditioner(
@@ -385,8 +541,9 @@ var offices = blocks({
   palettes: PALETTES,
   shape: SECTION,
   details: ["grid", "ribbon"],
-  //which is which is the variant: air conditioning, or a telecom mast
-  roofs: 2,
+  //which is which is the variant: air conditioning, a telecom mast, or a
+  //billboard
+  roofs: 3,
   yards: YARDS,
   yardVariants: 2,
   ground: groundStorey,

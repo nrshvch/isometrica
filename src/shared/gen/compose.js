@@ -19,14 +19,15 @@ var GENERATORS = { flats: Flats, offices: Offices, sites: Sites };
 
 /**
  * The boxes of a part by its name without its turn - "sites/mast" - as it is
- * painted.
+ * painted, for a building turned `turns` times (which only a stretch of
+ * fence cares about, see shared/gen/sites).
  */
-export function partBoxes(key) {
+export function partBoxes(key, turns) {
   var g = GENERATORS[key.split("/")[0]];
 
   if (g === undefined) throw new Error("no such part: " + key);
 
-  return g.partBoxes(key);
+  return g.partBoxes(key, turns);
 }
 
 /**
@@ -37,6 +38,12 @@ export function partBoxes(key) {
  * @param sizeY {number}
  * @param turns {number}
  */
+function withGroup(b, group) {
+  b.group = group;
+
+  return b;
+}
+
 export function model(plan, sizeX, sizeY, turns) {
   var b = [];
 
@@ -44,17 +51,24 @@ export function model(plan, sizeX, sizeY, turns) {
     var up = lifts(tile.parts.map(kindOf), Sites.STOREY);
 
     tile.parts.forEach(function (key, i) {
-      partBoxes(key).forEach(function (c) {
+      partBoxes(key, turns).forEach(function (c) {
+        //what a part's boxes cast shadows on is the part's own, as when it
+        //is painted alone
+        var group = tile.x + "," + tile.y + "/" + i;
+
         b.push(
-          iso.box(
-            c.x0 + tile.x * TILE,
-            c.x1 + tile.x * TILE,
-            c.y0 + tile.y * TILE,
-            c.y1 + tile.y * TILE,
-            c.z0 + up[i],
-            c.z1 + up[i],
-            c.color,
-            c.finish,
+          withGroup(
+            iso.box(
+              c.x0 + tile.x * TILE,
+              c.x1 + tile.x * TILE,
+              c.y0 + tile.y * TILE,
+              c.y1 + tile.y * TILE,
+              c.z0 + up[i],
+              c.z1 + up[i],
+              c.color,
+              c.finish,
+            ),
+            group,
           ),
         );
       });

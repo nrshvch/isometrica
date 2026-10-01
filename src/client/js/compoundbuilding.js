@@ -225,16 +225,22 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns) {
   return tiles.map(function (tile) {
     var storey = sprites.generated[tile.parts[0].split("/")[0]].storey;
     var up = lifts(tile.parts.map(kindOf), storey),
-      laid = tile.parts.map(function (part, i) {
-        var name = spriteOf(part, turns),
-          frame = sprites.frame(name);
+      laid = tile.parts
+        .map(function (part, i) {
+          var name = spriteOf(part, turns),
+            frame = sprites.frame(name);
 
-        return {
-          name: name,
-          left: -frame.pivotX,
-          top: -frame.pivotY - up[i],
-        };
-      }),
+          return {
+            name: name,
+            empty: frame.w === 0,
+            left: -frame.pivotX,
+            top: -frame.pivotY - up[i],
+          };
+        })
+        //a stretch of a site's fence with nothing of it on this side
+        .filter(function (p) {
+          return !p.empty;
+        }),
       minX = Infinity,
       minY = Infinity;
 

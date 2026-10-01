@@ -11,7 +11,13 @@
  *   - mast: a storey of the tower crane's mast, stacked on its foot as high
  *     as the crane has to reach - which it does higher as the building goes
  *     up;
- *   - cranetop: the cab on top of the mast.
+ *   - cranetop: the cab on top of the mast;
+ *   - fence: the blue tarp on posts round the whole site, along the edges of
+ *     a tile that are the site's edges - in two parts, the stretches at the
+ *     back of the tile laid under everything else on it and the ones at the
+ *     front over it, so that they hide and are hidden as they should. Which
+ *     is which depends on which way the site is seen from, so each turn of
+ *     them is painted with its own stretches (partBoxes).
  *
  * What moves is not painted into the parts but drawn over them as the game
  * draws them (client/siterenderer): the digger and the lorry, which are the
@@ -51,6 +57,8 @@ var SAND = [196, 164, 112],
   CABIN = [236, 236, 228],
   CABIN_TRIM = [70, 110, 160],
   TOILET = [64, 120, 196],
+  TARP = [40, 112, 206],
+  POST = [150, 152, 156],
   RUT = darker(DIRT, 0.12);
 
 //where the crane's mast stands on its tile: in the middle, so its jib turns
@@ -155,26 +163,104 @@ var LOTS = {
   },
 };
 
+//a steel lattice: every member of it throws its shadow on the others (see
+//iso finish)
+var LATTICE = { shadow: true };
+
 /**
- * The mast from z0 to z1: a lattice, in bands a quarter of a storey high so
- * that one storey of it stacked on the next carries straight on.
+ * The mast from z0 to z1: an open steel lattice - a post at each corner, a
+ * ring of struts round it every half storey and a brace across each side
+ * from corner to corner in between, each throwing its shadow on the rest.
+ * Half a storey to a panel, so one storey of it stacked on the next carries
+ * straight on; square on its tile's middle, so it is the same turned round.
  */
 function mastSection(b, z0, z1) {
-  var band = STOREY / 4,
-    z;
+  var w = 1.9,
+    t = 0.55,
+    x0 = MAST.x - w,
+    x1 = MAST.x + w,
+    y0 = MAST.y - w,
+    y1 = MAST.y + w,
+    panel = STOREY / 2,
+    steps = 8,
+    z,
+    k;
 
-  for (z = z0; z < z1; z += band)
-    b.push(
-      box(
-        MAST.x - 1.5,
-        MAST.x + 1.5,
-        MAST.y - 1.5,
-        MAST.y + 1.5,
-        z,
-        Math.min(z + band, z1),
-        Math.floor((z - PLINTH) / band) % 2 ? darker(MACHINE, 0.2) : MACHINE,
-      ),
-    );
+  [
+    [x0, y0],
+    [x1 - t, y0],
+    [x0, y1 - t],
+    [x1 - t, y1 - t],
+  ].forEach(function (c) {
+    b.push(box(c[0], c[0] + t, c[1], c[1] + t, z0, z1, MACHINE, LATTICE));
+  });
+
+  for (z = z0; z < z1 - 0.01; z += panel) {
+    var top = Math.min(z + panel, z1),
+      ring = Math.min(0.4, top - z);
+
+    b.push(box(x0, x1, y0, y0 + 0.35, z, z + ring, MACHINE, LATTICE));
+    b.push(box(x0, x1, y1 - 0.35, y1, z, z + ring, MACHINE, LATTICE));
+    b.push(box(x0, x0 + 0.35, y0, y1, z, z + ring, MACHINE, LATTICE));
+    b.push(box(x1 - 0.35, x1, y0, y1, z, z + ring, MACHINE, LATTICE));
+
+    //the braces, each side's the other way round to the one before it
+    for (k = 0; k < steps; k++) {
+      var f = (k + 0.5) / steps,
+        zz = z + f * (top - z),
+        u = -w + f * 2 * w,
+        h = Math.min(0.45, (top - z) / 2);
+
+      b.push(
+        box(
+          MAST.x + u - 0.3,
+          MAST.x + u + 0.3,
+          y0,
+          y0 + 0.3,
+          zz - h,
+          zz + h,
+          MACHINE,
+          LATTICE,
+        ),
+      );
+      b.push(
+        box(
+          x1 - 0.3,
+          x1,
+          MAST.y + u - 0.3,
+          MAST.y + u + 0.3,
+          zz - h,
+          zz + h,
+          MACHINE,
+          LATTICE,
+        ),
+      );
+      b.push(
+        box(
+          MAST.x - u - 0.3,
+          MAST.x - u + 0.3,
+          y1 - 0.3,
+          y1,
+          zz - h,
+          zz + h,
+          MACHINE,
+          LATTICE,
+        ),
+      );
+      b.push(
+        box(
+          x0,
+          x0 + 0.3,
+          MAST.y - u - 0.3,
+          MAST.y - u + 0.3,
+          zz - h,
+          zz + h,
+          MACHINE,
+          LATTICE,
+        ),
+      );
+    }
+  }
 }
 
 /**
@@ -199,7 +285,16 @@ function jib(angle) {
   for (s = -8; s <= 22; s += 0.75) {
     p = at(s);
     b.push(
-      box(p[0] - 0.7, p[0] + 0.7, p[1] - 0.7, p[1] + 0.7, z, z + 1.5, MACHINE),
+      box(
+        p[0] - 0.7,
+        p[0] + 0.7,
+        p[1] - 0.7,
+        p[1] + 0.7,
+        z,
+        z + 1.5,
+        MACHINE,
+        LATTICE,
+      ),
     );
   }
 
@@ -273,9 +368,76 @@ function turnHeading(heading, turns) {
   return heading;
 }
 
+//the tarp, creased a little all over
+var CREASED = { noise: 0.07, base: 0, storey: STOREY };
+
+//the edges of a tile a fence can run along, in the order a fence's name
+//gives them: where x is 0, where y is 0 - the front - where x is a tile, and
+//where y is
+var EDGES = ["x0", "y0", "x1", "y1"];
+
+/**
+ * A stretch of the fence along an edge of the tile: posts every quarter of
+ * the tile, the tarp hung between them - with the way in left open, for a
+ * gate.
+ */
+function fence(b, edge, gate) {
+  var along = edge[0] === "x" ? "y" : "x",
+    near = edge[1] === "0",
+    c0 = near ? 0 : TILE - 0.4,
+    c1 = c0 + 0.4,
+    //standing just clear of the ground: laid under the ground of its tile,
+    //it would have its foot drawn over otherwise
+    foot = 1.45;
+
+  function piece(a0, a1, z0, z1, color, finish) {
+    if (along === "x") b.push(box(a0, a1, c0, c1, z0, z1, color, finish));
+    else b.push(box(c0, c1, a0, a1, z0, z1, color, finish));
+  }
+
+  var runs = gate
+    ? [
+        [0, 11],
+        [21, TILE],
+      ]
+    : [[0, TILE]];
+
+  runs.forEach(function (r) {
+    piece(r[0], r[1], foot + 0.6, 6.5, TARP, CREASED);
+    piece(r[0], r[1], foot, foot + 0.6, darker(TARP, 0.35));
+  });
+
+  [0.2, 8, 16, 24, TILE - 0.8].forEach(function (a) {
+    if (gate && a > 11 && a < 21) return;
+
+    piece(a, a + 0.6, foot, 7, POST);
+  });
+
+  if (gate) {
+    piece(10.4, 11, foot, 7.5, POST);
+    piece(21, 21.6, foot, 7.5, POST);
+  }
+}
+
+//whether an edge of a tile is at its back, seen from where the camera is
+//with the tile turned so many times: where x or y is a tile, once turned
+function atBack(edge, turns) {
+  var mid = {
+      x0: [0, TILE / 2],
+      y0: [TILE / 2, 0],
+      x1: [TILE, TILE / 2],
+      y1: [TILE / 2, TILE],
+    }[edge],
+    p = turnPoint(mid[0], mid[1], turns);
+
+  return Math.max(p[0], p[1]) > TILE - 1;
+}
+
 /**
  * Every part there is, by name without its turn: "sites/lot/pile",
- * "sites/mast", "sites/cranetop".
+ * "sites/mast", "sites/cranetop", "sites/fence/1210/back" - a fence along
+ * the edges its mask says, each of x0, y0, x1, y1 in turn: 1 for a fence, 2
+ * for one with a gate in it (only ever the front, y0), 0 for none.
  */
 var PARTS = (function () {
   var out = {};
@@ -286,20 +448,51 @@ var PARTS = (function () {
   out["sites/mast"] = { kind: "mast" };
   out["sites/cranetop"] = { kind: "cranetop" };
 
+  [0, 1].forEach(function (x0) {
+    [0, 1, 2].forEach(function (y0) {
+      [0, 1].forEach(function (x1) {
+        [0, 1].forEach(function (y1) {
+          var mask = "" + x0 + y0 + x1 + y1;
+
+          if (mask === "0000") return;
+
+          ["back", "front"].forEach(function (side) {
+            out["sites/fence/" + mask + "/" + side] = {
+              kind: "fence",
+              mask: mask,
+              back: side === "back",
+            };
+          });
+        });
+      });
+    });
+  });
+
   return out;
 })();
 
 /**
  * The boxes of a part by its name without its turn, as it is painted: a mast
- * as the first storey of it, the top over a mast one storey high.
+ * as the first storey of it, the top over a mast one storey high - and a
+ * stretch of fence as it is for the site turned `turns` times, at the back
+ * or the front of the tile as it is seen then.
+ *
+ * @param [turns] {number} 0..3
  */
-export function partBoxes(key) {
+export function partBoxes(key, turns) {
   var p = PARTS[key],
     b = [];
 
   if (p === undefined) throw new Error("no such part: " + key);
 
-  if (p.kind === "lot") {
+  if (p.kind === "fence") {
+    EDGES.forEach(function (edge, i) {
+      var c = p.mask[i];
+
+      if (c !== "0" && atBack(edge, turns || 0) === p.back)
+        fence(b, edge, c === "2");
+    });
+  } else if (p.kind === "lot") {
     b.push(box(0, TILE, 0, TILE, 0, 1, DIRT));
     LOTS[p.lot](b, random(key));
   } else if (p.kind === "mast") mastSection(b, TOP, TOP + STOREY);
@@ -408,9 +601,14 @@ export function describe() {
     TURNS.forEach(function (turns) {
       var drawn = overlays(key, turns);
 
-      sizes["gen/" + key + "/r" + turns] = measureOnTile(
-        iso.rotate(partBoxes(key), 1, 1, turns),
-      );
+      var boxes = partBoxes(key, turns);
+
+      //a stretch of fence that is all at the front, from where its back is
+      //seen: nothing - it is left out (client/compoundbuilding)
+      sizes["gen/" + key + "/r" + turns] =
+        boxes.length === 0
+          ? { w: 0, h: 0, pivotX: 0, pivotY: 0 }
+          : measureOnTile(iso.rotate(boxes, 1, 1, turns));
 
       if (drawn.length > 0) over[key + "/r" + turns] = drawn;
     });
@@ -452,7 +650,7 @@ export function paint(name) {
   if (TURNS.indexOf(turns) === -1) throw new Error("no such part: " + name);
 
   return iso.toImage(
-    onTile(iso.rotate(partBoxes(key.slice(0, at)), 1, 1, turns)),
+    onTile(iso.rotate(partBoxes(key.slice(0, at), turns), 1, 1, turns)),
   );
 }
 

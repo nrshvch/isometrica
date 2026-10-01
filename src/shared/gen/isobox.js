@@ -77,7 +77,11 @@ function rotate(boxes, sizeX, sizeY, turns) {
   return boxes.map(function (b) {
     var p = turn(b.x0, b.y0),
       q = turn(b.x1, b.y1);
-    return box(p[0], q[0], p[1], q[1], b.z0, b.z1, b.color, b.finish);
+    var r = box(p[0], q[0], p[1], q[1], b.z0, b.z1, b.color, b.finish);
+
+    r.group = b.group;
+
+    return r;
   });
 }
 
@@ -171,9 +175,77 @@ function cast(boxes, sx, sy) {
 
   var color = shade(hit.color, face);
 
+  if (
+    hit.finish !== undefined &&
+    hit.finish.shadow &&
+    shadowed(boxes, hit, x + best, y + best, z - best)
+  )
+    color = darker(color, SHADOW);
+
   return hit.finish === undefined
     ? color
     : finish(color, face, hit.finish, x + best, y + best, z - best);
+}
+
+//where the sun is, the way shade lights the faces: high, and over to the
+//side the faces looking towards -x are on - as shared/gen/blocks has it
+var SUN = (function () {
+  var l = [-0.45, 0.35, 1],
+    n = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
+
+  return [l[0] / n, l[1] / n, l[2] / n];
+})();
+
+//how much darker a spot in another box's shadow is
+var SHADOW = 0.32;
+
+/**
+ * Whether the sun is kept off that point of box `hit` by another box of the
+ * same group that casts a shadow (finish.shadow) - a strut of a lattice
+ * falling across the next one. Only a box's own group shades it, so a part
+ * comes out the same alone as laid with others (see compose).
+ */
+function shadowed(boxes, hit, px, py, pz) {
+  var e = 0.05,
+    ox = px + SUN[0] * e,
+    oy = py + SUN[1] * e,
+    oz = pz + SUN[2] * e;
+
+  for (var i = 0; i < boxes.length; i++) {
+    var b = boxes[i];
+
+    if (
+      b === hit ||
+      b.group !== hit.group ||
+      b.finish === undefined ||
+      !b.finish.shadow
+    )
+      continue;
+
+    var t0 = 0,
+      t1 = Infinity,
+      lo = [b.x0, b.y0, b.z0],
+      hi = [b.x1, b.y1, b.z1],
+      o = [ox, oy, oz],
+      k;
+
+    for (k = 0; k < 3 && t0 <= t1; k++) {
+      if (Math.abs(SUN[k]) < 1e-9) {
+        if (o[k] < lo[k] || o[k] > hi[k]) t0 = Infinity;
+        continue;
+      }
+
+      var a = (lo[k] - o[k]) / SUN[k],
+        c = (hi[k] - o[k]) / SUN[k];
+
+      t0 = Math.max(t0, Math.min(a, c));
+      t1 = Math.min(t1, Math.max(a, c));
+    }
+
+    if (t0 <= t1) return true;
+  }
+
+  return false;
 }
 
 //what comes out of a hash of whole numbers: 0..1, the same every time
@@ -198,6 +270,10 @@ function mod(v, n) {
  * from the tile's corner, z from the floor of the storey it is on - so a part
  * painted on a tile of its own comes out the same as it does in a whole
  * building put together out of it, whichever tile and storey it is laid on.
+ *
+ * A finish with shadow set has the shadows of the other boxes of its group
+ * with shadow set fall on it (see shadowed) - the members of a steel
+ * lattice shading each other.
  *
  * A finish with lit set instead is a box whose colour has had the light on
  * it worked out already - a little column of something round, shaded by
@@ -299,6 +375,7 @@ function render(boxes) {
       z1: b.z1,
       color: b.color,
       finish: b.finish,
+      group: b.group,
       sMinX: r.minX,
       sMaxX: r.maxX,
       sMinY: r.minY,
@@ -356,6 +433,7 @@ function paintTiles(boxes, sizeX, sizeY) {
           z1: b.z1,
           color: b.color,
           finish: b.finish,
+          group: b.group,
         };
 
         if (c.x0 < c.x1 && c.y0 < c.y1) clipped.push(c);
