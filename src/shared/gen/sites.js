@@ -525,7 +525,9 @@ export function partBoxes(key, turns) {
  *     drives: a picture of the vehicle generator's (gfx/generated/
  *     vehicles.json), its middle at x, y;
  *   - {frames}: pictures to go through and back, the jib from one side to
- *     the other, each with its pivot where the tile's middle is.
+ *     the other, each with its pivot where the tile's middle is - or, with
+ *     cover, the one picture of the front of the fence, to be drawn again
+ *     over a machine behind it (describe).
  */
 function overlays(key, turns) {
   var p = PARTS[key],
@@ -601,6 +603,13 @@ export function describe() {
         boxes.length === 0
           ? { w: 0, h: 0, pivotX: 0, pivotY: 0 }
           : measureOnTile(iso.rotate(boxes, 1, 1, turns));
+
+      //the front of the fence, drawn again over the machines on its tile,
+      //which drive behind it (client/compoundbuilding overlays)
+      if (/^sites\/fence\/.*\/front$/.test(key) && boxes.length > 0)
+        drawn = drawn.concat([
+          { frames: ["gen/" + key + "/r" + turns], cover: true },
+        ]);
 
       if (drawn.length > 0) over[key + "/r" + turns] = drawn;
     });

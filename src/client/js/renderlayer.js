@@ -21,4 +21,7 @@ export default {
   //what is about to be built - drawn over everything so that nothing
   //already standing, the tile's own trees included, hides it
   previewLayer: 9,
+  //what it would cost, over what is about to be built, and what it just
+  //cost floating up
+  tagLayer: 10,
 };

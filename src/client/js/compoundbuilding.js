@@ -355,7 +355,9 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed) {
 function overlaysOf(sprites, parts, up, turns, seed) {
   var vehicles = sprites.generated.vehicles,
     random = seeded("bays" + seed),
-    out = [];
+    out = [],
+    //the jib swings high over everything else on the tile
+    high = [];
 
   parts.forEach(function (part, i) {
     var meta = sprites.generated[part.split("/")[0]],
@@ -397,7 +399,11 @@ function overlaysOf(sprites, parts, up, turns, seed) {
       }
 
       if (o.frames !== undefined) {
-        out.push({
+        //what of the tile stands in front of what is drawn over it, drawn
+        //again over that - only for something under it
+        if (o.cover && out.length === 0) return;
+
+        (o.cover ? out : high).push({
           frames: o.frames.map(function (name) {
             var f = sprites.frame(name);
 
@@ -438,7 +444,7 @@ function overlaysOf(sprites, parts, up, turns, seed) {
     });
   });
 
-  return out;
+  return out.concat(high);
 }
 
 //the cars that park at home and at the shops - no lorries or buses
@@ -496,6 +502,44 @@ function turn(x, y, sizeX, sizeY, turns) {
     default:
       return [x, y];
   }
+}
+
+/**
+ * Where the smoke comes out of a building put together out of parts - the
+ * tops of its chimneys (shared/gen/houses describe smoke), turned with it -
+ * the way a building drawn by hand has its smokeSource: in tiles across and
+ * deep from the middle of its first tile, and how high, in steps of the
+ * ground.
+ *
+ * @returns {number[][]} [x, height, z] for every chimney - none for a
+ *          building with none
+ */
+function chimneys(sprites, look, compound, turns) {
+  var first = look.tiles[0] && look.tiles[0].parts[0],
+    meta = first && sprites.generated[first.split("/")[0]],
+    tops =
+      meta && meta.smoke && meta.smoke[first.split("/").slice(0, -2).join("/")];
+
+  if (!tops) return [];
+
+  var size = footprint(compound),
+    X = size[0] * 32,
+    Y = size[1] * 32;
+
+  return tops.map(function (t) {
+    var x = t[0],
+      y = t[1],
+      at = [
+        [x, y],
+        [y, X - x],
+        [X - x, Y - y],
+        [Y - y, x],
+      ][turns];
+
+    //a pixel up is a step of the ground for every eight - the camera looks
+    //down at thirty degrees (see client/config tileZStep)
+    return [at[0] / 32 - 0.5, t[2] / 8, at[1] / 32 - 0.5];
+  });
 }
 
 //the catalogue's pictures, by kind of building, once drawn
@@ -641,6 +685,7 @@ function drawPreview(sprites, compound, tries) {
 }
 
 export default {
+  chimneys: chimneys,
   lookOf: lookOf,
   sampleLook: sampleLook,
   pickLook: pickLook,
