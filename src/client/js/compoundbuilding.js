@@ -59,12 +59,7 @@ function pickLook(sprites, compound) {
  * grass.
  */
 function sampleLook(sprites, compound) {
-  return pick(
-    sprites,
-    compound,
-    seeded(compound.layout + compound.storeys),
-    true,
-  );
+  return pick(sprites, compound, seeded(kindKey(compound)), true);
 }
 
 /**
@@ -102,6 +97,9 @@ function pick(sprites, compound, random, showcase) {
     meta = sprites.generated[gen];
 
   if (!meta) return null;
+
+  if (compound.footprint !== undefined)
+    return pickDesign(meta.footprints[compound.footprint], random);
 
   function any(n) {
     return Math.floor(random() * n);
@@ -147,6 +145,61 @@ function pick(sprites, compound, random, showcase) {
 }
 
 /**
+ * What names a kind of building put together out of parts, for its picture
+ * in the catalogue.
+ */
+function kindKey(compound) {
+  return compound.footprint !== undefined
+    ? compound.gen + compound.footprint
+    : compound.layout + compound.storeys;
+}
+
+/**
+ * Picks a look for a shop (shared/gen/shops describe footprints): one of the
+ * designs there are for its footprint, as likely as its weight, and every
+ * option of it at random - and the parts of its tiles with them filled in.
+ */
+function pickDesign(designs, random) {
+  if (!designs || designs.length === 0) return null;
+
+  var total = 0,
+    roll,
+    d,
+    i;
+
+  designs.forEach(function (x) {
+    total += x.weight;
+  });
+
+  roll = random() * total;
+  for (i = 0; i < designs.length - 1 && roll >= designs[i].weight; i++)
+    roll -= designs[i].weight;
+  d = designs[i];
+
+  var options = {};
+
+  Object.keys(d.axes).forEach(function (axis) {
+    options[axis] = d.axes[axis][Math.floor(random() * d.axes[axis].length)];
+  });
+
+  //twice over, for an option that names another: "bigbox-{style}"
+  function fill(template) {
+    for (var pass = 0; pass < 2; pass++)
+      template = template.replace(/\{(\w+)\}/g, function (m, axis) {
+        return options[axis];
+      });
+
+    return template;
+  }
+
+  return {
+    tiles: d.tiles.map(function (t) {
+      return { x: t.x, y: t.y, parts: t.parts.map(fill) };
+    }),
+  };
+}
+
+/**
  * The look of a block going up: what is on each of its tiles at this stage
  * of it - see shared/gen/stacking.
  *
@@ -171,7 +224,14 @@ function siteLook(look, stage, seed) {
 function lotPieces(sprites, sizeX, sizeY, seed) {
   if (!sprites.generated.sites) return null;
 
-  return tilePieces(sprites, lotTiles(sizeX, sizeY, seed), sizeX, sizeY, 0);
+  return tilePieces(
+    sprites,
+    lotTiles(sizeX, sizeY, seed),
+    sizeX,
+    sizeY,
+    0,
+    seed,
+  );
 }
 
 /**
@@ -201,19 +261,26 @@ function spriteOf(part, turns) {
  * @param look {{tiles: Object[]}}
  * @param compound {Object}
  * @param turns {number} quarter turns, 0..3
+ * @param [seed] {number} the same for the same building every time - where it
+ *        stands: which cars are parked in its car park
  * @returns {{x: number, z: number, pivotX: number, pivotY: number,
  *            sprite: CachedSprite, overlays: Object[]}[]} x, z the tile in
  *          the block; overlays, what is drawn over it (overlaysOf)
  */
-function pieces(sprites, look, compound, turns) {
-  //the footprint, not turned: sections along x, the yard in front
-  return tilePieces(
-    sprites,
-    look.tiles,
-    compound.cells,
-    compound.yard ? 2 : 1,
-    turns,
-  );
+function pieces(sprites, look, compound, turns, seed) {
+  var size = footprint(compound);
+
+  return tilePieces(sprites, look.tiles, size[0], size[1], turns, seed);
+}
+
+/**
+ * How many tiles across and deep a kind of building is, not turned: as it
+ * says, or for a block, its sections along x and its yard in front.
+ */
+function footprint(compound) {
+  if (compound.sizeX !== undefined) return [compound.sizeX, compound.sizeY];
+
+  return [compound.cells, compound.yard ? 2 : 1];
 }
 
 /**
@@ -221,7 +288,7 @@ function pieces(sprites, look, compound, turns) {
  * tiles, {x, y, parts}, on a footprint sizeX by sizeY, turned - its parts
  * of whichever generator.
  */
-function tilePieces(sprites, tiles, sizeX, sizeY, turns) {
+function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed) {
   return tiles.map(function (tile) {
     var storey = sprites.generated[tile.parts[0].split("/")[0]].storey;
     var up = lifts(tile.parts.map(kindOf), storey),
@@ -256,7 +323,13 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns) {
       z: at[1],
       pivotX: -minX,
       pivotY: -minY,
-      overlays: overlaysOf(sprites, tile.parts, up, turns),
+      overlays: overlaysOf(
+        sprites,
+        tile.parts,
+        up,
+        turns,
+        ((seed | 0) * 31 + tile.x * 7 + tile.y) | 0,
+      ),
       sprite: sprites.getComposite(
         laid.map(function (p) {
           return { name: p.name, x: p.left - minX, y: p.top - minY };
@@ -270,13 +343,16 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns) {
  * What is drawn over a tile with these parts (shared/gen/sites overlays),
  * ready for client/siterenderer: a machine with the vehicle generator's
  * pictures of it - the way it faces, and the way it turns to, for one that
- * moves - the jib with its frames; each with its pivot taken from where the
- * tile's middle is.
+ * moves - the jib with its frames; and in the bays of a car park whatever
+ * cars the seed has parked there, the vehicle generator's own; each with its
+ * pivot taken from where the tile's middle is.
  *
  * @param up {number[]} how far each part is laid higher than it was painted
+ * @param seed {number} the same for the same tile of the same building
  */
-function overlaysOf(sprites, parts, up, turns) {
+function overlaysOf(sprites, parts, up, turns, seed) {
   var vehicles = sprites.generated.vehicles,
+    random = seeded("bays" + seed),
     out = [];
 
   parts.forEach(function (part, i) {
@@ -286,6 +362,38 @@ function overlaysOf(sprites, parts, up, turns) {
     if (!listed) return;
 
     listed.forEach(function (o) {
+      if (o.bays !== undefined) {
+        //those at the back first, the ones in front drawn over them
+        o.bays
+          .slice()
+          .sort(function (a, b) {
+            return a.y - b.y;
+          })
+          .forEach(function (bay) {
+            var car = parkedCar(vehicles, random);
+
+            if (car === null) return;
+
+            var look =
+              car.looks[
+                bay.headings[Math.floor(random() * bay.headings.length)]
+              ];
+
+            out.push({
+              vehicle: car.type,
+              looks: [
+                {
+                  sprite: sprites.getSprite(look.sprite),
+                  pivotX: look.pivotX - bay.x,
+                  pivotY: look.pivotY - bay.y + up[i],
+                },
+              ],
+              move: null,
+            });
+          });
+        return;
+      }
+
       if (o.frames !== undefined) {
         out.push({
           frames: o.frames.map(function (name) {
@@ -331,6 +439,46 @@ function overlaysOf(sprites, parts, up, turns) {
   return out;
 }
 
+//the cars that park at home and at the shops - no lorries or buses
+var PARKED = ["sedan", "hatchback", "pickup", "van"];
+
+/**
+ * What is parked in a bay, if anything: a quarter of them empty, the rest a
+ * car of the vehicle generator's, each type as often as it turns up on the
+ * roads, in any of its colours.
+ *
+ * @returns {{type: string, looks: Object}|null} looks, the pictures of it
+ *          by the way it faces
+ */
+function parkedCar(vehicles, random) {
+  if (!vehicles || random() < 0.25) return null;
+
+  var types = PARKED.filter(function (t) {
+      return vehicles[t] !== undefined;
+    }),
+    total = 0,
+    roll,
+    i;
+
+  types.forEach(function (t) {
+    total += vehicles[t].weight;
+  });
+
+  if (types.length === 0) return null;
+
+  roll = random() * total;
+  for (i = 0; i < types.length - 1 && roll >= vehicles[types[i]].weight; i++)
+    roll -= vehicles[types[i]].weight;
+
+  var colors = Object.keys(vehicles[types[i]].colors);
+
+  return {
+    type: types[i],
+    looks:
+      vehicles[types[i]].colors[colors[Math.floor(random() * colors.length)]],
+  };
+}
+
 /**
  * Where the tile at x, y of a footprint sizeX by sizeY is, turned - a
  * quarter turn takes what faced -y to face -x.
@@ -359,7 +507,7 @@ var previews = {};
  * @returns {Promise<string>}
  */
 function preview(sprites, compound) {
-  var key = compound.layout + compound.storeys;
+  var key = kindKey(compound);
 
   if (previews[key] === undefined)
     previews[key] = drawPreview(sprites, compound, 2).catch(function (e) {
@@ -375,12 +523,26 @@ function drawPreview(sprites, compound, tries) {
 
   if (look === null) return Promise.reject(new Error("no parts to draw"));
 
-  var list = pieces(sprites, look, compound, 0),
+  var list = pieces(sprites, look, compound, 0, 1),
     loads = [];
+
+  //what stands still over a tile is in the picture too - the cars parked
+  function still(piece) {
+    return piece.overlays
+      .filter(function (o) {
+        return o.looks !== undefined;
+      })
+      .map(function (o) {
+        return o.looks[0];
+      });
+  }
 
   list.forEach(function (piece) {
     piece.sprite.parts.forEach(function (part) {
       loads.push(sprites.loadSheet(part.sheet));
+    });
+    still(piece).forEach(function (look) {
+      loads.push(sprites.loadSheet(look.sprite.parts[0].sheet));
     });
   });
 
@@ -402,6 +564,9 @@ function drawPreview(sprites, compound, tries) {
 
       piece.sprite.parts.forEach(function (part) {
         if (part.sheet.image === null) missing = true;
+      });
+      still(piece).forEach(function (look) {
+        if (look.sprite.parts[0].sheet.image === null) missing = true;
       });
     });
 
@@ -436,6 +601,24 @@ function drawPreview(sprites, compound, tries) {
             f.h,
             piece.left - minX + part.x,
             piece.top - minY + part.y,
+            f.w,
+            f.h,
+          );
+        });
+
+        //from where the tile's middle is
+        still(piece).forEach(function (look) {
+          var part = look.sprite.parts[0],
+            f = part.frame;
+
+          ctx.drawImage(
+            part.sheet.image,
+            f.x,
+            f.y,
+            f.w,
+            f.h,
+            piece.left + piece.pivotX - look.pivotX - minX,
+            piece.top + piece.pivotY - look.pivotY - minY,
             f.w,
             f.h,
           );

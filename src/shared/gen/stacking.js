@@ -224,6 +224,9 @@ function fenced(tiles) {
  * @returns {Object[]} the tiles as they are at that stage
  */
 export function siteTiles(tiles, stage, seed) {
+  if (tiles[0].parts[0].split("/")[0] === "shops")
+    return fenced(shopSite(tiles, stage, seed));
+
   var dealt = deal(tiles.length, seed),
     yards = [],
     storeys = 0;
@@ -273,6 +276,46 @@ export function siteTiles(tiles, stage, seed) {
       return { x: tile.x, y: tile.y, parts: parts };
     }),
   );
+}
+
+/**
+ * What a shop looks like while it goes up: a building site like any other to
+ * begin with; then the steel frame of the building where it will stand
+ * (shared/gen/shops frame), and a crane on its car park if it has one, a
+ * couple of storeys over it - and the rest of the car park keeps what it had,
+ * less the digger.
+ */
+function shopSite(tiles, stage, seed) {
+  var dealt = deal(tiles.length, seed),
+    parks = [];
+
+  tiles.forEach(function (tile, i) {
+    if (kindOf(tile.parts[0]) === "parking") parks.push(i);
+  });
+
+  var crane = parks.length > 0 ? parks[Math.abs(seed) % parks.length] : -1;
+
+  return tiles.map(function (tile, i) {
+    var p = tile.parts[0].split("/"),
+      parts;
+
+    if (stage === 0) parts = lot(dealt[i], CRANE_LOW);
+    else if (p[1] === "parking")
+      parts =
+        i === crane
+          ? lot("crane", CRANE_LOW + 1)
+          : lot(
+              dealt[i] === "dig" || dealt[i] === "crane"
+                ? "materials"
+                : dealt[i],
+            );
+    else
+      parts = [
+        "shops/frame/" + p[1] + "/" + p[p.length - 2] + "/" + p[p.length - 1],
+      ];
+
+    return { x: tile.x, y: tile.y, parts: parts };
+  });
 }
 
 function repeat(part, n) {
