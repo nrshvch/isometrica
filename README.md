@@ -81,10 +81,14 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   2x1, a two-storey house end on to the street on 1x2 and 1x3;
   semi-detached houses on 2x2 and a pair or a row of three on 3x2, each
   with its own drive, gate and garden; and villas on 2x2 and 3x2 behind a
-  gate in a high hedge or a wall, with a fountain or a pool. Whatever of a
-  house stands in front of the cars on its drive is drawn again over them,
-  so a car behind a hedge stays behind it whichever way the house is
-  turned.
+  gate in a high hedge or a wall, with a fountain or a pool. Houses are
+  built to the scale of the cars and roads - a car is about 4.5 m long, so
+  a tile is about 10 m across and a storey 12 high - and what does not fit
+  a footprint is left to a bigger one: the bungalow and the two-storey
+  house on two tiles have a drive to their garage but no room to park on
+  it. Whatever of a house stands in front of the cars on its drive is
+  drawn again over them, so a car behind a hedge stays behind it whichever
+  way the house is turned.
 - Every building goes up on a building site - the same parts for all of
   them (`src/shared/gen/sites.js`): bare earth, and on each tile one of an
   excavator, a lorry, a heap of sand, the site office or a tower crane,
