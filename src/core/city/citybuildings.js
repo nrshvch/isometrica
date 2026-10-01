@@ -94,8 +94,11 @@ CityBuildings.variantOf = variantOf;
  *        variants
  * @param tile {number}
  * @param [rotate] {number} quarter turns, 0..3 - see core/rotation
+ * @param [look] {Object} for a building put together out of parts, what it
+ *        looks like - the look it was shown with while it was placed (see
+ *        client/compoundbuilding); one is picked for it otherwise
  */
-CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
+CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
   var city = this.city;
   var root = this.city.root;
 
@@ -118,6 +121,7 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
         : clearingCost(this, code, tile, rotate);
 
     var building = new Building();
+    if (look) building.look = look;
     building.init(city.world, code, tile, rotate);
 
     //what the player pays for it, set before the build is announced so
