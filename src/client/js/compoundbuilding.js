@@ -1,20 +1,26 @@
-//Draws a building put together out of parts - a block of flats out of the
-//storeys and roofs shared/gen/flats paints (see data/flats) - and decides
-//what each one looks like.
+//Draws a building put together out of parts - a block of flats or offices
+//out of the storeys and roofs shared/gen/flats and shared/gen/offices paint
+//(see data/flats, data/offices) - and decides what each one looks like.
 //
-//The generator only paints parts; nobody else knows what any one block is
+//The generators only paint parts; nobody else knows what any one block is
 //made of. So this does: the first time a block is drawn, its colours and
-//details are picked at random among the parts there are - a palette, which
-//windows have balconies, a roof, the yards in front - and turned into the
+//details are picked at random among the parts there are - a palette, what
+//its storeys are like, a roof, the yards in front - and turned into the
 //parts each of its tiles is built of, bottom first: its ground storey, a
 //storey stacked on that for every storey more, and the roof. That list is
 //its look, kept on the building - and with it in the save - so the block is
 //the same block every time it is drawn, and no other one need be the same.
 //
-//Each tile is drawn as one picture: its parts, each upper storey a storey
-//higher than the one under it and the roof on top, put together once on the
-//canvas cache's pages (SpriteCache#getComposite) - and shared with every
-//other block that has the same parts on a tile.
+//While it goes up it is drawn as the building site it is at the time - the
+//diggers, then the structure, then the storeys finished under the last of it
+//(shared/gen/stacking siteTiles) - the same shape as the finished block, out
+//of its look: nothing more is kept for it.
+//
+//Each tile is drawn as one picture: its parts, each laid on the one under it
+//(shared/gen/stacking lifts), put together once on the canvas cache's pages
+//(SpriteCache#getComposite) - and shared with every other block that has the
+//same parts on a tile.
+import { lifts, kindOf, siteTiles } from "shared/gen/stacking";
 
 /**
  * What a block of the kind looks like - its look, kept as it is, or picked
@@ -38,8 +44,9 @@ function lookOf(sprites, building, compound) {
 /**
  * The look of a block in the catalogue, or about to be put down: the same
  * every time, for it is no block yet - only the kind of block it will be.
- * Its yards are the ones that look most like a yard, the playground first,
- * rather than a lawn that could be any grass.
+ * Its yards are taken in order - the kind's own, or the ones that look most
+ * like a yard, the playground first, rather than a lawn that could be any
+ * grass.
  */
 function sampleLook(sprites, compound) {
   return pick(
@@ -71,15 +78,18 @@ function seeded(seed) {
 }
 
 /**
- * Picks a look: the same palette and balconies all along the block, a roof
- * of its own for every section, and no yard the same as the one next to it.
+ * Picks a look: the same palette and storeys all along the block - for
+ * flats, which windows have balconies; for offices, how the glass is hung -
+ * a roof of its own for every section, and no yard the same as the one next
+ * to it while there are others to pick.
  *
  * @param random {function(): number} 0..1
- * @param [showcase] {boolean} the yards in the order the generator lists
- *        them, best seen first, rather than any
+ * @param [showcase] {boolean} the yards in order, best seen first, rather
+ *        than any
  */
 function pick(sprites, compound, random, showcase) {
-  var meta = sprites.generated.flats;
+  var gen = compound.gen,
+    meta = sprites.generated[gen];
 
   if (!meta) return null;
 
@@ -87,37 +97,54 @@ function pick(sprites, compound, random, showcase) {
     return Math.floor(random() * n);
   }
 
-  var palette = meta.palettes[any(meta.palettes.length)],
-    balconies = "" + any(meta.balconies) + any(meta.balconies),
-    yards = meta.yards.slice(),
+  //the kind's own yards, or any the generator paints
+  var choices = compound.yards || meta.yards,
+    palette = meta.palettes[any(meta.palettes.length)],
+    detail = meta.details[any(meta.details.length)],
+    yards = [],
     tiles = [],
     cells = compound.cells;
 
   for (var c = 0; c < cells; c++) {
     var ends = cells === 1 ? "both" : c === 0 ? "start" : "end",
       section = palette + "/" + ends + "/",
-      parts = ["flats/ground/" + section + (compound.yard ? "yard" : "street")];
+      parts = [
+        gen + "/ground/" + section + (compound.yard ? "yard" : "street"),
+      ];
 
     for (var k = 1; k < compound.storeys; k++)
-      parts.push("flats/upper/" + section + balconies);
+      parts.push(gen + "/upper/" + section + detail);
 
-    parts.push("flats/roof/" + section + any(meta.roofs));
+    parts.push(gen + "/roof/" + section + any(meta.roofs));
 
     //the wall stands behind its yard
     tiles.push({ x: c, y: compound.yard ? 1 : 0, parts: parts });
 
     if (compound.yard) {
+      if (yards.length === 0) yards = choices.slice();
+
       var yard = yards.splice(showcase ? 0 : any(yards.length), 1)[0];
 
       tiles.push({
         x: c,
         y: 0,
-        parts: ["flats/yard/" + yard + "/" + any(meta.yardVariants)],
+        parts: [gen + "/yard/" + yard + "/" + any(meta.yardVariants)],
       });
     }
   }
 
   return { tiles: tiles };
+}
+
+/**
+ * The look of a block going up: what is on each of its tiles at this stage
+ * of it - see shared/gen/stacking.
+ *
+ * @param look {{tiles: Object[]}} the finished block's
+ * @param stage {number} shared/gen/stacking stageOf
+ */
+function siteLook(look, stage) {
+  return { tiles: siteTiles(look.tiles, stage) };
 }
 
 /**
@@ -151,29 +178,21 @@ function spriteOf(part, turns) {
  *            sprite: CachedSprite}[]} x, z the tile in the block
  */
 function pieces(sprites, look, compound, turns) {
-  var storey = sprites.generated.flats.storey,
+  var storey = sprites.generated[compound.gen].storey,
     //the footprint, not turned: sections along x, the yard in front
     sizeX = compound.cells,
     sizeY = compound.yard ? 2 : 1;
 
   return look.tiles.map(function (tile) {
-    var level = 0,
-      laid = tile.parts.map(function (part) {
+    var up = lifts(tile.parts.map(kindOf), storey),
+      laid = tile.parts.map(function (part, i) {
         var name = spriteOf(part, turns),
-          frame = sprites.frame(name),
-          kind = part.split("/")[1],
-          lift = 0;
-
-        //the first storey up is painted where it stands, a roof where it
-        //would on one storey; the rest stand a storey higher each
-        if (kind === "ground") level = 1;
-        else if (kind === "upper") lift = Math.max(level++ - 1, 0) * storey;
-        else if (kind === "roof") lift = Math.max(level - 1, 0) * storey;
+          frame = sprites.frame(name);
 
         return {
           name: name,
           left: -frame.pivotX,
-          top: -frame.pivotY - lift,
+          top: -frame.pivotY - up[i],
         };
       }),
       minX = Infinity,
@@ -323,6 +342,7 @@ function drawPreview(sprites, compound, tries) {
 export default {
   lookOf: lookOf,
   sampleLook: sampleLook,
+  siteLook: siteLook,
   pieces: pieces,
   preview: preview,
 };

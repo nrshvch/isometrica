@@ -29,6 +29,7 @@ import DepositCode from "core/depositcode";
  */
 import BuildingPositioning from "core/buildingpositioning";
 import Flats from "./flats";
+import Offices from "./offices";
 
 var Core = namespace("Isometrica.Core");
 
@@ -1236,6 +1237,6 @@ function expandVariants(data) {
 expandVariants(buildingData);
 
 //the blocks of flats put together out of painted parts
-Object.assign(buildingData, Flats.buildings());
+Object.assign(buildingData, Flats.buildings(), Offices.buildings());
 
 export default buildingData;
