@@ -18,6 +18,7 @@
  *   - site, lot: the ground of a building site, nothing on it yet;
  *   - upper, frame, mast: a storey on whatever is under it;
  *   - roof, cranetop: on top of whatever is under it;
+ *   - fence: on the ground, whatever it is laid with;
  *   - anything else stays on the ground.
  *
  * A storey or a roof with nothing under it stays where it was painted, so a
@@ -169,7 +170,43 @@ export function lotTiles(sizeX, sizeY, seed) {
     for (x = 0; x < sizeX; x++)
       tiles.push({ x: x, y: y, parts: lot(dealt[tiles.length], CRANE) });
 
-  return tiles;
+  return fenced(tiles);
+}
+
+/**
+ * The tiles of a site with the fence round it all: along every edge of a
+ * tile that is an edge of the site, under what is on the tile at its back
+ * and over it at its front (shared/gen/sites fence) - and a gate in the
+ * middle of the front.
+ */
+function fenced(tiles) {
+  var sizeX = 0,
+    sizeY = 0;
+
+  tiles.forEach(function (tile) {
+    sizeX = Math.max(sizeX, tile.x + 1);
+    sizeY = Math.max(sizeY, tile.y + 1);
+  });
+
+  var gate = Math.floor((sizeX - 1) / 2);
+
+  return tiles.map(function (tile) {
+    var mask =
+      (tile.x === 0 ? "1" : "0") +
+      (tile.y === 0 ? (tile.x === gate ? "2" : "1") : "0") +
+      (tile.x === sizeX - 1 ? "1" : "0") +
+      (tile.y === sizeY - 1 ? "1" : "0");
+
+    if (mask === "0000") return tile;
+
+    return {
+      x: tile.x,
+      y: tile.y,
+      parts: ["sites/fence/" + mask + "/back"].concat(tile.parts, [
+        "sites/fence/" + mask + "/front",
+      ]),
+    };
+  });
 }
 
 /**
@@ -205,35 +242,37 @@ export function siteTiles(tiles, stage, seed) {
   var half = Math.ceil(storeys / 2),
     crane = yards.length > 0 ? yards[Math.abs(seed) % yards.length] : -1;
 
-  return tiles.map(function (tile, i) {
-    var first = tile.parts[0],
-      parts;
+  return fenced(
+    tiles.map(function (tile, i) {
+      var first = tile.parts[0],
+        parts;
 
-    if (stage === 0) parts = lot(dealt[i], CRANE_LOW);
-    else if (kindOf(first) === "yard") {
-      var what =
-        dealt[i] === "dig" || dealt[i] === "crane" ? "materials" : dealt[i];
+      if (stage === 0) parts = lot(dealt[i], CRANE_LOW);
+      else if (kindOf(first) === "yard") {
+        var what =
+          dealt[i] === "dig" || dealt[i] === "crane" ? "materials" : dealt[i];
 
-      parts =
-        i === crane
-          ? lot("crane", (stage === 1 ? half : storeys) + 2)
-          : lot(what);
-    } else {
-      var gen = first.split("/")[0],
-        ends = first.split("/")[3],
-        built = tile.parts.filter(function (part) {
-          return kindOf(part) !== "roof";
-        }).length,
-        up = Math.ceil(built / 2),
-        frame = gen + "/frame/" + ends;
+        parts =
+          i === crane
+            ? lot("crane", (stage === 1 ? half : storeys) + 2)
+            : lot(what);
+      } else {
+        var gen = first.split("/")[0],
+          ends = first.split("/")[3],
+          built = tile.parts.filter(function (part) {
+            return kindOf(part) !== "roof";
+          }).length,
+          up = Math.ceil(built / 2),
+          frame = gen + "/frame/" + ends;
 
-      if (stage === 1)
-        parts = [gen + "/site/" + ends + "/build"].concat(repeat(frame, up));
-      else parts = tile.parts.slice(0, up).concat(repeat(frame, built - up));
-    }
+        if (stage === 1)
+          parts = [gen + "/site/" + ends + "/build"].concat(repeat(frame, up));
+        else parts = tile.parts.slice(0, up).concat(repeat(frame, built - up));
+      }
 
-    return { x: tile.x, y: tile.y, parts: parts };
-  });
+      return { x: tile.x, y: tile.y, parts: parts };
+    }),
+  );
 }
 
 function repeat(part, n) {
