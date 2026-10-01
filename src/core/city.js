@@ -74,6 +74,31 @@ function City(world, tile) {
   this.buildingService.init();
 
   Events.on(world, world.events.tick, this.onTick, { self: this });
+  Events.on(world, world.events.tick, onLandTick, this);
+}
+
+/**
+ * What the land costs to hold, on every tick, when there is no town hall to
+ * bill it to (see the town hall's upkeepPerTile in data/buildings): so much
+ * for every tile bought on top of the block the city was founded on -
+ * nothing while nobody lives in the town.
+ *
+ * @returns {number} money per tick
+ */
+function landUpkeep(self) {
+  if (self.buildingService.cityHall !== null) return 0;
+  if (self.populationService.getPopulation() === 0) return 0;
+
+  return (
+    (BuildingData[BuildingCode.cityHall].upkeepPerTile || 0) *
+    self.areaService.getBoughtTileCount()
+  );
+}
+
+function onLandTick(sender, args, self) {
+  var due = landUpkeep(self);
+
+  if (due > 0) self.resourcesService.subResource(Resource.money, due);
 }
 
 City.events = events;
@@ -82,9 +107,11 @@ City.prototype._name = "";
 City.prototype.world = null;
 City.prototype._tile = -1;
 
-City.prototype.init = function () {
-  this.buildingService.buildBuilding(BuildingCode.cityHall, this.tile());
-};
+/**
+ * A city is founded on bare land: a small town has no need of a town hall,
+ * and the player puts one up when it has grown into one.
+ */
+City.prototype.init = function () {};
 
 /**
  * What this building wants from the city and is not getting.
@@ -188,6 +215,9 @@ City.prototype.getBudget = function () {
       r.other += paid;
     }
   }
+
+  //the land, when there is no town hall it is billed through
+  r.land += landUpkeep(this);
 
   r.income = r.taxes + r.commerce;
   r.upkeep = r.roads + r.water + r.land + r.cityHall + r.other;
@@ -455,6 +485,16 @@ City.prototype.tile = function (value) {
 };
 
 /**
+ * The middle of the town: of all the land it owns, wherever that is - which
+ * is where its name is shown.
+ *
+ * @returns {{x: number, y: number}} in tiles, not whole ones
+ */
+City.prototype.center = function () {
+  return this.areaService.center();
+};
+
+/**
  * Everything of the city that came from the player: what they named it, where
  * they put it, what they own and what they built. What they cleared away is
  * the world's, and saved with it (see Terrain#save).
@@ -523,9 +563,9 @@ City.prototype.toJSON = function () {
 };
 
 /**
- * Why a city could not be founded on tile, or ErrorCode.NONE when it can: its
- * city hall goes up there right away, so it takes whatever ground the city
- * hall does - flat, dry and free.
+ * Why a city could not be founded on tile, or ErrorCode.NONE when it can: the
+ * middle of the land it starts out with has to be ground a building could
+ * go up on - flat, dry and free, as a town hall's would be.
  *
  * @param world
  * @param tile

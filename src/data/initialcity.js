@@ -82,7 +82,6 @@ var InitialCity = {
     ],
     research: { 0: 0, 1: 0, 2: 0, 3: 0 },
     buildings: [
-      { code: 3, tile: 1448171087, rotation: 0 },
       { code: 4, tile: 1448105546, rotation: 0 },
       { code: 4, tile: 1448105547, rotation: 0 },
       { code: 4, tile: 1448105548, rotation: 0 },
