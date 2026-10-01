@@ -1,5 +1,6 @@
 /**
- * Paints the cars, vans, trucks and buses that drive about the roads.
+ * Paints the cars, vans, trucks, lorries and buses that drive about the
+ * roads - and the machines that work on building sites and never drive them.
  *
  * Every vehicle is a handful of boxes - body, cabin, windows, wheels, lights -
  * and each picture is those boxes seen the way the game sees the world: one
@@ -40,7 +41,9 @@ var GLASS = [96, 150, 196],
   LAMP_RED = [228, 44, 44],
   LIVERY_DARK = [32, 32, 38],
   LIVERY_LIGHT = [242, 244, 246],
-  CARGO = [214, 214, 206];
+  CARGO = [214, 214, 206],
+  GRAVEL = [170, 162, 150],
+  BUCKET = [72, 74, 80];
 
 function mix(c, to, k) {
   return [
@@ -344,6 +347,74 @@ var TYPES = {
       b.push(box(5.6, 6.0, 1.0, 6.0, 1.5, 7.0, CHASSIS));
       b.push(box(21, 21.2, 0.4, 1.6, 2.4, 3.4, TAILLIGHT));
       b.push(box(21, 21.2, 5.4, 6.6, 2.4, 3.4, TAILLIGHT));
+      return b;
+    },
+  },
+  //a tipper lorry, come to a building site with a load of gravel
+  lorry: {
+    length: 17,
+    width: 7,
+    speed: 0.75,
+    weight: 1,
+    engine: [0, 3.5, 3.2],
+    tailpipe: [5.2, 6.2, 1.2],
+    colors: ["orange", "yellow", "white", "red"],
+    build: function (c) {
+      var b = [],
+        bed = darker(c, 0.18);
+      wheels(b, 17, 7, [2.8, 11.6, 14.6], 1.6);
+      //cab
+      b.push(box(0, 5, 0, 7, 1.6, 9.4, c));
+      b.push(box(-0.2, 0, 0.3, 6.7, 1.6, 2.9, BUMPER));
+      b.push(box(-0.15, 0, 0.8, 6.2, 5.4, 8.4, GLASS));
+      b.push(box(0.8, 4.2, -0.15, 7.15, 5.4, 8.2, GLASS));
+      b.push(box(-0.2, 0, 0.4, 1.6, 3.2, 4.2, HEADLIGHT));
+      b.push(box(-0.2, 0, 5.4, 6.6, 3.2, 4.2, HEADLIGHT));
+      b.push(box(5, 5.6, 1, 6, 1.6, 6, CHASSIS));
+      //the tipping body: its floor, sides and tailgate, a tall headboard
+      //over the back of the cab - and the gravel heaped in it
+      b.push(box(5.6, 17, 0, 7, 3.4, 4.4, bed));
+      b.push(box(5.6, 17, 0, 0.6, 4.4, 9, bed));
+      b.push(box(5.6, 17, 6.4, 7, 4.4, 9, bed));
+      b.push(box(16.4, 17, 0, 7, 4.4, 9, bed));
+      b.push(box(5.6, 6.2, 0, 7, 4.4, 10.4, bed));
+      b.push(box(6.2, 16.4, 0.6, 6.4, 4.4, 8.4, GRAVEL));
+      b.push(box(7.4, 15, 1.4, 5.6, 8.4, 9.4, lighter(GRAVEL, 0.08)));
+      b.push(box(9, 13.2, 2.4, 4.6, 9.4, 10, lighter(GRAVEL, 0.15)));
+      b.push(box(17, 17.2, 0.4, 1.6, 2.4, 3.4, TAILLIGHT));
+      b.push(box(17, 17.2, 5.4, 6.6, 2.4, 3.4, TAILLIGHT));
+      return b;
+    },
+  },
+  //a digger on its tracks, its arm out over the front and down to the
+  //ground: a building site's, never out on the roads (street: false)
+  excavator: {
+    length: 11,
+    width: 8,
+    speed: 0.3,
+    weight: 0,
+    street: false,
+    engine: [8, 2, 7],
+    tailpipe: [9.2, 1.2, 9],
+    colors: ["yellow"],
+    build: function (c) {
+      var b = [],
+        dark = darker(c, 0.25);
+      b.push(box(0, 11, 0, 2.5, 0, 2.5, TYRE));
+      b.push(box(0, 11, 5.5, 8, 0, 2.5, TYRE));
+      b.push(box(1, 10, 0.5, 7.5, 2.5, 5, c));
+      //the counterweight at the back, the engine beside the cab
+      b.push(box(7.5, 10.5, 0.5, 7.5, 5, 7.5, dark));
+      b.push(box(5, 7.5, 0.5, 4, 5, 7, c));
+      b.push(box(9, 9.5, 1, 1.5, 7.5, 9.5, CHASSIS));
+      //the cab, glazed all round
+      b.push(box(1, 5, 4, 7.5, 5, 10, c));
+      b.push(box(0.85, 5.15, 4.3, 7.2, 7, 9.5, GLASS));
+      b.push(box(1.3, 4.7, 3.85, 7.65, 7, 9.5, GLASS));
+      //the boom up and out over the front, the stick down, the bucket
+      b.push(box(-1, 4, 1.4, 3.4, 8, 10, c));
+      b.push(box(-5, -1, 1.4, 3.4, 4, 10, c));
+      b.push(box(-7.5, -4, 1, 3.8, 0, 4, BUCKET));
       return b;
     },
   },
@@ -678,6 +749,9 @@ function walk(see) {
     var t = TYPES[type];
 
     types[type] = { speed: t.speed, weight: t.weight, colors: {} };
+
+    //a machine for building sites - never sent out into the traffic
+    if (t.street === false) types[type].street = false;
 
     //most types come in every colour; a cab or a police car has its own
     (t.colors || Object.keys(COLORS)).forEach(function (color) {

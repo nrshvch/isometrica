@@ -118,6 +118,7 @@ var COMMUTER = 0,
 var TRAFFIC = {
   van: ERRAND,
   truck: ERRAND,
+  lorry: ERRAND,
   //a cab and a police car go where they are called, at any hour
   taxi: ERRAND,
   police: ERRAND,
@@ -1217,6 +1218,9 @@ function loadTypes(self) {
   }
 
   Object.keys(generated.vehicles).forEach(function (name) {
+    //what works on building sites stays there
+    if (generated.vehicles[name].street === false) return;
+
     var data = generated.vehicles[name],
       type = {
         name: name,

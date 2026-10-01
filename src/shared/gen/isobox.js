@@ -4,8 +4,9 @@
  *
  * One ray per pixel goes straight into the scene; the pixel is the colour of
  * the first box it hits, shaded by which way the face it hits looks. Every
- * face looking the same way is the same flat colour - no gradients, no noise -
- * so everything painted here is lit alike, the same as the vehicles.
+ * face looking the same way is the same flat colour - so everything painted
+ * here is lit alike, the same as the vehicles - unless its box has a finish:
+ * a faint grain over it, or the sky reflected in it, for glass (see finish).
  *
  * Units: one along the ground is one pixel across the screen - a tile is 32 of
  * them each way. Heights are in pixels. +x runs up and to the right on the
@@ -33,8 +34,13 @@ function darker(c, k) {
   return mix(c, [0, 0, 0], k);
 }
 
-function box(x0, x1, y0, y1, z0, z1, color) {
+/**
+ * @param [finish] {Object} what its surface is like, see finish - a box
+ *        without one is flat colour
+ */
+function box(x0, x1, y0, y1, z0, z1, color, finish) {
   return {
+    finish: finish,
     x0: Math.min(x0, x1),
     x1: Math.max(x0, x1),
     y0: Math.min(y0, y1),
@@ -71,7 +77,7 @@ function rotate(boxes, sizeX, sizeY, turns) {
   return boxes.map(function (b) {
     var p = turn(b.x0, b.y0),
       q = turn(b.x1, b.y1);
-    return box(p[0], q[0], p[1], q[1], b.z0, b.z1, b.color);
+    return box(p[0], q[0], p[1], q[1], b.z0, b.z1, b.color, b.finish);
   });
 }
 
@@ -158,7 +164,78 @@ function cast(boxes, sx, sy) {
     }
   }
 
-  return hit === null ? null : shade(hit.color, face);
+  if (hit === null) return null;
+
+  //a box lit already is its own colour on every face
+  if (hit.finish !== undefined && hit.finish.lit) return hit.color;
+
+  var color = shade(hit.color, face);
+
+  return hit.finish === undefined
+    ? color
+    : finish(color, face, hit.finish, x + best, y + best, z - best);
+}
+
+//what comes out of a hash of whole numbers: 0..1, the same every time
+function hash(i, j, k) {
+  var h =
+    Math.imul(i, 73856093) ^ Math.imul(j, 19349663) ^ Math.imul(k, 83492791);
+
+  h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
+
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
+
+function mod(v, n) {
+  return ((v % n) + n) % n;
+}
+
+/**
+ * The colour of a point of a box with a finish, shaded already: x, y, z where
+ * the ray hit it.
+ *
+ * It goes by where the point is on its own tile and its own storey - x and y
+ * from the tile's corner, z from the floor of the storey it is on - so a part
+ * painted on a tile of its own comes out the same as it does in a whole
+ * building put together out of it, whichever tile and storey it is laid on.
+ *
+ * A finish with lit set instead is a box whose colour has had the light on
+ * it worked out already - a little column of something round, shaded by
+ * which way its surface faces there rather than by the faces of the column -
+ * and is painted that colour as it is.
+ *
+ * @param f {{noise: number, sheen: boolean, base: number, storey: number}}
+ *        noise, how far each speck of it is lighter or darker, 0..1; sheen,
+ *        for glass, the sky in it - brighter towards the top of a storey,
+ *        with a streak of light across it; base, how high the floor of the
+ *        first storey is, and storey, how high a storey
+ */
+function finish(color, face, f, x, y, z) {
+  var lx = mod(x, TILE),
+    ly = mod(y, TILE),
+    lz = mod(z - f.base, f.storey),
+    c = color;
+
+  if (f.sheen && face !== 2) {
+    //along the face, and a streak running up across it
+    var u = face === 1 ? lx : ly,
+      s = mod(u + lz * 0.9, 9);
+
+    c = lighter(c, 0.04 + (0.12 * lz) / f.storey);
+    if (s < 1.4) c = lighter(c, 0.2);
+    else if (s < 2.4) c = lighter(c, 0.09);
+  }
+
+  if (f.noise) {
+    var n =
+      (hash(Math.floor(lx * 2), Math.floor(ly * 2), Math.floor(lz * 2)) - 0.5) *
+      2 *
+      f.noise;
+
+    c = n > 0 ? lighter(c, n) : darker(c, -n);
+  }
+
+  return c;
 }
 
 /**
@@ -221,6 +298,7 @@ function render(boxes) {
       z0: b.z0,
       z1: b.z1,
       color: b.color,
+      finish: b.finish,
       sMinX: r.minX,
       sMaxX: r.maxX,
       sMinY: r.minY,
@@ -277,6 +355,7 @@ function paintTiles(boxes, sizeX, sizeY) {
           z0: b.z0,
           z1: b.z1,
           color: b.color,
+          finish: b.finish,
         };
 
         if (c.x0 < c.x1 && c.y0 < c.y1) clipped.push(c);

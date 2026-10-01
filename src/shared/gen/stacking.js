@@ -61,7 +61,7 @@ export var STAGES = [0.25, 0.5];
  * Which stage of going up a block is at.
  *
  * @param progress {number} 0..1
- * @returns {number} 0: dug, the plinth poured, the diggers and trucks at it;
+ * @returns {number} 0: dug, the plinth poured, a digger or a lorry at it;
  *          1: the structure going up, half its storeys high; 2: past
  *          halfway, the lower half of it finished, the structure up to its
  *          full height over that
@@ -106,7 +106,10 @@ export function siteTiles(tiles, stage) {
         half = Math.ceil(storeys / 2),
         frame = gen + "/frame/" + ends;
 
-      if (stage === 0) parts = [gen + "/site/" + ends + "/dig"];
+      //a digger at work on every other section, a lorry carting the earth
+      //away from the ones between
+      if (stage === 0)
+        parts = [gen + "/site/" + ends + (tile.x % 2 ? "/haul" : "/dig")];
       else if (stage === 1)
         parts = [gen + "/site/" + ends + "/build"].concat(repeat(frame, half));
       else
