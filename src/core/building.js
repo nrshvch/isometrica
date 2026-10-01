@@ -30,6 +30,7 @@ import GatherReq from "./gatherreq";
 import Terrain from "./terrain";
 
 import Construction from "./construction";
+import Rotation from "./rotation";
 
 var events = {
   stateChange: 0,
@@ -118,8 +119,8 @@ function checkFullfilRequirements(self) {
   var world = self.world;
   var data = BuildingData[self.buildingCode];
   //turned round, the footprint's sides swap
-  var sizeX = self.rotation ? data.sizeY : data.sizeX,
-    sizeY = self.rotation ? data.sizeX : data.sizeY;
+  var sizeX = Rotation.sizeX(data, self.rotation),
+    sizeY = Rotation.sizeY(data, self.rotation);
 
   if (!world) throw "World is not set yet";
 
