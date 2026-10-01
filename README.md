@@ -57,7 +57,13 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   like a shore tile, is put together there once
   (`sprites.getComposite([...])`); something that changes every frame, like
   a police car's lamp, is drawn over it as a sprite of its own.
+- Blocks of flats are put together out of parts the game paints - ground
+  storey, upper storeys, roof, yard (`src/shared/gen/flats.js`). Each block
+  picks its colours and details at random when it is first drawn and keeps
+  the parts it is made of in the save (`src/client/js/compoundbuilding.js`);
+  the catalogue shows one of each kind (`src/data/flats.js`).
 - To look at what the painting makes without starting the game, run
-  `npm run generate:terrain`, `generate:vehicles` or `generate:stones`. They
+  `npm run generate:terrain`, `generate:vehicles`, `generate:stones` or
+  `generate:buildings`. They
   run the same code the game does and write pictures to `assets/terrain/terraingen`
   and `assets/previews` (not committed).

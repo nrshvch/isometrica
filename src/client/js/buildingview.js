@@ -11,6 +11,7 @@ import SmokeSource from "./components/smokesource";
 import Config from "./config";
 import BuildingState from "core/buildingstate";
 import Core from "core/main";
+import CompoundBuilding from "./compoundbuilding";
 
 var Terrain = Core.Terrain;
 
@@ -53,6 +54,12 @@ BuildingView.prototype.update = function () {
       tileSize = Config.tileSize,
       tileZStep = Config.tileZStep;
 
+    //a block put together out of parts is given its look the first time it
+    //is seen - going up or standing - and keeps it, in the save as well
+    var look = staticData.compound
+      ? CompoundBuilding.lookOf(vkaria.sprites, b.data, staticData.compound)
+      : null;
+
     //clear old GOs - each one lets go of the view as it is destroyed, so
     //off a copy of the list
     var children = this.gameObject.transform.children.slice();
@@ -91,7 +98,14 @@ BuildingView.prototype.update = function () {
       //drawn the way it was painted, see addSprites
       var rotated = !!b.data.rotation !== !!staticData.turned;
 
-      addSprites(this.gameObject, staticData, !!b.data.rotation, this.opacity);
+      addSprites(
+        this.gameObject,
+        staticData,
+        !!b.data.rotation,
+        this.opacity,
+        undefined,
+        look,
+      );
 
       //add smoke
       if (staticData.smokeSource !== undefined) {
@@ -138,8 +152,16 @@ BuildingView.prototype.update = function () {
  *
  * @param opacity {number} 1 for the real thing
  * @param [layer] {number} every piece goes on this one rather than its own
+ * @param [look] {Object} for a building put together out of parts, what it
+ *        looks like - see client/compoundbuilding; the look of the kind of
+ *        building it is, for one that is not a building yet
  */
-function addSprites(parent, staticData, rotated, opacity, layer) {
+function addSprites(parent, staticData, rotated, opacity, layer, look) {
+  if (staticData.compound) {
+    addParts(parent, staticData.compound, rotated, opacity, layer, look);
+    return;
+  }
+
   //a building painted for the footprint turned round is drawn turned round,
   //so that it covers the footprint it actually has
   if (staticData.turned) rotated = !rotated;
@@ -176,6 +198,41 @@ function addSprites(parent, staticData, rotated, opacity, layer) {
 }
 
 BuildingView.addSprites = addSprites;
+
+/**
+ * Hangs a building put together out of parts under parent: a sprite for each
+ * of its tiles, each the parts of that tile put together.
+ */
+function addParts(parent, compound, rotated, opacity, layer, look) {
+  var sprites = vkaria.sprites;
+
+  look = look || CompoundBuilding.sampleLook(sprites, compound);
+
+  //nothing to put it together out of
+  if (look === null) return;
+
+  CompoundBuilding.pieces(sprites, look, compound, rotated).forEach(
+    function (piece) {
+      var renderer = new engine.SpriteRenderer(),
+        go = new engine.GameObject();
+
+      renderer.layer = layer !== undefined ? layer : RenderLayer.buildingsLayer;
+      renderer.pivotX = piece.pivotX;
+      renderer.pivotY = piece.pivotY;
+      renderer.setSprite(piece.sprite);
+
+      go.addComponent(renderer);
+      //the renderer resets its opacity once it is attached
+      renderer.opacity = opacity;
+      parent.transform.addChild(go.transform);
+      go.transform.setLocalPosition(
+        piece.x * Config.tileSize,
+        0,
+        piece.z * Config.tileSize,
+      );
+    },
+  );
+}
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)

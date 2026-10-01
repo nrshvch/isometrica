@@ -122,7 +122,16 @@ function addGenerated(self, meta) {
       gen: meta.generator,
       key: s.key,
     });
-    self.frames[name] = { sheet: name, x: 0, y: 0, w: s.w, h: s.h };
+    self.frames[name] = {
+      sheet: name,
+      x: 0,
+      y: 0,
+      w: s.w,
+      h: s.h,
+      //for a part of something put together: where its tile's middle is
+      pivotX: s.pivotX,
+      pivotY: s.pivotY,
+    };
   });
 
   self.generated[meta.generator] = meta.data;
@@ -138,6 +147,16 @@ function json(url, options) {
 
 SpriteCache.prototype.has = function (name) {
   return this.frames[name] !== undefined;
+};
+
+/**
+ * Where a sprite's frame is, how big and, for a generated part, its pivot -
+ * or undefined for no such sprite.
+ *
+ * @returns {{w, h, pivotX, pivotY}|undefined}
+ */
+SpriteCache.prototype.frame = function (name) {
+  return this.frames[name];
 };
 
 /**

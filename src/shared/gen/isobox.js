@@ -1,6 +1,6 @@
 /**
- * Paints scenes made of boxes the way the game sees the world, for the tools
- * that generate pictures (tools/genbuildings.js).
+ * Paints scenes made of boxes the way the game sees the world, for the
+ * generators that paint buildings (shared/gen/flats).
  *
  * One ray per pixel goes straight into the scene; the pixel is the colour of
  * the first box it hits, shaded by which way the face it hits looks. Every
@@ -162,6 +162,36 @@ function cast(boxes, sx, sy) {
 }
 
 /**
+ * Where the picture of the boxes would be, without painting it: its size, and
+ * pivotX/pivotY, where the world's origin lands in it - as render has them.
+ */
+function measure(boxes) {
+  var minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
+
+  boxes.forEach(function (b) {
+    var r = screenBounds(b);
+
+    minX = Math.min(minX, r.minX);
+    maxX = Math.max(maxX, r.maxX);
+    minY = Math.min(minY, r.minY);
+    maxY = Math.max(maxY, r.maxY);
+  });
+
+  minX = Math.floor(minX);
+  minY = Math.floor(minY);
+
+  return {
+    w: Math.ceil(maxX) - minX,
+    h: Math.ceil(maxY) - minY,
+    pivotX: -minX,
+    pivotY: -minY,
+  };
+}
+
+/**
  * The picture of the boxes, with pivotX/pivotY where the world's origin lands
  * in it.
  */
@@ -281,6 +311,29 @@ function to16(c) {
   ];
 }
 
+/**
+ * A painted picture as RGBA pixels, {width, height, data}, in 16 bit colour.
+ */
+function toImage(picture) {
+  var data = new Uint8ClampedArray(picture.w * picture.h * 4),
+    c,
+    k;
+
+  for (var i = 0; i < picture.pixels.length; i++) {
+    c = picture.pixels[i];
+    if (c === null) continue;
+
+    c = to16(c);
+    k = i * 4;
+    data[k] = c[0];
+    data[k + 1] = c[1];
+    data[k + 2] = c[2];
+    data[k + 3] = 255;
+  }
+
+  return { width: picture.w, height: picture.h, data: data };
+}
+
 //the pixels written into a PNG's data at x, y
 function blit(png, picture, x, y) {
   var i, j, c, k;
@@ -307,17 +360,19 @@ function blit(png, picture, x, y) {
   }
 }
 
-module.exports = {
-  TILE: TILE,
-  TILE_W: TILE_W,
-  TILE_H: TILE_H,
-  mix: mix,
-  lighter: lighter,
-  darker: darker,
-  box: box,
-  rotate: rotate,
-  project: project,
-  render: render,
-  paintTiles: paintTiles,
-  blit: blit,
+export {
+  TILE,
+  TILE_W,
+  TILE_H,
+  mix,
+  lighter,
+  darker,
+  box,
+  rotate,
+  project,
+  measure,
+  render,
+  paintTiles,
+  toImage,
+  blit,
 };
