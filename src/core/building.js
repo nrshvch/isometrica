@@ -51,6 +51,10 @@ Building.prototype.createdAt = null; //game time
 Building.prototype.demanding = null;
 Building.prototype.producing = null;
 Building.prototype.permanent = true;
+//what it looks like, for a building put together out of parts: picked for it
+//by whoever first draws it, and kept in the save with the rest of it - the
+//core only keeps it, see client/compoundbuilding
+Building.prototype.look = null;
 Building.prototype.events = events;
 
 Building.prototype.init = function (world, code, tile, rot, done) {

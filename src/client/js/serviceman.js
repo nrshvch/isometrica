@@ -480,6 +480,7 @@ function copyBuilding(self, building) {
     !!building.rotation,
     1,
     RenderLayer.inspectedLayer,
+    building.look,
   );
 
   go.transform.setPosition(

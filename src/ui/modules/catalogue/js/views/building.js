@@ -4,6 +4,7 @@
 import Backbone from "backbone";
 import __templateSource from "../../templates/building.hbs?raw";
 import Handlebars from "handlebars";
+import showPreviews from "../previews";
 
 var template = Handlebars.compile(__templateSource);
 
@@ -22,6 +23,7 @@ var View = Backbone.View.extend({
         building: this.model.toJSON(),
       }),
     );
+    showPreviews(this.el);
 
     // this view's root is a DocumentFragment: once it's appended into the
     // catalogue container its children are moved out and become the real
