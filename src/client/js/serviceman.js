@@ -40,6 +40,7 @@ import Config from "./config";
 import BuildingView from "./buildingview";
 import BuildingState from "core/buildingstate";
 import Rotation from "core/rotation";
+import View from "./view";
 
 var Terrain = Core.Terrain;
 
@@ -515,17 +516,18 @@ function outlineFootprint(self, building) {
 }
 
 function copyBuilding(self, building) {
-  var terrain = self.root.core.world.terrain,
-    tile = building.tile,
-    x = Terrain.extractX(tile),
-    y = Terrain.extractY(tile),
-    z = terrain.getGridPointHeight(x + 1, y),
+  //as it is seen, the camera turned (see client/view)
+  var at = BuildingView.drawnAt(
+      building.data,
+      building.tile,
+      building.rotation,
+    ),
     go = new engine.GameObject("inspected building");
 
   BuildingView.addSprites(
     go,
     building.data,
-    building.rotation,
+    at.rotation,
     1,
     RenderLayer.inspectedLayer,
     building.look,
@@ -533,9 +535,9 @@ function copyBuilding(self, building) {
   );
 
   go.transform.setPosition(
-    x * Config.tileSize,
-    z * Config.tileZStep,
-    y * Config.tileSize,
+    at.x * Config.tileSize,
+    at.z * Config.tileZStep,
+    at.y * Config.tileSize,
   );
   self.root.game.logic.world.addGameObject(go);
 
@@ -644,6 +646,18 @@ ServiceMan.prototype.init = function () {
   );
 
   root.ui.gameScreen().worldScreen().busy.onChange(onBusyChange, false, this);
+
+  //the camera turned (see client/view): the building looked at is put away,
+  //its copy drawn for the side that was seen
+  Events.on(
+    View,
+    View.events.change,
+    function (sender, args, self) {
+      self.hideCoverage();
+      self.hideInfo();
+    },
+    this,
+  );
 
   //views that were made before this ran are just as much on screen
   var views = root.buildman.getBuildingViews();

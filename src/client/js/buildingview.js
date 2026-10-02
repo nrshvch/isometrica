@@ -15,8 +15,46 @@ import CompoundBuilding from "./compoundbuilding";
 import Rotation from "core/rotation";
 import { stageOf, STAGES } from "shared/gen/stacking";
 import SiteRenderer from "./siterenderer";
+import View from "./view";
 
 var Terrain = Core.Terrain;
+
+/**
+ * How a building on tile, turned rotation, is drawn with the camera turned
+ * the way it is (see client/view): from the tile of its footprint nearest
+ * the camera's own corner as it is seen, its footprint as seen, turned as
+ * many more times as the camera is, at the height of the grid point a
+ * building drawn from that tile stands on.
+ *
+ * @param staticData {Object} what it is, data/buildings
+ * @param tile {number}
+ * @param rotation {number|boolean} see core/rotation
+ * @returns {{x, y, sizeX, sizeY, rotation, z}} x, y the tile in the world
+ */
+function drawnAt(staticData, tile, rotation) {
+  var r = View.anchor(
+    Terrain.extractX(tile),
+    Terrain.extractY(tile),
+    Rotation.sizeX(staticData, rotation),
+    Rotation.sizeY(staticData, rotation),
+  );
+
+  r.rotation = (Rotation.turns(rotation) + View.turns()) & 3;
+  r.z = View.cornerHeight(vkaria.core.world.terrain, r.x, r.y, 2);
+
+  return r;
+}
+
+/**
+ * Puts go x, y, z off its parent as it is seen - laid out the way a picture
+ * of the building is, the camera unturned - which is that way round in the
+ * world, the camera turned.
+ */
+function setSeenPosition(go, x, y, z) {
+  var w = View.unvector(x, z);
+
+  go.transform.setLocalPosition(w[0], y, w[1]);
+}
 
 function BuildingView() {
   this.gameObject = new engine.GameObject("building");
@@ -68,6 +106,9 @@ BuildingView.prototype.update = function () {
     clearTimeout(this.stageTimer);
     this.stageTimer = null;
 
+    //as it is seen, the camera turned the way it is (see drawnAt)
+    var at = drawnAt(staticData, b.data.tile, b.data.rotation);
+
     //clear old GOs - each one lets go of the view as it is destroyed, so
     //off a copy of the list
     var children = this.gameObject.transform.children.slice();
@@ -77,22 +118,22 @@ BuildingView.prototype.update = function () {
       b.data.getState() === BuildingState.underConstruction && !look
         ? CompoundBuilding.lotPieces(
             vkaria.sprites,
-            Rotation.sizeX(staticData, b.data.rotation),
-            Rotation.sizeY(staticData, b.data.rotation),
+            at.sizeX,
+            at.sizeY,
             b.data.tile,
           )
         : null;
 
     if (b.data.getState() === BuildingState.underConstruction && look) {
-      drawSite(this, staticData, look);
+      drawSite(this, staticData, look, at.rotation);
     } else if (lots !== null) {
       //any other building goes up on a building site like the blocks' -
       //the same all the while
       addPieces(this.gameObject, lots, this.opacity);
     } else if (b.data.getState() === BuildingState.underConstruction) {
       //the sites not described yet: a placeholder on each tile
-      var sizeX = Rotation.sizeX(staticData, b.data.rotation),
-        sizeY = Rotation.sizeY(staticData, b.data.rotation);
+      var sizeX = at.sizeX,
+        sizeY = at.sizeY;
 
       for (var x = 0; x < sizeX; x++) {
         for (var y = 0; y < sizeY; y++) {
@@ -108,17 +149,17 @@ BuildingView.prototype.update = function () {
           //the renderer resets its opacity once it is attached
           sprite.opacity = this.opacity;
           this.gameObject.transform.addChild(part.transform);
-          part.transform.translate(x * Config.tileSize, 0, y * Config.tileSize);
+          setSeenPosition(part, x * Config.tileSize, 0, y * Config.tileSize);
         }
       }
     } else if (b.data.getState() === BuildingState.ready) {
       //drawn the way it was painted, see addSprites
-      var rotated = mirrored(staticData, b.data.rotation);
+      var rotated = mirrored(staticData, at.rotation);
 
       addSprites(
         this.gameObject,
         staticData,
-        b.data.rotation,
+        at.rotation,
         this.opacity,
         undefined,
         look,
@@ -131,11 +172,12 @@ BuildingView.prototype.update = function () {
           vkaria.sprites,
           look,
           staticData.compound,
-          Rotation.turns(b.data.rotation),
+          at.rotation,
         ).forEach(function (top) {
           var source = new engine.GameObject();
 
-          source.transform.setLocalPosition(
+          setSeenPosition(
+            source,
             top[0] * tileSize,
             top[1] * tileZStep,
             top[2] * tileSize,
@@ -151,13 +193,15 @@ BuildingView.prototype.update = function () {
 
         //the chimney turns round with the rest of the house
         if (rotated)
-          smokeSource.transform.setLocalPosition(
+          setSeenPosition(
+            smokeSource,
             smoke[2] * tileSize,
             smoke[1] * tileZStep,
             smoke[0] * tileSize,
           );
         else
-          smokeSource.transform.setLocalPosition(
+          setSeenPosition(
+            smokeSource,
             smoke[0] * tileSize,
             smoke[1] * tileZStep,
             smoke[2] * tileSize,
@@ -168,17 +212,11 @@ BuildingView.prototype.update = function () {
       }
     }
 
-    //position gameObject
-    var data = this.building.data,
-      //this.building.tile.gameObject.transform.getPosition()[1] + this.building.tile.subpositionZ(data.subPosX, data.subPosY),
-      x = Terrain.extractX(data.tile), // + data.subPosX,
-      y = Terrain.extractY(data.tile), // + data.subPosY,
-      z = vkaria.core.world.terrain.getGridPointHeight(x + 1, y);
-
+    //drawn from the tile it is seen from (see drawnAt)
     this.gameObject.transform.setPosition(
-      x * tileSize,
-      z * tileZStep,
-      y * tileSize,
+      at.x * tileSize,
+      at.z * tileZStep,
+      at.y * tileSize,
     );
   }
 };
@@ -187,7 +225,7 @@ BuildingView.prototype.update = function () {
  * A block going up, as the building site it is at the moment - and the
  * redraw for when it moves on to the next stage.
  */
-function drawSite(self, staticData, look) {
+function drawSite(self, staticData, look, turns) {
   var data = self.building.data,
     progress = data.getProgress(),
     stage = stageOf(progress);
@@ -195,7 +233,7 @@ function drawSite(self, staticData, look) {
   addParts(
     self.gameObject,
     staticData.compound,
-    Rotation.turns(data.rotation),
+    turns,
     self.opacity,
     undefined,
     CompoundBuilding.siteLook(look, stage, data.tile),
@@ -277,7 +315,8 @@ function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
     spriteRenderer.opacity = opacity;
     parent.transform.addChild(spriteGO.transform);
 
-    spriteGO.transform.setLocalPosition(
+    setSeenPosition(
+      spriteGO,
       spriteData.x * tileSize,
       spriteData.y * tileZStep,
       spriteData.z * tileSize,
@@ -286,6 +325,7 @@ function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
 }
 
 BuildingView.addSprites = addSprites;
+BuildingView.drawnAt = drawnAt;
 
 /**
  * Whether a building drawn by hand shows its turned-round picture, turned
@@ -340,7 +380,8 @@ function addPieces(parent, pieces, opacity, layer) {
     //the renderer resets its opacity once it is attached
     renderer.opacity = opacity;
     parent.transform.addChild(go.transform);
-    go.transform.setLocalPosition(
+    setSeenPosition(
+      go,
       piece.x * Config.tileSize,
       0,
       piece.z * Config.tileSize,

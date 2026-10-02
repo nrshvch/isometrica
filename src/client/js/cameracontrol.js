@@ -16,6 +16,8 @@ function onPinchStart(sender, e, me) {
   var zoom = me._cam.zoom();
 
   me._pinch = {
+    //how many quarter turns the fingers have turned the world so far
+    turned: 0,
     zoom: zoom,
     //in page pixels, which stay the same size whatever the zoom
     x: e.gameViewportX * zoom,
@@ -43,7 +45,21 @@ function onPinch(sender, e, me) {
   pinch.y = y;
 
   cam.zoom(nearestZoom(pinch.zoom * e.scale), e.gameViewportX, e.gameViewportY);
+
+  //the fingers twisted: the world turns with them, a quarter turn for every
+  //quarter turn of theirs, the first once they are past an eighth of one
+  if (e.rotation !== undefined) {
+    var turns = Math.round(e.rotation / TWIST);
+
+    if (turns !== pinch.turned) {
+      me.root.turnView(turns - pinch.turned);
+      pinch.turned = turns;
+    }
+  }
 }
+
+//how far the fingers turn for a quarter turn of the world, in degrees
+var TWIST = 90;
 
 function onPinchEnd(sender, e, me) {
   me._pinch = null;
@@ -98,6 +114,15 @@ function CameraControl(root) {
 
 CameraControl.prototype.init = function () {
   var root = this.root;
+
+  //and with no fingers to twist, Q and E turn it a quarter turn either way
+  window.addEventListener("keydown", function (e) {
+    var target = e.target && e.target.tagName;
+
+    if (target === "INPUT" || target === "TEXTAREA" || e.repeat) return;
+    if (e.key === "q" || e.key === "Q") root.turnView(-1);
+    else if (e.key === "e" || e.key === "E") root.turnView(1);
+  });
   var cam = (this._cam = root.camera.cameraScript);
 
   var a = Events.on(cam, WorldCamera.events.inputDrag, onDrag, this);

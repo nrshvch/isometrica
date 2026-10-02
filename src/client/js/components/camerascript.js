@@ -1,6 +1,7 @@
 import engine from "engine";
 import * as glMatrix from "gl-matrix";
 import Events from "events";
+import View from "../view";
 
 var events = {
   inputMove: 0,
@@ -281,13 +282,43 @@ CameraScript.prototype.moveTo = function (transform) {
 };
 
 CameraScript.prototype.pan = function (x, y) {
-  if (!this._lock)
-    this.gameObject.transform.translate(
-      (-x * COS45 + y / COS45) / this.panSens,
-      0,
-      (x * COS45 + y / COS45) / this.panSens,
-      "world",
-    );
+  if (this._lock) return;
+
+  //the way along the ground that goes that way on screen as it is seen,
+  //and in the world, the camera turned (see client/view)
+  var d = View.unvector(
+    (-x * COS45 + y / COS45) / this.panSens,
+    (x * COS45 + y / COS45) / this.panSens,
+  );
+
+  this.gameObject.transform.translate(d[0], 0, d[1], "world");
+};
+
+//how far the camera turns about the up axis for a quarter turn of the view,
+//in degrees, the way client/view counts them
+var TURN = -90;
+
+/**
+ * Turns the camera round by so many quarter turns about the ground in the
+ * middle of the screen, which stays there - and the order things are drawn
+ * in with it (CameraComponent#depthAxes). The world is seen from another
+ * side; client/view tells what is seen of what from there.
+ */
+CameraScript.prototype.turn = function (by) {
+  var transform = this.gameObject.transform,
+    pos = transform.getPosition(),
+    camera = this.gameObject.camera;
+
+  transform.setPosition(0, 0, 0);
+  transform.rotate(0, TURN * by, 0, "world");
+  transform.setPosition(pos[0], pos[1], pos[2]);
+
+  View.setTurns(View.turns() + by);
+
+  //away from the camera along the ground as it is seen: away unturned
+  var away = View.unvector(1, 1);
+
+  camera.depthAxes = [away[0], -1, away[1]];
 };
 
 /**

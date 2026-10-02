@@ -11,6 +11,7 @@ import Pool from "shared/object-pool";
 import Rocks from "data/rocks";
 //a rock is drawn the way a tree is: one sprite among the buildings
 import Tree from "./gameObjects/tree";
+import View from "./view";
 
 var BuildingData = Core.BuildingData;
 var TileIterator = Core.TileIterator;
@@ -32,7 +33,8 @@ function sceneryOf(self, tile) {
 }
 
 /**
- * A tree stands on a corner of its tile. Stones lie flat all over it, the
+ * A tree stands on a corner of its tile - the one on the right as it is
+ * seen, the camera turned (see client/view). Stones lie flat all over it, the
  * way the tile does, so they go at the height of its middle - halfway up it,
  * on a slope.
  */
@@ -42,7 +44,7 @@ function place(self, go, tile, spriteData) {
     y = CoreTerrain.extractY(tile),
     z = spriteData.flat
       ? terrain.getHeight(x + 0.5, y + 0.5)
-      : terrain.getGridPointHeight(x + 1, y);
+      : View.cornerHeight(terrain, x, y, 2);
 
   go.transform.setPosition(
     x * Config.tileSize,
@@ -189,6 +191,17 @@ EnvMan.prototype.init = function () {
     this.core.terrain,
     Core.Terrain.events.gridUpdate,
     onGridUpdate,
+    this,
+  );
+
+  //the camera turned: every tree on its corner as seen from the new side
+  Events.on(
+    View,
+    View.events.change,
+    function (sender, args, self) {
+      for (var tile in self._scenery)
+        place(self, self._scenery[tile], +tile, sceneryOf(self, +tile));
+    },
     this,
   );
 };
