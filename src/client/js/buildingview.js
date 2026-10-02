@@ -16,6 +16,7 @@ import Rotation from "core/rotation";
 import { stageOf, STAGES } from "shared/gen/stacking";
 import SiteRenderer from "./siterenderer";
 import View from "./view";
+import BuildingClassCode from "data/classcode";
 
 var Terrain = Core.Terrain;
 
@@ -40,9 +41,107 @@ function drawnAt(staticData, tile, rotation) {
   );
 
   r.rotation = (Rotation.turns(rotation) + View.turns()) & 3;
-  r.z = View.cornerHeight(vkaria.core.world.terrain, r.x, r.y, 2);
+  //level, at the highest corner under it: where the ground is lower it
+  //stands on a concrete base (addFoundations)
+  r.z = groundTop(
+    vkaria.core.world.terrain,
+    Terrain.extractX(tile),
+    Terrain.extractY(tile),
+    Rotation.sizeX(staticData, rotation),
+    Rotation.sizeY(staticData, rotation),
+  );
 
   return r;
+}
+
+/**
+ * The highest grid point under sizeX by sizeY tiles from tile x, y.
+ */
+function groundTop(terrain, x0, y0, sizeX, sizeY) {
+  var top = -Infinity;
+
+  for (var x = x0; x <= x0 + sizeX; x++)
+    for (var y = y0; y <= y0 + sizeY; y++)
+      top = Math.max(top, terrain.getGridPointHeight(x, y));
+
+  return top;
+}
+
+/**
+ * Hangs under parent - drawn from tile at, top high - the concrete a building
+ * on uneven ground stands on: a piece on every tile of it whose ground is
+ * lower than the top anywhere, cut to the ground there as the tile is seen
+ * (shared/gen/foundations). A tree or a road has none: it stands on the
+ * slope as it is.
+ *
+ * @param at {{x, y, z}} see drawnAt
+ */
+function addFoundations(
+  parent,
+  staticData,
+  tile,
+  rotation,
+  at,
+  opacity,
+  layer,
+) {
+  var classCode = staticData.classCode;
+
+  if (
+    classCode === BuildingClassCode.tree ||
+    classCode === BuildingClassCode.road
+  )
+    return;
+
+  var terrain = vkaria.core.world.terrain,
+    x0 = Terrain.extractX(tile),
+    y0 = Terrain.extractY(tile),
+    sizeX = Rotation.sizeX(staticData, rotation),
+    sizeY = Rotation.sizeY(staticData, rotation),
+    x,
+    y,
+    k;
+
+  for (x = x0; x < x0 + sizeX; x++) {
+    for (y = y0; y < y0 + sizeY; y++) {
+      var drops = [],
+        any = false;
+
+      for (k = 0; k < 4; k++) {
+        var d = Math.max(
+          0,
+          Math.min(1, at.z - View.cornerHeight(terrain, x, y, k)),
+        );
+
+        drops.push(d);
+        if (d > 0) any = true;
+      }
+
+      if (!any) continue;
+
+      var name = "gen/foundations/" + drops.join(""),
+        frame = vkaria.sprites.frame(name),
+        renderer = new engine.SpriteRenderer(),
+        go = new engine.GameObject();
+
+      if (!frame) continue;
+
+      renderer.layer = layer;
+      renderer.setSprite(vkaria.sprites.getSprite(name));
+      renderer.setPivot(frame.pivotX, frame.pivotY);
+      go.addComponent(renderer);
+      //the renderer resets its opacity once it is attached
+      renderer.opacity = opacity;
+      parent.transform.addChild(go.transform);
+      //off the tile the parent is drawn from, in the world - the pieces
+      //are picked as they are seen, not laid out that way
+      go.transform.setLocalPosition(
+        (x - at.x) * Config.tileSize,
+        0,
+        (y - at.y) * Config.tileSize,
+      );
+    }
+  }
 }
 
 /**
@@ -212,6 +311,17 @@ BuildingView.prototype.update = function () {
       }
     }
 
+    //level on a concrete base where the ground under it is not
+    addFoundations(
+      this.gameObject,
+      staticData,
+      b.data.tile,
+      b.data.rotation,
+      at,
+      this.opacity,
+      RenderLayer.roadLayer,
+    );
+
     //drawn from the tile it is seen from (see drawnAt)
     this.gameObject.transform.setPosition(
       at.x * tileSize,
@@ -326,6 +436,7 @@ function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
 
 BuildingView.addSprites = addSprites;
 BuildingView.drawnAt = drawnAt;
+BuildingView.addFoundations = addFoundations;
 
 /**
  * Whether a building drawn by hand shows its turned-round picture, turned

@@ -17,6 +17,8 @@ var ErrorCode = {
   TERRAFORM_TOO_LARGE: 11,
   //clearing tiles that have nothing on them to clear
   NOTHING_TO_CLEAR: 12,
+  //a road down to the water's edge, where the land is all beach
+  ON_SHORE: 13,
 };
 
 export default ErrorCode;

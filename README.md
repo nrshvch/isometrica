@@ -148,6 +148,12 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   shore tile has the water come a little way up it, then wet sand and sand
   thinning out into the grass in a ragged dither as wide as the tile - by
   how high the ground is, so a shore runs on unbroken from tile to tile.
+- A building goes up on uneven ground the way it did in Transport Tycoon:
+  level at the highest corner under it, on a concrete base cut to the
+  ground (`src/shared/gen/foundations.js`, `BuildingView` addFoundations) -
+  as long as the ground falls no more than a step anywhere under it
+  (`src/core/buildings.js`). The base is picked as the tile is seen, so it
+  turns with the camera. Roads are not laid on the shore.
 - The trees are painted too (`src/shared/gen/trees.js`): oak, beech, ash
   and alder, two of each, ray-traced from the angle the boxes are seen from
   and lit in a few flat tones of their own. The world grows each kind in
