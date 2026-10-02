@@ -33,15 +33,16 @@ import Offices from "./offices";
 import Shops from "./shops";
 import Houses from "./houses";
 import Parks from "./parks";
+import Trees from "./trees";
 
 var Core = namespace("Isometrica.Core");
 
 var buildingData = (Core.BuildingData = {});
 
-//one of two trees, picked at random the way a house is (see house) - and
-//the same two the world grows on its own (see core/ambient)
+//one of the trees, picked at random the way a house is (see house) - and
+//the same ones the world grows on its own (see core/ambient)
 buildingData[BuildingCode.tree] = {
-  //drawn by hand: kept for the cities that have it, no longer offered
+  //not offered: the world grows them by itself
   hidden: true,
   sizeX: 1,
   sizeY: 1,
@@ -55,60 +56,8 @@ buildingData[BuildingCode.tree] = {
     money: 200,
   },
   name: "tree",
-  variants: [
-    {
-      buildingCode: BuildingCode.tree1,
-      name: "oak",
-      sprites: [
-        {
-          x: 0,
-          y: 0,
-          z: 0,
-          pivotX: 34,
-          pivotY: 53,
-          path: "trees/tree1.png",
-          layer: RenderLayer.buildingsLayer,
-        },
-      ],
-      spritesRotate: [
-        {
-          x: 0,
-          y: 0,
-          z: 0,
-          pivotX: 30,
-          pivotY: 53,
-          path: "trees/tree1r.png",
-          layer: RenderLayer.buildingsLayer,
-        },
-      ],
-    },
-    {
-      buildingCode: BuildingCode.tree2,
-      name: "linden",
-      sprites: [
-        {
-          x: 0,
-          y: 0,
-          z: 0,
-          pivotX: 34,
-          pivotY: 53,
-          path: "trees/tree2.png",
-          layer: RenderLayer.buildingsLayer,
-        },
-      ],
-      spritesRotate: [
-        {
-          x: 0,
-          y: 0,
-          z: 0,
-          pivotX: 30,
-          pivotY: 53,
-          path: "trees/tree2r.png",
-          layer: RenderLayer.buildingsLayer,
-        },
-      ],
-    },
-  ],
+  //painted, see data/trees
+  variants: Trees.variants(RenderLayer.buildingsLayer),
 };
 
 buildingData[BuildingCode.cliff] = {

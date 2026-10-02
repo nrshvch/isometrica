@@ -141,6 +141,18 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - The catalogue offers only what is painted: the hand-drawn houses, shops,
   offices, flats, town hall, trees and cliff are kept for the cities that
   already have them, but no longer offered.
+- The ground is painted from nothing (`src/shared/gen/terrain.js`): grass
+  with lusher clumps, drier patches, blades, clover and the odd flower;
+  water with its swell and ripples catching the light; and every tile's
+  outline is its corners joined up, lit by the same sun as the buildings. A
+  shore tile has the water come a little way up it, then wet sand and sand
+  thinning out into the grass in a ragged dither as wide as the tile - by
+  how high the ground is, so a shore runs on unbroken from tile to tile.
+- The trees are painted too (`src/shared/gen/trees.js`): oak, beech, ash
+  and alder, two of each, ray-traced from the angle the boxes are seen from
+  and lit in a few flat tones of their own. The world grows each kind in
+  stands (`src/core/ambient.js`); the two trees drawn by hand are the first
+  oak and beech now, so cities that had them keep their trees.
 - A town starts without a town hall. Its name hangs over the middle of the
   land it owns, and its road network is the biggest stretch of its roads
   that hangs together - a building is on the road when it is next to that;
