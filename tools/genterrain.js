@@ -24,8 +24,6 @@ var PNG = require("pngjs").PNG;
 var terrain = require("../src/shared/gen/terrain.js");
 
 var ROOT = path.resolve(__dirname, "..");
-//the pictures the game started with, which the painting is taken from
-var SOURCE = path.join(ROOT, "assets/sprites/terrain");
 var DEFAULT_OUT = path.join(ROOT, "assets/terrain/terraingen");
 
 function options(argv) {
@@ -67,35 +65,9 @@ function options(argv) {
   return o;
 }
 
-/**
- * Every picture in one of the source directories, by slope code.
- */
-function readSource(dir) {
-  var out = {};
-
-  fs.readdirSync(path.join(SOURCE, dir))
-    .filter(function (f) {
-      return /^\d{4}\.png$/.test(f);
-    })
-    .forEach(function (f) {
-      out[f.slice(0, 4)] = PNG.sync.read(
-        fs.readFileSync(path.join(SOURCE, dir, f)),
-      );
-    });
-
-  return out;
-}
-
 function main() {
   var o = options(process.argv.slice(2)),
-    painted = terrain.generate(
-      {
-        grass: readSource("grass"),
-        water: readSource("water"),
-        shore: readSource("shore"),
-      },
-      o,
-    ),
+    painted = terrain.generate(null, o),
     manifest = painted.manifest,
     written = Object.keys(painted.images);
 
@@ -111,13 +83,6 @@ function main() {
     );
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, PNG.sync.write(png));
-  });
-
-  Object.keys(manifest.tilesets).forEach(function (id) {
-    var set = manifest.tilesets[id];
-
-    if (set.source !== "generated")
-      set.source = path.relative(ROOT, path.join(SOURCE, set.source));
   });
 
   var manifestFile = path.join(o.out, "manifest.json"),

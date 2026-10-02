@@ -1,5 +1,6 @@
 /**
- * Paints the trees the world grows besides the broadleaf ones there are: the
+ * Paints the trees the world grows besides the broadleaf ones (which the game
+ * paints itself, see src/shared/gen/trees.js): the
  * pines of the northern forests, in two shapes, each snowed over as well for
  * where the snow comes down among them; and for the savannah its baobabs and
  * the dead trees standing about it, two of each.

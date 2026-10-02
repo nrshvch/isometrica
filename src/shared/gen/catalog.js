@@ -22,6 +22,7 @@ import * as Houses from "./houses.js";
 import * as Utilities from "./utilities.js";
 import * as Parks from "./parks.js";
 import * as Roads from "./roads.js";
+import * as Trees from "./trees.js";
 import { tileName, shoreName } from "./names.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
@@ -42,6 +43,7 @@ export var GENERATORS = [
   "utilities",
   "parks",
   "roads",
+  "trees",
 ];
 
 //the generators of blocks put together out of parts (shared/gen/blocks)
@@ -56,12 +58,14 @@ var BLOCKS = {
   utilities: Utilities,
   parks: Parks,
   roads: Roads,
+  trees: Trees,
 };
 
 //the hand-drawn pictures each generator paints from, by what their names
 //start with
 export var INPUTS = {
-  terrain: ["terrain/grass/", "terrain/water/", "terrain/shore/"],
+  //painted from nothing
+  terrain: [],
   vehicles: [],
   flats: [],
   offices: [],
@@ -71,6 +75,7 @@ export var INPUTS = {
   utilities: [],
   parks: [],
   roads: [],
+  trees: [],
   stones: ["scenery/stones/", "terrain/grass/2222.png"],
 };
 
@@ -87,14 +92,6 @@ function under(pixels, prefix) {
   });
 
   return out;
-}
-
-function terrainSources(pixels) {
-  return {
-    grass: under(pixels, "terrain/grass/"),
-    water: under(pixels, "terrain/water/"),
-    shore: under(pixels, "terrain/shore/"),
-  };
 }
 
 /**
@@ -131,7 +128,7 @@ export function describe(gen, pixels) {
   }
 
   if (gen === "terrain") {
-    var terrain = Terrain.describe(terrainSources(pixels), {
+    var terrain = Terrain.describe(null, {
         tilesets: [LAND, WATER, DEEP],
         diffuse: false,
       }),
@@ -199,8 +196,7 @@ export function createPainter(loadPixels) {
     if (painters[gen] === undefined)
       painters[gen] = loadPixels(INPUTS[gen]).then(
         function (pixels) {
-          if (gen === "terrain")
-            return Terrain.createPainter(terrainSources(pixels));
+          if (gen === "terrain") return Terrain.createPainter(null);
           if (gen === "stones")
             return Stones.createPainter(
               under(pixels, "scenery/stones/"),

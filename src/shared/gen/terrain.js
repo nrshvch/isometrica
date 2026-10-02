@@ -25,17 +25,19 @@
  *
  * Water meets the ground differently: not across an edge but where the ground
  * sinks under it - a shore tile. So a water tileset has a shore tile for each
- * slope instead, cut out of the shore pictures, which are the grass pictures
- * pixel for pixel with the water and the beach painted in: whatever differs
- * from the grass is the water. It lies over any ground of that slope. That
- * water is the shallows; deep water has the same shore with its own water in
- * it, for where the land drops straight into it, and ice the same shore
- * painted over in the colours of ice and frost.
+ * slope instead, laid over whatever ground the tile has: the water comes up
+ * the lowest part of it, a little higher than the water level, into wet
+ * sand, sand, and the sand thins out into the ground above in a dither, as
+ * wide as the tile is, and ragged. It goes by how high the ground is, which
+ * runs on from tile to tile, so a shore runs on unbroken over any slopes. The
+ * shallows' shore has the shallows in it; deep water its own water, for where
+ * the land drops straight into it, and ice its ice with frost for a beach.
  *
- * The grass and the water the game has are taken as they are, and only given
- * their diffuse tiles; everything else is painted here. The slopes, the
- * outline of each and the light on every face are taken from that grass, so
- * that all of it fits together with what is there.
+ * All of it is painted here, the grass and the water the game has too -
+ * nothing is taken from a picture. The outline of every slope is its corners
+ * joined up, and the light on every face is the sun's on the buildings
+ * (shared/gen/isobox), so that the ground and what stands on it are lit
+ * alike.
  *
  * It paints into plain pictures, {width, height, data} with the pixels as
  * RGBA, so that the same painting runs in the game as it starts (client/
@@ -49,6 +51,29 @@ var HEIGHT = 47;
 //how far up a corner is drawn for every step of height
 var HEIGHT_STEP = 8;
 var FLAT = "2222";
+//every slope there is a tile of: the corners' heights clockwise from the W
+//one, each 2 for the W corner's own (see heights)
+var SLOPES = [
+  "2101",
+  "2111",
+  "2112",
+  "2121",
+  "2122",
+  "2123",
+  "2211",
+  "2212",
+  "2221",
+  "2222",
+  "2223",
+  "2232",
+  "2233",
+  "2321",
+  "2322",
+  "2323",
+  "2332",
+  "2333",
+  "2343",
+];
 
 //a tile's own coordinates at its corners: u runs from the S corner to the E
 //one, v from S to W - along the grid's x and y
@@ -397,10 +422,45 @@ var TILESETS = {
   grass: {
     name: "European grassland",
     description:
-      "The grass the game started with, as it is - the green of temperate Europe.",
+      "Meadow grass of temperate Europe: lusher clumps and drier patches, blades catching the light, now and then a daisy or a buttercup.",
     kind: "land",
     waterBody: "water_shallow",
-    source: "grass",
+    variants: 4,
+    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1 },
+    albedo: function (s) {
+      var c = ramp(GRASS, 0.5 + 0.35 * s.noise("field", 3, 2)),
+        lush = s.noise("lush", 7, 2),
+        dry = s.noise("dry", 5, 2);
+
+      //clumps of lusher, darker grass, and drier patches between
+      if (lush > 0.25)
+        c = mix(c, [34, 84, 26], Math.min(1, (lush - 0.25) * 2.5) * 0.6);
+      else if (dry > 0.35)
+        c = mix(c, [100, 128, 52], Math.min(1, (dry - 0.35) * 2.5) * 0.45);
+
+      return grain(c, s, 0.05, 3);
+    },
+    decorations: [
+      //blades: a lit tip over its own shadow
+      { density: 0.07, cells: tuft([84, 138, 52], [32, 76, 22]) },
+      { density: 0.03, cells: tuft([70, 124, 42], [40, 86, 26]) },
+      //clover, darker and a little blue
+      {
+        density: 0.012,
+        cells: dot([
+          [38, 92, 44],
+          [44, 100, 52],
+        ]),
+      },
+      //daisies and buttercups
+      {
+        density: 0.0025,
+        cells: dot([
+          [236, 236, 222],
+          [240, 206, 64],
+        ]),
+      },
+    ],
     edge: {
       depth: 0.42,
       amp: 0.14,
@@ -556,10 +616,25 @@ var TILESETS = {
   water_shallow: {
     name: "Shallow water",
     description:
-      "The water the game started with, as it is - the shallows along the land; its shore is the one the game had.",
+      "The shallows along the land: blue with a gentle swell, the light caught in short lines along the ripples.",
     kind: "water",
-    source: "water",
     slopes: [FLAT],
+    variants: 3,
+    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
+    albedo: function (s) {
+      var c = ramp(WATER, 0.5 + 0.28 * s.noise("field", 2.5, 2)),
+        //ripples run level across the screen, along u + v; broken up into
+        //short lines wherever the light catches them
+        ripple = Math.sin(
+          2 * Math.PI * 3 * (s.u + s.v) + 1.6 * s.noise("warp", 2, 1),
+        ),
+        dash = s.noise("dash", 9, 1);
+
+      if (ripple > 0.9 && dash > 0.15) c = mix(c, [96, 168, 222], 0.55);
+      else if (ripple < -0.93 && dash < -0.25) c = mix(c, [0, 50, 112], 0.5);
+
+      return grain(c, s, 0.03, 2);
+    },
     edge: {
       depth: 0.3,
       amp: 0.06,
@@ -641,6 +716,23 @@ var TILESETS = {
 };
 
 //the colours each ground is painted from, dark to light
+var GRASS = [
+  [0, [40, 88, 26]],
+  [0.5, [58, 110, 36]],
+  [1, [80, 132, 50]],
+];
+var WATER = [
+  [0, [0, 66, 138]],
+  [0.5, [2, 82, 162]],
+  [1, [14, 100, 182]],
+];
+//a beach: wet sand at the water, dry above it
+var SAND = [
+  [0, [196, 172, 120]],
+  [0.5, [214, 192, 140]],
+  [1, [230, 212, 164]],
+];
+var WET_SAND = [150, 130, 92];
 var TROPICAL = [
   [0, [12, 52, 20]],
   [0.5, [22, 72, 26]],
@@ -936,42 +1028,53 @@ function clamp01(x) {
 
 /**
  * Every pixel of a slope's picture that is ground, with the point of the tile
- * it shows (u, v), the quarter of the tile it is in (for the light on it), and
- * whether it is on the outline. The outline is the grass picture's.
+ * it shows (u, v), how high the ground is there (h, in steps over the W
+ * corner), the quarter of the tile it is in (for the light on it), and
+ * whether it is on the outline. The outline is the corners joined up: a pixel
+ * is ground where its middle is on the face it would show, edges included -
+ * so two tiles side by side meet without a gap.
  */
-function surface(slope, silhouette) {
+function surface(slope) {
   var z = heights(slope),
     p = screenCorners(z),
     f = fold(z) || "ns",
     index = new Int32Array(WIDTH * HEIGHT).fill(-1),
-    pixels = [];
+    pixels = [],
+    x,
+    y;
 
-  function inside(x, y) {
-    return (
-      x >= 0 &&
-      y >= 0 &&
-      x < WIDTH &&
-      y < HEIGHT &&
-      silhouette.data[(y * WIDTH + x) * 4 + 3] > 0
-    );
+  function faceAt(x, y) {
+    var q = [x + 0.5, y + 0.5],
+      north = q[1] < p.w[1] + ((p.e[1] - p.w[1]) * q[0]) / WIDTH,
+      west = q[0] < WIDTH / 2,
+      tri =
+        f === "we"
+          ? north
+            ? ["w", "n", "e"]
+            : ["w", "e", "s"]
+          : west
+            ? ["w", "n", "s"]
+            : ["n", "e", "s"],
+      l = barycentric(q, p[tri[0]], p[tri[1]], p[tri[2]]),
+      e = -1e-9;
+
+    if (l[0] < e || l[1] < e || l[2] < e) return null;
+
+    return { q: q, tri: tri, l: l, north: north, west: west };
   }
 
-  for (var y = 0; y < HEIGHT; y++) {
-    for (var x = 0; x < WIDTH; x++) {
-      if (!inside(x, y)) continue;
+  function inside(x, y) {
+    return x >= 0 && y >= 0 && x < WIDTH && y < HEIGHT && faceAt(x, y) !== null;
+  }
 
-      var q = [x + 0.5, y + 0.5],
-        north = q[1] < p.w[1] + ((p.e[1] - p.w[1]) * q[0]) / WIDTH,
-        west = q[0] < WIDTH / 2,
-        tri =
-          f === "we"
-            ? north
-              ? ["w", "n", "e"]
-              : ["w", "e", "s"]
-            : west
-              ? ["w", "n", "s"]
-              : ["n", "e", "s"],
-        l = barycentric(q, p[tri[0]], p[tri[1]], p[tri[2]]),
+  for (y = 0; y < HEIGHT; y++) {
+    for (x = 0; x < WIDTH; x++) {
+      var a = x >= 0 && y >= 0 ? faceAt(x, y) : null;
+
+      if (a === null) continue;
+
+      var tri = a.tri,
+        l = a.l,
         u =
           l[0] * CORNERS[tri[0]][0] +
           l[1] * CORNERS[tri[1]][0] +
@@ -988,7 +1091,8 @@ function surface(slope, silhouette) {
         y: y,
         u: clamp01(u),
         v: clamp01(v),
-        quad: (north ? "n" : "s") + (west ? "w" : "e"),
+        h: l[0] * z[tri[0]] + l[1] * z[tri[1]] + l[2] * z[tri[2]],
+        quad: (a.north ? "n" : "s") + (a.west ? "w" : "e"),
         rim:
           !inside(x - 1, y) ||
           !inside(x + 1, y) ||
@@ -1003,99 +1107,103 @@ function surface(slope, silhouette) {
 
 /* --- Light ------------------------------------------------------------ */
 
+//the sun the buildings are lit by (shared/gen/isobox SUN), in the tile's own
+//u, v and up - the same way round as the boxes' x, y and z
+var SUN = (function () {
+  var l = [-0.45, 0.35, 1],
+    n = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
+
+  return [l[0] / n, l[1] / n, l[2] / n];
+})();
+//how high a step is, in tiles: 8 units up to the 32 a tile is across, as the
+//boxes have it
+var STEP_HEIGHT = 8 / 32;
+//how much more a slope is lit or shaded than the boxes would be at that
+//angle - the ground's steps are gentle, and a hill should still read as one
+var CONTRAST = 1.8;
+//how dark the outline of a tile is, so the grid shows faintly
+var RIM = 0.95;
+
 /**
- * The light on each face of every slope, as the grass has it. A face lighter
- * than flat ground is the flat colour screened towards white by that much; a
- * darker one is it darkened by that much, taken off 1. And how dark the
+ * How light a face looking along n is, the way isobox lit() has it: as a box's
+ * top where it looks straight up, its left side looking towards -x, its right
+ * side towards -y - a fraction to lighten by, or under 0 to darken by.
+ */
+function boxLight(n) {
+  var l = n[0] * SUN[0] + n[1] * SUN[1] + n[2] * SUN[2],
+    up = SUN[2],
+    left = -SUN[0],
+    right = -SUN[1];
+
+  if (l >= left) return -0.1 + ((l - left) / (up - left)) * 0.32;
+
+  return -0.3 + ((l - right) / (left - right)) * 0.2;
+}
+
+/**
+ * The light on each face of every slope: how much lighter than flat ground it
+ * is, or under 0 how much darker, by the quarter of the tile; and how dark the
  * outline is.
  */
-function measureLight(grass, surfaces) {
-  function means(slope) {
-    var sums = {
-        nw: [0, 0, 0, 0],
-        ne: [0, 0, 0, 0],
-        se: [0, 0, 0, 0],
-        sw: [0, 0, 0, 0],
-      },
-      data = grass[slope].data;
+function computeLight() {
+  var flat = boxLight([0, 0, 1]),
+    faces = {};
 
-    surfaces[slope].pixels.forEach(function (p) {
-      if (p.rim) return;
+  function normal(z, tri) {
+    var a = tri.map(function (k) {
+        return [CORNERS[k][0], CORNERS[k][1], z[k] * STEP_HEIGHT];
+      }),
+      d1 = [a[1][0] - a[0][0], a[1][1] - a[0][1], a[1][2] - a[0][2]],
+      d2 = [a[2][0] - a[0][0], a[2][1] - a[0][1], a[2][2] - a[0][2]],
+      n = [
+        d1[1] * d2[2] - d1[2] * d2[1],
+        d1[2] * d2[0] - d1[0] * d2[2],
+        d1[0] * d2[1] - d1[1] * d2[0],
+      ],
+      len = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]),
+      up = n[2] < 0 ? -1 : 1;
 
-      var sum = sums[p.quad];
-
-      for (var c = 0; c < 3; c++) sum[c] += data[p.i * 4 + c];
-      sum[3]++;
-    });
-
-    return sums;
+    return [(n[0] / len) * up, (n[1] / len) * up, (n[2] / len) * up];
   }
 
-  function total(sums, quads) {
-    var t = [0, 0, 0, 0];
-
-    quads.forEach(function (q) {
-      for (var c = 0; c < 4; c++) t[c] += sums[q][c];
-    });
-
-    return [t[0] / t[3], t[1] / t[3], t[2] / t[3]];
-  }
-
-  var flat = total(means(FLAT), ["nw", "ne", "se", "sw"]),
-    light = {},
-    //summed brightness and count of the outline's pixels, and of the rest
-    rim = [0, 0],
-    inner = [0, 0];
-
-  function lightOf(m) {
-    var ratio = (m[0] + m[1] + m[2]) / (flat[0] + flat[1] + flat[2]);
-
-    if (ratio < 1) return ratio - 1;
-
-    return (
-      ((m[0] - flat[0]) / (255 - flat[0]) +
-        (m[1] - flat[1]) / (255 - flat[1]) +
-        (m[2] - flat[2]) / (255 - flat[2])) /
-      3
-    );
-  }
-
-  Object.keys(grass).forEach(function (slope) {
-    var sums = means(slope),
-      f = surfaces[slope].fold,
-      //the quarters that make up one face, for they are lit the same
-      faces =
-        f === null
-          ? [["nw", "ne", "se", "sw"]]
-          : f === "ns"
-            ? [
+  SLOPES.forEach(function (slope) {
+    var z = heights(slope),
+      f = fold(z),
+      //each face, and the quarters of the tile it takes
+      split =
+        f === null || f === "ns"
+          ? [
+              [
+                ["w", "n", "s"],
                 ["nw", "sw"],
+              ],
+              [
+                ["n", "e", "s"],
                 ["ne", "se"],
-              ]
-            : [
+              ],
+            ]
+          : [
+              [
+                ["w", "n", "e"],
                 ["nw", "ne"],
+              ],
+              [
+                ["w", "e", "s"],
                 ["sw", "se"],
-              ];
+              ],
+            ];
 
-    light[slope] = {};
-    faces.forEach(function (face) {
-      var l = lightOf(total(sums, face));
+    faces[slope] = {};
+    split.forEach(function (face) {
+      var l = (boxLight(normal(z, face[0])) - flat) * CONTRAST;
 
-      face.forEach(function (q) {
-        light[slope][q] = l;
+      face[1].forEach(function (q) {
+        faces[slope][q] = l;
       });
-    });
-
-    surfaces[slope].pixels.forEach(function (p) {
-      var to = p.rim ? rim : inner,
-        data = grass[slope].data;
-
-      to[0] += data[p.i * 4] + data[p.i * 4 + 1] + data[p.i * 4 + 2];
-      to[1]++;
     });
   });
 
-  return { faces: light, rim: rim[0] / rim[1] / (inner[0] / inner[1]) };
+  return { faces: faces, rim: RIM };
 }
 
 function shade(c, light, look) {
@@ -1358,35 +1466,6 @@ function paintDiffuse(set, base, slope, dir, variant, surf, seed) {
   return image;
 }
 
-/**
- * The water and the beach out of a shore picture: everything that is not the
- * grass under it. null where there is no shore picture for that slope, or it
- * has no water on it.
- */
-function cutShore(shore, grass) {
-  if (shore === undefined) return null;
-
-  var image = blank(),
-    count = 0;
-
-  for (var i = 0; i < WIDTH * HEIGHT; i++) {
-    var k = i * 4;
-
-    if (
-      shore.data[k + 3] === 0 ||
-      (shore.data[k] === grass.data[k] &&
-        shore.data[k + 1] === grass.data[k + 1] &&
-        shore.data[k + 2] === grass.data[k + 2])
-    )
-      continue;
-
-    image.data.set(shore.data.subarray(k, k + 4), k);
-    count++;
-  }
-
-  return count > 0 ? image : null;
-}
-
 function mean(image) {
   var sum = [0, 0, 0],
     n = 0;
@@ -1403,69 +1482,91 @@ function mean(image) {
   return [sum[0] / n, sum[1] / n, sum[2] / n];
 }
 
-function luminance(c) {
-  return (c[0] + c[1] + c[2]) / 3;
+//a 4 by 4 ordered dither, 0..1. Every tile is put down a multiple of 4
+//pixels from the next, so it runs on across them unbroken
+var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+function bayer(x, y) {
+  return (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
 }
 
+//how far up a shore, in steps over its lowest corner, the water comes, the
+//wet sand, and the sand before it has thinned out into the ground - and how
+//wide each one's dither is
+var SHORE = {
+  water: 0.3,
+  waterDither: 0.12,
+  wet: 0.42,
+  wetDither: 0.14,
+  sand: 0.74,
+  sandDither: 0.42,
+  //how far the noise pushes all of it up and down the slope
+  ragged: 0.12,
+  //over this, a step below the ground that is no shore, there is no sand
+  top: 0.9,
+};
+
 /**
- * The shore of another water, drawn over the one cut out of the pictures:
- * where there was open water, that water as its own tiles have it - flat, as
- * the water is - only as much darker or lighter as the cut one was than open
- * water in the dark line along the land and the light band of the shallows.
- * The beach stays as it is, or takes the colours the water's beach() gives it,
- * by how light it was. The sand is the only thing in a shore that is more red
- * than blue.
- *
- * @param water {number[]} the colour of the cut shore's open water, on the whole
+ * A shore tile of water tileset set on that slope: see-through except where
+ * the water comes up it, and the beach above the water - by how high the
+ * ground is, which runs on from tile to tile, ragged by noise that wraps
+ * round every tile the same, and dithered from one into the next. The water
+ * is flat, the water of the set's own tiles; the beach is lit as the ground
+ * under it is.
  */
-function repaintShore(shore, slope, surf, set, water, seed) {
+function paintShore(set, slope, surf, light, seed) {
   var image = blank(),
     sampler = new Sampler(seed + "/" + set.id, 0, slope),
-    open = luminance(water),
-    sand = [0, 0];
+    z = heights(slope),
+    low = Math.min(z.w, z.n, z.e, z.s),
+    key = seed + "/shore",
+    big = simplex(key + "/big"),
+    small = simplex(key + "/small"),
+    tone = simplex(key + "/tone"),
+    salt = hashString(key + "/" + slope);
 
   surf.pixels.forEach(function (p) {
-    var k = p.i * 4;
+    var n =
+        0.65 * periodic(big, p.u, p.v, 3, 2) +
+        0.35 * periodic(small, p.u, p.v, 9, 1),
+      t = p.h - low + SHORE.ragged * n,
+      d = bayer(p.x, p.y) - 0.5,
+      r = hash(salt, p.x, p.y) - 0.5,
+      c;
 
-    if (shore.data[k + 3] > 0 && shore.data[k] > shore.data[k + 2]) {
-      sand[0] += luminance([
-        shore.data[k],
-        shore.data[k + 1],
-        shore.data[k + 2],
-      ]);
-      sand[1]++;
-    }
-  });
+    if (t + d * SHORE.waterDither + r * 0.03 < SHORE.water) {
+      c = set.albedo(sampler.at(p));
+      //the water at the very edge of it is shallower, and lighter
+      if (t > SHORE.water * 0.6) c = mix(c, [120, 176, 196], 0.3);
+      if (p.rim) {
+        var w = 1 - (1 - light.rim) * set.look.rim;
 
-  surf.pixels.forEach(function (p) {
-    var k = p.i * 4,
-      c = [shore.data[k], shore.data[k + 1], shore.data[k + 2]],
-      relative;
-
-    if (shore.data[k + 3] === 0) return;
-
-    if (c[0] > c[2]) {
-      put(
-        image,
-        p.i,
-        set.beach ? set.beach(luminance(c) / (sand[0] / sand[1])) : c,
-      );
+        c = [c[0] * w, c[1] * w, c[2] * w];
+      }
+      put(image, p.i, c);
       return;
     }
 
-    //open water has a grain of its own, which is not to come through
-    relative = luminance(c) / open;
-    if (Math.abs(relative - 1) < 0.15) relative = 1;
+    if (t + d * SHORE.wetDither + r * 0.04 < SHORE.wet)
+      c = set.beach ? set.beach(0.85) : WET_SAND;
+    else if (
+      t + d * SHORE.sandDither + r * 0.1 < SHORE.sand &&
+      //none at the top of the tile: the ground above it has no sand
+      p.h - low < SHORE.top
+    )
+      c = set.beach
+        ? set.beach(1 + 0.15 * periodic(tone, p.u, p.v, 5, 1))
+        : ramp(SAND, 0.5 + 0.4 * periodic(tone, p.u, p.v, 5, 1) + r * 0.3);
+    else return;
 
-    put(
-      image,
-      p.i,
-      shade(
-        set.albedo(sampler.at(p)),
-        relative < 1 ? relative - 1 : (relative - 1) * 0.5,
-        set.look,
-      ),
-    );
+    c = shade(c, light.faces[slope][p.quad], {
+      lit: 1,
+      dark: 1,
+      shadow: [1, 1, 1],
+    });
+    if (p.rim) c = [c[0] * light.rim, c[1] * light.rim, c[2] * light.rim];
+
+    put(image, p.i, c);
   });
 
   return image;
@@ -1493,69 +1594,52 @@ var DEFAULTS = {
 };
 
 /**
- * Paints one tile at a time, as it is asked for, out of the pictures the
- * game started with - and only what that tile takes: the light is measured
- * off the grass once, and a base or a shore another tile is painted from is
- * painted once and kept.
+ * Paints one tile at a time, as it is asked for - and only what that tile
+ * takes: a base another tile is painted from is painted once and kept.
  *
- * @param sources {{grass: Object, water: Object, shore: Object}} the pictures
- *        the game started with, each by slope code, as {width, height, data}:
- *        the grass of every slope, the water of the flat one, and the shore
- *        of every slope that has one
+ * @param [sources] {Object} nothing: the terrain is painted from nothing.
+ *        Kept so that callers handing it what they used to need not change
  * @param [o] {Object} seed, "isometrica" unless given; variants, of every
- *        painted base tile, 2; diffuseVariants, 2
+ *        base tile of a tileset that does not say how many it has, 2;
+ *        diffuseVariants, 2
  */
 export function createPainter(sources, o) {
   o = Object.assign({}, DEFAULTS, o);
 
-  var grass = sources.grass,
-    slopes = Object.keys(grass).sort(),
+  var slopes = SLOPES.slice(),
     surfaces = {},
     light = null,
-    bases = {},
-    cuts = {},
-    waterMean = null;
+    bases = {};
 
   function surfaceOf(slope) {
-    return surfaces[slope] || (surfaces[slope] = surface(slope, grass[slope]));
+    return surfaces[slope] || (surfaces[slope] = surface(slope));
   }
 
   function lightOf() {
-    if (light === null) {
-      slopes.forEach(surfaceOf);
-      light = measureLight(grass, surfaces);
-    }
-
-    return light;
+    return light || (light = computeLight());
   }
 
   function variantsOf(id) {
-    return TILESETS[id].source ? 1 : o.variants;
+    return TILESETS[id].variants || o.variants;
   }
 
   /**
    * A tileset's ground as it is on that slope, variant v.
    */
   function base(id, slope, v) {
-    var key = id + "/" + slope + "/" + v,
-      set = TILESETS[id];
+    var key = id + "/" + slope + "/" + v;
 
     if (bases[key] === undefined)
-      bases[key] = set.source
-        ? sources[set.source][slope]
-        : paintBase(set, slope, v, surfaceOf(slope), lightOf(), o.seed);
+      bases[key] = paintBase(
+        TILESETS[id],
+        slope,
+        v,
+        surfaceOf(slope),
+        lightOf(),
+        o.seed,
+      );
 
     return bases[key];
-  }
-
-  /**
-   * The water and the beach of the shore pictures on that slope, or null.
-   */
-  function cut(slope) {
-    if (cuts[slope] === undefined)
-      cuts[slope] = cutShore(sources.shore[slope], grass[slope]);
-
-    return cuts[slope];
   }
 
   function diffuse(id, slope, dir, v) {
@@ -1570,15 +1654,14 @@ export function createPainter(sources, o) {
     );
   }
 
+  function hasShore(slope) {
+    return slope !== FLAT;
+  }
+
   function shore(id, slope) {
-    var set = TILESETS[id],
-      shore = cut(slope);
+    if (!hasShore(slope)) return null;
 
-    if (shore === null || set.source) return shore;
-
-    if (waterMean === null) waterMean = mean(base("water_shallow", FLAT, 0));
-
-    return repaintShore(shore, slope, surfaceOf(slope), set, waterMean, o.seed);
+    return paintShore(TILESETS[id], slope, surfaceOf(slope), lightOf(), o.seed);
   }
 
   return {
@@ -1587,9 +1670,7 @@ export function createPainter(sources, o) {
     base: base,
     diffuse: diffuse,
     shore: shore,
-    hasShore: function (slope) {
-      return cut(slope) !== null;
-    },
+    hasShore: hasShore,
 
     /**
      * One tile, by where the manifest says it is - "grass/base/2222_0.png",
@@ -1619,8 +1700,7 @@ export function createPainter(sources, o) {
 /**
  * What generate paints, without painting it: the manifest of the tilesets -
  * every tile of them, where it goes and how they fit together - and every
- * tile's size. Only the shore pictures are looked at, for which slopes have
- * water on them.
+ * tile's size.
  *
  * @param sources {Object} as createPainter takes them
  * @param [o] {Object} as createPainter takes it; and diffuse, false for no
@@ -1673,12 +1753,6 @@ export function describe(sources, o) {
       transitions: {},
     };
 
-  //every tile is the size of a tile, the grass the game started with too
-  slopes.forEach(function (slope) {
-    if (sources.grass[slope].width !== WIDTH)
-      throw new Error("grass " + slope + " is not " + WIDTH + " wide");
-  });
-
   function tile(rel) {
     sizes[rel] = { w: WIDTH, h: HEIGHT };
 
@@ -1693,7 +1767,7 @@ export function describe(sources, o) {
         description: set.description,
         kind: set.kind,
         precedence: PRECEDENCE.indexOf(id),
-        source: set.source || "generated",
+        source: "generated",
         slopes: own,
         base: {},
         diffuse: {},
@@ -1723,8 +1797,7 @@ export function describe(sources, o) {
     manifest.tilesets[id] = entry;
   });
 
-  //shores: cut out of the pictures for the water the game has, and painted
-  //over from that for every other water
+  //shores: every water has one for every slope with a lowest corner
   var waters = ids.filter(function (id) {
     return TILESETS[id].kind === "water";
   });
