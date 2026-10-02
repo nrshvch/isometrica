@@ -1862,4 +1862,4 @@ Object.keys(TILESETS).forEach(function (id) {
   TILESETS[id].id = id;
 });
 
-export { WIDTH, HEIGHT, FLAT, PRECEDENCE };
+export { WIDTH, HEIGHT, FLAT, PRECEDENCE, SHORE };
