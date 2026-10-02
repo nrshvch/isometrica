@@ -533,6 +533,15 @@ function copyBuilding(self, building) {
     building.look,
     building.tile,
   );
+  BuildingView.addFoundations(
+    go,
+    building.data,
+    building.tile,
+    building.rotation,
+    at,
+    1,
+    RenderLayer.footprintLayer,
+  );
 
   go.transform.setPosition(
     at.x * Config.tileSize,
