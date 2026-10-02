@@ -36,14 +36,15 @@ import {
   hedge,
   MATTE,
   GLASSY,
+  madeOf,
   DOOR,
   VENT,
 } from "./blocks.js";
 
 var RUBBER = [184, 108, 88],
-  SAND = [226, 204, 142],
+  SAND = madeOf([226, 204, 142], "sand"),
   GLASS = [88, 124, 156],
-  CONCRETE = [168, 166, 160],
+  CONCRETE = madeOf([168, 166, 160], "concrete"),
   REBAR = [96, 74, 62];
 
 //what a block is built of: its walls, the plinth under them, the stairwells
@@ -429,6 +430,8 @@ var flats = blocks({
   roof: roof,
   frame: frame,
   finish: MATTE,
+  wallsMadeOf: "panels",
+  roofsMadeOf: "felt",
 });
 
 export var describe = flats.describe,

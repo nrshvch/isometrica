@@ -22,35 +22,38 @@
 import * as iso from "./isobox.js";
 import {
   box,
-  darker,
   lighter,
   TILE,
   PAVING,
   ASPHALT,
   STRIPE,
-  METAL,
   LIT,
-  shaded,
   free,
   measureFree,
 } from "./blocks.js";
 
 var GRAVEL = [150, 140, 122],
   KERB = [204, 202, 196],
-  JOINT = darker(PAVING, 0.12),
   LAMP = [252, 238, 180],
   POLE = [112, 120, 130];
 
-//the asphalt's edges across the tile, and how high a pavement stands
+//the asphalt's edges across the tile, and how high a pavement stands - all
+//whole units, so that every edge of a road comes out a clean step of two
+//pixels across for one down (iso snap); a step of the ground is 8 high
 var A0 = 6,
   A1 = 26,
-  KERB_W = 0.8,
-  KERB_H = 1.1,
+  KERB_W = 1,
+  KERB_H = 1,
   STEP = 8;
 
-//the grain of asphalt and of paving slabs
-var TARMAC = { noise: 0.05, base: 0, storey: 12 },
-  SLABS = { noise: 0.03, base: 0, storey: 12 };
+//how thick what is laid on the ground is: as good as nothing, so that the
+//road lies on the ground, each layer over the one before it (iso snap)
+var SKIN = 0.1;
+
+//what the asphalt, the gravel and the paving slabs are made of
+var TARMAC = { material: "asphalt", base: 0, storey: 12 },
+  SLABS = { material: "slabs", base: 0, storey: 12 },
+  STONES = { material: "gravel", base: 0, storey: 12 };
 
 //which way each of a piece's four joins goes, in the order its name gives
 //them - as client/road's profile reads its neighbours: -x, -y, +x, +y
@@ -66,38 +69,27 @@ var RAMPS = {
 };
 
 /**
- * How high the ground is at a spot on a ramp up towards `up`, the middle of
- * the tile at 0 - and which way it slopes there.
+ * How high the ground under a ramp up towards `up` is: [g, h] - it rises
+ * g.x along x and g.y along y for every unit, and is h high where x and y
+ * are 0, the middle of the tile at 0.
  */
-function rampHeight(up, x, y) {
-  var t =
-    up === "-y"
-      ? 1 - y / TILE
-      : up === "+y"
-        ? y / TILE
-        : up === "-x"
-          ? 1 - x / TILE
-          : x / TILE;
-
-  return STEP * t - STEP / 2;
-}
-
-function rampNormal(up) {
+function rampPlane(up) {
   var s = STEP / TILE;
 
   return up === "-y"
-    ? [0, s, 1]
+    ? { gx: 0, gy: -s, h: STEP / 2 }
     : up === "+y"
-      ? [0, -s, 1]
+      ? { gx: 0, gy: s, h: -STEP / 2 }
       : up === "-x"
-        ? [s, 0, 1]
-        : [-s, 0, 1];
+        ? { gx: -s, gy: 0, h: STEP / 2 }
+        : { gx: s, gy: 0, h: -STEP / 2 };
 }
 
 /**
  * A flat rectangle of the surface from x0 to x1, y0 to y1, its top at z over
- * the ground, `thick` deep - or on a ramp, laid out in strips across the
- * slope, each at the height of the ground under it and lit the way it faces.
+ * the ground, `thick` deep - or on a ramp, a slab of the ramp's plane (iso
+ * cut), lit the way the plane looks. Whatever is laid later lies over what
+ * is laid before it.
  */
 function patch(b, ramp, x0, x1, y0, y1, z, thick, color, finish) {
   if (!(x0 < x1 && y0 < y1)) return;
@@ -107,26 +99,18 @@ function patch(b, ramp, x0, x1, y0, y1, z, thick, color, finish) {
     return;
   }
 
-  var n = rampNormal(ramp),
-    lit = shaded(color, n[0], n[1], n[2]),
-    alongY = ramp === "-y" || ramp === "+y",
-    a0 = alongY ? y0 : x0,
-    a1 = alongY ? y1 : x1;
+  var p = rampPlane(ramp),
+    lo = p.h + Math.min(0, p.gx * TILE, p.gy * TILE),
+    hi = p.h + Math.max(0, p.gx * TILE, p.gy * TILE);
 
-  for (var a = a0; a < a1 - 1e-6; a += 0.5) {
-    var e = Math.min(a + 0.5, a1),
-      //as high as its upper end, so that it meets the road where the ramp
-      //comes out on top without a gap showing the edge of it
-      h = alongY
-        ? Math.max(rampHeight(ramp, 0, a), rampHeight(ramp, 0, e))
-        : Math.max(rampHeight(ramp, a, 0), rampHeight(ramp, e, 0));
-
-    b.push(
-      alongY
-        ? box(x0, x1, a, e, h + z - thick, h + z, lit, LIT)
-        : box(a, e, y0, y1, h + z - thick, h + z, lit, LIT),
-    );
-  }
+  b.push(
+    iso.cut(box(x0, x1, y0, y1, lo + z - thick, hi + z, color, finish), [
+      //under the plane z over the ground...
+      iso.plane(-p.gx, -p.gy, 1, p.h + z),
+      //...and over the one `thick` under that
+      iso.plane(p.gx, p.gy, -1, -(p.h + z - thick)),
+    ]),
+  );
 }
 
 //the stretches of a tile's edge-to-edge strip from 0 to TILE along `along`,
@@ -144,7 +128,9 @@ function asphaltRects(joins) {
 
 /**
  * The dashes down the middle of each arm of the road that runs straight on
- * - none over a junction, where there is nothing to keep to.
+ * - none over a junction, where there is nothing to keep to. A dash is a
+ * unit wide and four long: a line a pixel thick, two pixels across for one
+ * down, the same on every tile.
  */
 function centreLines(b, joins, ramp, z) {
   var n = 0;
@@ -170,43 +156,42 @@ function centreLines(b, joins, ramp, z) {
     //a dead end stops short of the end of its arm
     if ((!from && a < A0) || (!to && a + 4 > A1)) continue;
 
-    if (alongX) patch(b, ramp, a, a + 4, 15.4, 16.6, z + 0.05, 0.1, STRIPE);
-    else patch(b, ramp, 15.4, 16.6, a, a + 4, z + 0.05, 0.1, STRIPE);
+    if (alongX) patch(b, ramp, a, a + 4, 15, 16, z, SKIN, STRIPE);
+    else patch(b, ramp, 15, 16, a, a + 4, z, SKIN, STRIPE);
   }
 }
 
 /**
- * Zebra crossings over every arm of a junction, just out from its middle.
+ * Zebra crossings over every arm of a junction, just out from its middle:
+ * stripes two units wide with two between, four long.
  */
 function crossings(b, joins, z) {
-  var stripes = [7, 10, 13, 16, 19, 22];
+  var stripes = [7, 11, 15, 19, 23];
 
   if (joins["-y"])
     stripes.forEach(function (x) {
-      b.push(box(x, x + 1.6, 1.2, 4.8, z, z + 0.1, STRIPE));
+      b.push(box(x, x + 2, 1, 5, z, z + SKIN, STRIPE));
     });
   if (joins["+y"])
     stripes.forEach(function (x) {
-      b.push(box(x, x + 1.6, 27.2, 30.8, z, z + 0.1, STRIPE));
+      b.push(box(x, x + 2, 27, 31, z, z + SKIN, STRIPE));
     });
   if (joins["-x"])
     stripes.forEach(function (y) {
-      b.push(box(1.2, 4.8, y, y + 1.6, z, z + 0.1, STRIPE));
+      b.push(box(1, 5, y, y + 2, z, z + SKIN, STRIPE));
     });
   if (joins["+x"])
     stripes.forEach(function (y) {
-      b.push(box(27.2, 30.8, y, y + 1.6, z, z + 0.1, STRIPE));
+      b.push(box(27, 31, y, y + 2, z, z + SKIN, STRIPE));
     });
 }
 
 /**
  * The pavement round the asphalt: every bit of the tile it does not cover,
- * raised a kerb's height, slabs a few units square - and the kerb along
+ * raised a kerb's height, paved in slabs (iso MATERIALS) - and the kerb along
  * every edge where the pavement meets the road.
  */
 function pavement(b, joins, ramp) {
-  var cells = [];
-
   //the tile in thirds: the corners are always pavement, the sides where no
   //road comes in, and the middle never
   [
@@ -226,28 +211,26 @@ function pavement(b, joins, ramp) {
         (i === 1 && j === 0 && joins["-y"]) ||
         (i === 1 && j === 2 && joins["+y"]);
 
-      if (!road) cells.push([xs[0], xs[1], ys[0], ys[1]]);
+      if (!road)
+        patch(
+          b,
+          ramp,
+          xs[0],
+          xs[1],
+          ys[0],
+          ys[1],
+          KERB_H,
+          KERB_H,
+          PAVING,
+          SLABS,
+        );
     });
-  });
-
-  cells.forEach(function (c) {
-    //the slabs, a joint every four units
-    for (var x = c[0]; x < c[1] - 1e-6; x += 4)
-      for (var y = c[2]; y < c[3] - 1e-6; y += 4) {
-        var x1 = Math.min(x + 4, c[1]),
-          y1 = Math.min(y + 4, c[3]),
-          tint = ((x / 4 + y / 4) | 0) % 2 ? PAVING : lighter(PAVING, 0.04);
-
-        patch(b, ramp, x, x1, y, y1, KERB_H, KERB_H, tint, SLABS);
-        patch(b, ramp, x1 - 0.2, x1, y, y1, KERB_H + 0.02, 0.05, JOINT);
-        patch(b, ramp, x, x1, y1 - 0.2, y1, KERB_H + 0.02, 0.05, JOINT);
-      }
   });
 
   //the kerbs: along each side of the middle square with no road coming in,
   //and along both sides of every arm
   function kerb(x0, x1, y0, y1) {
-    patch(b, ramp, x0, x1, y0, y1, KERB_H + 0.1, KERB_H + 0.1, KERB);
+    patch(b, ramp, x0, x1, y0, y1, KERB_H, KERB_H, KERB);
   }
 
   if (!joins["-y"]) kerb(A0, A1, A0 - KERB_W, A0);
@@ -274,33 +257,40 @@ function pavement(b, joins, ramp) {
 
 /**
  * A piece of road: joins by side, on a ramp up towards `ramp` or flat, plain
- * or paved.
+ * or paved. It lies on the ground, every layer of it a skin over the one
+ * before (iso snap) - the gravel, the asphalt over it, the markings over
+ * that - so that nothing of it stands up off the ground to show an edge.
  */
 function piece(joins, ramp, paved) {
   var b = [];
 
+  //a strip of gravel along the edges of the asphalt - kept on the tile, or
+  //it would lie across the next tile's asphalt where they meet. On a ramp
+  //it is two wide: a line on a slope drifts across the pixels as the slope
+  //climbs, and one a unit wide would come out a pixel here and none there
+  var g = ramp ? 2 : 1;
+
   if (!paved)
-    //a strip of gravel along the edges of the asphalt - kept on the tile,
-    //or it would lie across the next tile's asphalt where they meet
     asphaltRects(joins).forEach(function (r) {
       patch(
         b,
         ramp,
-        Math.max(0, r[0] - 1),
-        Math.min(TILE, r[1] + 1),
-        Math.max(0, r[2] - 1),
-        Math.min(TILE, r[3] + 1),
-        0.15,
-        0.15,
+        Math.max(0, r[0] - g),
+        Math.min(TILE, r[1] + g),
+        Math.max(0, r[2] - g),
+        Math.min(TILE, r[3] + g),
+        SKIN,
+        SKIN,
         GRAVEL,
+        STONES,
       );
     });
 
   asphaltRects(joins).forEach(function (r) {
-    patch(b, ramp, r[0], r[1], r[2], r[3], 0.3, 0.3, ASPHALT, TARMAC);
+    patch(b, ramp, r[0], r[1], r[2], r[3], SKIN, SKIN, ASPHALT, TARMAC);
   });
 
-  centreLines(b, joins, ramp, 0.3);
+  centreLines(b, joins, ramp, SKIN);
 
   if (paved) {
     pavement(b, joins, ramp);
@@ -310,7 +300,7 @@ function piece(joins, ramp, paved) {
     SIDES.forEach(function (s) {
       if (joins[s]) n++;
     });
-    if (n > 2 && !ramp) crossings(b, joins, 0.3);
+    if (n > 2 && !ramp) crossings(b, joins, SKIN);
   }
 
   return b;
@@ -320,7 +310,9 @@ function piece(joins, ramp, paved) {
  * A street light standing on the pavement on the side of the road nearest
  * the camera - in the middle of the tile beside a road along x (`at` "x"),
  * along y ("y"), or at the corner of a junction ("corner") - its arm
- * reaching out over the road, the lamp under the end of it.
+ * reaching out over the road, the lamp under the end of it. A unit thick,
+ * the pole and the arm: two pixels across, lit on one and in shadow on the
+ * other.
  */
 function streetLight(at) {
   var b = [],
@@ -330,40 +322,35 @@ function streetLight(at) {
     dx = at === "y" ? 1 : 0,
     dy = at === "y" ? 0 : 1,
     top = 22,
-    reach = 6;
-
-  b.push(box(x - 0.8, x + 0.8, y - 0.8, y + 0.8, KERB_H, KERB_H + 1.4, POLE));
-  b.push(box(x - 0.45, x + 0.45, y - 0.45, y + 0.45, KERB_H, top, POLE));
-
-  for (var k = 0; k <= reach; k += 0.5)
-    b.push(
-      box(
-        x + dx * k - 0.3,
-        x + dx * k + 0.3,
-        y + dy * k - 0.3,
-        y + dy * k + 0.3,
-        top - 0.6,
-        top,
-        POLE,
-      ),
-    );
-
-  var lx = x + dx * reach,
+    reach = 6,
+    lx = x + dx * reach,
     ly = y + dy * reach;
 
+  b.push(box(x - 1, x + 1, y - 1, y + 1, KERB_H, KERB_H + 2, POLE));
+  b.push(box(x, x + 1, y, y + 1, KERB_H, top, POLE));
+  b.push(box(x, lx + 1, y, ly + 1, top - 1, top, POLE));
   b.push(
     box(
-      lx - 1.6,
-      lx + 1.6,
-      ly - 1.1,
-      ly + 1.1,
+      lx - 1 - dy,
+      lx + 2 + dy,
+      ly - 1 - dx,
+      ly + 2 + dx,
       top - 1,
-      top + 0.3,
+      top,
       lighter(POLE, 0.2),
     ),
   );
   b.push(
-    box(lx - 1.2, lx + 1.2, ly - 0.8, ly + 0.8, top - 1.6, top - 1, LAMP, LIT),
+    box(
+      lx - dy,
+      lx + 1 + dy,
+      ly - dx,
+      ly + 1 + dx,
+      top - 2,
+      top - 1,
+      LAMP,
+      LIT,
+    ),
   );
 
   return b;

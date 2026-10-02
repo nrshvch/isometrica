@@ -33,13 +33,14 @@ import {
   PLINTH,
   MATTE,
   GLASSY,
+  madeOf,
   METAL,
   VENT,
 } from "./blocks.js";
 
-var CONCRETE = [168, 166, 160],
+var CONCRETE = madeOf([168, 166, 160], "concrete"),
   STEEL = [70, 84, 104],
-  STONE = [200, 196, 186],
+  STONE = madeOf([200, 196, 186], "slabs"),
   WATER = [96, 160, 210],
   PLANTER = [140, 132, 122],
   FAN = [60, 62, 66],
@@ -551,6 +552,7 @@ var offices = blocks({
   roof: roof,
   frame: frame,
   finish: MATTE,
+  roofsMadeOf: "felt",
 });
 
 export var describe = offices.describe,

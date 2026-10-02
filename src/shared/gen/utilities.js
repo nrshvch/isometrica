@@ -26,6 +26,7 @@ import {
   DIRT,
   LIT,
   MATTE,
+  madeOf,
   shaded,
   measureOnTile,
   onTile,
@@ -37,7 +38,7 @@ var STEEL = [168, 178, 192],
   BAND = [52, 104, 176],
   ROOF = [196, 204, 214],
   BARE = [132, 138, 146],
-  GRAVEL = [196, 190, 176],
+  GRAVEL = madeOf([196, 190, 176], "gravel"),
   PIPE = [92, 120, 150];
 
 //where the middle of the tower is, the tank's radius, and how high it sits
@@ -78,23 +79,23 @@ function legs(b, top, color) {
 
     b.push(box(f[0] - 1.6, f[0] + 1.6, f[1] - 1.6, f[1] + 1.6, 0, 2, CONCRETE));
 
-    for (var z = 2; z < top; z += 1.5) {
-      var p = legAt(c[0], c[1], z + 0.75);
+    //two units square, stepping in a whole unit at a time, so that it comes
+    //out a column two pixels wide with clean steps in it
+    for (var z = 2; z < top; z += 1) {
+      var p = legAt(c[0], c[1], z + 0.5),
+        px = Math.round(p[0]),
+        py = Math.round(p[1]);
 
       b.push(
-        box(
-          p[0] - 0.7,
-          p[0] + 0.7,
-          p[1] - 0.7,
-          p[1] + 0.7,
-          z,
-          Math.min(z + 1.5, top),
-          color,
-        ),
+        box(px - 1, px + 1, py - 1, py + 1, z, Math.min(z + 1, top), color),
       );
     }
   });
 }
+
+//a rod is a line a pixel thin, whichever way it goes: not snapped to whole
+//units (iso snap)
+var FINE = { fine: true };
 
 //a rod from one point to another, as a string of small cubes along it
 function rod(b, a, c, t, color) {
@@ -108,7 +109,7 @@ function rod(b, a, c, t, color) {
       y = a[1] + (dy * i) / n,
       z = a[2] + (dz * i) / n;
 
-    b.push(box(x - t, x + t, y - t, y + t, z - t, z + t, color));
+    b.push(box(x - t, x + t, y - t, y + t, z - t, z + t, color, FINE));
   }
 }
 
