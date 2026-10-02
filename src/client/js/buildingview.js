@@ -119,7 +119,14 @@ function addFoundations(
 
       if (!any) continue;
 
-      var name = "gen/foundations/" + drops.join(""),
+      //on the shore, the base goes down into the water rather than to the
+      //ground, the water looking higher there (shared/gen/foundations)
+      var name =
+          "gen/foundations/" +
+          (terrain.getTerrainType(x, y) === Core.TerrainType.shore
+            ? "shore/"
+            : "") +
+          drops.join(""),
         frame = vkaria.sprites.frame(name),
         renderer = new engine.SpriteRenderer(),
         go = new engine.GameObject();

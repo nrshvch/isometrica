@@ -153,7 +153,10 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   ground (`src/shared/gen/foundations.js`, `BuildingView` addFoundations) -
   as long as the ground falls no more than a step anywhere under it
   (`src/core/buildings.js`). The base is picked as the tile is seen, so it
-  turns with the camera. Roads are not laid on the shore.
+  turns with the camera. On the shore, where the water is painted a little
+  way up the ground and so looks higher, the base is cut off at that
+  waterline instead, wet and darker along it. Roads are not laid on the
+  shore.
 - The trees are painted too (`src/shared/gen/trees.js`): oak, beech, ash
   and alder, two of each, ray-traced from the angle the boxes are seen from
   and lit in a few flat tones of their own. The world grows each kind in

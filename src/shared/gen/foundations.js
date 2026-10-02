@@ -13,15 +13,39 @@
  * edges in front, from nothing where the ground is up at the top to a step
  * where it is not.
  *
+ * On a shore tile the water is painted a little way up the ground
+ * (shared/gen/terrain SHORE), so it looks higher there than it is - and the
+ * base goes down into it there, not to the ground under it: a shore piece is
+ * cut off at that waterline, a band of wet concrete along it, darker, and
+ * the water painted on the tile shows under it.
+ *
  * Every piece is named by how far each corner of its tile is below the top,
  * as it is seen (client/view corner): W, N, E, S, each 0 or 1 -
- * "gen/foundations/0011". Its pivot is the middle of the tile at the top.
+ * "gen/foundations/0011", or on the shore "gen/foundations/shore/0011". Its
+ * pivot is the middle of the tile at the top.
  */
 import * as iso from "./isobox.js";
-import { box, CONCRETE, free, measureFree, TILE } from "./blocks.js";
+import {
+  box,
+  CONCRETE,
+  darker,
+  free,
+  madeOf,
+  measureFree,
+  TILE,
+} from "./blocks.js";
+import { SHORE } from "./terrain.js";
 
 //a step of the ground, in units
 var STEP = 8;
+
+//how far over the foot of a shore piece - the ground at the water's level -
+//the water looks to come up it, in whole units: as high as the water is
+//painted up the ground, a little higher where it is ragged
+var WATERLINE = Math.ceil(SHORE.water * STEP);
+
+//concrete the water has wetted, along the waterline
+var WET_CONCRETE = madeOf(darker(CONCRETE, 0.28), "concrete");
 
 //the corners, in the order a name gives them: W, N, E, S - [x, y] on the tile
 var CORNERS = [
@@ -31,14 +55,18 @@ var CORNERS = [
   [0, 0],
 ];
 
-//every way the corners can be, but all of them at the top
+//every way the corners can be, but all of them at the top - on dry land,
+//and on the shore
 export var NAMES = [];
 
-for (var i = 1; i < 16; i++)
-  NAMES.push(
-    "gen/foundations/" +
-      [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1].join(""),
-  );
+["", "shore/"].forEach(function (where) {
+  for (var i = 1; i < 16; i++)
+    NAMES.push(
+      "gen/foundations/" +
+        where +
+        [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1].join(""),
+    );
+});
 
 /**
  * The diagonal the ground of a tile folds along, as shared/gen/terrain has it:
@@ -79,8 +107,10 @@ function planeThrough(p, q, r) {
  * into a slab down to the ground there.
  *
  * @param drops {number[]} how far W, N, E and S are below the top, 0 or 1
+ * @param [shore] {boolean} cut off where the water looks to come up to, its
+ *        corners a step down at the water's level
  */
-export function boxesOf(drops) {
+export function boxesOf(drops, shore) {
   var z = drops.map(function (d) {
       return -d * STEP;
     }),
@@ -102,28 +132,43 @@ export function boxesOf(drops) {
             { corners: [0, 2, 3], side: iso.plane(1, 1, 0, TILE) },
           ];
 
-  return halves.map(function (h) {
-    var g = planeThrough(
-      corner(h.corners[0]),
-      corner(h.corners[1]),
-      corner(h.corners[2]),
-    );
+  var out = [],
+    //on the shore: what is under the water does not show, and what is just
+    //over it is wet
+    foot = shore ? -STEP + WATERLINE : -STEP;
 
-    return iso.cut(box(0, TILE, 0, TILE, -STEP, 0, CONCRETE), [
-      h.side,
-      //over the ground: z >= a x + b y + c
-      iso.plane(g.a, g.b, -1, -g.c),
-    ]);
+  halves.forEach(function (h) {
+    var g = planeThrough(
+        corner(h.corners[0]),
+        corner(h.corners[1]),
+        corner(h.corners[2]),
+      ),
+      keep = [
+        h.side,
+        //over the ground: z >= a x + b y + c
+        iso.plane(g.a, g.b, -1, -g.c),
+      ];
+
+    if (shore) {
+      out.push(
+        iso.cut(box(0, TILE, 0, TILE, foot, foot + 1, WET_CONCRETE), keep),
+      );
+      out.push(iso.cut(box(0, TILE, 0, TILE, foot + 1, 0, CONCRETE), keep));
+    } else out.push(iso.cut(box(0, TILE, 0, TILE, foot, 0, CONCRETE), keep));
   });
+
+  return out;
 }
 
-function dropsOf(name) {
-  var m = /^gen\/foundations\/([01]{4})$/.exec(name);
+//what a piece's name says: how far its corners drop, and whether it is on
+//the shore
+function pieceOf(name) {
+  var m = /^gen\/foundations\/(shore\/)?([01]{4})$/.exec(name);
 
-  if (m === null || m[1] === "0000")
+  if (m === null || m[2] === "0000")
     throw new Error("no such foundation: " + name);
 
-  return m[1].split("").map(Number);
+  return { drops: m[2].split("").map(Number), shore: m[1] !== undefined };
 }
 
 /**
@@ -133,10 +178,12 @@ export function describe() {
   var sizes = {};
 
   NAMES.forEach(function (name) {
-    sizes[name] = measureFree(boxesOf(dropsOf(name)));
+    var p = pieceOf(name);
+
+    sizes[name] = measureFree(boxesOf(p.drops, p.shore));
   });
 
-  return { sizes: sizes, data: { step: STEP } };
+  return { sizes: sizes, data: { step: STEP, waterline: WATERLINE } };
 }
 
 /**
@@ -145,5 +192,7 @@ export function describe() {
  * @returns {{width, height, data}}
  */
 export function paint(name) {
-  return iso.toImage(free(boxesOf(dropsOf(name))));
+  var p = pieceOf(name);
+
+  return iso.toImage(free(boxesOf(p.drops, p.shore)));
 }
