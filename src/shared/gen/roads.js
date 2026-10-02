@@ -144,8 +144,9 @@ function centreLines(b, joins, ramp, z) {
   var alongX = joins["-x"] || joins["+x"],
     alongY = joins["-y"] || joins["+y"];
 
-  //a bend, or a lone end: no line
-  if (alongX === alongY) return;
+  //a bend, or a lone end: no line - and on a ramp the dashes are stamped on
+  //the picture (see stamps)
+  if (alongX === alongY || ramp) return;
 
   //a dash every eight, so that they keep the same step from one tile to
   //the next
@@ -437,7 +438,71 @@ export function describe() {
  * @returns {{width, height, data}}
  */
 export function paint(name) {
-  return iso.toImage(free(boxesOf(name)));
+  var s = SPRITES[name],
+    picture = free(boxesOf(name));
+
+  if (s.ramp) stamps(picture, s.ramp);
+
+  return iso.toImage(picture);
+}
+
+/**
+ * The dashes down the middle of a ramp, stamped on its picture the way they
+ * are drawn by hand on the ramps of old (assets/sprites/road/elevation*):
+ * each the same few pixels in a line the way the road goes across the
+ * screen - three level ones up a gentle slope, four in a step up a steep one
+ * - wherever its middle lands, never a dash laid on the slope and cut up by
+ * the pixels it crosses.
+ */
+function stamps(picture, up) {
+  var p = rampPlane(up),
+    alongY = up === "-y" || up === "+y",
+    //where the world's origin is in the picture (free puts the pivot on the
+    //middle of the tile)
+    middle = iso.project(TILE / 2, TILE / 2, 0),
+    ox = picture.pivotX - middle[0],
+    oy = picture.pivotY - middle[1],
+    color = iso.lit(STRIPE, -p.gx, -p.gy, 1);
+
+  function at(a) {
+    var x = alongY ? 15.5 : a,
+      y = alongY ? a : 15.5,
+      q = iso.project(x, y, p.h + p.gx * x + p.gy * y);
+
+    return [Math.floor(q[0] + ox), Math.floor(q[1] + oy)];
+  }
+
+  function put(i, j) {
+    if (i >= 0 && j >= 0 && i < picture.w && j < picture.h)
+      picture.pixels[j * picture.w + i] = color;
+  }
+
+  //a dash every eight, as on the flat, from a half to three and a half
+  for (var a = 2; a < TILE; a += 8) {
+    var p0 = at(a + 0.5),
+      p1 = at(a + 3.5),
+      dx = p1[0] - p0[0],
+      dy = p1[1] - p0[1],
+      n = Math.max(Math.abs(dx), Math.abs(dy));
+
+    //up a gentle slope the road runs nearly level across the screen: three
+    //pixels in a row, where its middle is
+    if (Math.abs(dx) >= 3 * Math.abs(dy)) {
+      var mi = Math.round((p0[0] + p1[0]) / 2),
+        mj = Math.round((p0[1] + p1[1]) / 2);
+
+      put(mi - 1, mj);
+      put(mi, mj);
+      put(mi + 1, mj);
+      continue;
+    }
+
+    for (var k = 0; k <= n; k++)
+      put(
+        p0[0] + Math.round((dx * k) / (n || 1)),
+        p0[1] + Math.round((dy * k) / (n || 1)),
+      );
+  }
 }
 
 export { SPRITES };

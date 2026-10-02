@@ -383,8 +383,12 @@ function cast(boxes, sx, sy) {
 
   if (hit === null) return null;
 
-  //a box lit already is its own colour on every face
-  if (hit.finish !== undefined && hit.finish.lit) return hit.color;
+  //a box lit already is its own colour on every face - with what it is
+  //made of over it, if anything
+  if (hit.finish !== undefined && hit.finish.lit)
+    return hit.finish.material === undefined
+      ? hit.color
+      : finish(hit.color, face, null, hit.finish, x + best, y + best, z - best);
 
   var normal = face >= 3 ? hit.cuts[face - 3].n : null,
     color =
