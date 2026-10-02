@@ -20,6 +20,7 @@ import * as Sites from "./sites.js";
 import * as Shops from "./shops.js";
 import * as Houses from "./houses.js";
 import * as Utilities from "./utilities.js";
+import * as Parks from "./parks.js";
 import * as Roads from "./roads.js";
 import { tileName, shoreName } from "./names.js";
 
@@ -39,6 +40,7 @@ export var GENERATORS = [
   "shops",
   "houses",
   "utilities",
+  "parks",
   "roads",
 ];
 
@@ -52,6 +54,7 @@ var BLOCKS = {
   shops: Shops,
   houses: Houses,
   utilities: Utilities,
+  parks: Parks,
   roads: Roads,
 };
 
@@ -66,6 +69,7 @@ export var INPUTS = {
   shops: [],
   houses: [],
   utilities: [],
+  parks: [],
   roads: [],
   stones: ["scenery/stones/", "terrain/grass/2222.png"],
 };

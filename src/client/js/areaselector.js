@@ -38,6 +38,7 @@ import WorldCamera from "./components/camerascript";
 import Events from "events";
 import Core from "core/main";
 import * as glMatrix from "gl-matrix";
+import ServiceMan from "./serviceman";
 
 var Terrain = Core.Terrain;
 
@@ -756,6 +757,18 @@ function onClick(sender, e, me) {
 
   hit = pick(me, x, y);
 
+  //shaping the ground, a building tapped is the ground it stands on
+  if (me._pickBuildings && !hit.preview) {
+    var building = root.buildman.pickBuilding(x, y);
+
+    if (building === null && hit.tile !== -1)
+      building = root.core.buildings.get(hit.tile);
+    if (building !== null && building !== undefined) {
+      me.selectTiles(ServiceMan.footprint(building));
+      return;
+    }
+  }
+
   if (hit.preview || hit.tile === -1 || root.serviceman.inspect(x, y)) return;
 
   if (!contains(me, Terrain.extractX(hit.tile), Terrain.extractY(hit.tile)))
@@ -788,6 +801,9 @@ var events = {
  *        resizable    - false for a selection of one footprint only: no
  *                       handles, it can only be dragged about or tapped
  *                       somewhere else
+ *        buildings    - a building tapped selects the tiles it stands on,
+ *                       rather than showing what it is doing - for shaping
+ *                       the ground, where it is the ground that is wanted
  * @constructor
  */
 function AreaSelector(root, options) {
@@ -801,6 +817,7 @@ function AreaSelector(root, options) {
   this._turns = options.turns === true;
   this._corners = options.corners !== false;
   this._resizable = options.resizable !== false;
+  this._pickBuildings = options.buildings === true;
   this._handleTokens = [];
   this._handles = {};
   this._cells = {};
@@ -846,6 +863,35 @@ function AreaSelector(root, options) {
 }
 
 AreaSelector.events = events;
+
+/**
+ * Makes these tiles the selection - in one piece, as a building's footprint
+ * is - for a selection of single tiles.
+ *
+ * @param tiles {number[]}
+ */
+AreaSelector.prototype.selectTiles = function (tiles) {
+  var x0 = Infinity,
+    y0 = Infinity,
+    cells = {},
+    i;
+
+  if (tiles.length === 0) return;
+
+  for (i = 0; i < tiles.length; i++) {
+    x0 = Math.min(x0, Terrain.extractX(tiles[i]));
+    y0 = Math.min(y0, Terrain.extractY(tiles[i]));
+  }
+
+  for (i = 0; i < tiles.length; i++)
+    add(
+      cells,
+      (Terrain.extractX(tiles[i]) - x0) / this._stepX,
+      (Terrain.extractY(tiles[i]) - y0) / this._stepY,
+    );
+
+  select(this, x0, y0, cells, true);
+};
 
 /**
  * Turns the whole selection round the way a building is turned - flipped over

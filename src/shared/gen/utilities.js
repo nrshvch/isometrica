@@ -76,7 +76,7 @@ function litMade(material) {
  * @param color {function(z): number[]} the colour at a height - for bands
  * @param [material] {string} what it is made of (iso MATERIALS)
  */
-function turned(b, cx, cy, z0, z1, r, color, material) {
+export function turned(b, cx, cy, z0, z1, r, color, material) {
   var fin = litMade(material),
     rmax = 0,
     z,
@@ -127,7 +127,7 @@ function turned(b, cx, cy, z0, z1, r, color, material) {
 }
 
 //a round flat top at z, radius r: columns a unit across, lit from above
-function disc(b, cx, cy, r, z, color, material) {
+export function disc(b, cx, cy, r, z, color, material) {
   for (var i = -Math.ceil(r); i < Math.ceil(r); i++) {
     var mid = i + 0.5,
       h = r > Math.abs(mid) ? Math.sqrt(r * r - mid * mid) : 0,

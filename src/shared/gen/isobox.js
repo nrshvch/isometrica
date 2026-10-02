@@ -645,6 +645,16 @@ var MATERIALS = {
     return k + (h < 0.16 ? -0.08 : h > 0.9 ? 0.06 : 0);
   },
 
+  //water: still, a glint here and there and ripples running across it
+  water: function (u, v) {
+    var h = hash(u, v, 201);
+
+    if (h < 0.04) return 0.2;
+    if (mod(u + 3 * v, 11) === 0) return 0.08;
+
+    return jitter(u >> 2, v >> 1, 202) * 0.02;
+  },
+
   //sand: fine, a grain lighter or darker here and there
   sand: function (u, v) {
     var h = hash(u, v, 181);

@@ -92,6 +92,31 @@ function orderOf(code) {
   return variants ? Math.min.apply(null, variants) : parseInt(code, 10);
 }
 
+//what a game starts with comes first: whatever needs nothing - no road, no
+//water - can go down on the first day, the houses and the water tower that a
+//village is made of before what only looks well, a park; and the rest only
+//once there are roads and water to it
+function startRank(code) {
+  var b = BuildingData[code],
+    requires = b.requires || {},
+    gives =
+      b.citizenCapacity ||
+      b.waterRadius ||
+      b.jobs ||
+      Object.keys(b.producing || {}).length > 0;
+
+  if (requires.road || requires.water) return 2;
+
+  return gives ? 0 : 1;
+}
+
+//and within that, the cheaper first: the order a town gets built in
+function costOf(code) {
+  var cost = BuildingData[code].constructionCost || {};
+
+  return cost.money || 0;
+}
+
 // Buildings still carry a classCode (see data/classcode, data/classes) so the
 // category grouping stays in the data, but the catalogue UI no longer splits
 // on it - everything is shown as one flat list.
@@ -116,12 +141,17 @@ function getBuildings(self) {
       );
     }
   }
-  //the rest go by code - a type where its first variant would be, so that
-  //it stands among the buildings it goes up as
+  //what a game starts with first, then by cost - and among the same, by
+  //code: a type where its first variant would be
   return r.sort(function (x, y) {
+    var a = x.get("code"),
+      b = y.get("code");
+
     return (
-      lastRank(x.get("code")) - lastRank(y.get("code")) ||
-      orderOf(x.get("code")) - orderOf(y.get("code"))
+      lastRank(a) - lastRank(b) ||
+      startRank(a) - startRank(b) ||
+      costOf(a) - costOf(b) ||
+      orderOf(a) - orderOf(b)
     );
   });
 }

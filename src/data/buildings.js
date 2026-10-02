@@ -32,6 +32,7 @@ import Flats from "./flats";
 import Offices from "./offices";
 import Shops from "./shops";
 import Houses from "./houses";
+import Parks from "./parks";
 
 var Core = namespace("Isometrica.Core");
 
@@ -1252,6 +1253,7 @@ Object.assign(
   Offices.buildings(),
   Shops.buildings(),
   Houses.buildings(),
+  Parks.buildings(),
 );
 
 export default buildingData;
