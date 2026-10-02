@@ -1,6 +1,7 @@
 /**
  * Created by denis on 8/27/14.
  */
+import View from "./view";
 import Config from "./config";
 import Engine from "engine";
 import Events from "events";
@@ -44,10 +45,16 @@ function place(self, go, tile, spriteData) {
       ? terrain.getHeight(x + 0.5, y + 0.5)
       : terrain.getGridPointHeight(x + 1, y);
 
+  //where it is drawn, the world turned (see client/view) - a tree on the
+  //corner of its tile it is drawn on as the tile is drawn
+  var d = View.point(x, y);
+
+  if (!spriteData.flat) z = View.gridHeight(terrain, d[0] + 1, d[1]);
+
   go.transform.setPosition(
-    x * Config.tileSize,
+    d[0] * Config.tileSize,
     z * Config.tileZStep,
-    y * Config.tileSize,
+    d[1] * Config.tileSize,
   );
 }
 
@@ -163,6 +170,22 @@ function EnvMan(root) {
 }
 
 EnvMan.prototype.init = function () {
+  //the world turned (see client/view): the trees and stones where their
+  //tiles are drawn now
+  Events.on(
+    View,
+    View.events.change,
+    function () {
+      for (var tile in this._scenery) {
+        var spriteData = sceneryOf(this, +tile);
+
+        if (spriteData !== null)
+          place(this, this._scenery[tile], +tile, spriteData);
+      }
+    },
+    this,
+  );
+
   this.core = this.root.core;
 
   var chunks = this.root.chunkman.getChunks();

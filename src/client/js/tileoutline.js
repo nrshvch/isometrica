@@ -20,6 +20,7 @@
  * reach are all drawn: one continuous line around "these tiles, together",
  * rather than a grid of per tile hilites.
  */
+import View from "./view";
 import Core from "core/main";
 import Config from "./config";
 
@@ -264,13 +265,10 @@ function points(paths, terrain, padding) {
 
       inset = corner(path, j, padding);
 
-      ring.push(
-        new Float32Array([
-          x * ts - ts / 2 + inset[0],
-          z * zStep,
-          y * ts - ts / 2 + inset[1],
-        ]),
-      );
+      //where the corner is drawn, the world turned (see client/view)
+      var at = View.point(x - 0.5 + inset[0] / ts, y - 0.5 + inset[1] / ts);
+
+      ring.push(new Float32Array([at[0] * ts, z * zStep, at[1] * ts]));
     }
 
     out.push(ring);

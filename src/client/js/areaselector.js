@@ -39,6 +39,7 @@ import Events from "events";
 import Core from "core/main";
 import * as glMatrix from "gl-matrix";
 import ServiceMan from "./serviceman";
+import View from "./view";
 
 var Terrain = Core.Terrain;
 
@@ -111,9 +112,12 @@ function outlineAt(me, tile, screenX, screenY) {
     var id = gx - x0 + "," + (gy - y0) + (flat ? "f" : "");
 
     if (projected[id] === undefined) {
-      cornerBuffer[0] = (gx - 0.5) * ts;
+      //where the corner is drawn, the world turned (see client/view)
+      var at = View.point(gx - 0.5, gy - 0.5);
+
+      cornerBuffer[0] = at[0] * ts;
       cornerBuffer[1] = flat ? 0 : terrain.getGridPointHeight(gx, gy) * zStep;
-      cornerBuffer[2] = (gy - 0.5) * ts;
+      cornerBuffer[2] = at[1] * ts;
       glMatrix.vec3.transformMat4(cornerBuffer, cornerBuffer, m);
       projected[id] = [cornerBuffer[0], cornerBuffer[1], cornerBuffer[2]];
     }
@@ -193,10 +197,10 @@ function centerTile(me) {
 
   pos = cam.gameObject.transform.getPosition();
 
-  return Terrain.convertToIndex(
-    Math.round(pos[0] / Config.tileSize),
-    Math.round(pos[2] / Config.tileSize),
-  );
+  //the world turned (see client/view)
+  var at = View.unpoint(pos[0] / Config.tileSize, pos[2] / Config.tileSize);
+
+  return Terrain.convertToIndex(Math.round(at[0]), Math.round(at[1]));
 }
 
 function key(i, j) {
@@ -563,10 +567,11 @@ function choose(me, options, screenX, screenY) {
     //where a step along the world's x and along its z - the tiles' y -
     //go on screen, and the step along each that screenX, screenY is
     det = m[0] * m[9] - m[8] * m[1],
-    along = [
+    //as drawn, then in the world, the world turned (see client/view)
+    along = View.unvector(
       (screenX * m[9] - m[8] * screenY) / det / Config.tileSize,
       (m[0] * screenY - screenX * m[1]) / det / Config.tileSize,
-    ],
+    ),
     first = Math.abs(along[0]) >= Math.abs(along[1]) ? 0 : 1,
     axes = [first, 1 - first],
     n,

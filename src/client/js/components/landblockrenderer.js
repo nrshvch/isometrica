@@ -14,6 +14,7 @@ import * as glMatrix from "gl-matrix";
 import Config from "../config";
 import RenderLayer from "../renderlayer";
 import { PADDING } from "../tileoutline";
+import View from "../view";
 
 var Vec3 = glMatrix.vec3;
 var float32Buffer = new Float32Array(3);
@@ -25,11 +26,10 @@ function gridPoint(terrain, gx, gy, insetX, insetY) {
     //down to the bottom of the bay
     z = Math.max(terrain.getGridPointHeight(gx, gy), 0);
 
-  return new Float32Array([
-    gx * ts - ts / 2 + insetX,
-    z * Config.tileZStep,
-    gy * ts - ts / 2 + insetY,
-  ]);
+  //where it is drawn, the world turned (see client/view)
+  var at = View.point(gx - 0.5 + insetX / ts, gy - 0.5 + insetY / ts);
+
+  return new Float32Array([at[0] * ts, z * Config.tileZStep, at[1] * ts]);
 }
 
 function calculatePerimeter(terrain, block) {

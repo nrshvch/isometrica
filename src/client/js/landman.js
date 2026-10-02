@@ -14,6 +14,7 @@
  *
  * Outside the mode the world shows the city and nothing for sale.
  */
+import View from "./view";
 import Core from "core/main";
 import Events from "events";
 import Numeral from "numeral";
@@ -56,11 +57,17 @@ function blockCenter(root, block) {
   var terrain = root.core.world.terrain,
     half = block.size >> 1;
 
+  //where it is drawn, the world turned (see client/view)
+  var at = View.point(
+    block.x0 + (block.size - 1) / 2,
+    block.y0 + (block.size - 1) / 2,
+  );
+
   return [
-    (block.x0 + (block.size - 1) / 2) * Config.tileSize,
+    at[0] * Config.tileSize,
     terrain.getGridPointHeight(block.x0 + half, block.y0 + half) *
       Config.tileZStep,
-    (block.y0 + (block.size - 1) / 2) * Config.tileSize,
+    at[1] * Config.tileSize,
   ];
 }
 

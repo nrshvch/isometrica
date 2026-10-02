@@ -11,6 +11,7 @@ import RenderLayer from "../renderlayer";
 import Events from "events";
 import { outline } from "../tileoutline";
 import Core from "core/main";
+import View from "../view";
 
 var Vec3 = glMatrix.vec3;
 var float32Buffer = new Float32Array(3);
@@ -39,6 +40,8 @@ function CityBorderRenderer(city) {
 
   var area = city.area;
   Events.on(area, area.events.change, onAreaChange, this);
+  //and when the world turns (see client/view)
+  Events.on(View, View.events.change, onAreaChange, this);
   Events.on(
     city.world.terrain,
     Core.Terrain.events.gridUpdate,

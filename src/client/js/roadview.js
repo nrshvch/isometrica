@@ -9,19 +9,32 @@ import engine from "engine";
 import RenderLayer from "client/renderlayer";
 import Config from "./config";
 import Core from "core/main";
+import View from "./view";
 
 var Terrain = Core.Terrain;
 
 //what a road's piece number (see Road.profile) is drawn with: the roads
 //generator's pieces (shared/gen/roads) - plain or paved, by how the road
 //joins up with its neighbours, or a ramp
+//- as it is drawn, the world turned (see client/view): joined up the ways the
+//turn brings its joins round to, a ramp up the way it brings its slope to
 function spriteOf(id) {
   var shape = id % Road_PAVED,
     kind = id >= Road_PAVED ? "paved" : "plain";
 
-  if (shape < 10) return "gen/roads/" + kind + "/ramp" + shape;
+  if (shape < 10) return "gen/roads/" + kind + "/ramp" + View.ramp(shape);
 
-  return "gen/roads/" + kind + "/" + String(shape - 90000 + 10000).slice(1);
+  return "gen/roads/" + kind + "/" + View.joins(joinsOf(shape)).join("");
+}
+
+//the joins of a piece 9abcd, towards -x, -y, +x and +y
+function joinsOf(shape) {
+  return [
+    Math.floor(shape / 1000) % 10,
+    Math.floor(shape / 100) % 10,
+    Math.floor(shape / 10) % 10,
+    shape % 10,
+  ];
 }
 
 //where a paved street has its street light, if it has one there: beside a
@@ -33,12 +46,10 @@ function lightOf(id, tile) {
   if (id < Road_PAVED || shape < 10) return null;
   if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
 
-  var a = Math.floor(shape / 1000) % 10,
-    b = Math.floor(shape / 100) % 10,
-    c = Math.floor(shape / 10) % 10,
-    d = shape % 10,
-    alongX = a || c,
-    alongY = b || d;
+  //as it is drawn: a road along x in the world runs along y on an odd turn
+  var j = View.joins(joinsOf(shape)),
+    alongX = j[0] || j[2],
+    alongY = j[1] || j[3];
 
   return (
     "gen/roads/light/" +
@@ -145,12 +156,14 @@ function addSprite(parent, id, opacity, layer) {
 function place(go, tile) {
   var x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
-    z = vkaria.core.world.terrain.getHeight(x + 0.5, y + 0.5);
+    z = vkaria.core.world.terrain.getHeight(x + 0.5, y + 0.5),
+    //where it is drawn, the world turned (see client/view)
+    d = View.point(x, y);
 
   go.transform.setPosition(
-    x * Config.tileSize,
+    d[0] * Config.tileSize,
     z * Config.tileZStep,
-    y * Config.tileSize,
+    d[1] * Config.tileSize,
   );
 }
 

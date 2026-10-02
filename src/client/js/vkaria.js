@@ -23,6 +23,8 @@ import Player from "./player";
 import CameraMan from "./cameraman";
 import Carman from "./carman";
 import SpriteCache from "./spritecache";
+import Config from "./config";
+import View from "./view";
 
 function Vkaria(core, ui, callback) {
   // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -104,6 +106,29 @@ Vkaria.prototype.prepare = function (callback) {
     .then(function () {
       callback && callback();
     });
+};
+
+/**
+ * Turns the world round under the camera by so many quarter turns, clockwise
+ * as seen from above for more than 0 (see client/view) - about the ground in
+ * the middle of the screen, which stays there. Not while an action owns the
+ * world: what it has drawn on the ground stays where it was drawn.
+ *
+ * @param by {number}
+ */
+Vkaria.prototype.turnView = function (by) {
+  if (this.ui.gameScreen().worldScreen().busy()) return;
+
+  var transform = this.camera.transform,
+    pos = transform.getPosition(),
+    ts = Config.tileSize,
+    world = View.unpoint(pos[0] / ts, pos[2] / ts);
+
+  View.setTurns(View.turns() + by);
+
+  var at = View.point(world[0], world[1]);
+
+  transform.setPosition(at[0] * ts, pos[1], at[1] * ts);
 };
 
 Vkaria.prototype.start = function () {

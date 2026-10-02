@@ -1,5 +1,6 @@
 import Config from "../config";
 import engine from "engine";
+import View from "../view";
 
 function Script() {
   engine.Component.call(this);
@@ -21,7 +22,10 @@ Script.prototype.setHiliteData = function (hiliteData) {
 
   r.borderDash = hiliteData.borderDash || null;
 
-  r.arrow = hiliteData.arrow || null;
+  //which way it points as drawn, the world turned (see client/view)
+  r.arrow = hiliteData.arrow
+    ? View.vector(hiliteData.arrow[0], hiliteData.arrow[1])
+    : null;
   r.square = hiliteData.square === true;
 
   if (hiliteData.markerColor !== undefined)
@@ -30,12 +34,14 @@ Script.prototype.setHiliteData = function (hiliteData) {
   var terrain = vkaria.core.world.terrain;
   var type = terrain.getTerrainType(r.x, r.y);
 
-  var gps = [
-    terrain.getGridPointHeight(r.x, r.y),
-    terrain.getGridPointHeight(r.x + 1, r.y),
-    terrain.getGridPointHeight(r.x, r.y + 1),
-    terrain.getGridPointHeight(r.x + 1, r.y + 1),
-  ];
+  //its corners as the tile is drawn, the world turned (see client/view)
+  var d = View.point(r.x, r.y),
+    gps = [
+      View.gridHeight(terrain, d[0], d[1]),
+      View.gridHeight(terrain, d[0] + 1, d[1]),
+      View.gridHeight(terrain, d[0], d[1] + 1),
+      View.gridHeight(terrain, d[0] + 1, d[1] + 1),
+    ];
   var zStep = Config.tileZStep;
 
   //water is drawn flat at its surface, but shaping the ground means shaping
@@ -47,9 +53,9 @@ Script.prototype.setHiliteData = function (hiliteData) {
   //one reaching past the edge of what is loaded, or left behind while the
   //map was panned away
   t.setPosition(
-    r.x * Config.tileSize,
+    d[0] * Config.tileSize,
     type === 0 ? 0 : gps[2] * zStep,
-    r.y * Config.tileSize,
+    d[1] * Config.tileSize,
   );
 
   if (type === 0) {

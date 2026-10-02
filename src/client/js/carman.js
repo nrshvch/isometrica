@@ -8,6 +8,7 @@ import SmokeScript from "./components/smokeScript";
 import VTime from "core/vtime";
 import CoreConfig from "core/config";
 import BuildingClassCode from "data/classcode";
+import View from "./view";
 
 var Terrain = Core.Terrain;
 var SlopeType = Terrain.SlopeType;
@@ -709,7 +710,8 @@ CarScript.prototype.place = function () {
     from = this.waypoints[this.target - 1],
     dx = to.x - from.x,
     dy = to.y - from.y,
-    heading =
+    //which way it goes as it is drawn, the world turned (see client/view)
+    heading = View.heading(
       Math.abs(dx) > Math.abs(dy)
         ? dx > 0
           ? "x+"
@@ -717,6 +719,8 @@ CarScript.prototype.place = function () {
         : dy > 0
           ? "y+"
           : "y-",
+    ),
+    at = View.point(this.x, this.y),
     renderer,
     frame;
 
@@ -731,9 +735,9 @@ CarScript.prototype.place = function () {
   }
 
   this.gameObject.transform.setPosition(
-    this.x * Config.tileSize,
+    at[0] * Config.tileSize,
     groundHeight(root, this.x, this.y) * Config.tileZStep,
-    this.y * Config.tileSize,
+    at[1] * Config.tileSize,
   );
 };
 

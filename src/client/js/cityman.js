@@ -1,6 +1,7 @@
 /**
  * Created by denis on 9/17/14.
  */
+import View from "./view";
 import Core from "core/main";
 import Events from "events";
 import CityLabel from "./gameObjects/citylabel";
@@ -58,10 +59,13 @@ function placeLabel(self, city) {
     c = city.center(),
     tile = CoreTerrain.convertToIndex(Math.round(c.x), Math.round(c.y));
 
+  //where it is drawn, the world turned (see client/view)
+  var at = View.point(c.x, c.y);
+
   go.transform.setPosition(
-    c.x * Config.tileSize,
+    at[0] * Config.tileSize,
     self.root.terrain.tileYPos(tile),
-    c.y * Config.tileSize,
+    at[1] * Config.tileSize,
   );
 }
 
@@ -97,6 +101,20 @@ function Cityman(root) {
 
 Cityman.prototype.init = function () {
   var root = this.root;
+
+  //the world turned (see client/view): the names over the middle of their
+  //land as it is drawn now
+  Events.on(
+    View,
+    View.events.change,
+    function () {
+      var all = root.core.cities.getCities();
+
+      for (var i = 0; i < all.length; i++)
+        if (this._cityGOs[all[i].tile()]) placeLabel(this, all[i]);
+    },
+    this,
+  );
 
   //a click on the name is a click on the city hall under it - see
   //ServiceMan#inspect. The city screen opens off the money in the top bar

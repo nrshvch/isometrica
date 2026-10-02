@@ -3,6 +3,7 @@ import Config from "./config";
 import Events from "events";
 import Tile from "./gameObjects/tile";
 import Core from "core/main";
+import View from "./view";
 
 var events = {
   tileLoad: 0,
@@ -26,8 +27,15 @@ function Tilesman(root) {
       radius = chunkRadius(self, camera),
       shrunk = radius < self.radius;
 
-    self.currentChunkX = (position[0] / Config.tileSize / Config.chunkSize) | 0;
-    self.currentChunkY = (position[2] / Config.tileSize / Config.chunkSize) | 0;
+    //the tile the camera is over is where it is in the world, the world
+    //turned (see client/view)
+    var at = View.unpoint(
+      position[0] / Config.tileSize,
+      position[2] / Config.tileSize,
+    );
+
+    self.currentChunkX = (at[0] / Config.chunkSize) | 0;
+    self.currentChunkY = (at[1] / Config.chunkSize) | 0;
     self.radius = radius;
 
     self.loadChunks2(self.currentChunkX, self.currentChunkY);
