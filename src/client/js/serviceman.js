@@ -19,6 +19,10 @@
  * Labels live and die with the building views themselves (buildman announces
  * those as chunks come and go), so nothing is drawn for a part of the map that
  * is not on screen in the first place.
+ *
+ * A tap on nothing - bare ground, a road, the sea - while nothing is being
+ * looked at puts all the words over the buildings away, and the next one
+ * brings them back: the town without its warnings, for a picture of it.
  */
 import engine from "engine";
 import Numeral from "numeral";
@@ -101,6 +105,8 @@ function createLabel(self, building, words, color) {
 }
 
 function show(self, building, words, color) {
+  if (self._labelsHidden) return;
+
   var label = self._labels[building.tile];
 
   if (label === undefined) {
@@ -142,6 +148,12 @@ function refresh(self) {
     missing;
 
   if (city === undefined) return;
+
+  //put away with a tap on nothing
+  if (self._labelsHidden) {
+    for (tile in self._labels) hide(self, tile);
+    return;
+  }
 
   for (tile in views) {
     model = views[tile].model();
@@ -320,7 +332,12 @@ function onClick(sender, e, self) {
   //clicks are that action's - it passes on the ones it has no use for
   if (self.root.ui.gameScreen().worldScreen().busy()) return;
 
-  self.inspect(e.gameViewportX, e.gameViewportY);
+  var looking = self._inspected !== null;
+
+  //a tap on nothing, with nothing being looked at, puts the words over the
+  //buildings away - or brings them back
+  if (!self.inspect(e.gameViewportX, e.gameViewportY) && !looking)
+    self.toggleLabels();
 }
 
 function ServiceMan(root) {
@@ -337,7 +354,46 @@ function ServiceMan(root) {
   //the building clicked, drawn again over its neighbours, and the line
   //round its tiles
   this._raised = [];
+  //the words over the buildings put away (toggleLabels)
+  this._labelsHidden = false;
 }
+
+/**
+ * The tiles a building stands on, turned the way it is.
+ *
+ * @param building {Building}
+ * @returns {number[]}
+ */
+ServiceMan.footprint = function (building) {
+  var data = building.data,
+    sizeX = Rotation.sizeX(data, building.rotation),
+    sizeY = Rotation.sizeY(data, building.rotation),
+    tiles = [],
+    x,
+    y;
+
+  for (y = 0; y < sizeY; y++)
+    for (x = 0; x < sizeX; x++) tiles.push(building.tile + x + y * Terrain.dy);
+
+  return tiles;
+};
+
+/**
+ * The building being looked at - its info up, its footprint outlined - or
+ * null.
+ */
+ServiceMan.prototype.inspected = function () {
+  return this._inspected;
+};
+
+/**
+ * Puts the words over the buildings - what they go without, how far along
+ * they are - away, or brings them back.
+ */
+ServiceMan.prototype.toggleLabels = function () {
+  this._labelsHidden = !this._labelsHidden;
+  refresh(this);
+};
 
 /**
  * Clicking a building shows what it is worth, and a water tower what it waters
@@ -440,18 +496,9 @@ function raise(self, building) {
  * it, over the neighbours and any reach.
  */
 function outlineFootprint(self, building) {
-  var data = building.data,
-    //turned round, the footprint's sides swap
-    sizeX = Rotation.sizeX(data, building.rotation),
-    sizeY = Rotation.sizeY(data, building.rotation),
-    tiles = [],
+  var tiles = ServiceMan.footprint(building),
     go = new engine.GameObject("inspected footprint"),
-    x,
-    y,
     renderer;
-
-  for (y = 0; y < sizeY; y++)
-    for (x = 0; x < sizeX; x++) tiles.push(building.tile + x + y * Terrain.dy);
 
   renderer = go.addComponent(
     //right on the tiles' edges, as the tile under the cursor is hilited

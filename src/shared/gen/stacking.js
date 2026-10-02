@@ -227,7 +227,7 @@ export function siteTiles(tiles, stage, seed) {
   var gen = tiles[0].parts[0].split("/")[0];
 
   if (gen === "shops") return fenced(shopSite(tiles, stage, seed));
-  if (gen === "houses" || gen === "utilities")
+  if (gen === "houses" || gen === "utilities" || gen === "parks")
     return fenced(houseSite(tiles, stage, seed));
 
   var dealt = deal(tiles.length, seed),
@@ -326,7 +326,9 @@ function shopSite(tiles, stage, seed) {
  * begin with; then its walls going up on their slab, as high as its windows,
  * and then to the eaves (shared/gen/houses site) - a part of them for every
  * tile, by the design of the house and where its buildings stand. A water
- * tower (shared/gen/utilities) goes up the same way: its legs, then its tank.
+ * tower (shared/gen/utilities) goes up the same way: its shaft, then its
+ * tank; and a park (shared/gen/parks): its ground graded and its walks laid
+ * out, then grassed and paved, and then planted.
  */
 function houseSite(tiles, stage, seed) {
   var dealt = deal(tiles.length, seed);

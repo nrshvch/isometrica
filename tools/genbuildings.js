@@ -43,6 +43,7 @@ var GENERATORS = {
   shops: require("../src/shared/gen/shops.js"),
   houses: require("../src/shared/gen/houses.js"),
   utilities: require("../src/shared/gen/utilities.js"),
+  parks: require("../src/shared/gen/parks.js"),
 };
 
 //what each generator describes, once
@@ -454,6 +455,7 @@ function main() {
   write(footprintSheet("shops"), path.join(out, "shops.png"));
   write(footprintSheet("houses"), path.join(out, "houses.png"));
   write(footprintSheet("utilities"), path.join(out, "utilities.png"));
+  write(footprintSheet("parks"), path.join(out, "parks.png"));
   write(sites, path.join(out, "sites.png"));
 }
 

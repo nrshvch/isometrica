@@ -13,6 +13,7 @@ import * as Sites from "./sites.js";
 import * as Shops from "./shops.js";
 import * as Houses from "./houses.js";
 import * as Utilities from "./utilities.js";
+import * as Parks from "./parks.js";
 import { lifts, kindOf } from "./stacking.js";
 
 var TILE = iso.TILE;
@@ -25,6 +26,7 @@ var GENERATORS = {
   shops: Shops,
   houses: Houses,
   utilities: Utilities,
+  parks: Parks,
 };
 
 /**

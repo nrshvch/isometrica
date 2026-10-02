@@ -101,6 +101,26 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   sheet on it. Each has a colour of its own and a band of blue round its
   tank; whatever is round is laid out in columns a unit across, so it keeps
   to the pixels like everything else.
+- Parks are painted too (`src/shared/gen/parks.js`), one catalogue entry
+  per footprint (`src/data/parks.js`) - 1x1, 1x2, 1x3, 2x2 and 2x3 - each
+  laid out as one of three kinds picked when it is placed: a sports park of
+  courts and a skate spot (basketball, half a court on one tile, tennis on
+  three, ramps, a box and a rail) inside a wire fence; a formal garden on a
+  pattern of paved walks, a fountain where they cross and beds edged with
+  box, of flowers or lawn with small trees; or a town park of gravel walks
+  winding between trees, benches, bins and lamps, with a big fountain or a
+  pond on the bigger footprints. A park needs no road or water and earns
+  nothing; the town pays its upkeep.
+- The catalogue opens with what a game starts with - what needs neither a
+  road nor water, the houses and the water tower first, then the parks -
+  and then everything else, the cheaper first.
+- A tap on nothing - bare ground, a road, the sea - while nothing is being
+  looked at puts away the words over the buildings ("no jobs", how far along
+  one going up is) and the next brings them back: the town on its own, for a
+  picture of it.
+- Shaping the ground starts on the building that was being looked at, if
+  any - its tiles picked rather than the one in the middle of the screen -
+  and a building tapped while shaping picks the tiles it stands on.
 - A few firms turn up all over town (`src/shared/gen/brands.js`): bolt the
   builders' merchant, orchard the grocer, pillar the bank, blaze the burger
   bar and amber the brewery. Each has its colours and an emblem - hazard
