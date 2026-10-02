@@ -20,6 +20,8 @@
  * RGBA: the game paints them as it starts (client/generated), and nothing is
  * shipped but this.
  */
+import { snap } from "./isobox.js";
+
 var COLORS = {
   orange: [236, 128, 32],
   yellow: [242, 198, 38],
@@ -295,7 +297,7 @@ var TYPES = {
       lights(b, 14, 6, 2.6, 3.5, 0.4, 1.3);
       //cab
       b.push(box(3.6, 7.8, 0.4, 5.6, 4.0, 7.2, c));
-      windows(b, 3.6, 7.8, 0.4, 5.6, 4.5, 6.6, 0.6, [[4.1, 7.2]]);
+      windows(b, 3.6, 7.8, 0.4, 5.6, 4.5, 6.4, 0.6, [[4.1, 7.2]]);
       //the bed: open at the top, a floor and low walls
       b.push(box(8.2, 14, 0, 0.6, 4.0, 5.2, c));
       b.push(box(8.2, 14, 5.4, 6, 4.0, 5.2, c));
@@ -460,6 +462,15 @@ var DIRECTIONS = {
  * its left side is to the left of the way it is going.
  */
 function place(boxes, length, width, dir) {
+  //snapped to whole units, the way the buildings are (iso snap): every edge
+  //a clean line of pixels
+  return placeExactly(boxes, length, width, dir).map(function (b) {
+    return snap(b);
+  });
+}
+
+//the same, not snapped: where a point on it is
+function placeExactly(boxes, length, width, dir) {
   return boxes.map(function (b) {
     //along the way it goes, front first
     var a0 = dir.forward ? length / 2 - b.l1 : b.l0 - length / 2,
@@ -493,7 +504,7 @@ var TILE = 32,
  * the land, the way a building gives where its chimney smokes.
  */
 function placePoint(p, length, width, dir) {
-  var b = place(
+  var b = placeExactly(
     [box(p[0], p[0], p[1], p[1], p[2], p[2])],
     length,
     width,
@@ -568,7 +579,9 @@ function cast(boxes, sx, sy) {
     }
     tout = Math.min(tx1, ty1, tz1);
 
-    if (tin < tout && tin < best) {
+    //of two hit at the same spot, the one listed later: what is painted on
+    //the other, snapped level with it
+    if (tin < tout && tin <= best) {
       best = tin;
       hit = b;
       face = f;

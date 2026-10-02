@@ -63,6 +63,9 @@ import {
   MATTE,
   GLASSY,
   LIT,
+  made as blocksMade,
+  madeOf,
+  finishOf,
   shaded,
   random,
   round,
@@ -76,21 +79,21 @@ var GLASS = [92, 126, 160],
   WHITE = [246, 246, 242],
   IRON = [46, 46, 54],
   GOLD = [214, 178, 64],
-  GRAVEL = [222, 212, 186],
-  DRIVE = [198, 194, 184],
-  SOIL = [122, 92, 64],
-  PATH = [184, 166, 132],
+  GRAVEL = madeOf([222, 212, 186], "gravel"),
+  DRIVE = madeOf([198, 194, 184], "concrete"),
+  SOIL = madeOf([122, 92, 64], "dirt"),
+  PATH = madeOf([184, 166, 132], "sand"),
   STRAW = [218, 184, 96],
   WATER = [64, 160, 214],
   COPING = [232, 226, 212],
   LINER = [150, 212, 228],
-  BLOCK = [186, 184, 178],
-  TIMBER = [204, 168, 118],
-  BRICK = [176, 82, 60],
+  BLOCK = madeOf([186, 184, 178], "concrete"),
+  TIMBER = madeOf([204, 168, 118], "wood"),
+  BRICK = madeOf([176, 82, 60], "brick"),
   CYPRESS = [52, 104, 62],
   BOX = [70, 128, 64],
-  LAWN = [118, 166, 86],
-  STRIPE_LAWN = [104, 152, 76];
+  LAWN = madeOf([118, 166, 86], "grass"),
+  STRIPE_LAWN = madeOf([104, 152, 76], "grass");
 
 //how high a storey of a house is: as high as a block's (blocks STOREY),
 //about three metres the way the cars go - see the scale above
@@ -114,6 +117,7 @@ var VILLAGE = {
     door: [88, 60, 40],
     shutter: [178, 62, 50],
     texture: "logs",
+    made: "logs",
   },
   stone: {
     wall: [170, 162, 150],
@@ -121,6 +125,7 @@ var VILLAGE = {
     door: [72, 98, 72],
     shutter: [70, 112, 82],
     texture: "quoins",
+    made: "stone",
   },
   ochre: {
     wall: [230, 190, 112],
@@ -141,6 +146,7 @@ var VILLAGE_ROOF = {
 var CITY = {
   brick: {
     wall: [178, 86, 62],
+    made: "brick",
     trim: [244, 240, 230],
     door: [40, 82, 62],
     roof: [96, 92, 100],
@@ -159,6 +165,7 @@ var CITY = {
     door: [214, 160, 60],
     roof: [80, 84, 98],
     texture: "siding",
+    made: "siding",
     picket: WHITE,
   },
   yellow: {
@@ -198,12 +205,20 @@ var VILLA = {
   },
   brick: {
     wall: [166, 76, 58],
+    made: "brick",
     trim: [244, 240, 230],
     door: [36, 52, 44],
     roof: [72, 76, 86],
     gardenWall: [166, 76, 58],
   },
 };
+
+//the walls of a palette that has a material of its own made of it
+[VILLAGE, CITY, VILLA].forEach(function (set) {
+  Object.keys(set).forEach(function (k) {
+    if (set[k].made) madeOf(set[k].wall, set[k].made);
+  });
+});
 
 /* --- Bits and pieces -------------------------------------------------- */
 
@@ -351,8 +366,9 @@ function windowsAround(b, r, z0, storeys, w, h, P, skip) {
 
 /**
  * The walls r of a house storeys high from z0: a plinth, the walls, a band
- * between storeys, and what the walls are like - boards or logs along them,
- * beams over them, quoins at the corners. A garage is lower than a storey:
+ * between storeys, and what the walls are like - brick, stone, boards or
+ * logs (the palette's material, iso MATERIALS), beams over them, quoins at
+ * the corners. A garage is lower than a storey:
  * height, for walls not a storey high.
  *
  * @returns {number} how high they go
@@ -374,7 +390,9 @@ function walls(b, r, z0, storeys, P, color, height) {
       darker(wall, 0.3),
     ),
   );
-  b.push(box(r.x0, r.x1, r.y0, r.y1, z0 + 0.8, z1, wall, MATTE));
+  b.push(
+    box(r.x0, r.x1, r.y0, r.y1, z0 + 0.8, z1, wall, finishOf(wall, MATTE)),
+  );
 
   for (k = 1; k < storeys; k++)
     b.push(
@@ -388,20 +406,6 @@ function walls(b, r, z0, storeys, P, color, height) {
         P.trim,
       ),
     );
-
-  if (P.texture === "siding" || P.texture === "logs")
-    for (z = z0 + 2; z < z1 - 0.5; z += P.texture === "logs" ? 1.3 : 1.5)
-      b.push(
-        box(
-          r.x0 - 0.05,
-          r.x1 + 0.05,
-          r.y0 - 0.05,
-          r.y1 + 0.05,
-          z,
-          z + 0.3,
-          darker(wall, P.texture === "logs" ? 0.2 : 0.1),
-        ),
-      );
 
   if (P.texture === "beams")
     FACES.forEach(function (f) {
@@ -454,30 +458,54 @@ function walls(b, r, z0, storeys, P, color, height) {
   return z1;
 }
 
+//how steep a roof is: half a unit up for every one across, so that its edges
+//at a gable end come out clean lines, a step up for every step across up
+//the front and level down the back - steeper, they would come out two up
+//for three across and look ragged
+var SLOPE = 0.5;
+
+/**
+ * A plane through the eaves line through px, py at height h, rising gx for
+ * every unit along x and gy along y - what of a box is under it kept (iso
+ * cut) - and the one `thick` under it, what is over it kept.
+ */
+function slopeTop(gx, gy, px, py, h) {
+  return iso.plane(-gx, -gy, 1, h - gx * px - gy * py);
+}
+
+function slopeUnder(gx, gy, px, py, h, thick) {
+  return iso.plane(gx, gy, -1, -(h - thick) + gx * px + gy * py);
+}
+
 /**
  * A pitched roof over the walls r, its eaves at z: a gable with its ridge
  * along `axis`, a hip, or a lean-to high along the side of the axis at the
- * back - laid out in cells half a pixel across, each lit by which way the
- * roof looks there (blocks shaded), the cells that are the same along the
- * ridge in one; the courses of tiles a little darker every other one; and
- * under a gable its gable ends.
+ * back - each slope a plane (iso cut), lit by which way it looks, tiled,
+ * slated or thatched (iso MATERIALS); and under a gable or a lean-to its
+ * gable ends, in the walls' colour. Its eaves stand out a whole number of
+ * units, and it is as steep as SLOPE, so its edges are clean lines - however
+ * high roof.rise would have it.
  *
  * @param roof {{kind, axis, rise, over, color, thatch}}
  * @returns {function(x, y): number} how high over z the roof is at a spot
  */
 function pitched(b, r, z, roof, wall) {
-  var o = roof.over,
+  var o = Math.max(1, Math.round(roof.over)),
     X0 = r.x0 - o,
     X1 = r.x1 + o,
     Y0 = r.y0 - o,
     Y1 = r.y1 + o,
     alongX = roof.axis === "x",
     half = alongX ? (Y1 - Y0) / 2 : (X1 - X0) / 2,
-    s = roof.kind === "shed" ? roof.rise / (2 * half) : roof.rise / half,
-    thick = roof.thatch ? 1.7 : 0.8,
-    course = roof.thatch ? 1.1 : 1.4;
+    s = SLOPE,
+    rise = roof.kind === "shed" ? s * 2 * half : s * half,
+    thick = roof.thatch ? 2 : 1,
+    grey =
+      Math.max.apply(null, roof.color) - Math.min.apply(null, roof.color) < 30,
+    made = blocksMade(roof.thatch ? "thatch" : grey ? "slate" : "tiles"),
+    mid = alongX ? (Y0 + Y1) / 2 : (X0 + X1) / 2;
 
-  //how high, and which way it slopes: [h, dh/dx, dh/dy, from the eaves]
+  //how high, and which way it slopes: [h, dh/dx, dh/dy]
   function at(x, y) {
     var dy = Math.min(y - Y0, Y1 - y),
       dx = Math.min(x - X0, X1 - x),
@@ -486,7 +514,7 @@ function pitched(b, r, z, roof, wall) {
     if (roof.kind === "shed") {
       var up = alongX ? y - Y0 : x - X0;
 
-      return alongX ? [s * up, 0, s, up] : [s * up, s, 0, up];
+      return alongX ? [s * up, 0, s] : [s * up, s, 0];
     }
 
     if (roof.kind === "hip" && (alongX ? dx : dy) < across) {
@@ -499,126 +527,85 @@ function pitched(b, r, z, roof, wall) {
             ? 1
             : -1;
 
-      return alongX ? [s * d, s * sign, 0, d] : [s * d, 0, s * sign, d];
+      return alongX ? [s * d, s * sign, 0] : [s * d, 0, s * sign];
     }
 
-    var g = alongX ? (y < (Y0 + Y1) / 2 ? 1 : -1) : x < (X0 + X1) / 2 ? 1 : -1;
+    var g = alongX ? (y < mid ? 1 : -1) : x < mid ? 1 : -1;
 
-    return alongX
-      ? [s * across, 0, s * g, across]
-      : [s * across, s * g, 0, across];
+    return alongX ? [s * across, 0, s * g] : [s * across, s * g, 0];
   }
 
-  function cell(x, y) {
-    var c = at(x, y),
-      band = Math.floor(c[3] / course) % 2,
-      col = shaded(roof.color, -c[1], -c[2], 1);
+  //the slopes: [gx, gy, px, py] - which way each rises, and a point on its
+  //eaves
+  var slopes =
+    roof.kind === "shed"
+      ? [alongX ? [0, s, X0, Y0] : [s, 0, X0, Y0]]
+      : roof.kind === "hip"
+        ? [
+            [0, s, X0, Y0],
+            [0, -s, X0, Y1],
+            [s, 0, X0, Y0],
+            [-s, 0, X1, Y0],
+          ]
+        : alongX
+          ? [
+              [0, s, X0, Y0],
+              [0, -s, X0, Y1],
+            ]
+          : [
+              [s, 0, X0, Y0],
+              [-s, 0, X1, Y0],
+            ];
 
-    if (roof.thatch)
-      col = grain(col, (hash(Math.floor(c[3] * 2), 3, 7) - 0.5) * 0.1);
-    if (band) col = darker(col, roof.thatch ? 0.04 : 0.07);
-
-    return { h: c[0], col: col, key: c[0].toFixed(4) + col.join() };
+  function tops(list, down) {
+    return list.map(function (q) {
+      return slopeTop(q[0], q[1], q[2], q[3], z - down);
+    });
   }
 
-  //rows across the ridge, each laid along it
-  var a0 = alongX ? Y0 : X0,
-    a1 = alongX ? Y1 : X1,
-    l0 = alongX ? X0 : Y0,
-    l1 = alongX ? X1 : Y1,
-    w0 = alongX ? r.x0 : r.y0,
-    w1 = alongX ? r.x1 : r.y1,
-    in0 = alongX ? r.y0 : r.x0,
-    in1 = alongX ? r.y1 : r.x1,
-    a,
-    l;
+  if (roof.kind === "hip")
+    //one solid, under all four slopes, down to a fascia under the eaves
+    b.push(
+      iso.cut(
+        box(X0, X1, Y0, Y1, z - thick, z + rise, roof.color, made),
+        tops(slopes, 0),
+      ),
+    );
+  else {
+    //the gable ends, or the lean-to's ends and its high wall, in the
+    //walls' colour under the roof
+    b.push(
+      iso.cut(
+        box(r.x0, r.x1, r.y0, r.y1, z, z + rise, wall, finishOf(wall, MATTE)),
+        tops(slopes, thick),
+      ),
+    );
 
-  for (a = a0; a < a1 - 1e-6; a += 0.5) {
-    var run = null;
-
-    for (l = l0; l < l1 - 1e-6; l += 0.5) {
-      var c = alongX ? cell(l + 0.25, a + 0.25) : cell(a + 0.25, l + 0.25),
-        //cut at the gable ends, so what is under the roof is under it
-        key = c.key + (l + 0.25 > w0 && l + 0.25 < w1 ? "i" : "o");
-
-      if (run !== null && run.key === key) {
-        run.l1 = l + 0.5;
-        continue;
-      }
-
-      if (run !== null) flush(run);
-      run = { key: key, l0: l, l1: l + 0.5, a: a, c: c };
-    }
-    flush(run);
-  }
-
-  function flush(q) {
-    var top = z + q.c.h,
-      bx = alongX
-        ? box(q.l0, q.l1, q.a, q.a + 0.5, top - thick, top, q.c.col, LIT)
-        : box(q.a, q.a + 0.5, q.l0, q.l1, top - thick, top, q.c.col, LIT);
-
-    b.push(bx);
-
-    //the gable end under it
-    if (
-      roof.kind !== "hip" &&
-      q.a + 0.25 > in0 &&
-      q.a + 0.25 < in1 &&
-      q.l0 + 0.25 > w0 &&
-      q.l1 - 0.25 < w1 &&
-      q.c.h - thick > 0
-    )
+    //each slope a slab `thick` deep, as far as it is the roof's top - over
+    //the whole of it, so that the slopes meet at the ridge wherever it is
+    slopes.forEach(function (q) {
       b.push(
-        alongX
-          ? box(
-              Math.max(q.l0, r.x0),
-              Math.min(q.l1, r.x1),
-              q.a,
-              q.a + 0.5,
-              z,
-              top - thick,
-              wall,
-              MATTE,
-            )
-          : box(
-              q.a,
-              q.a + 0.5,
-              Math.max(q.l0, r.y0),
-              Math.min(q.l1, r.y1),
-              z,
-              top - thick,
-              wall,
-              MATTE,
-            ),
+        iso.cut(
+          box(X0, X1, Y0, Y1, z - thick, z + rise, roof.color, made),
+          tops(slopes, 0).concat([
+            slopeUnder(q[0], q[1], q[2], q[3], z, thick),
+          ]),
+        ),
       );
+    });
   }
 
-  //the ridge
+  //the ridge: a unit across, standing a unit clear of the slopes where they
+  //meet - a line a pixel thick along the top, its face another under it
   if (roof.kind === "gable") {
-    var mid = alongX ? (Y0 + Y1) / 2 : (X0 + X1) / 2,
-      rc = darker(roof.color, 0.25);
+    var rc = darker(roof.color, 0.25),
+      r1 = Math.ceil(z + rise) + 1,
+      m0 = Math.floor(mid);
 
     b.push(
       alongX
-        ? box(
-            X0,
-            X1,
-            mid - 0.5,
-            mid + 0.5,
-            z + roof.rise - 0.3,
-            z + roof.rise + 0.3,
-            rc,
-          )
-        : box(
-            mid - 0.5,
-            mid + 0.5,
-            Y0,
-            Y1,
-            z + roof.rise - 0.3,
-            z + roof.rise + 0.3,
-            rc,
-          ),
+        ? box(X0, X1, m0, m0 + 1, r1 - 2, r1, rc)
+        : box(m0, m0 + 1, Y0, Y1, r1 - 2, r1, rc),
     );
   }
 
@@ -912,17 +899,17 @@ function fence(b, kind, axis, at, a0, a1, gaps, color) {
     if (kind === "picket") {
       var c = color || WHITE;
 
-      for (p = s[0]; p < s[1] - 0.3; p += 1.6) {
-        b.push(bx(p, p + 0.7, -0.2, 0.2, 1, 4.4, c));
-        b.push(bx(p + 0.15, p + 0.55, -0.2, 0.2, 4.4, 4.9, c));
-      }
-      b.push(bx(s[0], s[1], 0.2, 0.5, 2, 2.5, darker(c, 0.12)));
-      b.push(bx(s[0], s[1], 0.2, 0.5, 3.5, 4, darker(c, 0.12)));
+      //a picket a unit wide every two, the rails behind them showing
+      //through the gaps - whole units, so that every gap is a pixel
+      for (p = Math.ceil(s[0]); p < s[1] - 0.5; p += 2)
+        b.push(bx(p, p + 1, -0.2, 0.2, 1, 5, c));
+      b.push(bx(s[0], s[1], 0.8, 1.2, 2, 3, darker(c, 0.12)));
+      b.push(bx(s[0], s[1], 0.8, 1.2, 4, 5, darker(c, 0.12)));
     } else if (kind === "railing") {
       b.push(bx(s[0], s[1], -0.5, 0.5, 1, 2.6, BRICK, MATTE));
       b.push(bx(s[0], s[1], -0.6, 0.6, 2.6, 3, COPING));
-      for (p = s[0] + 0.4; p < s[1] - 0.3; p += 1)
-        b.push(bx(p, p + 0.3, -0.15, 0.15, 3, 5.6, IRON));
+      for (p = Math.ceil(s[0]) + 1; p < s[1] - 0.5; p += 2)
+        b.push(bx(p, p + 1, -0.15, 0.15, 3, 5.6, IRON));
       b.push(bx(s[0], s[1], -0.2, 0.2, 5.4, 5.8, IRON));
       for (p = s[0]; p <= s[1] - 1.6; p += 8) {
         l = Math.min(p, s[1] - 1.6);
@@ -968,11 +955,11 @@ function grandGate(b, a0, a1, y, pillar) {
 
   var w = a1 - a0;
 
-  for (var p = a0 + 0.6; p < a1 - 0.4; p += 1.5) {
+  for (var p = Math.ceil(a0) + 1; p < a1 - 0.5; p += 2) {
     var top = 6.2 + 1.6 * Math.sin((Math.PI * (p + 0.25 - a0)) / w);
 
-    b.push(box(p, p + 0.5, y - 0.15, y + 0.15, 1.3, top, IRON));
-    b.push(box(p - 0.1, p + 0.6, y - 0.25, y + 0.25, top, top + 0.6, GOLD));
+    b.push(box(p, p + 1, y - 0.15, y + 0.15, 1.3, top, IRON));
+    b.push(box(p, p + 1, y - 0.25, y + 0.25, top, top + 0.6, GOLD));
   }
   b.push(box(a0, a1, y - 0.2, y + 0.2, 1.4, 1.8, IRON));
   b.push(box(a0, a1, y - 0.25, y + 0.25, 4.2, 4.7, GOLD));
@@ -1022,8 +1009,8 @@ function wicket(b, a0, a1, y, kind, color) {
       box(p, p + 0.8, y - 0.4, y + 0.4, 1, 5.2, kind === "picket" ? c : BRICK),
     );
   });
-  for (var p = a0 + 0.2; p < a1 - 0.2; p += 0.9)
-    b.push(box(p, p + 0.4, y - 0.15, y + 0.15, 1.4, 4.4, c));
+  for (var p = Math.ceil(a0); p < a1 - 0.5; p += 2)
+    b.push(box(p, p + 1, y - 0.15, y + 0.15, 1.4, 4.4, c));
   b.push(box(a0, a1, y - 0.2, y + 0.2, 3.2, 3.6, c));
 }
 
@@ -2967,16 +2954,7 @@ export function partBoxes(key) {
     cy = +p[p.length - 1];
 
   return house(p.slice(0, p.length - 2).join("/")).boxes.map(function (c) {
-    return iso.box(
-      c.x0 - cx * TILE,
-      c.x1 - cx * TILE,
-      c.y0 - cy * TILE,
-      c.y1 - cy * TILE,
-      c.z0,
-      c.z1,
-      c.color,
-      c.finish,
-    );
+    return iso.moved(c, -cx * TILE, -cy * TILE, 0);
   });
 }
 
@@ -3029,20 +3007,10 @@ function room(bays, color) {
 function clip(boxes) {
   var out = [];
 
-  boxes.forEach(function (b) {
-    var c = {
-      x0: Math.max(b.x0, 0),
-      x1: Math.min(b.x1, TILE),
-      y0: Math.max(b.y0, 0),
-      y1: Math.min(b.y1, TILE),
-      z0: b.z0,
-      z1: b.z1,
-      color: b.color,
-      finish: b.finish,
-      group: b.group,
-    };
+  iso.snapAll(boxes).forEach(function (b) {
+    var c = iso.clip(b, 0, TILE, 0, TILE);
 
-    if (c.x0 < c.x1 && c.y0 < c.y1) out.push(c);
+    if (c !== null) out.push(c);
   });
 
   return out;

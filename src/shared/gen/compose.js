@@ -67,19 +67,7 @@ export function model(plan, sizeX, sizeY, turns) {
         var group = tile.x + "," + tile.y + "/" + i;
 
         b.push(
-          withGroup(
-            iso.box(
-              c.x0 + tile.x * TILE,
-              c.x1 + tile.x * TILE,
-              c.y0 + tile.y * TILE,
-              c.y1 + tile.y * TILE,
-              c.z0 + up[i],
-              c.z1 + up[i],
-              c.color,
-              c.finish,
-            ),
-            group,
-          ),
+          withGroup(iso.moved(c, tile.x * TILE, tile.y * TILE, up[i]), group),
         );
       });
     });
