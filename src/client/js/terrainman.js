@@ -7,6 +7,7 @@
 import Core from "core/main";
 import Events from "events";
 import AreaSelector from "./areaselector";
+import ServiceMan from "./serviceman";
 import Buildman from "./buildman";
 import ErrorCode from "core/errorcode";
 import Numeral from "numeral";
@@ -122,8 +123,12 @@ Terrainman.prototype.enter = function () {
     buildman = root.buildman,
     gameScreen = root.ui.gameScreen(),
     worldScreen = gameScreen.worldScreen(),
-    //the handles follow the ground under water the way the rings do
-    ts = new AreaSelector(root, { underwater: true }),
+    //a building looked at as the mode starts: its tiles are what is picked
+    //to begin with, rather than the tile in the middle of the screen
+    focused = root.serviceman.inspected(),
+    //the handles follow the ground under water the way the rings do - and
+    //a building tapped picks the ground it stands on
+    ts = new AreaSelector(root, { underwater: true, buildings: true }),
     tokens = [],
     //the action waiting to be confirmed, its controls and the price tag
     //over the selection - null while one is being picked - and the
@@ -306,7 +311,14 @@ Terrainman.prototype.enter = function () {
 
   pick();
 
-  //the selection is up from the start, in the middle of the screen
+  //the selection is up from the start, in the middle of the screen - or on
+  //the building that was being looked at, which is looked at no more
+  if (focused !== null) {
+    root.serviceman.hideCoverage();
+    root.serviceman.hideInfo();
+    ts.selectTiles(ServiceMan.footprint(focused));
+  }
+
   updateHilite();
 };
 

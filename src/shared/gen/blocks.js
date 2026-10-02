@@ -612,12 +612,14 @@ export function wireFence(b, axis, at, a0, a1, gaps) {
         : box(at + c0, at + c1, l0, l1, z0, z1, col);
     }
 
-    for (var p = q[0]; p <= q[1] - 0.4; p += 6)
-      b.push(bx(p, p + 0.4, -0.2, 0.2, 1, 7, METAL));
-    b.push(bx(q[1] - 0.4, q[1], -0.2, 0.2, 1, 7, METAL));
-    b.push(bx(q[0], q[1], -0.1, 0.1, 6.6, 7, METAL));
-    [2.4, 4.5].forEach(function (z) {
-      b.push(bx(q[0], q[1], -0.05, 0.05, z, z + 0.2, [176, 180, 184]));
+    //posts a unit square every six, a rail along their tops and wires
+    //between, each a pixel high (iso snap)
+    for (var p = q[0]; p <= q[1] - 1; p += 6)
+      b.push(bx(p, p + 1, 0, 1, 1, 7, METAL));
+    b.push(bx(q[1] - 1, q[1], 0, 1, 1, 7, METAL));
+    b.push(bx(q[0], q[1], 0, 1, 6, 7, METAL));
+    [2, 4].forEach(function (z) {
+      b.push(bx(q[0], q[1], 0, 0.2, z, z + 1, [176, 180, 184]));
     });
   });
 }
