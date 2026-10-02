@@ -71,8 +71,8 @@ View.unvector = function (dx, dy) {
 };
 
 //a tile's corners, off the tile's own x, y - in the order a slope is read in
-//(see client/terrain): on the left as seen unturned, at the bottom, on the
-//right, at the top
+//(see client/terrain, shared/gen/terrain heights): on the left as seen
+//unturned (W), at the top (N), on the right (E), at the bottom (S)
 var CORNERS = [
   [0, 1],
   [1, 1],

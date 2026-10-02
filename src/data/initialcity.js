@@ -318,8 +318,6 @@ var InitialCity = {
       { code: 4, tile: 1447188046, rotation: 0 },
       { code: 4, tile: 1447253582, rotation: 0 },
       { code: 4, tile: 1447253575, rotation: 0 },
-      { code: 4, tile: 1447122510, rotation: 0 },
-      { code: 4, tile: 1447188039, rotation: 0 },
       { code: 4112, tile: 1447384645, rotation: 0 },
       { code: 4112, tile: 1447384646, rotation: 0 },
       { code: 4112, tile: 1447515717, rotation: 2 },

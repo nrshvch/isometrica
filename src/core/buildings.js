@@ -58,7 +58,19 @@ function buildTest(self, code, tile, rotation) {
     terrainType,
     resource,
     tile1 = tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy,
-    tileIterator = new TileIterator(tile, tile1);
+    tileIterator = new TileIterator(tile, tile1),
+    //how far the ground under it rises and falls
+    ground = groundRange(self.world.terrain, tile, sizeX, sizeY),
+    //a building stands level on uneven ground on a concrete base built up
+    //to its highest corner (client BuildingView, shared/gen/foundations) -
+    //as long as that is no more than a step up anywhere. A tree grows on
+    //the slope as it is, a road climbs it, and a cliff wants it flat
+    levelled =
+      data.classCode !== BuildingClassCode.tree &&
+      data.classCode !== BuildingClassCode.road;
+
+  if (levelled && ground.max - ground.min > 1)
+    return ErrorCode.LAND_NOT_SUITABLE;
 
   while (!tileIterator.done) {
     tile = TileIterator.next(tileIterator);
@@ -85,6 +97,12 @@ function buildTest(self, code, tile, rotation) {
       resource !== data.resource
     )
       return ErrorCode.WRONG_RESOURCE_TILE;
+    //the beach goes down into the water: no road along it
+    else if (
+      data.classCode === BuildingClassCode.road &&
+      terrainType === TerrainType.shore
+    )
+      return ErrorCode.ON_SHORE;
     else if (
       data.classCode === BuildingClassCode.road &&
       Terrain.isSlope(slopeId) &&
@@ -93,9 +111,7 @@ function buildTest(self, code, tile, rotation) {
       return ErrorCode.LAND_NOT_SUITABLE;
     //a tree grows on a hillside, but a cliff stands on flat ground only
     else if (
-      (data.classCode !== BuildingClassCode.tree ||
-        data.buildingCode === BuildingCode.cliff) &&
-      data.classCode !== BuildingClassCode.road &&
+      data.buildingCode === BuildingCode.cliff &&
       Terrain.isSlope(slopeId)
     )
       return ErrorCode.FLAT_LAND_REQUIRED;
@@ -110,6 +126,26 @@ function buildTest(self, code, tile, rotation) {
   }
 
   return ErrorCode.NONE;
+}
+
+/**
+ * The lowest and the highest grid point under sizeX by sizeY tiles from tile.
+ */
+function groundRange(terrain, tile, sizeX, sizeY) {
+  var x0 = Terrain.extractX(tile),
+    y0 = Terrain.extractY(tile),
+    min = Infinity,
+    max = -Infinity,
+    h;
+
+  for (var x = x0; x <= x0 + sizeX; x++)
+    for (var y = y0; y <= y0 + sizeY; y++) {
+      h = terrain.getGridPointHeight(x, y);
+      if (h < min) min = h;
+      if (h > max) max = h;
+    }
+
+  return { min: min, max: max };
 }
 
 function onTileCleared(terrain, tile, self) {

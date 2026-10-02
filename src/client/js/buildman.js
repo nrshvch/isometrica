@@ -170,6 +170,18 @@ function createPreview(self, data, tile, rotation, opacity, look) {
     tile,
   );
 
+  //and the concrete it would stand on, under it
+  if (z === at.z)
+    BuildingView.addFoundations(
+      go,
+      data,
+      tile,
+      rotation,
+      at,
+      opacity,
+      RenderLayer.overlayLayer,
+    );
+
   //placed before it goes in - the world files it by where it stands
   go.transform.setPosition(
     at.x * tileSize,
@@ -424,6 +436,7 @@ errorText[ErrorCode.LAND_NOT_SUITABLE] = "too steep";
 errorText[ErrorCode.FLAT_LAND_REQUIRED] = "not flat";
 errorText[ErrorCode.TILE_TAKEN] = "occupied";
 errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
+errorText[ErrorCode.ON_SHORE] = "on shore";
 
 /**
  * Puts code down on each of anchors and tells the player why whatever did not
