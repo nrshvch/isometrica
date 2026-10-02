@@ -1,6 +1,7 @@
 import engine from "engine";
 import Core from "core/main";
 import Config from "./config";
+import View from "./view";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import SmokeSource from "./components/smokesource";
@@ -691,11 +692,14 @@ CarScript.prototype.smoke = function (dt) {
   this.sinceSmoke = 0;
   this.gameObject.transform.getPosition(position);
 
+  //off the car as its picture has it, the camera turned (see client/view)
+  var off = View.unvector(at[0], at[2]);
+
   SmokeSource.puff(
     this.gameObject.world,
-    position[0] + at[0] * Config.tileSize,
+    position[0] + off[0] * Config.tileSize,
     position[1] + at[1] * Config.tileZStep,
-    position[2] + at[2] * Config.tileSize,
+    position[2] + off[1] * Config.tileSize,
     engine ? SmokeScript.soot : SmokeScript.steam,
   );
 };
@@ -709,7 +713,8 @@ CarScript.prototype.place = function () {
     from = this.waypoints[this.target - 1],
     dx = to.x - from.x,
     dy = to.y - from.y,
-    heading =
+    //which way it goes as it is seen, the camera turned (see client/view)
+    heading = View.heading(
       Math.abs(dx) > Math.abs(dy)
         ? dx > 0
           ? "x+"
@@ -717,6 +722,7 @@ CarScript.prototype.place = function () {
         : dy > 0
           ? "y+"
           : "y-",
+    ),
     renderer,
     frame;
 

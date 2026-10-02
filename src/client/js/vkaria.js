@@ -106,6 +106,19 @@ Vkaria.prototype.prepare = function (callback) {
     });
 };
 
+/**
+ * Turns the camera round by so many quarter turns, about the ground in the
+ * middle of the screen - not while an action owns the world: what it has
+ * drawn on it was drawn for the camera as it was.
+ *
+ * @param by {number}
+ */
+Vkaria.prototype.turnView = function (by) {
+  if (this.ui.gameScreen().worldScreen().busy()) return;
+
+  this.camera.cameraScript.turn(by);
+};
+
 Vkaria.prototype.start = function () {
   this.camera = new engine.Camera("mainCamera");
   this.camera.addComponent(new CameraScript());

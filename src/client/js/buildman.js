@@ -5,6 +5,7 @@ import BuildingClassCode from "data/classcode";
 import BuildingData from "data/buildings";
 import Building from "./building";
 import BuildingView from "./buildingview";
+import View from "./view";
 import Road from "./road";
 import RoadView from "./roadview";
 import EventManager from "events";
@@ -151,18 +152,17 @@ function createPreview(self, data, tile, rotation, opacity, look) {
     tileSize = Config.tileSize,
     x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
+    //as it would be seen, the camera turned (see client/view)
+    at = BuildingView.drawnAt(data, tile, rotation),
     //over water it floats on the surface, which is drawn at 0 whatever
     //the depth of the bottom underneath (see client Terrain)
-    z =
-      terrain.getTerrainType(x, y) === Core.TerrainType.water
-        ? 0
-        : terrain.getGridPointHeight(x + 1, y),
+    z = terrain.getTerrainType(x, y) === Core.TerrainType.water ? 0 : at.z,
     go = new engine.GameObject("building preview");
 
   BuildingView.addSprites(
     go,
     data,
-    rotation,
+    at.rotation,
     opacity,
     RenderLayer.previewLayer,
     look,
@@ -171,7 +171,11 @@ function createPreview(self, data, tile, rotation, opacity, look) {
   );
 
   //placed before it goes in - the world files it by where it stands
-  go.transform.setPosition(x * tileSize, z * Config.tileZStep, y * tileSize);
+  go.transform.setPosition(
+    at.x * tileSize,
+    z * Config.tileZStep,
+    at.y * tileSize,
+  );
   self.root.game.logic.world.addGameObject(go);
 
   return go;
@@ -650,6 +654,20 @@ Buildman.prototype.start = function () {
  * client is subscribed, so that roadman sees the roads it has to join up.
  */
 Buildman.prototype.init = function () {
+  //the camera turned (see client/view): every building and road drawn again,
+  //from the side of it that is seen now
+  Events.on(
+    View,
+    View.events.change,
+    function (sender, args, self) {
+      var views = self.getBuildingViews();
+
+      for (var i = 0; i < views.length; i++)
+        if (views[i].view) views[i].view.update();
+    },
+    this,
+  );
+
   var chunks = this.root.chunkman.getChunks();
 
   for (var i = 0; i < chunks.length; i++)
