@@ -167,6 +167,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - Any building can be turned four ways (`src/core/rotation.js`). Blocks are
   painted from all four sides; a building drawn by hand shows its front for
   its back and its side for the other side.
+- The camera turns round the city a quarter turn at a time: two fingers
+  twisted on a touch screen or trackpad, or Q and E. Nothing in the world
+  moves - the engine's camera turns about the up axis, and draws things in
+  the order it sees them in (`CameraComponent#depthAxes`). What changes is
+  which picture each thing shows: `src/client/js/view.js` says how the
+  world looks from the side the camera is on, and the ground, roads,
+  buildings, trees and cars each pick their picture by it - a tile's slope
+  by its corners as seen, a building turned as many more times as the
+  camera is, drawn from the tile of it nearest the camera's own corner.
 - Whatever is painted out of boxes - buildings, roads, vehicles - keeps to
   the pixels the way a picture drawn by hand does (`src/shared/gen/isobox.js`
   snap): every box is snapped to whole units before it is painted, so an

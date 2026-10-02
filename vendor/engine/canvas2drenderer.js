@@ -198,6 +198,8 @@ define(function (require) {
             m0 = M[0], m1 = M[1], m4 = M[4], m5 = M[5],
             m8 = M[8], m9 = M[9], m12 = M[12], m13 = M[13],
             v0 = V[0], v1 = V[1], v4 = V[4], v5 = V[5],
+            //the order things are drawn in, see CameraComponent#depthAxes
+            d0 = self.D[0], d1 = self.D[1], d2 = self.D[2],
             v8 = V[8], v9 = V[9], v12 = V[12], v13 = V[13],
             width = viewport.width,
             height = viewport.height,
@@ -275,7 +277,7 @@ define(function (require) {
             entryDraw[visible] = draw;
             visibleRenderers[visible] = renderer;
             entryLayers[visible] = renderer.layer;
-            depthKeys[visible] = x - y + z;
+            depthKeys[visible] = d0 * x + d1 * y + d2 * z;
             visible++;
         }
 
@@ -385,6 +387,7 @@ define(function (require) {
 
         self.M = camera.camera.getWorldToScreen();
         self.V = camera.camera.getWorldToViewport();
+        self.D = camera.camera.depthAxes;
 
         reserve(gameObjects.length, layersCount);
 

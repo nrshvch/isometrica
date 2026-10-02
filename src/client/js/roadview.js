@@ -9,36 +9,45 @@ import engine from "engine";
 import RenderLayer from "client/renderlayer";
 import Config from "./config";
 import Core from "core/main";
+import View from "./view";
 
 var Terrain = Core.Terrain;
 
 //what a road's piece number (see Road.profile) is drawn with: the roads
 //generator's pieces (shared/gen/roads) - plain or paved, by how the road
-//joins up with its neighbours, or a ramp
+//joins up with its neighbours, or a ramp - as it is seen, the camera turned
+//(see client/view)
 function spriteOf(id) {
   var shape = id % Road_PAVED,
     kind = id >= Road_PAVED ? "paved" : "plain";
 
-  if (shape < 10) return "gen/roads/" + kind + "/ramp" + shape;
+  if (shape < 10) return "gen/roads/" + kind + "/ramp" + View.ramp(shape);
 
-  return "gen/roads/" + kind + "/" + String(shape - 90000 + 10000).slice(1);
+  return "gen/roads/" + kind + "/" + seenJoins(shape).join("");
+}
+
+//which sides a flat piece of road joins on as it is seen: -x, -y, +x, +y
+function seenJoins(shape) {
+  return View.joins([
+    Math.floor(shape / 1000) % 10,
+    Math.floor(shape / 100) % 10,
+    Math.floor(shape / 10) % 10,
+    shape % 10,
+  ]);
 }
 
 //where a paved street has its street light, if it has one there: beside a
 //road along x, along y, or at the corner of anything else - every other tile
-//along a street, and never on a ramp
+//along a street, and never on a ramp. Along x and y as it is seen
 function lightOf(id, tile) {
   var shape = id % Road_PAVED;
 
   if (id < Road_PAVED || shape < 10) return null;
   if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
 
-  var a = Math.floor(shape / 1000) % 10,
-    b = Math.floor(shape / 100) % 10,
-    c = Math.floor(shape / 10) % 10,
-    d = shape % 10,
-    alongX = a || c,
-    alongY = b || d;
+  var j = seenJoins(shape),
+    alongX = j[0] || j[2],
+    alongY = j[1] || j[3];
 
   return (
     "gen/roads/light/" +

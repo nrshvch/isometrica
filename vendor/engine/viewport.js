@@ -83,8 +83,9 @@ define(function (require) {
                 b = e.touches[1],
                 args = between(viewport, a, b);
 
-            pinch = {a: a.identifier, b: b.identifier, distance: args.distance};
+            pinch = {a: a.identifier, b: b.identifier, distance: args.distance, angle: args.angle};
             args.scale = 1;
+            args.rotation = 0;
             Events.fire(viewport, viewport.events.pinchstart, args);
         });
 
@@ -100,6 +101,9 @@ define(function (require) {
 
                 var args = between(viewport, a, b);
                 args.scale = pinch.distance > 0 ? args.distance / pinch.distance : 1;
+                //how far the fingers have turned since they came down, in
+                //degrees, clockwise as the screen has it - the short way round
+                args.rotation = ((args.angle - pinch.angle + 540) % 360) - 180;
                 Events.fire(viewport, viewport.events.pinch, args);
                 return;
             }
@@ -194,7 +198,7 @@ define(function (require) {
             if (!gesture)
                 return;
 
-            Events.fire(viewport, viewport.events.pinch, locate(viewport, e, {scale: e.scale}));
+            Events.fire(viewport, viewport.events.pinch, locate(viewport, e, {scale: e.scale, rotation: e.rotation}));
         });
 
         this.canvas.addEventListener("gestureend", function (e) {
@@ -235,6 +239,8 @@ define(function (require) {
             args = locate(viewport, {clientX: a.clientX + dx / 2, clientY: a.clientY + dy / 2}, {});
 
         args.distance = Math.sqrt(dx * dx + dy * dy);
+        //which way one finger is from the other, in degrees
+        args.angle = Math.atan2(dy, dx) * 180 / Math.PI;
 
         return args;
     }

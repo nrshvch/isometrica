@@ -6,6 +6,7 @@ import Tile from "./gameObjects/tile";
 import Config from "./config";
 import Events from "events";
 import Generated from "./generated";
+import View from "./view";
 
 var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
@@ -76,7 +77,19 @@ function Terrain(root) {
 
 Terrain.events = events;
 
-Terrain.prototype.init = function () {};
+Terrain.prototype.init = function () {
+  //the camera turned (see client/view): every tile shows its ground as it
+  //is seen from the new side
+  Events.on(
+    View,
+    View.events.change,
+    function (sender, args, self) {
+      for (var index in self.tiles)
+        if (self.tiles[index]) shapeTile(self, self.tiles[index], +index);
+    },
+    this,
+  );
+};
 
 Terrain.prototype.clear = function (x0, y0, w, l) {
   var tile0 = CoreTerrain.convertToIndex(x0, y0);
@@ -115,10 +128,12 @@ function calcSpriteCode(self, x, y) {
 
   if (terrainType === TerrainType.water) return 2222;
 
-  var z0 = terrain.getGridPointHeight(x, y + 1), //gridPoints[2];
-    z1 = terrain.getGridPointHeight(x + 1, y + 1), //gridPoints[3];
-    z2 = terrain.getGridPointHeight(x + 1, y), //gridPoints[1];
-    z3 = terrain.getGridPointHeight(x, y); //gridPoints[0];
+  //the corners as the tile is seen, the camera turned (see client/view):
+  //on the left, at the bottom, on the right, at the top
+  var z0 = View.cornerHeight(terrain, x, y, 0),
+    z1 = View.cornerHeight(terrain, x, y, 1),
+    z2 = View.cornerHeight(terrain, x, y, 2),
+    z3 = View.cornerHeight(terrain, x, y, 3);
 
   return 2000 + (z1 - z0 + 2) * 100 + (z2 - z0 + 2) * 10 + (z3 - z0 + 2);
 }
@@ -130,42 +145,10 @@ var routine = function (iter, self) {
 
     if (index === -1) return -1;
 
-    var coreTerrain = vkaria.core.world.terrain;
-
-    var x = index & 0xffff;
-    var y = index >>> 16;
-
     if (!self.tiles[index]) {
       var t = CreateTile(self);
 
-      //var gps = coreTerrain.getGridPoints(x, y);
-      var terrain = vkaria.core.world.terrain;
-
-      var gps = [
-        terrain.getGridPointHeight(x, y),
-        terrain.getGridPointHeight(x + 1, y),
-        terrain.getGridPointHeight(x, y + 1),
-        terrain.getGridPointHeight(x + 1, y + 1),
-      ];
-
-      //var slope = coreTerrain.calcSlopeId(x,y);
-      var slope = calcSpriteCode(self, x, y);
-      var type = coreTerrain.getTerrainType(x, y);
-      var sprite = null;
-
-      var z = 0;
-
-      if (type !== TerrainType.water) z = gps[2]; //2 is west, most left gridpoint, it should be gps[0], but sprites are drawn with pivot point being most left gridpoint
-
-      t.transform.setPosition(
-        x * Config.tileSize,
-        z * Config.tileZStep,
-        y * Config.tileSize,
-      );
-
-      sprite = tileSprite(x, y, type, slope);
-
-      t.renderer.setSprite(sprite);
+      shapeTile(self, t, index);
       vkaria.game.logic.world.addGameObject(t);
 
       self.tiles[index] = t;
@@ -194,9 +177,10 @@ function shapeTile(self, t, index) {
     sprite,
     z = 0;
 
-  //the west corner - sprites are drawn with the most left grid point as
-  //their pivot. Water is drawn at its surface, whatever lies underneath
-  if (type !== TerrainType.water) z = terrain.getGridPointHeight(x, y + 1);
+  //the corner on the left as it is seen - sprites are drawn with the most
+  //left grid point as their pivot. Water is drawn at its surface, whatever
+  //lies underneath
+  if (type !== TerrainType.water) z = View.cornerHeight(terrain, x, y, 0);
 
   t.transform.setPosition(
     x * Config.tileSize,

@@ -89,6 +89,15 @@ define(function(require){
      */
     CameraComponent.prototype.zoom = 1;
 
+    /**
+     * What things are drawn in the order of, back to front: x, y and z of
+     * where each is, times these, added up. Away from the camera along the
+     * ground first, higher later - for a camera looking down at the ground
+     * from over the corner where x and z are smallest. Whoever turns the
+     * camera round turns these round with it.
+     */
+    CameraComponent.prototype.depthAxes = [1, -1, 1];
+
     CameraComponent.prototype.setup = function (width, height, length) {
 
         //update frustum size
