@@ -11,17 +11,18 @@
  *
  *   - 1x1, a small-town shop: a flat roof behind a false front, a gable or a
  *     lean-to; a shop front with the door in the middle, at the corner or a
- *     door either side of the window; a striped awning or none; a sign over
- *     the windows or a board on its side;
- *   - 1x2, a shop with a car park in front: a flat roof with its name up on
- *     the parapet, a front all glass or between brick piers, awnings over
+ *     door either side of the window; a firm's striped awning or none; a
+ *     fascia over the windows or a board on its side, in the firm's colours
+ *     and with its emblem (shared/gen/brands);
+ *   - 1x2, a shop with a car park in front, a firm's: a flat roof with its
+ *     emblem up on the parapet, a front all glass or between brick piers, awnings over
  *     the windows, a sign on a pole in the car park or not;
  *   - 2x2, a superstore over the two tiles at the back, a car park over the
- *     two in front: in a builders' merchant's or a furniture store's colours
- *     - orange; blue and yellow; white and orange; white with green stripes
- *     along it; grey and red - a flat roof or one raised over the way in and
- *     at the back, air conditioning on it, banners down its front, its name
- *     over the doors and maybe on a pole by the road;
+ *     two in front: a firm's - the builders' merchant in orange, or white
+ *     and orange; the bank in navy and gold; the grocer in white with green
+ *     stripes along it; the burger chain in grey and red - a flat roof or one raised over the way in and
+ *     at the back, air conditioning on it, banners down its front, its
+ *     emblem over the doors and maybe on a pole by the road;
  *   - 2x3, a shopping centre over four tiles with a glass vault along its
  *     roof, or a market hall under green glass vaults or saw-tooth roofs,
  *     stalls out in front - and a car park over the two tiles in front.
@@ -33,6 +34,7 @@
  * (shared/gen/sites) and then a steel frame of it (frame).
  */
 import * as iso from "./isobox.js";
+import { BRANDS, panel, parade } from "./brands.js";
 import {
   box,
   darker,
@@ -113,53 +115,81 @@ var SMALL = {
   },
 };
 
-//the shops with a car park
+//the shops with a car park, each a firm's (shared/gen/brands): the grocer,
+//the burger bar, the bank and the brewery's own pub - the palettes' names
+//are kept from before they were, for the shops already built
 var STORE = {
   grocer: {
+    brand: "orchard",
     wall: [228, 224, 214],
-    trim: [40, 120, 70],
+    trim: BRANDS.orchard.main,
     roof: [120, 120, 124],
-    sign: [40, 120, 70],
+    sign: BRANDS.orchard.main,
   },
   red: {
+    brand: "blaze",
     wall: [214, 206, 196],
-    trim: [190, 40, 40],
+    trim: BRANDS.blaze.main,
     roof: [118, 116, 118],
-    sign: [190, 40, 40],
+    sign: BRANDS.blaze.main,
   },
   blue: {
+    brand: "pillar",
     wall: [220, 226, 232],
-    trim: [40, 90, 170],
+    trim: BRANDS.pillar.main,
     roof: [116, 120, 128],
-    sign: [40, 90, 170],
+    sign: BRANDS.pillar.main,
   },
   brick: {
+    brand: "amber",
     wall: [168, 92, 72],
     made: "brick",
     trim: [236, 226, 200],
     roof: [96, 90, 88],
-    sign: [40, 40, 48],
+    sign: BRANDS.amber.main,
   },
 };
 
-//the superstores: walls, the band along the top, and the stripes along it
-//for one that has them
+//the superstores, each a firm's: its walls - a colour of their own, clad in
+//steel sheet - the band along the top, and the stripes along it for one
+//that has them. The builders' merchant in its orange, or white and orange;
+//the bank's navy and gold; the grocer's hypermarket; the burger chain's
 var BIGBOX = {
-  orange: { wall: [234, 116, 36], band: [250, 250, 246], text: [234, 116, 36] },
-  blue: { wall: [30, 76, 156], band: [252, 208, 32], text: [30, 76, 156] },
+  orange: {
+    brand: "bolt",
+    wall: BRANDS.bolt.main.slice(),
+    band: BRANDS.bolt.accent,
+  },
+  blue: {
+    brand: "pillar",
+    wall: BRANDS.pillar.main.slice(),
+    band: BRANDS.pillar.accent,
+  },
   whiteorange: {
+    brand: "bolt",
     wall: [238, 238, 234],
-    band: [240, 120, 36],
-    text: [250, 250, 246],
+    band: BRANDS.bolt.main,
   },
   greenstripes: {
+    brand: "orchard",
     wall: [238, 238, 234],
-    band: [36, 140, 76],
-    text: [250, 250, 246],
+    band: BRANDS.orchard.main,
     stripes: true,
   },
-  red: { wall: [156, 158, 164], band: [204, 44, 44], text: [250, 250, 246] },
+  red: {
+    brand: "blaze",
+    wall: [156, 158, 164],
+    band: BRANDS.blaze.main,
+  },
 };
+
+//what is on a superstore's banners: the band's colour and a mark of the
+//firm's other colour on it
+function bannerMark(S) {
+  var f = BRANDS[S.brand];
+
+  return S.band === f.accent ? f.main : f.accent;
+}
 
 //the shopping centres
 var MALL = {
@@ -193,18 +223,6 @@ var RECT = {
 
 /* --- Pictures -------------------------------------------------------- */
 
-//0..1, the same for the same whole numbers every time
-function hash(i, j, k) {
-  var h =
-    Math.imul(i | 0, 73856093) ^
-    Math.imul(j | 0, 19349663) ^
-    Math.imul(k | 0, 83492791);
-
-  h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
-
-  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
-}
-
 /**
  * A picture on a face, a box to a cell, w cells across and h up: on the face
  * looking towards -y at y (axis "y") from x = a, or on the one looking
@@ -227,32 +245,26 @@ function picture(b, axis, at, a, z0, w, h, ink) {
     }
 }
 
-//a name, in letters: three cells to a letter and one between, each letter
-//some of its cells filled - which reads as lettering at this size
-function lettering(fg, bg, seed) {
+//a mark in the middle of a board of colour bg: a round dot of colour mark -
+//for a shop of no firm's, which has no emblem of its own
+function plainMark(bg, mark, w, h) {
   return function (i, j) {
-    var k = i % 4;
+    var dx = (i + 0.5 - w / 2) / (h / 2),
+      dy = (j + 0.5 - h / 2) / (h / 2);
 
-    if (k === 3) return bg;
-
-    return hash(Math.floor(i / 4), k * 7 + j, seed) < 0.62 ? fg : bg;
+    return dx * dx + dy * dy < 0.5 ? mark : bg;
   };
 }
 
-//a round logo at the left and the name by it
-function logo(fg, bg, mark, seed, w, h) {
-  var text = lettering(fg, bg, seed);
-
-  return function (i, j) {
-    var du = (i + 0.5 - h / 2) / (h / 2),
-      dv = (j + 0.5 - h / 2) / (h / 2);
-
-    if (i < h) return du * du + dv * dv < 0.8 ? mark : bg;
-    if (i === h || i >= w - 1 || j === 0 || j === h - 1) return bg;
-
-    return text(i - h - 1, j - 1);
-  };
-}
+//which firm a small shop's awning colour says it is (shared/gen/brands): a
+//burger bar in red, a grocer in green, a bank in navy, a pub in amber - and
+//under no awning a shop of nobody's but its own
+var SMALL_BRANDS = {
+  red: "blaze",
+  green: "orchard",
+  navy: "pillar",
+  amber: "amber",
+};
 
 /* --- Bits of shops --------------------------------------------------- */
 
@@ -510,22 +522,16 @@ function smallShop(o, rnd) {
     doorAt(b, y, 23, 27, 9, P.trim, P.door);
   }
 
-  //the fascia over it, with the name on it - or plain, and a board on the
-  //side
-  b.push(box(R.x0 + 1, R.x1 - 1, y - 0.6, y, 9.8, 12.4, P.sign));
-  if (o.sign === "fascia")
-    picture(
-      b,
-      "y",
-      y - 0.6,
-      R.x0 + 3,
-      10.3,
-      20,
-      2,
-      lettering(P.trim, null, hash(o.pal.length, o.front.length, 1) * 1e6),
-    );
-  else {
-    b.push(box(R.x0 - 0.6, R.x0, 12, 25, 3.5, 11.5, P.trim));
+  //the fascia over it, in its firm's colours and pattern - or plain, and a
+  //board on the side with the firm's emblem (shared/gen/brands)
+  var firm = SMALL_BRANDS[o.awning],
+    sign = firm ? BRANDS[firm].main : P.sign;
+
+  b.push(box(R.x0 + 1, R.x1 - 1, y - 0.6, y, 10, 13, sign));
+  if (o.sign === "fascia") {
+    if (firm) picture(b, "y", y - 0.6, R.x0 + 2, 11, 22, 2, panel(firm, 22, 2));
+  } else {
+    b.push(box(R.x0 - 0.6, R.x0, 12, 25, 3, 12, P.trim));
     picture(
       b,
       "x",
@@ -534,19 +540,11 @@ function smallShop(o, rnd) {
       4,
       12,
       7,
-      logo(WHITE, P.sign, P.door, 3, 12, 7),
+      firm ? panel(firm, 12, 7) : plainMark(P.sign, P.door, 12, 7),
     );
   }
 
-  if (o.awning !== "none")
-    awning(
-      b,
-      y,
-      R.x0 + 0.5,
-      R.x1 - 0.5,
-      9.5,
-      o.awning === "red" ? [206, 40, 44] : [36, 132, 72],
-    );
+  if (firm) awning(b, y, R.x0 + 0.5, R.x1 - 0.5, 9.5, BRANDS[firm].main);
 
   //the roof
   if (o.roof === "flat") {
@@ -660,7 +658,8 @@ function store(o, rnd) {
   });
 
   if (o.awning !== "none") {
-    var color = o.awning === "red" ? [206, 40, 44] : [36, 132, 72];
+    //in the firm's colour, whichever the shop was built with
+    var color = BRANDS[P.brand].main;
 
     awning(b, y, 3.5, 12.5, 11.5, color);
     awning(b, y, 19.5, 28.5, 11.5, color);
@@ -673,16 +672,7 @@ function store(o, rnd) {
   b.push(box(R.x1 - 0.8, R.x1, R.y0, R.y1, h, h + 1.4, P.wall));
   b.push(box(R.x0, R.x1, R.y1 - 0.8, R.y1, h, h + 1.4, P.wall));
   b.push(box(7, 25, R.y0, R.y0 + 0.8, h, h + 5, P.sign));
-  picture(
-    b,
-    "y",
-    R.y0,
-    8,
-    h + 0.5,
-    16,
-    4,
-    logo(WHITE, P.sign, WHITE, 5, 16, 4),
-  );
+  picture(b, "y", R.y0, 8, h + 0.5, 16, 4, panel(P.brand, 16, 4));
   airConditioner(b, 5, R.y1 - 9, h + 0.4);
   airConditioner(b, 21, R.y1 - 7, h + 0.4);
 
@@ -740,31 +730,12 @@ function bigbox(o, rnd) {
   [24.4, 39].forEach(function (a) {
     b.push(box(a, a + 0.6, y - 5.1, y - 4.5, 1.2, 9.5, METAL));
   });
-  picture(
-    b,
-    "y",
-    y - 3,
-    25,
-    top - 6,
-    14,
-    5,
-    lettering(S.text === S.band ? S.wall : S.text, S.band, 7),
-  );
+  picture(b, "y", y - 3, 25, top - 6, 14, 5, panel(S.brand, 14, 5));
 
   //banners hanging down the front
   [7, 13, 48, 54].forEach(function (a) {
     b.push(box(a, a + 3, y - 0.5, y, 6, 13, S.band));
-    b.push(
-      box(
-        a + 0.5,
-        a + 2.5,
-        y - 0.6,
-        y - 0.5,
-        8,
-        9.5,
-        S.text === S.band ? S.wall : S.text,
-      ),
-    );
+    b.push(box(a + 0.5, a + 2.5, y - 0.6, y - 0.5, 8, 10, bannerMark(S)));
   });
 
   //air conditioning along the roof
@@ -804,16 +775,7 @@ function mall(o, rnd) {
   for (var m = 25; m < 41; m += 3)
     b.push(box(m, m + 0.4, y - 4.5, y - 4.3, 1.2, h - 2, S.trim));
   b.push(box(22, 42, y - 4.6, y - 4, h - 1.5, h + 3.5, S.band));
-  picture(
-    b,
-    "y",
-    y - 4.6,
-    24,
-    h - 1,
-    16,
-    4,
-    logo(WHITE, S.band, WHITE, 11, 16, 4),
-  );
+  picture(b, "y", y - 4.6, 24, h - 1, 16, 4, parade(16, 4));
 
   //the roof, a glass vault along the middle of it, and air conditioning
   b.push(box(R.x0, R.x1, R.y0, R.y1, h, h + 0.4, [128, 130, 134]));
@@ -911,7 +873,7 @@ function market(o, rnd) {
   //the doors, the name over them, the stalls out in front
   b.push(box(28, 36, y - 0.4, y, 1.2, 7, WOOD));
   b.push(box(26, 38, y - 0.8, y, 7.5, 10.5, frame));
-  picture(b, "y", y - 0.8, 27, 8, 10, 2, lettering(WHITE, frame, 13));
+  picture(b, "y", y - 0.8, 27, 8, 10, 2, panel("orchard", 10, 2));
 
   [6, 14, 44, 52].forEach(function (x, i) {
     var crates = [
@@ -1011,33 +973,27 @@ var BAYS = {
 };
 
 /**
- * What the sign on a pole in a car park shows, by its name: the shop's
- * colours and its name, as on the shop.
+ * What the sign on a pole in a car park shows, by its name: the firm's
+ * colours and emblem, as on the shop (shared/gen/brands).
  */
 function pylonInk(name) {
   var kind = name.split("-")[0],
     which = name.split("-")[1];
 
   if (kind === "store")
-    return {
-      bg: STORE[which].sign,
-      ink: logo(WHITE, STORE[which].sign, WHITE, 5, 8, 5),
-    };
+    return { bg: STORE[which].sign, ink: panel(STORE[which].brand, 8, 5) };
   if (kind === "bigbox") {
     var S = BIGBOX[which];
 
-    return {
-      bg: S.band,
-      ink: lettering(S.text === S.band ? S.wall : S.text, S.band, 7),
-    };
+    return { bg: S.band, ink: panel(S.brand, 8, 5) };
   }
   if (kind === "mall")
     return {
       bg: MALL[which].band,
-      ink: logo(WHITE, MALL[which].band, WHITE, 11, 8, 5),
+      ink: plainMark(MALL[which].band, WHITE, 8, 5),
     };
 
-  return { bg: [40, 104, 64], ink: lettering(WHITE, [40, 104, 64], 13) };
+  return { bg: BRANDS.orchard.main, ink: panel("orchard", 8, 5) };
 }
 
 /**
@@ -1092,7 +1048,8 @@ var FOOTPRINTS = {
         roof: ["flat", "gable", "shed"],
         pal: Object.keys(SMALL),
         front: ["center", "corner", "double"],
-        awning: ["red", "red", "none", "green"],
+        //a firm's colours, or none (SMALL_BRANDS)
+        awning: ["red", "green", "navy", "amber", "none"],
         sign: ["fascia", "board"],
       },
       tiles: [

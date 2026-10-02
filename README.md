@@ -66,8 +66,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   each kind (`src/data/flats.js`, `offices.js`).
 - Shops are painted the same way (`src/shared/gen/shops.js`), but one
   catalogue entry per footprint (`src/data/shops.js`) stands for several
-  designs: a 1x1 corner shop (flat, gable or shed roof, striped awning,
-  sign or side board), a 1x2 shop with a car park, a 2x2 superstore and a
+  designs: a 1x1 corner shop (flat, gable or shed roof, a firm's striped
+  awning or none, fascia or side board), a 1x2 shop with a car park, a 2x2 superstore and a
   2x3 shopping centre or covered market, the big ones with a pole sign.
   Which design, colours and details a shop gets is picked when it is
   placed, so the ghost already shows what will be built. Car parks - the
@@ -93,9 +93,23 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   drive is drawn again over them, so a car behind a hedge stays behind it
   whichever way the house is turned - and the front of a building site's
   fence over its digger and lorry the same way.
-- The water tower is painted too (`src/shared/gen/utilities.js`): the
-  American small-town kind, a round tank on four braced steel legs with a
-  catwalk, a ladder and the riser pipe down into the ground.
+- The water tower is painted too (`src/shared/gen/utilities.js`), in one
+  of four European designs picked when it is placed: a concrete bowl on a
+  shaft banded red and white, a slim steel tank on a steel column with a
+  ladder up it, a square shaft of precast panels with three lens-shaped
+  tanks stacked up its side, or a brick shaft with a wider tank of steel
+  sheet on it. Each has a colour of its own and a band of blue round its
+  tank; whatever is round is laid out in columns a unit across, so it keeps
+  to the pixels like everything else.
+- A few firms turn up all over town (`src/shared/gen/brands.js`): bolt the
+  builders' merchant, orchard the grocer, pillar the bank, blaze the burger
+  bar and amber the brewery. Each has its colours and an emblem - hazard
+  stripes; stripes leaning forward and a round fruit; three columns; a bun;
+  the sun going down over the sea - on the small shops' fascias, boards and
+  awnings, the stores and superstores, the pole signs in their car parks,
+  the billboards on the offices and the sides of delivery trucks and vans.
+  Nothing anywhere has letters on it: at a pixel or two high they read as
+  noise.
 - Roads are painted too (`src/shared/gen/roads.js`): a piece for every way
   a tile joins up with its neighbours and a ramp for every slope, each
   plain - asphalt with a dashed line and gravel edges - or paved, with

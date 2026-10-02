@@ -19,6 +19,7 @@
  * everything else a faint grain (blocks MATTE, GLASSY).
  */
 import * as iso from "./isobox.js";
+import * as Brands from "./brands.js";
 import {
   blocks,
   box,
@@ -82,16 +83,6 @@ var PALETTES = {
     roof: [124, 136, 128],
   },
 };
-
-//what a billboard's picture is painted in: strong colours, to be seen
-var INKS = [
-  [232, 56, 64],
-  [252, 188, 32],
-  [36, 136, 232],
-  [40, 176, 96],
-  [236, 104, 188],
-  [250, 132, 36],
-];
 
 //a little deeper than the flats, and nearer the street
 var SECTION = {
@@ -222,9 +213,9 @@ function airConditioner(b, x, y, z) {
 /**
  * A billboard on the roof at z, across the front of the section: a picture
  * on a panel in a frame, up on legs, lit by a lamp at either end. The
- * picture, a pixel to a cell, is one of a few for the variant's seed: a sun
- * going down over the sea, a brand's round logo by its name, or bold
- * stripes.
+ * picture, a cell to a pixel, is the emblem of one of the town's firms on
+ * its colours (shared/gen/brands) - no words, which would read as nothing
+ * at this size.
  */
 function billboard(b, s, z, pal, rnd) {
   var w = Math.min(20, s.x1 - s.x0 - 4),
@@ -232,10 +223,7 @@ function billboard(b, s, z, pal, rnd) {
     x0 = Math.round(s.mid - w / 2),
     face = s.front + 2.5,
     z0 = z + 4.5,
-    inks = INKS.slice().sort(function () {
-      return rnd() - 0.5;
-    }),
-    design = Math.floor(rnd() * 3),
+    brand = Brands.NAMES[Math.floor(rnd() * Brands.NAMES.length)],
     i,
     j;
 
@@ -308,37 +296,8 @@ function billboard(b, s, z, pal, rnd) {
     );
   });
 
-  function ink(u, v) {
-    var aspect = w / h,
-      du,
-      dv;
-
-    if (design === 0) {
-      //the sun going down over the sea
-      du = (u - 0.5) * aspect;
-      dv = v - 0.38;
-      if (v < 0.3)
-        return Math.floor(v * h + u * w) % 3 === 0
-          ? [96, 168, 232]
-          : [32, 88, 168];
-      if (du * du + dv * dv < 0.12) return [255, 236, 120];
-      return iso.mix([250, 120, 60], [252, 196, 96], (v - 0.3) / 0.7);
-    }
-
-    if (design === 1) {
-      //a round logo by the name, on white
-      du = (u - 0.2) * aspect;
-      dv = v - 0.5;
-      if (du * du + dv * dv < 0.14)
-        return du * du + dv * dv < 0.035 ? [250, 250, 250] : inks[0];
-      if (u > 0.42 && u < 0.92 && v > 0.55 && v < 0.75) return [40, 44, 56];
-      if (u > 0.42 && u < 0.78 && v > 0.28 && v < 0.42) return inks[1];
-      return [246, 246, 240];
-    }
-
-    //bold stripes across it
-    return inks[Math.floor((u * w + v * h * 1.5) / 3) % 3];
-  }
+  //a firm's emblem on its colours, as big as the board (shared/gen/brands)
+  var ink = Brands.panel(brand, w, h);
 
   for (i = 0; i < w; i++)
     for (j = 0; j < h; j++)
@@ -350,7 +309,7 @@ function billboard(b, s, z, pal, rnd) {
           face,
           z0 + j,
           z0 + j + 1,
-          ink((i + 0.5) / w, (j + 0.5) / h),
+          ink(i, j),
         ),
       );
 }
