@@ -20,7 +20,7 @@
  * RGBA: the game paints them as it starts (client/generated), and nothing is
  * shipped but this.
  */
-import { snap } from "./isobox.js";
+import { BRANDS, NAMES as BRAND_NAMES, panel as emblem } from "./brands.js";
 
 var COLORS = {
   orange: [236, 128, 32],
@@ -46,6 +46,40 @@ var GLASS = [96, 150, 196],
   CARGO = [214, 214, 206],
   GRAVEL = [170, 162, 150],
   BUCKET = [72, 74, 80];
+
+//the colour of a look: one of COLORS, or a firm's (shared/gen/brands), in
+//whose colours a delivery truck or van goes about
+function colorOf(key) {
+  return COLORS[key] || (BRANDS[key] && BRANDS[key].main);
+}
+
+/**
+ * A firm's emblem on both sides of a vehicle, a cell a unit square: along
+ * it from l0, w cells, and up from z0, h - read from the front on the left
+ * side, from the back on the right, so that it faces the way it goes on
+ * both.
+ */
+function livery(boxes, brand, l0, z0, w, h, width) {
+  var ink = emblem(brand, w, h);
+
+  for (var i = 0; i < w; i++)
+    for (var j = 0; j < h; j++) {
+      var c = ink(i, j);
+
+      boxes.push(box(l0 + i, l0 + i + 1, -0.15, 0, z0 + j, z0 + j + 1, c));
+      boxes.push(
+        box(
+          l0 + w - 1 - i,
+          l0 + w - i,
+          width,
+          width + 0.15,
+          z0 + j,
+          z0 + j + 1,
+          c,
+        ),
+      );
+    }
+}
 
 function mix(c, to, k) {
   return [
@@ -297,7 +331,7 @@ var TYPES = {
       lights(b, 14, 6, 2.6, 3.5, 0.4, 1.3);
       //cab
       b.push(box(3.6, 7.8, 0.4, 5.6, 4.0, 7.2, c));
-      windows(b, 3.6, 7.8, 0.4, 5.6, 4.5, 6.4, 0.6, [[4.1, 7.2]]);
+      windows(b, 3.6, 7.8, 0.4, 5.6, 4.5, 6.6, 0.6, [[4.1, 7.2]]);
       //the bed: open at the top, a floor and low walls
       b.push(box(8.2, 14, 0, 0.6, 4.0, 5.2, c));
       b.push(box(8.2, 14, 5.4, 6, 4.0, 5.2, c));
@@ -306,6 +340,7 @@ var TYPES = {
       return b;
     },
   },
+  //a van in any colour - or white, with a firm's emblem on its sides
   van: {
     length: 13,
     width: 6.5,
@@ -313,8 +348,12 @@ var TYPES = {
     weight: 3,
     engine: [1.2, 3.25, 4.2],
     tailpipe: [13.2, 5.3, 1.1],
-    build: function (c) {
-      var b = [];
+    colors: Object.keys(COLORS).concat(BRAND_NAMES),
+    build: function (c, key) {
+      var b = [],
+        firm = BRANDS[key] !== undefined;
+
+      if (firm) c = COLORS.white;
       wheels(b, 13, 6.5, [2.4, 10.6], 1.3);
       b.push(box(0, 2.4, 0, 6.5, 1.3, 4.2, c));
       b.push(box(2.4, 13, 0, 6.5, 1.3, 8.6, c));
@@ -323,9 +362,11 @@ var TYPES = {
       lights(b, 13, 6.5, 2.6, 3.5, 0.4, 1.3);
       b.push(box(2.25, 2.4, 0.6, 5.9, 5.2, 7.8, GLASS));
       b.push(box(2.9, 5.2, -0.15, 6.65, 5.2, 7.6, GLASS));
+      if (firm) livery(b, key, 5.6, 2.6, 7, 5, 6.5);
       return b;
     },
   },
+  //a box truck in any colour - or in a firm's, its emblem along the box
   truck: {
     length: 21,
     width: 7,
@@ -333,7 +374,8 @@ var TYPES = {
     weight: 2,
     engine: [0, 3.5, 3.2],
     tailpipe: [21.2, 5.8, 1.2],
-    build: function (c) {
+    colors: Object.keys(COLORS).concat(BRAND_NAMES),
+    build: function (c, key) {
       var b = [];
       wheels(b, 21, 7, [2.8, 14.6, 17.8], 1.5);
       //cab
@@ -349,6 +391,7 @@ var TYPES = {
       b.push(box(5.6, 6.0, 1.0, 6.0, 1.5, 7.0, CHASSIS));
       b.push(box(21, 21.2, 0.4, 1.6, 2.4, 3.4, TAILLIGHT));
       b.push(box(21, 21.2, 5.4, 6.6, 2.4, 3.4, TAILLIGHT));
+      if (BRANDS[key] !== undefined) livery(b, key, 7, 3, 13, 6, 7);
       return b;
     },
   },
@@ -462,15 +505,6 @@ var DIRECTIONS = {
  * its left side is to the left of the way it is going.
  */
 function place(boxes, length, width, dir) {
-  //snapped to whole units, the way the buildings are (iso snap): every edge
-  //a clean line of pixels
-  return placeExactly(boxes, length, width, dir).map(function (b) {
-    return snap(b);
-  });
-}
-
-//the same, not snapped: where a point on it is
-function placeExactly(boxes, length, width, dir) {
   return boxes.map(function (b) {
     //along the way it goes, front first
     var a0 = dir.forward ? length / 2 - b.l1 : b.l0 - length / 2,
@@ -504,7 +538,7 @@ var TILE = 32,
  * the land, the way a building gives where its chimney smokes.
  */
 function placePoint(p, length, width, dir) {
-  var b = placeExactly(
+  var b = place(
     [box(p[0], p[0], p[1], p[1], p[2], p[2])],
     length,
     width,
@@ -579,9 +613,7 @@ function cast(boxes, sx, sy) {
     }
     tout = Math.min(tx1, ty1, tz1);
 
-    //of two hit at the same spot, the one listed later: what is painted on
-    //the other, snapped level with it
-    if (tin < tout && tin <= best) {
+    if (tin < tout && tin < best) {
       best = tin;
       hit = b;
       face = f;
@@ -768,7 +800,7 @@ function walk(see) {
 
     //most types come in every colour; a cab or a police car has its own
     (t.colors || Object.keys(COLORS)).forEach(function (color) {
-      var boxes = t.build(COLORS[color]);
+      var boxes = t.build(colorOf(color), color);
 
       types[type].colors[color] = {};
 
@@ -835,13 +867,13 @@ export function paint(name) {
   }
 
   if (
-    COLORS[parts[3]] === undefined ||
-    (t.colors && t.colors.indexOf(parts[3]) === -1)
+    colorOf(parts[3]) === undefined ||
+    (t.colors || Object.keys(COLORS)).indexOf(parts[3]) === -1
   )
     throw new Error("no such vehicle picture: " + name);
 
   return toImage(
-    render(place(t.build(COLORS[parts[3]]), t.length, t.width, dir)),
+    render(place(t.build(colorOf(parts[3]), parts[3]), t.length, t.width, dir)),
   );
 }
 
