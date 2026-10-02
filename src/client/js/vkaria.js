@@ -108,14 +108,13 @@ Vkaria.prototype.prepare = function (callback) {
 
 /**
  * Turns the camera round by so many quarter turns, about the ground in the
- * middle of the screen - not while an action owns the world: what it has
- * drawn on it was drawn for the camera as it was.
+ * middle of the screen - at any time, in the middle of placing a building or
+ * reshaping the land too: whatever is drawn for the camera as it was is
+ * drawn again for it as it is (see client/view events).
  *
  * @param by {number}
  */
 Vkaria.prototype.turnView = function (by) {
-  if (this.ui.gameScreen().worldScreen().busy()) return;
-
   this.camera.cameraScript.turn(by);
 };
 

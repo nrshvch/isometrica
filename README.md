@@ -176,6 +176,12 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   buildings, trees and cars each pick their picture by it - a tile's slope
   by its corners as seen, a building turned as many more times as the
   camera is, drawn from the tile of it nearest the camera's own corner.
+  It turns at any time, in the middle of placing a building or shaping the
+  ground too: what is being placed is drawn again from the new side.
+- The city a new player starts on (`src/data/initialcity.js`) is built
+  entirely of generated buildings - houses, blocks of flats with their
+  yards, office blocks, shops and superstores - each turned to face the
+  street it stands on.
 - Whatever is painted out of boxes - buildings, roads, vehicles - keeps to
   the pixels the way a picture drawn by hand does (`src/shared/gen/isobox.js`
   snap): every box is snapped to whole units before it is painted, so an
