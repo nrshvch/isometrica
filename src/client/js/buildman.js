@@ -1101,6 +1101,8 @@ Buildman.prototype.build = function (code) {
   }
 
   var sub = Events.on(ts, AreaSelector.events.change, updateHilite);
+  //the camera turned: the buildings going up are shown from the new side
+  var turned = Events.on(View, View.events.change, updateHilite);
 
   //bind ui
   var controls = root.ui.gameScreen().showActionControls();
@@ -1148,6 +1150,7 @@ Buildman.prototype.build = function (code) {
     root.hiliteMan.disable(tokens);
     root.serviceman.hidePlacementCoverage();
     Events.off(ts, AreaSelector.events.change, sub);
+    Events.off(View, View.events.change, turned);
 
     root.ui.gameScreen().showWorld();
     root.ui.gameScreen().worldScreen().hideHint();
