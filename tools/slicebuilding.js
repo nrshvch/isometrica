@@ -4,7 +4,7 @@
  * The renderer sorts sprites one by one, so a single picture over several tiles
  * would be drawn either entirely in front of or entirely behind whatever stands
  * next to it. Cut per tile, every piece is sorted with its own tile, the way the
- * two storey houses in the spritesheet are.
+ * hand-drawn two storey houses are.
  *
  * Tile (0, 0) is the front one, the lowest on screen; +x runs up and to the
  * right, +y up and to the left (the building's sizeX and sizeY). Every piece is
@@ -18,7 +18,8 @@
  * anchorX/anchorY is where the middle of the front tile is in the picture: the
  * middle of its bottom corner, 14px up (the pivot the rest of the game uses).
  * Writes <out/prefix>-<x>-<y>.png for every tile and prints the sprites entry
- * for data/buildings.js, paths relative to src/public/gfx.
+ * for data/buildings.js, paths relative to assets/sprites - which is where
+ * the pieces go, to be packed like any other picture drawn by hand.
  */
 
 var fs = require("fs");
@@ -142,7 +143,7 @@ tiles.forEach(function (tile) {
     pivotX: Math.round(tile.cx - left),
     pivotY: Math.round(tile.cy - top),
     path: path
-      .relative(path.join(__dirname, "../src/public/gfx"), file)
+      .relative(path.join(__dirname, "../assets/sprites"), file)
       .split(path.sep)
       .join("/"),
   });

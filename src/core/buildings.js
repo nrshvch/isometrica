@@ -31,6 +31,7 @@ import TileIteratorAction from "./tileiteratoraction";
 import BuildingPositioning from "./buildingpositioning";
 
 import Namespace from "namespace";
+import Rotation from "./rotation";
 
 var Core = Namespace("Isometrica.Core");
 Core.ConstructionService = Buildings;
@@ -48,11 +49,10 @@ var events = {
  * @returns {number}
  */
 function buildTest(self, code, tile, rotation) {
-  var rotated = rotation,
-    data = BuildingData[code],
+  var data = BuildingData[code],
     positioning = data.positioning || BuildingPositioning.flat,
-    sizeX = rotated ? data.sizeY : data.sizeX,
-    sizeY = rotated ? data.sizeX : data.sizeY,
+    sizeX = Rotation.sizeX(data, rotation),
+    sizeY = Rotation.sizeY(data, rotation),
     slopeId,
     terrain,
     terrainType,

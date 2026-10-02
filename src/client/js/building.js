@@ -36,6 +36,8 @@ Building.prototype.setData = function (data) {
 };
 
 Building.prototype.destroy = function () {
+  //a road's view (RoadView) has nothing it waits to do
+  if (this.view.dispose !== undefined) this.view.dispose();
   this.view.gameObject.destroy();
 };
 

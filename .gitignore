@@ -7,8 +7,7 @@ test/temp
 .claude
 .claudeignore
 assets/terrain/terraingen
+assets/previews
 .wrangler
-/src/public/gfx/terrain/
-/src/public/gfx/trees/
-/src/public/gfx/buildings/generated
+/src/public/gfx/
 /vendor/*/dist/

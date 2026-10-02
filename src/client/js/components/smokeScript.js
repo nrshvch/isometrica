@@ -11,7 +11,11 @@ SmokeScript.prototype.startedAt = 0;
 SmokeScript.prototype.spriten = 0;
 
 //white, out of a chimney
-SmokeScript.steam = ["smoke.png", "smoke1.png", "smoke2.png"];
+SmokeScript.steam = [
+  "smoke/steam0.png",
+  "smoke/steam1.png",
+  "smoke/steam2.png",
+];
 
 //black, out of an engine on fire - greyer and thinner the higher it gets
 SmokeScript.soot = ["smoke/soot0.png", "smoke/soot1.png", "smoke/soot2.png"];

@@ -14,6 +14,7 @@ import ResourceCode from "core/resourcecode";
 import CityComponent from "./components/city";
 import Buildman from "./buildman";
 import ErrorCode from "core/errorcode";
+import Config from "./config";
 
 var City = Core.City;
 var CoreTerrain = Core.Terrain;
@@ -43,17 +44,38 @@ function updateLabel(self, city) {
 
 function setupLabel(self, city) {
   var go = addCityGO(self, city);
-  var tile = city.tile();
-  var x = self.root.terrain.tileXPos(tile);
-  var y = self.root.terrain.tileYPos(tile);
-  var z = self.root.terrain.tileZPos(tile);
 
-  go.transform.setPosition(x, y, z);
+  placeLabel(self, city);
   go.textRenderer.text = labelText(city);
+}
+
+/**
+ * Hangs the city's name over the middle of the land it owns - moved along
+ * as it buys more - at the height of the ground there.
+ */
+function placeLabel(self, city) {
+  var go = self._cityGOs[city.tile()],
+    c = city.center(),
+    tile = CoreTerrain.convertToIndex(Math.round(c.x), Math.round(c.y));
+
+  go.transform.setPosition(
+    c.x * Config.tileSize,
+    self.root.terrain.tileYPos(tile),
+    c.y * Config.tileSize,
+  );
 }
 
 function onNewCity(sender, city, self) {
   setupLabel(self, city);
+
+  Events.on(
+    city.area,
+    city.area.events.change,
+    function () {
+      placeLabel(self, city);
+    },
+    self,
+  );
 
   Events.on(city, City.events.rename, onCityRename, self);
   //the city ticks its update event, which is when the population moves
@@ -129,11 +151,11 @@ Cityman.prototype.locate = function (city) {
 };
 
 /**
- * What founding a city on tile would look like: its city hall, faint where it
- * could not go up, and the block of land it would start out with, outlined
- * the way the city limits are.
+ * What founding a city on tile would look like: the block of land it would
+ * start out with, outlined the way the city limits are - nothing stands on it
+ * yet.
  */
-function previewCity(self, tile, ok) {
+function previewCity(self, tile) {
   var root = self.root,
     half = Area.BLOCK_SIZE >> 1,
     x0 = CoreTerrain.extractX(tile) - half,
@@ -157,10 +179,7 @@ function previewCity(self, tile, ok) {
   renderer.dash = [4];
   root.game.logic.world.addGameObject(border);
 
-  return [
-    root.buildman.preview(BuildingCode.cityHall, tile, false, ok),
-    border,
-  ];
+  return [border];
 }
 
 Cityman.prototype.establish = function () {
@@ -195,7 +214,7 @@ Cityman.prototype.establish = function () {
       ok = City.canEstablish(root.core.world, tile);
 
     clearPreview();
-    previews = previewCity(self, tile, ok);
+    previews = previewCity(self, tile);
     root.buildman.fadeAround(ts.tiles());
 
     root.hiliteMan.disable(tokens);

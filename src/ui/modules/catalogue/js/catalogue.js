@@ -108,6 +108,10 @@ function getBuildings(self) {
           classCode: b.classCode,
           displayName: capitalize(b.name),
           stats: getStats(b),
+          image: imageOf(code),
+          //the code to draw a picture of as the catalogue opens, see
+          //showPreviews - none for a building drawn by hand
+          preview: b.compound !== undefined ? code : "",
         }),
       );
     }
@@ -122,11 +126,21 @@ function getBuildings(self) {
   });
 }
 
+//the picture on a building's card: drawn by hand for most - for one put
+//together out of parts, nothing until showPreviews draws it
+function imageOf(code) {
+  return BuildingData[code].compound !== undefined
+    ? ""
+    : "ui/img/buildings/" + code + ".png";
+}
+
 function getBuilding(self, code) {
   var data = BuildingData[code];
   var model = new Building({
     displayName: capitalize(data.name),
     code: code,
+    image: imageOf(code),
+    preview: data.compound !== undefined ? code : "",
     description: "This is a " + data.name + "! Deal with that!",
   });
   return model;

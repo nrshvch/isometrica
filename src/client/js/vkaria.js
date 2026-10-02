@@ -50,12 +50,15 @@ function Vkaria(core, ui, callback) {
   engine.Config.noLayerDepthSortingMask = 3;
   engine.Config.noLayerClearMask = 0;
 
-  //assets
-  this.assets = new engine.AssetManager();
-  this.sprites = new SpriteCache(this.assets);
-
   //init engine
   this.game = new engine.Game();
+
+  //every picture there is, by name - see prepare. What is on screen is kept
+  //on a few big canvases, and what has gone unseen longest is put away from
+  //there first, going by the frames the game counts
+  this.sprites = new SpriteCache(this.game.time);
+  //what was worked out painting the pictures the game paints for itself
+  this.generated = null;
 
   this.hiliteMan = new HiliteMan(this);
   this.buildman = new BuildMan(this);
@@ -76,40 +79,30 @@ function Vkaria(core, ui, callback) {
   this.player = new Player(this);
 }
 
+/**
+ * Gets every picture ready to be drawn by name, and starts the game once it
+ * is: the hand-drawn ones are listed in gfx/manifest.json and load as they
+ * are first drawn; the ones the game paints for itself - the ground, the
+ * cars, the stones - are listed with their sizes by what each generator
+ * described at build time, and are painted as they are first drawn, off the
+ * main thread (client/generator). Nothing is painted before the game starts.
+ */
 Vkaria.prototype.prepare = function (callback) {
-  //preload assets and, when done, start game
   var self = this;
 
-  //todo: use promises
-  //прелоадинг ресурсов не нужен, т.к. идея прелоадинга идёт в разрез с идеей того, чтобы загружать ресурсы по мере необходимисти, а не все сразу.
-  //Try to load spritesheet. If it is not available, then start game anyway, it will then use sprites each separately.
-  //FF won't run game before any resource is ready. Empty "new Image()" shim is not helpful.
-  this.assets
-    .getAsset(
-      "gfx/spritesheet.json",
-      engine.AssetManager.Resource.ResourceTypeEnum.json,
+  this.sprites
+    .load()
+    .then(
+      function () {
+        self.generated = self.sprites.generated;
+      },
+      //the game goes on without whatever is missing, and draws nothing for it
+      function (e) {
+        console.error("Sprites not ready:", e);
+      },
     )
-    .done(function (resourceJSON) {
-      if (
-        resourceJSON.state === resourceJSON.constructor.ResourceStateEnum.ready
-      ) {
-        self.assets
-          .getAsset(
-            "gfx/spritesheet.png",
-            engine.AssetManager.Resource.ResourceTypeEnum.image,
-          )
-          .done(function (resourceImage) {
-            self.sprites.setSpritesheet(
-              resourceJSON.data.frames,
-              resourceImage.data,
-            );
-            //self.start();
-            callback && callback();
-          });
-      } else {
-        //self.start();
-        callback && callback();
-      }
+    .then(function () {
+      callback && callback();
     });
 };
 

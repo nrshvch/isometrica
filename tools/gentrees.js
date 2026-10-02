@@ -11,8 +11,8 @@
  * and looked at the way the game looks at everything: from 30 degrees above,
  * so that anything round on the ground is twice as wide as it is deep, the
  * way the tiles are. Every pixel of the picture is a ray going into it, lit
- * where it meets the tree by light from the right, as the trees in the
- * spritesheet are, darker in the hollows, and with a pixel's worth of noise
+ * where it meets the tree by light from the right, as the hand-drawn
+ * trees are, darker in the hollows, and with a pixel's worth of noise
  * in the colour. Snow lies on whatever faces up. The shadow on the ground is
  * the tree's own, cast down and to the left, black and as see-through as the
  * other trees' shadows are.

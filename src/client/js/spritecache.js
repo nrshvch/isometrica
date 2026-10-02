@@ -1,147 +1,274 @@
-import engine from "engine";
+import CanvasCache from "./canvascache";
+import CachedSprite from "./cachedsprite";
+import Generator from "./generator";
 
-//Sits between the pictures the game ships with and the renderers that draw
-//them. Browsers blit a small canvas that already lives on the GPU a good deal
-//faster than they cut a rectangle out of a big png, so every picture is painted
-//once onto a canvas of its own and the renderers only ever see that canvas.
+//Sits between the pictures the game has and the renderers that draw them.
 //
-//A picture comes either out of the spritesheet or, when the sheet has no frame
-//of that name, from a png of its own under gfx/, at the same path the frame
-//would have had (gfx/buildings/shop.png for "buildings/shop.png"). New art is
-//added the second way; the sheet stays until everything has moved out of it.
+//Every picture is a sprite, found by its name on a sheet - a picture drawn on
+//its own is a sheet with just the one sprite on it. The ones somebody drew
+//are on the sheets tools/packsprites.js put under gfx/ and listed in
+//gfx/manifest.json. The ones the game paints for itself are listed in
+//gfx/generated/<generator>.json, and each is a sheet of its own, painted the
+//first time it is wanted (client/generator). Either way how big every sprite
+//is and where it is on its sheet is known from the start, so nothing ever
+//has to wait for a picture to find out its size.
 //
-//Any picture can also be had mirrored, left to right. That is what a rotated
-//building is drawn with when nobody painted it turned round: flipped over, its
-//x and y axes swap, which is exactly what rotating does to its footprint.
+//The sheets are only where pictures are taken from. What is drawn is drawn
+//from the canvas cache: a few big pages that only what is on screen is put
+//onto - see CachedSprite and CanvasCache. A sheet is loaded the first time a
+//sprite on it is wanted there.
 
 var ROOT = "gfx/";
-var ImageType = engine.AssetManager.Resource.ResourceTypeEnum.image;
-var ResourceState = engine.AssetManager.Resource.ResourceStateEnum;
+var MANIFEST = ROOT + "manifest.json";
 
-function SpriteCache(assets) {
-  this.assets = assets;
+/**
+ * @param clock {{frame: number}} counts the frames drawn - engine Time
+ * @param [options] {Object} for the canvas cache: pageSize, maxPages
+ */
+function SpriteCache(clock, options) {
+  //name -> {sheet, x, y, w, h}
   this.frames = {};
-  this.atlas = null;
+  //sheet name -> Sheet
+  this.sheets = {};
+  //key -> CachedSprite
   this.sprites = {};
-  this.waiting = new Map();
+  //what else the generators worked out, by generator: see
+  //shared/gen/catalog describe
+  this.generated = {};
+  //paints the generated sprites, once the manifest is in
+  this.generator = null;
+
+  this.cache = new CanvasCache(
+    clock,
+    Object.assign({ canvas: canvas }, options),
+  );
 }
 
-SpriteCache.prototype.setSpritesheet = function (frames, atlas) {
-  this.frames = frames;
-  this.atlas = atlas;
+/**
+ * @param url {string|null} where the picture is, or null for one painted here
+ * @param [generated] {{name, gen, key}} for one painted here: the sprite, and
+ *        how its generator knows it
+ */
+function Sheet(url, generated) {
+  this.url = url;
+  this.generated = generated || null;
+  //the picture once it has loaded
+  this.image = null;
+  this.loading = null;
+}
+
+/**
+ * Reads gfx/manifest.json: every sprite drawn by hand, and the sheet it is on
+ * - and what every generator says it paints. A file is asked for by its
+ * hash, so a browser holding an older one fetches the new one rather than
+ * drawing what it has.
+ *
+ * @returns {Promise}
+ */
+SpriteCache.prototype.load = function () {
+  var self = this;
+
+  return json(MANIFEST, { cache: "no-cache" }).then(function (manifest) {
+    var inputs = {},
+      gens = Object.keys(manifest.generated);
+
+    Object.keys(manifest.sheets).forEach(function (file) {
+      self.sheets[file] = new Sheet(
+        ROOT + file + "?v=" + manifest.sheets[file].hash,
+      );
+    });
+
+    Object.assign(self.frames, manifest.sprites);
+
+    //where the generators find what they paint from
+    Object.keys(manifest.sprites).forEach(function (name) {
+      var f = manifest.sprites[name];
+
+      inputs[name] = {
+        url: new URL(self.sheets[f.sheet].url, document.baseURI).href,
+        x: f.x,
+        y: f.y,
+        w: f.w,
+        h: f.h,
+      };
+    });
+
+    return Promise.all(
+      gens.map(function (gen) {
+        var file = manifest.generated[gen];
+
+        return json(ROOT + file.file + "?v=" + file.hash);
+      }),
+    ).then(function (metas) {
+      metas.forEach(function (meta) {
+        addGenerated(self, meta);
+      });
+
+      self.generator = new Generator(inputs);
+    });
+  });
 };
 
 /**
- * The one sprite for that name, shared by everything that draws it. A picture
- * of its own is loaded in the background: until it is there the sprite is
- * empty (0x0), which the renderers simply draw nothing for.
+ * Makes every sprite a generator paints drawable by name - each a sheet of
+ * its own, with nothing on it until it is painted.
+ */
+function addGenerated(self, meta) {
+  Object.keys(meta.sprites).forEach(function (name) {
+    var s = meta.sprites[name];
+
+    self.sheets[name] = new Sheet(null, {
+      name: name,
+      gen: meta.generator,
+      key: s.key !== undefined ? s.key : name,
+    });
+    self.frames[name] = {
+      sheet: name,
+      x: 0,
+      y: 0,
+      w: s.w,
+      h: s.h,
+      //for a part of something put together: where its tile's middle is
+      pivotX: s.pivotX,
+      pivotY: s.pivotY,
+    };
+  });
+
+  self.generated[meta.generator] = meta.data;
+}
+
+function json(url, options) {
+  return fetch(url, options).then(function (response) {
+    if (!response.ok) throw new Error(url + ": " + response.status);
+
+    return response.json();
+  });
+}
+
+SpriteCache.prototype.has = function (name) {
+  return this.frames[name] !== undefined;
+};
+
+/**
+ * Where a sprite's frame is, how big and, for a generated part, its pivot -
+ * or undefined for no such sprite.
+ *
+ * @returns {{w, h, pivotX, pivotY}|undefined}
+ */
+SpriteCache.prototype.frame = function (name) {
+  return this.frames[name];
+};
+
+/**
+ * The one sprite for that name, shared by everything that draws it, the size
+ * of its picture from the start.
  *
  * @param name {string} e.g. "buildings/shop.png"
- * @param [mirrored] {boolean} flipped left to right
- * @returns {Isometrica.Engine.SpriteManager.Sprite}
+ * @returns {CachedSprite}
  */
-SpriteCache.prototype.getSprite = function (name, mirrored) {
-  var key = mirrored ? name + "#mirrored" : name,
-    sprite = this.sprites[key];
-
-  if (sprite === undefined) {
-    sprite = this.sprites[key] = new engine.SpriteManager.Sprite();
-
-    if (mirrored) fromMirror(this, sprite, this.getSprite(name));
-    else if (this.frames[name] !== undefined)
-      fromSpritesheet(this, sprite, this.frames[name].frame);
-    else fromImage(this, sprite, ROOT + name);
-  }
-
-  return sprite;
+SpriteCache.prototype.getSprite = function (name) {
+  return this.sprites[name] || this.getComposite([name]);
 };
 
 /**
- * Calls back with the sprite once there is a picture in it - right away for a
- * spritesheet frame, later for one that is still being loaded. For whoever
- * needs its size, which an empty sprite does not have yet.
+ * One picture made of several sprites laid over one another, bottom first,
+ * put together once and drawn as one - shared by everything that asks for the
+ * same parts in the same places.
+ *
+ * @param parts {Array<string|{name: string, x: number, y: number}>} a name
+ *        alone is at 0, 0; x, y are where the part's top left corner goes,
+ *        never left of or above the picture's
+ * @returns {CachedSprite}
  */
-SpriteCache.prototype.whenReady = function (sprite, callback) {
-  if (sprite.width > 0) {
-    callback(sprite);
-    return;
-  }
+SpriteCache.prototype.getComposite = function (parts) {
+  var key = parts
+      .map(function (part) {
+        return typeof part === "string" || (!part.x && !part.y)
+          ? part.name || part
+          : part.name + "@" + part.x + "," + part.y;
+      })
+      .join("+"),
+    sprite = this.sprites[key];
 
-  var list = this.waiting.get(sprite);
+  if (sprite !== undefined) return sprite;
 
-  if (list === undefined) this.waiting.set(sprite, (list = []));
+  var resolved = [],
+    width = 0,
+    height = 0;
 
-  list.push(callback);
-};
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i],
+      name = typeof part === "string" ? part : part.name,
+      frame = this.frames[name],
+      x = part.x || 0,
+      y = part.y || 0;
 
-function fromSpritesheet(self, sprite, frame) {
-  fill(self, sprite, prerender(self.atlas, frame.x, frame.y, frame.w, frame.h));
-}
-
-function fromMirror(self, sprite, original) {
-  self.whenReady(original, function () {
-    var canvas = prerender(
-      original.sourceImage,
-      0,
-      0,
-      original.width,
-      original.height,
-      true,
-    );
-    fill(self, sprite, canvas);
-  });
-}
-
-function fromImage(self, sprite, path) {
-  self.assets.getAsset(path, ImageType).done(function (resource) {
-    if (resource.state !== ResourceState.ready) {
-      console.warn("Sprite not found: " + path);
-      return;
+    //drawn without it, which draws nothing for a sprite of one part
+    if (frame === undefined) {
+      console.warn("No such sprite: " + name);
+      continue;
     }
 
-    var image = resource.data;
-    fill(self, sprite, prerender(image, 0, 0, image.width, image.height));
-
-    //the canvas is all anybody draws from now on
-    self.assets.releaseAsset(path);
-  });
-}
-
-function prerender(source, x, y, w, h, mirrored) {
-  var canvas =
-    typeof OffscreenCanvas !== "undefined"
-      ? new OffscreenCanvas(w, h)
-      : Object.assign(document.createElement("canvas"), {
-          width: w,
-          height: h,
-        });
-
-  var ctx = canvas.getContext("2d");
-
-  if (mirrored) {
-    ctx.translate(w, 0);
-    ctx.scale(-1, 1);
+    resolved.push({
+      sheet: this.sheets[frame.sheet],
+      frame: frame,
+      x: x,
+      y: y,
+    });
+    width = Math.max(width, x + frame.w);
+    height = Math.max(height, y + frame.h);
   }
 
-  ctx.drawImage(source, x, y, w, h, 0, 0, w, h);
+  return (this.sprites[key] = new CachedSprite(
+    this,
+    key,
+    resolved,
+    width,
+    height,
+  ));
+};
 
-  return canvas;
-}
+/**
+ * Starts loading a sheet, unless it is loading or loaded already.
+ *
+ * @returns {Promise} its picture
+ */
+SpriteCache.prototype.loadSheet = function (sheet) {
+  if (sheet.generated !== null) return this.generator.load(sheet);
 
-function fill(self, sprite, canvas) {
-  sprite.sourceImage = canvas;
-  sprite.offsetX = 0;
-  sprite.offsetY = 0;
-  sprite.width = canvas.width;
-  sprite.height = canvas.height;
+  if (sheet.loading === null) {
+    sheet.loading = fetch(sheet.url)
+      .then(function (response) {
+        if (!response.ok) throw new Error(sheet.url + ": " + response.status);
 
-  var list = self.waiting.get(sprite);
+        return response.blob();
+      })
+      .then(function (blob) {
+        return createImageBitmap(blob);
+      })
+      .then(
+        function (image) {
+          return (sheet.image = image);
+        },
+        function (e) {
+          console.warn("Sheet not loaded: " + e.message);
+          throw e;
+        },
+      );
 
-  if (list !== undefined) {
-    self.waiting.delete(sprite);
-
-    for (var i = 0; i < list.length; i++) list[i](sprite);
+    //nobody waits for it: a sprite asks for it every frame until it is in
+    sheet.loading.catch(function () {});
   }
+
+  return sheet.loading;
+};
+
+function canvas(w, h) {
+  return typeof OffscreenCanvas !== "undefined"
+    ? new OffscreenCanvas(w, h)
+    : Object.assign(document.createElement("canvas"), { width: w, height: h });
 }
+
+SpriteCache.canvas = canvas;
 
 export default SpriteCache;

@@ -366,8 +366,15 @@ CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
       x1 = x0 + spriteImage.width;
       y1 = y0 + spriteImage.height;
 
-      //fast & inaccurate test
-      if (x >= x0 && x <= x1 && y >= y0 && y <= y1) {
+      //fast & inaccurate test - then the pixel itself, of a picture that is
+      //there to look at
+      if (
+        x >= x0 &&
+        x <= x1 &&
+        y >= y0 &&
+        y <= y1 &&
+        (spriteImage.acquire === undefined || spriteImage.acquire())
+      ) {
         //detailed test
         tmpctx.clearRect(0, 0, w, h);
         tmpctx.drawImage(

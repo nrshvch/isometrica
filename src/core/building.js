@@ -30,6 +30,7 @@ import GatherReq from "./gatherreq";
 import Terrain from "./terrain";
 
 import Construction from "./construction";
+import Rotation from "./rotation";
 
 var events = {
   stateChange: 0,
@@ -51,6 +52,10 @@ Building.prototype.createdAt = null; //game time
 Building.prototype.demanding = null;
 Building.prototype.producing = null;
 Building.prototype.permanent = true;
+//what it looks like, for a building put together out of parts: picked for it
+//by whoever first draws it, and kept in the save with the rest of it - the
+//core only keeps it, see client/compoundbuilding
+Building.prototype.look = null;
 Building.prototype.events = events;
 
 Building.prototype.init = function (world, code, tile, rot, done) {
@@ -114,8 +119,8 @@ function checkFullfilRequirements(self) {
   var world = self.world;
   var data = BuildingData[self.buildingCode];
   //turned round, the footprint's sides swap
-  var sizeX = self.rotation ? data.sizeY : data.sizeX,
-    sizeY = self.rotation ? data.sizeX : data.sizeY;
+  var sizeX = Rotation.sizeX(data, self.rotation),
+    sizeY = Rotation.sizeY(data, self.rotation);
 
   if (!world) throw "World is not set yet";
 

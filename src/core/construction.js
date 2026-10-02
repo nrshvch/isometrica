@@ -6,6 +6,7 @@ import ConstructionData from "data/buildings";
 import TileIterator from "./tileiterator";
 import Terrain from "./terrain";
 import ConstructionState from "./buildingstate";
+import Rotation from "./rotation";
 
 var id = 0;
 
@@ -27,7 +28,7 @@ function init(self, world, code, tile, rot, done) {
   self.world = world;
   self.tile = tile;
   self.buildingCode = code;
-  self.rotation = rot || 0;
+  self.rotation = Rotation.turns(rot);
 
   var time = self.data.constructionTime,
     progress = done === true ? 1 : typeof done === "number" ? done : 0;
@@ -103,8 +104,8 @@ Construction.prototype.getCity = function () {
  * @returns {TileIterator}
  */
 Construction.prototype.occupiedTiles = function () {
-  var sizeX = this.rotation ? this.data.sizeY : this.data.sizeX,
-    sizeY = this.rotation ? this.data.sizeX : this.data.sizeY;
+  var sizeX = Rotation.sizeX(this.data, this.rotation),
+    sizeY = Rotation.sizeY(this.data, this.rotation);
 
   return new TileIterator(
     this.tile,

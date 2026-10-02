@@ -28,6 +28,10 @@ import DepositCode from "core/depositcode";
  * @type {BuildingPositioning}
  */
 import BuildingPositioning from "core/buildingpositioning";
+import Flats from "./flats";
+import Offices from "./offices";
+import Shops from "./shops";
+import Houses from "./houses";
 
 var Core = namespace("Isometrica.Core");
 
@@ -36,6 +40,8 @@ var buildingData = (Core.BuildingData = {});
 //one of two trees, picked at random the way a house is (see house) - and
 //the same two the world grows on its own (see core/ambient)
 buildingData[BuildingCode.tree] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.tree,
@@ -59,7 +65,18 @@ buildingData[BuildingCode.tree] = {
           z: 0,
           pivotX: 34,
           pivotY: 53,
-          path: "tree1.png",
+          path: "trees/tree1.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
+      spritesRotate: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          pivotX: 30,
+          pivotY: 53,
+          path: "trees/tree1r.png",
           layer: RenderLayer.buildingsLayer,
         },
       ],
@@ -74,7 +91,18 @@ buildingData[BuildingCode.tree] = {
           z: 0,
           pivotX: 34,
           pivotY: 53,
-          path: "tree2.png",
+          path: "trees/tree2.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
+      spritesRotate: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          pivotX: 30,
+          pivotY: 53,
+          path: "trees/tree2r.png",
           layer: RenderLayer.buildingsLayer,
         },
       ],
@@ -83,6 +111,8 @@ buildingData[BuildingCode.tree] = {
 };
 
 buildingData[BuildingCode.cliff] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.cliff,
@@ -106,6 +136,17 @@ buildingData[BuildingCode.cliff] = {
       pivotX: 32,
       pivotY: 24,
       path: "cliff.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+  ],
+  spritesRotate: [
+    {
+      x: 0,
+      y: 0,
+      z: 0,
+      pivotX: 32,
+      pivotY: 24,
+      path: "cliffr.png",
       layer: RenderLayer.buildingsLayer,
     },
   ],
@@ -156,6 +197,8 @@ buildingData[BuildingCode.road] = {
 };
 
 buildingData[BuildingCode.house0] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.house0,
@@ -208,6 +251,8 @@ buildingData[BuildingCode.house0] = {
 };
 
 buildingData[BuildingCode.house1] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.house1,
@@ -237,9 +282,22 @@ buildingData[BuildingCode.house1] = {
       layer: RenderLayer.buildingsLayer,
     },
   ],
+  spritesRotate: [
+    {
+      x: 0,
+      y: 0,
+      z: 0,
+      pivotX: 25,
+      pivotY: 23,
+      path: "buildings/house1r.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+  ],
 };
 
 buildingData[BuildingCode.house2] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 2,
   buildingCode: BuildingCode.house2,
@@ -307,6 +365,8 @@ buildingData[BuildingCode.house2] = {
 //one by one. The variants are buildings of their own, each with a name,
 //and only differ from one another in how they are drawn.
 buildingData[BuildingCode.house] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 2,
   sizeY: 1,
   buildingCode: BuildingCode.house,
@@ -355,6 +415,26 @@ buildingData[BuildingCode.house] = {
           layer: RenderLayer.buildingsLayer,
         },
       ],
+      spritesRotate: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          pivotX: 32,
+          pivotY: 19,
+          path: "buildings/house3r-1.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+        {
+          x: 0,
+          y: 0,
+          z: 1,
+          pivotX: 32,
+          pivotY: 40,
+          path: "buildings/house3r-2.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
       smokeSource: [1.25, 2.5, 0.85],
     },
     //two storeys, ivy up the front
@@ -379,6 +459,26 @@ buildingData[BuildingCode.house] = {
           pivotX: 32,
           pivotY: 41,
           path: "buildings/house4-2.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
+      spritesRotate: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          pivotX: 31,
+          pivotY: 28,
+          path: "buildings/house4r-1.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+        {
+          x: 1,
+          y: 0,
+          z: 0,
+          pivotX: 32,
+          pivotY: 41,
+          path: "buildings/house4r-2.png",
           layer: RenderLayer.buildingsLayer,
         },
       ],
@@ -408,11 +508,33 @@ buildingData[BuildingCode.house] = {
           layer: RenderLayer.buildingsLayer,
         },
       ],
+      spritesRotate: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          pivotX: 32,
+          pivotY: 35,
+          path: "buildings/house5r-1.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+        {
+          x: 0,
+          y: 0,
+          z: 1,
+          pivotX: 31,
+          pivotY: 31,
+          path: "buildings/house5r-2.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
     },
   ],
 };
 
 buildingData[BuildingCode.cityHall] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.cityHall,
@@ -446,6 +568,17 @@ buildingData[BuildingCode.cityHall] = {
       layer: RenderLayer.buildingsLayer,
     },
   ],
+  spritesRotate: [
+    {
+      x: 0,
+      y: 0,
+      z: 0,
+      pivotX: 32,
+      pivotY: 46,
+      path: "buildings/cityhallr.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+  ],
 };
 
 //Commerce runs on the same curve as the houses: the smaller the building,
@@ -467,6 +600,8 @@ buildingData[BuildingCode.cityHall] = {
 //counter and pays its share into the treasury - as long as customers can get
 //to it and there is water in the tap.
 buildingData[BuildingCode.smallCommerce] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.smallCommerce,
@@ -503,6 +638,17 @@ buildingData[BuildingCode.smallCommerce] = {
           layer: RenderLayer.buildingsLayer,
         },
       ],
+      spritesRotate: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          pivotX: 32,
+          pivotY: 48,
+          path: "buildings/shopr.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
     },
     {
       buildingCode: BuildingCode.bank,
@@ -515,6 +661,17 @@ buildingData[BuildingCode.smallCommerce] = {
           pivotX: 32,
           pivotY: 49,
           path: "buildings/bank.png",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
+      spritesRotate: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          pivotX: 32,
+          pivotY: 49,
+          path: "buildings/bankr.png",
           layer: RenderLayer.buildingsLayer,
         },
       ],
@@ -546,6 +703,8 @@ buildingData[BuildingCode.smallCommerce] = {
 //flats about 200 - near enough the same money, with the flats holding
 //twice the people and the houses paying for themselves sooner.
 buildingData[BuildingCode.apartments] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 2,
   sizeY: 2,
   buildingCode: BuildingCode.apartments,
@@ -604,9 +763,49 @@ buildingData[BuildingCode.apartments] = {
       layer: RenderLayer.buildingsLayer,
     },
   ],
+  spritesRotate: [
+    {
+      x: 0,
+      y: 0,
+      z: 0,
+      pivotX: 32,
+      pivotY: 16,
+      path: "buildings/apartmentsr-0-0.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+    {
+      x: 1,
+      y: 0,
+      z: 0,
+      pivotX: 32,
+      pivotY: 61,
+      path: "buildings/apartmentsr-1-0.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+    {
+      x: 0,
+      y: 0,
+      z: 1,
+      pivotX: 32,
+      pivotY: 17,
+      path: "buildings/apartmentsr-0-1.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+    {
+      x: 1,
+      y: 0,
+      z: 1,
+      pivotX: 32,
+      pivotY: 60,
+      path: "buildings/apartmentsr-1-1.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+  ],
 };
 
 buildingData[BuildingCode.bigShop] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 2,
   sizeY: 2,
   buildingCode: BuildingCode.bigShop,
@@ -663,11 +862,51 @@ buildingData[BuildingCode.bigShop] = {
       layer: RenderLayer.buildingsLayer,
     },
   ],
+  spritesRotate: [
+    {
+      x: 0,
+      y: 0,
+      z: 0,
+      pivotX: 32,
+      pivotY: 16,
+      path: "buildings/bigshopr-0-0.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+    {
+      x: 1,
+      y: 0,
+      z: 0,
+      pivotX: 32,
+      pivotY: 49,
+      path: "buildings/bigshopr-1-0.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+    {
+      x: 0,
+      y: 0,
+      z: 1,
+      pivotX: 32,
+      pivotY: 14,
+      path: "buildings/bigshopr-0-1.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+    {
+      x: 1,
+      y: 0,
+      z: 1,
+      pivotX: 32,
+      pivotY: 46,
+      path: "buildings/bigshopr-1-1.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+  ],
 };
 
 //nothing makes more money than an office tower, and nothing costs more to
 //put up - a late-game building, not a first one
 buildingData[BuildingCode.office] = {
+  //drawn by hand: kept for the cities that have it, no longer offered
+  hidden: true,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.office,
@@ -695,6 +934,17 @@ buildingData[BuildingCode.office] = {
       pivotX: 32,
       pivotY: 101,
       path: "buildings/office.png",
+      layer: RenderLayer.buildingsLayer,
+    },
+  ],
+  spritesRotate: [
+    {
+      x: 0,
+      y: 0,
+      z: 0,
+      pivotX: 32,
+      pivotY: 101,
+      path: "buildings/officer.png",
       layer: RenderLayer.buildingsLayer,
     },
   ],
@@ -773,17 +1023,13 @@ buildingData[BuildingCode.waterTower] = {
     money: 2500,
   },
   name: "water tower",
-  sprites: [
-    {
-      x: 0,
-      y: 0,
-      z: 0,
-      pivotX: 18,
-      pivotY: 64,
-      path: "buildings/watertower.png",
-      layer: RenderLayer.buildingsLayer,
-    },
-  ],
+  //drawn out of parts, see shared/gen/utilities and client/compoundbuilding
+  compound: {
+    gen: "utilities",
+    footprint: "watertower",
+    sizeX: 1,
+    sizeY: 1,
+  },
 };
 
 // buildingData[BuildingCode.waterPump] = {
@@ -998,5 +1244,14 @@ function expandVariants(data) {
 }
 
 expandVariants(buildingData);
+
+//the blocks of flats put together out of painted parts
+Object.assign(
+  buildingData,
+  Flats.buildings(),
+  Offices.buildings(),
+  Shops.buildings(),
+  Houses.buildings(),
+);
 
 export default buildingData;

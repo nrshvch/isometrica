@@ -14,6 +14,7 @@ import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
 
 import namespace from "namespace";
+import Rotation from "core/rotation";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Buildings = CityBuildings;
 
@@ -92,9 +93,12 @@ CityBuildings.variantOf = variantOf;
  * @param code {number} a building, or a type - which goes up as any of its
  *        variants
  * @param tile {number}
- * @param [rotate] {boolean}
+ * @param [rotate] {number} quarter turns, 0..3 - see core/rotation
+ * @param [look] {Object} for a building put together out of parts, what it
+ *        looks like - the look it was shown with while it was placed (see
+ *        client/compoundbuilding); one is picked for it otherwise
  */
-CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
+CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
   var city = this.city;
   var root = this.city.root;
 
@@ -117,6 +121,7 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
         : clearingCost(this, code, tile, rotate);
 
     var building = new Building();
+    if (look) building.look = look;
     building.init(city.world, code, tile, rotate);
 
     //what the player pays for it, set before the build is announced so
@@ -155,15 +160,15 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate) {
  *
  * @param code {number}
  * @param anchors {number[]} the tile each building would stand on
- * @param [rotation] {boolean}
+ * @param [rotation] {number} quarter turns, 0..3
  * @returns {{tile: number, cost: number, error: number}[]}
  */
 CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
   code = parseInt(code, 10);
 
   var data = BuildingData[code],
-    sizeX = rotation ? data.sizeY : data.sizeX,
-    sizeY = rotation ? data.sizeX : data.sizeY,
+    sizeX = Rotation.sizeX(data, rotation),
+    sizeY = Rotation.sizeY(data, rotation),
     resources = this.city.resources.getResources(),
     cost = data.constructionCost || {},
     spent = Object.create(null),
@@ -278,9 +283,17 @@ CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
  * @param tile {number}
  * @param [rotation] {number}
  * @param [progress] {number} 0..1, for one saved while going up
+ * @param [look] {Object} what it looks like, for one put together out of
+ *        parts - as whoever drew it first picked it (client/compoundbuilding)
  * @returns {Building}
  */
-CityBuildings.prototype.restore = function (code, tile, rotation, progress) {
+CityBuildings.prototype.restore = function (
+  code,
+  tile,
+  rotation,
+  progress,
+  look,
+) {
   //saves written before the codes were made numbers carry them as strings
   code = parseInt(code, 10);
 
@@ -295,6 +308,8 @@ CityBuildings.prototype.restore = function (code, tile, rotation, progress) {
     rotation,
     typeof progress === "number" ? progress : true,
   );
+
+  if (look !== undefined) building.look = look;
 
   this.city.root.buildings.build(building);
 
@@ -326,6 +341,8 @@ CityBuildings.prototype.save = function () {
         building.getState() === BuildingState.underConstruction
           ? building.getProgress()
           : undefined,
+      //what it looks like, for one put together out of parts picked for it
+      look: building.look,
     });
   }
 
@@ -342,6 +359,7 @@ CityBuildings.prototype.load = function (list) {
       list[i].tile,
       list[i].rotation,
       list[i].progress,
+      list[i].look,
     );
 };
 
@@ -362,8 +380,8 @@ CityBuildings.prototype.getBuildings = function () {
 function clearingCost(self, code, tile, rotation) {
   var world = self.city.world,
     data = BuildingData[code],
-    sizeX = rotation ? data.sizeY : data.sizeX,
-    sizeY = rotation ? data.sizeX : data.sizeY,
+    sizeX = Rotation.sizeX(data, rotation),
+    sizeY = Rotation.sizeY(data, rotation),
     iter = new TileIterator(
       tile,
       tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy,
@@ -406,8 +424,8 @@ function buildTest(self, code, tile, rotation) {
     !city.area.contains(
       Terrain.extractX(tile),
       Terrain.extractY(tile),
-      rotation ? data.sizeY : data.sizeX,
-      rotation ? data.sizeX : data.sizeY,
+      Rotation.sizeX(data, rotation),
+      Rotation.sizeY(data, rotation),
     )
   )
     return ErrorCode.OUTSIDE_CITY;

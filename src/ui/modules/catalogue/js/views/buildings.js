@@ -2,6 +2,7 @@ import Backbone from "backbone";
 import __templateSource from "../../templates/buildings.hbs?raw";
 import Handlebars from "handlebars";
 import $ from "jquery";
+import showPreviews from "../previews";
 
 var template = Handlebars.compile(__templateSource);
 
@@ -26,6 +27,7 @@ export default Backbone.View.extend({
         buildings: this.collection.toJSON(),
       }),
     );
+    showPreviews(this.el);
     return this;
   },
 });
