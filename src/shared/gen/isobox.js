@@ -6,7 +6,16 @@
  * the first box it hits, shaded by which way the face it hits looks. Every
  * face looking the same way is the same flat colour - so everything painted
  * here is lit alike, the same as the vehicles - unless its box has a finish:
- * a faint grain over it, or the sky reflected in it, for glass (see finish).
+ * what it is made of, laid out on it a pixel at a time - brick courses,
+ * panel joints, roof tiles, paving slabs, the speckle of asphalt (see
+ * MATERIALS) - or the sky reflected in it, for glass (see finish).
+ *
+ * Every box is snapped to whole units before it is painted (see snap), the
+ * way a picture drawn by hand keeps to its pixels: an edge along the ground
+ * comes out a clean step of two pixels across for one down, a band a unit
+ * high a line a pixel thick - never a line that is two pixels thick here and
+ * one there, or broken into dots. A box can be cut by planes (see cut), for
+ * a roof or a ramp: a slope, not a staircase of thin boxes.
  *
  * Units: one along the ground is one pixel across the screen - a tile is 32 of
  * them each way. Heights are in pixels. +x runs up and to the right on the
@@ -52,6 +61,71 @@ function box(x0, x1, y0, y1, z0, z1, color, finish) {
 }
 
 /**
+ * A plane through the world, n . p = d, that a box is cut by (see cut).
+ */
+function plane(nx, ny, nz, d) {
+  return { n: [nx, ny, nz], d: d };
+}
+
+/**
+ * The box with only what of it lies under every one of the planes kept - nx
+ * x + ny y + nz z <= d for each - for a roof or a ramp: whatever of it the
+ * ray hits on a plane is lit by which way the plane looks (see lit). Its z0
+ * and z1 are then only how far the planes leave it reaching.
+ */
+function cut(b, planes) {
+  b.cuts = (b.cuts || []).concat(planes);
+
+  return b;
+}
+
+//the same box, moved
+function moved(b, dx, dy, dz) {
+  var r = box(
+    b.x0 + dx,
+    b.x1 + dx,
+    b.y0 + dy,
+    b.y1 + dy,
+    b.z0 + dz,
+    b.z1 + dz,
+    b.color,
+    b.finish,
+  );
+
+  r.group = b.group;
+  if (b.cuts)
+    r.cuts = b.cuts.map(function (c) {
+      return plane(
+        c.n[0],
+        c.n[1],
+        c.n[2],
+        c.d + c.n[0] * dx + c.n[1] * dy + c.n[2] * dz,
+      );
+    });
+
+  return r;
+}
+
+//what of the box is over x0..x1, y0..y1 - null if none of it is
+function clip(b, x0, x1, y0, y1) {
+  var cx0 = Math.max(b.x0, x0),
+    cx1 = Math.min(b.x1, x1),
+    cy0 = Math.max(b.y0, y0),
+    cy1 = Math.min(b.y1, y1);
+
+  //checked before box, which would put the ends of one off it the right way
+  //round
+  if (!(cx0 < cx1 && cy0 < cy1)) return null;
+
+  var r = box(cx0, cx1, cy0, cy1, b.z0, b.z1, b.color, b.finish);
+
+  r.group = b.group;
+  r.cuts = b.cuts;
+
+  return r;
+}
+
+/**
  * The boxes of something standing on sizeX by sizeY tiles, turned a quarter
  * turn at a time on the spot. Whatever looked towards -y looks, after one
  * turn, towards -x, after two towards +y and after three towards +x. Turned
@@ -80,8 +154,98 @@ function rotate(boxes, sizeX, sizeY, turns) {
     var r = box(p[0], q[0], p[1], q[1], b.z0, b.z1, b.color, b.finish);
 
     r.group = b.group;
+    if (b.cuts)
+      r.cuts = b.cuts.map(function (c) {
+        var n = c.n;
+
+        switch (turns % 4) {
+          case 1:
+            return plane(n[1], -n[0], n[2], c.d - n[0] * X);
+          case 2:
+            return plane(-n[0], -n[1], n[2], c.d - n[0] * X - n[1] * Y);
+          case 3:
+            return plane(-n[1], n[0], n[2], c.d - n[1] * Y);
+          default:
+            return c;
+        }
+      });
 
     return r;
+  });
+}
+
+//how thin a box squeezed onto what it lies on is (see snap)
+var SKIN = 1 / 64;
+
+/**
+ * One side of a box snapped to whole units: both its ends rounded, so that
+ * whatever lies against it still does. What rounds away to nothing is either
+ * a skin - a stripe painted on a road, a pane of glass on a wall, thinner
+ * than half a unit - which is laid on whatever it is on; or something thin
+ * but not that thin - a pole, a rail - which is made a unit thick, a pixel
+ * across.
+ */
+function snapSide(a0, a1, up, outward) {
+  var s0 = Math.round(a0),
+    s1 = Math.round(a1),
+    c;
+
+  if (s1 > s0) return [s0, s1];
+
+  //up, over what it lies on; along the ground, level with the face it lies
+  //on, and listed after it (see cast) - or, outward, in front of it
+  if (a1 - a0 < 0.5)
+    return up ? [s1, s1 + SKIN] : outward ? [s0 - SKIN, s0] : [s0, s0 + SKIN];
+
+  c = Math.floor((a0 + a1) / 2);
+
+  return [c, c + 1];
+}
+
+/**
+ * The box snapped to whole units, the way a picture drawn by hand keeps to
+ * its pixels. A unit along the ground is a pixel across the screen, and a
+ * unit up a pixel up it, so with every edge on a whole unit:
+ *
+ *   - an edge along the ground is a clean step of two pixels across for one
+ *     down, and a strip a whole number of units wide is a line as thick all
+ *     along it - one half a unit wider is a pixel thicker here and not there;
+ *   - the bands on a wall a whole number of units high are lines as thick
+ *     all along, a step of a pixel up every two across.
+ *
+ * Left as they are: a box cut by planes keeps its heights (the planes say
+ * how high it is), something round laid out in columns half a unit across
+ * (blocks round, lit) keeps its columns, and a box with a fine finish - a
+ * rod of a lattice strung out of little cubes, a line a pixel thin going
+ * any way - stays where it is.
+ *
+ * @param [outward] {boolean} a skin on a face looking along the ground in
+ *        front of it, rather than level with it - for whoever paints with the
+ *        first of two boxes hit at the same spot winning (shared/gen/vehicles)
+ */
+function snap(b, outward) {
+  if (
+    b.finish !== undefined &&
+    (b.finish.fine ||
+      (b.finish.lit &&
+        (b.x1 - b.x0 <= 0.5 + 1e-9 || b.y1 - b.y0 <= 0.5 + 1e-9)))
+  )
+    return b;
+
+  var x = snapSide(b.x0, b.x1, false, outward),
+    y = snapSide(b.y0, b.y1, false, outward),
+    z = b.cuts ? [b.z0, b.z1] : snapSide(b.z0, b.z1, true),
+    r = box(x[0], x[1], y[0], y[1], z[0], z[1], b.color, b.finish);
+
+  r.group = b.group;
+  r.cuts = b.cuts;
+
+  return r;
+}
+
+function snapAll(boxes) {
+  return boxes.map(function (b) {
+    return snap(b);
   });
 }
 
@@ -96,6 +260,37 @@ function shade(color, face) {
   if (face === 2) return lighter(color, 0.22);
   else if (face === 0) return darker(color, 0.1);
   else return darker(color, 0.3);
+}
+
+//where the sun is, the way shade lights the faces: high, and over to the
+//side the faces looking towards -x are on
+var SUN = (function () {
+  var l = [-0.45, 0.35, 1],
+    n = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
+
+  return [l[0] / n, l[1] / n, l[2] / n];
+})();
+
+//how much light falls on a face looking up, towards -x and towards -y
+var LIT_UP = SUN[2],
+  LIT_LEFT = -SUN[0],
+  LIT_RIGHT = -SUN[1];
+
+/**
+ * The colour of a surface looking along nx, ny, nz, lit the way shade lights
+ * a box's faces: as light as a box's top where it looks straight up, as dark
+ * as its right side where it looks that way - so a slope or something round
+ * sits among the boxes as if lit by the same sun.
+ */
+function lit(color, nx, ny, nz) {
+  var n = Math.sqrt(nx * nx + ny * ny + nz * nz),
+    l = (nx * SUN[0] + ny * SUN[1] + nz * SUN[2]) / n,
+    k;
+
+  if (l >= LIT_LEFT) k = -0.1 + ((l - LIT_LEFT) / (LIT_UP - LIT_LEFT)) * 0.32;
+  else k = -0.3 + ((l - LIT_RIGHT) / (LIT_LEFT - LIT_RIGHT)) * 0.2;
+
+  return k > 0 ? lighter(color, k) : darker(color, -k);
 }
 
 function screenBounds(b) {
@@ -161,6 +356,24 @@ function cast(boxes, sx, sy) {
     }
     tout = Math.min(b.x1 - x, b.y1 - y, z - b.z0);
 
+    //the planes it is cut by: the ray goes along (1, 1, -1)
+    if (b.cuts !== undefined) {
+      for (var k = 0; k < b.cuts.length && tin < tout; k++) {
+        var n = b.cuts[k].n,
+          nr = n[0] + n[1] - n[2],
+          no = n[0] * x + n[1] * y + n[2] * z;
+
+        if (nr < 0) {
+          t = (b.cuts[k].d - no) / nr;
+          if (t > tin) {
+            tin = t;
+            f = 3 + k;
+          }
+        } else if (nr > 0) tout = Math.min(tout, (b.cuts[k].d - no) / nr);
+        else if (no > b.cuts[k].d) tout = -Infinity;
+      }
+    }
+
     if (tin < tout && tin <= best) {
       best = tin;
       hit = b;
@@ -173,7 +386,11 @@ function cast(boxes, sx, sy) {
   //a box lit already is its own colour on every face
   if (hit.finish !== undefined && hit.finish.lit) return hit.color;
 
-  var color = shade(hit.color, face);
+  var normal = face >= 3 ? hit.cuts[face - 3].n : null,
+    color =
+      normal === null
+        ? shade(hit.color, face)
+        : lit(hit.color, normal[0], normal[1], normal[2]);
 
   if (
     hit.finish !== undefined &&
@@ -184,17 +401,8 @@ function cast(boxes, sx, sy) {
 
   return hit.finish === undefined
     ? color
-    : finish(color, face, hit.finish, x + best, y + best, z - best);
+    : finish(color, face, normal, hit.finish, x + best, y + best, z - best);
 }
-
-//where the sun is, the way shade lights the faces: high, and over to the
-//side the faces looking towards -x are on - as shared/gen/blocks has it
-var SUN = (function () {
-  var l = [-0.45, 0.35, 1],
-    n = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
-
-  return [l[0] / n, l[1] / n, l[2] / n];
-})();
 
 //how much darker a spot in another box's shadow is
 var SHADOW = 0.32;
@@ -262,9 +470,212 @@ function mod(v, n) {
   return ((v % n) + n) % n;
 }
 
+//how much lighter (above 0) or darker a colour is made
+function tint(c, k) {
+  return k > 0 ? lighter(c, k) : k < 0 ? darker(c, -k) : c;
+}
+
+//-1..1, the same for the same whole numbers every time
+function jitter(i, j, k) {
+  return hash(i, j, k) * 2 - 1;
+}
+
+/**
+ * What things are made of: how much lighter or darker a point on a face of
+ * it is than the face's own colour, by where the point is on the face - u
+ * across it and v up it (along the ground on a face looking up: u along x,
+ * v along y; down a slope on a plane: v down it) - and which face it is:
+ * "top" looking up, "side" a wall, "slope" a plane.
+ *
+ * Everything is laid out in whole units, a pixel at a time, so that a joint
+ * between bricks is a clean line a pixel thick, never a smear. Courses and
+ * rows go into a storey (12 high) and a tile (32 across) a whole number of
+ * times, so the pattern carries on unbroken from a part to the next one laid
+ * over it or beside it.
+ */
+var MATERIALS = {
+  //smooth render, and painted concrete: the odd stain, faint
+  render: function (u, v, side, dark) {
+    return jitter(u >> 1, v, 11) * 0.018 + (hash(u, v, 12) < 0.05 ? -0.035 : 0);
+  },
+
+  //a block of flats' precast panels: a joint round each, a storey high and
+  //eight units across, and each a shade off the next
+  panels: function (u, v, side) {
+    if (side === "top") return MATERIALS.render(u, v);
+    if (mod(u, 8) === 0 || v === 0) return -0.07;
+
+    return jitter(u >> 3, 0, 13) * 0.025 + jitter(u, v, 14) * 0.01;
+  },
+
+  //brick in courses three high - two of brick, one of mortar - each brick
+  //six long, every other course set over by half a brick
+  brick: function (u, v, side, dark) {
+    if (side === "top") return jitter(u, v, 21) * 0.03;
+
+    var course = Math.floor(v / 3),
+      off = course % 2 ? 3 : 0,
+      mortar = dark ? 0.1 : -0.08;
+
+    if (mod(v, 3) === 2 || mod(u + off, 6) === 0) return mortar;
+
+    return jitter(Math.floor((u + off) / 6), course, 22) * 0.06;
+  },
+
+  //stone blocks in courses four high, of lengths set by the course
+  stone: function (u, v, side, dark) {
+    if (side === "top") return jitter(u, v, 31) * 0.04;
+
+    var course = Math.floor(v / 4),
+      off = Math.floor(hash(course, 0, 32) * 5),
+      len = 5,
+      mortar = dark ? 0.08 : -0.09;
+
+    if (mod(v, 4) === 3 || mod(u + off, len) === 0) return mortar;
+
+    return jitter(Math.floor((u + off) / len), course, 33) * 0.07;
+  },
+
+  //boards two high, the shadow under each one's lip
+  siding: function (u, v, side) {
+    if (side === "top") return jitter(u, v, 41) * 0.02;
+
+    return (mod(v, 2) === 0 ? -0.08 : 0.02) + jitter(u >> 3, v >> 1, 42) * 0.02;
+  },
+
+  //planks along u, two across, butted end to end at random
+  wood: function (u, v) {
+    var plank = v >> 1,
+      off = Math.floor(hash(plank, 0, 51) * 8);
+
+    if (mod(v, 2) === 1 || mod(u + off, 8) === 0) return -0.08;
+
+    return jitter(Math.floor((u + off) / 8), plank, 52) * 0.05;
+  },
+
+  //corrugated sheet: ribs every two units, across the slope or up the wall
+  metal: function (u, v, side) {
+    return side === "top" ? jitter(u, v, 61) * 0.02 : mod(u, 2) ? 0.05 : -0.04;
+  },
+
+  //roof tiles: rows down the slope two units deep, each tile three across
+  //and a row set over by half a tile, the lower edge of each row in shadow
+  tiles: function (u, v, side) {
+    if (side !== "slope") return MATERIALS.render(u, v);
+
+    var row = v >> 1,
+      off = row % 2 ? 1 : 0;
+
+    if (mod(v, 2) === 1) return -0.1;
+    if (mod(u + off, 3) === 0) return -0.04;
+
+    return jitter(Math.floor((u + off) / 3), row, 71) * 0.05;
+  },
+
+  //slates: rows two deep, each four across, flatter and nearer alike
+  slate: function (u, v, side) {
+    if (side !== "slope") return MATERIALS.render(u, v);
+
+    var row = v >> 1,
+      off = row % 2 ? 2 : 0;
+
+    if (mod(v, 2) === 1) return -0.08;
+    if (mod(u + off, 4) === 0) return -0.03;
+
+    return jitter(Math.floor((u + off) / 4), row, 81) * 0.035;
+  },
+
+  //thatch: straws down the slope, a row of it every three
+  thatch: function (u, v) {
+    return (mod(v, 3) === 2 ? -0.06 : 0) + jitter(u, v >> 2, 91) * 0.07;
+  },
+
+  //a flat roof's felt: seams every eight, a speck here and there
+  felt: function (u, v) {
+    if (mod(u, 8) === 0) return -0.05;
+
+    var h = hash(u, v, 101);
+
+    return h < 0.08 ? -0.06 : h > 0.95 ? 0.05 : 0;
+  },
+
+  //asphalt: dark and light grains of the stones in it, and patches a shade
+  //off where it has been mended
+  asphalt: function (u, v) {
+    var h = hash(u, v, 111),
+      k = jitter(u >> 2, v >> 2, 112) * 0.02;
+
+    return k + (h < 0.12 ? -0.07 : h > 0.92 ? 0.07 : 0);
+  },
+
+  //paving slabs four by four, the joints between them, and each slab a
+  //shade off the next
+  slabs: function (u, v) {
+    if (mod(u, 4) === 3 || mod(v, 4) === 3) return -0.06;
+
+    return jitter(u >> 2, v >> 2, 121) * 0.03;
+  },
+
+  //cast concrete: blotches, the odd pit - and on a wall the lines where the
+  //boards it was cast against met
+  concrete: function (u, v, side) {
+    var k =
+      jitter(u >> 1, v >> 1, 131) * 0.025 +
+      (hash(u, v, 132) < 0.05 ? -0.05 : 0);
+
+    return side === "side" && mod(v, 4) === 0 ? k - 0.04 : k;
+  },
+
+  //a tarp hung on a fence: folds down it, and creases between them
+  tarp: function (u, v, side) {
+    if (side === "top") return 0;
+
+    return (mod(u, 8) === 4 ? -0.08 : 0) + jitter(u >> 1, v >> 2, 171) * 0.04;
+  },
+
+  //grass: dark tufts and light blades over a mottle
+  grass: function (u, v) {
+    var h = hash(u, v, 141),
+      k = jitter(u >> 2, v >> 2, 142) * 0.03;
+
+    return k + (h < 0.16 ? -0.08 : h > 0.9 ? 0.06 : 0);
+  },
+
+  //sand: fine, a grain lighter or darker here and there
+  sand: function (u, v) {
+    var h = hash(u, v, 181);
+
+    return (
+      jitter(u >> 2, v >> 2, 182) * 0.02 +
+      (h < 0.1 ? -0.04 : h > 0.92 ? 0.04 : 0)
+    );
+  },
+
+  //logs laid along the wall, two high: lit on top, in shadow underneath
+  logs: function (u, v, side) {
+    if (side === "top") return jitter(u, v, 191) * 0.03;
+
+    return (mod(v, 2) ? 0.06 : -0.1) + jitter(u >> 2, v >> 1, 192) * 0.03;
+  },
+
+  //gravel: stones every one their own shade
+  gravel: function (u, v) {
+    return jitter(u, v, 151) * 0.1;
+  },
+
+  //bare earth: clods, and the odd stone in it
+  dirt: function (u, v) {
+    var h = hash(u, v, 161),
+      k = jitter(u >> 1, v >> 1, 162) * 0.045;
+
+    return k + (h < 0.1 ? -0.08 : h > 0.95 ? 0.1 : 0);
+  },
+};
+
 /**
  * The colour of a point of a box with a finish, shaded already: x, y, z where
- * the ray hit it.
+ * the ray hit it, on the face it went in through - 2 the top, 0 and 1 the
+ * sides, a plane it was cut by (normal its normal, otherwise null).
  *
  * It goes by where the point is on its own tile and its own storey - x and y
  * from the tile's corner, z from the floor of the storey it is on - so a part
@@ -280,38 +691,67 @@ function mod(v, n) {
  * which way its surface faces there rather than by the faces of the column -
  * and is painted that colour as it is.
  *
- * @param f {{noise: number, sheen: boolean, base: number, storey: number}}
- *        noise, how far each speck of it is lighter or darker, 0..1; sheen,
- *        for glass, the sky in it - brighter towards the top of a storey,
- *        with a streak of light across it; base, how high the floor of the
- *        first storey is, and storey, how high a storey
+ * @param f {{material: string, sheen: boolean, base: number, storey: number}}
+ *        material, what it is made of (see MATERIALS); sheen, for glass, the
+ *        sky in it - brighter towards the top of a storey, with a streak of
+ *        light across it; base, how high the floor of the first storey is,
+ *        and storey, how high a storey
  */
-function finish(color, face, f, x, y, z) {
-  var lx = mod(x, TILE),
-    ly = mod(y, TILE),
-    lz = mod(z - f.base, f.storey),
-    c = color;
+function finish(color, face, normal, f, x, y, z) {
+  var base = f.base || 0,
+    storey = f.storey || 12,
+    //whole units, the pixel the point is in
+    lx = Math.floor(mod(x, TILE) + 1e-6),
+    ly = Math.floor(mod(y, TILE) + 1e-6),
+    lz = Math.floor(mod(z - base, storey) + 1e-6),
+    c = color,
+    side,
+    u,
+    v;
 
-  if (f.sheen && face !== 2) {
-    //along the face, and a streak running up across it
-    var u = face === 1 ? lx : ly,
-      s = mod(u + lz * 0.9, 9);
-
-    c = lighter(c, 0.04 + (0.12 * lz) / f.storey);
-    if (s < 1.4) c = lighter(c, 0.2);
-    else if (s < 2.4) c = lighter(c, 0.09);
+  if (normal !== null) {
+    side = "slope";
+    //down the slope the way it slopes most
+    if (Math.abs(normal[0]) > Math.abs(normal[1])) {
+      u = ly;
+      v = normal[0] > 0 ? lx : -lx - 1;
+    } else {
+      u = lx;
+      v = normal[1] > 0 ? ly : -ly - 1;
+    }
+  } else if (face === 2) {
+    side = "top";
+    u = lx;
+    v = ly;
+  } else {
+    side = "side";
+    u = face === 1 ? lx : ly;
+    v = lz;
   }
 
-  if (f.noise) {
-    var n =
-      (hash(Math.floor(lx * 2), Math.floor(ly * 2), Math.floor(lz * 2)) - 0.5) *
-      2 *
-      f.noise;
+  if (f.sheen && side === "side") {
+    //brighter up the storey, and a streak running up across it, a step of a
+    //pixel up for every one across
+    var s = mod(u + lz, 9);
 
-    c = n > 0 ? lighter(c, n) : darker(c, -n);
+    c = lighter(c, 0.04 + (0.12 * lz) / storey);
+    if (s < 1) c = lighter(c, 0.2);
+    else if (s < 2) c = lighter(c, 0.09);
+  }
+
+  if (f.material !== undefined) {
+    var m = MATERIALS[f.material];
+
+    if (m === undefined) throw new Error("no such material: " + f.material);
+
+    c = tint(c, m(u, v, side, luma(color) < 120, f));
   }
 
   return c;
+}
+
+function luma(c) {
+  return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
 }
 
 /**
@@ -324,7 +764,7 @@ function measure(boxes) {
     minY = Infinity,
     maxY = -Infinity;
 
-  boxes.forEach(function (b) {
+  snapAll(boxes).forEach(function (b) {
     var r = screenBounds(b);
 
     minX = Math.min(minX, r.minX);
@@ -359,7 +799,7 @@ function render(boxes) {
     h,
     pixels;
 
-  boxes = boxes.map(function (b) {
+  boxes = snapAll(boxes).map(function (b) {
     var r = screenBounds(b);
     minX = Math.min(minX, r.minX);
     maxX = Math.max(maxX, r.maxX);
@@ -376,6 +816,7 @@ function render(boxes) {
       color: b.color,
       finish: b.finish,
       group: b.group,
+      cuts: b.cuts,
       sMinX: r.minX,
       sMaxX: r.maxX,
       sMinY: r.minY,
@@ -413,6 +854,9 @@ function paintTiles(boxes, sizeX, sizeY) {
     i,
     j;
 
+  //snapped whole before it is cut up, so that the pieces meet as the whole
+  boxes = snapAll(boxes);
+
   for (i = 0; i < sizeX; i++) {
     for (j = 0; j < sizeY; j++) {
       var x0 = i * TILE,
@@ -424,19 +868,9 @@ function paintTiles(boxes, sizeX, sizeY) {
         middle;
 
       boxes.forEach(function (b) {
-        var c = {
-          x0: Math.max(b.x0, x0),
-          x1: Math.min(b.x1, x1),
-          y0: Math.max(b.y0, y0),
-          y1: Math.min(b.y1, y1),
-          z0: b.z0,
-          z1: b.z1,
-          color: b.color,
-          finish: b.finish,
-          group: b.group,
-        };
+        var c = clip(b, x0, x1, y0, y1);
 
-        if (c.x0 < c.x1 && c.y0 < c.y1) clipped.push(c);
+        if (c !== null) clipped.push(c);
       });
 
       if (clipped.length === 0) continue;
@@ -521,10 +955,18 @@ export {
   TILE,
   TILE_W,
   TILE_H,
+  MATERIALS,
   mix,
   lighter,
   darker,
+  lit,
   box,
+  plane,
+  cut,
+  moved,
+  clip,
+  snap,
+  snapAll,
   rotate,
   project,
   measure,

@@ -1,6 +1,7 @@
 /**
  * Paints blocks out of parts, the way shared/gen/vehicles paints cars out of
- * boxes: flat colours, one light for everything, no noise. What is in a
+ * boxes: one light for everything, each surface made of what it is (iso
+ * MATERIALS) rather than speckled at random. What is in a
  * block - flats (shared/gen/flats), offices (shared/gen/offices) - is a
  * style: its colours, its storeys, its roofs and yards. How a block is put
  * together out of them is the same for all of them, and is here.
@@ -41,8 +42,7 @@
 import * as iso from "./isobox.js";
 import * as Vehicles from "./vehicles.js";
 
-export var box = iso.box,
-  darker = iso.darker,
+export var darker = iso.darker,
   lighter = iso.lighter,
   TILE = iso.TILE;
 
@@ -66,12 +66,58 @@ export var GRASS = [112, 158, 84],
 export var DIRT = [152, 124, 92],
   CONCRETE = [168, 166, 160];
 
-//what a surface is like, for the boxes of a style that has it (see iso
-//finish): concrete, stone and painted metal with a faint grain to them, and
-//glass with the sky in it - laid out by storey, so that a storey looks the
-//same whichever one it is
-export var MATTE = { noise: 0.035, base: PLINTH, storey: STOREY },
-  GLASSY = { noise: 0.012, sheen: true, base: PLINTH, storey: STOREY };
+//what a surface is made of (see iso MATERIALS), laid out by storey, so that
+//a storey looks the same whichever one it is: render, the panels of a block
+//of flats, brick and the rest - and glass with the sky in it
+export function made(material) {
+  return { material: material, base: PLINTH, storey: STOREY };
+}
+
+export var MATTE = made("render"),
+  GLASSY = { sheen: true, base: PLINTH, storey: STOREY };
+
+//what a box of a colour is made of, when it is given no finish of its own:
+//the grass, the paving, the asphalt everywhere are each what they look like
+var MADE = new Map();
+
+/**
+ * Every box of that colour - that very colour, not one like it - made of
+ * the material, unless it is given a finish of its own (see box).
+ */
+export function madeOf(color, material) {
+  MADE.set(color, made(material));
+
+  return color;
+}
+
+//what a box of the colour is made of (madeOf), or else `otherwise`
+export function finishOf(color, otherwise) {
+  return MADE.get(color) || otherwise;
+}
+
+/**
+ * A box (iso box), made of whatever its colour is made of (madeOf) if it is
+ * given no finish.
+ */
+export function box(x0, x1, y0, y1, z0, z1, color, finish) {
+  return iso.box(
+    x0,
+    x1,
+    y0,
+    y1,
+    z0,
+    z1,
+    color,
+    finish !== undefined ? finish : MADE.get(color),
+  );
+}
+
+madeOf(GRASS, "grass");
+madeOf(PAVING, "slabs");
+madeOf(ASPHALT, "asphalt");
+madeOf(WOOD, "wood");
+madeOf(DIRT, "dirt");
+madeOf(CONCRETE, "concrete");
 
 //a random number generator that gives the same numbers for the same seed, so
 //running this again paints the same pictures
@@ -126,41 +172,14 @@ export function ends(s, e) {
 
 /* --- Light ----------------------------------------------------------- */
 
-//where the light comes from, for what is shaded by its own surface: above,
-//and from the side the faces looking towards -x are lit from (see iso shade)
-var LIGHT = (function () {
-  var l = [-0.45, 0.35, 1],
-    n = Math.sqrt(l[0] * l[0] + l[1] * l[1] + l[2] * l[2]);
-
-  return [l[0] / n, l[1] / n, l[2] / n];
-})();
-
-//how much light falls on a face looking up, towards -x and towards -y - and
-//how much lighter or darker iso shade paints each of them
-var LIT_UP = LIGHT[2],
-  LIT_LEFT = -LIGHT[0],
-  LIT_RIGHT = -LIGHT[1];
-
 //painted the colour it is, see iso finish
 export var LIT = { lit: true };
 
 /**
  * The colour of something round where its surface looks along nx, ny, nz -
- * lit the way iso shade lights a box's faces, so a round thing sits among
- * the boxes as if it were lit by the same sun: as light as a box's top where
- * it looks straight up, as dark as its right side where it looks that way.
+ * lit the way iso shade lights a box's faces (iso lit).
  */
-export function shaded(color, nx, ny, nz) {
-  var n = Math.sqrt(nx * nx + ny * ny + nz * nz),
-    lit = (nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]) / n,
-    k;
-
-  if (lit >= LIT_LEFT)
-    k = -0.1 + ((lit - LIT_LEFT) / (LIT_UP - LIT_LEFT)) * 0.32;
-  else k = -0.3 + ((lit - LIT_RIGHT) / (LIT_LEFT - LIT_RIGHT)) * 0.2;
-
-  return k > 0 ? lighter(color, k) : darker(color, -k);
-}
+export var shaded = iso.lit;
 
 //0..1, the same for the same whole numbers every time
 function speckle(i, j) {
@@ -648,7 +667,9 @@ export var TURNS = [0, 1, 2, 3];
  *        roof(b, s, z, pal, rnd, variant): the roof at z;
  *        frame(b, s, z, rnd): the bare structure of a storey from z;
  *        finish: what every box without a finish of its own is like, if
- *        anything (MATTE) - flat colour otherwise
+ *        anything (MATTE) - flat colour otherwise;
+ *        wallsMadeOf, roofsMadeOf: what the boxes of the palette's wall and roof colours
+ *        are made of, if not that (iso MATERIALS)
  * @returns {{describe, paint, partBoxes, PARTS}}
  */
 /**
@@ -758,7 +779,7 @@ export function blocks(style) {
     if (p.kind === "yard") {
       b.push(box(0, TILE, 0, TILE, 0, 1, GRASS));
       style.yards[p.yard](b, 0, rnd);
-      return finished(b);
+      return finished(b, null);
     }
 
     s = tileSection(p.ends);
@@ -789,15 +810,22 @@ export function blocks(style) {
     else if (p.kind === "site") siteBase(b, s);
     else style.frame(b, s, PLINTH + STOREY, rnd);
 
-    return finished(b);
+    return finished(b, pal);
   }
 
-  //the style's finish on every box that has none of its own
-  function finished(b) {
-    if (style.finish !== undefined)
-      b.forEach(function (c) {
-        if (c.finish === undefined) c.finish = style.finish;
-      });
+  //the style's walls and roofs on the boxes of the palette's wall and roof
+  //colours, and its finish on every other box that has none of its own
+  function finished(b, pal) {
+    var walls = style.wallsMadeOf && made(style.wallsMadeOf),
+      roofs = style.roofsMadeOf && made(style.roofsMadeOf);
+
+    b.forEach(function (c) {
+      if (c.finish !== undefined) return;
+
+      if (pal && walls && c.color === pal.wall) c.finish = walls;
+      else if (pal && roofs && c.color === pal.roof) c.finish = roofs;
+      else c.finish = style.finish;
+    });
 
     return b;
   }
@@ -939,16 +967,12 @@ export function onTile(boxes) {
 export function measureOnTile(boxes) {
   var clipped = [];
 
-  boxes.forEach(function (b) {
-    var x0 = Math.max(b.x0, 0),
-      x1 = Math.min(b.x1, TILE),
-      y0 = Math.max(b.y0, 0),
-      y1 = Math.min(b.y1, TILE);
+  //snapped before it is cut to the tile, as iso.paintTiles does
+  iso.snapAll(boxes).forEach(function (b) {
+    var c = iso.clip(b, 0, TILE, 0, TILE);
 
-    //a box off the tile altogether is not on it - building one of what is
-    //left would turn it the right way round instead
-    if (x0 < x1 && y0 < y1)
-      clipped.push(iso.box(x0, x1, y0, y1, b.z0, b.z1, b.color));
+    //a box off the tile altogether is not on it
+    if (c !== null) clipped.push(c);
   });
 
   var m = iso.measure(clipped),

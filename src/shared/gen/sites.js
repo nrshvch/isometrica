@@ -49,12 +49,13 @@ import {
   measureFree,
   onTile,
   measureOnTile,
+  madeOf,
 } from "./blocks.js";
 
-var SAND = [196, 164, 112],
+var SAND = madeOf([196, 164, 112], "sand"),
   MACHINE = [236, 178, 36],
   CAB_GLASS = [112, 156, 186],
-  BRICK = [176, 84, 64],
+  BRICK = madeOf([176, 84, 64], "brick"),
   CABIN = [236, 236, 228],
   CABIN_TRIM = [70, 110, 160],
   TOILET = [64, 120, 196],
@@ -358,7 +359,7 @@ var MACHINES = {
 };
 
 //the tarp, creased a little all over
-var CREASED = { noise: 0.07, base: 0, storey: STOREY };
+var CREASED = { material: "tarp", base: 0, storey: STOREY };
 
 //the edges of a tile a fence can run along, in the order a fence's name
 //gives them: where x is 0, where y is 0 - the front - where x is a tile, and
@@ -373,8 +374,8 @@ var EDGES = ["x0", "y0", "x1", "y1"];
 function fence(b, edge, gate) {
   var along = edge[0] === "x" ? "y" : "x",
     near = edge[1] === "0",
-    c0 = near ? 0 : TILE - 0.4,
-    c1 = c0 + 0.4,
+    c0 = near ? 0 : TILE - 1,
+    c1 = c0 + 1,
     //standing just clear of the ground: laid under the ground of its tile,
     //it would have its foot drawn over otherwise
     foot = 1.45;

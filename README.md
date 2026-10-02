@@ -133,6 +133,24 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - Any building can be turned four ways (`src/core/rotation.js`). Blocks are
   painted from all four sides; a building drawn by hand shows its front for
   its back and its side for the other side.
+- Whatever is painted out of boxes - buildings, roads, vehicles - keeps to
+  the pixels the way a picture drawn by hand does (`src/shared/gen/isobox.js`
+  snap): every box is snapped to whole units before it is painted, so an
+  edge along the ground is a clean step of two pixels across for one down
+  and a stripe a unit wide a line a pixel thick, never one that is two
+  pixels thick here, one there and broken into dots elsewhere. What is
+  thinner than half a unit - a road marking, a pane of glass - is laid flat
+  on what it is on; a pole or a rail is made a unit thick. Roofs and ramps
+  are planes the boxes are cut by, not staircases of thin strips, and roofs
+  are pitched half a unit up for one across, so their gable ends come out
+  clean diagonals.
+- Surfaces are made of something rather than speckled at random
+  (`isobox.js` MATERIALS), laid out a pixel at a time and lined up with the
+  tiles and storeys: brick courses, stone, siding and logs on the houses,
+  precast panels on the flats, tiles, slates and thatch on pitched roofs,
+  felt on flat ones, steel sheet on the superstores, asphalt, paving slabs,
+  gravel, grass, sand and bare earth on the ground. A colour can be made of
+  a material wherever it is used (`blocks.js` madeOf).
 - To look at what the painting makes without starting the game, run
   `npm run generate:terrain`, `generate:vehicles`, `generate:stones` or
   `generate:buildings`. They

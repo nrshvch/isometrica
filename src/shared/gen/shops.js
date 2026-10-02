@@ -50,6 +50,9 @@ import {
   MATTE,
   GLASSY,
   LIT,
+  made,
+  madeOf,
+  finishOf,
   shaded,
   random,
   tree,
@@ -81,6 +84,7 @@ var GLASS = [96, 136, 172],
 var SMALL = {
   brick: {
     wall: [176, 84, 64],
+    made: "brick",
     trim: [236, 228, 210],
     roof: [92, 64, 56],
     door: [40, 96, 72],
@@ -131,6 +135,7 @@ var STORE = {
   },
   brick: {
     wall: [168, 92, 72],
+    made: "brick",
     trim: [236, 226, 200],
     roof: [96, 90, 88],
     sign: [40, 40, 48],
@@ -162,6 +167,17 @@ var MALL = {
   white: { wall: [236, 236, 232], band: [60, 120, 180], trim: [200, 210, 220] },
   brick: { wall: [160, 86, 64], band: [232, 220, 196], trim: [236, 228, 210] },
 };
+
+//the walls of a palette made of something of its own - brick - and the
+//superstores' sheds, clad in steel sheet
+[SMALL, STORE].forEach(function (set) {
+  Object.keys(set).forEach(function (k) {
+    if (set[k].made) madeOf(set[k].wall, set[k].made);
+  });
+});
+Object.keys(BIGBOX).forEach(function (k) {
+  madeOf(BIGBOX[k].wall, "metal");
+});
 
 //where each design's building stands on its footprint, and how high - far
 //enough back from the car park that nothing of it reaches over the tile's
@@ -303,10 +319,15 @@ function airConditioner(b, x, y, z) {
 }
 
 /**
- * A roof sloping from y0 at z0 + rise0 to y1 at z0 + rise1 - or, for a gable,
- * up to a ridge in the middle - from x0 to x1: strips half a pixel deep, each
- * lit by which way the roof looks there (blocks shaded), and under it the
- * gable ends of the walls from wx0 to wx1.
+ * A roof from x0 to x1 and y0 to y1 over z0, under every one of the slopes -
+ * each [y, h, g], as high as h over z0 at y and rising g for every unit
+ * along y: one for a lean-to, two meeting at a ridge for a gable. Each slope
+ * is a plane a unit deep (iso cut), lit by which way it looks, and under it
+ * the gable ends of the walls from wx0 to wx1 and wy0 to wy1.
+ *
+ * A slope of a half, rising or falling, or a quarter falling, keeps the
+ * edges at the gable ends clean lines: a step up for one across, level, or a
+ * step down for four across.
  */
 function slopedRoof(
   b,
@@ -315,35 +336,46 @@ function slopedRoof(
   y0,
   y1,
   z0,
-  height,
+  slopes,
   color,
   wall,
   wx0,
   wx1,
   wy0,
   wy1,
+  finish,
 ) {
-  for (var y = y0; y < y1; y += 0.5) {
-    var mid = y + 0.25,
-      h = height(mid),
-      dh = (height(mid + 0.25) - height(mid - 0.25)) / 0.5;
+  var top = 0;
 
+  function plane(q, down) {
+    return iso.plane(0, -q[2], 1, z0 + q[1] - q[2] * q[0] - down);
+  }
+
+  slopes.forEach(function (q) {
+    top = Math.max(top, q[1] + q[2] * (y0 - q[0]), q[1] + q[2] * (y1 - q[0]));
+  });
+
+  slopes.forEach(function (q) {
     b.push(
-      box(
-        x0,
-        x1,
-        y,
-        y + 0.5,
-        z0 + h - 0.8,
-        z0 + h,
-        shaded(color, 0, -dh, 1),
-        LIT,
+      iso.cut(
+        box(x0, x1, y0, y1, z0, z0 + top, color, finish),
+        slopes
+          .map(function (o) {
+            return plane(o, 0);
+          })
+          .concat([iso.plane(0, q[2], -1, -(z0 + q[1] - q[2] * q[0] - 1))]),
       ),
     );
+  });
 
-    if (mid > wy0 && mid < wy1 && h > 1)
-      b.push(box(wx0, wx1, y, y + 0.5, z0, z0 + h - 0.8, wall, MATTE));
-  }
+  b.push(
+    iso.cut(
+      box(wx0, wx1, wy0, wy1, z0, z0 + top, wall, finishOf(wall, MATTE)),
+      slopes.map(function (o) {
+        return plane(o, 1);
+      }),
+    ),
+  );
 }
 
 /**
@@ -462,7 +494,7 @@ function smallShop(o, rnd) {
       darker(P.wall, 0.35),
     ),
   );
-  b.push(box(R.x0, R.x1, R.y0, R.y1, 2, h, P.wall, MATTE));
+  b.push(box(R.x0, R.x1, R.y0, R.y1, 2, h, P.wall, finishOf(P.wall, MATTE)));
 
   //the shop front
   if (o.front === "center") {
@@ -520,7 +552,18 @@ function smallShop(o, rnd) {
   if (o.roof === "flat") {
     b.push(box(R.x0, R.x1, R.y0, R.y1, h, h + 0.4, P.roof));
     //a false front, standing up over the roof, and a low parapet round it
-    b.push(box(R.x0, R.x1, R.y0, R.y0 + 0.8, h, h + 3, P.wall, MATTE));
+    b.push(
+      box(
+        R.x0,
+        R.x1,
+        R.y0,
+        R.y0 + 0.8,
+        h,
+        h + 3,
+        P.wall,
+        finishOf(P.wall, MATTE),
+      ),
+    );
     b.push(
       box(
         R.x0 - 0.3,
@@ -537,25 +580,26 @@ function smallShop(o, rnd) {
     b.push(box(R.x0, R.x1, R.y1 - 0.8, R.y1, h, h + 1.2, P.wall));
     airConditioner(b, R.x1 - 9, R.y1 - 8, h + 0.4);
   } else if (o.roof === "gable") {
-    var mid = (R.y0 + R.y1) / 2,
-      half = (R.y1 - R.y0) / 2 + 1.5;
+    var mid = (R.y0 + R.y1) / 2;
 
     slopedRoof(
       b,
       R.x0 - 1,
       R.x1 + 1,
-      R.y0 - 1.5,
-      R.y1 + 1.5,
+      R.y0 - 2,
+      R.y1 + 2,
       h,
-      function (yy) {
-        return 7.5 * Math.max(0, 1 - Math.abs(yy - mid) / half) + 0.8;
-      },
+      [
+        [R.y0 - 2, 1, 0.5],
+        [R.y1 + 2, 1, -0.5],
+      ],
       P.roof,
       P.wall,
       R.x0,
       R.x1,
       R.y0,
       R.y1,
+      made("slate"),
     );
   } else {
     //a lean-to, high at the front
@@ -563,21 +607,17 @@ function smallShop(o, rnd) {
       b,
       R.x0 - 1,
       R.x1 + 1,
-      R.y0 - 1.5,
-      R.y1 + 1.5,
+      R.y0 - 2,
+      R.y1 + 2,
       h,
-      function (yy) {
-        return (
-          0.8 +
-          5 * Math.max(0, Math.min(1, (R.y1 + 1.5 - yy) / (R.y1 - R.y0 + 3)))
-        );
-      },
+      [[R.y1 + 2, 1, -0.25]],
       P.roof,
       P.wall,
       R.x0,
       R.x1,
       R.y0,
       R.y1,
+      made("metal"),
     );
   }
 
@@ -597,7 +637,7 @@ function store(o, rnd) {
     y = R.y0;
 
   lot(b, 0, TILE, TILE, 2 * TILE, TILE, R.y0);
-  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, P.wall, MATTE));
+  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, P.wall, finishOf(P.wall, MATTE)));
 
   //the front: glass all along, or windows between brick piers; the doors in
   //the middle under a canopy on posts
@@ -659,7 +699,7 @@ function bigbox(o, rnd) {
     top = o.roof === "stepped" ? h + 6 : h + 2;
 
   lot(b, 0, 2 * TILE, TILE, 2 * TILE, TILE, R.y0);
-  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, S.wall, MATTE));
+  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, S.wall, finishOf(S.wall, MATTE)));
   b.push(
     box(R.x0 - 0.2, R.x1 + 0.2, R.y0 - 0.2, R.y1 + 0.2, h - 4, h - 1, S.band),
   );
@@ -674,7 +714,18 @@ function bigbox(o, rnd) {
   //a stepped roof: a higher block along the back
   b.push(box(R.x0, R.x1, R.y0, R.y1, h, h + 0.4, [128, 130, 134]));
   if (o.roof === "stepped") {
-    b.push(box(R.x0 + 4, R.x1 - 4, R.y0 + 13, R.y1, h, h + 4, S.wall, MATTE));
+    b.push(
+      box(
+        R.x0 + 4,
+        R.x1 - 4,
+        R.y0 + 13,
+        R.y1,
+        h,
+        h + 4,
+        S.wall,
+        finishOf(S.wall, MATTE),
+      ),
+    );
     b.push(
       box(R.x0 + 4, R.x1 - 4, R.y0 + 13, R.y1, h + 4, h + 4.4, [128, 130, 134]),
     );
@@ -682,7 +733,7 @@ function bigbox(o, rnd) {
 
   //the way in: a block standing out of the front, the doors in it, its
   //name over them
-  b.push(box(23, 41, y - 3, y + 2, 1, top, S.band, MATTE));
+  b.push(box(23, 41, y - 3, y + 2, 1, top, S.band, finishOf(S.band, MATTE)));
   b.push(box(26, 38, y - 3.3, y - 3, 1.2, 9, DARK_GLASS, GLASSY));
   b.push(box(31.8, 32.2, y - 3.5, y - 3.3, 1.2, 9, METAL));
   b.push(box(24, 40, y - 5.5, y - 3, 9.5, 10.3, S.wall));
@@ -737,7 +788,7 @@ function mall(o, rnd) {
     y = R.y0;
 
   lot(b, 0, 2 * TILE, TILE, 3 * TILE, TILE, R.y0);
-  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, S.wall, MATTE));
+  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, S.wall, finishOf(S.wall, MATTE)));
   b.push(box(R.x0 - 0.2, R.x1 + 0.2, R.y0 - 0.2, R.y1 + 0.2, h - 3, h, S.band));
 
   //pilasters along the front, shop windows between
@@ -748,7 +799,7 @@ function mall(o, rnd) {
   }
 
   //the way in: glass two storeys high, its name over it
-  b.push(box(21, 43, y - 4, y, 1, h + 4, S.trim, MATTE));
+  b.push(box(21, 43, y - 4, y, 1, h + 4, S.trim, finishOf(S.trim, MATTE)));
   b.push(box(23, 41, y - 4.3, y - 4, 1.2, h - 2, GLASS, GLASSY));
   for (var m = 25; m < 41; m += 3)
     b.push(box(m, m + 0.4, y - 4.5, y - 4.3, 1.2, h - 2, S.trim));
@@ -789,7 +840,7 @@ function market(o, rnd) {
 
   lot(b, 0, 2 * TILE, TILE, 3 * TILE, TILE, R.y0);
   //low brick walls, glass over them to the eaves
-  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, 5, brick, MATTE));
+  b.push(box(R.x0, R.x1, R.y0, R.y1, 1, 5, brick, made("brick")));
   b.push(
     box(
       R.x0 + 0.3,
@@ -835,35 +886,25 @@ function market(o, rnd) {
         s,
         Math.min(s + 14, R.y1),
         h + 0.5,
-        (function (s0) {
-          return function (yy) {
-            return 0.8 + ((s0 + 14 - yy) / 14) * 6;
-          };
-        })(s),
+        [[s + 14, 1, -0.5]],
         GREEN_GLASS,
         GREEN_GLASS,
         R.x0,
         R.x1,
         s,
         s + 14,
+        GLASSY,
       );
       for (var bx = R.x0 + 3; bx < R.x1; bx += 6)
-        for (var by = s; by < Math.min(s + 14, R.y1); by += 0.5)
-          b.push(
-            box(
-              bx,
-              bx + 0.5,
-              by,
-              by + 0.5,
-              h + 0.5,
-              h + 0.5 + 0.9 + ((s + 14 - by - 0.25) / 14) * 6,
-              shaded(frame, 0, 6 / 14, 1),
-              LIT,
-            ),
-          );
+        b.push(
+          iso.cut(
+            box(bx, bx + 1, s, Math.min(s + 14, R.y1), h + 0.5, h + 9.5, frame),
+            [iso.plane(0, 0.5, 1, h + 0.5 + 1.5 + 0.5 * (s + 14))],
+          ),
+        );
       //the glass along the front of the tooth
       b.push(
-        box(R.x0, R.x1, s, s + 0.4, h + 0.5, h + 7.3, GREEN_GLASS, GLASSY),
+        box(R.x0, R.x1, s, s + 0.4, h + 0.5, h + 8.5, GREEN_GLASS, GLASSY),
       );
     }
 
@@ -1247,18 +1288,7 @@ export function partBoxes(key) {
   }
 
   return boxes.map(function (c) {
-    var r = iso.box(
-      c.x0 - cx * TILE,
-      c.x1 - cx * TILE,
-      c.y0 - cy * TILE,
-      c.y1 - cy * TILE,
-      c.z0,
-      c.z1,
-      c.color,
-      c.finish,
-    );
-
-    return r;
+    return iso.moved(c, -cx * TILE, -cy * TILE, 0);
   });
 }
 
