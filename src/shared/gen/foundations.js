@@ -73,8 +73,9 @@ export var NAMES = [];
 
 //and under a road that is a ramp on a base: its top the ramp, up to two of
 //the corners side by side - W and N, N and E, E and S, or S and W - and one
-//of those two a step over the ground, the ground rising to the other only
-//(client/road deck): "gen/foundations/ramp/1100/0100"
+//of those two a step over the ground, the ground rising to the other only;
+//or both of them, a ramp raised over flat ground (client/road profile):
+//"gen/foundations/ramp/1100/0100", "gen/foundations/ramp/1100/1100"
 ["1100", "0110", "0011", "1001"].forEach(function (tops) {
   tops.split("").forEach(function (t, k) {
     if (t !== "1") return;
@@ -84,6 +85,7 @@ export var NAMES = [];
     drops[k] = 1;
     NAMES.push("gen/foundations/ramp/" + tops + "/" + drops.join(""));
   });
+  NAMES.push("gen/foundations/ramp/" + tops + "/" + tops);
 });
 
 /**
