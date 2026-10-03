@@ -167,11 +167,10 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   of weed along it and a tide mark above. Roads are not laid on the shore.
 - Roads are laid and joined the way OpenTTD does it (`src/core/roadbits.js`,
   after OpenTTD's `road_cmd.cpp`): every road tile keeps its own road bits -
-  which of its edges it runs out to - and they are only what it was laid
-  with. A road drawn along a line runs through its tiles, its ends a half
-  road towards the rest unless the road beyond faces back at them; a road
-  already in the line is joined to it; a road laid next to another does not
-  join it by being next to it. On a slope the bits decide how it sits: on a
+  which of its edges it runs out to - kept as it was laid. A road drawn
+  along a line runs along it and joins every road next to it, which joins
+  it back, wherever that fits both of their slopes; a road already there
+  only ever gains the bit towards the new one. On a slope the bits decide how it sits: on a
   foundation levelled at the top of the slope wherever every bit runs out to
   an edge with a corner at the top; otherwise straight - a ramp up a slope
   with two corners up, a ramp on an inclined foundation over one corner up,
