@@ -21,7 +21,9 @@ function spriteOf(id) {
   var shape = id % Road_PAVED,
     kind = id >= Road_PAVED ? "paved" : "plain";
 
-  if (shape < 10) return "gen/roads/" + kind + "/ramp" + View.ramp(shape);
+  //a ramp, raised over flat ground or not, is the same picture
+  if (shape < 10)
+    return "gen/roads/" + kind + "/ramp" + View.ramp(((shape - 1) % 4) + 1);
 
   return "gen/roads/" + kind + "/" + seenJoins(shape).join("");
 }
@@ -96,11 +98,15 @@ BuildingView.prototype.update = function () {
 
     if (light !== null) addLight(this.gameObject, light);
 
-    addBase(this.gameObject, b.data.tile, id, 1, RenderLayer.groundDrawLayer);
+    addBase(this.gameObject, b.data.tile, id, 1, RenderLayer.roadLayer);
 
     place(this.gameObject, b.data.tile, id);
   }
 };
+
+//how many pixels up a step of the ground is drawn (shared/gen/terrain
+//HEIGHT_STEP)
+var STEP_PX = 8;
 
 //which way each ramp goes up (shared/gen/roads RAMPS)
 var RAMP_UP = { 1: "-y", 2: "-x", 3: "+y", 4: "+x" };
@@ -108,23 +114,33 @@ var RAMP_UP = { 1: "-y", 2: "-x", 3: "+y", 4: "+x" };
 /**
  * What a road's surface is on tile, piece id on it (see Road.profile): flat,
  * at the top of the tile's ground, or a ramp up towards ramp - "+x" - from a
- * step under the top to the top.
+ * step under its top to its top: the top of the ground, or a step over it for
+ * a ramp raised over flat ground (5..8).
  *
  * @param terrain {Terrain} core terrain
  * @returns {{top: number, ramp: string|null}}
  */
 function deck(terrain, tile, id) {
-  var shape = id % Road_PAVED;
+  var shape = id % Road_PAVED,
+    ramp = shape < 10;
 
   return {
-    top: Math.max(
-      terrain.getGridPointHeight(tile),
-      terrain.getGridPointHeight(tile + 1),
-      terrain.getGridPointHeight(tile + Terrain.dy),
-      terrain.getGridPointHeight(tile + Terrain.dy + 1),
-    ),
-    ramp: shape < 10 ? RAMP_UP[shape] || null : null,
+    top:
+      Math.max(
+        terrain.getGridPointHeight(tile),
+        terrain.getGridPointHeight(tile + 1),
+        terrain.getGridPointHeight(tile + Terrain.dy),
+        terrain.getGridPointHeight(tile + Terrain.dy + 1),
+      ) + (ramp && shape > 4 ? 1 : 0),
+    ramp: ramp ? RAMP_UP[((shape - 1) % 4) + 1] : null,
   };
+}
+
+//what a road's surface is, as a word to tell one from another by
+function surfaceKey(terrain, tile, id) {
+  var d = deck(terrain, tile, id);
+
+  return d.top + "/" + d.ramp;
 }
 
 /**
@@ -200,17 +216,15 @@ function addBase(parent, tile, id, opacity, layer) {
 
   sprite.layer = layer;
   sprite.setSprite(vkaria.sprites.getSprite(name));
-  sprite.setPivot(frame.pivotX, frame.pivotY);
+  //at the road's own spot - drawn just before the road on it, a hair under
+  //it (CameraComponent#depthAxes) - its picture lifted to the top of the
+  //ground, where its pivot is, a step's worth of pixels for every step
+  sprite.setPivot(frame.pivotX, frame.pivotY + (d.top - surface(d)) * STEP_PX);
   part.addComponent(sprite);
   //the renderer resets its opacity once it is attached
   sprite.opacity = opacity;
   parent.transform.addChild(part.transform);
-  //from the surface down to the top of the ground, where the piece's pivot is
-  part.transform.setLocalPosition(
-    0,
-    (d.top - surface(d)) * Config.tileZStep,
-    0,
-  );
+  part.transform.setLocalPosition(0, -0.01, 0);
 }
 
 //hangs a street light under parent
@@ -282,6 +296,7 @@ BuildingView.place = place;
 BuildingView.addBase = addBase;
 BuildingView.deck = deck;
 BuildingView.deckAt = deckAt;
+BuildingView.surfaceKey = surfaceKey;
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)
