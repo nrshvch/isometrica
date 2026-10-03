@@ -136,13 +136,6 @@ function deck(terrain, tile, id) {
   };
 }
 
-//what a road's surface is, as a word to tell one from another by
-function surfaceKey(terrain, tile, id) {
-  var d = deck(terrain, tile, id);
-
-  return d.top + "/" + d.ramp;
-}
-
 /**
  * How high a road's surface is at fx, fy across its tile, from the corner at
  * x, y - each 0..1.
@@ -296,7 +289,6 @@ BuildingView.place = place;
 BuildingView.addBase = addBase;
 BuildingView.deck = deck;
 BuildingView.deckAt = deckAt;
-BuildingView.surfaceKey = surfaceKey;
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)
