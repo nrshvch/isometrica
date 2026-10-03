@@ -21,6 +21,7 @@
 //(SpriteCache#getComposite) - and shared with every other block that has the
 //same parts on a tile.
 import { lifts, kindOf, siteTiles, lotTiles } from "shared/gen/stacking";
+import BuildingClassCode from "data/classcode";
 
 /**
  * What a block of the kind looks like - its look, kept as it is, or picked
@@ -207,9 +208,36 @@ function pickDesign(designs, random) {
  * @param stage {number} shared/gen/stacking stageOf
  * @param seed {number} the same for the same block every time - where it
  *        stands
+ * @param [small] {boolean} a small building's site (smallSite)
  */
-function siteLook(look, stage, seed) {
-  return { tiles: siteTiles(look.tiles, stage, seed) };
+function siteLook(look, stage, seed, small) {
+  return { tiles: siteTiles(look.tiles, stage, seed, small) };
+}
+
+/**
+ * Whether what goes up goes up on a small site - no crane, and a timber rail
+ * round it rather than the tarp (shared/gen/stacking siteTiles): a park, a
+ * cottage or a farm of the village, and any house or shop on one tile, which
+ * is a storey high.
+ *
+ * @param staticData {Object} what it is, data/buildings
+ */
+function smallSite(staticData) {
+  var compound = staticData.compound,
+    gen = compound ? compound.gen : null,
+    one = staticData.sizeX * staticData.sizeY === 1;
+
+  if (gen === "parks") return true;
+  if (gen === "houses" && /^village-/.test(compound.footprint)) return true;
+
+  return (
+    one &&
+    (gen === "houses" ||
+      gen === "shops" ||
+      (!compound &&
+        (staticData.classCode === BuildingClassCode.house ||
+          staticData.classCode === BuildingClassCode.commerce)))
+  );
 }
 
 /**
@@ -219,14 +247,15 @@ function siteLook(look, stage, seed) {
  * the same pieces as pieces gives.
  *
  * @param seed {number} the same for the same building every time
+ * @param [small] {boolean} a small building's site (smallSite)
  * @returns {Object[]|null} null while the sites are not described yet
  */
-function lotPieces(sprites, sizeX, sizeY, seed) {
+function lotPieces(sprites, sizeX, sizeY, seed, small) {
   if (!sprites.generated.sites) return null;
 
   return tilePieces(
     sprites,
-    lotTiles(sizeX, sizeY, seed),
+    lotTiles(sizeX, sizeY, seed, small),
     sizeX,
     sizeY,
     0,
@@ -690,6 +719,7 @@ export default {
   sampleLook: sampleLook,
   pickLook: pickLook,
   siteLook: siteLook,
+  smallSite: smallSite,
   lotPieces: lotPieces,
   pieces: pieces,
   preview: preview,

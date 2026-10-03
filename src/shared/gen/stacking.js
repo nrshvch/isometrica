@@ -110,11 +110,14 @@ function seeded(seed) {
 /**
  * What stands on each of `count` tiles of a site, dealt out for the seed: a
  * digger, a lorry, a heap, the office, the crane, each once at most - the
- * office always, on a site of more than one tile.
+ * office always, on a site of more than one tile. A small site (see
+ * siteTiles) has no crane: there is nothing on it to lift that high.
  */
-function deal(count, seed) {
+function deal(count, seed, small) {
   var rnd = seeded(seed),
-    pool = LOTS.slice(),
+    pool = LOTS.filter(function (lot) {
+      return !small || lot !== "crane";
+    }),
     out = [],
     i;
 
@@ -160,8 +163,8 @@ function lot(what, masts) {
  *        stands will do
  * @returns {Object[]} {x, y, parts} for every tile
  */
-export function lotTiles(sizeX, sizeY, seed) {
-  var dealt = deal(sizeX * sizeY, seed),
+export function lotTiles(sizeX, sizeY, seed, small) {
+  var dealt = deal(sizeX * sizeY, seed, small),
     tiles = [],
     x,
     y;
@@ -170,16 +173,17 @@ export function lotTiles(sizeX, sizeY, seed) {
     for (x = 0; x < sizeX; x++)
       tiles.push({ x: x, y: y, parts: lot(dealt[tiles.length], CRANE) });
 
-  return fenced(tiles);
+  return fenced(tiles, small);
 }
 
 /**
  * The tiles of a site with the fence round it all: along every edge of a
  * tile that is an edge of the site, under what is on the tile at its back
  * and over it at its front (shared/gen/sites fence) - and a gate in the
- * middle of the front.
+ * middle of the front. Round a small site, a low timber rail rather than
+ * the tarp (shared/gen/sites rail).
  */
-function fenced(tiles) {
+function fenced(tiles, small) {
   var sizeX = 0,
     sizeY = 0;
 
@@ -188,7 +192,8 @@ function fenced(tiles) {
     sizeY = Math.max(sizeY, tile.y + 1);
   });
 
-  var gate = Math.floor((sizeX - 1) / 2);
+  var gate = Math.floor((sizeX - 1) / 2),
+    fence = small ? "rail" : "fence";
 
   return tiles.map(function (tile) {
     var mask =
@@ -202,8 +207,8 @@ function fenced(tiles) {
     return {
       x: tile.x,
       y: tile.y,
-      parts: ["sites/fence/" + mask + "/back"].concat(tile.parts, [
-        "sites/fence/" + mask + "/front",
+      parts: ["sites/" + fence + "/" + mask + "/back"].concat(tile.parts, [
+        "sites/" + fence + "/" + mask + "/front",
       ]),
     };
   });
@@ -221,16 +226,20 @@ function fenced(tiles) {
  *        client/compoundbuilding keeps them
  * @param stage {number} see stageOf
  * @param seed {number} the same for the same block every time
+ * @param [small] {boolean} a small building's - a cottage, a farm, a park, a
+ *        house or a shop of one storey on one tile: no crane, and a low
+ *        timber rail round it rather than the tarp
  * @returns {Object[]} the tiles as they are at that stage
  */
-export function siteTiles(tiles, stage, seed) {
+export function siteTiles(tiles, stage, seed, small) {
   var gen = tiles[0].parts[0].split("/")[0];
 
-  if (gen === "shops") return fenced(shopSite(tiles, stage, seed));
+  if (gen === "shops")
+    return fenced(shopSite(tiles, stage, seed, small), small);
   if (gen === "houses" || gen === "utilities" || gen === "parks")
-    return fenced(houseSite(tiles, stage, seed));
+    return fenced(houseSite(tiles, stage, seed, small), small);
 
-  var dealt = deal(tiles.length, seed),
+  var dealt = deal(tiles.length, seed, small),
     yards = [],
     storeys = 0;
 
@@ -288,15 +297,16 @@ export function siteTiles(tiles, stage, seed) {
  * couple of storeys over it - and the rest of the car park keeps what it had,
  * less the digger.
  */
-function shopSite(tiles, stage, seed) {
-  var dealt = deal(tiles.length, seed),
+function shopSite(tiles, stage, seed, small) {
+  var dealt = deal(tiles.length, seed, small),
     parks = [];
 
   tiles.forEach(function (tile, i) {
     if (kindOf(tile.parts[0]) === "parking") parks.push(i);
   });
 
-  var crane = parks.length > 0 ? parks[Math.abs(seed) % parks.length] : -1;
+  var crane =
+    parks.length > 0 && !small ? parks[Math.abs(seed) % parks.length] : -1;
 
   return tiles.map(function (tile, i) {
     var p = tile.parts[0].split("/"),
@@ -330,8 +340,8 @@ function shopSite(tiles, stage, seed) {
  * tank; and a park (shared/gen/parks): its ground graded and its walks laid
  * out, then grassed and paved, and then planted.
  */
-function houseSite(tiles, stage, seed) {
-  var dealt = deal(tiles.length, seed);
+function houseSite(tiles, stage, seed, small) {
+  var dealt = deal(tiles.length, seed, small);
 
   return tiles.map(function (tile, i) {
     var p = tile.parts[0].split("/");

@@ -2,6 +2,7 @@ import engine from "engine";
 import Core from "core/main";
 import Config from "./config";
 import View from "./view";
+import RoadView from "./roadview";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import SmokeSource from "./components/smokesource";
@@ -393,7 +394,8 @@ function routeWaypoints(route, from) {
 
 /**
  * The height of the ground at a point, in tiles, the way the terrain is drawn:
- * straight between the heights of the tile's corners.
+ * straight between the heights of the tile's corners - or on a road, the
+ * height of its surface.
  */
 function groundHeight(root, x, y) {
   var terrain = root.core.terrain,
@@ -407,7 +409,14 @@ function groundHeight(root, x, y) {
     a = terrain.getGridPointHeight(x0, y0),
     b = terrain.getGridPointHeight(x0 + 1, y0),
     c = terrain.getGridPointHeight(x0, y0 + 1),
-    d = terrain.getGridPointHeight(x0 + 1, y0 + 1);
+    d = terrain.getGridPointHeight(x0 + 1, y0 + 1),
+    tile = Core.Terrain.convertToIndex(x0, y0),
+    road = root.roadman.getRoad(tile);
+
+  //on a road, its surface - which may be laid over the ground on a base
+  //(RoadView deck)
+  if (road !== null)
+    return RoadView.deckAt(RoadView.deck(terrain, tile, road.typeCode), fx, fy);
 
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
 }
