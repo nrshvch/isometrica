@@ -166,15 +166,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   the water stands against it: wet and darker below that waterline, a line
   of weed along it and a tide mark above. Roads are not laid on the shore.
 - Roads go on uneven ground the same way (`src/client/js/road.js` profile,
-  `roadview.js` addBase), on any tile whose ground rises a step at most. A
-  tile's road can be flat; flat at the top of a slope on a base; a ramp up a
-  slope; a ramp on a concrete wedge over a slope with one corner up; or a
-  ramp raised on a base over flat ground - and it is whichever of those
-  meets the roads next to it at the same height along every edge it joins
-  them on, the plainest of them if more than one does. So a flat road that
-  comes up to a junction levelled at the top of a slope rises to it on a
-  ramp, and a road that changes asks the ones next to it to look again.
-  Cars drive on the road's surface, not the ground under it.
+  `roadview.js` addBase), on any tile whose ground rises a step at most - a
+  plain road wherever the ground lets it be one: flat on flat ground, a ramp
+  up a slope, whatever else joins it, so laying more road never turns the
+  stretch already there into anything else. Only where no plain road goes -
+  across a slope, or on ground with one corner up, three, or two across
+  from each other - is it laid on a concrete base: flat at the top, or
+  straight over a slope with one corner up, a ramp on a wedge, whichever
+  meets the roads next to it better. Cars drive on the road's surface, not
+  the ground under it.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches
