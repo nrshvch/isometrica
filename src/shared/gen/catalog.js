@@ -24,12 +24,14 @@ import * as Parks from "./parks.js";
 import * as Roads from "./roads.js";
 import * as Trees from "./trees.js";
 import * as Foundations from "./foundations.js";
-import { tileName, shoreName } from "./names.js";
+import { tileName, shoreName, gridName } from "./names.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
 //shore runs into, and the water further out, too deep to see the bottom of
 var LAND = "grass",
   WATER = "water_shallow",
+  //the step from the one to the other
+  MID = "water_mid",
   DEEP = "water_deep";
 
 export var GENERATORS = [
@@ -133,14 +135,21 @@ export function describe(gen, pixels) {
 
   if (gen === "terrain") {
     var terrain = Terrain.describe(null, {
-        tilesets: [LAND, WATER, DEEP],
+        tilesets: [LAND, WATER, MID, DEEP],
         diffuse: false,
       }),
       sets = terrain.manifest.tilesets;
 
-    data = { land: LAND, water: WATER, deep: DEEP, variants: {}, shores: {} };
+    data = {
+      land: LAND,
+      water: WATER,
+      mid: MID,
+      deep: DEEP,
+      variants: {},
+      shores: {},
+    };
 
-    [LAND, WATER, DEEP].forEach(function (id) {
+    [LAND, WATER, MID, DEEP].forEach(function (id) {
       Object.keys(sets[id].base).forEach(function (slope) {
         sets[id].base[slope].forEach(function (rel, v) {
           add(tileName(id, slope, v), terrain.sizes[rel], rel);
@@ -156,6 +165,15 @@ export function describe(gen, pixels) {
 
       add(shoreName(WATER, slope), terrain.sizes[rel], rel);
       data.shores[slope] = true;
+    });
+
+    //and the grid, over every tile of every slope
+    terrain.manifest.slopes.forEach(function (slope) {
+      add(
+        gridName(slope),
+        { w: Terrain.WIDTH, h: Terrain.HEIGHT },
+        "grid/" + slope + ".png",
+      );
     });
   } else if (gen === "vehicles") {
     var vehicles = Vehicles.describe();
