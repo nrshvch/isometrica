@@ -141,25 +141,18 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - The catalogue offers only what is painted: the hand-drawn houses, shops,
   offices, flats, town hall, trees and cliff are kept for the cities that
   already have them, but no longer offered.
-- The ground is painted from nothing (`src/shared/gen/terrain.js`): grass
-  with lusher clumps, drier patches, blades, clover and the odd flower;
-  water with its swell and ripples catching the light; and every tile's
+- The ground is painted from nothing (`src/shared/gen/terrain.js`), the
+  way the game has always had it: grass one green with a fine grain of
+  lighter and darker pixels all over it, the shallows and the deep water one
+  blue each with the same grain over a faint swell; and every tile's
   outline is its corners joined up, lit by the same sun as the buildings. A
   shore tile has the water come a little way up it, then wet sand and sand
   thinning out into the grass in a ragged dither as wide as the tile - by
   how high the ground is, so a shore runs on unbroken from tile to tile.
-- A building goes up on uneven ground the way it did in Transport Tycoon:
-  level at the highest corner under it, on a concrete base cut to the
-  ground (`src/shared/gen/foundations.js`, `BuildingView` addFoundations) -
-  as long as the ground falls no more than a step anywhere under it
-  (`src/core/buildings.js`). The base is picked as the tile is seen, so it
-  turns with the camera. On the shore, where the water is painted a little
-  way up the ground and so looks higher, the base is cut off at that
-  waterline instead, wet and darker along it. Roads are not laid on the
-  shore.
-- The trees are painted too (`src/shared/gen/trees.js`): oak, beech, ash
-  and alder, two of each, ray-traced from the angle the boxes are seen from
-  and lit in a few flat tones of their own. The world grows each kind in
+- The trees are painted too (`src/shared/gen/trees.js`), the way the two
+  drawn by hand were: a crown of a few big round puffs, each shaded round,
+  lit along its sunny edge and dark in the crease under the one in front -
+  oak, beech, ash and alder, two of each. The world grows each kind in
   stands (`src/core/ambient.js`); the two trees drawn by hand are the first
   oak and beech now, so cities that had them keep their trees.
 - A town starts without a town hall. Its name hangs over the middle of the

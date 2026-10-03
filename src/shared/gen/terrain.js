@@ -422,45 +422,22 @@ var TILESETS = {
   grass: {
     name: "European grassland",
     description:
-      "Meadow grass of temperate Europe: lusher clumps and drier patches, blades catching the light, now and then a daisy or a buttercup.",
+      "Meadow grass of temperate Europe, the way the game has always had it: one green, a grain of lighter and darker pixels all over it and nothing bigger.",
     kind: "land",
     waterBody: "water_shallow",
     variants: 4,
     look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1 },
+    //a pixel's worth of noise, as hand-painted pixel art has it - brightness
+    //and every channel on its own, about as much as the grass the game
+    //started with - over a green that barely changes across the tile
     albedo: function (s) {
-      var c = ramp(GRASS, 0.5 + 0.35 * s.noise("field", 3, 2)),
-        lush = s.noise("lush", 7, 2),
-        dry = s.noise("dry", 5, 2);
-
-      //clumps of lusher, darker grass, and drier patches between
-      if (lush > 0.25)
-        c = mix(c, [34, 84, 26], Math.min(1, (lush - 0.25) * 2.5) * 0.6);
-      else if (dry > 0.35)
-        c = mix(c, [100, 128, 52], Math.min(1, (dry - 0.35) * 2.5) * 0.45);
-
-      return grain(c, s, 0.05, 3);
+      return grain(
+        ramp(GRASS, 0.5 + 0.12 * s.noise("field", 3, 1)),
+        s,
+        0.1,
+        17,
+      );
     },
-    decorations: [
-      //blades: a lit tip over its own shadow
-      { density: 0.07, cells: tuft([84, 138, 52], [32, 76, 22]) },
-      { density: 0.03, cells: tuft([70, 124, 42], [40, 86, 26]) },
-      //clover, darker and a little blue
-      {
-        density: 0.012,
-        cells: dot([
-          [38, 92, 44],
-          [44, 100, 52],
-        ]),
-      },
-      //daisies and buttercups
-      {
-        density: 0.0025,
-        cells: dot([
-          [236, 236, 222],
-          [240, 206, 64],
-        ]),
-      },
-    ],
     edge: {
       depth: 0.42,
       amp: 0.14,
@@ -616,24 +593,20 @@ var TILESETS = {
   water_shallow: {
     name: "Shallow water",
     description:
-      "The shallows along the land: blue with a gentle swell, the light caught in short lines along the ripples.",
+      "The shallows along the land, the way the game has always had them: one blue, a grain of lighter and darker pixels over a faint swell.",
     kind: "water",
     slopes: [FLAT],
     variants: 3,
     look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
+    //a grain over it, as the water the game started with had, and a faint
+    //swell under that - the same as deep water, lighter
     albedo: function (s) {
-      var c = ramp(WATER, 0.5 + 0.28 * s.noise("field", 2.5, 2)),
-        //ripples run level across the screen, along u + v; broken up into
-        //short lines wherever the light catches them
-        ripple = Math.sin(
-          2 * Math.PI * 3 * (s.u + s.v) + 1.6 * s.noise("warp", 2, 1),
-        ),
-        dash = s.noise("dash", 9, 1);
-
-      if (ripple > 0.9 && dash > 0.15) c = mix(c, [96, 168, 222], 0.55);
-      else if (ripple < -0.93 && dash < -0.25) c = mix(c, [0, 50, 112], 0.5);
-
-      return grain(c, s, 0.03, 2);
+      return grain(
+        ramp(WATER, 0.5 + 0.18 * s.noise("swell", 2.5, 2)),
+        s,
+        0.1,
+        5,
+      );
     },
     edge: {
       depth: 0.3,
@@ -653,7 +626,8 @@ var TILESETS = {
       "Open water too deep to see the bottom of, off shore; fades into the shallows.",
     kind: "water",
     slopes: [FLAT],
-    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1 },
+    variants: 3,
+    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
     edge: {
       depth: 0.34,
       amp: 0.13,
@@ -665,16 +639,13 @@ var TILESETS = {
       reach: 0.12,
       lip: 0,
     },
+    //the shallows' grain and swell, darker
     albedo: function (s) {
-      var swell = Math.sin(
-        2 * Math.PI * (2 * s.u + 3 * s.v) + 2.5 * s.noise("warp", 2, 1),
-      );
-
       return grain(
-        ramp(DEEP, 0.5 + 0.3 * s.noise("field", 2.5, 2) + 0.1 * swell),
+        ramp(DEEP, 0.5 + 0.18 * s.noise("swell", 2.5, 2)),
         s,
         0.1,
-        2,
+        5,
       );
     },
   },
