@@ -478,12 +478,14 @@ function buildSelection(self, code, anchors, rotation, codes, looks) {
     //roads it is laid to (core/roadbits) - and those are drawn again, joined
     if (data.classCode === BuildingClassCode.road) {
       tried = anchors.length;
-      root.core.cities.getCity(0).buildingService.layRoad(code, anchors);
-      anchors.forEach(function (tile) {
-        var road = root.roadman.getRoad(tile);
+      root.core.cities
+        .getCity(0)
+        .buildingService.layRoad(code, anchors)
+        .forEach(function (q) {
+          var road = root.roadman.getRoad(q.tile);
 
-        if (road !== null) road.updateProfile();
-      });
+          if (road !== null) road.updateProfile();
+        });
     } else
       for (i = 0; i < anchors.length; i++) {
         tried++;
