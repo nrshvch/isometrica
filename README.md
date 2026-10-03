@@ -141,21 +141,21 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - The catalogue offers only what is painted: the hand-drawn houses, shops,
   offices, flats, town hall, trees and cliff are kept for the cities that
   already have them, but no longer offered.
-- The ground is painted from nothing (`src/shared/gen/terrain.js`), the
-  way the game has always had it: grass one green with a fine grain of
-  lighter and darker pixels all over it, the shallows and the deep water one
-  blue each with the same grain over a faint swell; and every tile's
-  outline is its corners joined up, lit by the same sun as the buildings. A
-  shore tile has the water come a little way up it, then wet sand and sand
-  thinning out into the grass in a ragged dither as wide as the tile - by
-  how high the ground is, so a shore runs on unbroken from tile to tile.
-- The trees are painted too (`src/shared/gen/trees.js`), out of the same
-  boxes and under the same sun as the buildings: a trunk, and a crown of a
-  few round puffs each laid out like a garden's tree (`blocks.js` round) -
-  oak, beech, ash and alder, two of each, as plainly coloured as the houses
-  round them. The world grows each kind in stands (`src/core/ambient.js`);
-  the two trees drawn by hand are the first oak and beech now, so cities
-  that had them keep their trees.
+- The ground is painted from nothing (`src/shared/gen/terrain.js`) the way
+  the buildings' own ground is (`isobox.js` MATERIALS): grass one flat
+  green, a darker pixel here and there and a lighter one now and then, the
+  shallows and the deep water one flat blue each with a rare glint and
+  faint ripples; and every tile's outline is its corners joined up, lit by
+  the same sun as the buildings. A shore tile has the water come a little
+  way up it, then wet sand and sand thinning out into the grass in a ragged
+  dither as wide as the tile - by how high the ground is, so a shore runs on
+  unbroken from tile to tile.
+- The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
+  kind's own shape - oak, beech, ash and alder, two of each - filled in with
+  three flat greens and lit by the buildings' sun, every tone in patches
+  rather than speckled. The world grows each kind in stands
+  (`src/core/ambient.js`); the two trees drawn by hand are the first oak and
+  beech now, so cities that had them keep their trees.
 - A town starts without a town hall. Its name hangs over the middle of the
   land it owns, and its road network is the biggest stretch of its roads
   that hangs together - a building is on the road when it is next to that;

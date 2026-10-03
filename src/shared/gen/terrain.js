@@ -422,21 +422,21 @@ var TILESETS = {
   grass: {
     name: "European grassland",
     description:
-      "Meadow grass of temperate Europe, the way the game has always had it: one green, a grain of lighter and darker pixels all over it and nothing bigger.",
+      "Meadow grass of temperate Europe, the way the buildings' lawns are painted: one flat green, a darker pixel here and there, a lighter one now and then.",
     kind: "land",
     waterBody: "water_shallow",
     variants: 4,
     look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1 },
-    //a pixel's worth of noise, as hand-painted pixel art has it - brightness
-    //and every channel on its own, about as much as the grass the game
-    //started with - over a green that barely changes across the tile
+    //the grass the lots of the buildings are laid with (isobox MATERIALS
+    //grass): one flat green, a pixel darker here and there, now and then
+    //one lighter, and the patches of it four across a shade off one
+    //another, barely
     albedo: function (s) {
-      return grain(
-        ramp(GRASS, 0.5 + 0.12 * s.noise("field", 3, 1)),
-        s,
-        0.1,
-        17,
-      );
+      var h = s.random(1),
+        k =
+          (2 * s.block(2) - 1) * 0.03 + (h < 0.16 ? -0.08 : h > 0.9 ? 0.06 : 0);
+
+      return shift(GRASS[1][1], k);
     },
     edge: {
       depth: 0.42,
@@ -593,20 +593,16 @@ var TILESETS = {
   water_shallow: {
     name: "Shallow water",
     description:
-      "The shallows along the land, the way the game has always had them: one blue, a grain of lighter and darker pixels over a faint swell.",
+      "The shallows along the land, the way the parks' ponds are painted: one flat blue, a glint here and there and faint ripples running across it.",
     kind: "water",
     slopes: [FLAT],
     variants: 3,
     look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
-    //a grain over it, as the water the game started with had, and a faint
-    //swell under that - the same as deep water, lighter
+    //the water of the parks' ponds (isobox MATERIALS water): one flat blue,
+    //a glint here and there and faint ripples running across it - the same
+    //as deep water, lighter
     albedo: function (s) {
-      return grain(
-        ramp(WATER, 0.5 + 0.18 * s.noise("swell", 2.5, 2)),
-        s,
-        0.1,
-        5,
-      );
+      return shift(WATER[1][1], still(s));
     },
     edge: {
       depth: 0.3,
@@ -639,14 +635,9 @@ var TILESETS = {
       reach: 0.12,
       lip: 0,
     },
-    //the shallows' grain and swell, darker
+    //the shallows' ripples and glints, darker
     albedo: function (s) {
-      return grain(
-        ramp(DEEP, 0.5 + 0.18 * s.noise("swell", 2.5, 2)),
-        s,
-        0.1,
-        5,
-      );
+      return shift(DEEP[1][1], still(s));
     },
   },
   ice: {
@@ -777,6 +768,30 @@ function smoothstep(a, b, x) {
   var t = Math.max(0, Math.min(1, (x - a) / (b - a)));
 
   return t * t * (3 - 2 * t);
+}
+
+//a colour lighter by k, or under 0 darker by -k, the way isobox lays a
+//material over a face's colour
+function shift(c, k) {
+  var t = k > 0 ? [255, 255, 255] : [0, 0, 0];
+
+  k = Math.abs(k);
+
+  return [
+    c[0] + (t[0] - c[0]) * k,
+    c[1] + (t[1] - c[1]) * k,
+    c[2] + (t[2] - c[2]) * k,
+  ];
+}
+
+//how much lighter still water is at a pixel than its own colour (isobox
+//MATERIALS water): a glint now and then, faint ripples across it, and the
+//patches of it a shade off one another, barely
+function still(s) {
+  if (s.random(5) < 0.02) return 0.2;
+  if ((((s.x + 3 * s.y) % 11) + 11) % 11 === 0) return 0.08;
+
+  return (2 * s.block(6) - 1) * 0.02;
 }
 
 //brightness and every channel a little off, pixel by pixel, the way the grass is
@@ -1290,6 +1305,11 @@ Sampler.prototype.cells = function (name, n, warp) {
 
 Sampler.prototype.random = function (salt) {
   return hash(this.salt, this.x, this.y, salt);
+};
+
+//0..1, the same for a block of four by four pixels
+Sampler.prototype.block = function (salt) {
+  return hash(this.salt, this.x >> 2, this.y >> 2, salt);
 };
 
 /**
