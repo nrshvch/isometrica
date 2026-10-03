@@ -2,6 +2,8 @@ import engine from "engine";
 import Core from "core/main";
 import Config from "./config";
 import View from "./view";
+import Road from "./road";
+import RoadView from "./roadview";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import SmokeSource from "./components/smokesource";
@@ -176,9 +178,14 @@ function canDrive(root, from, dir) {
   return (
     root.roadman.getRoad(to) !== null &&
     (roadAxes(root, from) & axis) !== 0 &&
-    (roadAxes(root, to) & axis) !== 0
+    (roadAxes(root, to) & axis) !== 0 &&
+    //never over a step down from a levelled road
+    Road.meets(root.core.terrain, from, SIDE_OF[dir[0] + "," + dir[1]])
   );
 }
+
+//which side of a tile, -x, -y, +x, +y, each way out of it goes through
+var SIDE_OF = { "-1,0": 0, "0,-1": 1, "1,0": 2, "0,1": 3 };
 
 function neighbours(root, tile, out) {
   for (var i = 0; i < DIRECTIONS.length; i++) {
@@ -393,7 +400,8 @@ function routeWaypoints(route, from) {
 
 /**
  * The height of the ground at a point, in tiles, the way the terrain is drawn:
- * straight between the heights of the tile's corners.
+ * straight between the heights of the tile's corners - or on a levelled road,
+ * the top of it.
  */
 function groundHeight(root, x, y) {
   var terrain = root.core.terrain,
@@ -407,7 +415,12 @@ function groundHeight(root, x, y) {
     a = terrain.getGridPointHeight(x0, y0),
     b = terrain.getGridPointHeight(x0 + 1, y0),
     c = terrain.getGridPointHeight(x0, y0 + 1),
-    d = terrain.getGridPointHeight(x0 + 1, y0 + 1);
+    d = terrain.getGridPointHeight(x0 + 1, y0 + 1),
+    tile = Terrain.convertToIndex(x0, y0);
+
+  //on a levelled road, the top of its tile (RoadView addBase)
+  if (root.roadman.getRoad(tile) !== null && RoadView.levelled(terrain, tile))
+    return RoadView.topOf(terrain, tile);
 
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
 }
