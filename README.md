@@ -149,12 +149,13 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   shore tile has the water come a little way up it, then wet sand and sand
   thinning out into the grass in a ragged dither as wide as the tile - by
   how high the ground is, so a shore runs on unbroken from tile to tile.
-- The trees are painted too (`src/shared/gen/trees.js`), the way the two
-  drawn by hand were: a crown of a few big round puffs, each shaded round,
-  lit along its sunny edge and dark in the crease under the one in front -
-  oak, beech, ash and alder, two of each. The world grows each kind in
-  stands (`src/core/ambient.js`); the two trees drawn by hand are the first
-  oak and beech now, so cities that had them keep their trees.
+- The trees are painted too (`src/shared/gen/trees.js`), out of the same
+  boxes and under the same sun as the buildings: a trunk, and a crown of a
+  few round puffs each laid out like a garden's tree (`blocks.js` round) -
+  oak, beech, ash and alder, two of each, as plainly coloured as the houses
+  round them. The world grows each kind in stands (`src/core/ambient.js`);
+  the two trees drawn by hand are the first oak and beech now, so cities
+  that had them keep their trees.
 - A town starts without a town hall. Its name hangs over the middle of the
   land it owns, and its road network is the biggest stretch of its roads
   that hangs together - a building is on the road when it is next to that;

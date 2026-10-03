@@ -1,13 +1,11 @@
 /**
  * Paints the broadleaf trees of the grassland - the ones the world grows on
- * its own, and the ones a city has planted - the way the two trees the game
- * started with were drawn by hand: a crown heaped up out of a few big round
- * puffs of leaves, each one shaded round, lit along its edge where the sun
- * catches it and dark in the crease under the puff in front of it, in strong
- * greens with a fine grain of pixels over them; a short trunk under it, and
- * its shadow on the ground. Seen from the angle the boxes of shared/gen/isobox
- * are, a unit a pixel, and lit by their sun, so that a tree stands among the
- * houses as if it were one of them.
+ * its own, and the ones a city has planted - the way the buildings are
+ * painted, out of the same boxes (shared/gen/isobox) lit by the same sun:
+ * each a trunk, and a crown of a few round puffs, each one laid out in thin
+ * columns the way a tree in a garden is (blocks round) - so a tree in a wood
+ * looks like the trees in the gardens, only bigger, and as plainly coloured
+ * as the houses round it.
  *
  *   - oak: a short thick trunk under a broad crown, wider than it is tall,
  *     of big puffs heaped unevenly; deep green;
@@ -21,63 +19,32 @@
  * looks much the same from every side, and the camera turning round
  * (client/view) shows the same picture.
  *
- * A ray goes into the tree for every pixel, along the way the boxes are
- * looked at, and meets the nearest puff - a sphere, exactly - or the trunk.
- * Where it meets the ground instead it is in the tree's shadow, or nothing:
- * the shadow is short, the sun for it higher than the one for the light, so
- * that it stays under the tree rather than across the next tile.
+ * The boxes cast no shadow on the ground, so a tree's is put in under it
+ * after: the ground the puffs keep a high sun off, darkened - short, so that
+ * it stays under the tree rather than across the next tile.
  */
+import * as iso from "./isobox.js";
+import { box, free, round, TILE } from "./blocks.js";
 
-var W = 64,
+var W = 80,
   H = 72,
   //where the foot of the tree is in the picture: the middle of its tile
-  PIVOT_X = 28,
+  PIVOT_X = 38,
   PIVOT_Y = 60;
 
-//the boxes' sun (isobox SUN), x and y along the tile, z up
-var SUN = normalize([-0.45, 0.35, 1]);
-//the sun the shadow is cast by: higher, so it falls short
+//the sun the shadow is cast by: the boxes' (isobox SUN), only higher, so the
+//shadow falls short
 var SHADOW_SUN = normalize([-0.22, 0.18, 1]);
-var SHADOW_ALPHA = 0.4;
+var SHADOW_ALPHA = 0.3;
 
-//the way every ray goes into the picture: where isobox project() has a
-//point stay put
-var VIEW = normalize([1, 1, -1]);
-
-//how many pixels under the edge of a puff in front of it a puff is in its
-//shade, and how dark that is
-var CREASE = 2,
-  CREASE_DARK = 0.62;
+//how far a column of a crown is lighter or darker than the next, as in the
+//gardens' trees
+var GRAIN = 0.07;
 
 function normalize(v) {
   var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 
   return [v[0] / l, v[1] / l, v[2] / l];
-}
-
-function dot(a, b) {
-  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-}
-
-function clamp(v, lo, hi) {
-  return v < lo ? lo : v > hi ? hi : v;
-}
-
-function mix(a, b, t) {
-  return [
-    a[0] + (b[0] - a[0]) * t,
-    a[1] + (b[1] - a[1]) * t,
-    a[2] + (b[2] - a[2]) * t,
-  ];
-}
-
-//a colour along stops dark to light, t 0..1
-function ramp(stops, t) {
-  t = clamp(t, 0, 1) * (stops.length - 1);
-
-  var i = Math.min(stops.length - 2, Math.floor(t));
-
-  return mix(stops[i], stops[i + 1], t - i);
 }
 
 //0..1, the same for the same numbers
@@ -95,138 +62,99 @@ function hash(x, y, z) {
 
 /* --- The kinds ------------------------------------------------------- */
 
-//every kind: its leaves, darkest to lightest, and its bark; its trunk; and
-//how its puffs are heaped, given a random number source - each [x, y, z, r]
+//every kind: the colour of its leaves and its bark; its trunk; and how its
+//puffs are heaped, given a random number source - each [x, y, z, r] off the
+//foot of the tree
 var KINDS = {
   oak: {
-    leaves: [
-      [0, 40, 6],
-      [0, 72, 9],
-      [0, 96, 12],
-      [34, 128, 28],
-      [96, 170, 64],
-    ],
-    bark: [
-      [56, 40, 28],
-      [86, 64, 42],
-      [116, 90, 60],
-    ],
-    trunk: { height: 16, radius: 2.4 },
+    leaves: [40, 96, 34],
+    bark: [96, 72, 52],
+    trunk: { height: 16, radius: 1.5 },
     grow: function (r) {
-      var puffs = [[0, 0, 26, 10]],
+      var puffs = [[0, 0, 26, 9]],
         n = 6;
 
       for (var i = 0; i < n; i++) {
         var a = (2 * Math.PI * (i + 0.4 * r())) / n,
-          d = 9 + 3 * r();
+          d = 8 + 3 * r();
 
         puffs.push([
           Math.cos(a) * d,
           Math.sin(a) * d,
-          20 + 8 * r(),
-          6.5 + 2.5 * r(),
+          20 + 7 * r(),
+          5.5 + 2 * r(),
         ]);
       }
-      puffs.push([r() * 4 - 2, r() * 4 - 2, 33 + 2 * r(), 7]);
+      puffs.push([r() * 4 - 2, r() * 4 - 2, 32, 6]);
 
       return puffs;
     },
   },
 
   beech: {
-    leaves: [
-      [6, 50, 12],
-      [14, 84, 20],
-      [24, 112, 30],
-      [70, 150, 48],
-      [140, 196, 90],
-    ],
-    bark: [
-      [96, 98, 96],
-      [132, 134, 130],
-      [170, 170, 164],
-    ],
-    trunk: { height: 12, radius: 2 },
+    leaves: [56, 118, 40],
+    bark: [138, 138, 130],
+    trunk: { height: 12, radius: 1.5 },
     grow: function (r) {
-      var puffs = [[0, 0, 24, 11]],
+      var puffs = [[0, 0, 23, 10]],
         n = 5;
 
       for (var i = 0; i < n; i++) {
         var a = (2 * Math.PI * (i + 0.3 * r())) / n,
-          d = 7 + 2 * r();
+          d = 6 + 2 * r();
 
         puffs.push([
           Math.cos(a) * d,
           Math.sin(a) * d,
-          16 + 9 * r(),
-          7.5 + 2 * r(),
+          16 + 8 * r(),
+          6.5 + 2 * r(),
         ]);
       }
-      puffs.push([0, 0, 32, 8]);
+      puffs.push([0, 0, 30, 7]);
 
       return puffs;
     },
   },
 
   ash: {
-    leaves: [
-      [24, 60, 12],
-      [48, 94, 22],
-      [72, 122, 32],
-      [118, 158, 56],
-      [176, 200, 104],
-    ],
-    bark: [
-      [64, 62, 56],
-      [90, 88, 80],
-      [118, 114, 104],
-    ],
-    trunk: { height: 17, radius: 1.8 },
+    leaves: [86, 130, 48],
+    bark: [110, 106, 96],
+    trunk: { height: 17, radius: 1 },
     grow: function (r) {
       var puffs = [],
         n = 7;
 
       for (var i = 0; i < n; i++) {
         var a = (2 * Math.PI * (i + 0.4 * r())) / n,
-          d = 6 + 4 * r();
+          d = 6 + 3 * r();
 
         puffs.push([
           Math.cos(a) * d,
           Math.sin(a) * d,
-          19 + 9 * r(),
-          5 + 1.5 * r(),
+          19 + 8 * r(),
+          4.5 + 1.5 * r(),
         ]);
       }
-      puffs.push([0, 0, 26, 7]);
-      puffs.push([r() * 3, -r() * 3, 33, 5.5]);
+      puffs.push([0, 0, 26, 6]);
+      puffs.push([r() * 3, -r() * 3, 32, 5]);
 
       return puffs;
     },
   },
 
   alder: {
-    leaves: [
-      [0, 36, 18],
-      [4, 62, 30],
-      [12, 86, 40],
-      [44, 118, 62],
-      [100, 160, 104],
-    ],
-    bark: [
-      [52, 46, 42],
-      [76, 68, 60],
-      [102, 92, 82],
-    ],
-    trunk: { height: 30, radius: 1.5 },
+    leaves: [32, 82, 50],
+    bark: [84, 74, 64],
+    trunk: { height: 30, radius: 1 },
     grow: function (r) {
       var puffs = [],
         //up the trunk, each puff smaller than the one under it
         tiers = [
-          [17, 7.5, 4.5],
-          [25, 6.5, 3.5],
-          [32, 5.5, 2.5],
-          [38, 4.5, 1],
-          [43, 3, 0],
+          [16, 7, 4],
+          [24, 6, 3],
+          [31, 5, 2],
+          [37, 4, 1],
+          [42, 2.5, 0],
         ];
 
       tiers.forEach(function (t, k) {
@@ -243,7 +171,7 @@ var KINDS = {
             -Math.cos(a) * t[2],
             -Math.sin(a) * t[2],
             t[0] - 2 + k * 0.5,
-            t[1] * 0.8,
+            t[1] * 0.75,
           ]);
       });
 
@@ -281,162 +209,107 @@ function grow(kind, seed) {
 
   return {
     kind: k,
-    seed: seed,
     puffs: k.grow(random(seed)).map(function (p) {
       return [p[0] * scale, p[1] * scale, p[2] * scale, p[3] * scale];
     }),
-    trunk: {
-      //into the crown, so that it does not end in mid air between puffs
-      height: (k.trunk.height + 8) * scale,
-      radius: k.trunk.radius * scale,
-    },
+    //into the crown, so that it does not end in mid air between puffs
+    trunk: (k.trunk.height + 6) * scale,
   };
 }
 
 /**
- * Where along a ray from o along d it first meets the tree: {t, part, n} -
- * part the puff it meets, or -1 for the trunk, n the way the surface looks
- * there - or null.
+ * The boxes of a tree standing in the middle of its tile: its trunk, and
+ * every puff of its crown round, in columns - each a ball, a little flatter
+ * underneath.
  */
-function hit(tree, o, d) {
-  var best = null,
-    i;
+function boxesOf(tree) {
+  var b = [],
+    mid = TILE / 2,
+    t = tree.kind.trunk.radius;
 
-  for (i = 0; i < tree.puffs.length; i++) {
-    var p = tree.puffs[i],
-      ox = o[0] - p[0],
+  b.push(
+    box(mid - t, mid + t, mid - t, mid + t, 0, tree.trunk, tree.kind.bark),
+  );
+
+  tree.puffs.forEach(function (p) {
+    var r = p[3];
+
+    round(
+      b,
+      mid + p[0],
+      mid + p[1],
+      r,
+      tree.kind.leaves,
+      GRAIN,
+      function (u, v) {
+        var d = (u * u + v * v) / (r * r);
+
+        if (d >= 1) return null;
+
+        var k = Math.sqrt(1 - d);
+
+        return [p[2] - r * k * 0.8, p[2] + r * k, u, v, r * k];
+      },
+    );
+  });
+
+  return b;
+}
+
+//whether a ray from o along d meets any of the puffs
+function shaded(tree, o, d) {
+  return tree.puffs.some(function (p) {
+    var ox = o[0] - p[0],
       oy = o[1] - p[1],
       oz = o[2] - p[2],
       b = ox * d[0] + oy * d[1] + oz * d[2],
-      c = ox * ox + oy * oy + oz * oz - p[3] * p[3],
-      disc = b * b - c;
+      c = ox * ox + oy * oy + oz * oz - p[3] * p[3];
 
-    if (disc < 0) continue;
-
-    var t = -b - Math.sqrt(disc);
-
-    if (t > 0 && (best === null || t < best.t))
-      best = {
-        t: t,
-        part: i,
-        n: [
-          (ox + d[0] * t) / p[3],
-          (oy + d[1] * t) / p[3],
-          (oz + d[2] * t) / p[3],
-        ],
-      };
-  }
-
-  //the trunk: upright, round, from the ground
-  var tr = tree.trunk,
-    a = d[0] * d[0] + d[1] * d[1],
-    bb = o[0] * d[0] + o[1] * d[1],
-    cc = o[0] * o[0] + o[1] * o[1] - tr.radius * tr.radius,
-    dd = bb * bb - a * cc;
-
-  if (a > 0 && dd >= 0) {
-    var tt = (-bb - Math.sqrt(dd)) / a,
-      z = o[2] + d[2] * tt;
-
-    if (tt > 0 && z >= 0 && z <= tr.height && (best === null || tt < best.t))
-      best = {
-        t: tt,
-        part: -1,
-        n: normalize([o[0] + d[0] * tt, o[1] + d[1] * tt, 0]),
-      };
-  }
-
-  return best;
+    return b < 0 && b * b - c >= 0;
+  });
 }
 
 /* --- Painting -------------------------------------------------------- */
 
 /**
- * The picture of a tree: a ray for every pixel, along the way the boxes are
- * looked at, from in front of the tree - painted as the tree is lit where it
- * meets it, or as its shadow where it meets the ground in it.
+ * The picture of a tree, its foot at PIVOT_X, PIVOT_Y: the boxes, and its
+ * shadow on the ground round them.
  */
 function paintTree(tree) {
-  var data = new Uint8ClampedArray(W * H * 4),
-    back = 90,
-    hits = new Array(W * H),
-    k = tree.kind,
+  var picture = free(boxesOf(tree)),
+    painted = iso.toImage(picture),
+    data = new Uint8ClampedArray(W * H * 4),
+    ox = PIVOT_X - picture.pivotX,
+    oy = PIVOT_Y - picture.pivotY,
     px,
     py,
-    i;
+    k;
 
   for (py = 0; py < H; py++) {
     for (px = 0; px < W; px++) {
-      //the point on the ground that is drawn at this pixel (isobox project:
-      //x - y across, -(x + y) / 2 - z down)
+      var x = px - ox,
+        y = py - oy;
+
+      k = (py * W + px) * 4;
+
+      if (x >= 0 && y >= 0 && x < painted.width && y < painted.height) {
+        var s = (y * painted.width + x) * 4;
+
+        if (painted.data[s + 3] > 0) {
+          data.set(painted.data.subarray(s, s + 4), k);
+          continue;
+        }
+      }
+
+      //the point on the ground drawn at this pixel, off the foot of the
+      //tree (isobox project: x - y across, -(x + y) / 2 - z down)
       var sx = px + 0.5 - PIVOT_X,
-        sy = py + 0.5 - PIVOT_Y,
-        g = [(sx - 2 * sy) / 2, (-sx - 2 * sy) / 2, 0],
-        o = [
-          g[0] - VIEW[0] * back,
-          g[1] - VIEW[1] * back,
-          g[2] - VIEW[2] * back,
-        ],
-        h = hit(tree, o, VIEW);
+        sy = py + 0.5 - PIVOT_Y;
 
-      i = py * W + px;
-      hits[i] = h;
-
-      if (h === null && hit(tree, [g[0], g[1], 0.1], SHADOW_SUN) !== null)
-        data[i * 4 + 3] = Math.round(SHADOW_ALPHA * 255);
-    }
-  }
-
-  //whether the pixel is just under the edge of a puff nearer the eye: in its
-  //shade, the crease between the two
-  function creased(px, py, h) {
-    for (var dy = -CREASE; dy <= 0; dy++)
-      for (var dx = -1; dx <= 1; dx++) {
-        var x = px + dx,
-          y = py + dy;
-
-        if ((dx === 0 && dy === 0) || x < 0 || y < 0 || x >= W) continue;
-
-        var o = hits[y * W + x];
-
-        if (o !== null && o.part >= 0 && o.part !== h.part && o.t < h.t - 1)
-          return true;
-      }
-
-    return false;
-  }
-
-  for (py = 0; py < H; py++) {
-    for (px = 0; px < W; px++) {
-      i = py * W + px;
-
-      var h = hits[i];
-
-      if (h === null) continue;
-
-      var sun = dot(h.n, SUN),
-        grainy = hash(px, py, tree.seed + 77) - 0.5,
-        colour;
-
-      if (h.part < 0) colour = ramp(k.bark, 0.35 + 0.55 * sun + grainy * 0.2);
-      else {
-        //round, lit from the sun's side, dark round the far side of it
-        var light = 0.3 + 0.5 * sun,
-          //how square on to the eye the surface is: low at the edge
-          facing = -dot(h.n, VIEW);
-
-        //the edge the sun catches, a band lighter round it
-        if (facing < 0.42 && sun > 0.35) light += 0.28;
-
-        if (creased(px, py, h)) light *= CREASE_DARK;
-
-        colour = ramp(k.leaves, light + grainy * 0.2);
-      }
-
-      data[i * 4] = colour[0];
-      data[i * 4 + 1] = colour[1];
-      data[i * 4 + 2] = colour[2];
-      data[i * 4 + 3] = 255;
+      if (
+        shaded(tree, [(sx - 2 * sy) / 2, (-sx - 2 * sy) / 2, 0.1], SHADOW_SUN)
+      )
+        data[k + 3] = Math.round(SHADOW_ALPHA * 255);
     }
   }
 
