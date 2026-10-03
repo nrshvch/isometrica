@@ -17,7 +17,9 @@
  *     back of the tile laid under everything else on it and the ones at the
  *     front over it, so that they hide and are hidden as they should. Which
  *     is which depends on which way the site is seen from, so each turn of
- *     them is painted with its own stretches (partBoxes).
+ *     them is painted with its own stretches (partBoxes);
+ *   - rail: what a small site has round it instead (shared/gen/stacking
+ *     siteTiles) - a low timber rail on posts, the same way round.
  *
  * What moves is not painted into the parts but drawn over them as the game
  * draws them (client/siterenderer): the digger and the lorry, which are the
@@ -409,6 +411,47 @@ function fence(b, edge, gate) {
   }
 }
 
+/**
+ * A stretch of the low timber rail round a small site, along an edge of the
+ * tile: posts every quarter of it, two rails between them - with the way in
+ * left open, for a gate.
+ */
+function rail(b, edge, gate) {
+  var along = edge[0] === "x" ? "y" : "x",
+    near = edge[1] === "0",
+    c0 = near ? 0 : TILE - 1,
+    c1 = c0 + 1,
+    foot = 1.45;
+
+  function piece(a0, a1, z0, z1, color) {
+    if (along === "x") b.push(box(a0, a1, c0, c1, z0, z1, color));
+    else b.push(box(c0, c1, a0, a1, z0, z1, color));
+  }
+
+  var runs = gate
+    ? [
+        [0, 11],
+        [21, TILE],
+      ]
+    : [[0, TILE]];
+
+  runs.forEach(function (r) {
+    piece(r[0], r[1], foot + 1.5, foot + 2, WOOD);
+    piece(r[0], r[1], foot + 3.5, foot + 4, WOOD);
+  });
+
+  [0.2, 8, 16, 24, TILE - 1].forEach(function (a) {
+    if (gate && a > 11 && a < 21) return;
+
+    piece(a, a + 1, foot, foot + 4.5, darker(WOOD, 0.2));
+  });
+
+  if (gate) {
+    piece(10, 11, foot, foot + 4.5, darker(WOOD, 0.2));
+    piece(21, 22, foot, foot + 4.5, darker(WOOD, 0.2));
+  }
+}
+
 //whether an edge of a tile is at its back, seen from where the camera is
 //with the tile turned so many times: where x or y is a tile, once turned
 function atBack(edge, turns) {
@@ -450,11 +493,13 @@ var PARTS = (function () {
           if (mask === "0000") return;
 
           ["back", "front"].forEach(function (side) {
-            out["sites/fence/" + mask + "/" + side] = {
-              kind: "fence",
-              mask: mask,
-              back: side === "back",
-            };
+            ["fence", "rail"].forEach(function (kind) {
+              out["sites/" + kind + "/" + mask + "/" + side] = {
+                kind: kind,
+                mask: mask,
+                back: side === "back",
+              };
+            });
           });
         });
       });
@@ -478,12 +523,12 @@ export function partBoxes(key, turns) {
 
   if (p === undefined) throw new Error("no such part: " + key);
 
-  if (p.kind === "fence") {
+  if (p.kind === "fence" || p.kind === "rail") {
     EDGES.forEach(function (edge, i) {
       var c = p.mask[i];
 
       if (c !== "0" && atBack(edge, turns || 0) === p.back)
-        fence(b, edge, c === "2");
+        (p.kind === "rail" ? rail : fence)(b, edge, c === "2");
     });
   } else if (p.kind === "lot") {
     b.push(box(0, TILE, 0, TILE, 0, 1, DIRT));
@@ -607,7 +652,7 @@ export function describe() {
 
       //the front of the fence, drawn again over the machines on its tile,
       //which drive behind it (client/compoundbuilding overlays)
-      if (/^sites\/fence\/.*\/front$/.test(key) && boxes.length > 0)
+      if (/^sites\/(fence|rail)\/.*\/front$/.test(key) && boxes.length > 0)
         drawn = drawn.concat([
           { frames: ["gen/" + key + "/r" + turns], cover: true },
         ]);

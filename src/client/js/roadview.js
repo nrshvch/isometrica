@@ -81,27 +81,137 @@ BuildingView.prototype.update = function () {
   var b = this.road;
 
   if (b !== null && b.staticData !== null) {
-    var children = this.gameObject.transform.children;
+    //drawn again from scratch: the piece first (showPiece), then the street
+    //light, if there is one, and the base under it, if it needs one -
+    //each lets go of the view as it is destroyed, so off a copy of the list
+    var children = this.gameObject.transform.children.slice(),
+      id = this.road.typeCode;
 
-    if (children.length === 0)
-      addSprite(this.gameObject, this.road.typeCode, 1, RenderLayer.roadLayer);
-    else
-      setPiece(
-        children[0].gameObject.spriteRenderer,
-        spriteOf(this.road.typeCode),
-      );
+    for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
+
+    addSprite(this.gameObject, id, 1, RenderLayer.roadLayer);
 
     //the street light, among the buildings and the cars it stands with
-    var light = lightOf(this.road.typeCode, b.data.tile);
+    var light = lightOf(id, b.data.tile);
 
-    if (light === null && children.length > 1) children[1].gameObject.destroy();
-    else if (light !== null && children.length > 1)
-      setPiece(children[1].gameObject.spriteRenderer, light);
-    else if (light !== null) addLight(this.gameObject, light);
+    if (light !== null) addLight(this.gameObject, light);
 
-    place(this.gameObject, b.data.tile);
+    addBase(this.gameObject, b.data.tile, id, 1, RenderLayer.groundDrawLayer);
+
+    place(this.gameObject, b.data.tile, id);
   }
 };
+
+//which way each ramp goes up (shared/gen/roads RAMPS)
+var RAMP_UP = { 1: "-y", 2: "-x", 3: "+y", 4: "+x" };
+
+/**
+ * What a road's surface is on tile, piece id on it (see Road.profile): flat,
+ * at the top of the tile's ground, or a ramp up towards ramp - "+x" - from a
+ * step under the top to the top.
+ *
+ * @param terrain {Terrain} core terrain
+ * @returns {{top: number, ramp: string|null}}
+ */
+function deck(terrain, tile, id) {
+  var shape = id % Road_PAVED;
+
+  return {
+    top: Math.max(
+      terrain.getGridPointHeight(tile),
+      terrain.getGridPointHeight(tile + 1),
+      terrain.getGridPointHeight(tile + Terrain.dy),
+      terrain.getGridPointHeight(tile + Terrain.dy + 1),
+    ),
+    ramp: shape < 10 ? RAMP_UP[shape] || null : null,
+  };
+}
+
+/**
+ * How high a road's surface is at fx, fy across its tile, from the corner at
+ * x, y - each 0..1.
+ *
+ * @param d {{top, ramp}} see deck
+ */
+function deckAt(d, fx, fy) {
+  switch (d.ramp) {
+    case "+x":
+      return d.top - 1 + fx;
+    case "-x":
+      return d.top - fx;
+    case "+y":
+      return d.top - 1 + fy;
+    case "-y":
+      return d.top - fy;
+    default:
+      return d.top;
+  }
+}
+
+//how high the middle of a road's surface is
+function surface(d) {
+  return d.ramp ? d.top - 0.5 : d.top;
+}
+
+/**
+ * Hangs under parent - a road's, at its surface (place) - the concrete a road
+ * on uneven ground is laid on, the way a building is (shared/gen/
+ * foundations): under a flat road, up to the top of the tile's ground; under
+ * a ramp, up to the ramp - picked as the tile is seen.
+ *
+ * @param id {number} the piece on the tile (see Road.profile)
+ */
+function addBase(parent, tile, id, opacity, layer) {
+  var terrain = vkaria.core.world.terrain,
+    x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    d = deck(terrain, tile, id),
+    drops = [],
+    tops = [],
+    any = false,
+    k;
+
+  for (k = 0; k < 4; k++) {
+    var c = View.corner(k),
+      at = deckAt(d, c[0], c[1]),
+      drop = Math.max(
+        0,
+        Math.min(1, at - terrain.getGridPointHeight(x + c[0], y + c[1])),
+      );
+
+    drops.push(drop);
+    tops.push(at === d.top ? 1 : 0);
+    if (drop > 0) any = true;
+  }
+
+  if (!any) return;
+
+  var name =
+      "gen/foundations/" +
+      (d.ramp ? "ramp/" + tops.join("") + "/" : "") +
+      drops.join(""),
+    frame = vkaria.sprites.frame(name);
+
+  //ground no base was painted for: left as it is
+  if (!frame) return;
+
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer();
+
+  sprite.layer = layer;
+  sprite.setSprite(vkaria.sprites.getSprite(name));
+  sprite.setPivot(frame.pivotX, frame.pivotY);
+  part.addComponent(sprite);
+  //the renderer resets its opacity once it is attached
+  sprite.opacity = opacity;
+  parent.transform.addChild(part.transform);
+  //from the surface down to the top of the ground, where the piece's pivot is
+  part.transform.setLocalPosition(
+    0,
+    (d.top - surface(d)) * Config.tileZStep,
+    0,
+  );
+}
 
 //hangs a street light under parent
 function addLight(parent, name) {
@@ -149,12 +259,15 @@ function addSprite(parent, id, opacity, layer) {
 }
 
 /**
- * Puts go where a road on tile stands.
+ * Puts go where a road on tile stands: at the middle of its surface, which
+ * may be over the ground there (deck).
+ *
+ * @param id {number} the piece on the tile (see Road.profile)
  */
-function place(go, tile) {
+function place(go, tile, id) {
   var x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
-    z = vkaria.core.world.terrain.getHeight(x + 0.5, y + 0.5);
+    z = surface(deck(vkaria.core.world.terrain, tile, id));
 
   go.transform.setPosition(
     x * Config.tileSize,
@@ -166,6 +279,9 @@ function place(go, tile) {
 BuildingView.addSprite = addSprite;
 BuildingView.PAVED = Road_PAVED;
 BuildingView.place = place;
+BuildingView.addBase = addBase;
+BuildingView.deck = deck;
+BuildingView.deckAt = deckAt;
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)

@@ -103,10 +103,13 @@ function buildTest(self, code, tile, rotation) {
       terrainType === TerrainType.shore
     )
       return ErrorCode.ON_SHORE;
+    //a road climbs a step at most across a tile: on any slope that rises no
+    //more, it is laid on a base where it has to be (client/road profile)
     else if (
       data.classCode === BuildingClassCode.road &&
-      Terrain.isSlope(slopeId) &&
-      !Terrain.isSlopeSmooth(slopeId)
+      groundRange(terrain, tile, 1, 1).max -
+        groundRange(terrain, tile, 1, 1).min >
+        1
     )
       return ErrorCode.LAND_NOT_SUITABLE;
     //a tree grows on a hillside, but a cliff stands on flat ground only

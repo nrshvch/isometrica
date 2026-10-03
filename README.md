@@ -162,10 +162,18 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   way up the ground and so looks higher, the base is the same, marked where
   the water stands against it: wet and darker below that waterline, a line
   of weed along it and a tide mark above. Roads are not laid on the shore.
+- Roads go on uneven ground the same way (`src/client/js/road.js` profile,
+  `roadview.js` addBase), on any tile whose ground rises a step at most: up
+  a slope, a ramp; across it, or where it turns or meets another, flat at
+  the top on a base; and straight over a slope with one corner up, a ramp
+  on a concrete wedge that brings the corner beside it up too. Cars drive
+  on the road's surface, not the ground under it.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches
-  rather than speckled. The world grows each kind in stands
+  rather than speckled - each painted from its four sides, so turning the
+  camera shows another side of it, and a tree stands whichever way round
+  its tile has it. The world grows each kind in stands
   (`src/core/ambient.js`); the two trees drawn by hand are the first oak and
   beech now, so cities that had them keep their trees.
 - A town starts without a town hall. Its name hangs over the middle of the
@@ -184,7 +192,10 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   them (`src/shared/gen/sites.js`): bare earth, and on each tile one of an
   excavator, a lorry, a heap of sand, the site office or a tower crane,
   dealt out for each building (`src/shared/gen/stacking.js`), and a blue
-  tarp fence round it all. A block of
+  tarp fence round it all. A small building's site - a park, a cottage or
+  farm of the village, a house or shop on one tile - has no crane and a low
+  timber rail round it instead (`client/compoundbuilding.js` smallSite). A
+  block of
   flats or offices then grows its own structure from a quarter of the way,
   and its lower storeys finish under it from halfway; the crane, stacked
   out of steel lattice mast sections that shade each other, grows with it. The excavator drives, stops and turns
