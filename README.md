@@ -152,9 +152,10 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   and every tile's outline is its corners joined up, lit by the same sun as
   the buildings. The grid is not painted into the tiles but laid over them,
   see-through black round every tile, as the tiles drawn by hand had it. A
-  shore tile has the water come a little way up it, then wet sand and sand
-  thinning out into the grass in a ragged dither as wide as the tile - by
-  how high the ground is, so a shore runs on unbroken from tile to tile.
+  shore tile has the water come a little way up it, then wet sand, sand and
+  the grass, each line ragged with a grain of pixels along it the way deep
+  water's edge over the shallows is - by how high the ground is, so a shore
+  runs on unbroken from tile to tile.
 - A building goes up on uneven ground the way it did in Transport Tycoon:
   level at the highest corner under it, on a concrete base cut to the
   ground (`src/shared/gen/foundations.js`, `BuildingView` addFoundations) -
