@@ -39,7 +39,7 @@ var W = 80,
 var SUN = normalize([-0.45, 0.35, 1]);
 //the sun the shadow is cast by: higher, so it falls short
 var SHADOW_SUN = normalize([-0.22, 0.18, 1]);
-var SHADOW_ALPHA = 0.24;
+var SHADOW_ALPHA = 0.12;
 
 //the way every ray goes into the picture: where isobox project() has a
 //point stay put

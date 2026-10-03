@@ -1,4 +1,4 @@
-import { tileName, shoreName } from "shared/gen/names";
+import { tileName, shoreName, gridName } from "shared/gen/names";
 
 //The ground is painted by the game rather than loaded - lazily, a tile at a
 //time as it is drawn, see client/generator. What the build worked out about
@@ -11,7 +11,8 @@ import { tileName, shoreName } from "shared/gen/names";
  *
  * @param terrain {Object} the data of gfx/generated/terrain.json
  * @param kind {string} "land", "shore", "water" - the shallows along the
- *        land - or "deep", the water further out
+ *        land - "mid", the step from them to deep water, or "deep", the water
+ *        further out
  * @param slope {string|number} the tile's slope code
  * @param x {number} where the tile is, which picks one of the variants
  * @param y {number}
@@ -20,18 +21,20 @@ function tileParts(terrain, kind, slope, x, y) {
   var set =
       kind === "water"
         ? terrain.water
-        : kind === "deep"
-          ? terrain.deep
-          : terrain.land,
+        : kind === "mid"
+          ? terrain.mid
+          : kind === "deep"
+            ? terrain.deep
+            : terrain.land,
     n = terrain.variants[set],
     base = tileName(set, slope, n > 1 ? scatter(x, y) % n : 0);
 
   //the land with the water's shore over it - a flat shore has no water
-  //painted on it
+  //painted on it - and the grid over all of it
   if (kind === "shore" && terrain.shores[slope] === true)
-    return [base, shoreName(terrain.water, slope)];
+    return [base, shoreName(terrain.water, slope), gridName(slope)];
 
-  return [base];
+  return [base, gridName(slope)];
 }
 
 /**
