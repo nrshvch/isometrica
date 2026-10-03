@@ -13,8 +13,10 @@ var TileIterator = Core.TileIterator;
 var CoreTerrain = Core.Terrain;
 
 //how deep water has to be to be drawn as deep water, see waterDepth: the
-//first level along the shore stays the shallows
-var DEEP_WATER = 2;
+//first level along the shore stays the shallows, and the next is the step
+//from them to deep water, the two dithered together
+var MID_WATER = 2,
+  DEEP_WATER = 3;
 
 /**
  * How many levels down the water over a tile goes, counted from its highest
@@ -45,7 +47,9 @@ function tileSprite(x, y, type, slope) {
       type === TerrainType.water
         ? waterDepth(x, y) >= DEEP_WATER
           ? "deep"
-          : "water"
+          : waterDepth(x, y) >= MID_WATER
+            ? "mid"
+            : "water"
         : type === TerrainType.shore
           ? "shore"
           : "land";

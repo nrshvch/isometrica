@@ -143,8 +143,12 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   already have them, but no longer offered.
 - The ground is painted from nothing (`src/shared/gen/terrain.js`): grass
   with lusher clumps, drier patches, blades, clover and the odd flower;
-  water with its swell and ripples catching the light; and every tile's
-  outline is its corners joined up, lit by the same sun as the buildings. A
+  water with its swell and ripples catching the light - the shallows along
+  the shore, then a step of the shallows and deep water dithered together
+  a pixel at a time, then deep water, all three alike but for their blues;
+  and every tile's outline is its corners joined up, lit by the same sun as
+  the buildings. The grid is not painted into the tiles but laid over them,
+  see-through black round every tile, as the tiles drawn by hand had it. A
   shore tile has the water come a little way up it, then wet sand and sand
   thinning out into the grass in a ragged dither as wide as the tile - by
   how high the ground is, so a shore runs on unbroken from tile to tile.
@@ -154,9 +158,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   as long as the ground falls no more than a step anywhere under it
   (`src/core/buildings.js`). The base is picked as the tile is seen, so it
   turns with the camera. On the shore, where the water is painted a little
-  way up the ground and so looks higher, the base is cut off at that
-  waterline instead, wet and darker along it. Roads are not laid on the
-  shore.
+  way up the ground and so looks higher, the base is the same, marked where
+  the water stands against it: wet and darker below that waterline, a line
+  of weed along it and a tide mark above. Roads are not laid on the shore.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches

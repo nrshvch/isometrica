@@ -127,6 +127,7 @@ var PRECEDENCE = [
   "sand_dunes",
   "snow",
   "water_shallow",
+  "water_mid",
   "water_deep",
   "ice",
 ];
@@ -622,18 +623,34 @@ var TILESETS = {
     variants: 3,
     look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
     albedo: function (s) {
-      var c = ramp(WATER, 0.5 + 0.28 * s.noise("field", 2.5, 2)),
-        //ripples run level across the screen, along u + v; broken up into
-        //short lines wherever the light catches them
-        ripple = Math.sin(
-          2 * Math.PI * 3 * (s.u + s.v) + 1.6 * s.noise("warp", 2, 1),
-        ),
-        dash = s.noise("dash", 9, 1);
-
-      if (ripple > 0.9 && dash > 0.15) c = mix(c, [96, 168, 222], 0.55);
-      else if (ripple < -0.93 && dash < -0.25) c = mix(c, [0, 50, 112], 0.5);
-
-      return grain(c, s, 0.03, 2);
+      return ripples(s, WATER, [96, 168, 222], [0, 50, 112]);
+    },
+    edge: {
+      depth: 0.3,
+      amp: 0.06,
+      waves: 2,
+      soft: 0.04,
+      grain: 0.2,
+      clump: 6,
+      specks: 0,
+      reach: 0,
+      lip: 0,
+    },
+  },
+  water_mid: {
+    name: "Shallows giving way to deep water",
+    description:
+      "The step between the shallows and deep water: the one and the other a pixel at a time, like the squares of a chessboard.",
+    kind: "water",
+    slopes: [FLAT],
+    variants: 3,
+    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
+    //every tile is put down an even number of pixels from the next, so the
+    //squares run on across them
+    albedo: function (s) {
+      return (s.x + s.y) & 1
+        ? TILESETS.water_deep.albedo(s)
+        : TILESETS.water_shallow.albedo(s);
     },
     edge: {
       depth: 0.3,
@@ -650,10 +667,11 @@ var TILESETS = {
   water_deep: {
     name: "Deep water",
     description:
-      "Open water too deep to see the bottom of, off shore; fades into the shallows.",
+      "Open water too deep to see the bottom of, off shore: the shallows' swell and ripples, in darker blues.",
     kind: "water",
     slopes: [FLAT],
-    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1 },
+    variants: 3,
+    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
     edge: {
       depth: 0.34,
       amp: 0.13,
@@ -665,17 +683,9 @@ var TILESETS = {
       reach: 0.12,
       lip: 0,
     },
+    //the shallows' swell and ripples, in darker blues
     albedo: function (s) {
-      var swell = Math.sin(
-        2 * Math.PI * (2 * s.u + 3 * s.v) + 2.5 * s.noise("warp", 2, 1),
-      );
-
-      return grain(
-        ramp(DEEP, 0.5 + 0.3 * s.noise("field", 2.5, 2) + 0.1 * swell),
-        s,
-        0.1,
-        2,
-      );
+      return ripples(s, DEEP, [60, 128, 194], [0, 34, 88]);
     },
   },
   ice: {
@@ -806,6 +816,22 @@ function smoothstep(a, b, x) {
   var t = Math.max(0, Math.min(1, (x - a) / (b - a)));
 
   return t * t * (3 - 2 * t);
+}
+
+//water: palette's blues under a gentle swell, ripples running level across
+//the screen - along u + v - broken up into short lines of light, and the
+//odd trough of shade
+function ripples(s, palette, light, dark) {
+  var c = ramp(palette, 0.5 + 0.28 * s.noise("field", 2.5, 2)),
+    ripple = Math.sin(
+      2 * Math.PI * 3 * (s.u + s.v) + 1.6 * s.noise("warp", 2, 1),
+    ),
+    dash = s.noise("dash", 9, 1);
+
+  if (ripple > 0.9 && dash > 0.15) c = mix(c, light, 0.55);
+  else if (ripple < -0.93 && dash < -0.25) c = mix(c, dark, 0.5);
+
+  return grain(c, s, 0.03, 2);
 }
 
 //brightness and every channel a little off, pixel by pixel, the way the grass is
@@ -1121,8 +1147,13 @@ var STEP_HEIGHT = 8 / 32;
 //how much more a slope is lit or shaded than the boxes would be at that
 //angle - the ground's steps are gentle, and a hill should still read as one
 var CONTRAST = 1.8;
-//how dark the outline of a tile is, so the grid shows faintly
-var RIM = 0.95;
+//how dark the outline of a tile is, painted into it: not at all - the grid
+//is laid over the tiles on its own (paintGrid)
+var RIM = 1;
+//how see-through black the grid is, along every edge of every tile - so
+//where two tiles meet, a line two pixels wide, as the tiles drawn by hand
+//had it
+var GRID_ALPHA = 0.14;
 
 /**
  * How light a face looking along n is, the way isobox lit() has it: as a box's
@@ -1572,6 +1603,20 @@ function paintShore(set, slope, surf, light, seed) {
   return image;
 }
 
+/**
+ * The grid over a tile of that slope: see-through black along its outline,
+ * all round - nothing else.
+ */
+function paintGrid(surf) {
+  var image = blank();
+
+  surf.pixels.forEach(function (p) {
+    if (p.rim) put(image, p.i, [0, 0, 0], Math.round(GRID_ALPHA * 255));
+  });
+
+  return image;
+}
+
 /* --- Output ----------------------------------------------------------- */
 
 function hex(c) {
@@ -1671,12 +1716,19 @@ export function createPainter(sources, o) {
     diffuse: diffuse,
     shore: shore,
     hasShore: hasShore,
+    grid: function (slope) {
+      return paintGrid(surfaceOf(slope));
+    },
 
     /**
      * One tile, by where the manifest says it is - "grass/base/2222_0.png",
      * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png".
      */
     paint: function (rel) {
+      var g = /^grid\/(\d{4})\.png$/.exec(rel);
+
+      if (g !== null) return paintGrid(surfaceOf(g[1]));
+
       var m =
         /^([a-z_]+)\/(base|diffuse|shore)\/(\d{4})(?:_([a-z]+))?(?:_(\d+))?\.png$/.exec(
           rel,

@@ -14,10 +14,10 @@
  * where it is not.
  *
  * On a shore tile the water is painted a little way up the ground
- * (shared/gen/terrain SHORE), so it looks higher there than it is - and the
- * base goes down into it there, not to the ground under it: a shore piece is
- * cut off at that waterline, a band of wet concrete along it, darker, and
- * the water painted on the tile shows under it.
+ * (shared/gen/terrain SHORE), so it looks higher there than it is. A shore
+ * piece is the same shape as any other, down to the ground, and marked where
+ * the water stands against it: darker, wet concrete up to that waterline, a
+ * line of green weed along it, and a fainter tide mark a little above.
  *
  * Every piece is named by how far each corner of its tile is below the top,
  * as it is seen (client/view corner): W, N, E, S, each 0 or 1 -
@@ -44,8 +44,11 @@ var STEP = 8;
 //painted up the ground, a little higher where it is ragged
 var WATERLINE = Math.ceil(SHORE.water * STEP);
 
-//concrete the water has wetted, along the waterline
-var WET_CONCRETE = madeOf(darker(CONCRETE, 0.28), "concrete");
+//concrete the water has wetted, under the waterline; the weed growing along
+//it; and the mark the higher tides leave
+var WET_CONCRETE = madeOf(darker(CONCRETE, 0.3), "concrete"),
+  WEED = madeOf([82, 104, 70], "concrete"),
+  TIDE_MARK = madeOf(darker(CONCRETE, 0.12), "concrete");
 
 //the corners, in the order a name gives them: W, N, E, S - [x, y] on the tile
 var CORNERS = [
@@ -107,7 +110,7 @@ function planeThrough(p, q, r) {
  * into a slab down to the ground there.
  *
  * @param drops {number[]} how far W, N, E and S are below the top, 0 or 1
- * @param [shore] {boolean} cut off where the water looks to come up to, its
+ * @param [shore] {boolean} marked where the water looks to come up to, its
  *        corners a step down at the water's level
  */
 export function boxesOf(drops, shore) {
@@ -133,9 +136,18 @@ export function boxesOf(drops, shore) {
           ];
 
   var out = [],
-    //on the shore: what is under the water does not show, and what is just
-    //over it is wet
-    foot = shore ? -STEP + WATERLINE : -STEP;
+    foot = -STEP,
+    //bottom up, each band [to, colour]: on the shore, wet up to the
+    //waterline, the weed along it, and the tide mark over it
+    bands = shore
+      ? [
+          [foot + WATERLINE, WET_CONCRETE],
+          [foot + WATERLINE + 1, WEED],
+          [foot + WATERLINE + 2, CONCRETE],
+          [foot + WATERLINE + 3, TIDE_MARK],
+          [0, CONCRETE],
+        ]
+      : [[0, CONCRETE]];
 
   halves.forEach(function (h) {
     var g = planeThrough(
@@ -149,12 +161,12 @@ export function boxesOf(drops, shore) {
         iso.plane(g.a, g.b, -1, -g.c),
       ];
 
-    if (shore) {
-      out.push(
-        iso.cut(box(0, TILE, 0, TILE, foot, foot + 1, WET_CONCRETE), keep),
-      );
-      out.push(iso.cut(box(0, TILE, 0, TILE, foot + 1, 0, CONCRETE), keep));
-    } else out.push(iso.cut(box(0, TILE, 0, TILE, foot, 0, CONCRETE), keep));
+    var from = foot;
+
+    bands.forEach(function (band) {
+      out.push(iso.cut(box(0, TILE, 0, TILE, from, band[0], band[1]), keep));
+      from = band[0];
+    });
   });
 
   return out;
