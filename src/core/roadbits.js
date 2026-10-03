@@ -3,10 +3,10 @@
  * (src/road_cmd.cpp: CmdBuildLongRoad, CheckRoadSlope, GetRoadFoundation).
  *
  * Every road tile has its own road bits - which of its four edges the road
- * runs out to, a half of the tile each - and they are only ever what was laid
- * there: a road drawn along a line has the bits along it, its ends only the
- * half towards the rest of it unless a road beyond faces back at them. A road
- * laid next to another does not join it by being next to it.
+ * runs out to, a half of the tile each. A road laid along a line runs along
+ * it, and joins every road next to it - which joins it back - as far as each
+ * of the two fits its slope; a road already there only ever gains the bit
+ * towards the new one (plan).
  *
  * The bits are 1 towards -x, 2 towards -y, 4 towards +x and 8 towards +y.
  *
@@ -185,64 +185,96 @@ export function shapeOf(h, bits) {
 }
 
 /**
- * What laying road on tiles would do (OpenTTD CmdBuildLongRoad): every tile
- * gets the bits towards the tiles next to it that are laid with it - its
- * ends only the half towards the rest, unless a road beyond faces back at
- * them - added to whatever bits a road already there has; a single tile
- * joins whatever roads round it face it. Each tile's bits as they would be,
- * or null where they do not fit its slope.
+ * What laying road on tiles would do: every tile gets the bits along the
+ * line it is laid in - the tiles next to it laid with it - and then joins
+ * every road next to it, laid with it or already there, which joins it back;
+ * each bit only where it fits the slope of both tiles (fit), so a road on a
+ * slope is levelled, a ramp or turned down the way OpenTTD has it. A road
+ * already there only ever gains the bit towards the new one.
  *
  * @param terrain {Terrain} core terrain
  * @param tiles {number[]} the tiles laid - a line, maybe turning a corner
  * @param bitsAt {function(number): number|null} the bits of the road already
  *        on a tile, or null for none
- * @returns {Object[]} {tile, bits, existing}: existing is the road's bits
- *          before, or null where there is none
+ * @returns {Object[]} {tile, bits, existing}: bits as they would be - null
+ *          where the road along the line does not fit the slope - and
+ *          existing the road's bits before, or null where there is none. The
+ *          roads already there next to the line that it joins come after the
+ *          tiles laid
  */
 export function plan(terrain, tiles, bitsAt) {
-  var laid = Object.create(null);
+  var laid = Object.create(null),
+    planned = Object.create(null),
+    out = [],
+    joined = [];
 
   tiles.forEach(function (t) {
     laid[t] = true;
   });
 
-  //whether the road on the tile beyond tile at side faces back at it
-  function facesBack(tile, side) {
-    var other = bitsAt(tile + OFFSETS[side]);
-
-    return other !== null && (other & (1 << ((side + 2) % 4))) !== 0;
+  //a tile's bits as the plan has them so far
+  function current(t) {
+    return planned[t] !== undefined ? planned[t] : bitsAt(t);
   }
 
-  return tiles.map(function (tile) {
-    var pieces = 0,
-      along = 0,
-      i;
-
-    for (i = 0; i < 4; i++)
-      if (laid[tile + OFFSETS[i]]) {
-        pieces |= 1 << i;
-        along++;
-      }
-
-    //an end: on to the road beyond it, if that faces back at it
-    if (along === 1) {
-      i = [1, 2, 4, 8].indexOf(pieces);
-      if (facesBack(tile, (i + 2) % 4)) pieces |= 1 << ((i + 2) % 4);
-    } else if (tiles.length === 1)
-      for (i = 0; i < 4; i++) if (facesBack(tile, i)) pieces |= 1 << i;
-
-    var existing = bitsAt(tile),
-      h = heightsOf(terrain, tile),
+  //the bits along the line first, for every tile laid
+  tiles.forEach(function (tile) {
+    var h = heightsOf(terrain, tile),
+      existing = bitsAt(tile),
+      line = 0,
       bits;
 
-    //a single tile with nothing to join: a square of road on the flat, and
-    //on a slope a straight road the way it fits
-    if (pieces === 0 && existing === null)
-      bits = flat(h) ? 0 : fit(h, X, 0) !== null ? fit(h, X, 0) : fit(h, Y, 0);
-    else bits = fit(h, pieces, existing);
+    for (var i = 0; i < 4; i++) if (laid[tile + OFFSETS[i]]) line |= 1 << i;
 
-    return { tile: tile, bits: bits, existing: existing };
+    //a single tile with nothing along it: a square of road on the flat, and
+    //on a slope a straight road the way it fits
+    if (line === 0 && existing === null)
+      bits = flat(h) ? 0 : fit(h, X, 0) !== null ? fit(h, X, 0) : fit(h, Y, 0);
+    else bits = fit(h, line, existing);
+
+    planned[tile] = bits;
+    out.push({ tile: tile, bits: bits, existing: existing });
   });
+
+  //then joined to every road next to it, where that fits both of them
+  out.forEach(function (o) {
+    if (o.bits === null) return;
+
+    var h = heightsOf(terrain, o.tile);
+
+    for (var i = 0; i < 4; i++) {
+      if (o.bits & (1 << i)) continue;
+
+      var next = o.tile + OFFSETS[i],
+        theirs = current(next);
+
+      if (theirs === null || theirs === undefined) continue;
+
+      var ours = fit(h, 1 << i, o.bits),
+        back = fit(heightsOf(terrain, next), 1 << ((i + 2) % 4), theirs);
+
+      if (ours === null || back === null) continue;
+
+      o.bits = planned[o.tile] = ours;
+
+      if (back !== theirs) {
+        planned[next] = back;
+
+        if (!laid[next] && joined.indexOf(next) === -1) joined.push(next);
+      }
+    }
+  });
+
+  //what the tiles laid ended up with, and the roads already there they join
+  out.forEach(function (o) {
+    if (o.bits !== null) o.bits = planned[o.tile];
+  });
+
+  return out.concat(
+    joined.map(function (t) {
+      return { tile: t, bits: planned[t], existing: bitsAt(t) };
+    }),
+  );
 }
 
 /**
