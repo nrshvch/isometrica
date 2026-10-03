@@ -144,8 +144,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - The ground is painted from nothing (`src/shared/gen/terrain.js`): grass
   with lusher clumps, drier patches, blades, clover and the odd flower;
   water with its swell and ripples catching the light - the shallows along
-  the shore, then a step of the shallows and deep water dithered together
-  a pixel at a time, then deep water, all three alike but for their blues;
+  the shore and deep water further out, alike but for their blues, deep
+  water spilling over the edges of the shallows next to it in a ragged,
+  dithered contour (the terrain generator's diffuse tiles);
   and every tile's outline is its corners joined up, lit by the same sun as
   the buildings. The grid is not painted into the tiles but laid over them,
   see-through black round every tile, as the tiles drawn by hand had it. A
