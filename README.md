@@ -115,9 +115,11 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   road nor water, the houses and the water tower first, then the parks -
   and then everything else, the cheaper first.
 - A tap on nothing - bare ground, a road, the sea - while nothing is being
-  looked at puts away the words over the buildings ("no jobs", how far along
-  one going up is) and the next brings them back: the town on its own, for a
-  picture of it.
+  looked at puts away the words over the world ("no jobs", how far along
+  one going up is, the city's name): the town on its own, for a picture of
+  it. They stay away while the camera is dragged, zoomed or turned, and come
+  back with the next tap on nothing - or with anything else: a tap on a
+  building, placing or shaping the ground, a press on any button.
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

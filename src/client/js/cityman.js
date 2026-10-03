@@ -39,14 +39,16 @@ function labelText(city) {
 }
 
 function updateLabel(self, city) {
-  self._cityGOs[city.tile()].textRenderer.text = labelText(city);
+  self._cityGOs[city.tile()].textRenderer.text = self._namesHidden
+    ? ""
+    : labelText(city);
 }
 
 function setupLabel(self, city) {
-  var go = addCityGO(self, city);
+  addCityGO(self, city);
 
   placeLabel(self, city);
-  go.textRenderer.text = labelText(city);
+  updateLabel(self, city);
 }
 
 /**
@@ -93,7 +95,22 @@ function onCityUpdate(city, args, self) {
 function Cityman(root) {
   this.root = root;
   this._cityGOs = {};
+  //the cities' names put away, with the rest of the words over the world
+  //(ServiceMan#toggleLabels)
+  this._namesHidden = false;
 }
+
+/**
+ * Puts the cities' names away, or brings them back.
+ *
+ * @param hidden {boolean}
+ */
+Cityman.prototype.hideNames = function (hidden) {
+  var cities = this.root.core.cities.getCities();
+
+  this._namesHidden = hidden;
+  for (var i = 0; i < cities.length; i++) updateLabel(this, cities[i]);
+};
 
 Cityman.prototype.init = function () {
   var root = this.root;
