@@ -15,7 +15,6 @@ import TileIterator from "../tileiterator";
 
 import namespace from "namespace";
 import Rotation from "core/rotation";
-import * as RoadBits from "../roadbits";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Buildings = CityBuildings;
 
@@ -106,10 +105,6 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
   //the catalogue hands codes over as the strings they are in the markup, and
   //"3" is not BuildingCode.cityHall however much it looks like it
   code = variantOf(parseInt(code, 10));
-
-  //a road is laid, not put down: it joins what it is laid to (layRoad)
-  if (BuildingData[code].classCode === BuildingClassCode.road)
-    return this.layRoad(code, [tile]);
 
   var errorCode = buildTest(this, code, tile, rotate);
 
@@ -242,124 +237,6 @@ CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
   return r;
 };
 
-/**
- * The bits of the road on tile (core/roadbits), or null where there is none.
- */
-function bitsAt(self, tile) {
-  var b = self.city.root.buildings.get(tile);
-
-  if (b === null || b === undefined) return null;
-  if (BuildingData[b.buildingCode].classCode !== BuildingClassCode.road)
-    return null;
-
-  return b.roadBits || 0;
-}
-
-/**
- * What laying road on tiles would do and cost, tile by tile, the way
- * OpenTTD lays it (core/roadbits plan): {tile, cost, error, bits, existing}
- * - bits what the road there would have, existing what it had, null for no
- * road. A road already there is no obstacle: it is joined to the new one, at
- * no cost, if that fits its slope.
- *
- * @param tiles {number[]} a line, maybe turning a corner
- */
-CityBuildings.prototype.quoteRoad = function (code, tiles) {
-  code = parseInt(code, 10);
-
-  var self = this,
-    data = BuildingData[code],
-    money = this.city.resources.getResources()[Resource.money] || 0,
-    spent = 0;
-
-  return RoadBits.plan(this.city.world.terrain, tiles, function (t) {
-    return bitsAt(self, t);
-  }).map(function (p) {
-    var error = ErrorCode.NONE,
-      cost = 0;
-
-    if (p.existing === null) {
-      error = buildTest(self, code, p.tile);
-      cost =
-        (data.constructionCost[Resource.money] || 0) +
-        clearingCost(self, code, p.tile);
-    }
-
-    //on a slope it does not fit, the way it runs
-    if (error === ErrorCode.NONE && p.bits === null)
-      error = ErrorCode.SLOPED_WRONG_WAY;
-
-    if (error === ErrorCode.NONE && cost > 0) {
-      if (money - spent < cost) error = ErrorCode.NOT_ENOUGH_RES;
-      else spent += cost;
-    }
-
-    return {
-      tile: p.tile,
-      cost: cost,
-      error: error,
-      bits: p.bits,
-      existing: p.existing,
-    };
-  });
-};
-
-/**
- * Lays road on tiles the way OpenTTD does (quoteRoad): a new road on every
- * tile that takes one, with the bits it is laid with, and the roads already
- * there joined to it. Each tile turned down is reported on it.
- *
- * @param tiles {number[]} a line, maybe turning a corner
- * @returns {Object[]} the quote it was laid by
- */
-CityBuildings.prototype.layRoad = function (code, tiles) {
-  code = parseInt(code, 10);
-
-  var self = this,
-    city = this.city,
-    root = city.root,
-    data = BuildingData[code],
-    quotes = this.quoteRoad(code, tiles),
-    built = [];
-
-  quotes.forEach(function (q) {
-    if (q.error !== ErrorCode.NONE) {
-      root.messagingService.sendTileMessage(
-        q.tile,
-        Isometrica.Core.MessageType.tileError,
-        q.error,
-      );
-      return;
-    }
-
-    if (q.existing !== null) {
-      root.buildings.get(q.tile).roadBits = q.bits;
-      return;
-    }
-
-    var building = new Building(),
-      base = data.constructionCost[Resource.money] || 0;
-
-    building.roadBits = q.bits;
-    building.init(city.world, code, q.tile, 0);
-    building.expense = q.cost;
-    root.buildings.build(building);
-
-    city.resources.sub(data.constructionCost);
-    if (q.cost > base)
-      city.resources.subResource(Resource.money, q.cost - base);
-
-    self._buildings.push(building);
-    built.push(building);
-  });
-
-  built.forEach(function (b) {
-    Events.fire(self, events.new, b);
-  });
-
-  return quotes;
-};
-
 CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
   code = parseInt(code, 10);
 
@@ -408,7 +285,6 @@ CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
  * @param [progress] {number} 0..1, for one saved while going up
  * @param [look] {Object} what it looks like, for one put together out of
  *        parts - as whoever drew it first picked it (client/compoundbuilding)
- * @param [bits] {number} a road's bits (core/roadbits)
  * @returns {Building}
  */
 CityBuildings.prototype.restore = function (
@@ -417,14 +293,11 @@ CityBuildings.prototype.restore = function (
   rotation,
   progress,
   look,
-  bits,
 ) {
   //saves written before the codes were made numbers carry them as strings
   code = parseInt(code, 10);
 
   var building = new Building();
-
-  if (typeof bits === "number") building.roadBits = bits;
 
   //one still going up when it was saved goes on from there - anything else
   //was up long ago
@@ -470,8 +343,6 @@ CityBuildings.prototype.save = function () {
           : undefined,
       //what it looks like, for one put together out of parts picked for it
       look: building.look,
-      //which way a road runs out of its tile (core/roadbits)
-      bits: building.roadBits,
     });
   }
 
@@ -482,34 +353,13 @@ CityBuildings.prototype.save = function () {
  * @param list {Object[]}
  */
 CityBuildings.prototype.load = function (list) {
-  var terrain = this.city.world.terrain,
-    roads = Object.create(null),
-    i;
-
-  //a road saved before roads had their bits joins every road next to it, as
-  //far as that fits its slope (core/roadbits guess) - worked out with every
-  //road known
-  for (i = 0; i < list.length; i++)
-    if (
-      BuildingData[parseInt(list[i].code, 10)].classCode ===
-      BuildingClassCode.road
-    )
-      roads[list[i].tile] = true;
-
-  function isRoad(t) {
-    return roads[t] === true;
-  }
-
-  for (i = 0; i < list.length; i++)
+  for (var i = 0; i < list.length; i++)
     this.restore(
       list[i].code,
       list[i].tile,
       list[i].rotation,
       list[i].progress,
       list[i].look,
-      roads[list[i].tile] && typeof list[i].bits !== "number"
-        ? RoadBits.guess(terrain, list[i].tile, isRoad)
-        : list[i].bits,
     );
 };
 
