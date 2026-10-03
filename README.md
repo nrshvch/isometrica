@@ -165,19 +165,6 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   way up the ground and so looks higher, the base is the same, marked where
   the water stands against it: wet and darker below that waterline, a line
   of weed along it and a tide mark above. Roads are not laid on the shore.
-- Roads are laid and joined the way OpenTTD does it (`src/core/roadbits.js`,
-  after OpenTTD's `road_cmd.cpp`): every road tile keeps its own road bits -
-  which of its edges it runs out to - kept as it was laid. A road drawn
-  along a line runs along it and joins every road next to it, which joins
-  it back, wherever that fits both of their slopes; a road already there
-  only ever gains the bit towards the new one. On a slope the bits decide how it sits: on a
-  foundation levelled at the top of the slope wherever every bit runs out to
-  an edge with a corner at the top; otherwise straight - a ramp up a slope
-  with two corners up, a ramp on an inclined foundation over one corner up,
-  a half road made straight where it has to be - and anything else is the
-  wrong slope for it. The preview is the same plan as the build. Cars go
-  only where both roads run out to the edge between them. Older saves get
-  their roads' bits from the roads next to them.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches
