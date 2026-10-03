@@ -81,27 +81,89 @@ BuildingView.prototype.update = function () {
   var b = this.road;
 
   if (b !== null && b.staticData !== null) {
-    var children = this.gameObject.transform.children;
+    //drawn again from scratch: the piece first (showPiece), then the street
+    //light if it has one, and the base under a levelled one - each lets go
+    //of the view as it is destroyed, so off a copy of the list
+    var children = this.gameObject.transform.children.slice();
 
-    if (children.length === 0)
-      addSprite(this.gameObject, this.road.typeCode, 1, RenderLayer.roadLayer);
-    else
-      setPiece(
-        children[0].gameObject.spriteRenderer,
-        spriteOf(this.road.typeCode),
-      );
+    for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
+
+    addSprite(this.gameObject, this.road.typeCode, 1, RenderLayer.roadLayer);
 
     //the street light, among the buildings and the cars it stands with
     var light = lightOf(this.road.typeCode, b.data.tile);
 
-    if (light === null && children.length > 1) children[1].gameObject.destroy();
-    else if (light !== null && children.length > 1)
-      setPiece(children[1].gameObject.spriteRenderer, light);
-    else if (light !== null) addLight(this.gameObject, light);
+    if (light !== null) addLight(this.gameObject, light);
+
+    addBase(this.gameObject, b.data.tile, 1, RenderLayer.roadLayer);
 
     place(this.gameObject, b.data.tile);
   }
 };
+
+/**
+ * Whether the road on tile is levelled: on a slope it does not go up as a
+ * ramp - only one corner up, three, or two across from each other - flat at
+ * the top of the slope, on a concrete base (addBase).
+ *
+ * @param terrain {Terrain} core terrain
+ */
+function levelled(terrain, tile) {
+  var slopeId = terrain.tileSlope(tile);
+
+  return Terrain.isSlope(slopeId) && !Terrain.isSlopeSmooth(slopeId);
+}
+
+//the highest corner of a tile
+function topOf(terrain, tile) {
+  return Math.max(
+    terrain.getGridPointHeight(tile),
+    terrain.getGridPointHeight(tile + 1),
+    terrain.getGridPointHeight(tile + Terrain.dy),
+    terrain.getGridPointHeight(tile + Terrain.dy + 1),
+  );
+}
+
+/**
+ * Hangs under parent - a levelled road's, at the top of its tile (place) -
+ * the concrete it is levelled on, down to the ground at every corner lower
+ * than that (shared/gen/foundations), picked as the tile is seen. Nothing
+ * under any other road.
+ */
+function addBase(parent, tile, opacity, layer) {
+  var terrain = vkaria.core.world.terrain;
+
+  if (!levelled(terrain, tile)) return;
+
+  var x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    top = topOf(terrain, tile),
+    drops = [];
+
+  for (var k = 0; k < 4; k++)
+    drops.push(
+      Math.max(0, Math.min(1, top - View.cornerHeight(terrain, x, y, k))),
+    );
+
+  var name = "gen/foundations/" + drops.join(""),
+    frame = vkaria.sprites.frame(name);
+
+  if (!frame) return;
+
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer();
+
+  sprite.layer = layer;
+  sprite.setSprite(vkaria.sprites.getSprite(name));
+  sprite.setPivot(frame.pivotX, frame.pivotY);
+  part.addComponent(sprite);
+  //the renderer resets its opacity once it is attached
+  sprite.opacity = opacity;
+  parent.transform.addChild(part.transform);
+  //a hair under the road on it, so it is drawn first
+  //(CameraComponent#depthAxes)
+  part.transform.setLocalPosition(0, -0.01, 0);
+}
 
 //hangs a street light under parent
 function addLight(parent, name) {
@@ -149,12 +211,16 @@ function addSprite(parent, id, opacity, layer) {
 }
 
 /**
- * Puts go where a road on tile stands.
+ * Puts go where a road on tile stands: on the ground in the middle of its
+ * tile - or a levelled one at the top of it (addBase).
  */
 function place(go, tile) {
-  var x = Terrain.extractX(tile),
+  var terrain = vkaria.core.world.terrain,
+    x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
-    z = vkaria.core.world.terrain.getHeight(x + 0.5, y + 0.5);
+    z = levelled(terrain, tile)
+      ? topOf(terrain, tile)
+      : terrain.getHeight(x + 0.5, y + 0.5);
 
   go.transform.setPosition(
     x * Config.tileSize,
@@ -166,6 +232,9 @@ function place(go, tile) {
 BuildingView.addSprite = addSprite;
 BuildingView.PAVED = Road_PAVED;
 BuildingView.place = place;
+BuildingView.addBase = addBase;
+BuildingView.levelled = levelled;
+BuildingView.topOf = topOf;
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)

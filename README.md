@@ -165,6 +165,13 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   way up the ground and so looks higher, the base is the same, marked where
   the water stands against it: wet and darker below that waterline, a line
   of weed along it and a tide mark above. Roads are not laid on the shore.
+- A road goes up a slope as a ramp, and on any other slope that rises a step
+  at most it is levelled at the top on a concrete base
+  (`src/client/js/road.js` levelled, `roadview.js` addBase). Roads join up
+  with the roads next to them as they always have, worked out from them
+  every time; only a levelled road joins just where the two meet at the
+  same height, so there is no crossroad over a step, and cars do not drive
+  over one.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches

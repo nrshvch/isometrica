@@ -103,10 +103,16 @@ function buildTest(self, code, tile, rotation) {
       terrainType === TerrainType.shore
     )
       return ErrorCode.ON_SHORE;
+    //a road goes up a slope as a ramp, and on any other slope that rises a
+    //step at most it is levelled at the top on a base (client/road
+    //levelled) - but no steeper
     else if (
       data.classCode === BuildingClassCode.road &&
       Terrain.isSlope(slopeId) &&
-      !Terrain.isSlopeSmooth(slopeId)
+      !Terrain.isSlopeSmooth(slopeId) &&
+      groundRange(terrain, tile, 1, 1).max -
+        groundRange(terrain, tile, 1, 1).min >
+        1
     )
       return ErrorCode.LAND_NOT_SUITABLE;
     //a tree grows on a hillside, but a cliff stands on flat ground only
