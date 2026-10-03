@@ -24,15 +24,18 @@ import * as Parks from "./parks.js";
 import * as Roads from "./roads.js";
 import * as Trees from "./trees.js";
 import * as Foundations from "./foundations.js";
-import { tileName, shoreName, gridName } from "./names.js";
+import { tileName, shoreName, gridName, diffuseName } from "./names.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
 //shore runs into, and the water further out, too deep to see the bottom of
 var LAND = "grass",
   WATER = "water_shallow",
-  //the step from the one to the other
-  MID = "water_mid",
   DEEP = "water_deep";
+
+//the edges and corners deep water spills over the shallows from, and how
+//many of each there are (shared/gen/terrain DIRECTIONS, diffuseVariants)
+var SPILLS = ["ne", "se", "sw", "nw", "n", "e", "s", "w"],
+  SPILL_VARIANTS = 2;
 
 export var GENERATORS = [
   "terrain",
@@ -135,7 +138,7 @@ export function describe(gen, pixels) {
 
   if (gen === "terrain") {
     var terrain = Terrain.describe(null, {
-        tilesets: [LAND, WATER, MID, DEEP],
+        tilesets: [LAND, WATER, DEEP],
         diffuse: false,
       }),
       sets = terrain.manifest.tilesets;
@@ -143,13 +146,14 @@ export function describe(gen, pixels) {
     data = {
       land: LAND,
       water: WATER,
-      mid: MID,
       deep: DEEP,
       variants: {},
       shores: {},
+      //deep water spilling over the shallows next to it, on the flat
+      spills: { dirs: SPILLS, variants: SPILL_VARIANTS },
     };
 
-    [LAND, WATER, MID, DEEP].forEach(function (id) {
+    [LAND, WATER, DEEP].forEach(function (id) {
       Object.keys(sets[id].base).forEach(function (slope) {
         sets[id].base[slope].forEach(function (rel, v) {
           add(tileName(id, slope, v), terrain.sizes[rel], rel);
@@ -165,6 +169,17 @@ export function describe(gen, pixels) {
 
       add(shoreName(WATER, slope), terrain.sizes[rel], rel);
       data.shores[slope] = true;
+    });
+
+    //deep water spilling over the edge of the shallows next to it, dithered
+    //as it thins out: the contour between the two
+    SPILLS.forEach(function (dir) {
+      for (var v = 0; v < SPILL_VARIANTS; v++)
+        add(
+          diffuseName(DEEP, Terrain.FLAT, dir, v),
+          { w: Terrain.WIDTH, h: Terrain.HEIGHT },
+          DEEP + "/diffuse/" + Terrain.FLAT + "_" + dir + "_" + v + ".png",
+        );
     });
 
     //and the grid, over every tile of every slope

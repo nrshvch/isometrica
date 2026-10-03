@@ -127,7 +127,6 @@ var PRECEDENCE = [
   "sand_dunes",
   "snow",
   "water_shallow",
-  "water_mid",
   "water_deep",
   "ice",
 ];
@@ -624,33 +623,6 @@ var TILESETS = {
     look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
     albedo: function (s) {
       return ripples(s, WATER, [96, 168, 222], [0, 50, 112]);
-    },
-    edge: {
-      depth: 0.3,
-      amp: 0.06,
-      waves: 2,
-      soft: 0.04,
-      grain: 0.2,
-      clump: 6,
-      specks: 0,
-      reach: 0,
-      lip: 0,
-    },
-  },
-  water_mid: {
-    name: "Shallows giving way to deep water",
-    description:
-      "The step between the shallows and deep water: the one and the other a pixel at a time, like the squares of a chessboard.",
-    kind: "water",
-    slopes: [FLAT],
-    variants: 3,
-    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 0.35 },
-    //every tile is put down an even number of pixels from the next, so the
-    //squares run on across them
-    albedo: function (s) {
-      return (s.x + s.y) & 1
-        ? TILESETS.water_deep.albedo(s)
-        : TILESETS.water_shallow.albedo(s);
     },
     edge: {
       depth: 0.3,
