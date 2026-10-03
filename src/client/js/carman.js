@@ -3,6 +3,7 @@ import Core from "core/main";
 import Config from "./config";
 import View from "./view";
 import RoadView from "./roadview";
+import Road from "./road";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import SmokeSource from "./components/smokesource";
@@ -12,7 +13,6 @@ import CoreConfig from "core/config";
 import BuildingClassCode from "data/classcode";
 
 var Terrain = Core.Terrain;
-var SlopeType = Terrain.SlopeType;
 
 //Cars driving about the roads, for the look of it - they carry nothing and
 //nobody waits for them.
@@ -157,36 +157,21 @@ var DIRECTIONS = [
 ];
 
 /**
- * Which ways a road on this tile can be driven: along x, along y or both. A
- * road on a slope only runs up and down it.
+ * The roads a car can drive to from the one on tile: those it joins up with,
+ * at the same height all along the edge between them (Road.connects) - never
+ * over a step in the ground, nor onto the side of a ramp.
  */
-function roadAxes(root, tile) {
-  var slope = root.core.terrain.tileSlope(tile);
-
-  if (slope === SlopeType.AB || slope === SlopeType.CD)
-    return 2; //along y
-  else if (slope === SlopeType.AC || slope === SlopeType.BD) return 1; //along x
-
-  return 3;
-}
-
-function canDrive(root, from, dir) {
-  var to = from + dir[2],
-    axis = dir[0] !== 0 ? 1 : 2;
-
-  return (
-    root.roadman.getRoad(to) !== null &&
-    (roadAxes(root, from) & axis) !== 0 &&
-    (roadAxes(root, to) & axis) !== 0
-  );
-}
-
 function neighbours(root, tile, out) {
-  for (var i = 0; i < DIRECTIONS.length; i++) {
-    if (canDrive(root, tile, DIRECTIONS[i])) out.push(tile + DIRECTIONS[i][2]);
-  }
+  var roadman = root.roadman;
 
-  return out;
+  return Road.ways(
+    root.core.terrain,
+    tile,
+    function (t) {
+      return roadman.getRoad(t) !== null;
+    },
+    out,
+  );
 }
 
 function distance(a, b) {
