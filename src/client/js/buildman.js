@@ -1043,13 +1043,18 @@ Buildman.prototype.build = function (code) {
       return laid[t] !== undefined || roadman.getRoad(t) !== null;
     }
 
+    //the roads already laid, whose surfaces the new ones are to meet
+    function roadAt(t) {
+      return roadman.getRoad(t);
+    }
+
     for (i = 0; i < quotes.length; i++) {
       tile = quotes[i].tile;
       previews.push(
         createRoadPreview(
           self,
           tile,
-          Road.profile(terrain, tile, isRoad),
+          Road.profile(terrain, tile, isRoad, false, roadAt),
           laid[tile],
         ),
       );
@@ -1062,7 +1067,7 @@ Buildman.prototype.build = function (code) {
 
         seen[next] = true;
         //a street stays a street, joined up with the new road
-        id = Road.profile(terrain, next, isRoad, roadman.paved(next));
+        id = Road.profile(terrain, next, isRoad, roadman.paved(next), roadAt);
 
         if (id !== road.typeCode) {
           road.view.showPiece(id);
