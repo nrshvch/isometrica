@@ -325,6 +325,8 @@ function onBusyChange(sender, busy, self) {
   if (busy) {
     self.hideCoverage();
     self.hideInfo();
+    //and whatever words were put away come back
+    self.showLabels();
   }
 }
 
@@ -336,9 +338,9 @@ function onClick(sender, e, self) {
   var looking = self._inspected !== null;
 
   //a tap on nothing, with nothing being looked at, puts the words over the
-  //buildings away - or brings them back
-  if (!self.inspect(e.gameViewportX, e.gameViewportY) && !looking)
-    self.toggleLabels();
+  //world away - or brings them back; a tap on something brings them back
+  if (self.inspect(e.gameViewportX, e.gameViewportY)) self.showLabels();
+  else if (!looking) self.toggleLabels();
 }
 
 function ServiceMan(root) {
@@ -388,12 +390,24 @@ ServiceMan.prototype.inspected = function () {
 };
 
 /**
- * Puts the words over the buildings - what they go without, how far along
- * they are - away, or brings them back.
+ * Puts the words over the world - what the buildings go without, how far
+ * along they are, and the cities' names - away, for a clear look at it, or
+ * brings them back. Moving about doesn't bring them back - dragging,
+ * zooming, turning the camera - but doing anything else does: a tap on
+ * something, an action taking over the world, a press on anything of the
+ * game's that is not the world (showLabels).
  */
 ServiceMan.prototype.toggleLabels = function () {
   this._labelsHidden = !this._labelsHidden;
+  this.root.cityman.hideNames(this._labelsHidden);
   refresh(this);
+};
+
+/**
+ * Brings the words over the world back, if they were put away.
+ */
+ServiceMan.prototype.showLabels = function () {
+  if (this._labelsHidden) this.toggleLabels();
 };
 
 /**
@@ -655,6 +669,21 @@ ServiceMan.prototype.init = function () {
   );
 
   root.ui.gameScreen().worldScreen().busy.onChange(onBusyChange, false, this);
+
+  //a press on anything that is not the world itself - a button, a menu -
+  //brings the words put away back; on the world, it is a tap or a drag,
+  //which onClick or nothing sees to
+  var self = this;
+
+  document.addEventListener(
+    "pointerdown",
+    function (e) {
+      var viewport = root.camera && root.camera.camera.viewport;
+
+      if (viewport && e.target !== viewport.canvas) self.showLabels();
+    },
+    true,
+  );
 
   //the camera turned (see client/view): the building looked at is put away,
   //its copy drawn for the side that was seen
