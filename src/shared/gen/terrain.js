@@ -27,8 +27,9 @@
  * sinks under it - a shore tile. So a water tileset has a shore tile for each
  * slope instead, laid over whatever ground the tile has: the water comes up
  * the lowest part of it, a little higher than the water level, into wet
- * sand, sand, and the sand thins out into the ground above in a dither, as
- * wide as the tile is, and ragged. It goes by how high the ground is, which
+ * sand, sand, and then the ground above - each line ragged, a grain of
+ * pixels along it and the odd speck past it, the way deep water's edge over
+ * the shallows is drawn. It goes by how high the ground is, which
  * runs on from tile to tile, so a shore runs on unbroken over any slopes. The
  * shallows' shore has the shallows in it; deep water its own water, for where
  * the land drops straight into it, and ice its ice with frost for a beach.
@@ -1485,35 +1486,65 @@ function mean(image) {
   return [sum[0] / n, sum[1] / n, sum[2] / n];
 }
 
-//a 4 by 4 ordered dither, 0..1. Every tile is put down a multiple of 4
-//pixels from the next, so it runs on across them unbroken
-var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-
-function bayer(x, y) {
-  return (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
-}
-
 //how far up a shore, in steps over its lowest corner, the water comes, the
 //wet sand, and the sand before it has thinned out into the ground - and how
 //wide each one's dither is
 var SHORE = {
   water: 0.3,
-  waterDither: 0.12,
   wet: 0.42,
-  wetDither: 0.14,
   sand: 0.74,
-  sandDither: 0.42,
   //how far the noise pushes all of it up and down the slope
   ragged: 0.12,
   //over this, a step below the ground that is no shore, there is no sand
   top: 0.9,
 };
 
+//how each of those lines is drawn - the way deep water's edge over the
+//shallows is (a tileset's edge, paintDiffuse): ragged, a grain of pixels
+//right along it and the odd speck past it, and nothing else - each in steps
+//of height. The sand gives out into the grass a little more loosely
+var SHORE_EDGE = {
+  soft: 0.07,
+  grain: 0.8,
+  clump: 6,
+  specks: 0.25,
+  reach: 0.08,
+};
+var SAND_EDGE = {
+  soft: 0.08,
+  grain: 0.8,
+  clump: 6,
+  specks: 0.3,
+  reach: 0.14,
+};
+
+/**
+ * Whether a pixel beyond past a line on a shore - how far over it, in steps
+ * of height - still has what is under the line: past it by less than its
+ * ragged fringe, or one of the specks scattered past that.
+ */
+function underLine(beyond, edge, p, salt, k, clump) {
+  var fringe =
+    edge.grain * (2 * hash(salt, p.x, p.y, k) - 1) +
+    (1 - edge.grain) * periodic(clump, p.u, p.v, edge.clump, 2);
+
+  if (beyond / edge.soft < fringe) return true;
+
+  return (
+    edge.specks > 0 &&
+    beyond >= 0 &&
+    beyond < edge.reach &&
+    hash(salt, p.x, p.y, k + 10) <
+      edge.specks * Math.pow(1 - beyond / edge.reach, 2)
+  );
+}
+
 /**
  * A shore tile of water tileset set on that slope: see-through except where
  * the water comes up it, and the beach above the water - by how high the
  * ground is, which runs on from tile to tile, ragged by noise that wraps
- * round every tile the same, and dithered from one into the next. The water
+ * round every tile the same, each line drawn as deep water's edge over the
+ * shallows is (underLine). The water
  * is flat, the water of the set's own tiles; the beach is lit as the ground
  * under it is.
  */
@@ -1526,6 +1557,7 @@ function paintShore(set, slope, surf, light, seed) {
     big = simplex(key + "/big"),
     small = simplex(key + "/small"),
     tone = simplex(key + "/tone"),
+    clump = simplex(key + "/clump"),
     salt = hashString(key + "/" + slope);
 
   surf.pixels.forEach(function (p) {
@@ -1533,11 +1565,10 @@ function paintShore(set, slope, surf, light, seed) {
         0.65 * periodic(big, p.u, p.v, 3, 2) +
         0.35 * periodic(small, p.u, p.v, 9, 1),
       t = p.h - low + SHORE.ragged * n,
-      d = bayer(p.x, p.y) - 0.5,
       r = hash(salt, p.x, p.y) - 0.5,
       c;
 
-    if (t + d * SHORE.waterDither + r * 0.03 < SHORE.water) {
+    if (underLine(t - SHORE.water, SHORE_EDGE, p, salt, 1, clump)) {
       c = set.albedo(sampler.at(p));
       //the water at the very edge of it is shallower, and lighter
       if (t > SHORE.water * 0.6) c = mix(c, [120, 176, 196], 0.3);
@@ -1550,16 +1581,16 @@ function paintShore(set, slope, surf, light, seed) {
       return;
     }
 
-    if (t + d * SHORE.wetDither + r * 0.04 < SHORE.wet)
+    if (underLine(t - SHORE.wet, SHORE_EDGE, p, salt, 2, clump))
       c = set.beach ? set.beach(0.85) : WET_SAND;
     else if (
-      t + d * SHORE.sandDither + r * 0.1 < SHORE.sand &&
+      underLine(t - SHORE.sand, SAND_EDGE, p, salt, 3, clump) &&
       //none at the top of the tile: the ground above it has no sand
       p.h - low < SHORE.top
     )
       c = set.beach
         ? set.beach(1 + 0.15 * periodic(tone, p.u, p.v, 5, 1))
-        : ramp(SAND, 0.5 + 0.4 * periodic(tone, p.u, p.v, 5, 1) + r * 0.3);
+        : ramp(SAND, 0.5 + 0.35 * periodic(tone, p.u, p.v, 5, 1) + r * 0.06);
     else return;
 
     c = shade(c, light.faces[slope][p.quad], {
