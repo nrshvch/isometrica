@@ -71,6 +71,21 @@ export var NAMES = [];
     );
 });
 
+//and under a road that is a ramp on a base: its top the ramp, up to two of
+//the corners side by side - W and N, N and E, E and S, or S and W - and one
+//of those two a step over the ground, the ground rising to the other only
+//(client/road deck): "gen/foundations/ramp/1100/0100"
+["1100", "0110", "0011", "1001"].forEach(function (tops) {
+  tops.split("").forEach(function (t, k) {
+    if (t !== "1") return;
+
+    var drops = [0, 0, 0, 0];
+
+    drops[k] = 1;
+    NAMES.push("gen/foundations/ramp/" + tops + "/" + drops.join(""));
+  });
+});
+
 /**
  * The diagonal the ground of a tile folds along, as shared/gen/terrain has it:
  * the one whose ends are at the same height - of a saddle, the lower pair;
@@ -112,10 +127,17 @@ function planeThrough(p, q, r) {
  * @param drops {number[]} how far W, N, E and S are below the top, 0 or 1
  * @param [shore] {boolean} marked where the water looks to come up to, its
  *        corners a step down at the water's level
+ * @param [tops] {number[]} which of W, N, E and S the top is up at, 1, or a
+ *        step lower, 0 - a ramp's top, for a road; all of them unless given
  */
-export function boxesOf(drops, shore) {
-  var z = drops.map(function (d) {
-      return -d * STEP;
+export function boxesOf(drops, shore, tops) {
+  tops = tops || [1, 1, 1, 1];
+
+  var top = tops.map(function (t) {
+      return (t - 1) * STEP;
+    }),
+    z = drops.map(function (d, k) {
+      return top[k] - d * STEP;
     }),
     corner = function (k) {
       return [CORNERS[k][0], CORNERS[k][1], z[k]];
@@ -136,7 +158,16 @@ export function boxesOf(drops, shore) {
           ];
 
   var out = [],
-    foot = -STEP,
+    foot = -2 * STEP,
+    //a ramp's top: under the plane through its corners
+    slope =
+      tops.indexOf(0) !== -1
+        ? planeThrough(
+            [CORNERS[0][0], CORNERS[0][1], top[0]],
+            [CORNERS[1][0], CORNERS[1][1], top[1]],
+            [CORNERS[2][0], CORNERS[2][1], top[2]],
+          )
+        : null,
     //bottom up, each band [to, colour]: on the shore, wet up to the
     //waterline, the weed along it, and the tide mark over it
     bands = shore
@@ -161,6 +192,9 @@ export function boxesOf(drops, shore) {
         iso.plane(g.a, g.b, -1, -g.c),
       ];
 
+    //and under a ramp's top: z <= a x + b y + c
+    if (slope) keep.push(iso.plane(-slope.a, -slope.b, 1, slope.c));
+
     var from = foot;
 
     bands.forEach(function (band) {
@@ -172,9 +206,18 @@ export function boxesOf(drops, shore) {
   return out;
 }
 
-//what a piece's name says: how far its corners drop, and whether it is on
-//the shore
+//what a piece's name says: how far its corners drop, whether it is on the
+//shore, and for a ramp, which corners its top is up at
 function pieceOf(name) {
+  var r = /^gen\/foundations\/ramp\/([01]{4})\/([01]{4})$/.exec(name);
+
+  if (r !== null)
+    return {
+      drops: r[2].split("").map(Number),
+      shore: false,
+      tops: r[1].split("").map(Number),
+    };
+
   var m = /^gen\/foundations\/(shore\/)?([01]{4})$/.exec(name);
 
   if (m === null || m[2] === "0000")
@@ -192,7 +235,7 @@ export function describe() {
   NAMES.forEach(function (name) {
     var p = pieceOf(name);
 
-    sizes[name] = measureFree(boxesOf(p.drops, p.shore));
+    sizes[name] = measureFree(boxesOf(p.drops, p.shore, p.tops));
   });
 
   return { sizes: sizes, data: { step: STEP, waterline: WATERLINE } };
@@ -206,5 +249,5 @@ export function describe() {
 export function paint(name) {
   var p = pieceOf(name);
 
-  return iso.toImage(free(boxesOf(p.drops, p.shore)));
+  return iso.toImage(free(boxesOf(p.drops, p.shore, p.tops)));
 }

@@ -17,6 +17,7 @@ import { stageOf, STAGES } from "shared/gen/stacking";
 import SiteRenderer from "./siterenderer";
 import View from "./view";
 import BuildingClassCode from "data/classcode";
+import Trees from "data/trees";
 
 var Terrain = Core.Terrain;
 
@@ -227,6 +228,7 @@ BuildingView.prototype.update = function () {
             at.sizeX,
             at.sizeY,
             b.data.tile,
+            CompoundBuilding.smallSite(staticData),
           )
         : null;
 
@@ -353,7 +355,12 @@ function drawSite(self, staticData, look, turns) {
     turns,
     self.opacity,
     undefined,
-    CompoundBuilding.siteLook(look, stage, data.tile),
+    CompoundBuilding.siteLook(
+      look,
+      stage,
+      data.tile,
+      CompoundBuilding.smallSite(staticData),
+    ),
     data.tile,
   );
 
@@ -424,7 +431,10 @@ function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
     spriteRenderer.layer = layer !== undefined ? layer : spriteData.layer;
     spriteRenderer.pivotX = spriteData.pivotX;
     spriteRenderer.pivotY = spriteData.pivotY;
-    spriteRenderer.setSprite(vkaria.sprites.getSprite(spriteData.path));
+    //a tree from the side it is seen from (data/trees turned)
+    spriteRenderer.setSprite(
+      vkaria.sprites.getSprite(Trees.turned(spriteData.path, rotation)),
+    );
 
     var spriteGO = new engine.GameObject();
     spriteGO.addComponent(spriteRenderer);

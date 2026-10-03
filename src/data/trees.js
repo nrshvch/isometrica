@@ -59,6 +59,22 @@ function variants(layer) {
 }
 
 /**
+ * The picture of a tree seen from another of its sides, turns quarter turns
+ * round - "gen/trees/oak-1/r2" (shared/gen/trees). Anything else is left as
+ * it is.
+ *
+ * @param path {string}
+ * @param turns {number}
+ */
+function turned(path, turns) {
+  turns = ((turns % 4) + 4) % 4;
+
+  if (turns === 0 || path.indexOf("gen/trees/") !== 0) return path;
+
+  return path + "/r" + turns;
+}
+
+/**
  * The codes of every tree of each kind, by kind.
  */
 function codesByKind() {
@@ -76,4 +92,5 @@ export default {
   TREES: TREES,
   variants: variants,
   codesByKind: codesByKind,
+  turned: turned,
 };

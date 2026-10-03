@@ -12,6 +12,14 @@ import Rocks from "data/rocks";
 //a rock is drawn the way a tree is: one sprite among the buildings
 import Tree from "./gameObjects/tree";
 import View from "./view";
+import Trees from "data/trees";
+
+//which way round a tree on a tile is, of its four: the same every time
+function tileTurns(tile) {
+  var h = Math.imul(tile | 0, 0x9e3779b1);
+
+  return (h ^ (h >>> 15)) & 3;
+}
 
 var BuildingData = Core.BuildingData;
 var TileIterator = Core.TileIterator;
@@ -53,9 +61,18 @@ function place(self, go, tile, spriteData) {
   );
 }
 
-function dress(self, go, spriteData) {
-  var renderer = go.renderer;
-  renderer.setSprite(self.root.sprites.getSprite(spriteData.path));
+/**
+ * Gives go the picture of what is on tile - a tree from the side it is seen
+ * from: its own way round, which it has from where it stands, and as many
+ * more as the camera is turned (client/view).
+ */
+function dress(self, go, spriteData, tile) {
+  var renderer = go.renderer,
+    turns = (tileTurns(tile) + View.turns()) & 3;
+
+  renderer.setSprite(
+    self.root.sprites.getSprite(Trees.turned(spriteData.path, turns)),
+  );
   renderer.pivotX = spriteData.pivotX;
   renderer.pivotY = spriteData.pivotY;
 }
@@ -63,7 +80,7 @@ function dress(self, go, spriteData) {
 function plant(self, tile, spriteData) {
   var go = Pool.borrowObject(self.pool);
 
-  dress(self, go, spriteData);
+  dress(self, go, spriteData, tile);
   place(self, go, tile, spriteData);
 
   self.root.game.scene.addGameObject(go);
@@ -141,7 +158,7 @@ function onGridUpdate(sender, args, self) {
     if (go !== undefined) {
       if (spriteData === null) remove(self, tile);
       else {
-        dress(self, go, spriteData);
+        dress(self, go, spriteData, tile);
         place(self, go, tile, spriteData);
       }
       //only ever put on a tile that is on screen
@@ -199,8 +216,12 @@ EnvMan.prototype.init = function () {
     View,
     View.events.change,
     function (sender, args, self) {
-      for (var tile in self._scenery)
-        place(self, self._scenery[tile], +tile, sceneryOf(self, +tile));
+      for (var tile in self._scenery) {
+        var spriteData = sceneryOf(self, +tile);
+
+        dress(self, self._scenery[tile], spriteData, +tile);
+        place(self, self._scenery[tile], +tile, spriteData);
+      }
     },
     this,
   );

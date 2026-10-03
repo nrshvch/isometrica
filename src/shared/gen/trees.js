@@ -14,9 +14,11 @@
  *     them; grey-green, light;
  *   - alder: slim, a narrow crown tapering to a point; dark green.
  *
- * Each comes in two, grown from different seeds. None is turned: a tree
- * looks much the same from every side, and the camera turning round
- * (client/view) shows the same picture.
+ * Each comes in two, grown from different seeds, and each of those is
+ * painted from its four sides - "gen/trees/oak-1", "gen/trees/oak-1/r1" - so
+ * that the camera turning round (client/view) sees another side of it, and
+ * two trees of the same seed side by side need not show the same one
+ * (data/trees turned).
  *
  * A tree is a trunk, a few branches and a crown of lobes, each a distance
  * from a point - the crown lumpy with a few big clumps of leaves, so its
@@ -343,9 +345,62 @@ function random(seed) {
  * A tree of a kind, grown from a seed: shape(p) is how far p is from it - and
  * which part it is nearest, in part.
  */
-function grow(kind, seed) {
+/**
+ * A plan turned a quarter turn `turns` times, the way client/view turns what
+ * is seen: (x, y) to (y, -x) each time.
+ */
+function turnPlan(plan, turns) {
+  function at(x, y) {
+    for (var i = 0; i < turns; i++) {
+      var t = x;
+
+      x = y;
+      y = -t;
+    }
+
+    return [x, y];
+  }
+
+  function point(p) {
+    var q = at(p[0], p[1]);
+
+    return [q[0], q[1], p[2]];
+  }
+
+  return {
+    trunk: {
+      height: plan.trunk.height,
+      foot: plan.trunk.foot,
+      top: plan.trunk.top,
+      lean: at(plan.trunk.lean[0], plan.trunk.lean[1]),
+    },
+    branches: plan.branches.map(function (b) {
+      return { from: point(b.from), to: point(b.to), ra: b.ra, rb: b.rb };
+    }),
+    lobes: plan.lobes.map(function (l) {
+      var q = at(l[0], l[1]),
+        odd = turns & 1;
+
+      return [q[0], q[1], l[2], odd ? l[4] : l[3], odd ? l[3] : l[4], l[5]];
+    }),
+  };
+}
+
+function grow(kind, seed, turns) {
   var k = KINDS[kind],
-    plan = k.grow(random(seed)),
+    plan = turnPlan(k.grow(random(seed)), turns || 0),
+    //the tree's own way round, for its clumps to be where they are on it
+    //whichever side it is seen from
+    back = function (x, y) {
+      for (var i = 0; i < (turns || 0); i++) {
+        var t = y;
+
+        y = x;
+        x = -t;
+      }
+
+      return [x, y];
+    },
     trunk = plan.trunk,
     top = [trunk.lean[0], trunk.lean[1], trunk.height],
     //smaller ones and bigger ones
@@ -368,10 +423,11 @@ function grow(kind, seed) {
     });
 
     //lumpy with clumps of leaves
-    var c = k.clump;
+    var c = k.clump,
+      o = back(p[0], p[1]);
 
     return (
-      d + k.bumps * (noise(p[0] * c, p[1] * c, p[2] * c + seed * 13) - 0.5) * 2
+      d + k.bumps * (noise(o[0] * c, o[1] * c, p[2] * c + seed * 13) - 0.5) * 2
     );
   }
 
@@ -553,19 +609,22 @@ function paintTree(tree) {
 }
 
 /**
- * Every tree, by sprite name - "gen/trees/oak-1" - with its size and where
+ * Every tree from every side, by sprite name - "gen/trees/oak-1",
+ * "gen/trees/oak-1/r1" - with its size and where
  * its foot is in it, without painting it.
  */
 export function describe() {
   var sizes = {};
 
   NAMES.forEach(function (name) {
-    sizes["gen/trees/" + name] = {
-      w: W,
-      h: H,
-      pivotX: PIVOT_X,
-      pivotY: PIVOT_Y,
-    };
+    [0, 1, 2, 3].forEach(function (turns) {
+      sizes["gen/trees/" + name + (turns ? "/r" + turns : "")] = {
+        w: W,
+        h: H,
+        pivotX: PIVOT_X,
+        pivotY: PIVOT_Y,
+      };
+    });
   });
 
   return { sizes: sizes, data: { names: NAMES } };
@@ -577,12 +636,12 @@ export function describe() {
  * @returns {{width, height, data}}
  */
 export function paint(name) {
-  var m = /^gen\/trees\/([a-z]+)-(\d+)$/.exec(name);
+  var m = /^gen\/trees\/([a-z]+)-(\d+)(?:\/r([123]))?$/.exec(name);
 
   if (m === null || KINDS[m[1]] === undefined)
     throw new Error("no such tree: " + name);
 
-  return paintTree(grow(m[1], hashSeed(m[1]) + +m[2] * 101));
+  return paintTree(grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0)));
 }
 
 function hashSeed(s) {
