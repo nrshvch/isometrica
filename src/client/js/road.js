@@ -90,43 +90,41 @@ var SIDES = [
   },
 ];
 
-//what a ramp costs over a plain piece - so a road takes one only where its
-//neighbours want it - laid on a base, and raised on a base over flat ground
-var COST = { level: 0.2, rampOnBase: 0.3, raised: 0.6 };
+//which ramp goes up a slope whose corners side by side are up, of A (x, y),
+//B (x + 1, y), C (x, y + 1) and D (x + 1, y + 1) (shared/gen/roads RAMPS)
+var RAMP_OF = { AB: 1, AC: 2, CD: 3, BD: 4 };
+
+//what a road on a base costs over one levelled flat, where both would do
+var RAMP_ON_BASE = 0.1;
 
 /**
  * Which piece of road goes on tile: one joined up to whichever of its four
  * neighbours isRoad says are roads, or a ramp - and the paved one, with
  * pavements and street lights, for a street (see Roadman#paved).
  *
- * A road goes on ground that rises a step at most across its tile, the way it
- * did in Transport Tycoon, on a base of concrete wherever it has to be over
- * the ground (RoadView addBase, shared/gen/foundations). On a tile it can be:
+ * A plain road wherever the ground lets it be one: on flat ground, flat; up
+ * a slope whose two corners side by side are up, a ramp - whatever else
+ * joins it, so a road laid on and on never has the stretch already there
+ * turned into anything else. Only across such a slope, nothing running up
+ * it, is it levelled.
  *
- *   - flat, on flat ground;
- *   - flat at the top of a slope, on a base under the rest of it;
- *   - a ramp up a slope whose two corners side by side are up;
- *   - a ramp on a base, up a slope with one corner up - the corner beside it
- *     brought up too;
- *   - a ramp on a base over flat ground, raised a step at its far end.
- *
- * A ramp goes straight, so it is only one where the road does not turn or
- * meet another across it. Of what it can be, the road on a tile is what
- * meets the roads next to it at the same height along every edge it joins
- * them on - and of those the plainest: no base before a base, no ramp before
- * one (COST). So where a road comes up to a tile levelled at the top of a
- * slope, the flat tile it comes from rises to it on a ramp.
+ * Only on ground no plain road goes on - one corner up, three, or two across
+ * from each other - is the road laid on a base of concrete, the way it was
+ * in Transport Tycoon (RoadView addBase, shared/gen/foundations): flat at the
+ * top of the slope, or straight across a slope with one corner up, a ramp on
+ * a wedge that brings the corner beside it up too - whichever of the two
+ * meets the roads next to it at the same height along the edges it joins
+ * them on, flat if both do as well.
  *
  * @param terrain {Terrain} core terrain
  * @param tile {number}
  * @param isRoad {function(number): boolean}
  * @param [paved] {boolean}
  * @param [roadAt] {function(number): Road|null} the roads already laid, whose
- *        surfaces this one is to meet
+ *        surfaces one on a base is to meet
  * @returns {number} the piece: 9abcd for one joined up towards -x, -y, +x and
- *          +y as the digits say, 1..4 for a ramp, 5..8 for the same ramp
- *          raised a step over flat ground, RoadView.PAVED more for the paved
- *          one - see RoadView
+ *          +y as the digits say, 1..4 for a ramp, RoadView.PAVED more for
+ *          the paved one - see RoadView
  */
 Road.profile = function (terrain, tile, isRoad, paved, roadAt) {
   var joins = SIDES.map(function (side) {
@@ -136,56 +134,55 @@ Road.profile = function (terrain, tile, isRoad, paved, roadAt) {
       90000 + joins[0] * 1000 + joins[1] * 100 + joins[2] * 10 + joins[3] * 1,
     h = corners(terrain, tile),
     top = Math.max(h.A, h.B, h.C, h.D),
-    level = Math.min(h.A, h.B, h.C, h.D) === top,
-    alongX = !(joins[1] || joins[3]),
-    alongY = !(joins[0] || joins[2]),
-    options = [{ id: flat, cost: level ? 0 : COST.level }],
-    best = null;
+    up = ["A", "B", "C", "D"]
+      .filter(function (k) {
+        return h[k] === top;
+      })
+      .join(""),
+    alongX = joins[0] || joins[2],
+    alongY = joins[1] || joins[3],
+    id = flat;
 
-  //the ground at fx, fy across the tile, each 0 or 1
-  function ground(fx, fy) {
-    return fy ? (fx ? h.D : h.C) : fx ? h.B : h.A;
+  function done(id) {
+    return paved ? id + RoadView.PAVED : id;
   }
 
-  //every ramp that goes straight the way the road does, and is nowhere
-  //under the ground
-  [1, 2, 3, 4].forEach(function (r) {
-    if (r === 1 || r === 3 ? !alongY : !alongX) return;
+  //flat ground: a flat road
+  if (up.length === 4) return done(flat);
 
-    [0, 1].forEach(function (raised) {
-      if (raised && !level) return;
+  //up a slope: a ramp, unless all of the road there runs across it
+  if (up.length === 2 && RAMP_OF[up] !== undefined) {
+    var ramp = RAMP_OF[up],
+      upIt = ramp === 1 || ramp === 3 ? alongY : alongX,
+      across = ramp === 1 || ramp === 3 ? alongX : alongY;
 
-      var id = raised ? r + 4 : r,
-        deck = RoadView.deck(terrain, tile, id),
-        drops = 0,
-        under = false;
+    return done(upIt || !across ? ramp : flat);
+  }
 
-      [
-        [0, 0],
-        [1, 0],
-        [0, 1],
-        [1, 1],
-      ].forEach(function (c) {
-        var d = RoadView.deckAt(deck, c[0], c[1]) - ground(c[0], c[1]);
+  //ground no plain road goes on: on a base, flat - or with one corner up and
+  //the road straight over it, a ramp on a wedge, if that meets the roads
+  //next to it better
+  var options = [{ id: flat, cost: 0 }];
 
-        if (d < 0) under = true;
-        drops += d;
+  if (up.length === 1 && !(alongX && alongY)) {
+    if (alongX || !alongY)
+      options.push({
+        id: up === "A" || up === "C" ? 2 : 4,
+        cost: RAMP_ON_BASE,
       });
+    if (alongY || !alongX)
+      options.push({
+        id: up === "A" || up === "B" ? 1 : 3,
+        cost: RAMP_ON_BASE,
+      });
+  }
 
-      if (!under)
-        options.push({
-          id: id,
-          cost: raised ? COST.raised : drops > 0 ? COST.rampOnBase : 0,
-        });
-    });
-  });
+  var best = null;
 
   options.forEach(function (o) {
     var deck = RoadView.deck(terrain, tile, o.id),
       score = o.cost;
 
-    //how far off the surfaces of the roads next to it it would be, along
-    //every edge it joins them on
     if (roadAt)
       SIDES.forEach(function (side, i) {
         var other = joins[i] ? roadAt(tile + side.off) : null;
@@ -208,18 +205,15 @@ Road.profile = function (terrain, tile, isRoad, paved, roadAt) {
       best = { id: o.id, score: score };
   });
 
-  return paved ? best.id + RoadView.PAVED : best.id;
+  id = best.id;
+
+  return done(id);
 };
 
 //what a road's surface is on its tile, and how high it is across it - see
 //RoadView deck, deckAt
 Road.deck = RoadView.deck;
 Road.deckAt = RoadView.deckAt;
-
-//how many roads away a road that changed has the ones beyond it look again
-var REACH = 4,
-  //how deep in that it is now
-  reaching = 0;
 
 Road.prototype.updateProfile = function () {
   var roadman = this.root.roadman,
@@ -240,31 +234,10 @@ Road.prototype.updateProfile = function () {
   if (id === this.typeCode && this.view.gameObject.transform.children.length)
     return id;
 
-  var was = this.typeCode;
-
   this.typeCode = id;
 
   this.view.update();
   this.view.render();
-
-  //its surface is another now: the roads next to it may want to meet it
-  //differently - and the ones next to those, a few roads on
-  if (
-    reaching < REACH &&
-    RoadView.surfaceKey(this.root.core.terrain, tile, was) !==
-      RoadView.surfaceKey(this.root.core.terrain, tile, id)
-  ) {
-    reaching++;
-    try {
-      SIDES.forEach(function (side) {
-        var other = roadman.getRoad(tile + side.off);
-
-        if (other !== null) other.updateProfile();
-      });
-    } finally {
-      reaching--;
-    }
-  }
 
   return id;
 };
