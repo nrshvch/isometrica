@@ -157,11 +157,12 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   way up the ground and so looks higher, the base is cut off at that
   waterline instead, wet and darker along it. Roads are not laid on the
   shore.
-- The trees are painted too (`src/shared/gen/trees.js`): oak, beech, ash
-  and alder, two of each, ray-traced from the angle the boxes are seen from
-  and lit in a few flat tones of their own. The world grows each kind in
-  stands (`src/core/ambient.js`); the two trees drawn by hand are the first
-  oak and beech now, so cities that had them keep their trees.
+- The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
+  kind's own shape - oak, beech, ash and alder, two of each - filled in with
+  three flat greens and lit by the buildings' sun, every tone in patches
+  rather than speckled. The world grows each kind in stands
+  (`src/core/ambient.js`); the two trees drawn by hand are the first oak and
+  beech now, so cities that had them keep their trees.
 - A town starts without a town hall. Its name hangs over the middle of the
   land it owns, and its road network is the biggest stretch of its roads
   that hangs together - a building is on the road when it is next to that;

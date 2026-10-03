@@ -1,9 +1,10 @@
 /**
  * Paints the broadleaf trees of the grassland - the ones the world grows on
- * its own, and the ones a city has planted - as the rest of the game is
- * painted: from the same angle as the boxes of shared/gen/isobox, a unit a
- * pixel, lit by the same sun, so that a tree stands among the houses as if it
- * were one of them.
+ * its own, and the ones a city has planted - as pixel art in the manner of
+ * the buildings: a tree's own shape, the way that kind grows, filled in with
+ * three flat greens - in shade, in the light, and where the sun catches it
+ * - and two browns or greys for the wood, lit by the boxes' sun
+ * (shared/gen/isobox), with no grain, dithering or speckle over them.
  *
  *   - oak: a short thick trunk under a broad crown, wider than it is tall,
  *     heaped up out of big uneven lobes; dark green;
@@ -18,20 +19,20 @@
  * (client/view) shows the same picture.
  *
  * A tree is a trunk, a few branches and a crown of lobes, each a distance
- * from a point - the crown's lumpy with clumps of leaves. A ray goes into it
- * for every pixel, along the way the boxes are looked at, and where it meets
- * it the light there is counted out into a handful of tones of the tree's
- * own, dithered where one gives way to the next - so it comes out in flat
- * patches of colour the way something drawn by hand would, not smooth. Where
- * the ray meets the ground instead it is in the tree's shadow, or nothing:
- * the shadow is short, the sun for it higher than the one for the light, so
- * that it stays under the tree rather than across the next tile.
+ * from a point - the crown lumpy with a few big clumps of leaves, so its
+ * outline is a tree's. A ray goes into it for every pixel, along the way the
+ * boxes are looked at, and where it meets it the light there picks one of
+ * the tones outright; a pixel of one tone alone among another is then given
+ * the other, so every tone lies in patches, as drawn by hand. Where the ray
+ * meets the ground instead it is in the tree's shadow, or nothing: the
+ * shadow is short, the sun for it higher than the one for the light, so that
+ * it stays under the tree rather than across the next tile.
  */
 
-var W = 64,
+var W = 80,
   H = 72,
   //where the foot of the tree is in the picture: the middle of its tile
-  PIVOT_X = 28,
+  PIVOT_X = 38,
   PIVOT_Y = 60;
 
 //the boxes' sun (isobox SUN), x and y along the tile, z up
@@ -145,7 +146,7 @@ var KINDS = {
       [104, 88, 70],
     ],
     //lumps of leaves: how big, and how far they stand out
-    clump: 0.42,
+    clump: 0.3,
     bumps: 1.7,
     grow: function (r) {
       var lobes = [[0, 0, 25, 13, 13, 9]],
@@ -186,7 +187,7 @@ var KINDS = {
       [128, 130, 126],
       [164, 164, 158],
     ],
-    clump: 0.5,
+    clump: 0.34,
     bumps: 1.2,
     grow: function (r) {
       var lobes = [[0, 0, 23, 12, 12, 12]],
@@ -227,7 +228,7 @@ var KINDS = {
       [104, 104, 96],
       [136, 134, 124],
     ],
-    clump: 0.55,
+    clump: 0.36,
     bumps: 1.9,
     grow: function (r) {
       var lobes = [],
@@ -269,7 +270,7 @@ var KINDS = {
       [74, 66, 58],
       [100, 90, 80],
     ],
-    clump: 0.6,
+    clump: 0.4,
     bumps: 1.3,
     grow: function (r) {
       var lobes = [
@@ -370,9 +371,7 @@ function grow(kind, seed) {
     var c = k.clump;
 
     return (
-      d +
-      k.bumps * (noise(p[0] * c, p[1] * c, p[2] * c + seed * 13) - 0.5) * 2 +
-      0.25 * (noise(p[0] * 1.1, p[1] * 1.1, p[2] * 1.1 + seed) - 0.5)
+      d + k.bumps * (noise(p[0] * c, p[1] * c, p[2] * c + seed * 13) - 0.5) * 2
     );
   }
 
@@ -444,19 +443,10 @@ function openness(tree, p, n) {
   return clamp(1 - 0.4 * shade, 0.25, 1);
 }
 
-//a 4 by 4 ordered dither, 0..1
-var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-
-function bayer(x, y) {
-  return (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
-}
-
-//one of a handful of tones for a light 0..1, dithered where one gives way
-//to the next
-function tone(tones, light, x, y) {
-  var at = light * (tones.length - 1) + (bayer(x, y) - 0.5) * 0.45;
-
-  return tones[clamp(Math.round(at), 0, tones.length - 1)];
+//which of three tones a light 0..1 is: in shade, in the light, or where
+//the sun catches it
+function toneOf(light) {
+  return light < 0.36 ? 0 : light < 0.66 ? 1 : 2;
 }
 
 /**
@@ -466,10 +456,18 @@ function tone(tones, light, x, y) {
  */
 function paintTree(tree) {
   var data = new Uint8ClampedArray(W * H * 4),
-    back = 90;
+    back = 90,
+    //for every pixel: -1 nothing, else the part and tone, part * 3 + tone -
+    //leaves 0, bark 1
+    tones = new Int8Array(W * H).fill(-1),
+    leaves = [tree.kind.leaves[1], tree.kind.leaves[2], tree.kind.leaves[3]],
+    bark = [tree.kind.bark[0], tree.kind.bark[1], tree.kind.bark[2]],
+    px,
+    py,
+    i;
 
-  for (var py = 0; py < H; py++) {
-    for (var px = 0; px < W; px++) {
+  for (py = 0; py < H; py++) {
+    for (px = 0; px < W; px++) {
       //the point on the ground that is drawn at this pixel (isobox project:
       //x - y across, -(x + y) / 2 - z down)
       var sx = px + 0.5 - PIVOT_X,
@@ -480,9 +478,9 @@ function paintTree(tree) {
           g[1] - VIEW[1] * back,
           g[2] - VIEW[2] * back,
         ],
-        t = march(tree, origin, VIEW, back),
-        k = (py * W + px) * 4,
-        colour;
+        t = march(tree, origin, VIEW, back);
+
+      i = py * W + px;
 
       if (t >= 0) {
         var p = [
@@ -493,35 +491,62 @@ function paintTree(tree) {
 
         tree.shape(p);
 
-        var part = tree.part,
+        var part = tree.part === "leaves" ? 0 : 1,
           n = normalAt(tree, p),
           sun = Math.max(0, dot(n, SUN)),
-          //the side away from the sun is lit by the sky still, a little
-          light = (0.18 + 0.82 * sun) * openness(tree, p, n),
-          speck = hash(px, py, tree.seed + 77);
+          light = (0.15 + 0.85 * sun) * openness(tree, p, n);
 
-        if (part === "leaves") {
-          //a leaf catching the light here and there, a gap there
-          if (speck < 0.015) light += 0.2;
-          else if (speck > 0.985) light -= 0.25;
-
-          colour = tone(tree.kind.leaves, clamp(light, 0, 1), px, py);
-        } else
-          colour = tone(
-            tree.kind.bark,
-            clamp(light + 0.2 * (noise(p[0], p[1], p[2] * 0.3) - 0.5), 0, 1),
-            px,
-            py,
-          );
-
-        data[k] = colour[0];
-        data[k + 1] = colour[1];
-        data[k + 2] = colour[2];
-        data[k + 3] = 255;
-      } else if (march(tree, [g[0], g[1], 0.2], SHADOW_SUN, 70) >= 0) {
-        data[k + 3] = Math.round(SHADOW_ALPHA * 255);
-      }
+        //the trunk is never caught by the sun the way the leaves are
+        tones[i] = part * 3 + Math.min(toneOf(light), part ? 1 : 2);
+      } else if (march(tree, [g[0], g[1], 0.2], SHADOW_SUN, 70) >= 0)
+        data[i * 4 + 3] = Math.round(SHADOW_ALPHA * 255);
     }
+  }
+
+  //a pixel of a tone alone among another tone of the same part takes that
+  //one - twice over, so the odd pair goes too
+  for (var pass = 0; pass < 2; pass++) {
+    var next = tones.slice();
+
+    for (py = 1; py < H - 1; py++)
+      for (px = 1; px < W - 1; px++) {
+        i = py * W + px;
+
+        var own = tones[i];
+
+        if (own < 0) continue;
+
+        var count = {},
+          best = own,
+          most = 0;
+
+        [i - 1, i + 1, i - W, i + W].forEach(function (j) {
+          var o = tones[j];
+
+          if (o < 0 || ((o / 3) | 0) !== ((own / 3) | 0)) return;
+
+          count[o] = (count[o] || 0) + 1;
+          if (count[o] > most) {
+            most = count[o];
+            best = o;
+          }
+        });
+
+        if (best !== own && most >= 3 && !count[own]) next[i] = best;
+      }
+
+    tones = next;
+  }
+
+  for (i = 0; i < W * H; i++) {
+    if (tones[i] < 0) continue;
+
+    var c = tones[i] < 3 ? leaves[tones[i]] : bark[tones[i] - 3];
+
+    data[i * 4] = c[0];
+    data[i * 4 + 1] = c[1];
+    data[i * 4 + 2] = c[2];
+    data[i * 4 + 3] = 255;
   }
 
   return { width: W, height: H, data: data };

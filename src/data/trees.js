@@ -14,7 +14,7 @@ var BASE = 6000;
 
 //where the foot of a tree is in its picture (shared/gen/trees PIVOT_X,
 //PIVOT_Y): the middle of its tile
-var PIVOT_X = 28,
+var PIVOT_X = 38,
   PIVOT_Y = 60;
 
 var KINDS = ["oak", "beech", "ash", "alder"];
