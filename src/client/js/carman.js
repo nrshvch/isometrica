@@ -157,18 +157,18 @@ var DIRECTIONS = [
 ];
 
 /**
- * The roads a car can drive to from the one on tile: those it joins up with,
- * at the same height all along the edge between them (Road.connects) - never
- * over a step in the ground, nor onto the side of a ramp.
+ * The roads a car can drive to from the one on tile: where both roads run
+ * out to the edge between them (Road.ways, core/roadbits).
  */
 function neighbours(root, tile, out) {
   var roadman = root.roadman;
 
   return Road.ways(
-    root.core.terrain,
     tile,
     function (t) {
-      return roadman.getRoad(t) !== null;
+      var road = roadman.getRoad(t);
+
+      return road === null ? null : road.data.roadBits || 0;
     },
     out,
   );

@@ -19,6 +19,8 @@ var ErrorCode = {
   NOTHING_TO_CLEAR: 12,
   //a road down to the water's edge, where the land is all beach
   ON_SHORE: 13,
+  //a road that does not fit the slope the way it runs (core/roadbits)
+  SLOPED_WRONG_WAY: 14,
 };
 
 export default ErrorCode;

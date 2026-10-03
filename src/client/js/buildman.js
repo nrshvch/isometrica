@@ -439,6 +439,7 @@ errorText[ErrorCode.FLAT_LAND_REQUIRED] = "not flat";
 errorText[ErrorCode.TILE_TAKEN] = "occupied";
 errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
 errorText[ErrorCode.ON_SHORE] = "on shore";
+errorText[ErrorCode.SLOPED_WRONG_WAY] = "wrong slope";
 
 /**
  * Puts code down on each of anchors and tells the player why whatever did not
@@ -473,17 +474,28 @@ function buildSelection(self, code, anchors, rotation, codes, looks) {
   );
 
   try {
-    for (i = 0; i < anchors.length; i++) {
-      tried++;
-      root.core.cities
-        .getCity(0)
-        .buildingService.buildBuilding(
-          codes[i],
-          anchors[i],
-          rotation,
-          looks[i],
-        );
-    }
+    //road is laid along the selection the way OpenTTD lays it, joined to the
+    //roads it is laid to (core/roadbits) - and those are drawn again, joined
+    if (data.classCode === BuildingClassCode.road) {
+      tried = anchors.length;
+      root.core.cities.getCity(0).buildingService.layRoad(code, anchors);
+      anchors.forEach(function (tile) {
+        var road = root.roadman.getRoad(tile);
+
+        if (road !== null) road.updateProfile();
+      });
+    } else
+      for (i = 0; i < anchors.length; i++) {
+        tried++;
+        root.core.cities
+          .getCity(0)
+          .buildingService.buildBuilding(
+            codes[i],
+            anchors[i],
+            rotation,
+            looks[i],
+          );
+      }
   } finally {
     Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
   }
@@ -1027,47 +1039,37 @@ Buildman.prototype.build = function (code) {
   //the roads as they would look once laid: each piece joined up with the
   //ones around it, new and old alike, and the old ones they meet showing
   //what they would turn into. Where no road can go there is nothing
+  //the road as it would be laid (core/roadbits, CityBuildings#quoteRoad):
+  //each new piece with the bits it would have, and the roads already there
+  //in the selection showing what they would turn into, joined to it. Any
+  //road next to it that is not laid to stays as it is
   function previewRoads(quotes) {
     var terrain = root.core.terrain,
       roadman = root.roadman,
       laid = opacities(quotes),
-      seen = Object.create(null),
-      tile,
-      next,
       road,
-      id,
-      i,
-      j;
-
-    function isRoad(t) {
-      return laid[t] !== undefined || roadman.getRoad(t) !== null;
-    }
+      q,
+      i;
 
     for (i = 0; i < quotes.length; i++) {
-      tile = quotes[i].tile;
-      previews.push(
-        createRoadPreview(
-          self,
-          tile,
-          Road.profile(terrain, tile, isRoad),
-          laid[tile],
-        ),
-      );
+      q = quotes[i];
 
-      for (j = 0; j < 4; j++) {
-        next = tile + [1, -1, Terrain.dy, -Terrain.dy][j];
-        road = roadman.getRoad(next);
+      if (q.bits === null) continue;
 
-        if (road === null || seen[next] === true) continue;
-
-        seen[next] = true;
-        //a street stays a street, joined up with the new road
-        id = Road.profile(terrain, next, isRoad, roadman.paved(next));
-
-        if (id !== road.typeCode) {
-          road.view.showPiece(id);
-          reshaped.push(road);
-        }
+      if (q.existing === null)
+        previews.push(
+          createRoadPreview(
+            self,
+            q.tile,
+            Road.profile(terrain, q.tile, q.bits),
+            laid[q.tile],
+          ),
+        );
+      else if (q.bits !== q.existing && (road = roadman.getRoad(q.tile))) {
+        road.view.showPiece(
+          Road.profile(terrain, q.tile, q.bits, roadman.paved(q.tile)),
+        );
+        reshaped.push(road);
       }
     }
   }
@@ -1078,9 +1080,12 @@ Buildman.prototype.build = function (code) {
       quotes;
 
     layout(tiles);
-    quotes = root.core.cities
-      .getCity(0)
-      .buildingService.quoteSelection(code, tiles, rotation);
+    quotes =
+      data.classCode === BuildingClassCode.road
+        ? root.core.cities.getCity(0).buildingService.quoteRoad(code, tiles)
+        : root.core.cities
+            .getCity(0)
+            .buildingService.quoteSelection(code, tiles, rotation);
 
     clearPreview();
 
