@@ -13,10 +13,47 @@ var TileIterator = Core.TileIterator;
 var CoreTerrain = Core.Terrain;
 
 //how deep water has to be to be drawn as deep water, see waterDepth: the
-//first level along the shore stays the shallows, and the next is the step
-//from them to deep water, the two dithered together
-var MID_WATER = 2,
-  DEEP_WATER = 3;
+//first level along the shore stays the shallows
+var DEEP_WATER = 2;
+
+//where deep water spills over the shallows from: every edge and corner of a
+//tile as it is seen, and the tile there off it (shared/gen/terrain
+//DIRECTIONS) - a corner only where neither edge next to it does already
+var SPILLS = [
+  ["ne", 1, 0],
+  ["se", 0, -1],
+  ["sw", -1, 0],
+  ["nw", 0, 1],
+  ["n", 1, 1, "ne", "nw"],
+  ["e", 1, -1, "ne", "se"],
+  ["s", -1, -1, "se", "sw"],
+  ["w", -1, 1, "sw", "nw"],
+];
+
+/**
+ * The edges and corners of a tile of the shallows, as it is seen, that deep
+ * water lies beyond.
+ */
+function spillsOf(x, y) {
+  var terrain = vkaria.core.world.terrain,
+    out = [];
+
+  SPILLS.forEach(function (s) {
+    if (s[3] && (out.indexOf(s[3]) !== -1 || out.indexOf(s[4]) !== -1)) return;
+
+    var w = View.unvector(s[1], s[2]),
+      nx = x + w[0],
+      ny = y + w[1];
+
+    if (
+      terrain.getTerrainType(nx, ny) === TerrainType.water &&
+      waterDepth(nx, ny) >= DEEP_WATER
+    )
+      out.push(s[0]);
+  });
+
+  return out;
+}
 
 /**
  * How many levels down the water over a tile goes, counted from its highest
@@ -47,9 +84,7 @@ function tileSprite(x, y, type, slope) {
       type === TerrainType.water
         ? waterDepth(x, y) >= DEEP_WATER
           ? "deep"
-          : waterDepth(x, y) >= MID_WATER
-            ? "mid"
-            : "water"
+          : "water"
         : type === TerrainType.shore
           ? "shore"
           : "land";
@@ -58,7 +93,14 @@ function tileSprite(x, y, type, slope) {
   if (terrain === null) return vkaria.sprites.getSprite("gen/terrain");
 
   return vkaria.sprites.getComposite(
-    Generated.tileParts(terrain, kind, slope, x, y),
+    Generated.tileParts(
+      terrain,
+      kind,
+      slope,
+      x,
+      y,
+      kind === "water" ? spillsOf(x, y) : null,
+    ),
   );
 }
 

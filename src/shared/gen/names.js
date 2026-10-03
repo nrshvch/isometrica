@@ -15,6 +15,14 @@ export function tileName(set, slope, variant) {
 }
 
 /**
+ * A tileset's ground spilling over one edge or corner of a tile of another,
+ * dir as shared/gen/terrain DIRECTIONS has it - "ne", "n".
+ */
+export function diffuseName(set, slope, dir, variant) {
+  return "gen/terrain/" + set + "/diffuse/" + slope + "_" + dir + "_" + variant;
+}
+
+/**
  * The grid laid over every tile of that slope, land or water.
  */
 export function gridName(slope) {
