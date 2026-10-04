@@ -331,11 +331,11 @@ function createRoadPreview(self, tile, id, opacity) {
   var go = new engine.GameObject("road preview");
 
   RoadView.addSprite(go, id, opacity, RenderLayer.previewLayer);
-  //and the base it would be levelled on, if it would be (RoadView addBase)
-  RoadView.addBase(go, tile, opacity, RenderLayer.overlayLayer);
+  //and the base it would be laid on, if it would be (RoadView addBase)
+  RoadView.addBase(go, tile, id, opacity, RenderLayer.overlayLayer);
 
   //placed before it goes in - the world files it by where it stands
-  RoadView.place(go, tile);
+  RoadView.place(go, tile, id);
   self.root.game.logic.world.addGameObject(go);
 
   return go;

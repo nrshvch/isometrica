@@ -179,9 +179,22 @@ function canDrive(root, from, dir) {
     root.roadman.getRoad(to) !== null &&
     (roadAxes(root, from) & axis) !== 0 &&
     (roadAxes(root, to) & axis) !== 0 &&
-    //never over a step down from a levelled road
-    Road.meets(root.core.terrain, from, SIDE_OF[dir[0] + "," + dir[1]])
+    //never over a step down from a road on a base, nor off the side of a
+    //ramp on a wedge
+    Road.meets(
+      root.core.terrain,
+      from,
+      SIDE_OF[dir[0] + "," + dir[1]],
+      isRoadOf(root),
+    )
   );
+}
+
+//where the roads are, as Road.meets goes by them
+function isRoadOf(root) {
+  return function (tile) {
+    return root.roadman.getRoad(tile) !== null;
+  };
 }
 
 //which side of a tile, -x, -y, +x, +y, each way out of it goes through
@@ -400,8 +413,8 @@ function routeWaypoints(route, from) {
 
 /**
  * The height of the ground at a point, in tiles, the way the terrain is drawn:
- * straight between the heights of the tile's corners - or on a levelled road,
- * the top of it.
+ * straight between the heights of the tile's corners - or of a road's on a
+ * base, levelled or a ramp on a wedge (Road.deck).
  */
 function groundHeight(root, x, y) {
   var terrain = root.core.terrain,
@@ -418,9 +431,15 @@ function groundHeight(root, x, y) {
     d = terrain.getGridPointHeight(x0 + 1, y0 + 1),
     tile = Terrain.convertToIndex(x0, y0);
 
-  //on a levelled road, the top of its tile (RoadView addBase)
-  if (root.roadman.getRoad(tile) !== null && RoadView.levelled(terrain, tile))
-    return RoadView.topOf(terrain, tile);
+  //on a road on a base, its own
+  if (root.roadman.getRoad(tile) !== null && RoadView.onBase(terrain, tile)) {
+    var deck = Road.deck(terrain, tile, isRoadOf(root));
+
+    a = deck[0];
+    b = deck[1];
+    c = deck[2];
+    d = deck[3];
+  }
 
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
 }
