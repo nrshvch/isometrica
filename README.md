@@ -170,7 +170,10 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   a smooth slope as a ramp, or across it levelled at the top on a concrete
   base - a T where a road goes on up the slope from it; where only one
   corner of the ground is up, a ramp on a concrete wedge that climbs the
-  step from a road at its foot; anywhere else levelled at the top. How a
+  step from a road at its foot; anywhere else levelled at the top. A new
+  road on flat ground next to a road on concrete a step above it is a ramp
+  up to it on concrete of its own, so a levelled road can always be reached
+  from below. How a
   road on a slope is laid is decided as it goes down, by the way the run
   the player drags goes through it - a run across a slope is levelled all
   along, whatever roads come up to it from above or below; a run up it is a

@@ -93,7 +93,9 @@ function wedges(terrain, tile) {
  * - on ground with only one corner up, a ramp on a wedge of concrete where a
  *   road comes to its foot on the ground there - the one straight through,
  *   if either is - or else levelled at the top;
- * - on any other slope levelled at the top.
+ * - on any other slope levelled at the top;
+ * - on flat ground flat - a ramp up to a road a step higher only as it is
+ *   laid (Road.planned), and kept.
  *
  * @param terrain {Terrain} core terrain
  * @param isRoad {function(number): boolean}
@@ -154,10 +156,11 @@ Road.lay = function (terrain, tile, net) {
   //kept only for the ground it was laid on
   if (
     lay !== undefined &&
-    Terrain.isSlope(slopeId) &&
-    (lay === 0 ||
-      RAMP_OF[slopeId] === lay ||
-      wedges(terrain, tile).indexOf(lay) !== -1)
+    (Terrain.isSlope(slopeId)
+      ? lay === 0 ||
+        RAMP_OF[slopeId] === lay ||
+        wedges(terrain, tile).indexOf(lay) !== -1
+      : lay >= 1 && lay <= 4)
   )
     return lay;
 
@@ -184,7 +187,7 @@ function pieceOf(lay) {
 
 //the heights of the road on tile along each of its sides, -x, -y, +x, +y,
 //where it meets the next one (RoadView deck) - none along the sides of a
-//ramp on a wedge, which nothing meets
+//ramp on concrete, which nothing meets
 function edges(terrain, tile, net) {
   var lay = Road.lay(terrain, tile, net),
     d = RoadView.deck(terrain, tile, pieceOf(lay)),
@@ -197,7 +200,7 @@ function edges(terrain, tile, net) {
     //up along y, or along x
     across = lay === 1 || lay === 3 ? [0, 2] : [1, 3];
 
-  if (lay !== 0 && uneven(terrain, tile))
+  if (lay !== 0 && RAMP_OF[terrain.tileSlope(tile)] === undefined)
     across.forEach(function (side) {
       out[side] = [NaN, NaN];
     });
@@ -351,14 +354,56 @@ Road.planned = function (terrain, roadman, tiles, run) {
     }
   });
 
-  return {
+  var net = {
     isRoad: after,
     lay: function (tile) {
       return tile in fixes ? fixes[tile] : before.lay(tile);
     },
     fixes: fixes,
   };
+
+  //and a new one on flat ground a ramp up to the road it goes on to, if
+  //that is a step higher - laid by the ones round it, so after them
+  Object.keys(going).forEach(function (key) {
+    var tile = +key;
+
+    if (!Terrain.isSlope(terrain.tileSlope(tile))) {
+      var up = rampUp(terrain, tile, by(tile), net);
+
+      if (up !== 0) fixes[tile] = up;
+    }
+  });
+
+  return net;
 };
+
+//the ramp up towards each side, -x, -y, +x, +y (see profile)
+var UP_TO = [2, 1, 4, 3];
+
+/**
+ * The ramp a road on flat tile goes up to a road next to it a whole step
+ * higher, all along the edge between them - a road on concrete - on
+ * concrete of its own: up to the one of them isRoad says it is laid by, if
+ * there is just one. 0 for none, flat on the ground.
+ *
+ * @param net {{isRoad, lay}} how the roads round it are laid (Road.lay)
+ */
+function rampUp(terrain, tile, isRoad, net) {
+  var h = terrain.getGridPointHeight(tile),
+    ups = [];
+
+  for (var side = 0; side < 4; side++) {
+    var next = tile + STEP[side];
+
+    if (!isRoad(next)) continue;
+
+    var edge = edges(terrain, next, net)[(side + 2) % 4];
+
+    if (edge[0] === h + 1 && edge[1] === h + 1) ups.push(side);
+  }
+
+  return ups.length === 1 ? UP_TO[ups[0]] : 0;
+}
 
 /**
  * Lays for good every road next to tile not laid for good yet (Road.fix), as
