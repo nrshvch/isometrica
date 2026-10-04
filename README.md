@@ -171,16 +171,20 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   base - a T where a road goes on up the slope from it; where only one
   corner of the ground is up, a ramp on a concrete wedge that climbs the
   step from a road at its foot; anywhere else levelled at the top. How a
-  road on a slope is laid is decided as it goes down - one on its own the
-  only way it can be, up the slope as a ramp - and kept with it in the save
-  (Road.lay): the road that came first
-  stays as it is, and a road that does not fit it is still laid, but does
-  not join it - as in OpenTTD, but without turning the new one down. Which
-  way roads join is worked out from the roads next to them every time;
-  where either is on concrete, only where the two meet at the same height,
-  so there is no crossroad over a step, and cars do not drive over one. The
-  preview of a road being laid shows its neighbours as they will be, laid
-  as they will be kept.
+  road on a slope is laid is decided as it goes down, by the way the run
+  the player drags goes through it - a run across a slope is levelled all
+  along, whatever roads come up to it from above or below; a run up it is a
+  ramp; a road put down on its own is laid the only way it can be, up the
+  slope - and kept with it in the save, the city's roads in the order they
+  were built (Road.lay, Road.planned). The road that came first stays as it
+  is, and a road that does not fit it is still laid, but does not join it -
+  as in OpenTTD, but without turning the new one down. Roads in a save from
+  before this, the starting city's too (`src/data/initialcity.js`), are laid
+  for good as they were drawn. Which way roads join is worked out from the
+  roads next to them every time; where either is on concrete, only where
+  the two meet at the same height, so there is no crossroad over a step,
+  and cars do not drive over one. The preview of a road being laid shows
+  it and its neighbours exactly as they will be laid.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches

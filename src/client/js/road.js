@@ -272,10 +272,13 @@ Road.layOf = function (model) {
 };
 
 /**
- * How roads would be laid with the ones at tiles put down too - the new ones,
- * by each other and the roads there, and every one next to them not laid for
- * good yet - from before this was kept - as it is now, laid for good now
- * (Road.fix). The ones there stay as they were laid.
+ * How roads would be laid with the ones at tiles put down too - each new one
+ * the way the run of them goes through it, as the player drags it: a run
+ * across a slope levelled along it, whatever roads come up to it from above
+ * or below, and one up it a ramp; where it turns, or for one on its own, by
+ * every road next to it - and every one next to them not laid for good yet -
+ * from before this was kept - as it is now, laid for good now (Road.fix).
+ * The ones there stay as they were laid.
  *
  * @param roadman {Roadman}
  * @param tiles {number[]} where roads are going down
@@ -295,10 +298,36 @@ Road.planned = function (terrain, roadman, tiles) {
     if (!before.isRoad(tile)) going[tile] = true;
   });
 
+  //the roads a new one is laid by: the way the run being put down goes
+  //through it - along it, the ones there count too; across it, not - or,
+  //where it turns or the road goes down on its own, all of them
+  function by(tile) {
+    var sides = [0, 1, 2, 3].filter(function (side) {
+      return going[tile + STEP[side]] === true;
+    });
+
+    if (
+      sides.length === 0 ||
+      sides.some(function (side) {
+        return side % 2 !== sides[0] % 2;
+      })
+    )
+      return after;
+
+    return function (t) {
+      return (
+        going[t] === true ||
+        (before.isRoad(t) &&
+          (t === tile + STEP[sides[0] % 2] ||
+            t === tile + STEP[(sides[0] % 2) + 2]))
+      );
+    };
+  }
+
   Object.keys(going).forEach(function (key) {
     var tile = +key;
 
-    fixes[tile] = Road.fix(terrain, tile, after);
+    fixes[tile] = Road.fix(terrain, tile, by(tile));
 
     for (var side = 0; side < 4; side++) {
       var next = tile + STEP[side];
@@ -341,6 +370,28 @@ Road.fixAround = function (terrain, roadman, tile) {
 
     if (lay !== undefined) Road.setLay(road.data, lay);
   }
+};
+
+/**
+ * Lays for good a road from a save written before roads were - from the
+ * starting city, say - as it was drawn then: by every road next to it, as
+ * the core has them, whether they are loaded or not.
+ *
+ * @param core {Object} the core, its buildings
+ * @param model {Object} the road's core model
+ */
+Road.fixLoaded = function (terrain, core, model) {
+  if (Road.layOf(model) !== undefined) return;
+
+  var lay = Road.fix(terrain, model.tile, function (tile) {
+    var other = core.buildingService.get(tile);
+
+    return (
+      other !== null && other.data.classCode === Core.BuildingClassCode.road
+    );
+  });
+
+  if (lay !== undefined) Road.setLay(model, lay);
 };
 
 /**
