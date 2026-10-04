@@ -166,16 +166,14 @@ Road.lay = function (terrain, tile, net) {
 
 /**
  * How the road on tile is to be laid for good, from the roads next to it by
- * isRoad - or undefined while it has none to go by, for flat ground too
- * (Road.lay).
+ * isRoad - as soon as it goes down: one on its own on a slope is laid the
+ * only way it can be, up it as a ramp, or levelled where it is no ramp's.
+ * Undefined on flat ground, where there is nothing to keep (Road.lay).
  */
 Road.fix = function (terrain, tile, isRoad) {
   if (!Terrain.isSlope(terrain.tileSlope(tile))) return undefined;
 
-  for (var side = 0; side < 4; side++)
-    if (isRoad(tile + STEP[side])) return Road.decide(terrain, tile, isRoad);
-
-  return undefined;
+  return Road.decide(terrain, tile, isRoad);
 };
 
 //the piece a road laid lay goes by for its base (RoadView deck): its ramp,
@@ -275,9 +273,9 @@ Road.layOf = function (model) {
 
 /**
  * How roads would be laid with the ones at tiles put down too - the new ones,
- * and every one next to them not laid for good yet, laid for good now
- * (Road.fix): each by the roads it had next to it before, or, one that had
- * none, by the new ones. The ones there stay as they were laid.
+ * by each other and the roads there, and every one next to them not laid for
+ * good yet - from before this was kept - as it is now, laid for good now
+ * (Road.fix). The ones there stay as they were laid.
  *
  * @param roadman {Roadman}
  * @param tiles {number[]} where roads are going down
@@ -312,9 +310,7 @@ Road.planned = function (terrain, roadman, tiles) {
       )
         continue;
 
-      var lay = Road.fix(terrain, next, before.isRoad);
-
-      fixes[next] = lay !== undefined ? lay : Road.fix(terrain, next, after);
+      fixes[next] = Road.fix(terrain, next, before.isRoad);
     }
   });
 
