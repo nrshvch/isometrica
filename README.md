@@ -171,8 +171,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   base - a T where a road goes on up the slope from it; where only one
   corner of the ground is up, a ramp on a concrete wedge that climbs the
   step from a road at its foot; anywhere else levelled at the top. How a
-  road on a slope is laid is decided the first time it has a road next to
-  it, and kept with it in the save (Road.lay): the road that came first
+  road on a slope is laid is decided as it goes down - one on its own the
+  only way it can be, up the slope as a ramp - and kept with it in the save
+  (Road.lay): the road that came first
   stays as it is, and a road that does not fit it is still laid, but does
   not join it - as in OpenTTD, but without turning the new one down. Which
   way roads join is worked out from the roads next to them every time;
