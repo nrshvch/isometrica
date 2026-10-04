@@ -108,17 +108,21 @@ function draw(view, id) {
 /**
  * Whether piece id of road on tile is laid on concrete: anywhere on a slope
  * but a ramp up a smooth one - flat at the top, or a ramp on a wedge on
- * ground with only one corner up (Road.lay), the way OpenTTD lays its roads.
+ * ground with only one corner up (Road.lay), the way OpenTTD lays its roads -
+ * and a ramp on flat ground, up a whole step to a road on concrete next to
+ * it.
  *
  * @param terrain {Terrain} core terrain
  * @param id {number} the piece (see Road.profile)
  */
 function raised(terrain, tile, id) {
-  var slopeId = terrain.tileSlope(tile);
+  var slopeId = terrain.tileSlope(tile),
+    ramp = id % Road_PAVED < 10;
 
-  if (!Terrain.isSlope(slopeId)) return false;
+  //on flat ground, only a ramp up to a road a step higher (Road.planned)
+  if (!Terrain.isSlope(slopeId)) return ramp;
 
-  return !(Terrain.isSlopeSmooth(slopeId) && id % Road_PAVED < 10);
+  return !(Terrain.isSlopeSmooth(slopeId) && ramp);
 }
 
 //the highest corner of a tile
@@ -160,7 +164,10 @@ function deck(terrain, tile, id) {
 
   if (!raised(terrain, tile, id)) return ground;
 
-  var top = Math.max.apply(null, ground),
+  //the top a step over flat ground, for a ramp up from it
+  var top =
+      Math.max.apply(null, ground) +
+      (Terrain.isSlope(terrain.tileSlope(tile)) ? 0 : 1),
     shape = id % Road_PAVED,
     tops = shape < 10 ? RAMP_TOPS[shape] : [1, 1, 1, 1];
 
