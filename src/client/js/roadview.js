@@ -80,35 +80,40 @@ BuildingView.prototype.setRoad = function (road) {
 BuildingView.prototype.update = function () {
   var b = this.road;
 
-  if (b !== null && b.staticData !== null) {
-    //drawn again from scratch: the piece first (showPiece), then the street
-    //light if it has one, and the base under a levelled one - each lets go
-    //of the view as it is destroyed, so off a copy of the list
-    var children = this.gameObject.transform.children.slice();
-
-    for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
-
-    addSprite(this.gameObject, this.road.typeCode, 1, RenderLayer.roadLayer);
-
-    //the street light, among the buildings and the cars it stands with
-    var light = lightOf(this.road.typeCode, b.data.tile);
-
-    if (light !== null) addLight(this.gameObject, light);
-
-    addBase(this.gameObject, b.data.tile, 1, RenderLayer.roadLayer);
-
-    place(this.gameObject, b.data.tile);
-  }
+  if (b !== null && b.staticData !== null) draw(this, this.road.typeCode);
 };
 
+//draws piece id of the road from scratch: the piece, then the street light
+//if it has one, and the base under it if it is on one - each lets go of the
+//view as it is destroyed, so off a copy of the list
+function draw(view, id) {
+  var go = view.gameObject,
+    tile = view.road.data.tile,
+    children = go.transform.children.slice();
+
+  for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
+
+  addSprite(go, id, 1, RenderLayer.roadLayer);
+
+  //the street light, among the buildings and the cars it stands with
+  var light = lightOf(id, tile);
+
+  if (light !== null) addLight(go, light);
+
+  addBase(go, tile, id, 1, RenderLayer.roadLayer);
+
+  place(go, tile, id);
+}
+
 /**
- * Whether the road on tile is levelled: on a slope it does not go up as a
- * ramp - only one corner up, three, or two across from each other - flat at
- * the top of the slope, on a concrete base (addBase).
+ * Whether a road on tile is laid on concrete: on a slope it cannot go up as
+ * it is - only one corner up, three, or two across from each other. It is
+ * flat at the top of the slope there, or on ground with only one corner up a
+ * ramp on a wedge (Road.wedge), the way OpenTTD lays its roads.
  *
  * @param terrain {Terrain} core terrain
  */
-function levelled(terrain, tile) {
+function onBase(terrain, tile) {
   var slopeId = terrain.tileSlope(tile);
 
   return Terrain.isSlope(slopeId) && !Terrain.isSlopeSmooth(slopeId);
@@ -124,28 +129,87 @@ function topOf(terrain, tile) {
   );
 }
 
+//the corners each ramp is up at, of A (x, y), B (x + 1, y), C (x, y + 1)
+//and D (x + 1, y + 1): 1 up towards -y, 2 -x, 3 +y, 4 +x
+var RAMP_TOPS = {
+  1: [1, 1, 0, 0],
+  2: [1, 0, 1, 0],
+  3: [0, 0, 1, 1],
+  4: [0, 1, 0, 1],
+};
+
 /**
- * Hangs under parent - a levelled road's, at the top of its tile (place) -
- * the concrete it is levelled on, down to the ground at every corner lower
- * than that (shared/gen/foundations), picked as the tile is seen. Nothing
- * under any other road.
+ * How high piece id of road on tile is at each corner, A (x, y), B (x + 1, y),
+ * C (x, y + 1) and D (x + 1, y + 1): where the ground is, but on a base - at
+ * the top of the tile for a flat piece, a step down at the foot of a ramp on
+ * a wedge.
+ *
+ * @param terrain {Terrain} core terrain
+ * @param id {number} the piece (see Road.profile)
+ * @returns {number[]}
  */
-function addBase(parent, tile, opacity, layer) {
+function deck(terrain, tile, id) {
+  var ground = [
+    terrain.getGridPointHeight(tile),
+    terrain.getGridPointHeight(tile + 1),
+    terrain.getGridPointHeight(tile + Terrain.dy),
+    terrain.getGridPointHeight(tile + Terrain.dy + 1),
+  ];
+
+  if (!onBase(terrain, tile)) return ground;
+
+  var top = Math.max.apply(null, ground),
+    shape = id % Road_PAVED,
+    tops = shape < 10 ? RAMP_TOPS[shape] : [1, 1, 1, 1];
+
+  return tops.map(function (t) {
+    return t ? top : top - 1;
+  });
+}
+
+//how high piece id of road on tile is in the middle of it
+function surface(terrain, tile, id) {
+  var d = deck(terrain, tile, id);
+
+  return (d[0] + d[1] + d[2] + d[3]) / 4;
+}
+
+//how many pixels up a step of the ground is (shared/gen/foundations STEP)
+var STEP_PX = 8;
+
+/**
+ * Hangs under parent - a road's, at its surface (place) - the concrete piece
+ * id of road on tile is laid on (deck), down to the ground at every corner
+ * lower than that (shared/gen/foundations): a flat top, or a wedge under a
+ * ramp. Picked as the tile is seen; nothing under a road on the ground.
+ */
+function addBase(parent, tile, id, opacity, layer) {
   var terrain = vkaria.core.world.terrain;
 
-  if (!levelled(terrain, tile)) return;
+  if (!onBase(terrain, tile)) return;
 
   var x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
-    top = topOf(terrain, tile),
-    drops = [];
+    d = deck(terrain, tile, id),
+    top = Math.max.apply(null, d),
+    ramp = id % Road_PAVED < 10,
+    drops = [],
+    tops = [];
 
-  for (var k = 0; k < 4; k++)
+  for (var k = 0; k < 4; k++) {
+    var c = View.corner(k),
+      at = d[c[0] + 2 * c[1]];
+
     drops.push(
-      Math.max(0, Math.min(1, top - View.cornerHeight(terrain, x, y, k))),
+      Math.max(0, Math.min(1, at - View.cornerHeight(terrain, x, y, k))),
     );
+    tops.push(at === top ? 1 : 0);
+  }
 
-  var name = "gen/foundations/" + drops.join(""),
+  var name =
+      "gen/foundations/" +
+      (ramp ? "ramp/" + tops.join("") + "/" : "") +
+      drops.join(""),
     frame = vkaria.sprites.frame(name);
 
   if (!frame) return;
@@ -155,7 +219,12 @@ function addBase(parent, tile, opacity, layer) {
 
   sprite.layer = layer;
   sprite.setSprite(vkaria.sprites.getSprite(name));
-  sprite.setPivot(frame.pivotX, frame.pivotY);
+  //its pivot is at the top of the tile, the road's half a step under it on
+  //a ramp: its picture lifted by as much
+  sprite.setPivot(
+    frame.pivotX,
+    frame.pivotY + (top - surface(terrain, tile, id)) * STEP_PX,
+  );
   part.addComponent(sprite);
   //the renderer resets its opacity once it is attached
   sprite.opacity = opacity;
@@ -178,16 +247,13 @@ function addLight(parent, name) {
 
 /**
  * Draws piece id in place of the road's own - what it would turn into once
- * the roads being laid next to it join up with it. Its own comes back with
- * the next update.
+ * the roads being laid next to it join up with it, base and all. Its own
+ * comes back with the next update.
  *
  * @param id {number} which piece (see Road.profile)
  */
 BuildingView.prototype.showPiece = function (id) {
-  var children = this.gameObject.transform.children;
-
-  if (children.length > 0)
-    setPiece(children[0].gameObject.spriteRenderer, spriteOf(id));
+  if (this.road !== null && this.road.staticData !== null) draw(this, id);
 };
 
 /**
@@ -211,16 +277,13 @@ function addSprite(parent, id, opacity, layer) {
 }
 
 /**
- * Puts go where a road on tile stands: on the ground in the middle of its
- * tile - or a levelled one at the top of it (addBase).
+ * Puts go where piece id of road on tile stands: in the middle of its tile,
+ * on the ground or on its base (deck).
  */
-function place(go, tile) {
-  var terrain = vkaria.core.world.terrain,
-    x = Terrain.extractX(tile),
+function place(go, tile, id) {
+  var x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
-    z = levelled(terrain, tile)
-      ? topOf(terrain, tile)
-      : terrain.getHeight(x + 0.5, y + 0.5);
+    z = surface(vkaria.core.world.terrain, tile, id);
 
   go.transform.setPosition(
     x * Config.tileSize,
@@ -233,8 +296,9 @@ BuildingView.addSprite = addSprite;
 BuildingView.PAVED = Road_PAVED;
 BuildingView.place = place;
 BuildingView.addBase = addBase;
-BuildingView.levelled = levelled;
+BuildingView.onBase = onBase;
 BuildingView.topOf = topOf;
+BuildingView.deck = deck;
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)
