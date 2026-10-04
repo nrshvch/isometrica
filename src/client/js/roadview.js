@@ -106,17 +106,19 @@ function draw(view, id) {
 }
 
 /**
- * Whether a road on tile is laid on concrete: on a slope it cannot go up as
- * it is - only one corner up, three, or two across from each other. It is
- * flat at the top of the slope there, or on ground with only one corner up a
- * ramp on a wedge (Road.wedge), the way OpenTTD lays its roads.
+ * Whether piece id of road on tile is laid on concrete: anywhere on a slope
+ * but a ramp up a smooth one - flat at the top, or a ramp on a wedge on
+ * ground with only one corner up (Road.lay), the way OpenTTD lays its roads.
  *
  * @param terrain {Terrain} core terrain
+ * @param id {number} the piece (see Road.profile)
  */
-function onBase(terrain, tile) {
+function raised(terrain, tile, id) {
   var slopeId = terrain.tileSlope(tile);
 
-  return Terrain.isSlope(slopeId) && !Terrain.isSlopeSmooth(slopeId);
+  if (!Terrain.isSlope(slopeId)) return false;
+
+  return !(Terrain.isSlopeSmooth(slopeId) && id % Road_PAVED < 10);
 }
 
 //the highest corner of a tile
@@ -140,9 +142,9 @@ var RAMP_TOPS = {
 
 /**
  * How high piece id of road on tile is at each corner, A (x, y), B (x + 1, y),
- * C (x, y + 1) and D (x + 1, y + 1): where the ground is, but on a base - at
- * the top of the tile for a flat piece, a step down at the foot of a ramp on
- * a wedge.
+ * C (x, y + 1) and D (x + 1, y + 1): where the ground is, but on concrete
+ * (raised) - at the top of the tile for a flat piece, a step down at the
+ * foot of a ramp on a wedge.
  *
  * @param terrain {Terrain} core terrain
  * @param id {number} the piece (see Road.profile)
@@ -156,7 +158,7 @@ function deck(terrain, tile, id) {
     terrain.getGridPointHeight(tile + Terrain.dy + 1),
   ];
 
-  if (!onBase(terrain, tile)) return ground;
+  if (!raised(terrain, tile, id)) return ground;
 
   var top = Math.max.apply(null, ground),
     shape = id % Road_PAVED,
@@ -186,7 +188,7 @@ var STEP_PX = 8;
 function addBase(parent, tile, id, opacity, layer) {
   var terrain = vkaria.core.world.terrain;
 
-  if (!onBase(terrain, tile)) return;
+  if (!raised(terrain, tile, id)) return;
 
   var x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
@@ -296,7 +298,7 @@ BuildingView.addSprite = addSprite;
 BuildingView.PAVED = Road_PAVED;
 BuildingView.place = place;
 BuildingView.addBase = addBase;
-BuildingView.onBase = onBase;
+BuildingView.raised = raised;
 BuildingView.topOf = topOf;
 BuildingView.deck = deck;
 

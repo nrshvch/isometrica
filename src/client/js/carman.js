@@ -13,7 +13,6 @@ import CoreConfig from "core/config";
 import BuildingClassCode from "data/classcode";
 
 var Terrain = Core.Terrain;
-var SlopeType = Terrain.SlopeType;
 
 //Cars driving about the roads, for the look of it - they carry nothing and
 //nobody waits for them.
@@ -159,14 +158,15 @@ var DIRECTIONS = [
 
 /**
  * Which ways a road on this tile can be driven: along x, along y or both. A
- * road on a slope only runs up and down it.
+ * ramp only runs up and down its slope.
  */
 function roadAxes(root, tile) {
-  var slope = root.core.terrain.tileSlope(tile);
+  var road = root.roadman.getRoad(tile),
+    shape = road !== null ? road.typeCode % RoadView.PAVED : 90000;
 
-  if (slope === SlopeType.AB || slope === SlopeType.CD)
+  if (shape === 1 || shape === 3)
     return 2; //along y
-  else if (slope === SlopeType.AC || slope === SlopeType.BD) return 1; //along x
+  else if (shape === 2 || shape === 4) return 1; //along x
 
   return 3;
 }
@@ -185,16 +185,9 @@ function canDrive(root, from, dir) {
       root.core.terrain,
       from,
       SIDE_OF[dir[0] + "," + dir[1]],
-      isRoadOf(root),
+      Road.network(root.roadman),
     )
   );
-}
-
-//where the roads are, as Road.meets goes by them
-function isRoadOf(root) {
-  return function (tile) {
-    return root.roadman.getRoad(tile) !== null;
-  };
 }
 
 //which side of a tile, -x, -y, +x, +y, each way out of it goes through
@@ -431,9 +424,9 @@ function groundHeight(root, x, y) {
     d = terrain.getGridPointHeight(x0 + 1, y0 + 1),
     tile = Terrain.convertToIndex(x0, y0);
 
-  //on a road on a base, its own
-  if (root.roadman.getRoad(tile) !== null && RoadView.onBase(terrain, tile)) {
-    var deck = Road.deck(terrain, tile, isRoadOf(root));
+  //on a road, its own - on its concrete, if it is on any
+  if (root.roadman.getRoad(tile) !== null) {
+    var deck = Road.deck(terrain, tile, Road.network(root.roadman));
 
     a = deck[0];
     b = deck[1];
