@@ -1029,7 +1029,7 @@ Buildman.prototype.build = function (code) {
   //what they would turn into. Where no road can go there is nothing
   //how the roads that would go down for quotes, and the ones round them,
   //would be laid for good (Road.planned)
-  function plannedRoads(quotes) {
+  function plannedRoads(quotes, run) {
     return Road.planned(
       root.core.terrain,
       root.roadman,
@@ -1040,10 +1040,13 @@ Buildman.prototype.build = function (code) {
         .map(function (q) {
           return q.tile;
         }),
+      //the whole run dragged, over roads already there too - which are
+      //not quoted
+      run,
     );
   }
 
-  function previewRoads(quotes) {
+  function previewRoads(quotes, run) {
     var terrain = root.core.terrain,
       roadman = root.roadman,
       laid = opacities(quotes),
@@ -1061,7 +1064,7 @@ Buildman.prototype.build = function (code) {
       isRoad: function (t) {
         return laid[t] !== undefined || roadman.getRoad(t) !== null;
       },
-      lay: plannedRoads(quotes).lay,
+      lay: plannedRoads(quotes, run).lay,
     };
 
     for (i = 0; i < quotes.length; i++) {
@@ -1105,7 +1108,7 @@ Buildman.prototype.build = function (code) {
 
     clearPreview();
 
-    if (data.classCode === BuildingClassCode.road) previewRoads(quotes);
+    if (data.classCode === BuildingClassCode.road) previewRoads(quotes, tiles);
     else previewBuildings(tiles, quotes);
 
     updatePriceTags(quotes);
@@ -1165,6 +1168,7 @@ Buildman.prototype.build = function (code) {
         root.core.cities
           .getCity(0)
           .buildingService.quoteSelection(code, anchors, rotation),
+        anchors,
       ).fixes;
 
       Object.keys(fixes).forEach(function (key) {

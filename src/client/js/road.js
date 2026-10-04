@@ -282,13 +282,16 @@ Road.layOf = function (model) {
  *
  * @param roadman {Roadman}
  * @param tiles {number[]} where roads are going down
+ * @param [run] {number[]} every tile the player dragged them over, the roads
+ *        already there included - tiles unless given
  * @returns {{isRoad, lay, fixes: Object}} the roads, and fixes how each of
  *          the new ones and the ones round them are to be laid for good, by
  *          tile - undefined for one that is not yet
  */
-Road.planned = function (terrain, roadman, tiles) {
+Road.planned = function (terrain, roadman, tiles, run) {
   var before = Road.network(roadman),
     going = Object.create(null),
+    dragged = Object.create(null),
     fixes = Object.create(null),
     after = function (tile) {
       return going[tile] === true || before.isRoad(tile);
@@ -298,12 +301,17 @@ Road.planned = function (terrain, roadman, tiles) {
     if (!before.isRoad(tile)) going[tile] = true;
   });
 
+  //the run: the new ones, and the roads there it goes over
+  (run || tiles).forEach(function (tile) {
+    if (after(tile)) dragged[tile] = true;
+  });
+
   //the roads a new one is laid by: the way the run being put down goes
   //through it - along it, the ones there count too; across it, not - or,
   //where it turns or the road goes down on its own, all of them
   function by(tile) {
     var sides = [0, 1, 2, 3].filter(function (side) {
-      return going[tile + STEP[side]] === true;
+      return dragged[tile + STEP[side]] === true;
     });
 
     if (
