@@ -9,6 +9,7 @@ import Events from "events";
 import AreaSelector from "./areaselector";
 import ServiceMan from "./serviceman";
 import Buildman from "./buildman";
+import Road from "./road";
 import ErrorCode from "core/errorcode";
 import Numeral from "numeral";
 
@@ -229,6 +230,10 @@ Terrainman.prototype.enter = function () {
       for (var i = 0; i < tiles.length; i++) {
         //every tile is charged on its own, so each one that goes gets
         //its own text
+        //the roads round a road that goes stay as they were laid
+        if (root.roadman.getRoad(tiles[i]) !== null)
+          Road.fixAround(root.core.terrain, root.roadman, tiles[i]);
+
         if (c.clearTile(tiles[i]))
           buildman.showCost(tiles[i], 1, 1, Core.Config.clearTileCost);
       }

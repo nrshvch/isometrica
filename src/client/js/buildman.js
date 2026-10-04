@@ -1027,6 +1027,22 @@ Buildman.prototype.build = function (code) {
   //the roads as they would look once laid: each piece joined up with the
   //ones around it, new and old alike, and the old ones they meet showing
   //what they would turn into. Where no road can go there is nothing
+  //how the roads that would go down for quotes, and the ones round them,
+  //would be laid for good (Road.planned)
+  function plannedRoads(quotes) {
+    return Road.planned(
+      root.core.terrain,
+      root.roadman,
+      quotes
+        .filter(function (q) {
+          return q.error === ErrorCode.NONE;
+        })
+        .map(function (q) {
+          return q.tile;
+        }),
+    );
+  }
+
   function previewRoads(quotes) {
     var terrain = root.core.terrain,
       roadman = root.roadman,
@@ -1039,9 +1055,14 @@ Buildman.prototype.build = function (code) {
       i,
       j;
 
-    function isRoad(t) {
-      return laid[t] !== undefined || roadman.getRoad(t) !== null;
-    }
+    //joined up with every road shown, and laid as the ones that would go
+    //down would be laid for good, and the ones round them (Road.planned)
+    var net = {
+      isRoad: function (t) {
+        return laid[t] !== undefined || roadman.getRoad(t) !== null;
+      },
+      lay: plannedRoads(quotes).lay,
+    };
 
     for (i = 0; i < quotes.length; i++) {
       tile = quotes[i].tile;
@@ -1049,7 +1070,7 @@ Buildman.prototype.build = function (code) {
         createRoadPreview(
           self,
           tile,
-          Road.profile(terrain, tile, isRoad),
+          Road.profile(terrain, tile, net),
           laid[tile],
         ),
       );
@@ -1062,7 +1083,7 @@ Buildman.prototype.build = function (code) {
 
         seen[next] = true;
         //a street stays a street, joined up with the new road
-        id = Road.profile(terrain, next, isRoad, roadman.paved(next));
+        id = Road.profile(terrain, next, net, roadman.paved(next));
 
         if (id !== road.typeCode) {
           road.view.showPiece(id);
@@ -1134,13 +1155,36 @@ Buildman.prototype.build = function (code) {
     var anchors = ts.anchors();
 
     layout(anchors);
+
+    var looks = anchors.map(lookAt);
+
+    //roads laid for good as the preview showed them: the ones round them
+    //before the new ones go down, the new ones as they do
+    if (data.classCode === BuildingClassCode.road) {
+      var fixes = plannedRoads(
+        root.core.cities
+          .getCity(0)
+          .buildingService.quoteSelection(code, anchors, rotation),
+      ).fixes;
+
+      Object.keys(fixes).forEach(function (key) {
+        var road = root.roadman.getRoad(+key);
+
+        if (road !== null && fixes[key] !== undefined)
+          Road.setLay(road.data, fixes[key]);
+      });
+      looks = anchors.map(function (tile) {
+        return fixes[tile] !== undefined ? { lay: fixes[tile] } : null;
+      });
+    }
+
     buildSelection(
       self,
       code,
       anchors,
       rotation,
       anchors.map(variantAt),
-      anchors.map(lookAt),
+      looks,
     );
 
     //a block that went up has its look; another put down there next is

@@ -165,18 +165,21 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   way up the ground and so looks higher, the base is the same, marked where
   the water stands against it: wet and darker below that waterline, a line
   of weed along it and a tide mark above. Roads are not laid on the shore.
-- A road goes up a slope as a ramp, and on any other slope that rises a step
-  at most it is laid on concrete (`src/client/js/road.js`, `roadview.js`
-  addBase), the way OpenTTD lays its roads: where only one corner of the
-  ground is up and a road comes to its foot, a ramp on a concrete wedge
-  that climbs the step (Road.wedge) - the road up it goes before any that
-  come onto it from the side, which do not join it; anywhere else levelled
-  at the top on a concrete base. Roads join up with the roads next to them
-  as they always have, worked out from them every time; only a road on
-  concrete joins just where the two meet at the same height, so there is
-  no crossroad over a step, and cars do not drive over one. The preview of
-  a road being laid shows its neighbours as they will be, wedges and bases
-  too.
+- On a slope that rises a step at most a road is laid the way OpenTTD lays
+  its roads (`src/client/js/road.js` Road.decide, `roadview.js` addBase): up
+  a smooth slope as a ramp, or across it levelled at the top on a concrete
+  base - a T where a road goes on up the slope from it; where only one
+  corner of the ground is up, a ramp on a concrete wedge that climbs the
+  step from a road at its foot; anywhere else levelled at the top. How a
+  road on a slope is laid is decided the first time it has a road next to
+  it, and kept with it in the save (Road.lay): the road that came first
+  stays as it is, and a road that does not fit it is still laid, but does
+  not join it - as in OpenTTD, but without turning the new one down. Which
+  way roads join is worked out from the roads next to them every time;
+  where either is on concrete, only where the two meet at the same height,
+  so there is no crossroad over a step, and cars do not drive over one. The
+  preview of a road being laid shows its neighbours as they will be, laid
+  as they will be kept.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches
