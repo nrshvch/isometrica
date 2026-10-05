@@ -240,15 +240,58 @@ Terrainman.prototype.enter = function () {
     },
   };
 
+  //the roads the ground can move under, and how each would stand then
+  //(Road.fitTo) - by tile, as the last quote worked them out
+  var fitted = Object.create(null);
+
+  function fitsRoad(building, after) {
+    var look = Road.fitTo(root.core.terrain, root.roadman, building, after);
+
+    fitted[building.tile] = look;
+
+    return look !== null;
+  }
+
+  //everything standing on tiles, or next to them, drawn again on the ground
+  //as it is now - and the roads joined up again
+  function redraw(tiles) {
+    var seen = Object.create(null);
+
+    tiles.forEach(function (tile) {
+      for (var dx = -1; dx <= 1; dx++)
+        for (var dy = -1; dy <= 1; dy++) {
+          var view = buildman.getBuilding(tile + dx + dy * Terrain.dy);
+
+          if (view === null || seen[view.data.tile] === true) continue;
+
+          seen[view.data.tile] = true;
+
+          if (view.updateProfile !== undefined) view.updateProfile();
+          view.view.update();
+          view.view.render();
+        }
+    });
+  }
+
   function level(direction, question) {
     return {
       question: question,
       quote: function (tiles) {
-        return city().quoteTerraform(tiles, direction);
+        return city().quoteTerraform(tiles, direction, fitsRoad);
       },
       apply: function (tiles) {
-        var result = city().terraform(tiles, direction),
+        var result = city().terraform(tiles, direction, fitsRoad),
           where = area();
+
+        //the roads that stay, laid as the ground lets them be now
+        if (result.error === ErrorCode.NONE) {
+          result.kept.forEach(function (building) {
+            var look = fitted[building.tile];
+
+            if (look) building.look = look;
+          });
+          redraw(result.tiles);
+        }
 
         if (result.error !== ErrorCode.NONE)
           buildman.showText(

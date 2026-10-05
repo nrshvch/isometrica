@@ -19,6 +19,7 @@ import Config from "./config";
 import Terrain from "./terrain";
 import ErrorCode from "./errorcode";
 import TerrainType from "./terraintype";
+import Rotation from "./rotation";
 
 var Core = namespace("Isometrica.Core");
 
@@ -339,17 +340,26 @@ City.prototype.clearTile = function (tile) {
  * Every tile the ground moves under is a tile modified, whether it was picked
  * or only dragged along: each costs terraformTileCost - ten times that for
  * water being raised - plus clearing whatever tree or rock was on it, the
- * ones the player put there included. Nothing else may stand on any of them,
- * so a building anywhere in the way stops the whole thing.
+ * ones the player put there included. A building or a road on any of them
+ * stays standing where it can at the height it is at, on concrete that takes
+ * up the difference, the way OpenTTD lets land be shaped under a building
+ * (stays); any other stops the whole thing.
  *
  * @param tiles {number[]}
  * @param direction {number} 1 to raise, -1 to lower
- * @returns {{error: number, tile: number, cost: number}} error is an
- *          ErrorCode, and tile the tile it is about; cost is what was paid
+ * @param [fitsRoad] {function(Building, Terrain): boolean} whether a road
+ *        can stay standing on the ground as it would be (client/road) - in
+ *        the way unless it says so
+ * @returns {{error: number, tile: number, cost: number, tiles: number[],
+ *          kept: Building[]}} error is an ErrorCode, and tile the tile it is
+ *          about; cost is what was paid; tiles every tile the ground moved
+ *          under, and kept what stood on them and stays
  */
-City.prototype.terraform = function (tiles, direction) {
-  var quote = this.quoteTerraform(tiles, direction),
+City.prototype.terraform = function (tiles, direction, fitsRoad) {
+  var quote = this.quoteTerraform(tiles, direction, fitsRoad),
     terrain = this.world.terrain,
+    keep = Object.create(null),
+    tops = [],
     i;
 
   if (quote.error !== ErrorCode.NONE)
@@ -360,11 +370,95 @@ City.prototype.terraform = function (tiles, direction) {
   for (i = 0; i < quote.planted.length; i++)
     terrain.clearTile(quote.planted[i]);
 
-  terrain.modify(quote.plan);
+  //what stays stands where it stood, the ground under it moved
+  quote.kept.forEach(function (building) {
+    var iter = building.occupiedTiles();
+
+    while (!iter.done) keep[iter.next()] = true;
+
+    tops.push(topOf(terrain, building));
+  });
+
+  terrain.modify(quote.plan, keep);
   this.resourcesModule.subResource(Resource.money, quote.cost);
 
-  return { error: ErrorCode.NONE, tile: quote.tile, cost: quote.cost };
+  //a building the ground went down from under keeps to its height on
+  //concrete; one the ground came up to stands on it again
+  quote.kept.forEach(function (building, k) {
+    if (isRoad(building)) return;
+
+    building.base =
+      footprintRange(terrain, building).max < tops[k] ? tops[k] : undefined;
+  });
+
+  return {
+    error: ErrorCode.NONE,
+    tile: quote.tile,
+    cost: quote.cost,
+    tiles: quote.plan.tiles,
+    kept: quote.kept,
+  };
 };
+
+function isRoad(building) {
+  return (
+    BuildingData[building.buildingCode].classCode === BuildingClassCode.road
+  );
+}
+
+//how far the ground under building rises and falls - on terrain, or ground
+//as a plan would leave it (Terrain#after)
+function footprintRange(terrain, building) {
+  var data = BuildingData[building.buildingCode],
+    x0 = Terrain.extractX(building.tile),
+    y0 = Terrain.extractY(building.tile),
+    sizeX = Rotation.sizeX(data, building.rotation),
+    sizeY = Rotation.sizeY(data, building.rotation),
+    min = Infinity,
+    max = -Infinity,
+    h;
+
+  for (var x = x0; x <= x0 + sizeX; x++)
+    for (var y = y0; y <= y0 + sizeY; y++) {
+      h = terrain.getGridPointHeight(x, y);
+      min = Math.min(min, h);
+      max = Math.max(max, h);
+    }
+
+  return { min: min, max: max };
+}
+
+//how high a building stands: at the highest corner under it, as it was
+//built, or as high as it was kept when the ground went down (#terraform)
+function topOf(terrain, building) {
+  return building.base !== undefined
+    ? building.base
+    : footprintRange(terrain, building).max;
+}
+
+/**
+ * Whether building can stay standing where it is on ground as a plan would
+ * leave it (Terrain#after), the way OpenTTD keeps its buildings when the
+ * land under them is shaped: at the height it stands at, on concrete a step
+ * deep at most - the ground may come up to the top of the concrete, or go
+ * down to its foot, but no further, and never under water. A road goes by
+ * fitsRoad (client/road), or is in the way.
+ */
+function stays(terrain, after, building, fitsRoad) {
+  if (isRoad(building))
+    return fitsRoad !== undefined && fitsRoad(building, after);
+
+  var top = topOf(terrain, building),
+    range = footprintRange(after, building),
+    iter = building.occupiedTiles();
+
+  if (range.max > top || range.min < top - 1) return false;
+
+  while (!iter.done)
+    if (after.getTerrainType(iter.next()) === TerrainType.water) return false;
+
+  return true;
+}
 
 /**
  * What #terraform would do and charge, without doing it: cost is the price
@@ -373,13 +467,15 @@ City.prototype.terraform = function (tiles, direction) {
  *
  * @param tiles {number[]}
  * @param direction {number} 1 to raise, -1 to lower
+ * @param [fitsRoad] {function} see #terraform
  * @returns {{error: number, tile: number, cost: number, plan: Object,
- *          planted: number[], blocked: number[]}} plan and planted are for
+ *          planted: number[], kept: Building[], blocked: number[]}} plan,
+ *          planted and kept - what stays standing - are for
  *          #terraform to carry out: the ground to move and the trees put down
  *          in its way. blocked is, with TILE_TAKEN, every tile the buildings
  *          in the way stand on - the whole of each of them
  */
-City.prototype.quoteTerraform = function (tiles, direction) {
+City.prototype.quoteTerraform = function (tiles, direction, fitsRoad) {
   var world = this.world,
     terrain = world.terrain,
     plan = terrain.planLevel(tiles, direction),
@@ -388,6 +484,9 @@ City.prototype.quoteTerraform = function (tiles, direction) {
     planted = [],
     blocked = [],
     blockers = Object.create(null),
+    kept = [],
+    keeps = Object.create(null),
+    after,
     tile,
     building,
     occupied,
@@ -396,6 +495,8 @@ City.prototype.quoteTerraform = function (tiles, direction) {
   if (plan === null)
     return { error: ErrorCode.TERRAFORM_TOO_LARGE, tile: tile0, cost: 0 };
 
+  after = terrain.after(plan);
+
   for (i = 0; i < plan.tiles.length; i++) {
     tile = plan.tiles[i];
 
@@ -403,9 +504,20 @@ City.prototype.quoteTerraform = function (tiles, direction) {
 
     //a tree or cliff the player put down goes the way a wild one does
     if (building !== null) {
+      //one that can stand on the ground as it will be stays, on concrete
+      //that takes up the difference (stays) - the ground under it is paid
+      //for all the same
+      if (keeps[building.tile] === undefined)
+        keeps[building.tile] =
+          BuildingData[building.buildingCode].classCode !==
+            BuildingClassCode.tree && stays(terrain, after, building, fitsRoad);
+
+      if (keeps[building.tile] === true) {
+        if (kept.indexOf(building) === -1) kept.push(building);
+      }
       //every one of them, so that the player sees all there is to
       //move out of the way rather than one at a time
-      if (
+      else if (
         BuildingData[building.buildingCode].classCode !== BuildingClassCode.tree
       ) {
         if (blockers[building.tile] !== true) {
@@ -416,10 +528,10 @@ City.prototype.quoteTerraform = function (tiles, direction) {
         }
 
         continue;
+      } else {
+        planted.push(building.tile);
+        cost += Config.clearTileCost;
       }
-
-      planted.push(building.tile);
-      cost += Config.clearTileCost;
     }
 
     //what the tile is and what grows there are looked up before the
@@ -449,6 +561,7 @@ City.prototype.quoteTerraform = function (tiles, direction) {
     cost: cost,
     plan: plan,
     planted: planted,
+    kept: kept,
   };
 };
 
