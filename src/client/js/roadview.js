@@ -115,14 +115,35 @@ function draw(view, id) {
  * @param terrain {Terrain} core terrain
  * @param id {number} the piece (see Road.profile)
  */
-function raised(terrain, tile, id) {
+function raised(terrain, tile, id, top) {
   var slopeId = terrain.tileSlope(tile),
-    ramp = id % Road_PAVED < 10;
+    ramp = id % Road_PAVED < 10,
+    level = topOf(terrain, tile),
+    t = top === undefined ? storedTop(tile) : top;
+
+  //kept up when the ground went down from under it
+  if (!ramp && typeof t === "number" && t > level) return true;
 
   //on flat ground, only a ramp up to a road a step higher (Road.planned)
   if (!Terrain.isSlope(slopeId)) return ramp;
 
   return !(Terrain.isSlopeSmooth(slopeId) && ramp);
+}
+
+/**
+ * How high the flat road on tile was kept when the ground was taken down
+ * from under it (client/road fitTo), if it was: a step over flat ground, on
+ * concrete all round.
+ */
+function storedTop(tile) {
+  var model = vkaria.core.buildingService.get(tile);
+
+  return model !== null &&
+    model.look !== null &&
+    model.look !== undefined &&
+    typeof model.look.top === "number"
+    ? model.look.top
+    : undefined;
 }
 
 //the highest corner of a tile
@@ -152,27 +173,33 @@ var RAMP_TOPS = {
  *
  * @param terrain {Terrain} core terrain
  * @param id {number} the piece (see Road.profile)
+ * @param [top] {number|null} how high a flat one is kept (storedTop) - the
+ *        road's own if undefined, none if null
  * @returns {number[]}
  */
-function deck(terrain, tile, id) {
-  var ground = [
-    terrain.getGridPointHeight(tile),
-    terrain.getGridPointHeight(tile + 1),
-    terrain.getGridPointHeight(tile + Terrain.dy),
-    terrain.getGridPointHeight(tile + Terrain.dy + 1),
-  ];
+function deck(terrain, tile, id, top) {
+  var t = top === undefined ? storedTop(tile) : top,
+    ground = [
+      terrain.getGridPointHeight(tile),
+      terrain.getGridPointHeight(tile + 1),
+      terrain.getGridPointHeight(tile + Terrain.dy),
+      terrain.getGridPointHeight(tile + Terrain.dy + 1),
+    ];
 
-  if (!raised(terrain, tile, id)) return ground;
+  //a flat one kept as high as it was
+  if (id % Road_PAVED >= 10 && typeof t === "number") return [t, t, t, t];
+
+  if (!raised(terrain, tile, id, t)) return ground;
 
   //the top a step over flat ground, for a ramp up from it
-  var top =
+  var high =
       Math.max.apply(null, ground) +
       (Terrain.isSlope(terrain.tileSlope(tile)) ? 0 : 1),
     shape = id % Road_PAVED,
     tops = shape < 10 ? RAMP_TOPS[shape] : [1, 1, 1, 1];
 
-  return tops.map(function (t) {
-    return t ? top : top - 1;
+  return tops.map(function (up) {
+    return up ? high : high - 1;
   });
 }
 

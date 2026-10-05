@@ -188,6 +188,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   the two meet at the same height, so there is no crossroad over a step,
   and cars do not drive over one. The preview of a road being laid shows
   it and its neighbours exactly as they will be laid.
+- Land can be raised and lowered under buildings and roads, the way
+  OpenTTD shapes land under its foundations (`src/core/city.js` stays,
+  `src/client/js/road.js` fitTo): whatever stands there keeps the height it
+  is at, and the concrete under it takes up the difference - ground raised
+  to the top of a base replaces it, ground taken down from under a building
+  or a road leaves it on a base, a whole step over flat ground if need be,
+  kept in the save (core/building base, a road's look top). Anything that
+  would have to move up, sink more than a step below it, or end up in the
+  water or, for a road, on the shore, is still in the way.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches
