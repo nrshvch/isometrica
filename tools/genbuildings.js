@@ -23,9 +23,10 @@
  * every kind of house and footprint; utilities.png the water tower.
  *
  * Usage:
- *   node tools/genbuildings.js [outDir]
+ *   node tools/genbuildings.js [outDir] [sheet...]
  *
- * outDir is assets/previews unless given.
+ * outDir is assets/previews unless given; with sheets named - buildings,
+ * sites, shops, houses, utilities, parks - only those are written.
  */
 
 var fs = require("fs");
@@ -59,10 +60,14 @@ var DEFAULT_OUT = path.join(ROOT, "assets/previews");
 //as in data/flats and data/offices: which generator, how many sections side
 //by side, whether there is a row of yard in front and which yards
 var KINDS = [
-  { gen: "flats", cells: 1, yard: false, storeys: [2, 3, 4] },
-  { gen: "flats", cells: 1, yard: true, storeys: [2, 3, 4] },
-  { gen: "flats", cells: 2, yard: false, storeys: [2, 3, 4] },
-  { gen: "flats", cells: 2, yard: true, storeys: [2, 3, 4] },
+  { gen: "flats", cells: 1, yard: false, storeys: [2, 3] },
+  { gen: "flats", cells: 1, yard: true, storeys: [3] },
+  { gen: "flats", cells: 2, yard: false, storeys: [3] },
+  { gen: "flats", cells: 2, yard: true, storeys: [3] },
+  { gen: "flats", cells: 3, yardRows: 0, storeys: [3] },
+  { gen: "flats", cells: 3, yardRows: 1, storeys: [4] },
+  { gen: "flats", cells: 1, yardRows: 2, storeys: [4] },
+  { gen: "flats", cells: 2, yardRows: 2, storeys: [4] },
   { gen: "offices", cells: 1, yard: true, storeys: [3], yards: ["parking"] },
   {
     gen: "offices",
@@ -71,10 +76,33 @@ var KINDS = [
     storeys: [4],
     yards: ["parking", "plaza"],
   },
+  { gen: "offices", cells: 2, yardRows: 0, storeys: [4] },
+  { gen: "offices", cells: 3, yardRows: 0, storeys: [4] },
+  {
+    gen: "offices",
+    cells: 1,
+    yardRows: 2,
+    storeys: [6],
+    yards: ["plaza", "parking"],
+  },
+  {
+    gen: "offices",
+    cells: 2,
+    yardRows: 2,
+    storeys: [6],
+    yards: ["plaza", "parking"],
+  },
+  {
+    gen: "offices",
+    cells: 3,
+    yardRows: 1,
+    storeys: [5],
+    yards: ["parking", "plaza"],
+  },
 ];
 var GRASS = [112, 158, 84];
-var CELL_W = 200,
-  CELL_H = 230;
+var CELL_W = 260,
+  CELL_H = 300;
 
 /**
  * What stands on each tile of a block, as client/compoundbuilding picks it -
@@ -86,27 +114,34 @@ function plan(kind, storeys, palette, n) {
     detail = data.details[n % data.details.length],
     tiles = [];
 
+  var rows = stacking.yardRows(kind);
+
   for (var c = 0; c < kind.cells; c++) {
-    var ends = kind.cells === 1 ? "both" : c === 0 ? "start" : "end",
-      section = palette + "/" + ends + "/",
+    var section = palette + "/" + stacking.endsOf(c, kind.cells) + "/",
       gen = kind.gen,
-      parts = [gen + "/ground/" + section + (kind.yard ? "yard" : "street")];
+      parts = [gen + "/ground/" + section + (rows > 0 ? "yard" : "street")];
 
     for (var k = 1; k < storeys; k++)
       parts.push(gen + "/upper/" + section + detail);
 
     parts.push(gen + "/roof/" + section + ((n + c) % data.roofs));
-    tiles.push({ x: c, y: kind.yard ? 1 : 0, parts: parts });
+    tiles.push({ x: c, y: rows, parts: parts });
 
-    if (kind.yard)
+    for (var y = 0; y < rows; y++)
       tiles.push({
         x: c,
-        y: 0,
-        parts: [gen + "/yard/" + yards[(n + c) % yards.length] + "/" + (c % 2)],
+        y: y,
+        parts: [
+          gen +
+            "/yard/" +
+            yards[(n + c + y) % yards.length] +
+            "/" +
+            ((c + y) % 2),
+        ],
       });
   }
 
-  return { tiles: tiles, sizeX: kind.cells, sizeY: kind.yard ? 2 : 1 };
+  return { tiles: tiles, sizeX: kind.cells, sizeY: 1 + rows };
 }
 
 function canvas(cols, rows) {
@@ -389,6 +424,10 @@ function footprintSheet(gen) {
 
 function main() {
   var out = path.resolve(process.argv[2] || DEFAULT_OUT),
+    only = process.argv.slice(3),
+    wanted = function (sheet) {
+      return only.length === 0 || only.indexOf(sheet) !== -1;
+    },
     stages = stacking.STAGES.length + 1,
     rows = [],
     cols = 0;
@@ -401,6 +440,16 @@ function main() {
       cols = Math.max(cols, palettes.length * 4);
     });
   });
+
+  if (wanted("shops"))
+    write(footprintSheet("shops"), path.join(out, "shops.png"));
+  if (wanted("houses"))
+    write(footprintSheet("houses"), path.join(out, "houses.png"));
+  if (wanted("utilities"))
+    write(footprintSheet("utilities"), path.join(out, "utilities.png"));
+  if (wanted("parks"))
+    write(footprintSheet("parks"), path.join(out, "parks.png"));
+  if (!wanted("buildings") && !wanted("sites")) return;
 
   var blocks = canvas(cols, rows.length),
     sites = canvas((stages + 1) * 2, rows.length + 1);
@@ -451,12 +500,8 @@ function main() {
     });
   });
 
-  write(blocks, path.join(out, "buildings.png"));
-  write(footprintSheet("shops"), path.join(out, "shops.png"));
-  write(footprintSheet("houses"), path.join(out, "houses.png"));
-  write(footprintSheet("utilities"), path.join(out, "utilities.png"));
-  write(footprintSheet("parks"), path.join(out, "parks.png"));
-  write(sites, path.join(out, "sites.png"));
+  if (wanted("buildings")) write(blocks, path.join(out, "buildings.png"));
+  if (wanted("sites")) write(sites, path.join(out, "sites.png"));
 }
 
 main();

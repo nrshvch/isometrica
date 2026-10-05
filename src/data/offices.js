@@ -1,7 +1,8 @@
 /**
  * The office blocks put together out of parts the game paints (see
- * shared/gen/offices and client/compoundbuilding): a tower of one section with
- * its car park in front, and a wall of two with a car park and a plaza. What
+ * shared/gen/offices and client/compoundbuilding): a tower of one section, a
+ * wall of two or three, right on the street or behind a car park and a plaza
+ * - a row of them, or two in front of the taller ones. What
  * a block looks like, its glass and its roofs, is picked for each one as it
  * goes up.
  *
@@ -19,26 +20,75 @@ var PER_STOREY = 12,
   MONEY_PER_JOB = 7,
   COST_PER_JOB = 700;
 
-//cells: how many sections side by side; yards: what is in front of them
+//cells: how many sections side by side; yards: what is in front of them, as
+//many rows of it as rows says. The first two keep the codes they were given
+//by their sections and storeys, the rest are numbered by their footprint
 var BLOCKS = [
   {
+    code: 1130,
     layout: "officetower",
     cells: 1,
+    rows: 1,
     storeys: 3,
     yards: ["parking"],
     name: "office tower",
   },
   {
+    code: 1240,
     layout: "officeblock",
     cells: 2,
+    rows: 1,
     storeys: 4,
     yards: ["parking", "plaza"],
     name: "office block",
   },
+  {
+    code: 2204,
+    layout: "officefront",
+    cells: 2,
+    rows: 0,
+    storeys: 4,
+    name: "office block on the street",
+  },
+  {
+    code: 2304,
+    layout: "officerow",
+    cells: 3,
+    rows: 0,
+    storeys: 4,
+    name: "office row",
+  },
+  {
+    code: 2126,
+    layout: "officespire",
+    cells: 1,
+    rows: 2,
+    storeys: 6,
+    yards: ["plaza", "parking"],
+    name: "office tower with a plaza",
+  },
+  {
+    code: 2226,
+    layout: "officetwin",
+    cells: 2,
+    rows: 2,
+    storeys: 6,
+    yards: ["plaza", "parking"],
+    name: "office towers",
+  },
+  {
+    code: 2315,
+    layout: "officewide",
+    cells: 3,
+    rows: 1,
+    storeys: 5,
+    yards: ["parking", "plaza"],
+    name: "office headquarters",
+  },
 ];
 
 function code(block) {
-  return BASE + block.cells * 100 + block.storeys * 10;
+  return block.code;
 }
 
 /**
@@ -52,7 +102,7 @@ function buildings() {
 
     out[code(block)] = {
       sizeX: block.cells,
-      sizeY: 2,
+      sizeY: 1 + block.rows,
       buildingCode: code(block),
       classCode: BuildingClassCode.commerce,
       producing: {
@@ -75,7 +125,8 @@ function buildings() {
         gen: "offices",
         layout: block.layout,
         cells: block.cells,
-        yard: true,
+        yard: block.rows > 0,
+        yardRows: block.rows,
         yards: block.yards,
         storeys: block.storeys,
       },
