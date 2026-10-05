@@ -56,6 +56,11 @@ Building.prototype.permanent = true;
 //by whoever first draws it, and kept in the save with the rest of it - the
 //core only keeps it, see client/compoundbuilding
 Building.prototype.look = null;
+//how high it stands, where the ground under it was taken down from under it
+//after it went up (City#terraform): on concrete all the way down to the
+//ground there. Undefined for one standing at the highest corner under it,
+//as it was built
+Building.prototype.base = undefined;
 Building.prototype.events = events;
 
 Building.prototype.init = function (world, code, tile, rot, done) {

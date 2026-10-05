@@ -337,13 +337,19 @@ Terrain.prototype.planLevel = function (tiles, direction) {
  * is gone for good.
  *
  * @param plan {Object} as Terrain#planLevel returned it
+ * @param [keep] {Object} tile -> true for every tile whatever stands on is to
+ *        stay standing (City#terraform)
  */
-Terrain.prototype.modify = function (plan) {
+Terrain.prototype.modify = function (plan, keep) {
   var tiles = plan.tiles,
     i;
 
   for (i = 0; i < tiles.length; i++) {
-    if (this.clearedTiles[tiles[i]] !== true) this.clear(tiles[i]);
+    //what stands on a tile kept stays: the ground is cleared for good, but
+    //nothing is cleared off it
+    if (keep !== undefined && keep[tiles[i]] === true)
+      this.clearedTiles[tiles[i]] = true;
+    else if (this.clearedTiles[tiles[i]] !== true) this.clear(tiles[i]);
   }
 
   for (var p in plan.points) this.gridPoints[p] = plan.points[p];
@@ -352,6 +358,23 @@ Terrain.prototype.modify = function (plan) {
     points: plan.points,
     tiles: tiles,
   });
+};
+
+/**
+ * The ground as plan would leave it, to look at without moving it: the
+ * terrain itself, but for the grid points the plan moves.
+ *
+ * @param plan {Object} as Terrain#planLevel returned it
+ * @returns {Terrain}
+ */
+Terrain.prototype.after = function (plan) {
+  var ground = Object.create(this);
+
+  ground.gridPoints = Object.create(this.gridPoints);
+
+  for (var p in plan.points) ground.gridPoints[p] = plan.points[p];
+
+  return ground;
 };
 
 /**

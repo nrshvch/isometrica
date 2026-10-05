@@ -285,6 +285,8 @@ CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
  * @param [progress] {number} 0..1, for one saved while going up
  * @param [look] {Object} what it looks like, for one put together out of
  *        parts - as whoever drew it first picked it (client/compoundbuilding)
+ * @param [base] {number} how high it stands, the ground taken down from under
+ *        it (core/building base)
  * @returns {Building}
  */
 CityBuildings.prototype.restore = function (
@@ -293,6 +295,7 @@ CityBuildings.prototype.restore = function (
   rotation,
   progress,
   look,
+  base,
 ) {
   //saves written before the codes were made numbers carry them as strings
   code = parseInt(code, 10);
@@ -310,6 +313,7 @@ CityBuildings.prototype.restore = function (
   );
 
   if (look !== undefined) building.look = look;
+  if (typeof base === "number") building.base = base;
 
   this.city.root.buildings.build(building);
 
@@ -343,6 +347,8 @@ CityBuildings.prototype.save = function () {
           : undefined,
       //what it looks like, for one put together out of parts picked for it
       look: building.look,
+      //how high it stands, the ground taken down from under it
+      base: building.base,
     });
   }
 
@@ -360,6 +366,7 @@ CityBuildings.prototype.load = function (list) {
       list[i].rotation,
       list[i].progress,
       list[i].look,
+      list[i].base,
     );
 };
 

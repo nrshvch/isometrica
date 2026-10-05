@@ -33,7 +33,7 @@ var Terrain = Core.Terrain;
  * @param rotation {number|boolean} see core/rotation
  * @returns {{x, y, sizeX, sizeY, rotation, z}} x, y the tile in the world
  */
-function drawnAt(staticData, tile, rotation) {
+function drawnAt(staticData, tile, rotation, base) {
   var r = View.anchor(
     Terrain.extractX(tile),
     Terrain.extractY(tile),
@@ -42,15 +42,19 @@ function drawnAt(staticData, tile, rotation) {
   );
 
   r.rotation = (Rotation.turns(rotation) + View.turns()) & 3;
-  //level, at the highest corner under it: where the ground is lower it
-  //stands on a concrete base (addFoundations)
-  r.z = groundTop(
-    vkaria.core.world.terrain,
-    Terrain.extractX(tile),
-    Terrain.extractY(tile),
-    Rotation.sizeX(staticData, rotation),
-    Rotation.sizeY(staticData, rotation),
-  );
+  //level, at the highest corner under it - or as high as it was kept when
+  //the ground was taken down from under it (core/building base): where the
+  //ground is lower it stands on a concrete base (addFoundations)
+  r.z =
+    typeof base === "number"
+      ? base
+      : groundTop(
+          vkaria.core.world.terrain,
+          Terrain.extractX(tile),
+          Terrain.extractY(tile),
+          Rotation.sizeX(staticData, rotation),
+          Rotation.sizeY(staticData, rotation),
+        );
 
   return r;
 }
@@ -214,7 +218,7 @@ BuildingView.prototype.update = function () {
     this.stageTimer = null;
 
     //as it is seen, the camera turned the way it is (see drawnAt)
-    var at = drawnAt(staticData, b.data.tile, b.data.rotation);
+    var at = drawnAt(staticData, b.data.tile, b.data.rotation, b.data.base);
 
     //clear old GOs - each one lets go of the view as it is destroyed, so
     //off a copy of the list

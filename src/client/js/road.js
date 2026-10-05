@@ -150,21 +150,81 @@ Road.decide = function (terrain, tile, isRoad) {
  *        undefined for one that is not (see Road.fix)
  */
 Road.lay = function (terrain, tile, net) {
-  var lay = net.lay(tile),
-    slopeId = terrain.tileSlope(tile);
+  var lay = net.lay(tile);
 
   //kept only for the ground it was laid on
-  if (
-    lay !== undefined &&
-    (Terrain.isSlope(slopeId)
-      ? lay === 0 ||
-        RAMP_OF[slopeId] === lay ||
-        wedges(terrain, tile).indexOf(lay) !== -1
-      : lay >= 1 && lay <= 4)
-  )
-    return lay;
+  if (lay !== undefined && fits(terrain, tile, lay)) return lay;
 
   return Road.decide(terrain, tile, net.isRoad);
+};
+
+//whether a road on tile can be laid lay on the ground there: flat
+//anywhere; a ramp up a smooth slope, on a wedge, or on flat ground
+function fits(terrain, tile, lay) {
+  var slopeId = terrain.tileSlope(tile);
+
+  if (lay === 0) return true;
+  if (!Terrain.isSlope(slopeId)) return lay >= 1 && lay <= 4;
+
+  return RAMP_OF[slopeId] === lay || wedges(terrain, tile).indexOf(lay) !== -1;
+}
+
+/**
+ * How the road model stands on can stay standing when the ground under it
+ * moves to where after has it (core/terrain after) - the way OpenTTD keeps
+ * a road on its foundation as the land under it is shaped: at the very
+ * height it is at all round, laid however the new ground lets it be, on
+ * concrete a step deep at most. Raised up to a levelled road, the ground
+ * takes the place of its base; taken down from under one, it is levelled
+ * on a base - on flat ground, a whole step over it, kept that high
+ * (RoadView deck). Never on the shore.
+ *
+ * @param roadman {Roadman}
+ * @param model {Object} the road's core model
+ * @param after {Terrain} the ground as it would be
+ * @returns {Object|null} its look then - see Road.setLay - or null for a
+ *          road the new ground cannot keep where it is
+ */
+Road.fitTo = function (terrain, roadman, model, after) {
+  var tile = model.tile,
+    net = Road.network(roadman),
+    was = Road.deck(terrain, tile, net),
+    ground = [
+      after.getGridPointHeight(tile),
+      after.getGridPointHeight(tile + 1),
+      after.getGridPointHeight(tile + Terrain.dy),
+      after.getGridPointHeight(tile + Terrain.dy + 1),
+    ],
+    low = Math.min.apply(null, ground),
+    high = Math.max.apply(null, ground),
+    lays = [Road.lay(terrain, tile, net), 0, 1, 2, 3, 4];
+
+  if (low <= 0) return null;
+
+  function same(d) {
+    return d.every(function (h, k) {
+      return h === was[k] && h >= ground[k] && h - low <= 1;
+    });
+  }
+
+  for (var i = 0; i < lays.length; i++)
+    if (
+      fits(after, tile, lays[i]) &&
+      same(RoadView.deck(after, tile, pieceOf(lays[i]), null))
+    )
+      return { lay: lays[i] };
+
+  //flat, and kept up over the ground that went down from under it
+  if (
+    was.every(function (h) {
+      return h === was[0];
+    }) &&
+    was[0] >= high &&
+    was[0] - low <= 1
+  )
+    return { lay: 0, top: was[0] };
+
+  return null;
 };
 
 /**
