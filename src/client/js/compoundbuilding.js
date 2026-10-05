@@ -20,7 +20,14 @@
 //(shared/gen/stacking lifts), put together once on the canvas cache's pages
 //(SpriteCache#getComposite) - and shared with every other block that has the
 //same parts on a tile.
-import { lifts, kindOf, siteTiles, lotTiles } from "shared/gen/stacking";
+import {
+  lifts,
+  kindOf,
+  siteTiles,
+  lotTiles,
+  yardRows,
+  endsOf,
+} from "shared/gen/stacking";
 import BuildingClassCode from "data/classcode";
 
 /**
@@ -110,33 +117,31 @@ function pick(sprites, compound, random, showcase) {
   var choices = compound.yards || meta.yards,
     palette = meta.palettes[any(meta.palettes.length)],
     detail = meta.details[any(meta.details.length)],
+    rows = yardRows(compound),
     yards = [],
     tiles = [],
     cells = compound.cells;
 
   for (var c = 0; c < cells; c++) {
-    var ends = cells === 1 ? "both" : c === 0 ? "start" : "end",
-      section = palette + "/" + ends + "/",
-      parts = [
-        gen + "/ground/" + section + (compound.yard ? "yard" : "street"),
-      ];
+    var section = palette + "/" + endsOf(c, cells) + "/",
+      parts = [gen + "/ground/" + section + (rows > 0 ? "yard" : "street")];
 
     for (var k = 1; k < compound.storeys; k++)
       parts.push(gen + "/upper/" + section + detail);
 
     parts.push(gen + "/roof/" + section + any(meta.roofs));
 
-    //the wall stands behind its yard
-    tiles.push({ x: c, y: compound.yard ? 1 : 0, parts: parts });
+    //the wall stands behind its yards
+    tiles.push({ x: c, y: rows, parts: parts });
 
-    if (compound.yard) {
+    for (var y = rows - 1; y >= 0; y--) {
       if (yards.length === 0) yards = choices.slice();
 
       var yard = yards.splice(showcase ? 0 : any(yards.length), 1)[0];
 
       tiles.push({
         x: c,
-        y: 0,
+        y: y,
         parts: [gen + "/yard/" + yard + "/" + any(meta.yardVariants)],
       });
     }
@@ -309,7 +314,7 @@ function pieces(sprites, look, compound, turns, seed) {
 function footprint(compound) {
   if (compound.sizeX !== undefined) return [compound.sizeX, compound.sizeY];
 
-  return [compound.cells, compound.yard ? 2 : 1];
+  return [compound.cells, 1 + yardRows(compound)];
 }
 
 /**
@@ -544,31 +549,46 @@ function turn(x, y, sizeX, sizeY, turns) {
  *          building with none
  */
 function chimneys(sprites, look, compound, turns) {
-  var first = look.tiles[0] && look.tiles[0].parts[0],
-    meta = first && sprites.generated[first.split("/")[0]],
-    tops =
-      meta && meta.smoke && meta.smoke[first.split("/").slice(0, -2).join("/")];
-
-  if (!tops) return [];
-
   var size = footprint(compound),
     X = size[0] * 32,
-    Y = size[1] * 32;
+    Y = size[1] * 32,
+    seen = {},
+    out = [];
 
-  return tops.map(function (t) {
-    var x = t[0],
-      y = t[1],
-      at = [
-        [x, y],
-        [y, X - x],
-        [X - x, Y - y],
-        [Y - y, x],
-      ][turns];
+  //every house in it once - a hamlet of cottages has a house to each of its
+  //tiles, each as it would stand on its own, moved over to where it is
+  look.tiles.forEach(function (tile) {
+    var first = tile.parts[0],
+      meta = first && sprites.generated[first.split("/")[0]];
 
-    //a pixel up is a step of the ground for every eight - the camera looks
-    //down at thirty degrees (see client/config tileZStep)
-    return [at[0] / 32 - 0.5, t[2] / 8, at[1] / 32 - 0.5];
+    if (!meta || !meta.smoke) return;
+
+    var p = first.split("/"),
+      id = p.slice(0, -2).join("/"),
+      dx = (tile.x - +p[p.length - 2]) * 32,
+      dy = (tile.y - +p[p.length - 1]) * 32,
+      key = id + "@" + dx + "," + dy;
+
+    if (!meta.smoke[id] || seen[key]) return;
+    seen[key] = true;
+
+    meta.smoke[id].forEach(function (t) {
+      var x = t[0] + dx,
+        y = t[1] + dy,
+        at = [
+          [x, y],
+          [y, X - x],
+          [X - x, Y - y],
+          [Y - y, x],
+        ][turns];
+
+      //a pixel up is a step of the ground for every eight - the camera
+      //looks down at thirty degrees (see client/config tileZStep)
+      out.push([at[0] / 32 - 0.5, t[2] / 8, at[1] / 32 - 0.5]);
+    });
   });
+
+  return out;
 }
 
 //the catalogue's pictures, by kind of building, once drawn
