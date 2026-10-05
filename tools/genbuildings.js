@@ -20,7 +20,8 @@
  * shops of it put together at random across - each as it is and turned a
  * quarter turn - and under each footprint's row the same shops going up.
  * houses.png has the houses of shared/gen/houses the same way, a row for
- * every kind of house and footprint; utilities.png the water tower.
+ * every kind of house and footprint; utilities.png the water tower and the
+ * pump station.
  *
  * Usage:
  *   node tools/genbuildings.js [outDir] [sheet...]
