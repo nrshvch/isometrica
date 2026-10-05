@@ -643,8 +643,14 @@ function siteBase(b, s) {
 
 /* --- Parts ----------------------------------------------------------- */
 
-//where a section stands in its wall: alone, or at its start or end
-var ENDS = { both: [true, true], start: [true, false], end: [false, true] };
+//where a section stands in its wall: alone, at its start or end, or in the
+//middle of a wall of three, neither end of it
+var ENDS = {
+  both: [true, true],
+  start: [true, false],
+  end: [false, true],
+  mid: [false, false],
+};
 
 //the ways a part is painted: as it is, and turned one, two and three
 //quarter turns - so that a block shows whichever side faces the camera

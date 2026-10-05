@@ -48,6 +48,27 @@ export function lifts(kinds, storey) {
 }
 
 /**
+ * How many rows of yard a block has in front of it (data/flats, offices): as
+ * many as it says, or one for a block that only says it has a yard.
+ */
+export function yardRows(compound) {
+  if (compound.yardRows !== undefined) return compound.yardRows;
+
+  return compound.yard ? 1 : 0;
+}
+
+/**
+ * Where section c of a wall `cells` long stands in it, as its parts are
+ * named: alone, at its start or end, or in the middle of it.
+ */
+export function endsOf(c, cells) {
+  if (cells === 1) return "both";
+  if (c === 0) return "start";
+
+  return c === cells - 1 ? "end" : "mid";
+}
+
+/**
  * What a part is, by its name: "flats/upper/sand/start/01" is an upper.
  */
 export function kindOf(part) {
