@@ -71,21 +71,24 @@ export var NAMES = [];
     );
 });
 
-//and under a road that is a ramp on a base: its top the ramp, up to two of
-//the corners side by side - W and N, N and E, E and S, or S and W - and one
-//of those two a step over the ground, the ground rising to the other only;
-//or both of them, a ramp raised over flat ground (client/road profile):
-//"gen/foundations/ramp/1100/0100", "gen/foundations/ramp/1100/1100"
+//and under a road that is a ramp on concrete: its top the ramp, up at two
+//of the corners side by side - W and N, N and E, E and S, or S and W - and
+//a step under it at whichever of the corners it is over the ground there
+//(client/road), so long as that is ground a tile can have, a step from top
+//to bottom at most: "gen/foundations/ramp/1100/0100" - a wedge -
+//"gen/foundations/ramp/1100/1100" - up from flat ground - and so on
 ["1100", "0110", "0011", "1001"].forEach(function (tops) {
-  tops.split("").forEach(function (t, k) {
-    if (t !== "1") return;
+  var up = tops.split("").map(Number);
 
-    var drops = [0, 0, 0, 0];
+  for (var i = 1; i < 16; i++) {
+    var drops = [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1],
+      ground = up.map(function (t, k) {
+        return t - drops[k];
+      });
 
-    drops[k] = 1;
-    NAMES.push("gen/foundations/ramp/" + tops + "/" + drops.join(""));
-  });
-  NAMES.push("gen/foundations/ramp/" + tops + "/" + tops);
+    if (Math.max.apply(null, ground) - Math.min.apply(null, ground) <= 1)
+      NAMES.push("gen/foundations/ramp/" + tops + "/" + drops.join(""));
+  }
 });
 
 /**

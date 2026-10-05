@@ -52,8 +52,8 @@ function onBuildingLoad(sender, building, self) {
   var data = model.data;
 
   if (data.classCode === BuildingClassCode.road) {
-    //one from a save from before roads were laid for good, as it was drawn
-    Road.fixLoaded(self.root.core.terrain, self.root.core, model);
+    //one put down without a surface gets the one that suits it best
+    Road.settle(self.root.core.terrain, model);
 
     addRoad(self, model.tile, building);
 
