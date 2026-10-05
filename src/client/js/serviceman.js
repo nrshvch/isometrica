@@ -21,8 +21,9 @@
  * is not on screen in the first place.
  *
  * A tap on nothing - bare ground, a road, the sea - while nothing is being
- * looked at puts all the words over the buildings away, and the next one
- * brings them back: the town without its warnings, for a picture of it.
+ * looked at puts all the words over the buildings away, and the grid over
+ * the ground with them, and the next one brings them back: the town without
+ * its warnings, for a picture of it.
  */
 import engine from "engine";
 import Numeral from "numeral";
@@ -400,6 +401,8 @@ ServiceMan.prototype.inspected = function () {
 ServiceMan.prototype.toggleLabels = function () {
   this._labelsHidden = !this._labelsHidden;
   this.root.cityman.hideNames(this._labelsHidden);
+  //and the grid over the ground: the town on its own
+  this.root.terrain.showGrid(!this._labelsHidden);
   refresh(this);
 };
 
