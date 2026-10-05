@@ -3,13 +3,17 @@
  * a piece for every way a tile of road joins up with the ones next to it,
  * and a ramp for every way the ground can slope under a straight one.
  *
- * Each comes two ways:
+ * Each comes four ways:
  *
  *   - plain: the asphalt and nothing else, a strip of gravel along its
  *     edges, a dashed line down the middle - a road out in the country;
  *   - paved: the same asphalt between kerbs, with a pavement along both sides
  *     and round the corners, and zebra crossings over a junction - a street
- *     with buildings on it (which piece a road gets is client/road's to say).
+ *     with buildings on it (which piece a road gets is client/road's to say);
+ *   - gravel: a track of gravel, packed paler where the wheels go, its edges
+ *     darker - what the village's lanes are laid in;
+ *   - cobble: setts of stone between a gutter of darker stone either side -
+ *     the old town's streets.
  *
  * And a street light, apart: a sprite of its own, for it is tall and has to
  * be drawn among the buildings and the cars rather than under them.
@@ -33,6 +37,10 @@ import {
 } from "./blocks.js";
 
 var GRAVEL = [150, 140, 122],
+  TRACK = [184, 168, 134],
+  TRACK_EDGE = [146, 130, 100],
+  SETTS = [154, 146, 136],
+  GUTTER = [110, 104, 98],
   KERB = [204, 202, 196],
   LAMP = [252, 238, 180],
   POLE = [112, 120, 130];
@@ -53,7 +61,8 @@ var SKIN = 0.1;
 //what the asphalt, the gravel and the paving slabs are made of
 var TARMAC = { material: "asphalt", base: 0, storey: 12 },
   SLABS = { material: "slabs", base: 0, storey: 12 },
-  STONES = { material: "gravel", base: 0, storey: 12 };
+  STONES = { material: "gravel", base: 0, storey: 12 },
+  COBBLED = { material: "setts", base: 0, storey: 12 };
 
 //which way each of a piece's four joins goes, in the order its name gives
 //them - as client/road's profile reads its neighbours: -x, -y, +x, +y
@@ -265,6 +274,8 @@ function pavement(b, joins, ramp) {
 function piece(joins, ramp, paved) {
   var b = [];
 
+  if (paved === "gravel" || paved === "cobble") return laid(joins, ramp, paved);
+
   //a strip of gravel along the edges of the asphalt - kept on the tile, or
   //it would lie across the next tile's asphalt where they meet. On a ramp
   //it is two wide: a line on a slope drifts across the pixels as the slope
@@ -302,6 +313,82 @@ function piece(joins, ramp, paved) {
       if (joins[s]) n++;
     });
     if (n > 2 && !ramp) crossings(b, joins, SKIN);
+  }
+
+  return b;
+}
+
+/**
+ * A piece of a gravel track or a cobbled street: what it is laid in over
+ * the asphalt's width, a strip of something darker along its edges - the
+ * track's churned edges, the street's gutter - and on the track a paler
+ * crown where the wheels have packed it down.
+ */
+function laid(joins, ramp, kind) {
+  var b = [],
+    g = ramp ? 2 : 1,
+    gravel = kind === "gravel",
+    edge = gravel ? TRACK_EDGE : GUTTER,
+    fill = gravel ? TRACK : SETTS,
+    finish = gravel ? STONES : COBBLED,
+    alongX = joins["-x"] || joins["+x"],
+    alongY = joins["-y"] || joins["+y"];
+
+  function lay(x0, x1, y0, y1, color, crown) {
+    patch(b, ramp, x0, x1, y0, y1, SKIN, SKIN, color, crown || finish);
+  }
+
+  //the edges, then what it is laid in inside them - in from them across
+  //the way it goes, never across a join
+  asphaltRects(joins).forEach(function (r) {
+    lay(
+      Math.max(0, r[0] - g),
+      Math.min(TILE, r[1] + g),
+      Math.max(0, r[2] - g),
+      Math.min(TILE, r[3] + g),
+      edge,
+    );
+  });
+
+  var i = gravel ? 0 : 1;
+
+  //the middle, in from its sides with no join
+  lay(
+    A0 + (joins["-x"] ? 0 : i),
+    A1 - (joins["+x"] ? 0 : i),
+    A0 + (joins["-y"] ? 0 : i),
+    A1 - (joins["+y"] ? 0 : i),
+    fill,
+  );
+  //and the arms, in from their sides
+  if (joins["-x"]) lay(0, A0, A0 + i, A1 - i, fill);
+  if (joins["+x"]) lay(A1, TILE, A0 + i, A1 - i, fill);
+  if (joins["-y"]) lay(A0 + i, A1 - i, 0, A0, fill);
+  if (joins["+y"]) lay(A0 + i, A1 - i, A1, TILE, fill);
+
+  //the crown of a track, paler down the middle of each way it goes
+  if (gravel) {
+    var m = (A0 + A1) / 2,
+      crown = lighter(TRACK, 0.08);
+
+    if (alongX || !alongY)
+      lay(
+        joins["-x"] ? 0 : A0 + 2,
+        joins["+x"] ? TILE : A1 - 2,
+        m - 3,
+        m + 3,
+        crown,
+        STONES,
+      );
+    if (alongY)
+      lay(
+        m - 3,
+        m + 3,
+        joins["-y"] ? 0 : A0 + 2,
+        joins["+y"] ? TILE : A1 - 2,
+        crown,
+        STONES,
+      );
   }
 
   return b;
@@ -358,7 +445,8 @@ function streetLight(at) {
 }
 
 /**
- * Every sprite, by name: "gen/roads/plain/1010" - the joins in the order
+ * Every sprite, by name: "gen/roads/plain/1010" - plain, paved, gravel or
+ * cobble - the joins in the order
  * client/road reads its neighbours, -x, -y, +x, +y - "gen/roads/paved/ramp3",
  * and "gen/roads/light/x" - the street light beside a road along x, along y,
  * or at a corner.
@@ -366,8 +454,8 @@ function streetLight(at) {
 function sprites() {
   var out = {};
 
-  ["plain", "paved"].forEach(function (kind) {
-    var paved = kind === "paved";
+  ["plain", "paved", "gravel", "cobble"].forEach(function (kind) {
+    var paved = kind === "plain" ? false : kind === "paved" ? true : kind;
 
     for (var m = 0; m < 16; m++) {
       var bits = [(m >> 3) & 1, (m >> 2) & 1, (m >> 1) & 1, m & 1],
@@ -441,7 +529,9 @@ export function paint(name) {
   var s = SPRITES[name],
     picture = free(boxesOf(name));
 
-  if (s.ramp) stamps(picture, s.ramp);
+  //the dashes down the middle of an asphalt ramp
+  if (s.ramp && (s.paved === true || s.paved === false))
+    stamps(picture, s.ramp);
 
   return iso.toImage(picture);
 }

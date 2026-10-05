@@ -146,7 +146,11 @@ GameScreen.prototype.execute = function (module, args) {
         break;
       case "build":
         gs.show("world");
-        gs.client.buildman.build(args[0]);
+        //and for a road, what it is laid in (WorldScreen pickRoad)
+        gs.client.buildman.build(
+          args[0],
+          args[1] ? { material: args[1] } : undefined,
+        );
         //gs.worldScreen().show("build");
         //gs.client.tools.selectTool(ToolCode.builder).setBuilding(args[0]);
         break;

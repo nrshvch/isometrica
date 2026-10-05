@@ -440,12 +440,14 @@ Road.plan = function (terrain, roadman, tiles, run) {
  * street (see Roadman#paved).
  *
  * @param net {{surface: function(number)}} the roads' surfaces (Road.network)
- * @param [paved] {boolean}
+ * @param [kind] {boolean|string} what it is laid in: "plain" or "paved"
+ *        asphalt - or true for paved - "gravel" or "cobble"
  * @returns {number} the piece: 9abcd for one joined up towards -x, -y, +x and
  *          +y as the digits say, 1..4 for a ramp, 1 up towards -y, 2 -x, 3 +y
- *          and 4 +x, RoadView.PAVED more for the paved one - see RoadView
+ *          and 4 +x, RoadView.PAVED more for the paved one, twice and three
+ *          times that for gravel and cobbles - see RoadView
  */
-Road.profile = function (tile, net, paved) {
+Road.profile = function (tile, net, kind) {
   var surface = net.surface(tile),
     id = Road.shapeOf(surface);
 
@@ -457,7 +459,44 @@ Road.profile = function (tile, net, paved) {
     id = 90000 + j[0] * 1000 + j[1] * 100 + j[2] * 10 + j[3];
   }
 
-  return paved ? id + RoadView.PAVED : id;
+  if (kind === true) kind = "paved";
+
+  return id + Math.max(0, RoadView.KINDS.indexOf(kind)) * RoadView.PAVED;
+};
+
+/**
+ * What a road is laid in (see Road.profile): gravel or cobbles, as it was
+ * laid - or asphalt, paved for a street of the city's (Roadman#paved), plain
+ * otherwise. Roads laid before there was any choice are asphalt.
+ */
+Road.kindOf = function (roadman, data) {
+  var material = data.look && data.look.material;
+
+  if (material === "gravel" || material === "cobble") return material;
+
+  return roadman.paved(data.tile) ? "paved" : "plain";
+};
+
+/**
+ * What a new road on tile is laid in, the player having picked `material`:
+ * that - but gravel laid next to the old town (shared/gen/oldtown) is
+ * cobbled, the way its streets are.
+ *
+ * @param material {string} "gravel", "cobble" or "asphalt"
+ * @param buildings {{get: function(number)}} core BuildingService
+ */
+Road.materialAt = function (material, tile, buildings) {
+  if (material !== "gravel") return material;
+
+  for (var dx = -1; dx <= 1; dx++)
+    for (var dy = -1; dy <= 1; dy++) {
+      var b = buildings.get(tile + dx * Terrain.dx + dy * Terrain.dy);
+
+      if (b !== null && b.data.compound && b.data.compound.gen === "oldtown")
+        return "cobble";
+    }
+
+  return material;
 };
 
 /**
@@ -476,7 +515,7 @@ Road.prototype.updateProfile = function () {
     id = Road.profile(
       this.data.tile,
       Road.network(roadman),
-      roadman.paved(this.data.tile),
+      Road.kindOf(roadman, this.data),
     );
 
   //the same piece as it was: nothing to draw again

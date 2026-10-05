@@ -46,6 +46,7 @@ var GENERATORS = {
   houses: require("../src/shared/gen/houses.js"),
   utilities: require("../src/shared/gen/utilities.js"),
   parks: require("../src/shared/gen/parks.js"),
+  oldtown: require("../src/shared/gen/oldtown.js"),
 };
 
 //what each generator describes, once
@@ -450,6 +451,8 @@ function main() {
     write(footprintSheet("utilities"), path.join(out, "utilities.png"));
   if (wanted("parks"))
     write(footprintSheet("parks"), path.join(out, "parks.png"));
+  if (wanted("oldtown"))
+    write(footprintSheet("oldtown"), path.join(out, "oldtown.png"));
   if (!wanted("buildings") && !wanted("sites")) return;
 
   var blocks = canvas(cols, rows.length),

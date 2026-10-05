@@ -52,6 +52,26 @@
   background-image: url(@chevron-down-image);
 }
 
+//what a road is laid in, picked before it is laid: gravel, cobbles - and
+//asphalt, which is the road icon
+@gravel-road-image: "../icons/gravel-road.png";
+@cobble-road-image: "../icons/cobble-road.png";
+
+.gravel-road-icon,
+.cobble-road-icon {
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  .cover;
+}
+
+.gravel-road-icon {
+  background-image: url(@gravel-road-image);
+}
+
+.cobble-road-icon {
+  background-image: url(@cobble-road-image);
+}
+
 .back-icon {
   .sprite(@back);
   .cover;
