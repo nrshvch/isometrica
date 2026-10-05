@@ -54,12 +54,16 @@ CityBorderRenderer.prototype = Object.create(Engine.Renderer.prototype);
  * @type {Array[]}
  */
 CityBorderRenderer.prototype.points = null;
+//put away with the words over the world (Cityman#hideNames)
+CityBorderRenderer.prototype.hidden = false;
 
 CityBorderRenderer.prototype.start = function () {
   this.points = borderPoints(this);
 };
 
 CityBorderRenderer.prototype.cullingTest = function (viewport, vprender) {
+  if (this.hidden) return false;
+
   var buffer = float32Buffer,
     points = this.points,
     path,
@@ -81,6 +85,8 @@ CityBorderRenderer.prototype.cullingTest = function (viewport, vprender) {
 };
 
 CityBorderRenderer.prototype.render = function (ctx, viewportrenderer) {
+  if (this.hidden) return;
+
   var points = this.points,
     m = viewportrenderer.M,
     buffer = float32Buffer,

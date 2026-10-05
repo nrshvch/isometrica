@@ -15,6 +15,8 @@ function CityLabel(city) {
   var b = new engine.GameObject("border");
   var bren = new Bren(city);
   b.addComponent(bren);
+  //the city limits, put away with the name (Cityman#hideNames)
+  this.border = bren;
   this.transform.addChild(b.transform);
   b.transform.setLocalPosition(0, 0, 0);
 
