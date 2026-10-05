@@ -273,7 +273,16 @@ BuildingView.prototype.update = function () {
         at.rotation,
         this.opacity,
         undefined,
-        look,
+        //an old town with its wall round it, and round the old town next
+        //to it too
+        look && staticData.compound.gen === "oldtown"
+          ? CompoundBuilding.walled(
+              look,
+              staticData.compound,
+              b.data,
+              vkaria.core.buildingService,
+            )
+          : look,
         b.data.tile,
       );
 

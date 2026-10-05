@@ -540,6 +540,20 @@ var MATERIALS = {
     return jitter(Math.floor((u + off) / len), course, 33) * 0.07;
   },
 
+  //setts: cobbles of stone a little over two units square, laid in rows
+  //each set over from the last, the joints between them dark; a wall of it
+  //is stone
+  setts: function (u, v, side, dark) {
+    if (side !== "top") return MATERIALS.stone(u, v, side, dark);
+
+    var row = Math.floor(v / 3),
+      off = row % 2 ? 2 : 0;
+
+    if (mod(v, 3) === 2 || mod(u + off, 3) === 2) return -0.1;
+
+    return jitter(Math.floor((u + off) / 3), row, 231) * 0.07 + 0.02;
+  },
+
   //boards two high, the shadow under each one's lip
   siding: function (u, v, side) {
     if (side === "top") return jitter(u, v, 41) * 0.02;
