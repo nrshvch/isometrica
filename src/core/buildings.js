@@ -31,6 +31,7 @@ import TileIteratorAction from "./tileiteratoraction";
 import BuildingPositioning from "./buildingpositioning";
 
 import Namespace from "namespace";
+import Surface from "./surface";
 import Rotation from "./rotation";
 
 var Core = Namespace("Isometrica.Core");
@@ -61,16 +62,14 @@ function buildTest(self, code, tile, rotation) {
     tileIterator = new TileIterator(tile, tile1),
     //how far the ground under it rises and falls
     ground = groundRange(self.world.terrain, tile, sizeX, sizeY),
-    //a building stands level on uneven ground on a concrete base built up
-    //to its highest corner (client BuildingView, shared/gen/foundations) -
-    //as long as that is no more than a step up anywhere. A tree grows on
-    //the slope as it is, a road climbs it, and a cliff wants it flat
+    //a building stands on a flat surface at its highest corner, on concrete
+    //where the ground is lower (core/surface) - as long as that fits every
+    //tile of it. A tree grows on the slope as it is, a road has a surface of
+    //its own, and a cliff wants it flat
     levelled =
       data.classCode !== BuildingClassCode.tree &&
-      data.classCode !== BuildingClassCode.road;
-
-  if (levelled && ground.max - ground.min > 1)
-    return ErrorCode.LAND_NOT_SUITABLE;
+      data.classCode !== BuildingClassCode.road,
+    flat = [ground.max, ground.max, ground.max, ground.max];
 
   while (!tileIterator.done) {
     tile = TileIterator.next(tileIterator);
@@ -97,18 +96,13 @@ function buildTest(self, code, tile, rotation) {
       resource !== data.resource
     )
       return ErrorCode.WRONG_RESOURCE_TILE;
-    //a road on the beach is levelled at the top on concrete, the way a
-    //building is (client/road decide) - never laid on the sand as it is
-    //a road goes up a slope as a ramp, and on any other slope that rises a
-    //step at most it is levelled at the top on a base (client/road
-    //levelled) - but no steeper
+    //on ground a surface does not fit (core/surface): a building's flat
+    //one over it, a road's own - too steep for a step of concrete
+    else if (levelled && !Surface.fits(terrain, tile, flat))
+      return ErrorCode.LAND_NOT_SUITABLE;
     else if (
       data.classCode === BuildingClassCode.road &&
-      Terrain.isSlope(slopeId) &&
-      !Terrain.isSlopeSmooth(slopeId) &&
-      groundRange(terrain, tile, 1, 1).max -
-        groundRange(terrain, tile, 1, 1).min >
-        1
+      !Surface.fits(terrain, tile, Surface.natural(terrain, tile))
     )
       return ErrorCode.LAND_NOT_SUITABLE;
     //a tree grows on a hillside, but a cliff stands on flat ground only

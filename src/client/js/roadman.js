@@ -4,7 +4,6 @@
 import Events from "events";
 import Buildman from "./buildman";
 import Core from "core/main";
-import Road from "./road";
 
 var BuildingClassCode = Core.BuildingClassCode;
 var Terrain = Core.Terrain;
@@ -52,9 +51,6 @@ function onBuildingLoad(sender, building, self) {
   var data = model.data;
 
   if (data.classCode === BuildingClassCode.road) {
-    //one put down without a surface gets the one that suits it best
-    Road.settle(self.root.core.terrain, model);
-
     addRoad(self, model.tile, building);
 
     updateRoadsNear(self, model.tile);

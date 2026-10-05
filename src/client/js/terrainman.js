@@ -9,7 +9,6 @@ import Events from "events";
 import AreaSelector from "./areaselector";
 import ServiceMan from "./serviceman";
 import Buildman from "./buildman";
-import Road from "./road";
 import ErrorCode from "core/errorcode";
 import Numeral from "numeral";
 
@@ -236,12 +235,6 @@ Terrainman.prototype.enter = function () {
     },
   };
 
-  //whether a road can stay standing on the ground as it would be - its
-  //surface where it is, on concrete that takes up the difference
-  function fitsRoad(building, after) {
-    return Road.standsOn(after, building);
-  }
-
   //everything standing on tiles, or next to them, drawn again on the ground
   //as it is now - and the roads joined up again
   function redraw(tiles) {
@@ -267,10 +260,10 @@ Terrainman.prototype.enter = function () {
     return {
       question: question,
       quote: function (tiles) {
-        return city().quoteTerraform(tiles, direction, fitsRoad);
+        return city().quoteTerraform(tiles, direction);
       },
       apply: function (tiles) {
-        var result = city().terraform(tiles, direction, fitsRoad),
+        var result = city().terraform(tiles, direction),
           where = area();
 
         //what stays is drawn again on the ground as it is now

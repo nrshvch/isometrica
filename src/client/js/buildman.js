@@ -455,8 +455,10 @@ errorText[ErrorCode.ON_SHORE] = "on shore";
  *        variant picked there
  * @param looks {Array<Object|null>} and for a building put together out of
  *        parts, the look it was shown with - see client/compoundbuilding
+ * @param [surfaces] {Array<number[]>} and for a road, the surface it was
+ *        planned with (Road.plan)
  */
-function buildSelection(self, code, anchors, rotation, codes, looks) {
+function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
   var root = self.root,
     data = BuildingData[code],
     messaging = root.core.messagingService,
@@ -483,6 +485,7 @@ function buildSelection(self, code, anchors, rotation, codes, looks) {
           anchors[i],
           rotation,
           looks[i],
+          surfaces ? surfaces[i] : undefined,
         );
     }
   } finally {
@@ -1169,21 +1172,19 @@ Buildman.prototype.build = function (code) {
 
     layout(anchors);
 
-    var looks = anchors.map(lookAt);
-
     //roads laid as the preview showed them, each with its surface
+    var surfaces = null;
+
     if (data.classCode === BuildingClassCode.road) {
-      var surfaces = plannedRoads(
+      var planned = plannedRoads(
         root.core.cities
           .getCity(0)
           .buildingService.quoteSelection(code, anchors, rotation),
         anchors,
       ).surfaces;
 
-      looks = anchors.map(function (tile) {
-        return surfaces[tile] !== undefined
-          ? { surface: surfaces[tile].slice() }
-          : null;
+      surfaces = anchors.map(function (tile) {
+        return planned[tile];
       });
     }
 
@@ -1193,7 +1194,8 @@ Buildman.prototype.build = function (code) {
       anchors,
       rotation,
       anchors.map(variantAt),
-      looks,
+      anchors.map(lookAt),
+      surfaces,
     );
 
     //a block that went up has its look; another put down there next is
