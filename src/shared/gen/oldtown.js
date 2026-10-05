@@ -27,6 +27,11 @@
  * wall below) - so two of them side by side make one town, a lane between
  * them, and the wall goes round the both of them.
  *
+ * It goes up on a building site of its own (site, LOTS): no diggers or
+ * lorries, but a masons' yard - stone, oak, an ox cart, the lime pit, a
+ * treadwheel crane - then footings of rubble, then oak frames on stone
+ * ground floors in their scaffolding of poles.
+ *
  * The town wall is put together by whoever draws the old town
  * (client/compoundbuilding walled), tile by tile, by which of a tile's edges
  * have old town beyond them and which do not: stone with battlements along
@@ -43,6 +48,7 @@ import {
   GRASS,
   WOOD,
   CONCRETE,
+  DIRT,
   GLASSY,
   LIT,
   made,
@@ -65,7 +71,6 @@ import {
   well,
   woodpile,
   fountain,
-  site,
   SH,
 } from "./houses.js";
 import { stall, farmTrailer, COBBLES, GOODS, CANOPIES } from "./shops.js";
@@ -826,6 +831,399 @@ function square(b, x0, x1, y0, y1, o, rnd, big) {
   if (x1 - x0 > 24 && y1 - y0 > 20) tree(b, mx + 9, my - 6, 3);
 }
 
+/* --- Going up ------------------------------------------------------------ */
+
+//what the old town is built of while it goes up: dressed stone, rubble for
+//the footings, oak for the frames, lime
+var DRESSED = madeOf([204, 194, 172], "stone"),
+  RUBBLE = madeOf([146, 128, 104], "stone"),
+  OAK = madeOf([132, 96, 62], "wood"),
+  POLE = [160, 124, 86],
+  LIME = [236, 234, 224],
+  SAND = madeOf([214, 190, 132], "sand"),
+  OX = [150, 104, 70];
+
+//a stack of dressed stone blocks from x, y, n across and m up, each a shade
+//off the next
+function blocks(b, x, y, n, m, rnd) {
+  for (var k = 0; k < m; k++)
+    for (var i = 0; i < n - k; i++)
+      b.push(
+        box(
+          x + i * 3.2 + k * 1.6,
+          x + i * 3.2 + k * 1.6 + 3,
+          y,
+          y + 2.6,
+          1 + k * 2,
+          3 + k * 2,
+          rnd() < 0.5 ? DRESSED : lighter(DRESSED, 0.06),
+        ),
+      );
+}
+
+//squared oak beams stacked along x on spacers, n high
+function beams(b, x0, x1, y, n) {
+  for (var k = 0; k < n; k++) {
+    [x0 + 2, x1 - 3].forEach(function (x) {
+      b.push(box(x, x + 1, y, y + 5, 1 + k * 2, 1.5 + k * 2, darker(OAK, 0.2)));
+    });
+    for (var j = 0; j < 3 - (k % 2); j++)
+      b.push(
+        box(
+          x0,
+          x1,
+          y + 0.3 + j * 1.6,
+          y + 1.5 + j * 1.6,
+          1.5 + k * 2,
+          3 + k * 2,
+          OAK,
+        ),
+      );
+  }
+}
+
+//a saw-horse at x, y, a beam across it
+function sawhorse(b, x, y) {
+  [x, x + 5].forEach(function (a) {
+    b.push(box(a, a + 0.5, y - 1, y - 0.5, 1, 3.5, OAK));
+    b.push(box(a, a + 0.5, y + 0.5, y + 1, 1, 3.5, OAK));
+    b.push(box(a - 0.2, a + 0.7, y - 1, y + 1, 3.5, 4, OAK));
+  });
+  b.push(box(x - 3, x + 9, y - 0.6, y + 0.6, 4, 5.2, lighter(OAK, 0.12)));
+}
+
+//a heap of something, rounded in steps: sand, rubble
+function heap(b, x, y, r, h, color) {
+  for (var k = 0; k < 4; k++) {
+    var w = r * (1 - k * 0.22);
+
+    b.push(
+      box(
+        x - w,
+        x + w,
+        y - w * 0.8,
+        y + w * 0.8,
+        1 + (k * h) / 4,
+        1 + ((k + 1) * h) / 4,
+        color,
+      ),
+    );
+  }
+}
+
+//an ox standing along x, its head at the + end: a brown body, horns
+function ox(b, x, y) {
+  [-2.4, 1.6].forEach(function (l) {
+    [-1, 0.4].forEach(function (c) {
+      b.push(
+        box(x + l, x + l + 0.7, y + c, y + c + 0.6, 1, 3, darker(OX, 0.25)),
+      );
+    });
+  });
+  b.push(box(x - 3, x + 2.6, y - 1.4, y + 1.4, 3, 5.8, OX));
+  b.push(box(x + 2.4, x + 4.4, y - 1, y + 1, 4, 6.2, OX));
+  b.push(box(x + 2.8, x + 3.2, y - 1.8, y + 1.8, 6.2, 6.6, [236, 226, 200]));
+  b.push(box(x - 3.4, x - 3, y - 0.2, y + 0.2, 3, 5.4, darker(OX, 0.2)));
+}
+
+//a wooden wheel standing along x at x, y, r across, on its axle at z
+function wheel(b, x, y, z, r, color) {
+  for (var a = 0; a < 16; a++) {
+    var t = (a / 16) * Math.PI * 2,
+      wx = x + Math.cos(t) * r,
+      wz = z + Math.sin(t) * r;
+
+    b.push(
+      box(wx - 0.6, wx + 0.6, y - 0.3, y + 0.3, wz - 0.6, wz + 0.6, color),
+    );
+  }
+  b.push(box(x - r, x + r, y - 0.2, y + 0.2, z - 0.25, z + 0.25, color));
+  b.push(box(x - 0.25, x + 0.25, y - 0.2, y + 0.2, z - r, z + r, color));
+}
+
+/**
+ * What a tile of the old town's site has on it before anything of the town
+ * stands (shared/gen/stacking oldtownSite): bare earth, and the masons'
+ * dressed stone and their banker, the carpenters' oak and saw-horse, an ox
+ * cart come in with stone, the lime pit by a heap of sand, or a treadwheel
+ * crane with a stone hanging off its jib - inside the rail round it all.
+ */
+var LOTS = {
+  stones: function (b, rnd) {
+    blocks(b, 5, 6, 4, 3, rnd);
+    blocks(b, 16, 20, 3, 2, rnd);
+    heap(b, 8, 23, 3.5, 3, RUBBLE);
+    //the banker: a block on a bench, the mallet by it
+    b.push(box(20, 26, 9, 12, 1, 4, OAK));
+    b.push(box(21, 25, 9.5, 11.5, 4, 6.5, DRESSED));
+    b.push(box(25.4, 26.4, 12.5, 13.5, 1, 1.8, darker(OAK, 0.3)));
+  },
+  timber: function (b, rnd) {
+    beams(b, 4, 26, 5, 3);
+    sawhorse(b, 9, 20);
+    heap(b, 22, 22, 3, 1.4, [222, 196, 150]);
+    for (var i = 0; i < 4; i++)
+      b.push(
+        box(
+          4 + i * 1.8,
+          5.4 + i * 1.8,
+          25,
+          28,
+          1,
+          2.4,
+          darker(OAK, 0.1 + rnd() * 0.1),
+        ),
+      );
+  },
+  cart: function (b, rnd) {
+    //the cart, its two wheels, its load of stone, its shafts to the ox
+    wheel(b, 12, 9.6, 3.4, 3, darker(OAK, 0.2));
+    wheel(b, 12, 17.4, 3.4, 3, darker(OAK, 0.2));
+    b.push(box(7, 17, 10, 17, 3.4, 4.2, OAK));
+    b.push(box(7, 17, 10, 10.6, 4.2, 6, OAK));
+    b.push(box(7, 17, 16.4, 17, 4.2, 6, OAK));
+    blocks(b, 8, 11.5, 3, 1, rnd);
+    [11, 16].forEach(function (y) {
+      b.push(box(17, 22, y, y + 0.5, 3, 3.5, OAK));
+    });
+    ox(b, 24, 13.5);
+    heap(b, 9, 25, 2.5, 2, RUBBLE);
+  },
+  lime: function (b, rnd) {
+    //the pit, boarded round, the lime slaked in it
+    b.push(box(5, 17, 5, 13, 1, 3, OAK));
+    b.push(box(5.6, 16.4, 5.6, 12.4, 2.6, 3.02, LIME));
+    heap(b, 22, 9, 4.5, 4, SAND);
+    [
+      [8, 21],
+      [11, 23],
+    ].forEach(function (p) {
+      b.push(
+        box(
+          p[0] - 1.3,
+          p[0] + 1.3,
+          p[1] - 1.3,
+          p[1] + 1.3,
+          1,
+          4.6,
+          [140, 96, 60],
+        ),
+      );
+      b.push(box(p[0] - 1.4, p[0] + 1.4, p[1] - 1.4, p[1] + 1.4, 3.6, 4, IRON));
+    });
+    //the mortar tub, a shovel in it
+    b.push(box(17, 23, 19, 24, 1, 2.6, OAK));
+    b.push(box(17.5, 22.5, 19.5, 23.5, 2.4, 2.62, [200, 196, 184]));
+    b.push(box(20, 20.4, 20, 20.4, 2.6, 7, POLE));
+    void rnd;
+  },
+  crane: function (b, rnd) {
+    //the treadwheel: a big wheel walked round inside, on its frame
+    wheel(b, 12, 10, 8, 6.5, OAK);
+    wheel(b, 12, 14, 8, 6.5, OAK);
+    for (var a = 0; a < 16; a += 2) {
+      var t = (a / 16) * Math.PI * 2;
+
+      b.push(
+        box(
+          12 + Math.cos(t) * 6.5 - 0.4,
+          12 + Math.cos(t) * 6.5 + 0.4,
+          10,
+          14,
+          8 + Math.sin(t) * 6.5 - 0.4,
+          8 + Math.sin(t) * 6.5 + 0.4,
+          OAK,
+        ),
+      );
+    }
+    [6, 18].forEach(function (x) {
+      b.push(box(x, x + 1, 9, 15, 1, 2, darker(OAK, 0.2)));
+      b.push(box(x, x + 1, 11.5, 12.5, 1, 9, darker(OAK, 0.2)));
+    });
+    //the mast, the jib leaning out over the yard, the rope, a stone on it
+    b.push(box(20, 21.5, 11.5, 13, 1, 24, OAK));
+    for (var k = 0; k < 8; k++)
+      b.push(
+        box(21.5 + k, 22.5 + k, 11.6, 12.9, 22 + k * 0.5, 23.2 + k * 0.5, OAK),
+      );
+    b.push(box(29, 29.2, 12.1, 12.4, 12, 26.5, [210, 200, 170]));
+    b.push(box(27.8, 30.4, 11, 13.5, 10, 12, DRESSED));
+    b.push(box(20, 21.5, 13, 19, 1, 1.8, darker(OAK, 0.2)));
+    blocks(b, 6, 22, 3, 2, rnd);
+  },
+};
+
+/**
+ * What the old town is while it goes up, its buildings where specs has
+ * them: bare earth, and on it the footings of rubble along their walls
+ * (stage 1) - or the stone of their ground floors with the openings left in
+ * it, and over that their oak frames, post and beam, the trusses of their
+ * roofs and the scaffolding of poles lashed together along their fronts
+ * (stage 2) - and the stone and timber they are built of stacked about.
+ *
+ * @param specs {{rect, storeys}[]}
+ */
+function site(W, D, specs, stage, rnd) {
+  var b = [box(0, W, 0, D, 0, 1, DIRT)];
+
+  specs.forEach(function (s) {
+    var r = {
+        x0: Math.max(s.rect.x0, 2),
+        x1: Math.min(s.rect.x1, W - 2),
+        y0: Math.max(s.rect.y0, 2),
+        y1: Math.min(s.rect.y1, D - 2),
+      },
+      t = 1.4;
+
+    function ring(z0, z1, color, inset) {
+      var i = inset || 0;
+
+      b.push(box(r.x0 + i, r.x1 - i, r.y0 + i, r.y0 + i + t, z0, z1, color));
+      b.push(box(r.x0 + i, r.x1 - i, r.y1 - i - t, r.y1 - i, z0, z1, color));
+      b.push(box(r.x0 + i, r.x0 + i + t, r.y0 + i, r.y1 - i, z0, z1, color));
+      b.push(box(r.x1 - i - t, r.x1 - i, r.y0 + i, r.y1 - i, z0, z1, color));
+    }
+
+    if (stage === 1) {
+      //the footings, and the oak sills laid ready along them
+      ring(0.6, 3.5, RUBBLE);
+      b.push(box(r.x0 + 2, r.x1 - 2, r.y0 - 2.2, r.y0 - 1, 1, 2, OAK));
+      return;
+    }
+
+    var ground = 1 + SH,
+      top = 1 + s.storeys * SH,
+      alongX = r.x1 - r.x0 >= r.y1 - r.y0;
+
+    //the ground floor's stone, the door and windows left open in it
+    ring(1, ground, DRESSED);
+    ["-y", "+y", "-x", "+x"].forEach(function (f) {
+      var sp = f === "-y" || f === "+y" ? [r.x0, r.x1] : [r.y0, r.y1];
+
+      for (var a = sp[0] + 3; a < sp[1] - 5; a += 7)
+        b.push(face(r, f, a, a + 3, 4, 9, -0.05, 0.05, [70, 64, 58]));
+    });
+
+    //the frame over it: posts round it, a beam round every floor
+    var posts = [];
+
+    for (var x = r.x0; x <= r.x1 - 0.8; x += 4.5)
+      posts.push([x, r.y0], [x, r.y1 - 0.8]);
+    for (var y = r.y0 + 4.5; y < r.y1 - 0.8; y += 4.5)
+      posts.push([r.x0, y], [r.x1 - 0.8, y]);
+    posts.push([r.x1 - 0.8, r.y0], [r.x1 - 0.8, r.y1 - 0.8]);
+    posts.forEach(function (p) {
+      b.push(box(p[0], p[0] + 0.8, p[1], p[1] + 0.8, ground, top, OAK));
+    });
+    for (var z = ground; z <= top; z += SH) ring(z - 0.6, z + 0.2, OAK);
+
+    //the trusses of the roof, its ridge beam
+    var span = alongX ? r.y1 - r.y0 : r.x1 - r.x0,
+      half = span / 2,
+      len = alongX ? [r.x0, r.x1] : [r.y0, r.y1];
+
+    for (
+      var a = len[0];
+      a <= len[1] - 0.8;
+      a += Math.max(5, (len[1] - len[0]) / 4)
+    ) {
+      for (var k = 0; k < half; k += 1)
+        [k, span - k - 1].forEach(function (c) {
+          var lo = alongX ? r.y0 : r.x0;
+
+          b.push(
+            alongX
+              ? box(a, a + 0.8, lo + c, lo + c + 1, top + k, top + k + 1.2, OAK)
+              : box(
+                  lo + c,
+                  lo + c + 1,
+                  a,
+                  a + 0.8,
+                  top + k,
+                  top + k + 1.2,
+                  OAK,
+                ),
+          );
+        });
+    }
+    b.push(
+      alongX
+        ? box(
+            r.x0,
+            r.x1,
+            (r.y0 + r.y1) / 2 - 0.4,
+            (r.y0 + r.y1) / 2 + 0.4,
+            top + half - 0.6,
+            top + half + 0.4,
+            OAK,
+          )
+        : box(
+            (r.x0 + r.x1) / 2 - 0.4,
+            (r.x0 + r.x1) / 2 + 0.4,
+            r.y0,
+            r.y1,
+            top + half - 0.6,
+            top + half + 0.4,
+            OAK,
+          ),
+    );
+
+    //the scaffolding along its front: poles, the ledgers lashed to them at
+    //every floor, planks laid over those
+    for (var px = r.x0 - 1; px <= r.x1 + 1; px += 6) {
+      var q = Math.min(px, r.x1 + 0.6);
+
+      [r.y0 - 3, r.y0 - 1].forEach(function (py) {
+        b.push(box(q, q + 0.5, py, py + 0.5, 1, top + 3, POLE));
+      });
+    }
+    for (var lz = ground; lz <= top; lz += SH) {
+      b.push(box(r.x0 - 1, r.x1 + 1, r.y0 - 3, r.y0 - 2.6, lz, lz + 0.4, POLE));
+      b.push(
+        box(
+          r.x0 - 1,
+          r.x1 + 1,
+          r.y0 - 3,
+          r.y0 - 0.6,
+          lz + 0.4,
+          lz + 0.8,
+          lighter(POLE, 0.1),
+        ),
+      );
+    }
+  });
+
+  //the stone and timber it is built of, where there is room for them
+  var spots = [],
+    x,
+    y;
+
+  for (y = 4; y < D - 8; y += 8)
+    for (x = 4; x < W - 12; x += 10) {
+      var free = specs.every(function (s) {
+        var r = s.rect;
+
+        return (
+          x + 10 < r.x0 - 4 ||
+          x > r.x1 + 1.5 ||
+          y + 5 < r.y0 - 4.5 ||
+          y > r.y1 + 1.5
+        );
+      });
+
+      if (free) spots.push([x, y]);
+    }
+
+  for (var i = 0; i < Math.min(3, spots.length); i++) {
+    var p = spots.splice(Math.floor(rnd() * spots.length), 1)[0];
+
+    if (i % 2 === 0) blocks(b, p[0], p[1], 3, 2, rnd);
+    else beams(b, p[0], p[0] + 10, p[1], 2);
+  }
+
+  return { boxes: b };
+}
+
 /* --- The designs ------------------------------------------------------ */
 
 /**
@@ -1476,6 +1874,10 @@ var PARTS = (function () {
     });
   });
 
+  Object.keys(LOTS).forEach(function (lot) {
+    out["oldtown/lot/" + lot] = true;
+  });
+
   MASKS.forEach(function (mask) {
     out["oldtown/wall/" + mask + "/back"] = true;
     out["oldtown/wall/" + mask + "/front"] = true;
@@ -1563,6 +1965,12 @@ export function partBoxes(key, turns) {
   var p = key.split("/");
 
   if (p[1] === "wall") return wall(p[2], p[3] === "back", turns || 0);
+  if (p[1] === "lot") {
+    var lot = [box(0, TILE, 0, TILE, 0, 1, DIRT)];
+
+    LOTS[p[2]](lot, random(key));
+    return lot;
+  }
 
   var cx = +p[p.length - 2],
     cy = +p[p.length - 1];
@@ -1584,7 +1992,7 @@ export function describe() {
   Object.keys(PARTS).forEach(function (key) {
     var p = key.split("/");
 
-    if (p[1] !== "wall" && p[1] !== "frame") {
+    if (p[1] !== "wall" && p[1] !== "frame" && p[1] !== "lot") {
       var id = p.slice(0, -2).join("/");
 
       if (smoke[id] === undefined)

@@ -257,12 +257,8 @@ export function siteTiles(tiles, stage, seed, small) {
 
   if (gen === "shops")
     return fenced(shopSite(tiles, stage, seed, small), small);
-  if (
-    gen === "houses" ||
-    gen === "utilities" ||
-    gen === "parks" ||
-    gen === "oldtown"
-  )
+  if (gen === "oldtown") return fenced(oldtownSite(tiles, stage, seed), true);
+  if (gen === "houses" || gen === "utilities" || gen === "parks")
     return fenced(houseSite(tiles, stage, seed, small), small);
 
   var dealt = deal(tiles.length, seed, small),
@@ -388,6 +384,58 @@ function houseSite(tiles, stage, seed, small) {
                 p[p.length - 1],
               ].join("/"),
             ],
+    };
+  });
+}
+
+//what a tile of the old town's site can have on it to begin with (shared/gen
+//oldtown lots): no diggers or lorries - the masons' stone, the carpenters'
+//timber, an ox cart come in with stone, the lime pit, a treadwheel crane
+var OLD_LOTS = ["stones", "timber", "cart", "lime", "crane"];
+
+/**
+ * What the old town looks like while it goes up: a masons' yard to begin
+ * with, each of its tiles dealt one of OLD_LOTS - every one of them once
+ * before any comes again - inside a timber rail; then its stone footings,
+ * and then its timber frames going up on stone ground floors in their
+ * scaffolding (shared/gen/oldtown site), by its design and where its
+ * buildings stand.
+ */
+function oldtownSite(tiles, stage, seed) {
+  var rnd = seeded(seed),
+    pool = [];
+
+  return tiles.map(function (tile) {
+    var p = tile.parts[0].split("/");
+
+    if (stage === 0) {
+      if (pool.length === 0) {
+        pool = OLD_LOTS.slice();
+        for (var i = pool.length - 1; i > 0; i--) {
+          var j = Math.floor(rnd() * (i + 1)),
+            t = pool[i];
+
+          pool[i] = pool[j];
+          pool[j] = t;
+        }
+      }
+
+      return { x: tile.x, y: tile.y, parts: ["oldtown/lot/" + pool.pop()] };
+    }
+
+    return {
+      x: tile.x,
+      y: tile.y,
+      parts: [
+        [
+          "oldtown/frame",
+          p[1],
+          p[2],
+          stage,
+          p[p.length - 2],
+          p[p.length - 1],
+        ].join("/"),
+      ],
     };
   });
 }
