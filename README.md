@@ -155,7 +155,11 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   square before a church or a street of craftsmen; on 3x3 all of it, with a
   guild hall and a fountain. All of it cobbled, nothing tall near its edges:
   two side by side are one town, a lane between them. Later on the town
-  keeps it as its old town.
+  keeps it as its old town. It goes up the way it would have then: a
+  masons' yard inside a timber rail - dressed stone and a banker, oak and a
+  saw-horse, an ox cart come in with stone, the lime pit, a treadwheel crane
+  - then footings of rubble, then oak frames on stone ground floors in
+    scaffolding of poles.
 - A wall goes round the old town (`src/client/js/compoundbuilding.js`
   walled): along every edge of it with no old town beyond - so round all of
   it, however many pieces it was put down in, and never round the cottages
