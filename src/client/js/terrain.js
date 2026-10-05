@@ -100,9 +100,13 @@ function tileSprite(x, y, type, slope) {
       x,
       y,
       kind === "water" ? spillsOf(x, y) : null,
+      !gridShown,
     ),
   );
 }
+
+//whether the grid is drawn over the ground (Terrain#showGrid)
+var gridShown = true;
 
 var events = {};
 
@@ -135,6 +139,22 @@ Terrain.prototype.init = function () {
     },
     this,
   );
+};
+
+/**
+ * Draws the grid over the ground, or leaves it off - every tile drawn again
+ * the way it is now, as it is when the camera turns, and every one drawn
+ * from then on.
+ *
+ * @param shown {boolean}
+ */
+Terrain.prototype.showGrid = function (shown) {
+  if (gridShown === shown) return;
+
+  gridShown = shown;
+
+  for (var index in this.tiles)
+    if (this.tiles[index]) shapeTile(this, this.tiles[index], +index);
 };
 
 Terrain.prototype.clear = function (x0, y0, w, l) {

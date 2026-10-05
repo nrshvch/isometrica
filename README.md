@@ -169,8 +169,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   where it is put down, shown so, and kept.
 - A tap on nothing - bare ground, a road, the sea - while nothing is being
   looked at puts away the words over the world ("no jobs", how far along
-  one going up is, the city's name) and the city limits drawn round it: the
-  town on its own, for a picture of it. They stay away while the camera is dragged, zoomed or turned, and come
+  one going up is, the city's name), the city limits drawn round it and the
+  grid over the ground: the town on its own, for a picture of it. They stay away while the camera is dragged, zoomed or turned, and come
   back with the next tap on nothing - or with anything else: a tap on a
   building, placing or shaping the ground, a press on any button.
 - Shaping the ground starts on the building that was being looked at, if
