@@ -29,525 +29,528 @@ Road.prototype.setData = function (data) {
   this.view.render();
 };
 
+/*
+ * A road has a surface of its own: how high it is at each corner of its
+ * tile, A (x, y), B (x + 1, y), C (x, y + 1), D (x + 1, y + 1) - the way the
+ * ground has, but kept with the road. Everything about how it is laid comes
+ * from that and the ground under it:
+ *
+ * - its shape: flat, or a ramp - one side a step higher than the side across
+ *   from it (Road.shapeOf);
+ * - the concrete under it, wherever it is over the ground - a step at most,
+ *   never under it (Road.fits, RoadView addBase) - so it is levelled on a
+ *   slope, climbs a step on a wedge, or goes up from flat ground;
+ * - where it joins the roads next to it: where they meet level, at the same
+ *   height all along the edge between them (Road.meets) - never over a step,
+ *   and never onto the side of a ramp.
+ *
+ * It is worked out once, as it is laid, for the whole run the player drags
+ * at a time (Road.plan), and kept: in the save, and as the ground is shaped
+ * under it (Road.standsOn). The roads there already stay as they are.
+ */
+
 //from a tile to the next one at each side, -x, -y, +x, +y
 var STEP = [-1, -Terrain.dy, 1, Terrain.dy];
 
-//the ramp up each smooth slope (see profile)
-var RAMP_OF = {};
-
-RAMP_OF[Terrain.SlopeType.AB] = 1;
-RAMP_OF[Terrain.SlopeType.AC] = 2;
-RAMP_OF[Terrain.SlopeType.CD] = 3;
-RAMP_OF[Terrain.SlopeType.BD] = 4;
-
-//the side at the foot of each ramp, -x, -y, +x, +y
-var FOOT = { 1: 3, 2: 2, 3: 1, 4: 0 };
-
-//the beach, going down into the water: a road there is levelled on concrete
-//only (Road.decide)
-function onShore(terrain, tile) {
-  return terrain.getTerrainType(tile) === Core.TerrainType.shore;
-}
-
-//ground that is no smooth slope, nor flat: whatever road is on it is on
-//concrete (RoadView deck)
-function uneven(terrain, tile) {
-  var slopeId = terrain.tileSlope(tile);
-
-  return Terrain.isSlope(slopeId) && !Terrain.isSlopeSmooth(slopeId);
-}
-
-//whether isRoad says there is a road at the foot of ramp on tile, on the
-//ground there for it to come up from
-function footRoad(terrain, tile, ramp, isRoad) {
-  var next = tile + STEP[FOOT[ramp]];
-
-  return isRoad(next) && !uneven(terrain, next);
-}
-
-//the ramps a road can go up on ground with only one corner up, on a wedge:
-//along x and along y, each up the side the high corner is on - none for
-//any other ground
-function wedges(terrain, tile) {
-  if (!uneven(terrain, tile)) return [];
-
-  var g = [
-      terrain.getGridPointHeight(tile),
-      terrain.getGridPointHeight(tile + 1),
-      terrain.getGridPointHeight(tile + Terrain.dy),
-      terrain.getGridPointHeight(tile + Terrain.dy + 1),
-    ],
-    top = Math.max.apply(null, g),
-    up = [];
-
-  for (var k = 0; k < 4; k++) if (g[k] === top) up.push(k);
-
-  //three corners up, or two across from each other: flat only
-  if (up.length !== 1) return [];
-
-  return [up[0] % 2 === 0 ? 2 : 4, up[0] < 2 ? 1 : 3];
-}
-
-/**
- * How a road on tile is laid, worked out from the roads isRoad says are next
- * to it - the way OpenTTD lays one, but for the order they came in, which it
- * goes by and this cannot (see Road.lay):
- *
- * - on a smooth slope, a ramp up it - or, where roads come to it across the
- *   slope and none to its foot, levelled at the top, joining them and the
- *   one up the slope, if there is one, as a T;
- * - on ground with only one corner up, a ramp on a wedge of concrete where a
- *   road comes to its foot on the ground there - the one straight through,
- *   if either is - or else levelled at the top;
- * - on any other slope levelled at the top - and on the shore, always:
- *   never on the sand as it is, nor up it on a wedge;
- * - on flat ground flat - a ramp up to a road a step higher only as it is
- *   laid (Road.planned), and kept.
- *
- * @param terrain {Terrain} core terrain
- * @param isRoad {function(number): boolean}
- * @returns {number} 0 for flat - levelled, on a slope - or the ramp, 1 up
- *          towards -y, 2 -x, 3 +y, 4 +x
- */
-Road.decide = function (terrain, tile, isRoad) {
-  var slopeId = terrain.tileSlope(tile);
-
-  if (!Terrain.isSlope(slopeId) || onShore(terrain, tile)) return 0;
-
-  var ramp = RAMP_OF[slopeId];
-
-  if (ramp !== undefined) {
-    var foot = FOOT[ramp];
-
-    if (footRoad(terrain, tile, ramp, isRoad)) return ramp;
-    if (
-      isRoad(tile + STEP[(foot + 1) % 4]) ||
-      isRoad(tile + STEP[(foot + 3) % 4])
-    )
-      return 0;
-
-    return ramp;
-  }
-
-  //up from a road on the ground at its foot - the one straight through, if
-  //either is
-  var ramps = wedges(terrain, tile).filter(function (r) {
-    return footRoad(terrain, tile, r, isRoad);
-  });
-
-  ramps.sort(function (p, q) {
-    return (
-      isRoad(tile + STEP[(FOOT[q] + 2) % 4]) -
-      isRoad(tile + STEP[(FOOT[p] + 2) % 4])
-    );
-  });
-
-  return ramps.length > 0 ? ramps[0] : 0;
+//the corners each ramp is up at, of A, B, C and D: 1 up towards -y, 2 -x,
+//3 +y, 4 +x (see profile)
+var RAMP_TOPS = {
+  1: [1, 1, 0, 0],
+  2: [1, 0, 1, 0],
+  3: [0, 0, 1, 1],
+  4: [0, 1, 0, 1],
 };
 
 /**
- * How the road on tile is laid (Road.decide): as it was the first time it
- * had a road next to it, if it was put down on a slope then - once laid one
- * way, it stays that way, however the roads round it come and go, as in
- * OpenTTD the road that came first stays and the one that does not fit it
- * goes without - or as the roads next to it say now.
+ * The heights of the ground at the corners of tile, A, B, C and D.
  *
- * @param net {{isRoad: function(number): boolean, lay: function(number)}}
- *        where the roads are, and how each that is laid for good is laid -
- *        undefined for one that is not (see Road.fix)
+ * @param terrain {Terrain} core terrain - or the ground as a plan would leave
+ *        it (Terrain#after)
  */
-Road.lay = function (terrain, tile, net) {
-  var lay = net.lay(tile);
-
-  //kept only for the ground it was laid on
-  if (lay !== undefined && fits(terrain, tile, lay)) return lay;
-
-  return Road.decide(terrain, tile, net.isRoad);
+Road.ground = function (terrain, tile) {
+  return [
+    terrain.getGridPointHeight(tile),
+    terrain.getGridPointHeight(tile + 1),
+    terrain.getGridPointHeight(tile + Terrain.dy),
+    terrain.getGridPointHeight(tile + Terrain.dy + 1),
+  ];
 };
 
-//whether a road on tile can be laid lay on the ground there: flat
-//anywhere; a ramp up a smooth slope, on a wedge, or on flat ground
-function fits(terrain, tile, lay) {
-  var slopeId = terrain.tileSlope(tile);
-
-  if (lay === 0) return true;
-  //on the shore levelled only
-  if (onShore(terrain, tile)) return false;
-  if (!Terrain.isSlope(slopeId)) return lay >= 1 && lay <= 4;
-
-  return RAMP_OF[slopeId] === lay || wedges(terrain, tile).indexOf(lay) !== -1;
-}
-
 /**
- * How the road model stands on can stay standing when the ground under it
- * moves to where after has it (core/terrain after) - the way OpenTTD keeps
- * a road on its foundation as the land under it is shaped: at the very
- * height it is at all round, laid however the new ground lets it be, on
- * concrete a step deep at most. Raised up to a levelled road, the ground
- * takes the place of its base; taken down from under one, it is levelled
- * on a base - on flat ground, a whole step over it, kept that high
- * (RoadView deck). On the shore levelled only, never in the water.
- *
- * @param roadman {Roadman}
- * @param model {Object} the road's core model
- * @param after {Terrain} the ground as it would be
- * @returns {Object|null} its look then - see Road.setLay - or null for a
- *          road the new ground cannot keep where it is
+ * The shape of a surface: 0 for flat, the ramp it is - 1..4, see profile -
+ * or -1 for none a road can have.
  */
-Road.fitTo = function (terrain, roadman, model, after) {
-  var tile = model.tile,
-    net = Road.network(roadman),
-    was = Road.deck(terrain, tile, net),
-    ground = [
-      after.getGridPointHeight(tile),
-      after.getGridPointHeight(tile + 1),
-      after.getGridPointHeight(tile + Terrain.dy),
-      after.getGridPointHeight(tile + Terrain.dy + 1),
-    ],
-    low = Math.min.apply(null, ground),
-    high = Math.max.apply(null, ground),
-    lays = [Road.lay(terrain, tile, net), 0, 1, 2, 3, 4];
+Road.shapeOf = function (surface) {
+  var low = Math.min.apply(null, surface);
 
-  //never in the water
-  if (high <= 0) return null;
-
-  function same(d) {
-    return d.every(function (h, k) {
-      return h === was[k] && h >= ground[k] && h - low <= 1;
-    });
-  }
-
-  for (var i = 0; i < lays.length; i++)
-    if (
-      fits(after, tile, lays[i]) &&
-      same(RoadView.deck(after, tile, pieceOf(lays[i]), null))
-    )
-      return { lay: lays[i] };
-
-  //flat, and kept up over the ground that went down from under it
   if (
-    was.every(function (h) {
-      return h === was[0];
-    }) &&
-    was[0] >= high &&
-    was[0] - low <= 1
+    surface.every(function (h) {
+      return h === low;
+    })
   )
-    return { lay: 0, top: was[0] };
+    return 0;
 
-  return null;
+  for (var r = 1; r <= 4; r++)
+    if (
+      RAMP_TOPS[r].every(function (up, k) {
+        return surface[k] === low + up;
+      })
+    )
+      return r;
+
+  return -1;
 };
 
 /**
- * How the road on tile is to be laid for good, from the roads next to it by
- * isRoad - as soon as it goes down: one on its own on a slope is laid the
- * only way it can be, up it as a ramp, or levelled where it is no ramp's.
- * Undefined on flat ground, where there is nothing to keep (Road.lay).
- */
-Road.fix = function (terrain, tile, isRoad) {
-  if (!Terrain.isSlope(terrain.tileSlope(tile))) return undefined;
-
-  return Road.decide(terrain, tile, isRoad);
-};
-
-//the piece a road laid lay goes by for its base (RoadView deck): its ramp,
-//or any flat one
-function pieceOf(lay) {
-  return lay || 90000;
-}
-
-//the heights of the road on tile along each of its sides, -x, -y, +x, +y,
-//where it meets the next one (RoadView deck) - none along the sides of a
-//ramp on concrete, which nothing meets
-function edges(terrain, tile, net) {
-  var lay = Road.lay(terrain, tile, net),
-    d = RoadView.deck(terrain, tile, pieceOf(lay)),
-    out = [
-      [d[0], d[2]],
-      [d[0], d[1]],
-      [d[1], d[3]],
-      [d[2], d[3]],
-    ],
-    //up along y, or along x
-    across = lay === 1 || lay === 3 ? [0, 2] : [1, 3];
-
-  if (lay !== 0 && RAMP_OF[terrain.tileSlope(tile)] === undefined)
-    across.forEach(function (side) {
-      out[side] = [NaN, NaN];
-    });
-
-  return out;
-}
-
-//whether the road on tile is on concrete (RoadView deck)
-function raised(terrain, tile, net) {
-  return RoadView.raised(terrain, tile, pieceOf(Road.lay(terrain, tile, net)));
-}
-
-/**
- * Whether the roads on tile and on the tile next to it at side - 0..3: -x,
- * -y, +x, +y - meet: wherever either is on concrete, only where they are at
- * the same height all along the edge between them - so a levelled road and
- * one a step below it do not join over the step, and a ramp on a wedge is
- * joined at its foot and its top only. Anywhere else they do, as they always
- * have.
+ * Whether a road with surface can be laid on tile: flat or a ramp, over the
+ * ground everywhere and a step over it at most - never in the water, and on
+ * the shore flat only, on concrete going down into the water.
  *
- * @param net {{isRoad, lay}} where the roads are (see Road.lay)
+ * @param terrain {Terrain} core terrain, or the ground as it would be
  */
-Road.meets = function (terrain, tile, side, net) {
-  var next = tile + STEP[side];
+Road.fits = function (terrain, tile, surface) {
+  var g = Road.ground(terrain, tile),
+    shape = Road.shapeOf(surface);
 
-  if (!raised(terrain, tile, net) && !raised(terrain, next, net)) return true;
+  if (shape === -1 || Math.max.apply(null, g) <= 0) return false;
+  if (shape !== 0 && terrain.getTerrainType(tile) === Core.TerrainType.shore)
+    return false;
 
-  var ours = edges(terrain, tile, net)[side],
-    theirs = edges(terrain, next, net)[(side + 2) % 4];
-
-  return ours[0] === theirs[0] && ours[1] === theirs[1];
+  return surface.every(function (h, k) {
+    return h >= g[k] && h - g[k] <= 1;
+  });
 };
 
 /**
- * How high the road on tile is at each corner, A (x, y), B (x + 1, y),
- * C (x, y + 1), D (x + 1, y + 1) - where the ground is, or on its concrete
- * (RoadView deck).
+ * Every surface a new road on tile can have (Road.fits) that stands on the
+ * ground somewhere - flat at the top of the ground, or a ramp a step up, on
+ * the ground as it is or on concrete - cheapest first (cost).
+ */
+Road.surfaces = function (terrain, tile) {
+  var g = Road.ground(terrain, tile),
+    high = Math.max.apply(null, g),
+    out = [];
+
+  function add(surface) {
+    if (
+      Road.fits(terrain, tile, surface) &&
+      surface.some(function (h, k) {
+        return h === g[k];
+      })
+    )
+      out.push(surface);
+  }
+
+  add([high, high, high, high]);
+
+  [high - 1, high].forEach(function (low) {
+    for (var r = 1; r <= 4; r++)
+      add(
+        RAMP_TOPS[r].map(function (up) {
+          return low + up;
+        }),
+      );
+  });
+
+  return out.sort(function (a, b) {
+    return cost(terrain, tile, a) - cost(terrain, tile, b);
+  });
+};
+
+//what laying a road with surface on tile takes, to the planner (Road.plan):
+//a corner's worth of concrete for each corner over the ground, and more for
+//a ramp put up on concrete - a road follows the ground where it can
+function cost(terrain, tile, surface) {
+  var g = Road.ground(terrain, tile),
+    drops = 0;
+
+  surface.forEach(function (h, k) {
+    drops += h - g[k];
+  });
+
+  return drops + (drops > 0 && Road.shapeOf(surface) > 0 ? 3 : 0);
+}
+
+//the heights along each side of a surface, -x, -y, +x, +y, each from its
+//end nearer A
+function edge(surface, side) {
+  switch (side) {
+    case 0:
+      return [surface[0], surface[2]];
+    case 1:
+      return [surface[0], surface[1]];
+    case 2:
+      return [surface[1], surface[3]];
+    default:
+      return [surface[2], surface[3]];
+  }
+}
+
+/**
+ * Whether a road with surface a joins one with surface b next to it at side
+ * - 0..3: -x, -y, +x, +y: where they meet level, at the same height all
+ * along the edge between them.
  *
- * @param net {{isRoad, lay}} where the roads are (see Road.lay)
+ * @param b {number[]|null} null for no road there
  */
-Road.deck = function (terrain, tile, net) {
-  return RoadView.deck(terrain, tile, pieceOf(Road.lay(terrain, tile, net)));
+Road.meets = function (a, side, b) {
+  if (b === null) return false;
+
+  var ours = edge(a, side),
+    theirs = edge(b, (side + 2) % 4);
+
+  return ours[0] === ours[1] && ours[0] === theirs[0] && ours[1] === theirs[1];
 };
 
 /**
- * The roads loaded, as Road.lay goes by them.
+ * The surface kept with a road, its core model - null for one put down
+ * without one (Road.settle).
+ */
+Road.surfaceOf = function (model) {
+  var look = model.look;
+
+  return look !== null && look !== undefined && Array.isArray(look.surface)
+    ? look.surface
+    : null;
+};
+
+//keeps surface with a road, its core model - with it in the save
+Road.setSurface = function (model, surface) {
+  model.look = { surface: surface.slice() };
+};
+
+/**
+ * Gives a road put down without a surface - the starting city's on flat
+ * ground - the one that suits its ground best on its own (Road.surfaces), as
+ * it loads.
+ *
+ * @param model {Object} the road's core model
+ */
+Road.settle = function (terrain, model) {
+  if (Road.surfaceOf(model) !== null) return;
+
+  var any = Road.surfaces(terrain, model.tile);
+
+  Road.setSurface(
+    model,
+    any.length > 0 ? any[0] : Road.ground(terrain, model.tile),
+  );
+};
+
+/**
+ * Whether a road, its core model, stays standing on the ground as a plan
+ * would leave it (core/terrain after) - its surface where it is, on
+ * concrete that takes up the difference (Road.fits), the way OpenTTD keeps
+ * a road on its foundation as the land is shaped under it.
+ */
+Road.standsOn = function (after, model) {
+  var surface = Road.surfaceOf(model);
+
+  return surface !== null && Road.fits(after, model.tile, surface);
+};
+
+/**
+ * The roads loaded, as Road.profile goes by them: the surface of each, or
+ * null where there is none.
  *
  * @param roadman {Roadman}
  */
 Road.network = function (roadman) {
   return {
-    isRoad: function (tile) {
-      return roadman.getRoad(tile) !== null;
-    },
-    lay: function (tile) {
+    surface: function (tile) {
       var road = roadman.getRoad(tile);
 
-      return road !== null ? Road.layOf(road.data) : undefined;
+      return road !== null ? road.surface() : null;
     },
   };
 };
 
 /**
- * How a road, its core model, is laid for good (Road.fix), if it is.
- */
-Road.layOf = function (model) {
-  return model.look !== null &&
-    model.look !== undefined &&
-    typeof model.look.lay === "number"
-    ? model.look.lay
-    : undefined;
-};
-
-/**
- * How roads would be laid with the ones at tiles put down too - each new one
- * the way the run of them goes through it, as the player drags it: a run
- * across a slope levelled along it, whatever roads come up to it from above
- * or below, and one up it a ramp; where it turns, or for one on its own, by
- * every road next to it - and every one next to them not laid for good yet -
- * from before this was kept - as it is now, laid for good now (Road.fix).
- * The ones there stay as they were laid.
+ * How the roads going down on tiles - a run the player dragged - are best
+ * laid, all of them at once: each the surface (Road.surfaces) that has the
+ * run join up the most - with each other and with the roads there, which
+ * stay as they are - and, as far as that goes, takes the least concrete.
+ * A run across a slope is levelled along it, one up the slope ramps up it,
+ * one onto a levelled road climbs up to it.
+ *
+ * Worked out the same every time for the same run, so the preview is what
+ * gets built.
  *
  * @param roadman {Roadman}
- * @param tiles {number[]} where roads are going down
- * @param [run] {number[]} every tile the player dragged them over, the roads
- *        already there included - tiles unless given
- * @returns {{isRoad, lay, fixes: Object}} the roads, and fixes how each of
- *          the new ones and the ones round them are to be laid for good, by
- *          tile - undefined for one that is not yet
+ * @param tiles {number[]} where roads would go down - the ones with roads
+ *        already left as they are
+ * @param [run] {number[]} every tile the player dragged over, the roads there
+ *        included - joining those counts double
+ * @returns {{surfaces: Object, surface: function(number)}} the surface of
+ *          each new one, by tile, and the network with them in it
  */
-Road.planned = function (terrain, roadman, tiles, run) {
+Road.plan = function (terrain, roadman, tiles, run) {
   var before = Road.network(roadman),
-    going = Object.create(null),
-    dragged = Object.create(null),
-    fixes = Object.create(null),
-    after = function (tile) {
-      return going[tile] === true || before.isRoad(tile);
-    };
+    going = [],
+    labels = Object.create(null),
+    costs = Object.create(null),
+    dragged = Object.create(null);
+
+  (run || tiles).forEach(function (tile) {
+    dragged[tile] = true;
+  });
 
   tiles.forEach(function (tile) {
-    if (!before.isRoad(tile)) going[tile] = true;
-  });
+    if (before.surface(tile) !== null || labels[tile] !== undefined) return;
 
-  //the run: the new ones, and the roads there it goes over
-  (run || tiles).forEach(function (tile) {
-    if (after(tile)) dragged[tile] = true;
-  });
+    var options = Road.surfaces(terrain, tile);
 
-  //the roads a new one is laid by: the way the run being put down goes
-  //through it - along it, the ones there count too; across it, not - or,
-  //where it turns or the road goes down on its own, all of them
-  function by(tile) {
-    var sides = [0, 1, 2, 3].filter(function (side) {
-      return dragged[tile + STEP[side]] === true;
+    if (options.length === 0) return;
+
+    going.push(tile);
+    labels[tile] = options;
+    costs[tile] = options.map(function (surface) {
+      return cost(terrain, tile, surface);
     });
+  });
 
-    if (
-      sides.length === 0 ||
-      sides.some(function (side) {
-        return side % 2 !== sides[0] % 2;
-      })
-    )
-      return after;
+  //what a road joined up is worth, against a corner's worth of concrete -
+  //twice that for one joined to a road the player dragged over, which the
+  //run is meant to go on to
+  var JOIN = 10;
 
-    return function (t) {
-      return (
-        going[t] === true ||
-        (before.isRoad(t) &&
-          (t === tile + STEP[sides[0] % 2] ||
-            t === tile + STEP[(sides[0] % 2) + 2]))
-      );
-    };
-  }
-
-  Object.keys(going).forEach(function (key) {
-    var tile = +key;
-
-    fixes[tile] = Road.fix(terrain, tile, by(tile));
+  //how good surface option i is on tile, with the run laid as assigned
+  function local(tile, i, assigned) {
+    var surface = labels[tile][i],
+      score = -costs[tile][i];
 
     for (var side = 0; side < 4; side++) {
-      var next = tile + STEP[side];
+      var next = tile + STEP[side],
+        theirs =
+          labels[next] !== undefined
+            ? labels[next][assigned[next]]
+            : before.surface(next);
 
-      if (
-        !before.isRoad(next) ||
-        before.lay(next) !== undefined ||
-        next in fixes
-      )
-        continue;
-
-      fixes[next] = Road.fix(terrain, next, before.isRoad);
+      if (Road.meets(surface, side, theirs))
+        score +=
+          labels[next] === undefined && dragged[next] === true
+            ? 2 * JOIN
+            : JOIN;
     }
-  });
 
-  var net = {
-    isRoad: after,
-    lay: function (tile) {
-      return tile in fixes ? fixes[tile] : before.lay(tile);
-    },
-    fixes: fixes,
-  };
-
-  //and a new one on flat ground a ramp up to the road it goes on to, if
-  //that is a step higher - laid by the ones round it, so after them
-  Object.keys(going).forEach(function (key) {
-    var tile = +key;
-
-    if (!Terrain.isSlope(terrain.tileSlope(tile))) {
-      var up = rampUp(terrain, tile, by(tile), net);
-
-      if (up !== 0) fixes[tile] = up;
-    }
-  });
-
-  return net;
-};
-
-//the ramp up towards each side, -x, -y, +x, +y (see profile)
-var UP_TO = [2, 1, 4, 3];
-
-/**
- * The ramp a road on flat tile goes up to a road next to it a whole step
- * higher, all along the edge between them - a road on concrete - on
- * concrete of its own: up to the one of them isRoad says it is laid by, if
- * there is just one. 0 for none, flat on the ground.
- *
- * @param net {{isRoad, lay}} how the roads round it are laid (Road.lay)
- */
-function rampUp(terrain, tile, isRoad, net) {
-  var h = terrain.getGridPointHeight(tile),
-    ups = [];
-
-  for (var side = 0; side < 4; side++) {
-    var next = tile + STEP[side];
-
-    if (!isRoad(next)) continue;
-
-    var edge = edges(terrain, next, net)[(side + 2) % 4];
-
-    if (edge[0] === h + 1 && edge[1] === h + 1) ups.push(side);
+    return score;
   }
 
-  return ups.length === 1 ? UP_TO[ups[0]] : 0;
-}
+  function total(assigned) {
+    var sum = 0;
 
-/**
- * Lays for good every road next to tile not laid for good yet (Road.fix), as
- * the roads round it are now - before the one on tile goes.
- *
- * @param roadman {Roadman}
- */
-Road.fixAround = function (terrain, roadman, tile) {
-  var net = Road.network(roadman);
+    going.forEach(function (tile) {
+      sum += local(tile, assigned[tile], assigned);
+    });
 
-  for (var side = 0; side < 4; side++) {
-    var road = roadman.getRoad(tile + STEP[side]);
-
-    if (road === null || Road.layOf(road.data) !== undefined) continue;
-
-    var lay = Road.fix(terrain, road.data.tile, net.isRoad);
-
-    if (lay !== undefined) Road.setLay(road.data, lay);
+    return sum;
   }
-};
 
-/**
- * Lays for good a road from a save written before roads were - from the
- * starting city, say - as it was drawn then: by every road next to it, as
- * the core has them, whether they are loaded or not.
- *
- * @param core {Object} the core, its buildings
- * @param model {Object} the road's core model
- */
-Road.fixLoaded = function (terrain, core, model) {
-  if (Road.layOf(model) !== undefined) return;
+  //how good the run is about tiles: their own scores and those of the new
+  //ones next to them, which their joins count with too
+  function around(some, assigned) {
+    var seen = Object.create(null),
+      sum = 0;
 
-  var lay = Road.fix(terrain, model.tile, function (tile) {
-    var other = core.buildingService.get(tile);
+    some.forEach(function (tile) {
+      [tile]
+        .concat(
+          STEP.map(function (step) {
+            return tile + step;
+          }),
+        )
+        .forEach(function (t) {
+          if (labels[t] === undefined || seen[t] === true) return;
 
-    return (
-      other !== null && other.data.classCode === Core.BuildingClassCode.road
+          seen[t] = true;
+          sum += local(t, assigned[t], assigned);
+        });
+    });
+
+    return sum;
+  }
+
+  //from a first guess, the run is bettered a tile at a time, and two next to
+  //each other at a time - a road that climbs onto a levelled one takes both
+  //changing together - until nothing betters it
+  function settle(assigned) {
+    for (var pass = 0; pass < 50; pass++) {
+      var changed = false;
+
+      going.forEach(function (tile) {
+        var was = assigned[tile],
+          best = was,
+          bestScore = around([tile], assigned);
+
+        for (var i = 0; i < labels[tile].length; i++) {
+          assigned[tile] = i;
+
+          var score = around([tile], assigned);
+
+          if (score > bestScore) {
+            best = i;
+            bestScore = score;
+          }
+        }
+
+        assigned[tile] = best;
+        if (best !== was) changed = true;
+      });
+
+      going.forEach(function (tile) {
+        [2, 3].forEach(function (side) {
+          var next = tile + STEP[side];
+
+          if (labels[next] === undefined) return;
+
+          var wasT = assigned[tile],
+            wasN = assigned[next],
+            best = [wasT, wasN],
+            bestScore = around([tile, next], assigned);
+
+          for (var i = 0; i < labels[tile].length; i++)
+            for (var j = 0; j < labels[next].length; j++) {
+              assigned[tile] = i;
+              assigned[next] = j;
+
+              var score = around([tile, next], assigned);
+
+              if (score > bestScore) {
+                best = [i, j];
+                bestScore = score;
+              }
+            }
+
+          assigned[tile] = best[0];
+          assigned[next] = best[1];
+          if (best[0] !== wasT || best[1] !== wasN) changed = true;
+        });
+      });
+
+      if (!changed) break;
+    }
+
+    return assigned;
+  }
+
+  //first guesses: the cheapest of each; each the one that would join best
+  //if the ones round it went along; and the whole run level at each height
+  //it could be levelled at
+  var guesses = [],
+    heights = [];
+
+  guesses.push(
+    going.reduce(function (a, tile) {
+      a[tile] = 0;
+      return a;
+    }, Object.create(null)),
+  );
+
+  guesses.push(
+    going.reduce(function (a, tile) {
+      var best = 0,
+        bestScore = -Infinity;
+
+      labels[tile].forEach(function (surface, i) {
+        var score = -costs[tile][i];
+
+        for (var side = 0; side < 4; side++) {
+          var next = tile + STEP[side];
+
+          if (labels[next] !== undefined) {
+            if (
+              labels[next].some(function (theirs) {
+                return Road.meets(surface, side, theirs);
+              })
+            )
+              score += JOIN;
+          } else if (Road.meets(surface, side, before.surface(next)))
+            score += JOIN;
+        }
+
+        if (score > bestScore) {
+          best = i;
+          bestScore = score;
+        }
+      });
+
+      a[tile] = best;
+      return a;
+    }, Object.create(null)),
+  );
+
+  going.forEach(function (tile) {
+    labels[tile].forEach(function (surface) {
+      if (Road.shapeOf(surface) === 0 && heights.indexOf(surface[0]) === -1)
+        heights.push(surface[0]);
+    });
+  });
+
+  heights.sort(function (a, b) {
+    return a - b;
+  });
+
+  heights.forEach(function (h) {
+    guesses.push(
+      going.reduce(function (a, tile) {
+        var i = labels[tile].findIndex(function (surface) {
+          return Road.shapeOf(surface) === 0 && surface[0] === h;
+        });
+
+        a[tile] = i === -1 ? 0 : i;
+        return a;
+      }, Object.create(null)),
     );
   });
 
-  if (lay !== undefined) Road.setLay(model, lay);
+  var best = null,
+    bestScore = -Infinity;
+
+  guesses.forEach(function (guess) {
+    var assigned = settle(guess),
+      score = total(assigned);
+
+    if (score > bestScore) {
+      best = assigned;
+      bestScore = score;
+    }
+  });
+
+  var surfaces = Object.create(null);
+
+  going.forEach(function (tile) {
+    surfaces[tile] = labels[tile][best[tile]];
+  });
+
+  return {
+    surfaces: surfaces,
+    surface: function (tile) {
+      return surfaces[tile] !== undefined
+        ? surfaces[tile]
+        : before.surface(tile);
+    },
+  };
 };
 
 /**
- * Keeps how a road, its core model, is laid for good - with it in a save.
- */
-Road.setLay = function (model, lay) {
-  model.look = { lay: lay };
-};
-
-/**
- * Which piece of road goes on tile: one joined up to whichever of its four
- * neighbours are roads and it meets (Road.meets), or a ramp (Road.lay) - and
- * the paved one, with pavements and street lights, for a street (see
- * Roadman#paved).
+ * Which piece of road goes on tile: a ramp, if its surface is one, or else
+ * flat, joined up to whichever of its four neighbours it meets
+ * (Road.meets) - and the paved one, with pavements and street lights, for a
+ * street (see Roadman#paved).
  *
- * @param terrain {Terrain} core terrain
- * @param tile {number}
- * @param net {{isRoad, lay}} where the roads are (see Road.lay)
+ * @param net {{surface: function(number)}} the roads' surfaces (Road.network)
  * @param [paved] {boolean}
  * @returns {number} the piece: 9abcd for one joined up towards -x, -y, +x and
- *          +y as the digits say, 1..4 for a ramp, RoadView.PAVED more for
- *          the paved one - see RoadView
+ *          +y as the digits say, 1..4 for a ramp, 1 up towards -y, 2 -x, 3 +y
+ *          and 4 +x, RoadView.PAVED more for the paved one - see RoadView
  */
-Road.profile = function (terrain, tile, net, paved) {
-  var lay = Road.lay(terrain, tile, net),
-    id = lay;
+Road.profile = function (tile, net, paved) {
+  var surface = net.surface(tile),
+    id = Road.shapeOf(surface);
 
-  if (lay === 0) {
+  if (id <= 0) {
     var j = [0, 1, 2, 3].map(function (side) {
-      return net.isRoad(tile + STEP[side]) &&
-        Road.meets(terrain, tile, side, net)
-        ? 1
-        : 0;
+      return Road.meets(surface, side, net.surface(tile + STEP[side])) ? 1 : 0;
     });
 
     id = 90000 + j[0] * 1000 + j[1] * 100 + j[2] * 10 + j[3];
@@ -556,10 +559,21 @@ Road.profile = function (terrain, tile, net, paved) {
   return paved ? id + RoadView.PAVED : id;
 };
 
+/**
+ * The road's surface (see above) - the ground under it, for one not given
+ * one yet.
+ */
+Road.prototype.surface = function () {
+  var surface = Road.surfaceOf(this.data);
+
+  return surface !== null
+    ? surface
+    : Road.ground(this.root.core.terrain, this.data.tile);
+};
+
 Road.prototype.updateProfile = function () {
   var roadman = this.root.roadman,
     id = Road.profile(
-      this.root.core.terrain,
       this.data.tile,
       Road.network(roadman),
       roadman.paved(this.data.tile),

@@ -230,26 +230,16 @@ Terrainman.prototype.enter = function () {
       for (var i = 0; i < tiles.length; i++) {
         //every tile is charged on its own, so each one that goes gets
         //its own text
-        //the roads round a road that goes stay as they were laid
-        if (root.roadman.getRoad(tiles[i]) !== null)
-          Road.fixAround(root.core.terrain, root.roadman, tiles[i]);
-
         if (c.clearTile(tiles[i]))
           buildman.showCost(tiles[i], 1, 1, Core.Config.clearTileCost);
       }
     },
   };
 
-  //the roads the ground can move under, and how each would stand then
-  //(Road.fitTo) - by tile, as the last quote worked them out
-  var fitted = Object.create(null);
-
+  //whether a road can stay standing on the ground as it would be - its
+  //surface where it is, on concrete that takes up the difference
   function fitsRoad(building, after) {
-    var look = Road.fitTo(root.core.terrain, root.roadman, building, after);
-
-    fitted[building.tile] = look;
-
-    return look !== null;
+    return Road.standsOn(after, building);
   }
 
   //everything standing on tiles, or next to them, drawn again on the ground
@@ -283,15 +273,8 @@ Terrainman.prototype.enter = function () {
         var result = city().terraform(tiles, direction, fitsRoad),
           where = area();
 
-        //the roads that stay, laid as the ground lets them be now
-        if (result.error === ErrorCode.NONE) {
-          result.kept.forEach(function (building) {
-            var look = fitted[building.tile];
-
-            if (look) building.look = look;
-          });
-          redraw(result.tiles);
-        }
+        //what stays is drawn again on the ground as it is now
+        if (result.error === ErrorCode.NONE) redraw(result.tiles);
 
         if (result.error !== ErrorCode.NONE)
           buildman.showText(
