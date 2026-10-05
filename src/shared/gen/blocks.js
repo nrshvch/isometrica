@@ -135,6 +135,56 @@ export function random(seed) {
   };
 }
 
+/**
+ * Every name a part's template comes to with the options there are - each
+ * {axis} in it filled in with every one of the axis' values, and an option
+ * that names another ("store-{pal}") filled in too - over only the axes it
+ * names, however many more the design has.
+ *
+ * @param axes {Object} by axis, the values it takes
+ */
+export function namesOf(template, axes) {
+  var used = [],
+    seen = {};
+
+  (function scan(text) {
+    text.replace(/\{(\w+)\}/g, function (m, axis) {
+      if (seen[axis]) return m;
+      seen[axis] = true;
+      used.push(axis);
+      axes[axis].forEach(scan);
+      return m;
+    });
+  })(template);
+
+  var combos = [{}];
+
+  used.forEach(function (axis) {
+    var next = [];
+
+    combos.forEach(function (c) {
+      axes[axis].forEach(function (v) {
+        var n = Object.assign({}, c);
+
+        n[axis] = v;
+        next.push(n);
+      });
+    });
+    combos = next;
+  });
+
+  return combos.map(function (c) {
+    var out = template;
+
+    for (var pass = 0; pass < 2; pass++)
+      out = out.replace(/\{(\w+)\}/g, function (m, axis) {
+        return c[axis];
+      });
+
+    return out;
+  });
+}
+
 export function pick(rnd, list) {
   return list[Math.floor(rnd() * list.length)];
 }

@@ -57,31 +57,57 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   like a shore tile, is put together there once
   (`sprites.getComposite([...])`); something that changes every frame, like
   a police car's lamp, is drawn over it as a sprite of its own.
+- Housing and commerce each come in three tiers, and every tier on every
+  footprint: 2x1 and 3x1 along the street, 1x2 and 1x3 end on to it, and
+  2x2, 2x3 and 3x2 - the first number along the street, the second back from
+  it - each with designs and options of its own, so no two need be alike.
+  Housing: the village (cottages, farms, a croft - needing no road or
+  water), town houses (bungalows, two-storey and terraced houses,
+  semi-detached pairs) and then either villas - few people on a lot of
+  land, paying a lot - or blocks of flats, a lot of people on little land.
+  Commerce: small shops, stores (supermarkets, superstores, department
+  stores, a shopping centre) and then either farmers' markets or office
+  blocks. The catalogue keeps each tier together, its footprint on every
+  card (`src/data/houses.js`, `shops.js`, `flats.js`, `offices.js`).
 - Blocks of flats and offices are put together out of parts the game
   paints - ground storey, upper storeys, roof, yard - in a style each
   (`src/shared/gen/flats.js`, `offices.js`) on what all blocks share
   (`src/shared/gen/blocks.js`). Each block picks its colours and details at
   random when it is first drawn and keeps the parts it is made of in the
   save (`src/client/js/compoundbuilding.js`); the catalogue shows one of
-  each kind (`src/data/flats.js`, `offices.js`).
+  each kind (`src/data/flats.js`, `offices.js`). A wall can be three
+  sections long, the one in the middle neither end of it, with a row or two
+  of yard in front - a car park, a playground, a plaza.
 - Shops are painted the same way (`src/shared/gen/shops.js`), but one
-  catalogue entry per footprint (`src/data/shops.js`) stands for several
-  designs: a 1x1 corner shop (flat, gable or shed roof, a firm's striped
-  awning or none, fascia or side board), a 1x2 shop with a car park, a 2x2 superstore and a
-  2x3 shopping centre or covered market, the big ones with a pole sign.
-  Which design, colours and details a shop gets is picked when it is
-  placed, so the ghost already shows what will be built. Car parks - the
-  shops' and the blocks' - are filled with cars from the vehicle
-  generator, different for every building.
+  catalogue entry per tier and footprint (`src/data/shops.js`) stands for
+  several designs: a 1x1 corner shop (flat, gable or shed roof, a firm's
+  striped awning or none, fascia or side board), a 1x2 shop with a car park,
+  parades of corner shops and rows of shops with car parks on the other
+  footprints; a 2x2 superstore, superstores along the street or behind a
+  car park three tiles long, department stores of two floors with a glass
+  lantern on the roof, and a 2x3 shopping centre or covered market, the big
+  ones with a pole sign; and farmers' markets - stalls under striped
+  canopies on a cobbled square, in rows or round a fountain, a timber roof
+  on posts over the stalls, or a glass market hall behind them, a farm's
+  trailer of hay and pumpkins come in. Which design, colours and details a
+  shop gets is picked when it is placed, so the ghost already shows what
+  will be built. Car parks - the shops' and the blocks' - are filled with
+  cars from the vehicle generator, different for every building.
 - Houses are painted the same way (`src/shared/gen/houses.js`), one
   catalogue entry per kind and footprint (`src/data/houses.js`): village
   houses that need no road or water - a cottage on 1x1 with hens, a cow, an
-  orchard or a well, a farmstead on 1x2 with a barn, a field or sheep;
-  town houses with hedges or picket fences - a bungalow with its garage on
-  2x1, a two-storey house end on to the street on 1x2 and 1x3;
-  semi-detached houses on 2x2, and on 2x3 end on to the street with a back
-  garden behind each half, each half with its own parking space and gate; and villas on 2x2 and 3x2 behind a
-  gate in a high hedge or a wall, with a fountain or a pool. Houses are
+  orchard or a well, a farmstead on 1x2 with a barn, a field or sheep, a
+  croft on 1x3, hamlets of cottages or farmsteads side by side, a longhouse
+  with its byre along the street, a farm round its yard with a barn and a
+  paddock; town houses with hedges or picket fences - a bungalow with its
+  garage on 2x1 (and set back on 2x2, 2x3 and 3x2, a car on the drive and a
+  back garden), a bungalow end on to the street with a carport on 1x2 and
+  1x3, a two-storey house end on to the street on 1x2 and 1x3, terraced
+  houses along the street on 2x1, 3x1 and 3x2; semi-detached houses on
+  2x2, and on 2x3 end on to the street with a back garden behind each
+  half, each half with its own parking space and gate; and villas on every
+  footprint behind a gate in a high hedge or a wall, with a fountain or a
+  pool. Houses are
   built to the scale of the cars and roads - a car is about 4.5 m long, so
   a tile is about 10 m across and a storey 12 high - and what does not fit
   a footprint is left to a bigger one: the bungalow has a drive to its
@@ -100,7 +126,10 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   tanks stacked up its side, or a brick shaft with a wider tank of steel
   sheet on it. Each has a colour of its own and a band of blue round its
   tank; whatever is round is laid out in columns a unit across, so it keeps
-  to the pixels like everything else.
+  to the pixels like everything else. The pump station on 2x2 waters three times as far as a tower,
+  at four times its upkeep: a Victorian brick engine house with its
+  chimney stack and settling tank, a pump hall with two steel tanks, or a
+  reservoir under a grassed mound with its valve house.
 - Parks are painted too (`src/shared/gen/parks.js`), one catalogue entry
   per footprint (`src/data/parks.js`) - 1x1, 1x2, 1x3, 2x2 and 2x3 - each
   laid out as one of three kinds picked when it is placed: a sports park of
@@ -112,8 +141,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   pond on the bigger footprints. A park needs no road or water and earns
   nothing; the town pays its upkeep.
 - The catalogue opens with what a game starts with - what needs neither a
-  road nor water, the houses and the water tower first, then the parks -
-  and then everything else, the cheaper first.
+  road nor water, the houses, the water tower and the pump station first,
+  then the parks - and then everything else: houses, then shops, a tier at
+  a time, the cheaper first within one.
 - A tap on nothing - bare ground, a road, the sea - while nothing is being
   looked at puts away the words over the world ("no jobs", how far along
   one going up is, the city's name) and the city limits drawn round it: the

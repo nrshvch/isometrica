@@ -982,37 +982,33 @@ buildingData[BuildingCode.waterTower] = {
   },
 };
 
-// buildingData[BuildingCode.waterPump] = {
-//     sizeX: 1,
-//     sizeY: 1,
-//     buildingCode: BuildingCode.waterPump,
-//     classCode: BuildingClassCode.municipal,
-//     producing: {
-//         water: 15
-//     },
-//     demanding: {
-//         money: 20
-//     },
-//     constructionTime: 100000,
-//     constructionCost: {
-//         money: 1000,
-//         stone: 40,
-//         iron: 40
-//     },
-//     name: "water pump station",
-//     sprites: [
-//         {
-//             x: 0,
-//             y: 0,
-//             z: 0,
-//             pivotX: 32,
-//             pivotY: 30,
-//             path: "buildings/testbuilding0.png",
-//             layer: RenderLayer.buildingsLayer
-//         }
-//     ]
-// };
-//
+//The pump station: what a town grown past its water towers waters itself
+//with - three times as far as a tower, at four times its upkeep.
+buildingData[BuildingCode.waterPump] = {
+  sizeX: 2,
+  sizeY: 2,
+  buildingCode: BuildingCode.waterPump,
+  classCode: BuildingClassCode.municipal,
+  producing: {},
+  demanding: {
+    money: 4 * buildingData[BuildingCode.waterTower].demanding.money,
+  },
+  //how far it waters, in tiles
+  waterRadius: 3 * buildingData[BuildingCode.waterTower].waterRadius,
+  constructionTime: 160000,
+  constructionCost: {
+    money: 12000,
+  },
+  name: "pump station",
+  //drawn out of parts, see shared/gen/utilities and client/compoundbuilding
+  compound: {
+    gen: "utilities",
+    footprint: "pumpstation",
+    sizeX: 2,
+    sizeY: 2,
+  },
+};
+
 // buildingData[BuildingCode.smallMarket] = {
 //     sizeX: 1,
 //     sizeY: 1,

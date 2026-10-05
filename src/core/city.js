@@ -202,7 +202,8 @@ City.prototype.getBudget = function () {
 
     if (data.classCode === BuildingClassCode.road) {
       r.roads += paid;
-    } else if (building.buildingCode === BuildingCode.waterTower) {
+    } else if (data.waterRadius) {
+      //whatever waters the town: a water tower, a pump station
       r.water += paid;
     } else if (building.buildingCode === BuildingCode.cityHall) {
       //the flat part is the offices, the rest is the land

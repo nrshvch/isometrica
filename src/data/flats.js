@@ -100,6 +100,7 @@ function buildings() {
         },
         name: storeys + "-storey " + l.name,
         hidden: (OFFERED[layout] || []).indexOf(storeys) === -1,
+        //the top tier of housing, with the villas (data/houses)
         tier: 3,
         //drawn out of parts, see client/compoundbuilding
         compound: {

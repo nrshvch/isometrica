@@ -5,29 +5,39 @@
  * (onTile), so a house on two tiles is still one house.
  *
  * There are four kinds, each a building of its own for every footprint it
- * comes in, and every house of one picked at random among the designs and
- * options there are for it (client/compoundbuilding, see describe
- * footprints):
+ * comes in - every one of 2x1, 3x1, 1x2, 1x3, 2x2, 2x3 and 3x2, the town's
+ * kinds between them - and every house of one picked at random among the
+ * designs and options there are for it (client/compoundbuilding, see
+ * describe footprints):
  *
  *   - village houses, for a village with no streets or water yet: a cottage
  *     on one tile - whitewashed under its beams, of logs, of stone or
  *     ochre, under thatch, red tiles or slate - with a vegetable patch and
  *     hens, an orchard and beehives, a well, a woodpile and a goat, or
- *     flowers; and a farmstead on two, its farmyard behind it a pasture with
- *     a barn and cows, a field of wheat or a flock of sheep. No fences: many
- *     of them together are a village;
+ *     flowers; a farmstead on two, its farmyard behind it a pasture with
+ *     a barn and cows, a field of wheat or a flock of sheep, and a croft on
+ *     three; a hamlet of cottages or farmsteads side by side (beside), each
+ *     its own; a longhouse along the street, house and byre under one roof;
+ *     and a farm round its yard, the barn at the back, a paddock, a field or
+ *     a flock behind the farmhouse. No fences: many of them together are a
+ *     village;
  *   - town houses, with fences or hedges round them and a garden at best: a
- *     bungalow on two tiles along the street, with its garage; a two-storey
- *     house end on to the street on two tiles, its drive along its side to a
- *     garage at the back and a garden there; and one on three, room enough
- *     on its drive for the car, and a long garden;
+ *     bungalow along the street with its garage - on two rows of tiles or
+ *     three set back, its car on the drive and a back garden behind; a
+ *     bungalow end on to the street, its drive along its side to a carport;
+ *     a two-storey house end on to the street on two tiles, its drive along
+ *     its side to a garage at the back and a garden there, and one on three,
+ *     room enough on its drive for the car, and a long garden; and terraced
+ *     houses under one roof along the street, with back gardens of their own
+ *     on two rows of tiles;
  *   - semi-detached houses: a pair on four tiles, each half with its own
  *     parking space and gate and fence round it; and on six, two along the
  *     street and three deep, each half with its own back garden too;
  *   - villas: two storeys on a terrace up a flight of steps, behind a wrought
  *     iron gate between pillars in a high hedge or a wall, in a garden of
  *     lawns, cypresses and clipped box - in the middle of it with a fountain
- *     before it, or to one side of a pool.
+ *     before it, or to one side of a pool; on one row of tiles straight up
+ *     their steps from the gate, with no court before them.
  *
  * The cars on the drives are not painted: they are the vehicle generator's,
  * different for every house (blocks baysOverlay) - and what of the house
@@ -68,6 +78,7 @@ import {
   finishOf,
   shaded,
   random,
+  namesOf,
   round,
   bench,
   baysOverlay,
@@ -3802,13 +3813,6 @@ var OPTIONS = {
   narrow3: ["pal", "roof", "fence", "back"],
 };
 
-//an option's names filled in
-function fill(template, options) {
-  return template.replace(/\{(\w+)\}/g, function (m, axis) {
-    return options[axis];
-  });
-}
-
 /**
  * Every part there is, by name without its turn - every footprint's every
  * design with every option, and the sites each goes up on, two stages of
@@ -3819,27 +3823,10 @@ var PARTS = (function () {
 
   Object.keys(FOOTPRINTS).forEach(function (fp) {
     FOOTPRINTS[fp].forEach(function (d) {
-      var combos = [{}];
-
-      Object.keys(d.axes).forEach(function (axis) {
-        var next = [];
-
-        combos.forEach(function (c) {
-          d.axes[axis].forEach(function (v) {
-            var n = Object.assign({}, c);
-
-            n[axis] = v;
-            next.push(n);
-          });
-        });
-        combos = next;
-      });
-
-      combos.forEach(function (c) {
-        d.tiles.forEach(function (t) {
-          t.parts.forEach(function (p) {
-            var name = fill(p, c),
-              q = name.split("/");
+      d.tiles.forEach(function (t) {
+        t.parts.forEach(function (p) {
+          namesOf(p, d.axes).forEach(function (name) {
+            var q = name.split("/");
 
             out[name] = true;
 

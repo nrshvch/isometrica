@@ -5,6 +5,7 @@ import Buildings from "./collections/buildings";
 import Building from "./models/building";
 import Data from "data/buildings";
 import BuildingCode from "data/buildingcode";
+import BuildingClassCode from "data/classcode";
 import CityPopulation from "core/city/citypopulation";
 import Numeral from "numeral";
 
@@ -19,6 +20,16 @@ function formatList(parts) {
 //a building's name, the way it heads its card: "Town hall"
 function capitalize(name) {
   return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+//and for one put together out of parts, which comes on every footprint, the
+//footprint too: "Farm · 2x2", along the street by back from it
+function displayName(b) {
+  var name = capitalize(b.name);
+
+  return b.compound !== undefined
+    ? name + " \u00b7 " + b.sizeX + "x" + b.sizeY
+    : name;
 }
 
 function formatMoney(amount) {
@@ -110,6 +121,29 @@ function startRank(code) {
   return gives ? 0 : 1;
 }
 
+//and within that, houses before shops before the rest, a tier at a time -
+//its footprints together, rather than every tier's cheapest first
+var CLASS_ORDER = [
+  BuildingClassCode.house,
+  BuildingClassCode.commerce,
+  BuildingClassCode.municipal,
+];
+
+function groupRank(code) {
+  var b = BuildingData[code],
+    at = CLASS_ORDER.indexOf(b.classCode);
+
+  return (at === -1 ? CLASS_ORDER.length : at) * 10 + (b.tier || 0);
+}
+
+//and the top tiers' two ways apart: villas and flats, markets and offices -
+//by what paints them
+function kindOf(code) {
+  var compound = BuildingData[code].compound;
+
+  return compound ? compound.gen : "";
+}
+
 //and within that, the cheaper first: the order a town gets built in
 function costOf(code) {
   var cost = BuildingData[code].constructionCost || {};
@@ -131,7 +165,7 @@ function getBuildings(self) {
         new Building({
           code: code,
           classCode: b.classCode,
-          displayName: capitalize(b.name),
+          displayName: displayName(b),
           stats: getStats(b),
           image: imageOf(code),
           //the code to draw a picture of as the catalogue opens, see
@@ -150,6 +184,8 @@ function getBuildings(self) {
     return (
       lastRank(a) - lastRank(b) ||
       startRank(a) - startRank(b) ||
+      groupRank(a) - groupRank(b) ||
+      kindOf(b).localeCompare(kindOf(a)) ||
       costOf(a) - costOf(b) ||
       orderOf(a) - orderOf(b)
     );
@@ -167,7 +203,7 @@ function imageOf(code) {
 function getBuilding(self, code) {
   var data = BuildingData[code];
   var model = new Building({
-    displayName: capitalize(data.name),
+    displayName: displayName(data),
     code: code,
     image: imageOf(code),
     preview: data.compound !== undefined ? code : "",

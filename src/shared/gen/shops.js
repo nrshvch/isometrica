@@ -5,9 +5,10 @@
  * each of its tiles is what the whole shows on that tile (onTile), so a shop
  * three tiles long is still one roof.
  *
- * There are shops for four footprints, and for each of them a design or two,
- * each with options it is put together with at random for every shop built
- * (client/compoundbuilding picks them, see describe footprints):
+ * There are shops for every footprint of every tier (data/shops), and for
+ * each a design or more, each with options it is put together with at random
+ * for every shop built (client/compoundbuilding picks them, see describe
+ * footprints):
  *
  *   - 1x1, a small-town shop: a flat roof behind a false front, a gable or a
  *     lean-to; a shop front with the door in the middle, at the corner or a
@@ -17,6 +18,10 @@
  *   - 1x2, a shop with a car park in front, a firm's: a flat roof with its
  *     emblem up on the parapet, a front all glass or between brick piers, awnings over
  *     the windows, a sign on a pole in the car park or not;
+ *   - the small shops' other footprints: a parade of those small-town shops
+ *     side by side, each with its own colours, awning and sign under the same
+ *     kind of roof, or shops with car parks side by side - behind a row or
+ *     two of car park on the deeper footprints (along);
  *   - 2x2, a superstore over the two tiles at the back, a car park over the
  *     two in front: a firm's - the builders' merchant in orange, or white
  *     and orange; the bank in navy and gold; the grocer in white with green
@@ -25,7 +30,17 @@
  *     emblem over the doors and maybe on a pole by the road;
  *   - 2x3, a shopping centre over four tiles with a glass vault along its
  *     roof, or a market hall under green glass vaults or saw-tooth roofs,
- *     stalls out in front - and a car park over the two tiles in front.
+ *     stalls out in front - and a car park over the two tiles in front;
+ *   - the stores' other footprints: the superstore along the street on one
+ *     row of tiles or three long behind its car park (bigboxAt), or a
+ *     department store of two floors over shop windows, every firm on its
+ *     sign and a lantern of glass on its roof (departmentAt);
+ *   - the farmers' markets, on every footprint: a square of cobbles or slabs
+ *     with rows of stalls under striped canopies - or round its edge, round
+ *     a fountain - and a farm's trailer come in with hay and pumpkins
+ *     (openMarketAt); a timber roof on posts over every row of tiles, the
+ *     stalls under it (coveredMarketAt); or on two rows of tiles or more a
+ *     glass hall behind a square of stalls (marketHallAt).
  *
  * The cars in a car park are not painted: they are the vehicle generator's,
  * different for every shop (blocks baysOverlay).
@@ -49,6 +64,7 @@ import {
   METAL,
   VENT,
   CONCRETE,
+  DIRT,
   MATTE,
   GLASSY,
   LIT,
@@ -57,6 +73,7 @@ import {
   finishOf,
   shaded,
   random,
+  namesOf,
   tree,
   bench,
   baysOverlay,
@@ -220,6 +237,9 @@ var RECT = {
   mall: { x0: 2, x1: 62, y0: 38, y1: 88, h: 20 },
   market: { x0: 2, x1: 62, y0: 38, y1: 88, h: 10 },
 };
+
+//every footprint a farmers' market comes on
+var MARKET_FOOTPRINTS = ["1x2", "2x1", "3x1", "1x3", "2x2", "2x3", "3x2"];
 
 /* --- Pictures -------------------------------------------------------- */
 
@@ -910,6 +930,630 @@ function market(o, rnd) {
   return b;
 }
 
+/* --- More footprints ------------------------------------------------- */
+
+/**
+ * A superstore W tiles along the street and D deep, its first `rows` rows
+ * of tiles a car park (laid as tiles of their own) - or none, its doors on
+ * the pavement: a shed of steel sheet in a firm's colours, the band along
+ * the top, the way in standing out of the middle of the front, banners down
+ * it, air conditioning along the roof.
+ */
+function bigboxAt(W, D, rows) {
+  var w = W * TILE,
+    R = {
+      x0: 2,
+      x1: w - 2,
+      y0: rows * TILE + (rows > 0 ? 6 : 8),
+      y1: D * TILE - 7,
+      h: D - rows > 1 ? 18 : 16,
+    };
+
+  function paint(o, rnd) {
+    var b = [],
+      S = BIGBOX[o.style],
+      h = R.h,
+      y = R.y0,
+      mid = w / 2,
+      top = o.roof === "stepped" ? h + 6 : h + 2;
+
+    lot(b, 0, w, rows * TILE, D * TILE, rows * TILE + (rows ? 0 : 1), R.y0);
+    b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, S.wall, finishOf(S.wall, MATTE)));
+    b.push(
+      box(R.x0 - 0.2, R.x1 + 0.2, R.y0 - 0.2, R.y1 + 0.2, h - 4, h - 1, S.band),
+    );
+    if (S.stripes)
+      [4, 7, 10].forEach(function (z) {
+        b.push(
+          box(R.x0 - 0.2, R.x1 + 0.2, R.y0 - 0.2, R.y1 + 0.2, z, z + 1, S.band),
+        );
+      });
+
+    b.push(box(R.x0, R.x1, R.y0, R.y1, h, h + 0.4, [128, 130, 134]));
+    if (o.roof === "stepped") {
+      b.push(
+        box(
+          R.x0 + 4,
+          R.x1 - 4,
+          R.y0 + 13,
+          R.y1,
+          h,
+          h + 4,
+          S.wall,
+          finishOf(S.wall, MATTE),
+        ),
+      );
+      b.push(
+        box(
+          R.x0 + 4,
+          R.x1 - 4,
+          R.y0 + 13,
+          R.y1,
+          h + 4,
+          h + 4.4,
+          [128, 130, 134],
+        ),
+      );
+    }
+
+    //the way in, its name over it
+    b.push(
+      box(
+        mid - 9,
+        mid + 9,
+        y - 3,
+        y + 2,
+        1,
+        top,
+        S.band,
+        finishOf(S.band, MATTE),
+      ),
+    );
+    b.push(box(mid - 6, mid + 6, y - 3.3, y - 3, 1.2, 9, DARK_GLASS, GLASSY));
+    b.push(box(mid - 0.2, mid + 0.2, y - 3.5, y - 3.3, 1.2, 9, METAL));
+    b.push(box(mid - 8, mid + 8, y - 5.5, y - 3, 9.5, 10.3, S.wall));
+    [mid - 7.6, mid + 7].forEach(function (a) {
+      b.push(box(a, a + 0.6, y - 5.1, y - 4.5, 1.2, 9.5, METAL));
+    });
+    picture(b, "y", y - 3, mid - 7, top - 6, 14, 5, panel(S.brand, 14, 5));
+
+    //banners down the front either side of it, and windows on the street
+    for (var a = R.x0 + 5; a < R.x1 - 6; a += 6) {
+      if (Math.abs(a + 1.5 - mid) < 13) continue;
+      if (rows === 0 && Math.floor((a - R.x0) / 6) % 2 === 1)
+        windowAt(b, y, a - 1, a + 4, 2.5, 8, S.band, 2.5);
+      else {
+        b.push(box(a, a + 3, y - 0.5, y, 6, 13, S.band));
+        b.push(box(a + 0.5, a + 2.5, y - 0.6, y - 0.5, 8, 10, bannerMark(S)));
+      }
+    }
+
+    for (var i = 0; i < Math.floor((R.x1 - R.x0 - 8) / 11); i++)
+      airConditioner(
+        b,
+        R.x0 + 4 + i * 11 + Math.floor(rnd() * 3),
+        R.y0 + 3 + Math.floor(rnd() * Math.max(1, R.y1 - R.y0 - 10)),
+        h + 0.4,
+      );
+
+    if (rows === 0) {
+      bench(b, R.x0 + 2, 2);
+      tree(b, w - 4, 4, 2);
+    }
+
+    back(b, R, h, S.wall, D * TILE, rnd);
+    return b;
+  }
+
+  return { paint: paint, rect: R };
+}
+
+/**
+ * A department store W tiles along the street and D deep, its first `rows`
+ * rows of tiles a car park: two storeys over a row of shop windows between
+ * pilasters, a canopy along the front, revolving doors in the middle under
+ * every firm's colours on its sign, a cornice along the top - and a lantern
+ * of glass over the middle of its roof.
+ */
+function departmentAt(W, D, rows) {
+  var w = W * TILE,
+    R = {
+      x0: 2,
+      x1: w - 2,
+      y0: rows * TILE + (rows > 0 ? 6 : 5),
+      y1: D * TILE - 7,
+      h: 28,
+    };
+
+  function paint(o, rnd) {
+    var b = [],
+      S = MALL[o.style],
+      h = R.h,
+      y = R.y0,
+      mid = w / 2,
+      a;
+
+    lot(b, 0, w, rows * TILE, D * TILE, rows * TILE + (rows ? 0 : 1), R.y0);
+    b.push(box(R.x0, R.x1, R.y0, R.y1, 1, h, S.wall, finishOf(S.wall, MATTE)));
+    //the line between the storeys and the cornice
+    b.push(box(R.x0 - 0.3, R.x1 + 0.3, R.y0 - 0.3, R.y1 + 0.3, 12, 13, S.trim));
+    b.push(
+      box(R.x0 - 0.5, R.x1 + 0.5, R.y0 - 0.5, R.y1 + 0.5, h - 2, h, S.band),
+    );
+
+    //shop windows, and the windows of the floor over them
+    for (a = R.x0 + 1.5; a < R.x1 - 6; a += 7) {
+      b.push(box(a, a + 1.2, y - 0.6, y, 1, 12, S.trim));
+      if (Math.abs(a + 4 - mid) > 7)
+        windowAt(b, y, a + 2, a + 6, 2, 9, S.trim, 2);
+      windowAt(b, y, a + 2, a + 6, 15.5, 21.5, S.trim, 2);
+    }
+    //down the sides, a window to every bay of both floors in its frame
+    ["-x", "+x"].forEach(function (f) {
+      for (var k = R.y0 + 3; k < R.y1 - 6; k += 7)
+        [
+          [3, 9],
+          [15.5, 21.5],
+        ].forEach(function (z) {
+          b.push(
+            onFace(
+              R,
+              f,
+              k - 0.5,
+              k + 4.5,
+              z[0] - 0.5,
+              z[1] + 0.5,
+              0,
+              0.3,
+              S.trim,
+            ),
+          );
+          b.push(onFace(R, f, k, k + 4, z[0], z[1], 0.3, 0.4, GLASS, GLASSY));
+        });
+    });
+
+    //the way in: revolving doors, a canopy over them, the sign over that
+    b.push(box(mid - 5, mid + 5, y - 0.4, y, 1.2, 10, DARK_GLASS, GLASSY));
+    b.push(box(mid - 0.3, mid + 0.3, y - 0.6, y - 0.4, 1.2, 10, METAL));
+    b.push(box(mid - 7, mid + 7, y - 4, y, 10.5, 11.5, S.band));
+    if (o.awning !== "none")
+      awning(
+        b,
+        y,
+        R.x0 + 1,
+        mid - 7.5,
+        11,
+        o.awning === "red" ? [200, 50, 44] : [36, 120, 72],
+      );
+    if (o.awning !== "none")
+      awning(
+        b,
+        y,
+        mid + 7.5,
+        R.x1 - 1,
+        11,
+        o.awning === "red" ? [200, 50, 44] : [36, 120, 72],
+      );
+    b.push(box(mid - 8, mid + 8, y - 1, y, 21.8, 25.8, S.band));
+    picture(b, "y", y - 1, mid - 7, 22.3, 14, 3, parade(14, 3));
+
+    //the roof: flat behind the cornice, a lantern of glass, plant on it
+    b.push(box(R.x0, R.x1, R.y0, R.y1, h, h + 0.4, [128, 130, 134]));
+    b.push(box(R.x0, R.x1, R.y0, R.y0 + 0.8, h, h + 1.6, S.wall));
+    vault(
+      b,
+      mid - 5,
+      mid + 5,
+      R.y0 + 6,
+      Math.max(R.y0 + 14, R.y1 - 8),
+      h + 0.4,
+      GLASS,
+      S.trim,
+    );
+    airConditioner(b, R.x0 + 2, R.y1 - 7, h + 0.4);
+    if (W > 1) airConditioner(b, R.x1 - 8, R.y1 - 7, h + 0.4);
+
+    back(b, R, h, S.wall, D * TILE, rnd);
+    return b;
+  }
+
+  return { paint: paint, rect: R };
+}
+
+//what is for sale on a market stall: crates of fruit or vegetables, buckets
+//of flowers, cheeses and loaves
+var GOODS = {
+  fruit: [
+    [206, 40, 44],
+    [240, 150, 40],
+    [236, 210, 70],
+    [120, 180, 60],
+  ],
+  veg: [
+    [92, 150, 60],
+    [232, 120, 40],
+    [150, 104, 70],
+    [200, 60, 80],
+  ],
+  flowers: [
+    [232, 80, 120],
+    [250, 220, 70],
+    [246, 246, 240],
+    [150, 96, 196],
+  ],
+  deli: [
+    [236, 200, 90],
+    [196, 140, 80],
+    [240, 226, 180],
+    [170, 100, 60],
+  ],
+};
+
+//the canopies of a market's stalls, by its scheme: one colour and white for
+//all of them, or each its own
+var CANOPIES = {
+  red: [[200, 46, 44]],
+  green: [[36, 128, 72]],
+  blue: [[44, 96, 168]],
+  mixed: [
+    [200, 46, 44],
+    [36, 128, 72],
+    [44, 96, 168],
+    [232, 160, 40],
+  ],
+};
+
+/**
+ * A market stall from x0, its front at y, six wide and five deep: a table
+ * on trestles with what it sells laid out on it, and - unless it stands
+ * under a roof - a striped canopy over it on four poles.
+ */
+function stall(b, x0, y, goods, canopy, rnd) {
+  var x1 = x0 + 6,
+    g = GOODS[goods];
+
+  b.push(box(x0 + 0.4, x1 - 0.4, y + 0.5, y + 3, 3, 3.5, WOOD));
+  [x0 + 0.8, x1 - 1.2].forEach(function (x) {
+    b.push(box(x, x + 0.4, y + 0.8, y + 2.7, 1, 3, darker(WOOD, 0.3)));
+  });
+  for (var x = x0 + 0.7, k = 0; x < x1 - 1.4; x += 1.6, k++) {
+    var c = g[(k + Math.floor(rnd() * 2)) % g.length];
+
+    if (goods === "flowers") {
+      b.push(box(x, x + 1.2, y + 0.9, y + 2.1, 3.5, 4.4, [70, 80, 96]));
+      b.push(box(x + 0.1, x + 1.1, y + 1, y + 2, 4.4, 5.4, c));
+    } else if (goods === "deli") {
+      b.push(box(x, x + 1.3, y + 1, y + 2.3, 3.5, 4.4, c));
+    } else {
+      b.push(box(x, x + 1.4, y + 0.7, y + 2.6, 3.5, 4.3, WOOD));
+      b.push(box(x + 0.1, x + 1.3, y + 0.8, y + 2.5, 4.3, 4.7, c));
+    }
+  }
+  //crates stacked behind it
+  b.push(box(x0 + 1, x0 + 3, y + 3.4, y + 4.8, 1, 2.6, WOOD));
+  b.push(box(x0 + 1.1, x0 + 2.9, y + 3.5, y + 4.7, 2.6, 3, g[0]));
+
+  if (canopy === null) return;
+
+  [
+    [x0, y],
+    [x1 - 0.4, y],
+    [x0, y + 4.6],
+    [x1 - 0.4, y + 4.6],
+  ].forEach(function (p) {
+    b.push(box(p[0], p[0] + 0.4, p[1], p[1] + 0.4, 1, 9.5, METAL));
+  });
+  for (var s = x0 - 0.5, i = 0; s < x1 + 0.5; s += 1, i++) {
+    var e = Math.min(s + 1, x1 + 0.5),
+      col = i % 2 ? WHITE : canopy;
+
+    b.push(box(s, e, y - 0.6, y + 5.6, 9.5, 10.1, col));
+    b.push(box(s, e, y - 0.7, y - 0.5, 8.6, 10.1, col));
+  }
+}
+
+//a farm's trailer, its load at the market: bales of hay and pumpkins
+function farmTrailer(b, x, y) {
+  [y + 0.2, y + 4.4].forEach(function (wy) {
+    b.push(box(x + 2, x + 5, wy - 0.3, wy + 0.3, 1, 4, [44, 44, 48]));
+  });
+  b.push(box(x, x + 8, y + 0.5, y + 4.1, 3, 3.6, [160, 60, 44]));
+  b.push(box(x - 3, x, y + 2.1, y + 2.5, 2.4, 3, METAL));
+  b.push(box(x + 0.4, x + 3.6, y + 0.8, y + 3.8, 3.6, 5.6, [218, 184, 96]));
+  [
+    [x + 4.6, y + 1.4],
+    [x + 6.4, y + 2.6],
+    [x + 4.8, y + 3],
+  ].forEach(function (p) {
+    b.push(
+      box(p[0], p[0] + 1.4, p[1] - 0.7, p[1] + 0.7, 3.6, 4.8, [232, 120, 30]),
+    );
+  });
+}
+
+var COBBLES = madeOf([176, 166, 152], "stone"),
+  SLABS = madeOf([196, 190, 178], "slabs");
+
+/**
+ * The ground of a market square from x0 to x1 and y0 to y1, and on it rows
+ * of stalls facing the street, aisles between them - or round its edge,
+ * facing in, round a fountain - their canopies as the scheme has them. The
+ * rows keep clear of the way to a door at x = door, and of `reserve` along
+ * the back.
+ */
+function marketSquare(b, x0, x1, y0, y1, o, rnd, door, reserve) {
+  var colors = CANOPIES[o.scheme],
+    kinds = Object.keys(GOODS),
+    n = 0;
+
+  b.push(box(x0, x1, y0, y1, 1, 1.2, o.ground === "cobbles" ? COBBLES : SLABS));
+
+  function put(x, y) {
+    stall(
+      b,
+      x,
+      y,
+      kinds[Math.floor(rnd() * kinds.length)],
+      colors[n++ % colors.length],
+      rnd,
+    );
+  }
+
+  if (o.layout === "ring") {
+    var mx = (x0 + x1) / 2,
+      my = (y0 + y1) / 2,
+      x,
+      y;
+
+    for (x = x0 + 3; x < x1 - 8; x += 8) {
+      if (Math.abs(x + 3 - mx) < 6) continue;
+      put(x, y1 - 7);
+    }
+    for (y = y0 + 10; y < y1 - 14; y += 9) {
+      put(x0 + 2, y);
+      put(x1 - 8, y);
+    }
+    b.push(box(mx - 5, mx + 5, my - 5, my + 5, 1.2, 3, SLABS));
+    b.push(
+      box(mx - 4.2, mx + 4.2, my - 4.2, my + 4.2, 1.2, 2.6, [96, 160, 210]),
+    );
+    b.push(box(mx - 0.8, mx + 0.8, my - 0.8, my + 0.8, 2.6, 7, SLABS));
+    b.push(box(mx - 0.4, mx + 0.4, my - 0.4, my + 0.4, 7, 9, [150, 200, 230]));
+    return;
+  }
+
+  for (var ry = y0 + 4; ry < y1 - 6 - (reserve || 0); ry += 13)
+    for (var rx = x0 + 3; rx < x1 - 7.5; rx += 8.5)
+      if (door === undefined || Math.abs(rx + 3 - door) > 6) put(rx, ry);
+}
+
+/**
+ * A farmers' market in the open, W tiles along the street and D deep: a
+ * square of cobbles or slabs with its stalls, a farm's trailer come in with
+ * its hay and pumpkins, and trees in tubs, lamps and benches round it.
+ */
+function openMarketAt(W, D) {
+  var w = W * TILE,
+    d = D * TILE,
+    R = { x0: 2, x1: w - 2, y0: 3, y1: d - 3, h: 9 };
+
+  function paint(o, rnd) {
+    var b = [];
+
+    var ring = o.layout === "ring";
+
+    b.push(box(0, w, 0, d, 0, 1, GRASS));
+    marketSquare(b, 0.5, w - 0.5, 0.5, d - 0.5, o, rnd, undefined, 9);
+
+    //the corners: trees in tubs, a lamp
+    [
+      [2.5, 2.5],
+      [w - 2.5, d - 2.5],
+    ].forEach(function (p) {
+      b.push(box(p[0] - 1.6, p[0] + 1.6, p[1] - 1.6, p[1] + 1.6, 1.2, 3, WOOD));
+      tree(b, p[0], p[1], 2);
+    });
+    b.push(box(w - 2.6, w - 2, 1.5, 2.1, 1.2, 12, METAL));
+    b.push(box(w - 3.4, w - 1.2, 0.8, 2.8, 12, 13, [240, 230, 180]));
+    if (!ring) farmTrailer(b, w - 14, d - 7);
+    bench(b, 1.5, d - 4);
+
+    return b;
+  }
+
+  return { paint: paint, rect: R };
+}
+
+/**
+ * A covered market, W tiles along the street and D deep: a timber roof on
+ * posts over every row of tiles, open all round, its gables to the sides -
+ * tiled, slated or of green-painted sheet - and under it the stalls, each
+ * row facing the street, on cobbles.
+ */
+function coveredMarketAt(W, D) {
+  var w = W * TILE,
+    d = D * TILE,
+    R = { x0: 2, x1: w - 2, y0: 3, y1: d - 3, h: 10 };
+
+  function paint(o, rnd) {
+    var b = [],
+      roof = {
+        tiles: { color: [178, 74, 52], made: "tiles" },
+        slate: { color: [98, 102, 112], made: "slate" },
+        sheet: { color: [62, 118, 82], made: "metal" },
+      }[o.roof],
+      kinds = Object.keys(GOODS),
+      h = 10;
+
+    b.push(box(0, w, 0, d, 0, 1, GRASS));
+    b.push(box(0.5, w - 0.5, 0.5, d - 0.5, 1, 1.2, COBBLES));
+
+    for (var row = 0; row < D; row++) {
+      var y0 = row * TILE + 3,
+        y1 = row * TILE + TILE - 3,
+        mid = (y0 + y1) / 2,
+        x;
+
+      //posts round it every eight, a beam along the top of each side
+      for (x = 3; x <= w - 3.5; x += 8) {
+        var px = Math.min(x, w - 3.8);
+
+        [y0, y1 - 0.8].forEach(function (py) {
+          b.push(box(px, px + 0.8, py, py + 0.8, 1.2, h, darker(WOOD, 0.2)));
+        });
+      }
+      [y0, y1 - 0.8].forEach(function (py) {
+        b.push(box(3, w - 3, py, py + 0.8, h - 1, h, darker(WOOD, 0.2)));
+      });
+
+      //the stalls under it, tables only
+      for (x = 5; x < w - 9; x += 8.5)
+        stall(b, x, y0 + 4, kinds[Math.floor(rnd() * kinds.length)], null, rnd);
+
+      slopedRoof(
+        b,
+        1.5,
+        w - 1.5,
+        y0 - 1.5,
+        y1 + 1.5,
+        h,
+        [
+          [y0 - 1.5, 1, 0.5],
+          [y1 + 1.5, 1, -0.5],
+        ],
+        roof.color,
+        darker(WOOD, 0.2),
+        3,
+        w - 3,
+        mid - 0.5,
+        mid + 0.5,
+        made(roof.made),
+      );
+    }
+
+    farmTrailer(b, w - 12, d < 2 * TILE ? 0.8 : TILE - 2.5);
+    return b;
+  }
+
+  return { paint: paint, rect: R };
+}
+
+/**
+ * A market hall over the back rows of a footprint W tiles along the street
+ * and D deep, its doors on a market square over the front row where the
+ * stalls are out: low brick walls, green glass over them to the eaves, under
+ * green glass vaults or saw-tooth roofs.
+ */
+function marketHallAt(W, D) {
+  var w = W * TILE,
+    d = D * TILE,
+    R = { x0: 2, x1: w - 2, y0: TILE + 4, y1: d - 6, h: 10, from: 0 };
+
+  function paint(o, rnd) {
+    var b = [],
+      h = R.h,
+      y = R.y0,
+      mid = w / 2,
+      brick = [168, 92, 72],
+      frame = [40, 104, 64];
+
+    lot(b, 0, w, TILE, d, TILE, R.y0);
+    b.push(box(0, w, 0, TILE, 0, 1, GRASS));
+    marketSquare(
+      b,
+      0.5,
+      w - 0.5,
+      0.5,
+      R.y0 - 1,
+      { scheme: o.scheme, ground: "cobbles", layout: "rows" },
+      rnd,
+      mid,
+    );
+
+    b.push(box(R.x0, R.x1, R.y0, R.y1, 1, 5, brick, made("brick")));
+    b.push(
+      box(
+        R.x0 + 0.3,
+        R.x1 - 0.3,
+        R.y0 + 0.3,
+        R.y1 - 0.3,
+        5,
+        h,
+        GREEN_GLASS,
+        GLASSY,
+      ),
+    );
+    for (var a = R.x0; a <= R.x1; a += 6)
+      b.push(
+        box(
+          Math.min(a, R.x1 - 0.6),
+          Math.min(a, R.x1 - 0.6) + 0.6,
+          y,
+          y + 0.6,
+          5,
+          h,
+          frame,
+        ),
+      );
+    b.push(box(R.x0, R.x1, R.y0, R.y1, h, h + 0.5, frame));
+
+    if (o.roof === "barrel") {
+      var n = Math.max(1, Math.round((R.x1 - R.x0) / 20)),
+        span = (R.x1 - R.x0) / n;
+
+      for (var v = 0; v < n; v++)
+        vault(
+          b,
+          R.x0 + v * span,
+          R.x0 + (v + 1) * span,
+          R.y0,
+          R.y1,
+          h + 0.5,
+          GREEN_GLASS,
+          frame,
+        );
+    } else
+      for (var s = R.y0; s < R.y1 - 1; s += 14) {
+        var e = Math.min(s + 14, R.y1);
+
+        slopedRoof(
+          b,
+          R.x0,
+          R.x1,
+          s,
+          e,
+          h + 0.5,
+          [[s + 14, 1, -0.5]],
+          GREEN_GLASS,
+          GREEN_GLASS,
+          R.x0,
+          R.x1,
+          s,
+          e,
+          GLASSY,
+        );
+        for (var bx = R.x0 + 3; bx < R.x1; bx += 6)
+          b.push(
+            iso.cut(box(bx, bx + 1, s, e, h + 0.5, h + 9.5, frame), [
+              iso.plane(0, 0.5, 1, h + 0.5 + 1.5 + 0.5 * (s + 14)),
+            ]),
+          );
+        b.push(
+          box(R.x0, R.x1, s, s + 0.4, h + 0.5, h + 8.5, GREEN_GLASS, GLASSY),
+        );
+      }
+
+    b.push(box(mid - 4, mid + 4, y - 0.4, y, 1.2, 7, WOOD));
+    b.push(box(mid - 6, mid + 6, y - 0.8, y, 7.5, 10.5, frame));
+    picture(b, "y", y - 0.8, mid - 5, 8, 10, 2, panel("orchard", 10, 2));
+
+    back(b, R, h, brick, d, rnd);
+    return b;
+  }
+
+  return { paint: paint, rect: R };
+}
+
 var DESIGNS = {
   small: smallShop,
   store: store,
@@ -918,6 +1562,50 @@ var DESIGNS = {
   market: market,
 };
 
+//the options in a part's name after its design, by design, in order
+var OPTIONS = {
+  small: ["roof", "pal", "front", "awning", "sign"],
+  store: ["pal", "front", "awning"],
+  bigbox: ["style", "roof"],
+  mall: ["style"],
+  market: ["roof"],
+};
+
+//the designs made for a footprint - a superstore three tiles long - each
+//with its building's place, and its options
+function more(name, made, options) {
+  DESIGNS[name] = made.paint;
+  RECT[name] = made.rect;
+  OPTIONS[name] = options;
+}
+
+more("bigbox21", bigboxAt(2, 1, 0), ["style", "roof"]);
+more("bigbox31", bigboxAt(3, 1, 0), ["style", "roof"]);
+more("bigbox32", bigboxAt(3, 2, 1), ["style", "roof"]);
+[
+  [1, 2, 0],
+  [1, 3, 1],
+  [2, 1, 0],
+  [3, 1, 0],
+  [2, 2, 1],
+  [3, 2, 1],
+].forEach(function (f) {
+  more("dept" + f[0] + f[1], departmentAt(f[0], f[1], f[2]), [
+    "style",
+    "awning",
+  ]);
+});
+MARKET_FOOTPRINTS.forEach(function (fp) {
+  var W = +fp[0],
+    D = +fp[2],
+    id = fp[0] + fp[2];
+
+  more("openmkt" + id, openMarketAt(W, D), ["scheme", "ground", "layout"]);
+  more("covmkt" + id, coveredMarketAt(W, D), ["roof"]);
+  if (W > 1 && D > 1)
+    more("mkthall" + id, marketHallAt(W, D), ["roof", "scheme"]);
+});
+
 /**
  * The steel frame of a design's building going up, on its slab: posts
  * round it every eight, beams along the top, and across it.
@@ -925,10 +1613,27 @@ var DESIGNS = {
 function frame(design) {
   var b = [],
     R = RECT[design],
-    h = design === "market" ? R.h + 6 : R.h,
+    h =
+      design === "market" || design.indexOf("mkthall") === 0
+        ? R.h + 6
+        : design.indexOf("covmkt") === 0
+          ? R.h + 5
+          : R.h,
     x,
     y;
 
+  //bare earth over every tile of it, and the slab poured on that
+  b.push(
+    box(
+      0,
+      Math.ceil(R.x1 / TILE) * TILE,
+      R.from !== undefined ? R.from : Math.floor(R.y0 / TILE) * TILE,
+      Math.ceil(R.y1 / TILE) * TILE,
+      0,
+      0.5,
+      DIRT,
+    ),
+  );
   b.push(
     box(R.x0 - 0.3, R.x1 + 0.3, R.y0 - 0.3, R.y1 + 0.3, 0.5, 1.5, CONCRETE),
   );
@@ -1142,17 +1847,191 @@ var FOOTPRINTS = {
   ],
 };
 
-//an option's names filled in: twice over, for an option that names another
-function fill(template, options) {
-  var out = template;
+//a part's name with its options, as OPTIONS has them, still to be filled in
+function template(design) {
+  return (
+    "shops/" +
+    design +
+    "/" +
+    OPTIONS[design]
+      .map(function (axis) {
+        return "{" + axis + "}";
+      })
+      .join("/")
+  );
+}
 
-  for (var pass = 0; pass < 2; pass++)
-    out = out.replace(/\{(\w+)\}/g, function (m, axis) {
-      return options[axis];
+//the car parks over the first rows of tiles of a footprint W across - the
+//sign on its pole, if any, on the first of them
+function carParks(W, rows, layout) {
+  var tiles = [];
+
+  for (var y = 0; y < rows; y++)
+    for (var x = 0; x < W; x++)
+      tiles.push({
+        x: x,
+        y: y,
+        parts: [
+          "shops/parking/" +
+            (typeof layout === "function" ? layout(y) : layout) +
+            "/" +
+            (x === 0 && y === 0 ? "{pylon}" : "none"),
+        ],
+      });
+
+  return tiles;
+}
+
+/**
+ * A design whose building takes the whole of a footprint W by D but for the
+ * car parks over its first `rows` rows.
+ */
+function wholeOn(design, W, D, rows, axes, pylons) {
+  var tiles = carParks(W, rows, "big"),
+    all = Object.assign({}, axes);
+
+  if (rows > 0) all.pylon = pylons || ["none"];
+  for (var y = rows; y < D; y++)
+    for (var x = 0; x < W; x++)
+      tiles.push({
+        x: x,
+        y: y,
+        parts: [template(design) + "/" + x + "/" + y],
+      });
+
+  return { design: design, weight: 1, axes: all, tiles: tiles };
+}
+
+/**
+ * Shops of a design side by side behind `rows` rows of car park - n of them,
+ * each a tile across, its building's tile the one at cy of its own: a
+ * parade of corner shops, a row of shops with car parks. Each has options
+ * of its own but those `shared` names: the second one's pal is {pal2}.
+ */
+function along(design, n, rows, cy, axes, shared, pylons) {
+  var all = {},
+    tiles = carParks(n, rows, function (y) {
+      return y === rows - 1 ? "small" : "big";
+    }),
+    i;
+
+  Object.keys(axes).forEach(function (axis) {
+    for (i = 0; i < n; i++)
+      if (i === 0 || shared.indexOf(axis) === -1)
+        all[axis + (i > 0 ? i + 1 : "")] = axes[axis];
+  });
+  if (rows > 0) all.pylon = pylons || ["none"];
+
+  for (i = 0; i < n; i++)
+    tiles.push({
+      x: i,
+      y: rows,
+      parts: [
+        template(design).replace(/\{(\w+)\}/g, function (m, axis) {
+          return i > 0 && shared.indexOf(axis) === -1
+            ? "{" + axis + (i + 1) + "}"
+            : m;
+        }) +
+          "/0/" +
+          cy,
+      ],
     });
 
-  return out;
+  return { design: design, weight: 1, axes: all, tiles: tiles };
 }
+
+var SMALL_AXES = FOOTPRINTS["1x1"][0].axes,
+  STORE_AXES = {
+    pal: Object.keys(STORE),
+    front: ["glass", "piers"],
+    awning: ["red", "red", "none", "green"],
+  },
+  DEPT_AXES = {
+    style: Object.keys(MALL),
+    awning: ["none", "red", "green"],
+  };
+
+//the small shops' tier: corner shops in a parade, shops with car parks
+//side by side
+Object.assign(FOOTPRINTS, {
+  "small-2x1": [along("small", 2, 0, 0, SMALL_AXES, ["roof"])],
+  "small-3x1": [along("small", 3, 0, 0, SMALL_AXES, ["roof"])],
+  "small-1x3": [
+    along("store", 1, 2, 1, STORE_AXES, [], ["none", "store-{pal}"]),
+    along("small", 1, 2, 0, SMALL_AXES, []),
+  ],
+  "small-2x2": [
+    along("small", 2, 1, 0, SMALL_AXES, ["roof"]),
+    along("store", 2, 1, 1, STORE_AXES, ["front"], ["none", "store-{pal}"]),
+  ],
+  "small-2x3": [
+    along("store", 2, 2, 1, STORE_AXES, ["front"], ["none", "store-{pal}"]),
+    along("small", 2, 2, 0, SMALL_AXES, ["roof"]),
+  ],
+  "small-3x2": [
+    along("small", 3, 1, 0, SMALL_AXES, ["roof"]),
+    along("store", 3, 1, 1, STORE_AXES, ["front"], ["none", "store-{pal}"]),
+  ],
+});
+
+//the stores' tier: superstores and department stores
+FOOTPRINTS["2x2"].push(
+  wholeOn("dept22", 2, 2, 1, DEPT_AXES, ["none", "mall-{style}"]),
+);
+Object.assign(FOOTPRINTS, {
+  "mall-2x1": [
+    wholeOn("bigbox21", 2, 1, 0, {
+      style: Object.keys(BIGBOX),
+      roof: ["flat"],
+    }),
+    wholeOn("dept21", 2, 1, 0, DEPT_AXES),
+  ],
+  "mall-3x1": [
+    wholeOn("bigbox31", 3, 1, 0, {
+      style: Object.keys(BIGBOX),
+      roof: ["flat"],
+    }),
+    wholeOn("dept31", 3, 1, 0, DEPT_AXES),
+  ],
+  "mall-1x2": [wholeOn("dept12", 1, 2, 0, DEPT_AXES)],
+  "mall-1x3": [wholeOn("dept13", 1, 3, 1, DEPT_AXES, ["none", "mall-{style}"])],
+  "mall-3x2": [
+    wholeOn(
+      "bigbox32",
+      3,
+      2,
+      1,
+      { style: Object.keys(BIGBOX), roof: ["flat", "stepped"] },
+      ["none", "bigbox-{style}"],
+    ),
+    wholeOn("dept32", 3, 2, 1, DEPT_AXES, ["mall-{style}"]),
+  ],
+});
+
+//the farmers' markets: in the open, under a timber roof, or a hall
+MARKET_FOOTPRINTS.forEach(function (fp) {
+  var W = +fp[0],
+    D = +fp[2],
+    id = fp[0] + fp[2],
+    designs = [
+      wholeOn("openmkt" + id, W, D, 0, {
+        scheme: Object.keys(CANOPIES),
+        ground: ["cobbles", "slabs"],
+        layout: W > 1 && D > 1 ? ["rows", "ring"] : ["rows"],
+      }),
+      wholeOn("covmkt" + id, W, D, 0, { roof: ["tiles", "slate", "sheet"] }),
+    ];
+
+  if (W > 1 && D > 1)
+    designs.push(
+      wholeOn("mkthall" + id, W, D, 0, {
+        roof: ["barrel", "sawtooth"],
+        scheme: Object.keys(CANOPIES),
+      }),
+    );
+
+  FOOTPRINTS["market-" + fp] = designs;
+});
 
 /**
  * Every part there is, by name without its turn - every footprint's every
@@ -1163,31 +2042,23 @@ var PARTS = (function () {
 
   Object.keys(FOOTPRINTS).forEach(function (fp) {
     FOOTPRINTS[fp].forEach(function (d) {
-      var axes = Object.keys(d.axes),
-        combos = [{}];
+      d.tiles.forEach(function (t) {
+        t.parts.forEach(function (p) {
+          namesOf(p, d.axes).forEach(function (name) {
+            var q = name.split("/");
 
-      axes.forEach(function (axis) {
-        var next = [];
+            out[name] = true;
 
-        combos.forEach(function (c) {
-          d.axes[axis].forEach(function (v) {
-            var n = Object.assign({}, c);
-
-            n[axis] = v;
-            next.push(n);
+            //the frame it goes up in, by the tile's place in its own
+            //building - which a shop in a parade (along) has where it is
+            //in its own
+            if (q[1] !== "parking")
+              out[
+                ["shops/frame", q[1], q[q.length - 2], q[q.length - 1]].join(
+                  "/",
+                )
+              ] = true;
           });
-        });
-        combos = next;
-      });
-
-      combos.forEach(function (c) {
-        d.tiles.forEach(function (t) {
-          t.parts.forEach(function (p) {
-            out[fill(p, c)] = true;
-          });
-
-          if (t.parts[0].indexOf("shops/parking") !== 0)
-            out["shops/frame/" + d.design + "/" + t.x + "/" + t.y] = true;
         });
       });
     });
@@ -1222,21 +2093,9 @@ export function partBoxes(key) {
     else {
       var o = {};
 
-      if (kind === "small") {
-        o.roof = p[2];
-        o.pal = p[3];
-        o.front = p[4];
-        o.awning = p[5];
-        o.sign = p[6];
-      } else if (kind === "store") {
-        o.pal = p[2];
-        o.front = p[3];
-        o.awning = p[4];
-      } else if (kind === "bigbox") {
-        o.style = p[2];
-        o.roof = p[3];
-      } else if (kind === "mall") o.style = p[2];
-      else o.roof = p[2];
+      OPTIONS[kind].forEach(function (axis, k) {
+        o[axis] = p[2 + k];
+      });
 
       boxes = DESIGNS[kind](o, random(id));
     }
@@ -1299,4 +2158,4 @@ export function paint(name) {
   );
 }
 
-export { PARTS, STOREY };
+export { PARTS, STOREY, slopedRoof };
