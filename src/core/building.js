@@ -31,6 +31,7 @@ import Terrain from "./terrain";
 
 import Construction from "./construction";
 import Rotation from "./rotation";
+import Surface from "./surface";
 
 var events = {
   stateChange: 0,
@@ -56,15 +57,16 @@ Building.prototype.permanent = true;
 //by whoever first draws it, and kept in the save with the rest of it - the
 //core only keeps it, see client/compoundbuilding
 Building.prototype.look = null;
-//how high it stands, where the ground under it was taken down from under it
-//after it went up (City#terraform): on concrete all the way down to the
-//ground there. Undefined for one standing at the highest corner under it,
-//as it was built
-Building.prototype.base = undefined;
+//what it stands on (core/surface): a road's own, a building's flat at the
+//highest corner under it as it went up - kept as the ground is shaped under
+//it (City#terraform), and in the save. Null for a tree
+Building.prototype.surface = null;
 Building.prototype.events = events;
 
 Building.prototype.init = function (world, code, tile, rot, done) {
   Construction.init(this, world, code, tile, rot, done);
+
+  this.surface = Surface.of(world.terrain, this);
 
   this.createdAt = this.createdAt || this.world.time.now;
 

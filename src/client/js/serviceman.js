@@ -535,7 +535,7 @@ function copyBuilding(self, building) {
       building.data,
       building.tile,
       building.rotation,
-      building.base,
+      building.surface,
     ),
     go = new engine.GameObject("inspected building");
 

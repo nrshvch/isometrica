@@ -30,10 +30,11 @@ Road.prototype.setData = function (data) {
 };
 
 /*
- * A road has a surface of its own: how high it is at each corner of its
- * tile, A (x, y), B (x + 1, y), C (x, y + 1), D (x + 1, y + 1) - the way the
- * ground has, but kept with the road. Everything about how it is laid comes
- * from that and the ground under it:
+ * A road has a surface of its own (core/surface): how high it is at each
+ * corner of its tile, A (x, y), B (x + 1, y), C (x, y + 1), D (x + 1, y + 1)
+ * - the way the ground has, but kept with the road, the way a building
+ * keeps its own. Everything about how it is laid comes from that and the
+ * ground under it:
  *
  * - its shape: flat, or a ramp - one side a step higher than the side across
  *   from it (Road.shapeOf);
@@ -46,80 +47,20 @@ Road.prototype.setData = function (data) {
  *
  * It is worked out once, as it is laid, for the whole run the player drags
  * at a time (Road.plan), and kept: in the save, and as the ground is shaped
- * under it (Road.standsOn). The roads there already stay as they are.
+ * under it (City#terraform). The roads there already stay as they are.
  */
 
 //from a tile to the next one at each side, -x, -y, +x, +y
 var STEP = [-1, -Terrain.dy, 1, Terrain.dy];
 
-//the corners each ramp is up at, of A, B, C and D: 1 up towards -y, 2 -x,
-//3 +y, 4 +x (see profile)
-var RAMP_TOPS = {
-  1: [1, 1, 0, 0],
-  2: [1, 0, 1, 0],
-  3: [0, 0, 1, 1],
-  4: [0, 1, 0, 1],
-};
+var Surface = Core.Surface,
+  RAMP_TOPS = Surface.RAMP_TOPS;
 
-/**
- * The heights of the ground at the corners of tile, A, B, C and D.
- *
- * @param terrain {Terrain} core terrain - or the ground as a plan would leave
- *        it (Terrain#after)
- */
-Road.ground = function (terrain, tile) {
-  return [
-    terrain.getGridPointHeight(tile),
-    terrain.getGridPointHeight(tile + 1),
-    terrain.getGridPointHeight(tile + Terrain.dy),
-    terrain.getGridPointHeight(tile + Terrain.dy + 1),
-  ];
-};
-
-/**
- * The shape of a surface: 0 for flat, the ramp it is - 1..4, see profile -
- * or -1 for none a road can have.
- */
-Road.shapeOf = function (surface) {
-  var low = Math.min.apply(null, surface);
-
-  if (
-    surface.every(function (h) {
-      return h === low;
-    })
-  )
-    return 0;
-
-  for (var r = 1; r <= 4; r++)
-    if (
-      RAMP_TOPS[r].every(function (up, k) {
-        return surface[k] === low + up;
-      })
-    )
-      return r;
-
-  return -1;
-};
-
-/**
- * Whether a road with surface can be laid on tile: flat or a ramp, over the
- * ground everywhere and a step over it at most - never in the water, and on
- * the shore flat only, on concrete going down into the water.
- *
- * @param terrain {Terrain} core terrain, or the ground as it would be
- */
-Road.fits = function (terrain, tile, surface) {
-  var g = Road.ground(terrain, tile),
-    shape = Road.shapeOf(surface);
-
-  if (shape === -1 || Math.max.apply(null, g) <= 0) return false;
-  if (shape !== 0 && terrain.getTerrainType(tile) === Core.TerrainType.shore)
-    return false;
-
-  return surface.every(function (h, k) {
-    return h >= g[k] && h - g[k] <= 1;
-  });
-};
+//the ground under tile, a surface's shape, and whether one fits a tile -
+//the same for roads and buildings (core/surface)
+Road.ground = Surface.ground;
+Road.shapeOf = Surface.shapeOf;
+Road.fits = Surface.fits;
 
 /**
  * Every surface a new road on tile can have (Road.fits) that stands on the
@@ -203,50 +144,10 @@ Road.meets = function (a, side, b) {
 };
 
 /**
- * The surface kept with a road, its core model - null for one put down
- * without one (Road.settle).
+ * The surface a road, its core model, stands on (core/surface).
  */
 Road.surfaceOf = function (model) {
-  var look = model.look;
-
-  return look !== null && look !== undefined && Array.isArray(look.surface)
-    ? look.surface
-    : null;
-};
-
-//keeps surface with a road, its core model - with it in the save
-Road.setSurface = function (model, surface) {
-  model.look = { surface: surface.slice() };
-};
-
-/**
- * Gives a road put down without a surface - the starting city's on flat
- * ground - the one that suits its ground best on its own (Road.surfaces), as
- * it loads.
- *
- * @param model {Object} the road's core model
- */
-Road.settle = function (terrain, model) {
-  if (Road.surfaceOf(model) !== null) return;
-
-  var any = Road.surfaces(terrain, model.tile);
-
-  Road.setSurface(
-    model,
-    any.length > 0 ? any[0] : Road.ground(terrain, model.tile),
-  );
-};
-
-/**
- * Whether a road, its core model, stays standing on the ground as a plan
- * would leave it (core/terrain after) - its surface where it is, on
- * concrete that takes up the difference (Road.fits), the way OpenTTD keeps
- * a road on its foundation as the land is shaped under it.
- */
-Road.standsOn = function (after, model) {
-  var surface = Road.surfaceOf(model);
-
-  return surface !== null && Road.fits(after, model.tile, surface);
+  return Array.isArray(model.surface) ? model.surface : null;
 };
 
 /**
@@ -560,15 +461,14 @@ Road.profile = function (tile, net, paved) {
 };
 
 /**
- * The road's surface (see above) - the ground under it, for one not given
- * one yet.
+ * The road's surface (see above).
  */
 Road.prototype.surface = function () {
   var surface = Road.surfaceOf(this.data);
 
   return surface !== null
     ? surface
-    : Road.ground(this.root.core.terrain, this.data.tile);
+    : Surface.natural(this.root.core.terrain, this.data.tile);
 };
 
 Road.prototype.updateProfile = function () {
