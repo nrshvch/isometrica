@@ -166,38 +166,36 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   the water stands against it: wet and darker below that waterline, a line
   of weed along it and a tide mark above. A road on the shore is always
   levelled at the top on such a base - never laid on the sand as it is.
-- On a slope that rises a step at most a road is laid the way OpenTTD lays
-  its roads (`src/client/js/road.js` Road.decide, `roadview.js` addBase): up
-  a smooth slope as a ramp, or across it levelled at the top on a concrete
-  base - a T where a road goes on up the slope from it; where only one
-  corner of the ground is up, a ramp on a concrete wedge that climbs the
-  step from a road at its foot; anywhere else levelled at the top. A new
-  road on flat ground next to a road on concrete a step above it is a ramp
-  up to it on concrete of its own, so a levelled road can always be reached
-  from below. How a
-  road on a slope is laid is decided as it goes down, by the way the run
-  the player drags goes through it - a run across a slope is levelled all
-  along, whatever roads come up to it from above or below; a run up it is a
-  ramp; a road put down on its own is laid the only way it can be, up the
-  slope - and kept with it in the save, the city's roads in the order they
-  were built (Road.lay, Road.planned). The road that came first stays as it
-  is, and a road that does not fit it is still laid, but does not join it -
-  as in OpenTTD, but without turning the new one down. Roads in a save from
-  before this, the starting city's too (`src/data/initialcity.js`), are laid
-  for good as they were drawn. Which way roads join is worked out from the
-  roads next to them every time; where either is on concrete, only where
-  the two meet at the same height, so there is no crossroad over a step,
-  and cars do not drive over one. The preview of a road being laid shows
-  it and its neighbours exactly as they will be laid.
+- Every road has a surface of its own (`src/client/js/road.js`): how high
+  it is at each corner of its tile, kept with it in the save. Its shape,
+  the concrete under it and the roads it joins all come from that and the
+  ground under it. It is flat or a ramp - one side a step over the side
+  across from it - and over the ground everywhere, a step at most: where it
+  is over the ground, it stands on concrete (`roadview.js` addBase,
+  `src/shared/gen/foundations.js`), so a road is levelled across a slope,
+  climbs a step on a wedge, or ramps up from flat ground. On the shore it is
+  only ever flat, on concrete going down into the water. Two roads join, and
+  cars drive from one to the other, only where they meet level, at the same
+  height all along the edge between them - never over a step, nor onto the
+  side of a ramp.
+- A run of road the player drags is laid all at once (Road.plan): each new
+  tile gets the surface that has the run join up the most - with itself,
+  and with the roads already there, which stay as they are, joining those
+  the run is dragged over counting double - and, as far as that goes, takes
+  the least concrete. So a run across a slope is levelled along it, one up
+  a slope ramps up it, one dragged onto a levelled road climbs up to it, and
+  a road on its own follows the ground. The same run always comes out the
+  same, so the preview is what gets built.
 - Land can be raised and lowered under buildings and roads, the way
   OpenTTD shapes land under its foundations (`src/core/city.js` stays,
-  `src/client/js/road.js` fitTo): whatever stands there keeps the height it
-  is at, and the concrete under it takes up the difference - ground raised
-  to the top of a base replaces it, ground taken down from under a building
-  or a road leaves it on a base, a whole step over flat ground if need be,
-  kept in the save (core/building base, a road's look top). Anything that
-  would have to move up, sink more than a step below it, or end up in the
-  water, or a road on the shore other than levelled, is still in the way.
+  Road.standsOn): whatever stands there keeps the height it is at, and the
+  concrete under it takes up the difference - ground raised to the top of a
+  base replaces it, ground taken down from under a building or a road
+  leaves it on concrete, a whole step over flat ground if need be (a
+  building's height is kept in the save, core/building base; a road's is its
+  surface). Anything that would have to move up, sink more than a step below
+  it, or end up in the water, or a road on the shore other than flat, is
+  still in the way.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches

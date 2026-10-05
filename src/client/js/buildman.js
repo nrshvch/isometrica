@@ -322,20 +322,21 @@ function unfade(self) {
 }
 
 /**
- * A see-through piece id of road on tile - drawn over everything, the way a
- * building's preview is, so the trees it would clear do not hide it.
+ * A see-through piece id of road on tile with surface (client/road) - drawn
+ * over everything, the way a building's preview is, so the trees it would
+ * clear do not hide it.
  *
  * @returns {engine.GameObject}
  */
-function createRoadPreview(self, tile, id, opacity) {
+function createRoadPreview(self, tile, id, surface, opacity) {
   var go = new engine.GameObject("road preview");
 
   RoadView.addSprite(go, id, opacity, RenderLayer.previewLayer);
-  //and the base it would be laid on, if it would be (RoadView addBase)
-  RoadView.addBase(go, tile, id, opacity, RenderLayer.overlayLayer);
+  //and the concrete it would be laid on, if any (RoadView addBase)
+  RoadView.addBase(go, tile, surface, opacity, RenderLayer.overlayLayer);
 
   //placed before it goes in - the world files it by where it stands
-  RoadView.place(go, tile, id);
+  RoadView.place(go, tile, surface);
   self.root.game.logic.world.addGameObject(go);
 
   return go;
@@ -1027,21 +1028,23 @@ Buildman.prototype.build = function (code) {
   //the roads as they would look once laid: each piece joined up with the
   //ones around it, new and old alike, and the old ones they meet showing
   //what they would turn into. Where no road can go there is nothing
-  //how the roads that would go down for quotes, and the ones round them,
-  //would be laid for good (Road.planned)
+  //the roads that would go down for quotes, laid as they best go together
+  //with each other and the roads there (Road.plan) - the ones turned down
+  //for want of money too, as they would be laid with it
   function plannedRoads(quotes, run) {
-    return Road.planned(
+    return Road.plan(
       root.core.terrain,
       root.roadman,
       quotes
         .filter(function (q) {
-          return q.error === ErrorCode.NONE;
+          return (
+            q.error === ErrorCode.NONE || q.error === ErrorCode.NOT_ENOUGH_RES
+          );
         })
         .map(function (q) {
           return q.tile;
         }),
-      //the whole run dragged, over roads already there too - which are
-      //not quoted
+      //and every tile dragged over, the roads there too - not quoted
       run,
     );
   }
@@ -1050,6 +1053,7 @@ Buildman.prototype.build = function (code) {
     var terrain = root.core.terrain,
       roadman = root.roadman,
       laid = opacities(quotes),
+      net = plannedRoads(quotes, run),
       seen = Object.create(null),
       tile,
       next,
@@ -1058,22 +1062,28 @@ Buildman.prototype.build = function (code) {
       i,
       j;
 
-    //joined up with every road shown, and laid as the ones that would go
-    //down would be laid for good, and the ones round them (Road.planned)
-    var net = {
-      isRoad: function (t) {
-        return laid[t] !== undefined || roadman.getRoad(t) !== null;
-      },
-      lay: plannedRoads(quotes, run).lay,
-    };
-
     for (i = 0; i < quotes.length; i++) {
       tile = quotes[i].tile;
+
+      //one that cannot go down is shown on its own, as it would be laid
+      var surface = net.surface(tile);
+
+      if (surface === null) {
+        var any = Road.surfaces(terrain, tile);
+
+        surface = any.length > 0 ? any[0] : Road.ground(terrain, tile);
+      }
+
       previews.push(
         createRoadPreview(
           self,
           tile,
-          Road.profile(terrain, tile, net),
+          net.surface(tile) !== null
+            ? Road.profile(tile, net)
+            : Road.shapeOf(surface) > 0
+              ? Road.shapeOf(surface)
+              : 90000,
+          surface,
           laid[tile],
         ),
       );
@@ -1086,7 +1096,7 @@ Buildman.prototype.build = function (code) {
 
         seen[next] = true;
         //a street stays a street, joined up with the new road
-        id = Road.profile(terrain, next, net, roadman.paved(next));
+        id = Road.profile(next, net, roadman.paved(next));
 
         if (id !== road.typeCode) {
           road.view.showPiece(id);
@@ -1161,24 +1171,19 @@ Buildman.prototype.build = function (code) {
 
     var looks = anchors.map(lookAt);
 
-    //roads laid for good as the preview showed them: the ones round them
-    //before the new ones go down, the new ones as they do
+    //roads laid as the preview showed them, each with its surface
     if (data.classCode === BuildingClassCode.road) {
-      var fixes = plannedRoads(
+      var surfaces = plannedRoads(
         root.core.cities
           .getCity(0)
           .buildingService.quoteSelection(code, anchors, rotation),
         anchors,
-      ).fixes;
+      ).surfaces;
 
-      Object.keys(fixes).forEach(function (key) {
-        var road = root.roadman.getRoad(+key);
-
-        if (road !== null && fixes[key] !== undefined)
-          Road.setLay(road.data, fixes[key]);
-      });
       looks = anchors.map(function (tile) {
-        return fixes[tile] !== undefined ? { lay: fixes[tile] } : null;
+        return surfaces[tile] !== undefined
+          ? { surface: surfaces[tile].slice() }
+          : null;
       });
     }
 

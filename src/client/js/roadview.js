@@ -80,13 +80,15 @@ BuildingView.prototype.setRoad = function (road) {
 BuildingView.prototype.update = function () {
   var b = this.road;
 
-  if (b !== null && b.staticData !== null) draw(this, this.road.typeCode);
+  if (b !== null && b.staticData !== null)
+    draw(this, this.road.typeCode, this.road.surface());
 };
 
-//draws piece id of the road from scratch: the piece, then the street light
-//if it has one, and the base under it if it is on one - each lets go of the
-//view as it is destroyed, so off a copy of the list
-function draw(view, id) {
+//draws piece id of the road from scratch, on surface (client/road): the
+//piece, then the street light if it has one, and the concrete under it if
+//there is any - each lets go of the view as it is destroyed, so off a copy
+//of the list
+function draw(view, id, surface) {
   var go = view.gameObject,
     tile = view.road.data.tile,
     children = go.transform.children.slice();
@@ -100,150 +102,52 @@ function draw(view, id) {
 
   if (light !== null) addLight(go, light);
 
-  addBase(go, tile, id, 1, RenderLayer.roadLayer);
+  addBase(go, tile, surface, 1, RenderLayer.roadLayer);
 
-  place(go, tile, id);
+  place(go, tile, surface);
 }
 
-/**
- * Whether piece id of road on tile is laid on concrete: anywhere on a slope
- * but a ramp up a smooth one - flat at the top, or a ramp on a wedge on
- * ground with only one corner up (Road.lay), the way OpenTTD lays its roads -
- * and a ramp on flat ground, up a whole step to a road on concrete next to
- * it.
- *
- * @param terrain {Terrain} core terrain
- * @param id {number} the piece (see Road.profile)
- */
-function raised(terrain, tile, id, top) {
-  var slopeId = terrain.tileSlope(tile),
-    ramp = id % Road_PAVED < 10,
-    level = topOf(terrain, tile),
-    t = top === undefined ? storedTop(tile) : top;
-
-  //kept up when the ground went down from under it
-  if (!ramp && typeof t === "number" && t > level) return true;
-
-  //on flat ground, only a ramp up to a road a step higher (Road.planned)
-  if (!Terrain.isSlope(slopeId)) return ramp;
-
-  return !(Terrain.isSlopeSmooth(slopeId) && ramp);
-}
-
-/**
- * How high the flat road on tile was kept when the ground was taken down
- * from under it (client/road fitTo), if it was: a step over flat ground, on
- * concrete all round.
- */
-function storedTop(tile) {
-  var model = vkaria.core.buildingService.get(tile);
-
-  return model !== null &&
-    model.look !== null &&
-    model.look !== undefined &&
-    typeof model.look.top === "number"
-    ? model.look.top
-    : undefined;
-}
-
-//the highest corner of a tile
-function topOf(terrain, tile) {
-  return Math.max(
-    terrain.getGridPointHeight(tile),
-    terrain.getGridPointHeight(tile + 1),
-    terrain.getGridPointHeight(tile + Terrain.dy),
-    terrain.getGridPointHeight(tile + Terrain.dy + 1),
-  );
-}
-
-//the corners each ramp is up at, of A (x, y), B (x + 1, y), C (x, y + 1)
-//and D (x + 1, y + 1): 1 up towards -y, 2 -x, 3 +y, 4 +x
-var RAMP_TOPS = {
-  1: [1, 1, 0, 0],
-  2: [1, 0, 1, 0],
-  3: [0, 0, 1, 1],
-  4: [0, 1, 0, 1],
-};
-
-/**
- * How high piece id of road on tile is at each corner, A (x, y), B (x + 1, y),
- * C (x, y + 1) and D (x + 1, y + 1): where the ground is, but on concrete
- * (raised) - at the top of the tile for a flat piece, a step down at the
- * foot of a ramp on a wedge.
- *
- * @param terrain {Terrain} core terrain
- * @param id {number} the piece (see Road.profile)
- * @param [top] {number|null} how high a flat one is kept (storedTop) - the
- *        road's own if undefined, none if null
- * @returns {number[]}
- */
-function deck(terrain, tile, id, top) {
-  var t = top === undefined ? storedTop(tile) : top,
-    ground = [
-      terrain.getGridPointHeight(tile),
-      terrain.getGridPointHeight(tile + 1),
-      terrain.getGridPointHeight(tile + Terrain.dy),
-      terrain.getGridPointHeight(tile + Terrain.dy + 1),
-    ];
-
-  //a flat one kept as high as it was
-  if (id % Road_PAVED >= 10 && typeof t === "number") return [t, t, t, t];
-
-  if (!raised(terrain, tile, id, t)) return ground;
-
-  //the top a step over flat ground, for a ramp up from it
-  var high =
-      Math.max.apply(null, ground) +
-      (Terrain.isSlope(terrain.tileSlope(tile)) ? 0 : 1),
-    shape = id % Road_PAVED,
-    tops = shape < 10 ? RAMP_TOPS[shape] : [1, 1, 1, 1];
-
-  return tops.map(function (up) {
-    return up ? high : high - 1;
-  });
-}
-
-//how high piece id of road on tile is in the middle of it
-function surface(terrain, tile, id) {
-  var d = deck(terrain, tile, id);
-
-  return (d[0] + d[1] + d[2] + d[3]) / 4;
+//how high a road's surface is in the middle of its tile
+function middle(surface) {
+  return (surface[0] + surface[1] + surface[2] + surface[3]) / 4;
 }
 
 //how many pixels up a step of the ground is (shared/gen/foundations STEP)
 var STEP_PX = 8;
 
 /**
- * Hangs under parent - a road's, at its surface (place) - the concrete piece
- * id of road on tile is laid on (deck), down to the ground at every corner
- * lower than that (shared/gen/foundations): a flat top, or a wedge under a
- * ramp. Picked as the tile is seen; nothing under a road on the ground.
+ * Hangs under parent - a road's, at its surface (place) - the concrete under
+ * a road's surface on tile: down to the ground at every corner the surface
+ * is over it, a step at most (shared/gen/foundations) - under a flat road a
+ * level top, on the shore going down into the water the way a building's
+ * does; under a ramp, a ramp's. Picked as the tile is seen; nothing where
+ * the road is on the ground all round.
+ *
+ * @param surface {number[]} the road's corners' heights, A (x, y),
+ *        B (x + 1, y), C (x, y + 1), D (x + 1, y + 1) (client/road)
  */
-function addBase(parent, tile, id, opacity, layer) {
-  var terrain = vkaria.core.world.terrain;
-
-  if (!raised(terrain, tile, id)) return;
-
-  var x = Terrain.extractX(tile),
+function addBase(parent, tile, surface, opacity, layer) {
+  var terrain = vkaria.core.world.terrain,
+    x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
-    d = deck(terrain, tile, id),
-    top = Math.max.apply(null, d),
-    ramp = id % Road_PAVED < 10,
+    top = Math.max.apply(null, surface),
+    ramp = Math.min.apply(null, surface) !== top,
+    any = false,
     drops = [],
     tops = [];
 
   for (var k = 0; k < 4; k++) {
     var c = View.corner(k),
-      at = d[c[0] + 2 * c[1]];
+      at = surface[c[0] + 2 * c[1]],
+      drop = Math.max(0, Math.min(1, at - View.cornerHeight(terrain, x, y, k)));
 
-    drops.push(
-      Math.max(0, Math.min(1, at - View.cornerHeight(terrain, x, y, k))),
-    );
+    drops.push(drop);
     tops.push(at === top ? 1 : 0);
+    if (drop > 0) any = true;
   }
 
-  //on the shore, the base goes down into the water, the way a building's
-  //does (shared/gen/foundations)
+  if (!any) return;
+
   var name =
       "gen/foundations/" +
       (ramp
@@ -265,7 +169,7 @@ function addBase(parent, tile, id, opacity, layer) {
   //a ramp: its picture lifted by as much
   sprite.setPivot(
     frame.pivotX,
-    frame.pivotY + (top - surface(terrain, tile, id)) * STEP_PX,
+    frame.pivotY + (top - middle(surface)) * STEP_PX,
   );
   part.addComponent(sprite);
   //the renderer resets its opacity once it is attached
@@ -289,13 +193,14 @@ function addLight(parent, name) {
 
 /**
  * Draws piece id in place of the road's own - what it would turn into once
- * the roads being laid next to it join up with it, base and all. Its own
- * comes back with the next update.
+ * the roads being laid next to it join up with it. Its own comes back with
+ * the next update.
  *
  * @param id {number} which piece (see Road.profile)
  */
 BuildingView.prototype.showPiece = function (id) {
-  if (this.road !== null && this.road.staticData !== null) draw(this, id);
+  if (this.road !== null && this.road.staticData !== null)
+    draw(this, id, this.road.surface());
 };
 
 /**
@@ -319,17 +224,16 @@ function addSprite(parent, id, opacity, layer) {
 }
 
 /**
- * Puts go where piece id of road on tile stands: in the middle of its tile,
- * on the ground or on its base (deck).
+ * Puts go where a road on tile with surface stands: in the middle of its
+ * tile, as high as its surface is there.
  */
-function place(go, tile, id) {
+function place(go, tile, surface) {
   var x = Terrain.extractX(tile),
-    y = Terrain.extractY(tile),
-    z = surface(vkaria.core.world.terrain, tile, id);
+    y = Terrain.extractY(tile);
 
   go.transform.setPosition(
     x * Config.tileSize,
-    z * Config.tileZStep,
+    middle(surface) * Config.tileZStep,
     y * Config.tileSize,
   );
 }
@@ -338,9 +242,6 @@ BuildingView.addSprite = addSprite;
 BuildingView.PAVED = Road_PAVED;
 BuildingView.place = place;
 BuildingView.addBase = addBase;
-BuildingView.raised = raised;
-BuildingView.topOf = topOf;
-BuildingView.deck = deck;
 
 BuildingView.prototype.render = function () {
   if (this.gameObject.world === null)

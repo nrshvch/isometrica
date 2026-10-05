@@ -179,13 +179,12 @@ function canDrive(root, from, dir) {
     root.roadman.getRoad(to) !== null &&
     (roadAxes(root, from) & axis) !== 0 &&
     (roadAxes(root, to) & axis) !== 0 &&
-    //never over a step down from a road on a base, nor off the side of a
-    //ramp on a wedge
+    //only where the two roads meet level - never over a step, nor off the
+    //side of a ramp (client/road)
     Road.meets(
-      root.core.terrain,
-      from,
+      root.roadman.getRoad(from).surface(),
       SIDE_OF[dir[0] + "," + dir[1]],
-      Road.network(root.roadman),
+      root.roadman.getRoad(to).surface(),
     )
   );
 }
@@ -406,8 +405,8 @@ function routeWaypoints(route, from) {
 
 /**
  * The height of the ground at a point, in tiles, the way the terrain is drawn:
- * straight between the heights of the tile's corners - or of a road's on a
- * base, levelled or a ramp on a wedge (Road.deck).
+ * straight between the heights of the tile's corners - or of a road's own
+ * surface there (client/road).
  */
 function groundHeight(root, x, y) {
   var terrain = root.core.terrain,
@@ -424,14 +423,16 @@ function groundHeight(root, x, y) {
     d = terrain.getGridPointHeight(x0 + 1, y0 + 1),
     tile = Terrain.convertToIndex(x0, y0);
 
-  //on a road, its own - on its concrete, if it is on any
-  if (root.roadman.getRoad(tile) !== null) {
-    var deck = Road.deck(terrain, tile, Road.network(root.roadman));
+  //on a road, its own surface - on its concrete, if it is on any
+  var road = root.roadman.getRoad(tile);
 
-    a = deck[0];
-    b = deck[1];
-    c = deck[2];
-    d = deck[3];
+  if (road !== null) {
+    var surface = road.surface();
+
+    a = surface[0];
+    b = surface[1];
+    c = surface[2];
+    d = surface[3];
   }
 
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
