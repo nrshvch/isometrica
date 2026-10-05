@@ -164,7 +164,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   turns with the camera. On the shore, where the water is painted a little
   way up the ground and so looks higher, the base is the same, marked where
   the water stands against it: wet and darker below that waterline, a line
-  of weed along it and a tide mark above. Roads are not laid on the shore.
+  of weed along it and a tide mark above. A road on the shore is always
+  levelled at the top on such a base - never laid on the sand as it is.
 - On a slope that rises a step at most a road is laid the way OpenTTD lays
   its roads (`src/client/js/road.js` Road.decide, `roadview.js` addBase): up
   a smooth slope as a ramp, or across it levelled at the top on a concrete
@@ -196,7 +197,7 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   or a road leaves it on a base, a whole step over flat ground if need be,
   kept in the save (core/building base, a road's look top). Anything that
   would have to move up, sink more than a step below it, or end up in the
-  water or, for a road, on the shore, is still in the way.
+  water, or a road on the shore other than levelled, is still in the way.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches

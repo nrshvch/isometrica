@@ -242,9 +242,15 @@ function addBase(parent, tile, id, opacity, layer) {
     tops.push(at === top ? 1 : 0);
   }
 
+  //on the shore, the base goes down into the water, the way a building's
+  //does (shared/gen/foundations)
   var name =
       "gen/foundations/" +
-      (ramp ? "ramp/" + tops.join("") + "/" : "") +
+      (ramp
+        ? "ramp/" + tops.join("") + "/"
+        : terrain.getTerrainType(tile) === Core.TerrainType.shore
+          ? "shore/"
+          : "") +
       drops.join(""),
     frame = vkaria.sprites.frame(name);
 

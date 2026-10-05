@@ -97,12 +97,8 @@ function buildTest(self, code, tile, rotation) {
       resource !== data.resource
     )
       return ErrorCode.WRONG_RESOURCE_TILE;
-    //the beach goes down into the water: no road along it
-    else if (
-      data.classCode === BuildingClassCode.road &&
-      terrainType === TerrainType.shore
-    )
-      return ErrorCode.ON_SHORE;
+    //a road on the beach is levelled at the top on concrete, the way a
+    //building is (client/road decide) - never laid on the sand as it is
     //a road goes up a slope as a ramp, and on any other slope that rises a
     //step at most it is levelled at the top on a base (client/road
     //levelled) - but no steeper

@@ -43,6 +43,12 @@ RAMP_OF[Terrain.SlopeType.BD] = 4;
 //the side at the foot of each ramp, -x, -y, +x, +y
 var FOOT = { 1: 3, 2: 2, 3: 1, 4: 0 };
 
+//the beach, going down into the water: a road there is levelled on concrete
+//only (Road.decide)
+function onShore(terrain, tile) {
+  return terrain.getTerrainType(tile) === Core.TerrainType.shore;
+}
+
 //ground that is no smooth slope, nor flat: whatever road is on it is on
 //concrete (RoadView deck)
 function uneven(terrain, tile) {
@@ -93,7 +99,8 @@ function wedges(terrain, tile) {
  * - on ground with only one corner up, a ramp on a wedge of concrete where a
  *   road comes to its foot on the ground there - the one straight through,
  *   if either is - or else levelled at the top;
- * - on any other slope levelled at the top;
+ * - on any other slope levelled at the top - and on the shore, always:
+ *   never on the sand as it is, nor up it on a wedge;
  * - on flat ground flat - a ramp up to a road a step higher only as it is
  *   laid (Road.planned), and kept.
  *
@@ -105,7 +112,7 @@ function wedges(terrain, tile) {
 Road.decide = function (terrain, tile, isRoad) {
   var slopeId = terrain.tileSlope(tile);
 
-  if (!Terrain.isSlope(slopeId)) return 0;
+  if (!Terrain.isSlope(slopeId) || onShore(terrain, tile)) return 0;
 
   var ramp = RAMP_OF[slopeId];
 
@@ -164,6 +171,8 @@ function fits(terrain, tile, lay) {
   var slopeId = terrain.tileSlope(tile);
 
   if (lay === 0) return true;
+  //on the shore levelled only
+  if (onShore(terrain, tile)) return false;
   if (!Terrain.isSlope(slopeId)) return lay >= 1 && lay <= 4;
 
   return RAMP_OF[slopeId] === lay || wedges(terrain, tile).indexOf(lay) !== -1;
@@ -177,7 +186,7 @@ function fits(terrain, tile, lay) {
  * concrete a step deep at most. Raised up to a levelled road, the ground
  * takes the place of its base; taken down from under one, it is levelled
  * on a base - on flat ground, a whole step over it, kept that high
- * (RoadView deck). Never on the shore.
+ * (RoadView deck). On the shore levelled only, never in the water.
  *
  * @param roadman {Roadman}
  * @param model {Object} the road's core model
@@ -199,7 +208,8 @@ Road.fitTo = function (terrain, roadman, model, after) {
     high = Math.max.apply(null, ground),
     lays = [Road.lay(terrain, tile, net), 0, 1, 2, 3, 4];
 
-  if (low <= 0) return null;
+  //never in the water
+  if (high <= 0) return null;
 
   function same(d) {
     return d.every(function (h, k) {
