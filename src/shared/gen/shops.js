@@ -1271,7 +1271,7 @@ function farmTrailer(b, x, y) {
   });
 }
 
-var COBBLES = madeOf([176, 166, 152], "stone"),
+var COBBLES = madeOf([176, 166, 152], "setts"),
   SLABS = madeOf([196, 190, 178], "slabs");
 
 /**
@@ -2158,4 +2158,13 @@ export function paint(name) {
   );
 }
 
-export { PARTS, STOREY, slopedRoof };
+export {
+  PARTS,
+  STOREY,
+  slopedRoof,
+  stall,
+  farmTrailer,
+  GOODS,
+  CANOPIES,
+  COBBLES,
+};

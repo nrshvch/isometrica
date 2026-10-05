@@ -356,6 +356,7 @@ CityBuildings.prototype.save = function () {
           ? building.getProgress()
           : undefined,
       //what it looks like, for one put together out of parts picked for it
+      //- and for a road, what it is laid in
       look: building.look,
       //what it stands on (core/surface)
       surface: building.surface || undefined,

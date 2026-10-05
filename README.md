@@ -141,9 +141,32 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   pond on the bigger footprints. A park needs no road or water and earns
   nothing; the town pays its upkeep.
 - The catalogue opens with what a game starts with - what needs neither a
-  road nor water, the houses, the water tower and the pump station first,
-  then the parks - and then everything else: houses, then shops, a tier at
-  a time, the cheaper first within one.
+  road nor water, the houses, the old town, the water tower and the pump
+  station first, then the parks - and then everything else: houses, then
+  shops, a tier at a time, the cheaper first within one.
+- The old town (`src/shared/gen/oldtown.js`, `src/data/oldtown.js`) is the
+  commerce a village starts with, next to its cottages: it needs no road or
+  water, and makes its money with the cottagers working in it. On 1x2 and
+  1x3 a lane of craftsmen's houses - narrow, tall, their steep gables to
+  the lane, half-timbered or rendered in ochre, rose, sky blue, sage or
+  stone, the smith's, baker's, cooper's, potter's and weaver's signs
+  hanging out over it and their wares out in front - or a yard with a
+  smithy; on 2x2 a market square or a church in its churchyard; on 2x3 a
+  square before a church or a street of craftsmen; on 3x3 all of it, with a
+  guild hall and a fountain. All of it cobbled, nothing tall near its edges:
+  two side by side are one town, a lane between them. Later on the town
+  keeps it as its old town.
+- A wall goes round the old town (`src/client/js/compoundbuilding.js`
+  walled): along every edge of it with no old town beyond - so round all of
+  it, however many pieces it was put down in, and never round the cottages
+  - with a tower wherever two stretches meet, a gatehouse where a road
+    comes up to it and in the middle of each piece's front. It is worked out
+    as the town is drawn, and drawn again as anything goes up or comes down
+    next to it.
+- What goes up turns to face the road (`src/client/js/buildman.js`
+  facingRoad): of the ways it can be turned and keep the footprint the
+  player picked, the one with the most road along its front - worked out
+  where it is put down, shown so, and kept.
 - A tap on nothing - bare ground, a road, the sea - while nothing is being
   looked at puts away the words over the world ("no jobs", how far along
   one going up is, the city's name) and the city limits drawn round it: the
@@ -170,6 +193,12 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   and has a building next to it (`src/client/js/roadman.js` paved); out in
   the country, or on a stretch that does not join the network, it stays
   plain, and it changes back and forth as buildings go up and come down.
+- A road is laid in what the player picks before laying it, the way the
+  ground is shaped by picking what to do to it first: gravel - a village's
+  lanes, and the default - cobbles, or asphalt. Gravel laid next to the old
+  town comes out cobbled (`src/client/js/road.js` materialAt). What a road
+  is laid in is kept with it, in the save; a road from before is asphalt,
+  paved or plain as above.
 - The catalogue offers only what is painted: the hand-drawn houses, shops,
   offices, flats, town hall, trees and cliff are kept for the cities that
   already have them, but no longer offered.

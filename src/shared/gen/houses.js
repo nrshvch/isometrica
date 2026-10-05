@@ -4101,3 +4101,18 @@ export function paint(name) {
 }
 
 export { PARTS, STOREY, cover };
+
+//what a house is drawn with, for the old town (shared/gen/oldtown)
+export {
+  face,
+  windowOn,
+  windowsOn,
+  doorOn,
+  walls,
+  cypress,
+  well,
+  woodpile,
+  fountain,
+  site,
+  SH,
+};

@@ -33,6 +33,7 @@ import Offices from "./offices";
 import Shops from "./shops";
 import Houses from "./houses";
 import Parks from "./parks";
+import Oldtown from "./oldtown";
 import Trees from "./trees";
 
 var Core = namespace("Isometrica.Core");
@@ -1199,6 +1200,7 @@ Object.assign(
   Shops.buildings(),
   Houses.buildings(),
   Parks.buildings(),
+  Oldtown.buildings(),
 );
 
 export default buildingData;

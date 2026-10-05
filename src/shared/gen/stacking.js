@@ -257,7 +257,12 @@ export function siteTiles(tiles, stage, seed, small) {
 
   if (gen === "shops")
     return fenced(shopSite(tiles, stage, seed, small), small);
-  if (gen === "houses" || gen === "utilities" || gen === "parks")
+  if (
+    gen === "houses" ||
+    gen === "utilities" ||
+    gen === "parks" ||
+    gen === "oldtown"
+  )
     return fenced(houseSite(tiles, stage, seed, small), small);
 
   var dealt = deal(tiles.length, seed, small),

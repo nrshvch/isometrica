@@ -29,6 +29,9 @@ import {
   endsOf,
 } from "shared/gen/stacking";
 import BuildingClassCode from "data/classcode";
+import Core from "core/main";
+
+var Terrain = Core.Terrain;
 
 /**
  * What a block of the kind looks like - its look, kept as it is, or picked
@@ -222,8 +225,8 @@ function siteLook(look, stage, seed, small) {
 /**
  * Whether what goes up goes up on a small site - no crane, and a timber rail
  * round it rather than the tarp (shared/gen/stacking siteTiles): a park, a
- * cottage or a farm of the village, and any house or shop on one tile, which
- * is a storey high.
+ * cottage or a farm of the village, the old town, and any house or shop on
+ * one tile, which is a storey high.
  *
  * @param staticData {Object} what it is, data/buildings
  */
@@ -232,7 +235,7 @@ function smallSite(staticData) {
     gen = compound ? compound.gen : null,
     one = staticData.sizeX * staticData.sizeY === 1;
 
-  if (gen === "parks") return true;
+  if (gen === "parks" || gen === "oldtown") return true;
   if (gen === "houses" && /^village-/.test(compound.footprint)) return true;
 
   return (
@@ -591,6 +594,154 @@ function chimneys(sprites, look, compound, turns) {
   return out;
 }
 
+/**
+ * An old town with its wall round it (shared/gen/oldtown wall): for every
+ * tile of it, along every edge with no old town beyond it, a stretch of
+ * wall - a gatehouse where a road comes up to it (not one going past), and
+ * in the middle of its front - and in a corner where the town turns inwards, the bit that joins
+ * the walls of the towns on either side; a tower where two of its walls meet.
+ * Old town next to old town has no wall between them: one wall goes round
+ * all of it, whatever it is made of. What it is, as a look the same as the
+ * town's but for the wall laid under and over each tile's parts.
+ *
+ * @param building {Object} the core building
+ * @param world {{get: function(number): Object|null}} the buildings by
+ *        tile (core BuildingService)
+ */
+function walled(look, compound, building, world) {
+  var W = compound.sizeX,
+    D = compound.sizeY,
+    turns = building.rotation & 3,
+    X = Terrain.extractX(building.tile),
+    Y = Terrain.extractY(building.tile),
+    //the way in, in the middle of its front
+    gate = Math.floor((W - 1) / 2);
+
+  //what stands a step dx, dy off tile x, y of the town - both as the town
+  //is painted - in the world, where the town is turned so many times
+  function beyond(x, y, dx, dy) {
+    var at = turn(x, y, W, D, turns),
+      step = [dx, dy];
+
+    for (var t = 0; t < turns; t++) step = [step[1], -step[0]];
+
+    return world.get(
+      Terrain.convertToIndex(X + at[0] + step[0], Y + at[1] + step[1]),
+    );
+  }
+
+  function inside(x, y) {
+    return x >= 0 && y >= 0 && x < W && y < D;
+  }
+
+  //whether the road beyond the edge d of a tile comes up to the wall there -
+  //going on away from it, or ending there - rather than running along it, past
+  //the town: there is a gate where it does
+  function comesUp(tile, d) {
+    var side = [d[1], d[0]],
+      out = road(beyond(tile.x, tile.y, 2 * d[0], 2 * d[1])),
+      left = road(beyond(tile.x, tile.y, d[0] + side[0], d[1] + side[1])),
+      right = road(beyond(tile.x, tile.y, d[0] - side[0], d[1] - side[1]));
+
+    return out || (!left && !right);
+  }
+
+  function town(b) {
+    return (
+      b !== null &&
+      b.data.compound !== undefined &&
+      b.data.compound.gen === "oldtown"
+    );
+  }
+
+  function road(b) {
+    return b !== null && b.data.classCode === BuildingClassCode.road;
+  }
+
+  return {
+    tiles: look.tiles.map(function (tile) {
+      var e = WALL_EDGES.map(function (d, i) {
+          if (inside(tile.x + d[0], tile.y + d[1])) return 0;
+
+          var other = beyond(tile.x, tile.y, d[0], d[1]);
+
+          if (town(other)) return 0;
+          if (road(other) && comesUp(tile, d)) return 2;
+
+          return i === 1 && tile.y === 0 && tile.x === gate ? 2 : 1;
+        }),
+        c = WALL_CORNERS.map(function (pair) {
+          var dx = WALL_EDGES[pair[0]][0] + WALL_EDGES[pair[1]][0],
+            dy = WALL_EDGES[pair[0]][1] + WALL_EDGES[pair[1]][1];
+
+          if (e[pair[0]] || e[pair[1]] || inside(tile.x + dx, tile.y + dy))
+            return 0;
+
+          return town(beyond(tile.x, tile.y, dx, dy)) ? 0 : 1;
+        }),
+        mask = e.join("") + c.join("");
+
+      if (mask === "00000000") return tile;
+
+      return {
+        x: tile.x,
+        y: tile.y,
+        parts: ["oldtown/wall/" + mask + "/back"].concat(tile.parts, [
+          "oldtown/wall/" + mask + "/front",
+        ]),
+      };
+    }),
+  };
+}
+
+//a tile's edges in the order a wall's mask has them - x0, y0, x1, y1 - by
+//the step across each; and its corners, x0y0, x1y0, x1y1, x0y1, by the
+//edges that meet there
+var WALL_EDGES = [
+    [-1, 0],
+    [0, -1],
+    [1, 0],
+    [0, 1],
+  ],
+  WALL_CORNERS = [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 0],
+  ];
+
+/**
+ * The old towns next to the tiles - whose wall may run otherwise now that
+ * what is on them has changed - each once.
+ *
+ * @param tiles {number[]}
+ * @returns {Object[]} the core buildings
+ */
+function townsAround(world, tiles) {
+  var seen = Object.create(null),
+    out = [];
+
+  tiles.forEach(function (tile) {
+    for (var dx = -1; dx <= 1; dx++)
+      for (var dy = -1; dy <= 1; dy++) {
+        var b = world.get(tile + dx * Terrain.dx + dy * Terrain.dy);
+
+        if (
+          b === null ||
+          seen[b.tile] === true ||
+          b.data.compound === undefined ||
+          b.data.compound.gen !== "oldtown"
+        )
+          continue;
+
+        seen[b.tile] = true;
+        out.push(b);
+      }
+  });
+
+  return out;
+}
+
 //the catalogue's pictures, by kind of building, once drawn
 var previews = {};
 
@@ -734,6 +885,8 @@ function drawPreview(sprites, compound, tries) {
 }
 
 export default {
+  walled: walled,
+  townsAround: townsAround,
   chimneys: chimneys,
   lookOf: lookOf,
   sampleLook: sampleLook,

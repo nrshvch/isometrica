@@ -134,7 +134,7 @@ WorldScreenView.prototype.showBuildButtons = function () {
     view.controller.ui.navigate("catalogue");
   });
   setBtn(this, 2, "road-icon", function () {
-    view.controller.ui.navigate("build", [BuildingCode.road]);
+    view.controller.pickRoad();
   });
   setBtn(this, 3, "bulldozer-icon", function () {
     view.controller.ui.navigate("terrain");

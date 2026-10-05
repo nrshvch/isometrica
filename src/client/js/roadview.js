@@ -14,12 +14,12 @@ import View from "./view";
 var Terrain = Core.Terrain;
 
 //what a road's piece number (see Road.profile) is drawn with: the roads
-//generator's pieces (shared/gen/roads) - plain or paved, by how the road
-//joins up with its neighbours, or a ramp - as it is seen, the camera turned
-//(see client/view)
+//generator's pieces (shared/gen/roads) - plain or paved asphalt, gravel or
+//cobbles, by how the road joins up with its neighbours, or a ramp - as it is
+//seen, the camera turned (see client/view)
 function spriteOf(id) {
   var shape = id % Road_PAVED,
-    kind = id >= Road_PAVED ? "paved" : "plain";
+    kind = KINDS[Math.floor(id / Road_PAVED)] || "plain";
 
   if (shape < 10) return "gen/roads/" + kind + "/ramp" + View.ramp(shape);
 
@@ -42,7 +42,7 @@ function seenJoins(shape) {
 function lightOf(id, tile) {
   var shape = id % Road_PAVED;
 
-  if (id < Road_PAVED || shape < 10) return null;
+  if (Math.floor(id / Road_PAVED) !== 1 || shape < 10) return null;
   if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
 
   var j = seenJoins(shape),
@@ -63,8 +63,10 @@ function setPiece(renderer, name) {
   renderer.setPivot(frame.pivotX, frame.pivotY);
 }
 
-//added to a road's piece number for the paved one (see Road.profile)
-var Road_PAVED = 100000;
+//added to a road's piece number for the paved one (see Road.profile) - and
+//twice and three times over for gravel and for cobbles: what it is laid in
+var Road_PAVED = 100000,
+  KINDS = ["plain", "paved", "gravel", "cobble"];
 
 function BuildingView() {
   this.gameObject = new engine.GameObject("building");
@@ -240,6 +242,7 @@ function place(go, tile, surface) {
 
 BuildingView.addSprite = addSprite;
 BuildingView.PAVED = Road_PAVED;
+BuildingView.KINDS = KINDS;
 BuildingView.place = place;
 BuildingView.addBase = addBase;
 

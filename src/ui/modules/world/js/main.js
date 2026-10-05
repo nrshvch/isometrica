@@ -1,6 +1,7 @@
 import WorldScreenView from "./views/worldscreenview";
 import Controls from "./worldaction";
 import ReactiveProperty from "reactive-property";
+import BuildingCode from "data/buildingcode";
 
 function WorldScreen(ui, client) {
   this.ui = ui;
@@ -90,6 +91,37 @@ WorldScreen.prototype.startFresh = function () {
   };
 
   return controls;
+};
+
+/**
+ * Asks what a road is to be laid in before it is laid - gravel, the lanes of
+ * a village and the default; cobbles; or asphalt - the way the ground is
+ * shaped by picking what to do to it first. Gravel laid by the old town
+ * comes out cobbled (client/road materialAt).
+ */
+WorldScreen.prototype.pickRoad = function () {
+  var self = this;
+
+  function lay(material) {
+    return function () {
+      self.hideHint();
+      self.ui.navigate("build", [BuildingCode.road, material]);
+    };
+  }
+
+  this.showHint("Lay the road in gravel, cobbles or asphalt");
+  this.showTools([
+    {
+      icon: "cross-icon",
+      action: function () {
+        self.hideHint();
+        self.show();
+      },
+    },
+    { icon: "gravel-road-icon", action: lay("gravel") },
+    { icon: "cobble-road-icon", action: lay("cobble") },
+    { icon: "road-icon", action: lay("asphalt") },
+  ]);
 };
 
 WorldScreen.prototype.showHint = function (text) {
