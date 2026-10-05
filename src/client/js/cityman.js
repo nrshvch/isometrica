@@ -39,9 +39,11 @@ function labelText(city) {
 }
 
 function updateLabel(self, city) {
-  self._cityGOs[city.tile()].textRenderer.text = self._namesHidden
-    ? ""
-    : labelText(city);
+  var go = self._cityGOs[city.tile()];
+
+  go.textRenderer.text = self._namesHidden ? "" : labelText(city);
+  //and the city limits with it
+  if (go.border) go.border.hidden = self._namesHidden;
 }
 
 function setupLabel(self, city) {
@@ -101,7 +103,8 @@ function Cityman(root) {
 }
 
 /**
- * Puts the cities' names away, or brings them back.
+ * Puts the cities' names away, and their limits drawn round them, or brings
+ * them back.
  *
  * @param hidden {boolean}
  */
