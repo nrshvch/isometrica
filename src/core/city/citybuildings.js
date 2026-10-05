@@ -97,8 +97,16 @@ CityBuildings.variantOf = variantOf;
  * @param [look] {Object} for a building put together out of parts, what it
  *        looks like - the look it was shown with while it was placed (see
  *        client/compoundbuilding); one is picked for it otherwise
+ * @param [surface] {number[]} for a road, the surface it is laid with
+ *        (core/surface) - the one it has on its own otherwise
  */
-CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
+CityBuildings.prototype.buildBuilding = function (
+  code,
+  tile,
+  rotate,
+  look,
+  surface,
+) {
   var city = this.city;
   var root = this.city.root;
 
@@ -123,6 +131,8 @@ CityBuildings.prototype.buildBuilding = function (code, tile, rotate, look) {
     var building = new Building();
     if (look) building.look = look;
     building.init(city.world, code, tile, rotate);
+    //a road laid as it was planned (client/road plan)
+    if (Array.isArray(surface)) building.surface = surface.slice();
 
     //what the player pays for it, set before the build is announced so
     //that whoever shows it over the site has it in hand
@@ -285,8 +295,8 @@ CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
  * @param [progress] {number} 0..1, for one saved while going up
  * @param [look] {Object} what it looks like, for one put together out of
  *        parts - as whoever drew it first picked it (client/compoundbuilding)
- * @param [base] {number} how high it stands, the ground taken down from under
- *        it (core/building base)
+ * @param [surface] {number[]} what it stands on (core/surface) - as it went
+ *        up, unless kept
  * @returns {Building}
  */
 CityBuildings.prototype.restore = function (
@@ -295,7 +305,7 @@ CityBuildings.prototype.restore = function (
   rotation,
   progress,
   look,
-  base,
+  surface,
 ) {
   //saves written before the codes were made numbers carry them as strings
   code = parseInt(code, 10);
@@ -313,7 +323,7 @@ CityBuildings.prototype.restore = function (
   );
 
   if (look !== undefined) building.look = look;
-  if (typeof base === "number") building.base = base;
+  if (Array.isArray(surface)) building.surface = surface.slice();
 
   this.city.root.buildings.build(building);
 
@@ -347,8 +357,8 @@ CityBuildings.prototype.save = function () {
           : undefined,
       //what it looks like, for one put together out of parts picked for it
       look: building.look,
-      //how high it stands, the ground taken down from under it
-      base: building.base,
+      //what it stands on (core/surface)
+      surface: building.surface || undefined,
     });
   }
 
@@ -366,7 +376,7 @@ CityBuildings.prototype.load = function (list) {
       list[i].rotation,
       list[i].progress,
       list[i].look,
-      list[i].base,
+      list[i].surface,
     );
 };
 

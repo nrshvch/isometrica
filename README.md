@@ -116,8 +116,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   and then everything else, the cheaper first.
 - A tap on nothing - bare ground, a road, the sea - while nothing is being
   looked at puts away the words over the world ("no jobs", how far along
-  one going up is, the city's name): the town on its own, for a picture of
-  it. They stay away while the camera is dragged, zoomed or turned, and come
+  one going up is, the city's name) and the city limits drawn round it: the
+  town on its own, for a picture of it. They stay away while the camera is dragged, zoomed or turned, and come
   back with the next tap on nothing - or with anything else: a tap on a
   building, placing or shaping the ground, a press on any button.
 - Shaping the ground starts on the building that was being looked at, if
@@ -166,18 +166,20 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   the water stands against it: wet and darker below that waterline, a line
   of weed along it and a tide mark above. A road on the shore is always
   levelled at the top on such a base - never laid on the sand as it is.
-- Every road has a surface of its own (`src/client/js/road.js`): how high
-  it is at each corner of its tile, kept with it in the save. Its shape,
-  the concrete under it and the roads it joins all come from that and the
-  ground under it. It is flat or a ramp - one side a step over the side
-  across from it - and over the ground everywhere, a step at most: where it
-  is over the ground, it stands on concrete (`roadview.js` addBase,
-  `src/shared/gen/foundations.js`), so a road is levelled across a slope,
-  climbs a step on a wedge, or ramps up from flat ground. On the shore it is
-  only ever flat, on concrete going down into the water. Two roads join, and
-  cars drive from one to the other, only where they meet level, at the same
-  height all along the edge between them - never over a step, nor onto the
-  side of a ramp.
+- Every building and every road stands on a surface of its own
+  (`src/core/surface.js`): how high it is at each corner of a tile, kept
+  with it in the save. A building's is flat over every tile it stands on,
+  at the highest corner under it as it goes up; a road's is its tile's,
+  flat or a ramp - one side a step over the side across from it. Wherever a
+  surface is over the ground it stands on concrete, a step deep at most and
+  never under the ground (`src/client/js/buildingview.js` addFoundations,
+  `roadview.js` addBase, `src/shared/gen/foundations.js`), so a road is
+  levelled across a slope, climbs a step on a wedge, or ramps up from flat
+  ground, and a building stands level on a slope. Never in the water; on
+  the shore flat only, the concrete going down into the water. Two roads
+  join, and cars drive from one to the other, only where they meet level,
+  at the same height all along the edge between them - never over a step,
+  nor onto the side of a ramp.
 - A run of road the player drags is laid all at once (Road.plan): each new
   tile gets the surface that has the run join up the most - with itself,
   and with the roads already there, which stay as they are, joining those
@@ -187,15 +189,13 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   a road on its own follows the ground. The same run always comes out the
   same, so the preview is what gets built.
 - Land can be raised and lowered under buildings and roads, the way
-  OpenTTD shapes land under its foundations (`src/core/city.js` stays,
-  Road.standsOn): whatever stands there keeps the height it is at, and the
-  concrete under it takes up the difference - ground raised to the top of a
-  base replaces it, ground taken down from under a building or a road
-  leaves it on concrete, a whole step over flat ground if need be (a
-  building's height is kept in the save, core/building base; a road's is its
-  surface). Anything that would have to move up, sink more than a step below
-  it, or end up in the water, or a road on the shore other than flat, is
-  still in the way.
+  OpenTTD shapes land under its foundations (`src/core/city.js` terraform):
+  whatever stands there stays where its surface still fits the ground as it
+  will be, the concrete under it taking up the difference - ground raised
+  to the top of a base replaces it, ground taken down from under one leaves
+  it on concrete, a whole step over flat ground if need be. Anything whose
+  surface would not fit - under the ground, more than a step over it, in the
+  water, or a ramp on the shore - is still in the way.
 - The trees are painted too (`src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches
