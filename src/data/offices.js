@@ -120,6 +120,8 @@ function buildings() {
         money: jobs * COST_PER_JOB,
       },
       name: block.storeys + "-storey " + block.name,
+      //the top tier of commerce, with the farmers' markets (data/shops)
+      tier: 3,
       //drawn out of parts, see client/compoundbuilding
       compound: {
         gen: "offices",
