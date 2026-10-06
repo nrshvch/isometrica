@@ -1638,11 +1638,15 @@ function tower(b, c, h, cap) {
  * a cap of tiles, the gates swung open.
  */
 function gatehouse(b, edge) {
-  var g0 = 11,
-    g1 = 21;
+  //the towers either side kept clear of the towers at the corners, which
+  //take TOWER along the edge from either end - a tower overlapping one has
+  //its cap break through the other's
+  var g0 = 12,
+    g1 = 20,
+    t = 4;
 
-  wallRun(b, edge, 0, g0 - 4);
-  wallRun(b, edge, g1 + 4, TILE);
+  wallRun(b, edge, 0, g0 - t);
+  wallRun(b, edge, g1 + t, TILE);
   //over the way through
   b.push(edgeBox(edge, g0, g1, 0.5, 0.5 + WALL_T, 10, WALL_H + 2, WALL_STONE));
   b.push(edgeBox(edge, g0, g1, 0.3, 1.5, WALL_H + 2, WALL_H + 3.5, WALL_STONE));
@@ -1650,42 +1654,33 @@ function gatehouse(b, edge) {
   b.push(edgeBox(edge, g0, g1, 0.2, 0.5, 9.2, 10, lighter(WALL_STONE, 0.15)));
 
   [
-    [g0 - 5, g0],
-    [g1, g1 + 5],
-  ].forEach(function (t) {
-    b.push(edgeBox(edge, t[0], t[1], 0, 6, 1, TOWER_H, WALL_STONE));
+    [g0 - t, g0],
+    [g1, g1 + t],
+  ].forEach(function (s) {
+    b.push(edgeBox(edge, s[0], s[1], 0, 6, 1, TOWER_H, WALL_STONE));
+    //an arrow slit on the face looking out
     b.push(
       edgeBox(
         edge,
-        t[0],
-        t[1],
-        2.4,
-        2.6,
+        s[0] + 1.7,
+        s[1] - 1.7,
+        -0.1,
+        0.2,
         TOWER_H - 7,
         TOWER_H - 4,
         [40, 40, 46],
       ),
     );
 
-    var q = edgeBox(edge, t[0] - 0.5, t[1] + 0.5, -0.5, 6.5, 0, 0, WALL_STONE);
+    var q = edgeBox(edge, s[0] - 0.5, s[1] + 0.5, -0.5, 6.5, 0, 0, WALL_STONE);
 
     pyramid(b, q.x0, q.x1, q.y0, q.y1, TOWER_H, 1.5, ROOFS.tiles[0]);
   });
 
-  //the gates, of oak, swung open against the inside of the arch
-  [g0 + 0.2, g1 - 0.6].forEach(function (a) {
-    b.push(
-      edgeBox(
-        edge,
-        a,
-        a + 0.4,
-        WALL_T + 0.6,
-        WALL_T + 4.6,
-        1.2,
-        9,
-        [104, 70, 44],
-      ),
-    );
+  //the gates, of oak, swung open flat against the sides of the way through,
+  //in between the towers - not out in the town
+  [g0, g1 - 0.4].forEach(function (a) {
+    b.push(edgeBox(edge, a, a + 0.4, 0.8, 4.8, 1.2, 9, [104, 70, 44]));
   });
 }
 
@@ -1703,11 +1698,13 @@ function atBack(edge, turns) {
   return Math.max(p[0], p[1]) > TILE - 1;
 }
 
-//and a corner: at the back unless it is the one nearest the camera
+//and a corner: at the back only the one furthest from the camera - a tower
+//at either corner to the side stands on the outline of the tile as it is
+//seen, so is drawn over the town and the stretches of wall that meet it
 function cornerAtBack(c, turns) {
   var p = turnPoint(CORNERS[c][0], CORNERS[c][1], turns);
 
-  return Math.max(p[0], p[1]) > TILE - 1;
+  return Math.min(p[0], p[1]) > TILE - 1;
 }
 
 /**
