@@ -193,67 +193,6 @@ function createPreview(self, data, tile, rotation, opacity, look) {
   return go;
 }
 
-/**
- * Which way to turn a building put down on tile so that its front - the
- * side its design faces the street with, -y as it is painted - has a road
- * along it: of the turns that keep the footprint the player picked (the one
- * they turned it to and the half turn from that, and for a square one the
- * quarter turns too), the one with the most road along its front - and of
- * those, the one with most along its sides, so that one on a corner keeps
- * its back to the corner. None at all: as the player turned it.
- *
- * @param rotation {number} as the player turned it, 0..3
- * @returns {number} 0..3
- */
-function facingRoad(self, data, tile, rotation) {
-  if (data.canRotate === false) return rotation;
-
-  var buildings = self.root.core.buildingService,
-    x0 = Terrain.extractX(tile),
-    y0 = Terrain.extractY(tile),
-    sx = Rotation.sizeX(data, rotation),
-    sy = Rotation.sizeY(data, rotation),
-    turns = sx === sy ? [0, 2, 1, 3] : [0, 2],
-    best = rotation,
-    bestScore = 0;
-
-  function road(x, y) {
-    var b = buildings.get(x + y * Terrain.dy);
-
-    return b !== null && b.data.classCode === BuildingClassCode.road ? 1 : 0;
-  }
-
-  //how much road there is along a side: 0 -x, 1 -y, 2 +x, 3 +y
-  function along(side) {
-    var n = 0,
-      i;
-
-    if (side === 1 || side === 3)
-      for (i = 0; i < sx; i++) n += road(x0 + i, side === 1 ? y0 - 1 : y0 + sy);
-    else
-      for (i = 0; i < sy; i++) n += road(side === 0 ? x0 - 1 : x0 + sx, y0 + i);
-
-    return n;
-  }
-
-  var sides = [0, 1, 2, 3].map(along);
-
-  turns.forEach(function (t) {
-    var r = (rotation + t) & 3,
-      //where its front is with r turns: -y, then -x, +y and +x
-      front = [1, 0, 3, 2][r],
-      score =
-        sides[front] * 10 + sides[(front + 1) & 3] + sides[(front + 3) & 3];
-
-    if (score > bestScore) {
-      bestScore = score;
-      best = r;
-    }
-  });
-
-  return best;
-}
-
 //the tiles of a selection a building would go up on, and those it would not -
 //in the lawn green of the houses' yards and their roof red, lightened, so the
 //selection sits in with the sprites around it
@@ -518,19 +457,8 @@ errorText[ErrorCode.ON_SHORE] = "on shore";
  *        parts, the look it was shown with - see client/compoundbuilding
  * @param [surfaces] {Array<number[]>} and for a road, the surface it was
  *        planned with (Road.plan)
- * @param [turned] {number[]} which way each building is turned, if not the
- *        way the selection is (facingRoad)
  */
-function buildSelection(
-  self,
-  code,
-  anchors,
-  rotation,
-  codes,
-  looks,
-  surfaces,
-  turned,
-) {
+function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
   var root = self.root,
     data = BuildingData[code],
     messaging = root.core.messagingService,
@@ -555,7 +483,7 @@ function buildSelection(
         .buildingService.buildBuilding(
           codes[i],
           anchors[i],
-          turned ? turned[i] : rotation,
+          rotation,
           looks[i],
           surfaces ? surfaces[i] : undefined,
         );
@@ -589,7 +517,6 @@ function buildSelection(
  * player pick ground.
  */
 Buildman.HILITE_FILL = HILITE_FILL;
-Buildman.facingRoad = facingRoad;
 Buildman.HILITE_BORDER = HILITE_BORDER;
 Buildman.HILITE_BLOCKED_FILL = HILITE_BLOCKED_FILL;
 Buildman.HILITE_BLOCKED_BORDER = HILITE_BLOCKED_BORDER;
@@ -1120,15 +1047,6 @@ Buildman.prototype.build = function (code, options) {
     return r;
   }
 
-  //which way each building of the selection is turned: to face a road
-  //along it, if there is one (facingRoad) - worked out where it is put
-  //down, as it is shown there and as it goes up, and kept from then on
-  function turnedAt(tile) {
-    if (data.classCode === BuildingClassCode.road) return rotation;
-
-    return facingRoad(self, BuildingData[variantAt(tile)], tile, rotation);
-  }
-
   //every building the selection covers, turned the way it would be put
   //down - faint where it could not go up
   function previewBuildings(tiles, quotes) {
@@ -1140,7 +1058,7 @@ Buildman.prototype.build = function (code, options) {
           self,
           BuildingData[variantAt(tiles[i])],
           tiles[i],
-          turnedAt(tiles[i]),
+          rotation,
           opacity[tiles[i]] || PREVIEW_BLOCKED_OPACITY,
           lookAt(tiles[i]),
         ),
@@ -1323,7 +1241,6 @@ Buildman.prototype.build = function (code, options) {
       anchors.map(variantAt),
       anchors.map(lookAt),
       surfaces,
-      anchors.map(turnedAt),
     );
 
     //a block that went up has its look; another put down there next is
