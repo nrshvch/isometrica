@@ -97,17 +97,44 @@ function draw(view, id, surface) {
 
   for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
 
-  addSprite(go, id, 1, RenderLayer.roadLayer);
+  //a road up on concrete stands up over the ground, and over the edge of
+  //whatever stands behind it lower down: drawn among the buildings, not
+  //under all of them (see SINK)
+  var raised = raisedOn(tile, surface),
+    layer = raised ? RenderLayer.buildingsLayer : RenderLayer.roadLayer,
+    sink = raised ? SINK : 0;
+
+  addSprite(go, id, 1, layer, sink);
 
   //the street light, among the buildings and the cars it stands with
   var light = lightOf(id, tile);
 
   if (light !== null) addLight(go, light);
 
-  addBase(go, tile, surface, 1, RenderLayer.roadLayer);
+  addBase(go, tile, surface, 1, layer, sink);
 
   place(go, tile, surface);
 }
+
+//whether a road's surface is over the ground anywhere on tile - on concrete
+function raisedOn(tile, surface) {
+  var ground = Core.Surface.ground(vkaria.core.world.terrain, tile);
+
+  return surface.some(function (h, k) {
+    return h > ground[k];
+  });
+}
+
+/**
+ * How many steps a raised road's pictures hang under it, their pivots lifted
+ * by as much so that they show right where they did. Each step down puts
+ * them further back in the order things are drawn in
+ * (CameraComponent#depthAxes) - this many, most of a tile back from the
+ * middle of their tile: still after a building behind it, so that its edge
+ * is drawn over that one's, and before a car on it anywhere but right in its
+ * back corner.
+ */
+var SINK = 3.5;
 
 //how high a road's surface is in the middle of its tile
 function middle(surface) {
@@ -127,8 +154,9 @@ var STEP_PX = 8;
  *
  * @param surface {number[]} the road's corners' heights, A (x, y),
  *        B (x + 1, y), C (x, y + 1), D (x + 1, y + 1) (client/road)
+ * @param [sink] {number} steps it hangs under the road, see SINK
  */
-function addBase(parent, tile, surface, opacity, layer) {
+function addBase(parent, tile, surface, opacity, layer, sink) {
   var terrain = vkaria.core.world.terrain,
     x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
@@ -171,7 +199,7 @@ function addBase(parent, tile, surface, opacity, layer) {
   //a ramp: its picture lifted by as much
   sprite.setPivot(
     frame.pivotX,
-    frame.pivotY + (top - middle(surface)) * STEP_PX,
+    frame.pivotY + (top - middle(surface) + (sink || 0)) * STEP_PX,
   );
   part.addComponent(sprite);
   //the renderer resets its opacity once it is attached
@@ -179,7 +207,7 @@ function addBase(parent, tile, surface, opacity, layer) {
   parent.transform.addChild(part.transform);
   //a hair under the road on it, so it is drawn first
   //(CameraComponent#depthAxes)
-  part.transform.setLocalPosition(0, -0.01, 0);
+  part.transform.setLocalPosition(0, -0.01 - (sink || 0) * Config.tileZStep, 0);
 }
 
 //hangs a street light under parent
@@ -212,13 +240,18 @@ BuildingView.prototype.showPiece = function (id) {
  * @param id {number} which piece (see Road.profile)
  * @param opacity {number} 1 for the real thing
  * @param layer {number}
+ * @param [sink] {number} steps it hangs under the road, see SINK
  */
-function addSprite(parent, id, opacity, layer) {
+function addSprite(parent, id, opacity, layer, sink) {
   var part = new engine.GameObject(),
     sprite = new engine.SpriteRenderer();
 
   sprite.layer = layer;
   setPiece(sprite, spriteOf(id));
+  if (sink) {
+    sprite.setPivot(sprite.pivotX, sprite.pivotY + sink * STEP_PX);
+    part.transform.setLocalPosition(0, -sink * Config.tileZStep, 0);
+  }
   part.addComponent(sprite);
   //the renderer resets its opacity once it is attached
   sprite.opacity = opacity;
