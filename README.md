@@ -167,10 +167,6 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
     comes up to it and in the middle of each piece's front. It is worked out
     as the town is drawn, and drawn again as anything goes up or comes down
     next to it.
-- What goes up turns to face the road (`src/client/js/buildman.js`
-  facingRoad): of the ways it can be turned and keep the footprint the
-  player picked, the one with the most road along its front - worked out
-  where it is put down, shown so, and kept.
 - A tap on nothing - bare ground, a road, the sea - while nothing is being
   looked at puts away the words over the world ("no jobs", how far along
   one going up is, the city's name), the city limits drawn round it and the
@@ -242,7 +238,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   the shore flat only, the concrete going down into the water. Two roads
   join, and cars drive from one to the other, only where they meet level,
   at the same height all along the edge between them - never over a step,
-  nor onto the side of a ramp.
+  nor onto the side of a ramp. A road up on concrete is drawn among the
+  buildings rather than under all of them (`roadview.js` SINK), so the edge
+  of a ramp stays over the yard of a house lower down behind it.
 - A run of road the player drags is laid all at once (Road.plan): each new
   tile gets the surface that has the run join up the most - with itself,
   and with the roads already there, which stay as they are, joining those
