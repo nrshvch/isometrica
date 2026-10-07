@@ -133,9 +133,28 @@ var UP = Lighting.UP,
   SHINE = Lighting.SHINE,
   GLOW = Lighting.GLOW;
 
-//which of its pictures for the night is drawn with none, the first or more
-//of its lights on (Lighting shines, shared/gen/looks)
-var NIGHT = [2, 0, 1];
+//its pictures for the night, side by side (shared/gen/looks NIGHT): what
+//shines one way with the first of its lights on and with more of them, the
+//same the other way, itself in black, and the light it throws on the ground
+//round it
+var NIGHT = 6,
+  DARK = 4,
+  SPILT = 5;
+
+/**
+ * Which of its pictures for the night a sprite is drawn with in pass: of
+ * what shines, the one its lights are on in at this hour (Lighting shines)
+ * the way its renderer lights it (variant, 0 or 1), or itself in black; of
+ * the light thrown on the ground, what it throws while its lights are on.
+ */
+function nightSection(pass, renderer) {
+  var on = Lighting.shines(renderer);
+
+  if (on === 0) return DARK;
+  if (pass === GLOW) return SPILT;
+
+  return (renderer.variant === 1 ? 2 : 0) + on - 1;
+}
 
 //what it is painted as for the light to be worked out as it is drawn - its
 //faces side by side, what of it shines at night and itself in black - each
@@ -173,12 +192,7 @@ CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
 
     layers = layersOf(this, "night");
     if (layers !== null && layers.acquire())
-      //the first of its lights, more of them, or itself in black
-      return section(
-        this,
-        layers,
-        NIGHT[pass === GLOW ? 0 : Lighting.shines(renderer)],
-      );
+      return section(this, layers, nightSection(pass, renderer));
 
     return shadowOf(this);
   }
@@ -194,6 +208,20 @@ CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
 
   return flat ? null : shadowOf(this);
 };
+
+//whether part i of a sprite is lit at night the other way round from the
+//way the sprite is (see Layers paint) - by a toss of its own, the same every
+//time for the same part in the same place
+function swapped(part, i) {
+  var h = (part.y * 73856093) ^ (part.x * 19349663) ^ (i * 83492791);
+
+  var name = String(part.frame.sheet);
+
+  for (var c = 0; c < name.length; c++)
+    h = (Math.imul(h, 31) + name.charCodeAt(c)) | 0;
+
+  return ((h >>> 7) & 1) === 1;
+}
 
 function section(self, layers, k) {
   var at = self.at || (self.at = { sourceImage: null, offsetX: 0, offsetY: 0 });
@@ -230,7 +258,7 @@ function shadowOf(self) {
 function Layers(sprite, look) {
   this.sprite = sprite;
   this.look = look;
-  this.n = 3;
+  this.n = look === "night" ? NIGHT : 3;
   this.width = sprite.width * this.n;
   this.height = sprite.height;
   //which of its n pictures have anything but black in them
@@ -289,10 +317,15 @@ Layers.prototype.paint = function (ctx, x, y) {
       sprites.generator.use(own);
       this.sides |= own.sides;
 
+      //for the night, a part lit the other way round from the rest now and
+      //then - so that a storey that comes up again and again is not lit
+      //alike every time
+      var swap = this.look === "night" && swapped(part, i) ? 2 : 0;
+
       for (k = 0; k < n; k++)
         ctx.drawImage(
           own.image,
-          k * f.w,
+          (k < DARK ? k ^ swap : k) * f.w,
           0,
           f.w,
           f.h,
