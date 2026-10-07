@@ -34,6 +34,7 @@ import {
   PLINTH,
   MATTE,
   GLASSY,
+  SIGN,
   madeOf,
   METAL,
   VENT,
@@ -292,7 +293,16 @@ function billboard(b, s, z, pal, rnd) {
       ),
     );
     b.push(
-      box(x, x + 1, face - 2, face - 1.2, z0 + h, z0 + h + 1, [250, 240, 200]),
+      box(
+        x,
+        x + 1,
+        face - 2,
+        face - 1.2,
+        z0 + h,
+        z0 + h + 1,
+        [250, 240, 200],
+        SIGN,
+      ),
     );
   });
 
@@ -310,6 +320,7 @@ function billboard(b, s, z, pal, rnd) {
           z0 + j,
           z0 + j + 1,
           ink(i, j),
+          SIGN,
         ),
       );
 }
