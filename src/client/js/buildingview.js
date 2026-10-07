@@ -463,6 +463,15 @@ function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
   }
 }
 
+//a building's own number 0..1 out of what it stands on, for its lights
+function windowsSeed(seed) {
+  var h = Math.imul(seed | 0, 0x9e3779b1) ^ 0x5bd1e995;
+
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+}
+
 BuildingView.addSprites = addSprites;
 BuildingView.drawnAt = drawnAt;
 BuildingView.addFoundations = addFoundations;
@@ -493,14 +502,19 @@ function addParts(parent, compound, turns, opacity, layer, look, seed) {
     CompoundBuilding.pieces(sprites, look, compound, turns, seed),
     opacity,
     layer,
+    seed,
   );
 }
 
 /**
  * Hangs the pieces of something put together out of parts under parent -
- * see client/compoundbuilding pieces - each tile at its own place.
+ * see client/compoundbuilding pieces - each tile at its own place - every
+ * piece with the hours its lights are on by at night, the same for the whole
+ * building (client/lighting windowsOn).
  */
-function addPieces(parent, pieces, opacity, layer) {
+function addPieces(parent, pieces, opacity, layer, seed) {
+  var windows = seed === undefined ? undefined : windowsSeed(seed);
+
   pieces.forEach(function (piece) {
     //a tile of a site with something moving over it draws that too
     var renderer =
@@ -515,6 +529,7 @@ function addPieces(parent, pieces, opacity, layer) {
     renderer.pivotX = piece.pivotX;
     renderer.pivotY = piece.pivotY;
     renderer.setSprite(piece.sprite);
+    renderer.windows = windows;
 
     go.addComponent(renderer);
     //the renderer resets its opacity once it is attached

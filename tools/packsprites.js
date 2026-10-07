@@ -135,6 +135,9 @@ function generated(names, written) {
       bytes = Buffer.from(
         JSON.stringify({
           generator: gen,
+          //whether its pictures can be painted as their faces side by side
+          //for the light to be worked out as they are drawn (catalog FACED)
+          faced: catalog.FACED[gen] === true,
           sprites: described.sprites,
           data: described.data,
         }) + "\n",

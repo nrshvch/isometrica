@@ -437,11 +437,27 @@ function streetLight(at) {
       top - 2,
       top - 1,
       LAMP,
-      LIT,
+      GLOWS,
     ),
   );
 
   return b;
+}
+
+//a street light's lamp: its own colour on every face, and what shines at
+//night (shared/gen/isobox shine)
+var GLOWS = Object.assign({}, LIT, { glow: true });
+
+/**
+ * Where a street light's lamp hangs over the ground, on its tile as it is
+ * painted (streetLight): x, y - for the pool of light it casts at night to
+ * be laid round the spot under it (client/roadview).
+ */
+function lampAt(at) {
+  var x = at === "y" ? 3 : at === "x" ? 16 : 3,
+    y = at === "x" ? 3 : at === "y" ? 16 : 3;
+
+  return [x + (at === "y" ? 6 : 0) + 0.5, y + (at === "y" ? 0 : 6) + 0.5];
 }
 
 /**
@@ -517,7 +533,14 @@ export function describe() {
     sizes[name] = measureFree(boxesOf(name));
   });
 
-  return { sizes: sizes, data: { ramps: RAMPS } };
+  return {
+    sizes: sizes,
+    data: {
+      ramps: RAMPS,
+      //where each street light's lamp hangs, x, y on its tile
+      lamps: { x: lampAt("x"), y: lampAt("y"), corner: lampAt("corner") },
+    },
+  };
 }
 
 /**
@@ -552,7 +575,16 @@ function stamps(picture, up) {
     middle = iso.project(TILE / 2, TILE / 2, 0),
     ox = picture.pivotX - middle[0],
     oy = picture.pivotY - middle[1],
-    color = iso.lit(STRIPE, -p.gx, -p.gy, 1);
+    color = iso.lit(STRIPE, -p.gx, -p.gy, 1),
+    //painted for the light to be worked out as it is drawn (isobox
+    //setMode), the stripe goes onto each face's picture as much as it
+    //looks that way - and at night shines no more than the road does
+    n = iso.sections(),
+    w = picture.w / n,
+    faces =
+      iso.getMode() === "faces" ? iso.facesOf(STRIPE, [-p.gx, -p.gy, 1]) : null;
+
+  if (iso.getMode() === "night") return;
 
   function at(a) {
     var x = alongY ? 15.5 : a,
@@ -563,8 +595,12 @@ function stamps(picture, up) {
   }
 
   function put(i, j) {
-    if (i >= 0 && j >= 0 && i < picture.w && j < picture.h)
-      picture.pixels[j * picture.w + i] = color;
+    if (i < 0 || j < 0 || i >= w || j >= picture.h) return;
+
+    if (faces === null) picture.pixels[j * picture.w + i] = color;
+    else
+      for (var k = 0; k < n; k++)
+        picture.pixels[j * picture.w + i + k * w] = faces[k];
   }
 
   //a dash every eight, as on the flat, from a half to three and a half

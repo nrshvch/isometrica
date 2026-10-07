@@ -61,6 +61,7 @@ Generator.prototype.load = function (sheet) {
     name: g.name,
     gen: g.gen,
     key: g.key,
+    look: g.look,
   });
 
   return sheet.loading;
@@ -101,6 +102,7 @@ function receive(self, message) {
   }
 
   sheet.image = message.image;
+  sheet.sides = message.sides || 0;
   self.memory.set(message.name, sheet);
   self.painted++;
 
@@ -179,6 +181,7 @@ function onMainThread(self, why) {
       name: g.name,
       gen: g.gen,
       key: g.key,
+      look: g.look,
     });
   });
 }
