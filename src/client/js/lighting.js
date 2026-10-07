@@ -104,7 +104,7 @@ Lighting.prototype.install = function () {
 /**
  * The hour of the game's day, with the minutes and how far the clock has
  * got towards its next tick - so the sun goes over smoothly rather than a
- * quarter of an hour at a time.
+ * minute at a time.
  */
 Lighting.prototype.hour = function () {
   var time = this.root.core.time,
