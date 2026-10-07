@@ -108,7 +108,12 @@ export function box(x0, x1, y0, y1, z0, z1, color, finish) {
     z0,
     z1,
     color,
-    finish !== undefined ? finish : MADE.get(color),
+    //a sign is made of what its colour is made of, and shines at night
+    finish === SIGN
+      ? Object.assign({}, MADE.get(color), SIGN)
+      : finish !== undefined
+        ? finish
+        : MADE.get(color),
   );
 }
 
@@ -224,6 +229,9 @@ export function ends(s, e) {
 
 //painted the colour it is, see iso finish
 export var LIT = { lit: true };
+
+//a sign, lit at night: it shines its own colour (iso shine)
+export var SIGN = { sign: true };
 
 /**
  * The colour of something round where its surface looks along nx, ny, nz -
@@ -878,11 +886,16 @@ export function blocks(style) {
       roofs = style.roofsMadeOf && made(style.roofsMadeOf);
 
     b.forEach(function (c) {
-      if (c.finish !== undefined) return;
+      //a sign of no material of its own takes the style's, and still shines
+      var sign = c.finish !== undefined && c.finish.sign && !c.finish.material;
+
+      if (c.finish !== undefined && !sign) return;
 
       if (pal && walls && c.color === pal.wall) c.finish = walls;
       else if (pal && roofs && c.color === pal.roof) c.finish = roofs;
       else c.finish = style.finish;
+
+      if (sign) c.finish = Object.assign({}, c.finish, SIGN);
     });
 
     return b;

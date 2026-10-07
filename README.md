@@ -321,13 +321,20 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   Canvas2dRenderer drawLit), each multiplied by the light falling that way
   and the three added up: drawImage, multiply and lighter only, so nothing
   leaves the fast path and what is half see-through still comes out right.
-  What is not painted out of boxes - trees, cars, the ground - is lit as if
-  it looked up. At night a fourth canvas holds what shines: the lit panes of
-  every window, a street light's lamp and the pool it throws on the road, a
-  car's headlights (`src/client/js/glow.js`) - black wherever anything else
-  stands, so what is in front hides it - added in over the dark; every
-  building puts its lights on of an evening and out late at night at hours of
-  its own. `?light=0` draws the city as it is painted, by the one sun of old;
+  The ground, the trees and the vehicles, which are not painted out of boxes,
+  paint their own faces (`src/shared/gen/looks.js`): every quarter of a
+  slope of the ground by which way it looks, every pixel of a tree on the
+  face it looks most towards in its tone - so a hill and a tree's crown catch
+  the morning sun on one side and the evening sun on the other - a car by the
+  face of it the ray went in through; only the stones, painted from pictures
+  drawn by hand, are lit as if they looked up. At night a fourth canvas holds
+  what shines: the lit panes of every window, the signs and billboards of the
+  shops and offices in their own colours, a street light's lamp and the pool
+  it throws on the road, a car's headlights (`src/client/js/glow.js`) -
+  black wherever anything else stands, so what is in front hides it - added
+  in over the dark; every building puts its lights on of an evening and out
+  late at night at hours of its own. A car does not hide what shines behind
+  it, so the pool of a street light it drives through lights it up. `?light=0` draws the city as it is painted, by the one sun of old;
   `/lab/lighting.html` is the bench the ways of doing it were weighed on.
 - The sea moves: every tile of water is painted in eight frames, its
   ripples running on a wave across it and its glints flashing one after

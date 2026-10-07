@@ -425,7 +425,8 @@ function cast(boxes, sx, sy) {
     )
       color = darker(color, SHADOW);
 
-    if (hit.finish !== undefined)
+    //a sign of no material is only a colour that shines at night (shine)
+    if (hit.finish !== undefined && !(hit.finish.sign && !hit.finish.material))
       color = finish(
         color,
         face,
@@ -461,7 +462,7 @@ var BLACK = [0, 0, 0],
 
 /**
  * The light a point of box b gives off at night: a lamp's own (a finish
- * with glow); lit where it is a pane of glass in a wall (a finish with sheen) - every pane lit or not by a toss of
+ * with glow), a sign's (with sign); lit where it is a pane of glass in a wall (a finish with sheen) - every pane lit or not by a toss of
  * its own, and every storey of a wall of glass by one of its own. What the
  * toss goes by is the same whichever way the box was turned, so a turn of
  * the camera does not switch lights on and off.
@@ -469,8 +470,9 @@ var BLACK = [0, 0, 0],
 function shine(b, face, normal, z) {
   var f = b.finish;
 
-  //a lamp, its own light
+  //a lamp, its own light; a sign, its own colour
   if (f !== undefined && f.glow) return LAMP_LIGHT;
+  if (f !== undefined && f.sign) return lighter(b.color, 0.1);
 
   if (
     f === undefined ||
