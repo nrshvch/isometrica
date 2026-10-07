@@ -433,13 +433,12 @@ function cast(boxes, sx, sy) {
       );
   }
 
-  //of a face's picture, as much of the colour as looks that way - black
+  //of each face's picture, as much of the colour as looks that way - black
   //where none of it does, so it still covers what is behind it
-  if (mode in SIDES) {
-    var k = weights(face, normal, hit.finish)[SIDES[mode]];
-
-    return [color[0] * k, color[1] * k, color[2] * k];
-  }
+  if (mode === "faces")
+    return weights(face, normal, hit.finish).map(function (k) {
+      return [color[0] * k, color[1] * k, color[2] * k];
+    });
 
   return color;
 }
@@ -451,12 +450,11 @@ var SHADOW = 0.32;
  * What render paints (see setMode): the picture lit by the one sun every
  * picture is painted in ("lit"), its colours with no light on them
  * ("albedo"), which way each pixel of it looks ("map"), or the colours of
- * what of it looks towards -x ("left"), -y ("right") or up ("up") - the three
- * adding up to the albedo - for the light to be worked out as it is drawn,
+ * what of it looks towards -x, -y and up, side by side - the three adding up
+ * to the albedo ("faces") - for the light to be worked out as it is drawn,
  * wherever the sun is.
  */
-var mode = "lit",
-  SIDES = { left: 0, right: 1, up: 2 };
+var mode = "lit";
 
 function setMode(m) {
   mode = m;
@@ -939,12 +937,40 @@ function render(boxes) {
   h = Math.ceil(maxY) - minY;
   pixels = [];
 
+  if (mode === "faces") return sideBySide(boxes, minX, minY, w, h);
+
   for (j = 0; j < h; j++) {
     for (i = 0; i < w; i++)
       pixels.push(cast(boxes, minX + i + 0.5, minY + j + 0.5));
   }
 
   return { w: w, h: h, pixels: pixels, pivotX: -minX, pivotY: -minY };
+}
+
+/**
+ * The three faces' pictures (see mode) side by side in one, each w across -
+ * what looks towards -x, then -y, then up - its pivot that of the first.
+ */
+function sideBySide(boxes, minX, minY, w, h) {
+  var rows = [[], [], []],
+    pixels = [],
+    i,
+    j,
+    k,
+    c;
+
+  for (j = 0; j < h; j++) {
+    for (i = 0; i < w; i++) {
+      c = cast(boxes, minX + i + 0.5, minY + j + 0.5);
+      for (k = 0; k < 3; k++) rows[k].push(c === null ? null : c[k]);
+    }
+    for (k = 0; k < 3; k++) {
+      for (i = 0; i < w; i++) pixels.push(rows[k][i]);
+      rows[k] = [];
+    }
+  }
+
+  return { w: w * 3, h: h, pixels: pixels, pivotX: -minX, pivotY: -minY };
 }
 
 /**

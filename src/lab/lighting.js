@@ -8,8 +8,9 @@
  *   drawn into a canvas of its own in the same order as the sprites, then
  *   turned into light for wherever the sun is and multiplied over the frame;
  * - three faces: every sprite painted as what of it looks towards -x, -y
- *   and up, each on a canvas of its own, black where a pixel looks another
- *   way - each times the light on that face, and added up.
+ *   and up, side by side in one picture, black where a pixel looks another
+ *   way - each drawn onto a canvas of its own, times the light on that
+ *   face, and added up.
  *
  * drawImage only: every flat colour is a 1x1 swatch stretched over the
  * canvas.
@@ -50,7 +51,7 @@ function sprite(boxes) {
   var mid = iso.project(TILE / 2, TILE / 2, 0),
     out = {};
 
-  ["lit", "albedo", "map", "left", "right", "up"].forEach(function (m) {
+  ["lit", "albedo", "map", "faces"].forEach(function (m) {
     iso.setMode(m);
     var pic = iso.render(boxes);
 
@@ -127,7 +128,7 @@ var pages = (function () {
     row = Math.max(row, h);
   });
 
-  ["lit", "albedo", "map", "left", "right", "up"].forEach(function (kind) {
+  ["lit", "albedo", "map"].forEach(function (kind) {
     var c = document.createElement("canvas"),
       ctx = c.getContext("2d");
 
@@ -138,6 +139,33 @@ var pages = (function () {
     });
     out[kind] = c;
   });
+
+  //and the faces, three to a sprite side by side, on a page of their own:
+  //fx, fy where the first of a sprite's three is
+  x = y = row = 0;
+  all.forEach(function (s) {
+    var w = s.faces.width;
+
+    if (x + w > size) {
+      x = 0;
+      y += row + 1;
+      row = 0;
+    }
+    s.fx = x;
+    s.fy = y;
+    x += w + 1;
+    row = Math.max(row, s.h);
+  });
+
+  var c = document.createElement("canvas"),
+    ctx = c.getContext("2d");
+
+  c.width = size;
+  c.height = y + row + 1;
+  all.forEach(function (s) {
+    ctx.drawImage(s.faces, s.fx, s.fy);
+  });
+  out.faces = c;
 
   return out;
 })();
@@ -349,10 +377,32 @@ function drawBoth(ox, oy) {
   }
 }
 
+//face k of every sprite - 0 what looks towards -x, 1 -y, 2 up - from the
+//one picture each sprite's three are in, side by side
+function drawFace(ctx, k, ox, oy) {
+  var page = pages.faces;
+
+  for (var i = 0; i < scene.length; i++) {
+    var t = scene[i],
+      s = t.s,
+      p = iso.project(t.x * TILE + TILE / 2, t.y * TILE + TILE / 2, 0);
+
+    ctx.drawImage(
+      page,
+      s.fx + k * s.w,
+      s.fy,
+      s.w,
+      s.h,
+      (ox + p[0] - s.pivotX) | 0,
+      (oy + p[1] - s.pivotY) | 0,
+      s.w,
+      s.h,
+    );
+  }
+}
+
 function drawFaces(ox, oy) {
-  var left = pages.left,
-    right = pages.right,
-    up = pages.up;
+  var page = pages.faces;
 
   for (var i = 0; i < scene.length; i++) {
     var t = scene[i],
@@ -361,9 +411,9 @@ function drawFaces(ox, oy) {
       dx = (ox + p[0] - s.pivotX) | 0,
       dy = (oy + p[1] - s.pivotY) | 0;
 
-    fctx.drawImage(left, s.sx, s.sy, s.w, s.h, dx, dy, s.w, s.h);
-    rctx.drawImage(right, s.sx, s.sy, s.w, s.h, dx, dy, s.w, s.h);
-    uctx.drawImage(up, s.sx, s.sy, s.w, s.h, dx, dy, s.w, s.h);
+    fctx.drawImage(page, s.fx, s.fy, s.w, s.h, dx, dy, s.w, s.h);
+    rctx.drawImage(page, s.fx + s.w, s.fy, s.w, s.h, dx, dy, s.w, s.h);
+    uctx.drawImage(page, s.fx + 2 * s.w, s.fy, s.w, s.h, dx, dy, s.w, s.h);
   }
 }
 
@@ -490,9 +540,9 @@ function tick(now) {
     uctx.globalCompositeOperation = "source-over";
 
     if (mode === "faces") {
-      draw(fctx, "left", ox, oy);
-      draw(rctx, "right", ox, oy);
-      draw(uctx, "up", ox, oy);
+      drawFace(fctx, 0, ox, oy);
+      drawFace(rctx, 1, ox, oy);
+      drawFace(uctx, 2, ox, oy);
     } else drawFaces(ox, oy);
 
     if (showSel.value === "frame") lightFaces(sun(+timeIn.value));
