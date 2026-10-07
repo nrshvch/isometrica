@@ -309,6 +309,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the
   street it stands on.
+- The game's clock moves on a minute every second (`src/core/vtime.js`), a
+  day going by in 24 minutes.
 - The city is lit as it is drawn, by the hour of the game's clock
   (`src/client/js/lighting.js`): the sun comes up at six behind the walls
   looking one way, goes over at noon and down at eight in the evening behind

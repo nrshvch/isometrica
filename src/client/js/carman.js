@@ -91,9 +91,9 @@ var CARS_PER_ROAD = 1 / 4,
   FAILING_SPEED = 0.5,
   //and how often a puff comes out of the engine, ms
   FAILING_SMOKE_EVERY = 500,
-  //how long one stands broken down, in hours of the game's time - give or
+  //how long one stands broken down, in minutes of the game's time - give or
   //take
-  BREAKDOWN_HOURS = 3,
+  BREAKDOWN_MINUTES = 12,
   //whether smoke comes out of the tailpipe as it drives
   EXHAUST = false,
   //how often a puff of it does, ms
@@ -106,7 +106,7 @@ var CARS_PER_ROAD = 1 / 4,
 
 //game time that goes by in a millisecond of the real thing
 var GAME_SPEED = VTime.millisecondsPerTick / CoreConfig.tickDelay,
-  HOUR = 3600000;
+  MINUTE = 60000;
 
 //what a building has to be for cars to drive to it
 var WORK = "work",
@@ -674,11 +674,11 @@ CarScript.prototype.extend = function () {
 };
 
 /**
- * Stops where it is, smoke coming out of the engine, for a few hours.
+ * Stops where it is, smoke coming out of the engine, for a while.
  */
 CarScript.prototype.breakDown = function () {
   this.stalled =
-    (BREAKDOWN_HOURS * HOUR * (0.6 + Math.random() * 0.8)) / GAME_SPEED;
+    (BREAKDOWN_MINUTES * MINUTE * (0.6 + Math.random() * 0.8)) / GAME_SPEED;
   this.driven = 0;
 };
 
