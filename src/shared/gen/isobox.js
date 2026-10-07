@@ -389,9 +389,14 @@ function cast(boxes, sx, sy) {
   //which way it looks, for the light to be worked out as it is drawn
   if (mode === "map") return facing(face, normal, hit.finish);
 
-  //at night: what of it shines - a pane lit behind a window - and all of
-  //it black, to hide whatever shines behind it
-  if (mode === "night") return [shine(hit, face, normal, z - best), BLACK];
+  //at night: what of it shines - a pane lit behind a window - with the
+  //first of the lights on and with more of them, and all of it black, to
+  //hide whatever shines behind it
+  if (mode === "night") {
+    var glows = shine(hit, face, normal, z - best);
+
+    return [glows[0], glows[1], BLACK];
+  }
 
   //a box lit already is its own colour on every face - with what it is
   //made of over it, if anything
@@ -452,27 +457,38 @@ function cast(boxes, sx, sy) {
 var SHADOW = 0.32;
 
 var BLACK = [0, 0, 0],
-  //what of the panes are lit at night, and the light behind them - mostly
+  //what of the panes are lit at night - with the first of a building's
+  //lights on, and with more of them - and the light behind them: mostly
   //lamps, now and then the blue of a screen
-  LIT_PANES = 0.55,
+  FIRST_PANES = 0.2,
+  MORE_PANES = 0.45,
   WARM = [255, 204, 128],
   COOL = [196, 212, 255],
   //a street light's: sodium orange
   LAMP_LIGHT = [255, 196, 112];
 
 /**
- * The light a point of box b gives off at night: a lamp's own (a finish
- * with glow), a sign's (with sign); lit where it is a pane of glass in a wall (a finish with sheen) - every pane lit or not by a toss of
- * its own, and every storey of a wall of glass by one of its own. What the
- * toss goes by is the same whichever way the box was turned, so a turn of
- * the camera does not switch lights on and off.
+ * The light a point of box b gives off at night, with the first of a
+ * building's lights on and with more of them: a lamp's own (a finish with
+ * glow), a sign's (with sign), either way; lit where it is a pane of glass
+ * in a wall (a finish with sheen) - every pane lit or not by a toss of its
+ * own, and every storey of a wall of glass by one of its own, a few of them
+ * first and more later, never all. What the toss goes by is the same
+ * whichever way the box was turned, so a turn of the camera does not switch
+ * lights on and off.
+ *
+ * @returns {Array[]} its colour with the first lights on, and with more
  */
 function shine(b, face, normal, z) {
-  var f = b.finish;
+  var f = b.finish,
+    c;
 
   //a lamp, its own light; a sign, its own colour
-  if (f !== undefined && f.glow) return LAMP_LIGHT;
-  if (f !== undefined && f.sign) return lighter(b.color, 0.1);
+  if (f !== undefined && f.glow) return [LAMP_LIGHT, LAMP_LIGHT];
+  if (f !== undefined && f.sign) {
+    c = lighter(b.color, 0.1);
+    return [c, c];
+  }
 
   if (
     f === undefined ||
@@ -480,7 +496,7 @@ function shine(b, face, normal, z) {
     face === 2 ||
     (normal !== null && Math.abs(normal[2]) > 0.7)
   )
-    return BLACK;
+    return [BLACK, BLACK];
 
   var cx = (b.x0 + b.x1) / 2 - TILE / 2,
     cy = (b.y0 + b.y1) / 2 - TILE / 2,
@@ -489,9 +505,13 @@ function shine(b, face, normal, z) {
     storey = Math.floor((z - (f.base || 0)) / (f.storey || 12)),
     level = Math.round(b.z0 * 4) * 64 + storey;
 
-  if (hash(pane, size, level) >= LIT_PANES) return BLACK;
+  var toss = hash(pane, size, level);
 
-  return hash(pane, level, size + 7) < 0.8 ? WARM : COOL;
+  if (toss >= MORE_PANES) return [BLACK, BLACK];
+
+  c = hash(pane, level, size + 7) < 0.8 ? WARM : COOL;
+
+  return [toss < FIRST_PANES ? c : BLACK, c];
 }
 
 /**
@@ -500,8 +520,9 @@ function shine(b, face, normal, z) {
  * ("albedo"), which way each pixel of it looks ("map"), the colours of what
  * of it looks towards -x, -y and up, side by side - the three adding up to
  * the albedo ("faces") - for the light to be worked out as it is drawn,
- * wherever the sun is; or, for the night, what of it shines and the whole of
- * it in black, side by side ("night").
+ * wherever the sun is; or, for the night, what of it shines with the first
+ * of its lights on, what with more of them, and the whole of it in black,
+ * side by side ("night").
  */
 var mode = "lit";
 
@@ -1026,10 +1047,10 @@ function sideBySide(boxes, minX, minY, w, h, n) {
 
 /**
  * How many pictures side by side the mode paints (see mode): three for the
- * faces, two for the night, one for anything else.
+ * faces, three for the night, one for anything else.
  */
 function sections() {
-  return mode === "faces" ? 3 : mode === "night" ? 2 : 1;
+  return mode === "faces" || mode === "night" ? 3 : 1;
 }
 
 function getMode() {

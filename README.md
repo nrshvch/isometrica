@@ -332,14 +332,16 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   drawn by hand, are lit as if they looked up. At night a fourth canvas holds
   what shines: the lit panes of every window, the signs and billboards of the
   shops and offices in their own colours, a street light's lamp and the pool
-  it throws on the road, a car's headlights shining white with their beams
-  on the road ahead (`src/client/js/glow.js`) and its tail lights red, a
+  it throws on the road, a car's headlights shining white with their two
+  beams on the road ahead (`src/client/js/glow.js`) and its tail lights red, a
   car parked with its lamps off -
   black wherever anything else stands, so what is in front hides it - added
   in over the dark. Nothing fades - a light is on or off: every building
-  puts its lights on between half past six and nine and out late at night,
-  each at hours of its own, so the windows come on one by one - one in eight
-  keeping them on till the morning; the street
+  puts a few of its lights on between half past six and nine, more of them
+  a while later, and those out again a while before the last go out late at
+  night, each at hours of its own, so the windows come on one by one and
+  never all of them - one in eight keeping a few on till the morning; the
+  street
   lights all go on at half past seven and off at half past six in the
   morning; every car puts its lamps on and off up to three quarters of an
   hour after them, each in its own time. `?light=0` draws the city as it is painted, by the one sun of old;
