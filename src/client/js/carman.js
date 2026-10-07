@@ -968,10 +968,6 @@ VehicleRenderer.prototype.render = function (
 //drawn in every pass of the light (engine Canvas2dRenderer drawLit)
 VehicleRenderer.prototype.litPasses = true;
 
-//its headlights and tail lights are on all night (client/cachedsprite
-//lightPass)
-VehicleRenderer.prototype.lamps = true;
-
 function headlights(self, layer) {
   var car = self.gameObject !== null ? self.gameObject.car : undefined;
 
@@ -1002,6 +998,9 @@ function Car(man) {
   //the buildings a car is sorted by where it actually is instead.
   var renderer = new VehicleRenderer();
   renderer.layer = RenderLayer.buildingsLayer;
+  //its headlights and tail lights go on and off at its own time, a while
+  //after the street lights (client/lighting lampsOn)
+  renderer.lamps = Math.random();
   this.addComponent(renderer);
 
   this.car = this.addComponent(new CarScript(man));
