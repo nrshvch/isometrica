@@ -132,6 +132,10 @@ CachedSprite.prototype.paint = function (ctx, x, y) {
 var UP = Lighting.UP,
   SHINE = Lighting.SHINE;
 
+//which of its pictures for the night is drawn with none, the first or more
+//of its lights on (Lighting shines, shared/gen/looks)
+var NIGHT = [2, 0, 1];
+
 //what it is painted as for the light to be worked out as it is drawn - its
 //faces side by side, what of it shines at night and itself in black - each
 //put together when it is first wanted (see Layers), or null where no part of
@@ -166,7 +170,8 @@ CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
 
     layers = layersOf(this, "night");
     if (layers !== null && layers.acquire())
-      return section(this, layers, Lighting.shines(renderer) ? 0 : 1);
+      //the first of its lights, more of them, or itself in black
+      return section(this, layers, NIGHT[Lighting.shines(renderer)]);
 
     return shadowOf(this);
   }
@@ -218,7 +223,7 @@ function shadowOf(self) {
 function Layers(sprite, look) {
   this.sprite = sprite;
   this.look = look;
-  this.n = look === "faces" ? 3 : 2;
+  this.n = 3;
   this.width = sprite.width * this.n;
   this.height = sprite.height;
   //which of its n pictures have anything but black in them

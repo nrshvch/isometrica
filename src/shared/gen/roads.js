@@ -461,6 +461,18 @@ function lampAt(at) {
 }
 
 /**
+ * Where a street light's pole stands, on its tile as it is painted
+ * (streetLight): x, y - for it to be sorted among the cars by where it
+ * stands rather than by the middle of its tile (client/roadview).
+ */
+function poleAt(at) {
+  var x = at === "y" ? 3 : at === "x" ? 16 : 3,
+    y = at === "x" ? 3 : at === "y" ? 16 : 3;
+
+  return [x + 0.5, y + 0.5];
+}
+
+/**
  * Every sprite, by name: "gen/roads/plain/1010" - plain, paved, gravel or
  * cobble - the joins in the order
  * client/road reads its neighbours, -x, -y, +x, +y - "gen/roads/paved/ramp3",
@@ -539,6 +551,8 @@ export function describe() {
       ramps: RAMPS,
       //where each street light's lamp hangs, x, y on its tile
       lamps: { x: lampAt("x"), y: lampAt("y"), corner: lampAt("corner") },
+      //and where its pole stands
+      poles: { x: poleAt("x"), y: poleAt("y"), corner: poleAt("corner") },
     },
   };
 }

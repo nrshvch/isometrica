@@ -222,8 +222,30 @@ function addLight(parent, name) {
   part.addComponent(sprite);
   setPiece(sprite, name);
   parent.transform.addChild(part.transform);
+  standPole(part, sprite, name.split("/").pop());
 
   addPool(parent, name.split("/").pop());
+}
+
+/**
+ * Puts a street light where its pole stands on the tile, the roads'
+ * generator says (shared/gen/roads poleAt) - its picture kept where it was
+ * painted - so that it is sorted among the cars by that: a car on the far
+ * side of the road goes behind it, one on the near side in front.
+ */
+function standPole(part, sprite, at) {
+  var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    pole = roads && roads.poles ? roads.poles[at] : null;
+
+  if (!pole) return;
+
+  //how far from the middle of the tile, as it is seen, a pixel a unit
+  var dx = pole[0] - 16,
+    dy = pole[1] - 16,
+    w = View.unvector((dx / 32) * Config.tileSize, (dy / 32) * Config.tileSize);
+
+  part.transform.setLocalPosition(w[0], 0, w[1]);
+  sprite.setPivot(sprite.pivotX + (dx - dy), sprite.pivotY - (dx + dy) / 2);
 }
 
 /**

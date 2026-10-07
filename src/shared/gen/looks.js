@@ -4,8 +4,13 @@
  * out from as it is drawn - as shared/gen/isobox setMode has them: "faces",
  * what of it looks towards -x, -y and up side by side, black where a pixel
  * looks another way, adding up to its colours with no light on them; and
- * "night", what of it shines and the whole of it in black, side by side.
+ * "night", what of it shines with the first of its lights on, what with more
+ * of them, and the whole of it in black, side by side.
  */
+
+//how many pictures side by side the night is painted in: what shines with
+//the first lights on, with more of them, and the whole of it in black
+export var NIGHT = 3;
 
 /**
  * How much of a surface looking along n - x, y and up as the boxes have
@@ -50,15 +55,14 @@ export function put(image, w, k, i, j, c, a) {
  */
 export function night(image) {
   var w = image.width,
-    out = blank(w, image.height, 2);
+    out = blank(w, image.height, NIGHT);
 
   for (var j = 0; j < image.height; j++)
     for (var i = 0; i < w; i++) {
       var a = image.data[(j * w + i) * 4 + 3];
 
       if (a === 0) continue;
-      put(out, w, 0, i, j, [0, 0, 0], a);
-      put(out, w, 1, i, j, [0, 0, 0], a);
+      for (var k = 0; k < NIGHT; k++) put(out, w, k, i, j, [0, 0, 0], a);
     }
 
   return out;

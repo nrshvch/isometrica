@@ -946,14 +946,16 @@ function renderNight(boxes) {
   var at = measure(boxes),
     w = at.w,
     h = at.h,
-    out = Looks.blank(w, h, 2);
+    out = Looks.blank(w, h, Looks.NIGHT);
 
   for (var j = 0; j < h; j++)
     for (var i = 0; i < w; i++) {
       if (cast(boxes, at.x + i + 0.5, at.y + j + 0.5) === null) continue;
 
+      //its lamps are the same with the first lights on and with more
       Looks.put(out, w, 0, i, j, shines(hitColor));
-      Looks.put(out, w, 1, i, j, [0, 0, 0]);
+      Looks.put(out, w, 1, i, j, shines(hitColor));
+      Looks.put(out, w, 2, i, j, [0, 0, 0]);
     }
 
   return out;

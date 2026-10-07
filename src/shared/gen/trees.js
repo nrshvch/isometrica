@@ -702,7 +702,7 @@ function alone(sides, tones) {
  * it black - its shadow, as see-through as it is, on all of them.
  */
 function sideBySide(data, tones, sides, leaves, bark, look) {
-  var n = look === "faces" ? 3 : 2,
+  var n = look === "faces" ? 3 : Looks.NIGHT,
     out = Looks.blank(W, H, n),
     i,
     k;
@@ -722,7 +722,14 @@ function sideBySide(data, tones, sides, leaves, bark, look) {
     var c = tones[i] < 3 ? leaves[tones[i]] : bark[tones[i] - 3];
 
     for (k = 0; k < n; k++)
-      Looks.put(out, W, k, px, py, n === 3 && k === sides[i] ? c : [0, 0, 0]);
+      Looks.put(
+        out,
+        W,
+        k,
+        px,
+        py,
+        look === "faces" && k === sides[i] ? c : [0, 0, 0],
+      );
   }
 
   return out;
