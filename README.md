@@ -334,8 +334,12 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   on the road ahead (`src/client/js/glow.js`) and its tail lights red, a
   car parked with its lamps off -
   black wherever anything else stands, so what is in front hides it - added
-  in over the dark; every building puts its lights on of an evening and out
-  late at night at hours of its own. `?light=0` draws the city as it is painted, by the one sun of old;
+  in over the dark. Nothing fades - a light is on or off: every building
+  puts its lights on between half past six and nine and out late at night,
+  each at hours of its own, so the windows come on one by one; the street
+  lights all go on at half past seven and off at half past six in the
+  morning; every car puts its lamps on and off up to three quarters of an
+  hour after them, each in its own time. `?light=0` draws the city as it is painted, by the one sun of old;
   `/lab/lighting.html` is the bench the ways of doing it were weighed on.
 - The sea moves: every tile of water, and the water up every shore, is
   painted in three frames, its ripples running on a wave across it and its

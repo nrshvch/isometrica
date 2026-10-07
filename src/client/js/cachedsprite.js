@@ -154,9 +154,8 @@ CachedSprite.prototype.at = null;
  * the other passes. On flat ground (flat) nothing behind it needs hiding:
  * what is black is not drawn there, nor anything of what shines.
  *
- * @param renderer {Object} what draws it: a building's has the seed its
- *        lights go on and off by (windows, see Lighting windowsOn); a
- *        vehicle's has its lamps on all night (lamps)
+ * @param renderer {Object} what draws it, and with it whether what of it
+ *        shines is lit at this hour (see Lighting shines)
  * @returns {{sourceImage, offsetX, offsetY}|null}
  */
 CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
@@ -167,15 +166,7 @@ CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
 
     layers = layersOf(this, "night");
     if (layers !== null && layers.acquire())
-      return section(
-        this,
-        layers,
-        renderer.lamps === true ||
-          (renderer.windows !== undefined &&
-            Lighting.windowsOn(renderer.windows))
-          ? 0
-          : 1,
-      );
+      return section(this, layers, Lighting.shines(renderer) ? 0 : 1);
 
     return shadowOf(this);
   }

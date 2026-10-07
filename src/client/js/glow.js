@@ -7,13 +7,15 @@
  * (?light=0), not at all. Drawn among the buildings at the depth of what
  * casts it, so whatever stands in front of the light hides it.
  */
+import Lighting from "./lighting";
+
 //the dither the steps of light are broken up with, 4x4
 var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 /**
  * A picture of light that shines, and nothing else (see client/cachedsprite
- * lightPass): drawn in the pass of what shines and in no other, never
- * otherwise.
+ * lightPass): drawn in the pass of what shines while what casts it is on
+ * (Lighting shines), and in no other, never otherwise.
  */
 function Glow(canvas, pivotX, pivotY) {
   this.sourceImage = canvas;
@@ -29,8 +31,8 @@ Glow.prototype.acquire = function () {
   return false;
 };
 
-Glow.prototype.lightPass = function (pass) {
-  return pass === 3 ? this : null;
+Glow.prototype.lightPass = function (pass, flat, renderer) {
+  return pass === Lighting.SHINE && Lighting.shines(renderer) ? this : null;
 };
 
 /**
