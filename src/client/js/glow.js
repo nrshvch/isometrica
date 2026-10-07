@@ -2,10 +2,12 @@
  * Light thrown on the ground at night: the pool under a street light, the
  * beams of a car's headlights. Each is a picture painted here once, crisp -
  * the light falling off in a few steps, dithered between them the way the
- * rest of the pixel art is - and drawn only with what shines at night
- * (client/lighting): in the light's other passes, and with the light off
- * (?light=0), not at all. Drawn among the buildings at the depth of what
- * casts it, so whatever stands in front of the light hides it.
+ * rest of the pixel art is - and drawn only into the light thrown on the
+ * ground at night (client/lighting), which what looks up is multiplied by:
+ * it lights the road in its own colours. In the light's other passes, and
+ * with the light off (?light=0), not at all. Drawn among the buildings at
+ * the depth of what casts it, so whatever stands in front of the light
+ * hides it.
  */
 import Lighting from "./lighting";
 
@@ -13,9 +15,9 @@ import Lighting from "./lighting";
 var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 /**
- * A picture of light that shines, and nothing else (see client/cachedsprite
- * lightPass): drawn in the pass of what shines while what casts it is on
- * (Lighting shines), and in no other, never otherwise.
+ * A picture of light thrown on the ground, and nothing else (see
+ * client/cachedsprite lightPass): drawn in the pass of that light while
+ * what casts it is on (Lighting shines), and in no other, never otherwise.
  */
 function Glow(canvas, pivotX, pivotY) {
   this.sourceImage = canvas;
@@ -32,7 +34,7 @@ Glow.prototype.acquire = function () {
 };
 
 Glow.prototype.lightPass = function (pass, flat, renderer) {
-  return pass === Lighting.SHINE && Lighting.shines(renderer) ? this : null;
+  return pass === Lighting.GLOW && Lighting.shines(renderer) ? this : null;
 };
 
 /**
@@ -102,7 +104,7 @@ function lampPool() {
       function (x, y) {
         var d = Math.sqrt(x * x + y * y) / 13;
 
-        return d < 1 ? 0.495 * (1 - d * d) : 0;
+        return d < 1 ? 0.9 * (1 - d * d) : 0;
       },
       [255, 190, 110],
     );
@@ -136,7 +138,7 @@ function headlights(heading, length) {
         //either lamp LAMPS out from the middle of the car
         var spread = 0.5 + a * 0.12;
 
-        return Math.abs(Math.abs(c) - LAMPS) < spread ? 0.6 * (1 - a / far) : 0;
+        return Math.abs(Math.abs(c) - LAMPS) < spread ? 1 * (1 - a / far) : 0;
       },
       [255, 244, 210],
     );
