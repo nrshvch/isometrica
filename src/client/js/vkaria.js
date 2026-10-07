@@ -132,7 +132,27 @@ Vkaria.prototype.start = function () {
   this.game.scene.addGameObject(this.camera);
 
   this.game.run();
+  pauseHidden(this);
 };
+
+/**
+ * Holds the game while the page is out of sight - another tab, another app,
+ * the phone locked - the world's clock and the drawing both, so it costs
+ * nothing then; and lets it go again once it is back.
+ */
+function pauseHidden(self) {
+  document.addEventListener("visibilitychange", function () {
+    var core = self.core;
+
+    if (document.hidden) {
+      self.game.pause();
+      if (core && core.pause) core.pause();
+    } else {
+      self.game.resume();
+      if (core && core.resume) core.resume();
+    }
+  });
+}
 
 Vkaria.prototype.startServices = function () {
   this.pathman.start();

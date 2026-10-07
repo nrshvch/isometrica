@@ -52,16 +52,37 @@ Logic.prototype.terrain = null;
 Logic.prototype.buildings = null;
 
 Logic.prototype.start = function () {
-  var self = this;
-  setInterval(function () {
-    Events.fire(self, events.tick, self, null);
-  }, Config.tickDelay);
+  this.resume();
 
   this.time.start();
   this.buildingService.init();
   this.envService.init();
   this.marketService.init();
   this.cities.init();
+};
+
+//the timer the world ticks by, null while it is paused
+Logic.prototype.ticking = null;
+
+/**
+ * Stops the world's clock - nothing grows, earns or is paid for - until
+ * resume: for while the page is out of sight.
+ */
+Logic.prototype.pause = function () {
+  if (this.ticking === null) return;
+
+  clearInterval(this.ticking);
+  this.ticking = null;
+};
+
+Logic.prototype.resume = function () {
+  var self = this;
+
+  if (this.ticking !== null) return;
+
+  this.ticking = setInterval(function () {
+    Events.fire(self, events.tick, self, null);
+  }, Config.tickDelay);
 };
 
 export default Logic;

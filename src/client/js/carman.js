@@ -100,7 +100,7 @@ var CARS_PER_ROAD = 1 / 4,
   EXHAUST_EVERY = 500,
   //and out of the engine while it stands broken down - as often as out of a
   //chimney
-  BREAKDOWN_SMOKE_EVERY = 300,
+  BREAKDOWN_SMOKE_EVERY = 500,
   //how long a police car's lamp stays blue before it turns red, ms
   LAMP_EVERY = 240;
 
