@@ -19,6 +19,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: app("index.html"),
+        //the lighting bench, at /lab/lighting.html (src/lab/lighting.js)
+        lighting: app("lab/lighting.html"),
       },
     },
   },
