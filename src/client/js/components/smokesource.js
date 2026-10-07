@@ -33,6 +33,9 @@ function SmokeSourceScript(building) {
 
 var vec3Buffer = new Float32Array(3);
 
+//how often a puff comes out of a chimney, ms
+var PUFF_EVERY = 500;
+
 SmokeSourceScript.prototype = Object.create(engine.Component.prototype);
 
 SmokeSourceScript.prototype.start = function () {
@@ -40,7 +43,7 @@ SmokeSourceScript.prototype.start = function () {
 };
 
 SmokeSourceScript.prototype.tick = function (time) {
-  if (time.now - this.time > 300) {
+  if (time.now - this.time > PUFF_EVERY) {
     if (isLit(this.building)) this.spawnSmoke();
     this.time = time.now;
   }
