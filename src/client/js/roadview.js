@@ -252,7 +252,10 @@ function standPole(part, sprite, at) {
  * Hangs under parent the pool of light its street light casts at night
  * (client/glow), round the spot under the lamp: where that is on the tile,
  * the roads' generator says (shared/gen/roads lampAt) - x - y across the
- * screen from the middle of the tile, (x + y) / 2 up it.
+ * screen from the middle of the tile, (x + y) / 2 up it. It is sorted among
+ * the cars by the nearest edge of it, the one in front as it is seen, so
+ * that anything standing in the pool is drawn before it and is lit by it,
+ * and anything in front of it still hides it.
  */
 function addPool(parent, at) {
   var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
@@ -263,14 +266,21 @@ function addPool(parent, at) {
   var pool = Glow.lampPool(),
     part = new engine.GameObject(),
     sprite = new engine.SpriteRenderer(),
-    dx = lamp[0] - 16,
-    dy = lamp[1] - 16;
+    //the nearest edge of the pool: as far in front of the lamp, straight
+    //down the screen, as the pool reaches
+    edge = pool.reach / Math.SQRT2,
+    dx = lamp[0] - edge - 16,
+    dy = lamp[1] - edge - 16,
+    w = View.unvector((dx / 32) * Config.tileSize, (dy / 32) * Config.tileSize);
 
   sprite.layer = RenderLayer.buildingsLayer;
   sprite.city = true;
   part.addComponent(sprite);
   sprite.setSprite(pool);
-  sprite.setPivot(pool.pivotX - (dx - dy), pool.pivotY + (dx + dy) / 2);
+  //drawn round the lamp, sorted where its edge is - straight down the
+  //screen from the lamp by edge
+  sprite.setPivot(pool.pivotX, pool.pivotY + edge);
+  part.transform.setLocalPosition(w[0], 0, w[1]);
   parent.transform.addChild(part.transform);
 }
 

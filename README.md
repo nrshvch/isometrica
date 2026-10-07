@@ -339,14 +339,19 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   lamps off - black wherever anything else stands, so what is in front hides
   it - added in over the dark. A fifth holds the light thrown on the ground,
   the pool under every street light and the two beams of a car's headlights
-  (`src/client/js/glow.js`), hidden as well by what is in front: it is added
+  (`src/client/js/glow.js`), and the glow round the foot of a building from
+  its signs and its lit shop windows (`src/shared/gen/isobox.js` spill),
+  hidden as well by what is in front - a street light's pool sorted by its
+  nearest edge, so a car driving through it is lit by it: it is added
   to the light on what looks up before that is multiplied in, so it lights
   the road and the grass in their own colours rather than lying over them
   like a haze. Nothing fades - a light is on or off: every building
   puts a few of its lights on between half past six and nine, more of them
   a while later, and those out again a while before the last go out late at
   night, each at hours of its own, so the windows come on one by one and
-  never all of them - one in eight keeping a few on till the morning; the
+  never all of them - every storey and every tile of a building lit one of
+  two ways, a long run of glass pane by pane, so no two floors of a block
+  are lit alike - one in eight keeping a few on till the morning; the
   street
   lights all go on at half past seven and off at half past six in the
   morning; every car puts its lamps on and off up to three quarters of an
