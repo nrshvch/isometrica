@@ -43,10 +43,10 @@ var LEFT = 0,
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
 
-//when the street lights go on of an evening and off of a morning, all at
-//once (cityOn)
+//when the street lights go on of an evening and off of the next morning
+//(30.5, half past six), all at once (cityOn)
 var CITY_ON = 19.5,
-  CITY_OFF = 6.5;
+  CITY_OFF = 30.5;
 
 //how long after them a car is, at the most, in putting its lamps on and off
 //(lampsOn)
@@ -135,7 +135,7 @@ Lighting.prototype.begin = function (viewport) {
 
   hourNow = this.hour();
   this.light = sun(hourNow);
-  this.passes = between(hourNow, SHINE_FROM, SHINE_TO) ? 4 : 3;
+  this.passes = within(hourNow, SHINE_FROM, SHINE_TO) ? 4 : 3;
 
   //black, so that where nothing is drawn nothing is added
   for (k = 0; k < this.passes; k++) {
@@ -165,39 +165,46 @@ Lighting.prototype.end = function (context, viewport) {
 };
 
 /**
- * Whether what renderer draws shines at this hour (client/cachedsprite
- * lightPass, client/glow): a building's windows by its own hours (windows,
- * see windowsOn), a car's lamps by its own (lamps, see lampsOn), a street
- * light's with every other one's (city, see cityOn); anything else never.
+ * How much of what renderer draws shines at this hour (client/cachedsprite
+ * lightPass, client/glow): 0 for nothing, 1 for the first of its lights, 2
+ * for more of them - a building's windows by its own hours (windows, see
+ * windowsOn); a car's lamps by its own (lamps, see lampsOn), and a street
+ * light's with every other one's (city, see cityOn), all or nothing;
+ * anything else never.
  */
 Lighting.shines = function (renderer) {
-  if (renderer.lamps !== undefined) return lampsOn(renderer.lamps);
+  if (renderer.lamps !== undefined) return lampsOn(renderer.lamps) ? 2 : 0;
   if (renderer.windows !== undefined) return windowsOn(renderer.windows);
 
-  return renderer.city === true && cityOn();
+  return renderer.city === true && cityOn() ? 2 : 0;
 };
 
 /**
- * Whether a building's windows are lit at this hour: every one comes on at
- * an hour of its own between half past six and nine in the evening, and
- * goes off at one of its own between half past ten and three in the
- * morning - or, one in eight, keeps them on all night, till between six and
- * seven in the morning.
+ * How many of a building's windows are lit at this hour, 0, 1 for the first
+ * few or 2 for more: every one puts the first few on at an hour of its own
+ * between half past six and nine in the evening, and more of them on a
+ * while later; it puts those out again a while before it puts the last out,
+ * at an hour of its own between half past ten and three in the morning - or,
+ * one in eight, it keeps a few on all night, till between six and seven in
+ * the morning. No building ever has all its windows lit.
  *
  * @param seed {number} the building's own, 0..1 (see BuildingView)
  */
 function windowsOn(seed) {
-  var on = SHINE_FROM + seed * 2.5,
-    late = (seed * 3.77) % 1 < 0.125,
-    off = late ? 30 + ((seed * 5.93) % 1) : 22.5 + ((seed * 7.31) % 1) * 4.5;
+  var late = (seed * 3.77) % 1 < 0.125,
+    first = SHINE_FROM + seed * 2.5,
+    more = first + 0.5 + ((seed * 4.13) % 1) * 1.5,
+    bed = 22.5 + ((seed * 7.31) % 1) * 4.5,
+    off = late ? 30 + ((seed * 5.93) % 1) : bed,
+    fewer = late ? bed : bed - 0.5 - ((seed * 2.71) % 1) * 1.5;
 
-  return between(hourNow, on, off);
+  return within(hourNow, more, fewer) ? 2 : within(hourNow, first, off) ? 1 : 0;
 }
 
 //whether the street lights are on: from half past seven in the evening to
 //half past six in the morning, all of them
 function cityOn() {
-  return between(hourNow, CITY_ON, CITY_OFF);
+  return within(hourNow, CITY_ON, CITY_OFF);
 }
 
 /**
@@ -208,18 +215,17 @@ function cityOn() {
  * @param seed {number} the car's own, 0..1 (see client/carman Car)
  */
 function lampsOn(seed) {
-  return between(
+  return within(
     hourNow,
     CITY_ON + seed * CAR_LAG,
     CITY_OFF + ((seed * 5.17) % 1) * CAR_LAG,
   );
 }
 
-//whether hour h is from on until off, the night over midnight
-function between(h, on, off) {
-  off %= 24;
-
-  return on < off ? h >= on && h < off : h >= on || h < off;
+//whether hour h of the day is from hour from until hour to - to past 24
+//for the next morning; never if to is no later than from
+function within(h, from, to) {
+  return (h >= from && h < to) || (h + 24 >= from && h + 24 < to);
 }
 
 /* --- Sun --------------------------------------------------------------- */

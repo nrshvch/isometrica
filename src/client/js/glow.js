@@ -87,7 +87,9 @@ function paint(reach, k, color) {
 }
 
 var pool = null,
-  beams = {};
+  beams = {},
+  //how far either headlight is from the middle of the car, across it
+  LAMPS = 2.5;
 
 /**
  * The pool of light on the ground under a street light, its middle where
@@ -100,7 +102,7 @@ function lampPool() {
       function (x, y) {
         var d = Math.sqrt(x * x + y * y) / 13;
 
-        return d < 1 ? 0.55 * (1 - d * d) : 0;
+        return d < 1 ? 0.495 * (1 - d * d) : 0;
       },
       [255, 190, 110],
     );
@@ -111,7 +113,8 @@ function lampPool() {
 /**
  * The beams of a car's headlights going heading as it is seen ("x+", "y-"
  * - see client/view heading), from length/2 ahead of the car's middle: two
- * cones of light spreading out on the road in front of it.
+ * cones of light, one from either lamp, spreading out on the road in front
+ * of it until they run into one another.
  */
 function headlights(heading, length) {
   var key = heading + "/" + length;
@@ -130,9 +133,10 @@ function headlights(heading, length) {
 
         if (a < 0 || a > far) return 0;
 
-        var spread = 1.2 + a * 0.35;
+        //either lamp LAMPS out from the middle of the car
+        var spread = 0.5 + a * 0.12;
 
-        return Math.abs(c) < spread ? 0.6 * (1 - a / far) : 0;
+        return Math.abs(Math.abs(c) - LAMPS) < spread ? 0.6 * (1 - a / far) : 0;
       },
       [255, 244, 210],
     );
