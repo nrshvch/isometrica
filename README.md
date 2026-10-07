@@ -331,7 +331,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   what shines: the lit panes of every window, the signs and billboards of the
   shops and offices in their own colours, a street light's lamp and the pool
   it throws on the road, a car's headlights shining white with their beams
-  on the road ahead (`src/client/js/glow.js`) and its tail lights red -
+  on the road ahead (`src/client/js/glow.js`) and its tail lights red, a
+  car parked with its lamps off -
   black wherever anything else stands, so what is in front hides it - added
   in over the dark; every building puts its lights on of an evening and out
   late at night at hours of its own. `?light=0` draws the city as it is painted, by the one sun of old;

@@ -90,6 +90,12 @@ SiteRenderer.prototype.render = function (
 
     if (sprite.width === 0) continue;
 
+    //a car parked has its lamps off, whatever lights the building has on
+    //(client/cachedsprite lightPass)
+    var windows = self.windows;
+
+    if (o.vehicle !== undefined && o.move === null) self.windows = undefined;
+
     //as faded as the site, and lit as it is (client/lighting)
     engine.SpriteRenderer.picture(
       layer,
@@ -98,6 +104,7 @@ SiteRenderer.prototype.render = function (
       Math.floor(buffer[0] - look.pivotX + dx + 0.5),
       Math.floor(buffer[1] - look.pivotY + dy + 0.5),
     );
+    self.windows = windows;
   }
 };
 
