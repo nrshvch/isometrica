@@ -383,6 +383,11 @@ function cast(boxes, sx, sy) {
 
   if (hit === null) return null;
 
+  var normal = face >= 3 ? hit.cuts[face - 3].n : null;
+
+  //which way it looks, for the light to be worked out as it is drawn
+  if (mode === "map") return facing(face, normal, hit.finish);
+
   //a box lit already is its own colour on every face - with what it is
   //made of over it, if anything
   if (hit.finish !== undefined && hit.finish.lit)
@@ -390,9 +395,12 @@ function cast(boxes, sx, sy) {
       ? hit.color
       : finish(hit.color, face, null, hit.finish, x + best, y + best, z - best);
 
-  var normal = face >= 3 ? hit.cuts[face - 3].n : null,
-    color =
-      normal === null
+  //unlit, every face is the colour a top is in the sun - the light it is
+  //drawn in takes the walls down from there
+  var color =
+    mode === "albedo"
+      ? shade(hit.color, 2)
+      : normal === null
         ? shade(hit.color, face)
         : lit(hit.color, normal[0], normal[1], normal[2]);
 
@@ -410,6 +418,41 @@ function cast(boxes, sx, sy) {
 
 //how much darker a spot in another box's shadow is
 var SHADOW = 0.32;
+
+/**
+ * What render paints (see setMode): the picture lit by the one sun every
+ * picture is painted in ("lit"), its colours with no light on them
+ * ("albedo"), or which way each pixel of it looks ("map") - for the light to
+ * be worked out as it is drawn, wherever the sun is.
+ */
+var mode = "lit";
+
+function setMode(m) {
+  mode = m;
+}
+
+/**
+ * The grey of a map (see mode) for a pixel looking that way: black where it
+ * looks towards -x, white where it looks towards -y, half way between where
+ * it looks up - and a slope as far between those as it leans each way. What
+ * gives off light of its own is lit as a top is.
+ */
+function facing(face, normal, f) {
+  var l, r, u, v;
+
+  if (f !== undefined && f.lit) v = 0.5;
+  else if (normal === null) v = face === 0 ? 0 : face === 1 ? 1 : 0.5;
+  else {
+    l = Math.max(0, -normal[0]);
+    r = Math.max(0, -normal[1]);
+    u = Math.max(0, normal[2]);
+    v = l + r + u > 0 ? (0.5 * u + r) / (l + r + u) : 0.5;
+  }
+
+  v = Math.round(v * 255);
+
+  return [v, v, v];
+}
 
 /**
  * Whether the sun is kept off that point of box `hit` by another box of the
@@ -999,6 +1042,7 @@ export {
   project,
   measure,
   render,
+  setMode,
   paintTiles,
   toImage,
   blit,
