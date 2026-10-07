@@ -38,19 +38,25 @@ GeneratorCore.prototype.init = function (message) {
 };
 
 /**
- * Answers with {type: "picture", name, image} - an ImageBitmap, handed over
- * - or {type: "failed", name, error}.
+ * Answers with {type: "picture", name, image, sides} - an ImageBitmap,
+ * handed over, and for a picture of pictures side by side which of them have
+ * anything in them but black (see sides) - or {type: "failed", name, error}.
  *
- * @param message {{name: string, gen: string, key: string}} the sprite, and
- *        how its generator knows it
+ * @param message {{name: string, gen: string, key: string, look: string}}
+ *        the sprite, how its generator knows it, and how it is painted if not
+ *        lit (shared/gen/catalog createPainter)
  */
 GeneratorCore.prototype.paint = function (message) {
   var self = this,
-    name = message.name;
+    name = message.name,
+    sides = 0;
 
   this.painter
     .paint(message)
     .then(function (painted) {
+      if (message.look)
+        sides = sidesOf(painted, message.look === "faces" ? 3 : 2);
+
       return createImageBitmap(
         new ImageData(
           new Uint8ClampedArray(painted.data),
@@ -61,13 +67,38 @@ GeneratorCore.prototype.paint = function (message) {
     })
     .then(
       function (image) {
-        self.post({ type: "picture", name: name, image: image }, [image]);
+        self.post({ type: "picture", name: name, image: image, sides: sides }, [
+          image,
+        ]);
       },
       function (e) {
         self.post({ type: "failed", name: name, error: String(e) }, []);
       },
     );
 };
+
+/**
+ * Of n pictures side by side, which have any pixel in them that is not black
+ * - bit k for the k-th - so that drawing one that has not can be left out
+ * where nothing behind it needs hiding (client/cachedsprite lightPass).
+ */
+function sidesOf(painted, n) {
+  var w = painted.width / n,
+    data = painted.data,
+    sides = 0,
+    i,
+    k;
+
+  for (i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0 || (data[i] | data[i + 1] | data[i + 2]) === 0)
+      continue;
+
+    k = Math.floor(((i / 4) % painted.width) / w);
+    sides |= 1 << k;
+  }
+
+  return sides;
+}
 
 /**
  * The pixels of every input whose name starts with one of the prefixes, by

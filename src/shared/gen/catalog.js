@@ -26,6 +26,7 @@ import * as Roads from "./roads.js";
 import * as Trees from "./trees.js";
 import * as Foundations from "./foundations.js";
 import { tileName, shoreName, gridName, diffuseName } from "./names.js";
+import * as iso from "./isobox.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
 //shore runs into, and the water further out, too deep to see the bottom of
@@ -71,6 +72,19 @@ var BLOCKS = {
   trees: Trees,
   foundations: Foundations,
 };
+
+/**
+ * The generators that paint out of boxes (shared/gen/isobox), and so can
+ * paint a picture of theirs the ways the light is worked out from as it is
+ * drawn: its faces side by side, or what of it shines at night (isobox
+ * setMode) - see createPainter.
+ */
+export var FACED = {};
+
+Object.keys(BLOCKS).forEach(function (gen) {
+  //the trees are painted a leaf at a time, not out of boxes
+  if (gen !== "trees") FACED[gen] = true;
+});
 
 //the hand-drawn pictures each generator paints from, by what their names
 //start with
@@ -155,6 +169,9 @@ export function describe(gen, pixels) {
       shores: {},
       //deep water spilling over the shallows next to it, on the flat
       spills: { dirs: SPILLS, variants: SPILL_VARIANTS },
+      //the water's ripples: how many frames there are, and how long each is
+      //shown, in ms - frame f of a tile is its name with @t<f> after it
+      waves: { frames: Terrain.WAVE_FRAMES, ms: Terrain.WAVE_MS },
     };
 
     [LAND, WATER, DEEP].forEach(function (id) {
@@ -258,13 +275,22 @@ export function createPainter(loadPixels) {
 
   return {
     /**
-     * @param spec {{gen: string, key: string}} the generator, and what it
-     *        calls the picture - the key describe gives
+     * @param spec {{gen: string, key: string, look: string}} the generator,
+     *        and what it calls the picture - the key describe gives - and
+     *        for one of the FACED, how it is to be painted, if not lit: as
+     *        isobox setMode has it, "faces" or "night"
      * @returns {Promise<{width, height, data}>}
      */
     paint: function (spec) {
       return painter(spec.gen).then(function (p) {
-        return p.paint(spec.key);
+        if (!spec.look || FACED[spec.gen] !== true) return p.paint(spec.key);
+
+        iso.setMode(spec.look);
+        try {
+          return p.paint(spec.key);
+        } finally {
+          iso.setMode("lit");
+        }
       });
     },
   };

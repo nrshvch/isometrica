@@ -7,6 +7,7 @@ import Config from "./config";
 import Events from "events";
 import Generated from "./generated";
 import View from "./view";
+import AnimatedSprite from "./animatedsprite";
 
 var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
@@ -92,17 +93,48 @@ function tileSprite(x, y, type, slope) {
   //nothing was painted: draws nothing, and says so once
   if (terrain === null) return vkaria.sprites.getSprite("gen/terrain");
 
-  return vkaria.sprites.getComposite(
-    Generated.tileParts(
-      terrain,
-      kind,
-      slope,
-      x,
-      y,
-      kind === "water" ? spillsOf(x, y) : null,
-      !gridShown,
-    ),
+  var parts = Generated.tileParts(
+    terrain,
+    kind,
+    slope,
+    x,
+    y,
+    kind === "water" ? spillsOf(x, y) : null,
+    !gridShown,
   );
+
+  if ((kind === "water" || kind === "deep") && terrain.waves)
+    return waves(parts, terrain.waves);
+
+  return vkaria.sprites.getComposite(parts);
+}
+
+//the water's tiles as they move, by what they are put together out of -
+//one for every tile that looks the same
+var moving = {};
+
+/**
+ * The sea's waves on a tile of water: its parts, its own water frame by
+ * frame (client/animatedsprite) - what spills over it and the grid laid
+ * over it as they are.
+ */
+function waves(parts, w) {
+  var key = parts.join("+");
+
+  if (moving[key] === undefined) {
+    var frames = [];
+
+    for (var f = 0; f < w.frames; f++)
+      frames.push(
+        vkaria.sprites.getComposite(
+          [vkaria.sprites.frameName(parts[0], f)].concat(parts.slice(1)),
+        ),
+      );
+
+    moving[key] = new AnimatedSprite(frames, w.ms);
+  }
+
+  return moving[key];
 }
 
 //whether the grid is drawn over the ground (Terrain#showGrid)

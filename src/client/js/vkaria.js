@@ -23,6 +23,7 @@ import Player from "./player";
 import CameraMan from "./cameraman";
 import Carman from "./carman";
 import SpriteCache from "./spritecache";
+import Lighting from "./lighting";
 
 function Vkaria(core, ui, callback) {
   // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -56,7 +57,14 @@ function Vkaria(core, ui, callback) {
   //every picture there is, by name - see prepare. What is on screen is kept
   //on a few big canvases, and what has gone unseen longest is put away from
   //there first, going by the frames the game counts
-  this.sprites = new SpriteCache(this.game.time);
+  this.sprites = new SpriteCache(this.game.time, {
+    //every picture painted out of boxes is kept as its faces side by side
+    //too, and at night as what of it shines (see client/lighting)
+    maxPages: 12,
+  });
+  //the light the city is drawn in, by the hour (client/lighting)
+  this.lighting = new Lighting(this);
+  this.lighting.install();
   //what was worked out painting the pictures the game paints for itself
   this.generated = null;
 

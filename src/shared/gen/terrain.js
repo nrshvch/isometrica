@@ -793,16 +793,22 @@ function smoothstep(a, b, x) {
 
 //water: palette's blues under a gentle swell, ripples running level across
 //the screen - along u + v - broken up into short lines of light, and the
-//odd trough of shade
+//odd trough of shade; as the frames go round (s.t), the ripples run on a
+//whole wave across the tile, and the glints flash one after another - the
+//way Transport Tycoon's water moves, pixel for pixel
 function ripples(s, palette, light, dark) {
   var c = ramp(palette, 0.5 + 0.28 * s.noise("field", 2.5, 2)),
     ripple = Math.sin(
-      2 * Math.PI * 3 * (s.u + s.v) + 1.6 * s.noise("warp", 2, 1),
+      2 * Math.PI * (3 * (s.u + s.v) - s.t) + 1.6 * s.noise("warp", 2, 1),
     ),
     dash = s.noise("dash", 9, 1);
 
   if (ripple > 0.9 && dash > 0.15) c = mix(c, light, 0.55);
   else if (ripple < -0.93 && dash < -0.25) c = mix(c, dark, 0.5);
+  //and here and there a glint, coming and going in turn as the frames go
+  //round (s.t)
+  else if (s.random(5) < 0.05 && (s.random(6) + s.t) % 1 < 0.25)
+    c = mix(c, light, 0.35);
 
   return grain(c, s, 0.03, 2);
 }
@@ -1248,10 +1254,12 @@ function put(image, i, c, alpha) {
 /**
  * What a tileset's albedo() gets for a pixel.
  */
-function Sampler(key, variant, slope) {
+function Sampler(key, variant, slope, t) {
   this.key = key;
   this.variant = variant;
   this.salt = hashString(key + "/" + slope + "/" + variant);
+  //how far through the round of water's ripples it is, 0..1 (see ripples)
+  this.t = t || 0;
 }
 
 Sampler.prototype.at = function (p) {
@@ -1329,8 +1337,8 @@ Sampler.prototype.random = function (salt) {
  * A base tile of a painted tileset: its ground at every pixel, decorations
  * stamped over it, lit as the grass is on that slope.
  */
-function paintBase(set, slope, variant, surf, light, seed) {
-  var sampler = new Sampler(seed + "/" + set.id, variant, slope),
+function paintBase(set, slope, variant, surf, light, seed, t) {
+  var sampler = new Sampler(seed + "/" + set.id, variant, slope, t),
     albedo = new Float32Array(WIDTH * HEIGHT * 3),
     image = blank();
 
@@ -1396,6 +1404,11 @@ function paintBase(set, slope, variant, surf, light, seed) {
 
   return image;
 }
+
+//water's frames: how many make a round of its ripples (see ripples), and
+//how long each is shown, in ms
+var WAVE_FRAMES = 8,
+  WAVE_MS = 220;
 
 /**
  * A diffuse tile: the tileset's base tile of that slope where its ground
@@ -1651,6 +1664,8 @@ var DEFAULTS = {
  *        base tile of a tileset that does not say how many it has, 2;
  *        diffuseVariants, 2
  */
+export { WAVE_FRAMES, WAVE_MS };
+
 export function createPainter(sources, o) {
   o = Object.assign({}, DEFAULTS, o);
 
@@ -1672,10 +1687,11 @@ export function createPainter(sources, o) {
   }
 
   /**
-   * A tileset's ground as it is on that slope, variant v.
+   * A tileset's ground as it is on that slope, variant v - for water, its
+   * ripples at frame f of their round (see WAVE_FRAMES).
    */
-  function base(id, slope, v) {
-    var key = id + "/" + slope + "/" + v;
+  function base(id, slope, v, f) {
+    var key = id + "/" + slope + "/" + v + "/" + f;
 
     if (bases[key] === undefined)
       bases[key] = paintBase(
@@ -1685,6 +1701,7 @@ export function createPainter(sources, o) {
         surfaceOf(slope),
         lightOf(),
         o.seed,
+        f === undefined ? undefined : f / WAVE_FRAMES,
       );
 
     return bases[key];
@@ -1725,9 +1742,14 @@ export function createPainter(sources, o) {
 
     /**
      * One tile, by where the manifest says it is - "grass/base/2222_0.png",
-     * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png".
+     * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png" - and for
+     * water, a frame of its ripples after it: "water_deep/base/2222_1.png@t3".
      */
     paint: function (rel) {
+      var frame = /@t(\d+)$/.exec(rel);
+
+      if (frame !== null) rel = rel.slice(0, frame.index);
+
       var g = /^grid\/(\d{4})\.png$/.exec(rel);
 
       if (g !== null) return paintGrid(surfaceOf(g[1]));
@@ -1740,7 +1762,8 @@ export function createPainter(sources, o) {
       if (m === null || TILESETS[m[1]] === undefined)
         throw new Error("no such tile: " + rel);
 
-      if (m[2] === "base") return base(m[1], m[3], +m[5]);
+      if (m[2] === "base")
+        return base(m[1], m[3], +m[5], frame === null ? undefined : +frame[1]);
       if (m[2] === "diffuse") return diffuse(m[1], m[3], m[4], +m[5]);
 
       var picture = shore(m[1], m[3]);

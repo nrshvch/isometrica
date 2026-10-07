@@ -219,8 +219,11 @@ define(function (require) {
             z = slots[o + SLOT_Z];
 
             if (kind === KIND_SPRITE) {
-                sx = (m0 * x + m4 * y + m8 * z + m12 - slots[o + SLOT_PIVOT_X]) | 0;
-                sy = (m1 * x + m5 * y + m9 * z + m13 - slots[o + SLOT_PIVOT_Y]) | 0;
+                //to the nearest pixel: cut towards 0, a sprite whose spot comes
+                //out a hair under a whole pixel lands a pixel short of its
+                //neighbours, and the ones along it leave a seam between them
+                sx = Math.floor(m0 * x + m4 * y + m8 * z + m12 - slots[o + SLOT_PIVOT_X] + 0.5);
+                sy = Math.floor(m1 * x + m5 * y + m9 * z + m13 - slots[o + SLOT_PIVOT_Y] + 0.5);
 
                 if (sx > width || sx + slots[o + SLOT_WIDTH] < 0 || sy > height || sy + slots[o + SLOT_HEIGHT] < 0)
                     continue;
@@ -256,8 +259,8 @@ define(function (require) {
                 //its picture may have come in since; culled from its slot then
                 settleSprite(slots, o, renderer);
 
-                sx = (m0 * x + m4 * y + m8 * z + m12 - renderer._pivotX) | 0;
-                sy = (m1 * x + m5 * y + m9 * z + m13 - renderer._pivotY) | 0;
+                sx = Math.floor(m0 * x + m4 * y + m8 * z + m12 - renderer._pivotX + 0.5);
+                sy = Math.floor(m1 * x + m5 * y + m9 * z + m13 - renderer._pivotY + 0.5);
 
                 if (sx > width || sx + sprite.width < 0 || sy > height || sy + sprite.height < 0)
                     continue;
@@ -397,8 +400,41 @@ define(function (require) {
 
         context.clearRect(0, 0, viewport.width, viewport.height);
 
+        var lighting = config.lighting,
+            lit = lighting !== null && lighting.enabled === true,
+            litMask = config.litLayersMask,
+            lastLit = -1,
+            begun = false;
+
+        if (lit)
+            for (i = 0; i < layersCount; i++)
+                if (litMask & 1 << i)
+                    lastLit = i;
+
         for (i = 0; i < layersCount; i++) {
             ctx = viewport.layers[i];
+
+            //a lit layer is drawn into the lighting's canvases instead, and
+            //they into the frame once the last of them is
+            if (lit && (litMask & 1 << i)) {
+                start = layerStarts[i];
+                end = layerStarts[i + 1];
+
+                if (end - start > 1 && (~noLayerDepthSortingMask & 1 << i))
+                    depthSort(start, end);
+
+                if (!begun) {
+                    lighting.begin(viewport);
+                    begun = true;
+                }
+
+                drawLit(self, viewport, lighting, start, end, (config.flatLayersMask & 1 << i) !== 0);
+
+                if (i === lastLit)
+                    lighting.end(context, viewport);
+
+                continue;
+            }
 
             if (~noLayerClearMask & 1 << i) {
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -432,6 +468,45 @@ define(function (require) {
     };
 
     Canvas2dRenderer.render = render;
+
+    //the pass things that look up are drawn in (see SpriteRenderer.pass)
+    var UP = 2;
+
+    /**
+     * Draws a layer's entries start .. end into each of the lighting's
+     * canvases in turn, the whole layer once per canvas, in the same order:
+     * a sprite as it is in that pass, anything else only where things look
+     * up - unless it says it draws itself in every pass (litPasses).
+     */
+    function drawLit(self, viewport, lighting, start, end, flat) {
+        var passes = lighting.passes,
+            contexts = lighting.contexts,
+            k, j, entry, renderer, ctx;
+
+        SpriteRenderer.flat = flat;
+
+        for (k = 0; k < passes; k++) {
+            ctx = contexts[k];
+            SpriteRenderer.pass = k;
+
+            for (j = end - 1; j >= start; j--) {
+                entry = order[j];
+                renderer = visibleRenderers[entry];
+
+                if (entryDraw[entry] === DRAW_SPRITE)
+                    drawSprite(ctx, renderer, drawX[entry], drawY[entry]);
+                else if (k === UP || renderer.litPasses === true)
+                    renderer.render(ctx, self, viewport, renderer);
+            }
+        }
+
+        SpriteRenderer.pass = -1;
+        SpriteRenderer.flat = false;
+
+        //nothing is kept alive from here until the next frame
+        for (j = start; j < end; j++)
+            visibleRenderers[order[j]] = null;
+    }
 
     p.graphics = null;
 

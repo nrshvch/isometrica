@@ -3991,15 +3991,25 @@ function cover(key, turns) {
   var mark = [255, 0, 255],
     scene = clip(iso.rotate(partBoxes(key), 1, 1, turns)),
     cars = iso.rotate(room(tileBays(key), mark), 1, 1, turns),
+    //painted as it is to be drawn - its faces, say, side by side (isobox
+    //setMode) - but what is in front of the cars is found as it is lit
     tile = iso.render(scene),
-    both = iso.render(scene.concat(cars)),
+    mode = iso.getMode(),
+    n = iso.sections(),
+    w = tile.w / n;
+
+  iso.setMode("lit");
+
+  var both = iso.render(scene.concat(cars)),
     alone = iso.render(cars),
     pixels = [],
     middle = iso.project(TILE / 2, TILE / 2, 0);
 
+  iso.setMode(mode);
+
   for (var j = 0; j < tile.h; j++)
     for (var i = 0; i < tile.w; i++) {
-      var sx = i - tile.pivotX,
+      var sx = (i % w) - tile.pivotX,
         sy = j - tile.pivotY,
         front = pixelAt(both, sx, sy);
 
