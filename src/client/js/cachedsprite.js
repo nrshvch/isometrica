@@ -155,7 +155,8 @@ CachedSprite.prototype.at = null;
  * what is black is not drawn there, nor anything of what shines.
  *
  * @param renderer {Object} what draws it: a building's has the seed its
- *        lights go on and off by (windows, see Lighting windowsOn)
+ *        lights go on and off by (windows, see Lighting windowsOn); a
+ *        vehicle's has its lamps on all night (lamps)
  * @returns {{sourceImage, offsetX, offsetY}|null}
  */
 CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
@@ -169,7 +170,9 @@ CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
       return section(
         this,
         layers,
-        renderer.windows !== undefined && Lighting.windowsOn(renderer.windows)
+        renderer.lamps === true ||
+          (renderer.windows !== undefined &&
+            Lighting.windowsOn(renderer.windows))
           ? 0
           : 1,
       );
