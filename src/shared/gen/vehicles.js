@@ -20,6 +20,7 @@
  * RGBA: the game paints them as it starts (client/generated), and nothing is
  * shipped but this.
  */
+import * as Looks from "./looks.js";
 import { BRANDS, NAMES as BRAND_NAMES, panel as emblem } from "./brands.js";
 
 var COLORS = {
@@ -620,8 +621,15 @@ function cast(boxes, sx, sy) {
     }
   }
 
+  hitColor = hit === null ? null : hit.color;
+  hitFace = face;
+
   return hit === null ? null : shade(hit.color, face);
 }
+
+//what the last ray cast hit: its colour, and the face it went in through
+var hitColor = null,
+  hitFace = -1;
 
 /**
  * @param boxes {object[]}
@@ -693,6 +701,43 @@ function render(boxes, lit) {
   if (lit !== true) outline(pixels, w, h);
 
   return { w: w, h: h, pixels: pixels, pivotX: -minX, pivotY: -minY };
+}
+
+/**
+ * Its faces side by side (shared/gen/looks): every pixel in the colour a
+ * top of it is in the sun, on the picture of the face the ray went in
+ * through, and black on the others - its edge darkened on all of them, as
+ * render darkens it.
+ */
+function renderFaces(boxes) {
+  var at = measure(boxes),
+    w = at.w,
+    h = at.h,
+    sections = [[], [], []],
+    i,
+    j,
+    k;
+
+  for (j = 0; j < h; j++)
+    for (i = 0; i < w; i++) {
+      var c = cast(boxes, at.x + i + 0.5, at.y + j + 0.5);
+
+      for (k = 0; k < 3; k++)
+        sections[k].push(
+          c === null ? null : k === hitFace ? shade(hitColor, 2) : [0, 0, 0],
+        );
+    }
+
+  var out = Looks.blank(w, h, 3);
+
+  sections.forEach(function (pixels, k) {
+    outline(pixels, w, h);
+    pixels.forEach(function (c, n) {
+      if (c !== null) Looks.put(out, w, k, n % w, (n / w) | 0, c);
+    });
+  });
+
+  return out;
 }
 
 //darkens the pixels along the edge of the picture a little, so a vehicle
@@ -848,7 +893,7 @@ function walk(see) {
  *
  * @returns {{width, height, data}}
  */
-export function paint(name) {
+export function paint(name, look) {
   var parts = name.split("/"),
     t = TYPES[parts[2]],
     dir = DIRECTIONS[parts[4]],
@@ -863,7 +908,14 @@ export function paint(name) {
     if (phase === undefined)
       throw new Error("no such vehicle picture: " + name);
 
-    return toImage(render(place(phase, t.length, t.width, dir), true));
+    var picture = toImage(render(place(phase, t.length, t.width, dir), true));
+
+    //a lamp is lit as a top is, and at night shines (client/carman draws it
+    //where things look up, and with what shines)
+    if (look === "faces") return lampFaces(picture);
+    if (look === "night") return Looks.night(picture);
+
+    return picture;
   }
 
   if (
@@ -872,9 +924,40 @@ export function paint(name) {
   )
     throw new Error("no such vehicle picture: " + name);
 
-  return toImage(
-    render(place(t.build(colorOf(parts[3]), parts[3]), t.length, t.width, dir)),
+  var boxes = place(
+    t.build(colorOf(parts[3]), parts[3]),
+    t.length,
+    t.width,
+    dir,
   );
+
+  //painted for the light to be worked out as it is drawn (shared/gen/looks)
+  if (look === "faces") return renderFaces(boxes);
+  if (look === "night") return Looks.night(toImage(render(boxes)));
+
+  return toImage(render(boxes));
+}
+
+//a lamp's picture on the picture of what looks up, black on the others
+function lampFaces(picture) {
+  var w = picture.width,
+    out = Looks.blank(w, picture.height, 3);
+
+  for (var n = 0; n < w * picture.height; n++) {
+    if (picture.data[n * 4 + 3] === 0) continue;
+
+    var c = [
+      picture.data[n * 4],
+      picture.data[n * 4 + 1],
+      picture.data[n * 4 + 2],
+    ];
+
+    Looks.put(out, w, 0, n % w, (n / w) | 0, [0, 0, 0]);
+    Looks.put(out, w, 1, n % w, (n / w) | 0, [0, 0, 0]);
+    Looks.put(out, w, 2, n % w, (n / w) | 0, c);
+  }
+
+  return out;
 }
 
 function toImage(p) {

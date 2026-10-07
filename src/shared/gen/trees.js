@@ -30,6 +30,7 @@
  * shadow is short, the sun for it higher than the one for the light, so that
  * it stays under the tree rather than across the next tile.
  */
+import * as Looks from "./looks.js";
 
 var W = 80,
   H = 72,
@@ -510,8 +511,13 @@ function toneOf(light) {
  * looked at, from in front of the tree - painted as the tree is lit where it
  * meets it, or as its shadow where it meets the ground in it.
  */
-function paintTree(tree) {
-  var data = new Uint8ClampedArray(W * H * 4),
+function paintTree(tree, look) {
+  var faces = look === "faces",
+    data = new Uint8ClampedArray(W * H * 4),
+    //for its faces (shared/gen/looks): which way every pixel looks the most
+    //- 0 towards -x, 1 -y, 2 up - each pixel's light then the light that
+    //falls that way, as it is drawn
+    sides = new Int8Array(W * H).fill(2),
     back = 90,
     //for every pixel: -1 nothing, else the part and tone, part * 3 + tone -
     //leaves 0, bark 1
@@ -550,7 +556,12 @@ function paintTree(tree) {
         var part = tree.part === "leaves" ? 0 : 1,
           n = normalAt(tree, p),
           sun = Math.max(0, dot(n, SUN)),
-          light = (0.15 + 0.85 * sun) * openness(tree, p, n);
+          open = openness(tree, p, n),
+          //lit as it is drawn, the tone is only how far into the leaves it
+          //is; the light on it comes with the face it looks most towards
+          light = faces ? 0.15 + 0.85 * open : (0.15 + 0.85 * sun) * open;
+
+        if (faces) sides[i] = mostOf(Looks.weights(n));
 
         //the trunk is never caught by the sun the way the leaves are
         tones[i] = part * 3 + Math.min(toneOf(light), part ? 1 : 2);
@@ -592,7 +603,11 @@ function paintTree(tree) {
       }
 
     tones = next;
+    if (faces) sides = alone(sides, tones);
   }
+
+  if (look === "faces" || look === "night")
+    return sideBySide(data, tones, sides, leaves, bark, look);
 
   for (i = 0; i < W * H; i++) {
     if (tones[i] < 0) continue;
@@ -635,13 +650,82 @@ export function describe() {
  *
  * @returns {{width, height, data}}
  */
-export function paint(name) {
+export function paint(name, look) {
   var m = /^gen\/trees\/([a-z]+)-(\d+)(?:\/r([123]))?$/.exec(name);
 
   if (m === null || KINDS[m[1]] === undefined)
     throw new Error("no such tree: " + name);
 
-  return paintTree(grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0)));
+  return paintTree(
+    grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0)),
+    look,
+  );
+}
+
+//which of three it is most of
+function mostOf(w) {
+  return w[0] >= w[1] && w[0] >= w[2] ? 0 : w[1] >= w[2] ? 1 : 2;
+}
+
+//a pixel looking a way none of the pixels round it of the same part do
+//takes the way most of them look - as a tone alone among another does
+function alone(sides, tones) {
+  var next = sides.slice();
+
+  for (var py = 1; py < H - 1; py++)
+    for (var px = 1; px < W - 1; px++) {
+      var i = py * W + px,
+        count = [0, 0, 0],
+        same = 0;
+
+      if (tones[i] < 0) continue;
+
+      [i - 1, i + 1, i - W, i + W].forEach(function (j) {
+        if (tones[j] < 0 || ((tones[j] / 3) | 0) !== ((tones[i] / 3) | 0))
+          return;
+        count[sides[j]]++;
+        if (sides[j] === sides[i]) same++;
+      });
+
+      var m = mostOf(count);
+
+      if (same === 0 && count[m] >= 3) next[i] = m;
+    }
+
+  return next;
+}
+
+/**
+ * The tree's pictures side by side (shared/gen/looks): its faces, every
+ * pixel of it in its tone on the picture of the way it looks the most and
+ * black on the others; or for the night, nothing of it shining and all of
+ * it black - its shadow, as see-through as it is, on all of them.
+ */
+function sideBySide(data, tones, sides, leaves, bark, look) {
+  var n = look === "faces" ? 3 : 2,
+    out = Looks.blank(W, H, n),
+    i,
+    k;
+
+  for (i = 0; i < W * H; i++) {
+    var px = i % W,
+      py = (i / W) | 0;
+
+    if (tones[i] < 0) {
+      //its shadow on the ground
+      if (data[i * 4 + 3] > 0)
+        for (k = 0; k < n; k++)
+          Looks.put(out, W, k, px, py, [0, 0, 0], data[i * 4 + 3]);
+      continue;
+    }
+
+    var c = tones[i] < 3 ? leaves[tones[i]] : bark[tones[i] - 3];
+
+    for (k = 0; k < n; k++)
+      Looks.put(out, W, k, px, py, n === 3 && k === sides[i] ? c : [0, 0, 0]);
+  }
+
+  return out;
 }
 
 function hashSeed(s) {

@@ -74,17 +74,24 @@ var BLOCKS = {
 };
 
 /**
- * The generators that paint out of boxes (shared/gen/isobox), and so can
- * paint a picture of theirs the ways the light is worked out from as it is
- * drawn: its faces side by side, or what of it shines at night (isobox
- * setMode) - see createPainter.
+ * The generators that can paint a picture of theirs the ways the light is
+ * worked out from as it is drawn: its faces side by side, or what of it
+ * shines at night (isobox setMode, shared/gen/looks) - those that paint out
+ * of boxes, and the ground, the trees and the vehicles, which paint their
+ * own - see createPainter. Only the stones, painted from pictures drawn by
+ * hand, cannot.
  */
 export var FACED = {};
 
 Object.keys(BLOCKS).forEach(function (gen) {
-  //the trees are painted a leaf at a time, not out of boxes
-  if (gen !== "trees") FACED[gen] = true;
+  FACED[gen] = true;
 });
+
+//and those that paint their own (shared/gen/looks) - the ground, the trees
+//and the vehicles - by the look they are handed
+var OWN_LOOKS = { terrain: true, trees: true, vehicles: true };
+
+FACED.terrain = FACED.vehicles = true;
 
 //the hand-drawn pictures each generator paints from, by what their names
 //start with
@@ -284,6 +291,7 @@ export function createPainter(loadPixels) {
     paint: function (spec) {
       return painter(spec.gen).then(function (p) {
         if (!spec.look || FACED[spec.gen] !== true) return p.paint(spec.key);
+        if (OWN_LOOKS[spec.gen]) return p.paint(spec.key, spec.look);
 
         iso.setMode(spec.look);
         try {

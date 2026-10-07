@@ -45,6 +45,7 @@
  * generated), for the tilesets it draws, and in tools/genterrain.js, which
  * writes every tileset out as files to look at.
  */
+import * as Looks from "./looks.js";
 import SimplexNoise from "simplex-noise";
 
 var WIDTH = 64;
@@ -1157,7 +1158,9 @@ function boxLight(n) {
  */
 function computeLight() {
   var flat = boxLight([0, 0, 1]),
-    faces = {};
+    faces = {},
+    //which way each quarter of every slope looks, for its faces (see Looks)
+    normals = {};
 
   function normal(z, tri) {
     var a = tri.map(function (k) {
@@ -1204,16 +1207,19 @@ function computeLight() {
             ];
 
     faces[slope] = {};
+    normals[slope] = {};
     split.forEach(function (face) {
-      var l = (boxLight(normal(z, face[0])) - flat) * CONTRAST;
+      var n = normal(z, face[0]),
+        l = (boxLight(n) - flat) * CONTRAST;
 
       face[1].forEach(function (q) {
         faces[slope][q] = l;
+        normals[slope][q] = n;
       });
     });
   });
 
-  return { faces: faces, rim: RIM };
+  return { faces: faces, normals: normals, rim: RIM };
 }
 
 function shade(c, light, look) {
@@ -1337,10 +1343,11 @@ Sampler.prototype.random = function (salt) {
  * A base tile of a painted tileset: its ground at every pixel, decorations
  * stamped over it, lit as the grass is on that slope.
  */
-function paintBase(set, slope, variant, surf, light, seed, t) {
+function paintBase(set, slope, variant, surf, light, seed, t, look) {
   var sampler = new Sampler(seed + "/" + set.id, variant, slope, t),
     albedo = new Float32Array(WIDTH * HEIGHT * 3),
-    image = blank();
+    out = new Out(look, slope, light),
+    image = out.image;
 
   surf.pixels.forEach(function (p) {
     var c = set.albedo(sampler.at(p));
@@ -1387,11 +1394,8 @@ function paintBase(set, slope, variant, surf, light, seed, t) {
   });
 
   surf.pixels.forEach(function (p) {
-    var c = shade(
-      [albedo[p.i * 3], albedo[p.i * 3 + 1], albedo[p.i * 3 + 2]],
-      light.faces[slope][p.quad],
-      set.look,
-    );
+    var raw = [albedo[p.i * 3], albedo[p.i * 3 + 1], albedo[p.i * 3 + 2]],
+      c = out.faces ? raw : shade(raw, light.faces[slope][p.quad], set.look);
 
     if (p.rim) {
       var r = 1 - (1 - light.rim) * set.look.rim;
@@ -1399,11 +1403,50 @@ function paintBase(set, slope, variant, surf, light, seed, t) {
       c = [c[0] * r, c[1] * r, c[2] * r];
     }
 
-    put(image, p.i, c);
+    out.put(p, c);
   });
 
   return image;
 }
+
+/**
+ * Where a tile is painted, as look has it (shared/gen/looks): lit, as it
+ * always was; its faces side by side ("faces") - every pixel's colour, lit
+ * by nothing, shared out between them by which way its quarter of the slope
+ * looks; or for the night ("night"), nothing of it shining and all of it
+ * black. faces says whether its colours are to come unlit.
+ */
+function Out(look, slope, light) {
+  this.n = look === "faces" ? 3 : look === "night" ? 2 : 1;
+  this.faces = look === "faces";
+  this.night = look === "night";
+  this.normals = light === null ? null : light.normals[slope];
+  this.image = Looks.blank(WIDTH, HEIGHT, this.n);
+}
+
+Out.prototype.put = function (p, c, alpha) {
+  if (this.n === 1) return put(this.image, p.i, c, alpha);
+
+  if (this.night) {
+    Looks.put(this.image, WIDTH, 0, p.x, p.y, [0, 0, 0], alpha);
+    Looks.put(this.image, WIDTH, 1, p.x, p.y, [0, 0, 0], alpha);
+    return;
+  }
+
+  var w =
+    this.normals === null ? [0, 0, 1] : Looks.weights(this.normals[p.quad]);
+
+  for (var k = 0; k < 3; k++)
+    Looks.put(
+      this.image,
+      WIDTH,
+      k,
+      p.x,
+      p.y,
+      [c[0] * w[k], c[1] * w[k], c[2] * w[k]],
+      alpha,
+    );
+};
 
 //water's frames: how many make a round of its ripples (see ripples), and
 //how long each is shown, in ms
@@ -1424,7 +1467,9 @@ function paintDiffuse(set, base, slope, dir, variant, surf, seed) {
     //the border is as long as an edge, or as the arc round a corner
     length = corner ? (Math.PI / 2) * e.depth : 1,
     covered = new Uint8Array(WIDTH * HEIGHT),
-    image = blank();
+    //base is painted as look has it, n tiles side by side: so is this
+    n = base.width / WIDTH,
+    image = Looks.blank(WIDTH, HEIGHT, n);
 
   surf.pixels.forEach(function (p) {
     var d, t;
@@ -1466,18 +1511,23 @@ function paintDiffuse(set, base, slope, dir, variant, surf, seed) {
   surf.pixels.forEach(function (p) {
     if (!covered[p.i]) return;
 
-    var c = [
-        base.data[p.i * 4],
-        base.data[p.i * 4 + 1],
-        base.data[p.i * 4 + 2],
-      ],
-      left = surf.index[p.i - 1];
+    var left = surf.index[p.i - 1],
+      //the edge of it facing away from the light is a little in shade
+      lip = e.lip > 0 && p.x > 0 && left >= 0 && !covered[p.i - 1] ? e.lip : 1;
 
-    //the edge of it facing away from the light is a little in shade
-    if (e.lip > 0 && p.x > 0 && left >= 0 && !covered[p.i - 1])
-      c = [c[0] * e.lip, c[1] * e.lip, c[2] * e.lip];
+    for (var k = 0; k < n; k++) {
+      var o = (p.y * base.width + k * WIDTH + p.x) * 4;
 
-    put(image, p.i, c);
+      Looks.put(
+        image,
+        WIDTH,
+        k,
+        p.x,
+        p.y,
+        [base.data[o] * lip, base.data[o + 1] * lip, base.data[o + 2] * lip],
+        base.data[o + 3],
+      );
+    }
   });
 
   return image;
@@ -1561,8 +1611,9 @@ function underLine(beyond, edge, p, salt, k, clump) {
  * is flat, the water of the set's own tiles; the beach is lit as the ground
  * under it is.
  */
-function paintShore(set, slope, surf, light, seed) {
-  var image = blank(),
+function paintShore(set, slope, surf, light, seed, look) {
+  var out = new Out(look, slope, light),
+    image = out.image,
     sampler = new Sampler(seed + "/" + set.id, 0, slope),
     z = heights(slope),
     low = Math.min(z.w, z.n, z.e, z.s),
@@ -1590,7 +1641,7 @@ function paintShore(set, slope, surf, light, seed) {
 
         c = [c[0] * w, c[1] * w, c[2] * w];
       }
-      put(image, p.i, c);
+      out.put(p, c);
       return;
     }
 
@@ -1606,14 +1657,15 @@ function paintShore(set, slope, surf, light, seed) {
         : ramp(SAND, 0.5 + 0.35 * periodic(tone, p.u, p.v, 5, 1) + r * 0.06);
     else return;
 
-    c = shade(c, light.faces[slope][p.quad], {
-      lit: 1,
-      dark: 1,
-      shadow: [1, 1, 1],
-    });
+    if (!out.faces)
+      c = shade(c, light.faces[slope][p.quad], {
+        lit: 1,
+        dark: 1,
+        shadow: [1, 1, 1],
+      });
     if (p.rim) c = [c[0] * light.rim, c[1] * light.rim, c[2] * light.rim];
 
-    put(image, p.i, c);
+    out.put(p, c);
   });
 
   return image;
@@ -1623,14 +1675,15 @@ function paintShore(set, slope, surf, light, seed) {
  * The grid over a tile of that slope: see-through black along its outline,
  * all round - nothing else.
  */
-function paintGrid(surf) {
-  var image = blank();
+function paintGrid(surf, look) {
+  var out = new Out(look, surf.slope, null);
 
   surf.pixels.forEach(function (p) {
-    if (p.rim) put(image, p.i, [0, 0, 0], Math.round(GRID_ALPHA * 255));
+    //black, so the same on every face's picture
+    if (p.rim) out.put(p, [0, 0, 0], Math.round(GRID_ALPHA * 255));
   });
 
-  return image;
+  return out.image;
 }
 
 /* --- Output ----------------------------------------------------------- */
@@ -1688,10 +1741,11 @@ export function createPainter(sources, o) {
 
   /**
    * A tileset's ground as it is on that slope, variant v - for water, its
-   * ripples at frame f of their round (see WAVE_FRAMES).
+   * ripples at frame f of their round (see WAVE_FRAMES) - painted as look
+   * has it (see Out), lit unless it says otherwise.
    */
-  function base(id, slope, v, f) {
-    var key = id + "/" + slope + "/" + v + "/" + f;
+  function base(id, slope, v, f, look) {
+    var key = id + "/" + slope + "/" + v + "/" + f + "/" + look;
 
     if (bases[key] === undefined)
       bases[key] = paintBase(
@@ -1702,15 +1756,16 @@ export function createPainter(sources, o) {
         lightOf(),
         o.seed,
         f === undefined ? undefined : f / WAVE_FRAMES,
+        look,
       );
 
     return bases[key];
   }
 
-  function diffuse(id, slope, dir, v) {
+  function diffuse(id, slope, dir, v, look) {
     return paintDiffuse(
       TILESETS[id],
-      base(id, slope, v % variantsOf(id)),
+      base(id, slope, v % variantsOf(id), undefined, look),
       slope,
       dir,
       v,
@@ -1723,10 +1778,17 @@ export function createPainter(sources, o) {
     return slope !== FLAT;
   }
 
-  function shore(id, slope) {
+  function shore(id, slope, look) {
     if (!hasShore(slope)) return null;
 
-    return paintShore(TILESETS[id], slope, surfaceOf(slope), lightOf(), o.seed);
+    return paintShore(
+      TILESETS[id],
+      slope,
+      surfaceOf(slope),
+      lightOf(),
+      o.seed,
+      look,
+    );
   }
 
   return {
@@ -1743,16 +1805,17 @@ export function createPainter(sources, o) {
     /**
      * One tile, by where the manifest says it is - "grass/base/2222_0.png",
      * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png" - and for
-     * water, a frame of its ripples after it: "water_deep/base/2222_1.png@t3".
+     * water, a frame of its ripples after it: "water_deep/base/2222_1.png@t3"
+     * - painted as look has it (see Out): "faces", "night", or lit.
      */
-    paint: function (rel) {
+    paint: function (rel, look) {
       var frame = /@t(\d+)$/.exec(rel);
 
       if (frame !== null) rel = rel.slice(0, frame.index);
 
       var g = /^grid\/(\d{4})\.png$/.exec(rel);
 
-      if (g !== null) return paintGrid(surfaceOf(g[1]));
+      if (g !== null) return paintGrid(surfaceOf(g[1]), look);
 
       var m =
         /^([a-z_]+)\/(base|diffuse|shore)\/(\d{4})(?:_([a-z]+))?(?:_(\d+))?\.png$/.exec(
@@ -1763,10 +1826,16 @@ export function createPainter(sources, o) {
         throw new Error("no such tile: " + rel);
 
       if (m[2] === "base")
-        return base(m[1], m[3], +m[5], frame === null ? undefined : +frame[1]);
-      if (m[2] === "diffuse") return diffuse(m[1], m[3], m[4], +m[5]);
+        return base(
+          m[1],
+          m[3],
+          +m[5],
+          frame === null ? undefined : +frame[1],
+          look,
+        );
+      if (m[2] === "diffuse") return diffuse(m[1], m[3], m[4], +m[5], look);
 
-      var picture = shore(m[1], m[3]);
+      var picture = shore(m[1], m[3], look);
 
       if (picture === null) throw new Error("no such tile: " + rel);
 

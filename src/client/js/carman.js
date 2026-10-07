@@ -916,19 +916,21 @@ VehicleRenderer.prototype.render = function (
   viewport,
   self,
 ) {
-  engine.SpriteRenderer.prototype.render.call(
-    self,
-    layer,
-    viewportRenderer,
-    viewport,
-    self,
-  );
-
   var lit = self.lit,
     pass = engine.SpriteRenderer.pass;
 
-  //at night, its headlights on the road ahead (client/glow)
+  //at night it does not hide what shines behind it: the pool of a street
+  //light it drives through shows through it, and so lights it up
+  //(client/lighting) - and its headlights light the road ahead (client/glow)
   if (pass === Lighting.SHINE) headlights(self, layer);
+  else
+    engine.SpriteRenderer.prototype.render.call(
+      self,
+      layer,
+      viewportRenderer,
+      viewport,
+      self,
+    );
 
   //a lamp shines where things look up by day, and with what shines at
   //night; in the other passes of the light the car hides what is behind it

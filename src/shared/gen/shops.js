@@ -68,6 +68,7 @@ import {
   MATTE,
   GLASSY,
   LIT,
+  SIGN,
   made,
   madeOf,
   finishOf,
@@ -256,11 +257,23 @@ function picture(b, axis, at, a, z0, w, h, ink) {
 
       if (c === null) continue;
 
+      //lit at night, as every sign is
       if (axis === "y")
-        b.push(box(a + i, a + i + 1, at - 0.15, at, z0 + j, z0 + j + 1, c));
+        b.push(
+          box(a + i, a + i + 1, at - 0.15, at, z0 + j, z0 + j + 1, c, SIGN),
+        );
       else
         b.push(
-          box(at - 0.15, at, a + w - i - 1, a + w - i, z0 + j, z0 + j + 1, c),
+          box(
+            at - 0.15,
+            at,
+            a + w - i - 1,
+            a + w - i,
+            z0 + j,
+            z0 + j + 1,
+            c,
+            SIGN,
+          ),
         );
     }
 }
@@ -547,7 +560,7 @@ function smallShop(o, rnd) {
   var firm = SMALL_BRANDS[o.awning],
     sign = firm ? BRANDS[firm].main : P.sign;
 
-  b.push(box(R.x0 + 1, R.x1 - 1, y - 0.6, y, 10, 13, sign));
+  b.push(box(R.x0 + 1, R.x1 - 1, y - 0.6, y, 10, 13, sign, SIGN));
   if (o.sign === "fascia") {
     if (firm) picture(b, "y", y - 0.6, R.x0 + 2, 11, 22, 2, panel(firm, 22, 2));
   } else {
@@ -691,7 +704,7 @@ function store(o, rnd) {
   b.push(box(R.x0, R.x0 + 0.8, R.y0, R.y1, h, h + 1.4, P.wall));
   b.push(box(R.x1 - 0.8, R.x1, R.y0, R.y1, h, h + 1.4, P.wall));
   b.push(box(R.x0, R.x1, R.y1 - 0.8, R.y1, h, h + 1.4, P.wall));
-  b.push(box(7, 25, R.y0, R.y0 + 0.8, h, h + 5, P.sign));
+  b.push(box(7, 25, R.y0, R.y0 + 0.8, h, h + 5, P.sign, SIGN));
   picture(b, "y", R.y0, 8, h + 0.5, 16, 4, panel(P.brand, 16, 4));
   airConditioner(b, 5, R.y1 - 9, h + 0.4);
   airConditioner(b, 21, R.y1 - 7, h + 0.4);
@@ -794,7 +807,7 @@ function mall(o, rnd) {
   b.push(box(23, 41, y - 4.3, y - 4, 1.2, h - 2, GLASS, GLASSY));
   for (var m = 25; m < 41; m += 3)
     b.push(box(m, m + 0.4, y - 4.5, y - 4.3, 1.2, h - 2, S.trim));
-  b.push(box(22, 42, y - 4.6, y - 4, h - 1.5, h + 3.5, S.band));
+  b.push(box(22, 42, y - 4.6, y - 4, h - 1.5, h + 3.5, S.band, SIGN));
   picture(b, "y", y - 4.6, 24, h - 1, 16, 4, parade(16, 4));
 
   //the roof, a glass vault along the middle of it, and air conditioning
@@ -1134,7 +1147,7 @@ function departmentAt(W, D, rows) {
         11,
         o.awning === "red" ? [200, 50, 44] : [36, 120, 72],
       );
-    b.push(box(mid - 8, mid + 8, y - 1, y, 21.8, 25.8, S.band));
+    b.push(box(mid - 8, mid + 8, y - 1, y, 21.8, 25.8, S.band, SIGN));
     picture(b, "y", y - 1, mid - 7, 22.3, 14, 3, parade(14, 3));
 
     //the roof: flat behind the cornice, a lantern of glass, plant on it
@@ -1728,7 +1741,7 @@ function carPark(layout, pylon) {
       tall = pylon.indexOf("store") === 0 ? 14 : 20;
 
     b.push(box(2, 2.8, 2, 2.8, 1.2, tall, METAL));
-    b.push(box(0.6, 9.4, 1.8, 3, tall, tall + 6.4, sign.bg));
+    b.push(box(0.6, 9.4, 1.8, 3, tall, tall + 6.4, sign.bg, SIGN));
     picture(b, "y", 1.8, 1, tall + 0.7, 8, 5, sign.ink);
   }
 
