@@ -181,19 +181,17 @@ Lighting.shines = function (renderer) {
  * Whether a building's windows are lit at this hour: every one comes on at
  * an hour of its own between half past six and nine in the evening, and
  * goes off at one of its own between half past ten and three in the
- * morning; some come on again at five for a while before the day.
+ * morning - or, one in eight, keeps them on all night, till between six and
+ * seven in the morning.
  *
  * @param seed {number} the building's own, 0..1 (see BuildingView)
  */
 function windowsOn(seed) {
   var on = SHINE_FROM + seed * 2.5,
-    off = 22.5 + ((seed * 7.31) % 1) * 4.5,
-    early = (seed * 3.77) % 1 < 0.35;
+    late = (seed * 3.77) % 1 < 0.125,
+    off = late ? 30 + ((seed * 5.93) % 1) : 22.5 + ((seed * 7.31) % 1) * 4.5;
 
-  return (
-    between(hourNow, on, off) ||
-    (early && between(hourNow, 5, 5.5 + seed * 1.5))
-  );
+  return between(hourNow, on, off);
 }
 
 //whether the street lights are on: from half past seven in the evening to

@@ -336,7 +336,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   black wherever anything else stands, so what is in front hides it - added
   in over the dark. Nothing fades - a light is on or off: every building
   puts its lights on between half past six and nine and out late at night,
-  each at hours of its own, so the windows come on one by one; the street
+  each at hours of its own, so the windows come on one by one - one in eight
+  keeping them on till the morning; the street
   lights all go on at half past seven and off at half past six in the
   morning; every car puts its lamps on and off up to three quarters of an
   hour after them, each in its own time. `?light=0` draws the city as it is painted, by the one sun of old;
