@@ -389,6 +389,10 @@ function cast(boxes, sx, sy) {
   //which way it looks, for the light to be worked out as it is drawn
   if (mode === "map") return facing(face, normal, hit.finish);
 
+  //at night: what of it shines - a pane lit behind a window - and all of
+  //it black, to hide whatever shines behind it
+  if (mode === "night") return [shine(hit, face, normal, z - best), BLACK];
+
   //a box lit already is its own colour on every face - with what it is
   //made of over it, if anything
   if (hit.finish !== undefined && hit.finish.lit)
@@ -446,13 +450,56 @@ function cast(boxes, sx, sy) {
 //how much darker a spot in another box's shadow is
 var SHADOW = 0.32;
 
+var BLACK = [0, 0, 0],
+  //what of the panes are lit at night, and the light behind them - mostly
+  //lamps, now and then the blue of a screen
+  LIT_PANES = 0.55,
+  WARM = [255, 204, 128],
+  COOL = [196, 212, 255],
+  //a street light's: sodium orange
+  LAMP_LIGHT = [255, 196, 112];
+
+/**
+ * The light a point of box b gives off at night: a lamp's own (a finish
+ * with glow); lit where it is a pane of glass in a wall (a finish with sheen) - every pane lit or not by a toss of
+ * its own, and every storey of a wall of glass by one of its own. What the
+ * toss goes by is the same whichever way the box was turned, so a turn of
+ * the camera does not switch lights on and off.
+ */
+function shine(b, face, normal, z) {
+  var f = b.finish;
+
+  //a lamp, its own light
+  if (f !== undefined && f.glow) return LAMP_LIGHT;
+
+  if (
+    f === undefined ||
+    !f.sheen ||
+    face === 2 ||
+    (normal !== null && Math.abs(normal[2]) > 0.7)
+  )
+    return BLACK;
+
+  var cx = (b.x0 + b.x1) / 2 - TILE / 2,
+    cy = (b.y0 + b.y1) / 2 - TILE / 2,
+    pane = Math.round((cx * cx + cy * cy) * 4),
+    size = Math.round((b.x1 - b.x0 + b.y1 - b.y0) * 4),
+    storey = Math.floor((z - (f.base || 0)) / (f.storey || 12)),
+    level = Math.round(b.z0 * 4) * 64 + storey;
+
+  if (hash(pane, size, level) >= LIT_PANES) return BLACK;
+
+  return hash(pane, level, size + 7) < 0.8 ? WARM : COOL;
+}
+
 /**
  * What render paints (see setMode): the picture lit by the one sun every
  * picture is painted in ("lit"), its colours with no light on them
- * ("albedo"), which way each pixel of it looks ("map"), or the colours of
- * what of it looks towards -x, -y and up, side by side - the three adding up
- * to the albedo ("faces") - for the light to be worked out as it is drawn,
- * wherever the sun is.
+ * ("albedo"), which way each pixel of it looks ("map"), the colours of what
+ * of it looks towards -x, -y and up, side by side - the three adding up to
+ * the albedo ("faces") - for the light to be worked out as it is drawn,
+ * wherever the sun is; or, for the night, what of it shines and the whole of
+ * it in black, side by side ("night").
  */
 var mode = "lit";
 
@@ -937,7 +984,7 @@ function render(boxes) {
   h = Math.ceil(maxY) - minY;
   pixels = [];
 
-  if (mode === "faces") return sideBySide(boxes, minX, minY, w, h);
+  if (sections() > 1) return sideBySide(boxes, minX, minY, w, h, sections());
 
   for (j = 0; j < h; j++) {
     for (i = 0; i < w; i++)
@@ -948,29 +995,56 @@ function render(boxes) {
 }
 
 /**
- * The three faces' pictures (see mode) side by side in one, each w across -
- * what looks towards -x, then -y, then up - its pivot that of the first.
+ * The n pictures a mode paints at once (see mode) side by side in one, each
+ * w across, all from the one ray per pixel - its pivot that of the first.
  */
-function sideBySide(boxes, minX, minY, w, h) {
-  var rows = [[], [], []],
+function sideBySide(boxes, minX, minY, w, h, n) {
+  var rows = [],
     pixels = [],
     i,
     j,
     k,
     c;
 
+  for (k = 0; k < n; k++) rows.push([]);
+
   for (j = 0; j < h; j++) {
     for (i = 0; i < w; i++) {
       c = cast(boxes, minX + i + 0.5, minY + j + 0.5);
-      for (k = 0; k < 3; k++) rows[k].push(c === null ? null : c[k]);
+      for (k = 0; k < n; k++) rows[k].push(c === null ? null : c[k]);
     }
-    for (k = 0; k < 3; k++) {
+    for (k = 0; k < n; k++) {
       for (i = 0; i < w; i++) pixels.push(rows[k][i]);
       rows[k] = [];
     }
   }
 
-  return { w: w * 3, h: h, pixels: pixels, pivotX: -minX, pivotY: -minY };
+  return { w: w * n, h: h, pixels: pixels, pivotX: -minX, pivotY: -minY };
+}
+
+/**
+ * How many pictures side by side the mode paints (see mode): three for the
+ * faces, two for the night, one for anything else.
+ */
+function sections() {
+  return mode === "faces" ? 3 : mode === "night" ? 2 : 1;
+}
+
+function getMode() {
+  return mode;
+}
+
+/**
+ * A colour as each of the faces' pictures has it (see mode) on a surface
+ * looking along normal: for whatever paints over a picture after it is
+ * painted - a stripe on a road.
+ */
+function facesOf(color, normal) {
+  var c = shade(color, 2);
+
+  return weights(null, normal, undefined).map(function (k) {
+    return [c[0] * k, c[1] * k, c[2] * k];
+  });
 }
 
 /**
@@ -1107,6 +1181,9 @@ export {
   measure,
   render,
   setMode,
+  getMode,
+  sections,
+  facesOf,
   paintTiles,
   toImage,
   blit,

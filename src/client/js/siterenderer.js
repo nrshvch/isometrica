@@ -65,15 +65,9 @@ SiteRenderer.prototype.render = function (
   var overlays = self.overlays,
     buffer = self.buf,
     now = performance.now() + self.phase,
-    faded = self.opacity !== 1,
     i;
 
   if (overlays.length === 0) return;
-
-  if (faded) {
-    layer.save();
-    layer.globalAlpha = self.opacity;
-  }
 
   for (i = 0; i < overlays.length; i++) {
     var o = overlays[i],
@@ -94,23 +88,22 @@ SiteRenderer.prototype.render = function (
 
     var sprite = look.sprite;
 
-    if (sprite.width === 0 || !sprite.acquire()) continue;
+    if (sprite.width === 0) continue;
 
-    layer.drawImage(
-      sprite.sourceImage,
-      sprite.offsetX,
-      sprite.offsetY,
-      sprite.width,
-      sprite.height,
-      (buffer[0] - look.pivotX + dx) | 0,
-      (buffer[1] - look.pivotY + dy) | 0,
-      sprite.width,
-      sprite.height,
+    //as faded as the site, and lit as it is (client/lighting)
+    engine.SpriteRenderer.picture(
+      layer,
+      self,
+      sprite,
+      Math.floor(buffer[0] - look.pivotX + dx + 0.5),
+      Math.floor(buffer[1] - look.pivotY + dy + 0.5),
     );
   }
-
-  if (faded) layer.restore();
 };
+
+//drawn in every pass of the light, not only where things look up (engine
+//Canvas2dRenderer drawLit)
+SiteRenderer.prototype.litPasses = true;
 
 /**
  * Where the digger is now along its way, 0 where it started and 1 where it

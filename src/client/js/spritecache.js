@@ -55,6 +55,9 @@ function Sheet(url, generated) {
   //the picture once it has loaded
   this.image = null;
   this.loading = null;
+  //for a picture of several side by side (see lookSheet), which of them have
+  //anything but black in them, bit k for the k-th - told once it is painted
+  this.sides = 0;
 }
 
 /**
@@ -121,6 +124,7 @@ function addGenerated(self, meta) {
       name: name,
       gen: meta.generator,
       key: s.key !== undefined ? s.key : name,
+      faced: meta.faced === true || s.faced === true,
     });
     self.frames[name] = {
       sheet: name,
@@ -144,6 +148,59 @@ function json(url, options) {
     return response.json();
   });
 }
+
+/**
+ * The sheet a generated picture is painted on another way, for the light to
+ * be worked out as it is drawn (shared/gen/isobox setMode): "faces", its
+ * faces side by side, or "night", what of it shines and the whole of it in
+ * black - or null for a picture on a sheet that cannot be (one drawn by
+ * hand, or painted other than out of boxes).
+ */
+SpriteCache.prototype.lookSheet = function (sheet, look) {
+  var g = sheet.generated;
+
+  if (g === null || g.faced !== true) return null;
+
+  var name = g.name + "#" + look;
+
+  return (
+    this.sheets[name] ||
+    (this.sheets[name] = new Sheet(null, {
+      name: name,
+      gen: g.gen,
+      key: g.key,
+      look: look,
+      faced: true,
+    }))
+  );
+};
+
+/**
+ * The name of frame f of a generated picture that moves - water's waves,
+ * named in its generator's data (shared/gen/catalog describe) - made
+ * drawable the first time it is asked for: the same size and pivot, painted
+ * by the same generator, with @t<f> after its key.
+ */
+SpriteCache.prototype.frameName = function (name, f) {
+  var frame = this.frames[name];
+
+  if (frame === undefined) return name;
+
+  var g = this.sheets[frame.sheet].generated,
+    out = name + "@t" + f;
+
+  if (g !== null && this.frames[out] === undefined) {
+    this.sheets[out] = new Sheet(null, {
+      name: out,
+      gen: g.gen,
+      key: g.key + "@t" + f,
+      faced: g.faced,
+    });
+    this.frames[out] = Object.assign({}, frame, { sheet: out });
+  }
+
+  return out;
+};
 
 SpriteCache.prototype.has = function (name) {
   return this.frames[name] !== undefined;

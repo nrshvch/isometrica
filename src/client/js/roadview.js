@@ -10,6 +10,7 @@ import RenderLayer from "client/renderlayer";
 import Config from "./config";
 import Core from "core/main";
 import View from "./view";
+import Glow from "./glow";
 
 var Terrain = Core.Terrain;
 
@@ -218,6 +219,33 @@ function addLight(parent, name) {
   sprite.layer = RenderLayer.buildingsLayer;
   part.addComponent(sprite);
   setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+
+  addPool(parent, name.split("/").pop());
+}
+
+/**
+ * Hangs under parent the pool of light its street light casts at night
+ * (client/glow), round the spot under the lamp: where that is on the tile,
+ * the roads' generator says (shared/gen/roads lampAt) - x - y across the
+ * screen from the middle of the tile, (x + y) / 2 up it.
+ */
+function addPool(parent, at) {
+  var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    lamp = roads && roads.lamps ? roads.lamps[at] : null;
+
+  if (!lamp) return;
+
+  var pool = Glow.lampPool(),
+    part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer(),
+    dx = lamp[0] - 16,
+    dy = lamp[1] - 16;
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  part.addComponent(sprite);
+  sprite.setSprite(pool);
+  sprite.setPivot(pool.pivotX - (dx - dy), pool.pivotY + (dx + dy) / 2);
   parent.transform.addChild(part.transform);
 }
 

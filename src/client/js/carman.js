@@ -11,6 +11,8 @@ import SmokeScript from "./components/smokeScript";
 import VTime from "core/vtime";
 import CoreConfig from "core/config";
 import BuildingClassCode from "data/classcode";
+import Lighting from "./lighting";
+import Glow from "./glow";
 
 var Terrain = Core.Terrain;
 
@@ -922,9 +924,20 @@ VehicleRenderer.prototype.render = function (
     self,
   );
 
-  var lit = self.lit;
+  var lit = self.lit,
+    pass = engine.SpriteRenderer.pass;
 
-  if (lit === null) return;
+  //at night, its headlights on the road ahead (client/glow)
+  if (pass === Lighting.SHINE) headlights(self, layer);
+
+  //a lamp shines where things look up by day, and with what shines at
+  //night; in the other passes of the light the car hides what is behind it
+  //(client/lighting)
+  if (
+    lit === null ||
+    (pass >= 0 && pass !== Lighting.UP && pass !== Lighting.SHINE)
+  )
+    return;
 
   var sprite = lit.sprite,
     flashes = self.flashes;
@@ -945,12 +958,35 @@ VehicleRenderer.prototype.render = function (
     sprite.offsetY,
     sprite.width,
     sprite.height,
-    (buffer[0] - lit.pivotX) | 0,
-    (buffer[1] - lit.pivotY) | 0,
+    Math.floor(buffer[0] - lit.pivotX + 0.5),
+    Math.floor(buffer[1] - lit.pivotY + 0.5),
     sprite.width,
     sprite.height,
   );
 };
+
+//drawn in every pass of the light (engine Canvas2dRenderer drawLit)
+VehicleRenderer.prototype.litPasses = true;
+
+function headlights(self, layer) {
+  var car = self.gameObject !== null ? self.gameObject.car : undefined;
+
+  if (!car || car.heading === null || self._sprite === null) return;
+
+  //how long it is: across the screen its picture is as long as it is and as
+  //wide, about 6 (shared/gen/vehicles)
+  var length = Math.max(8, self._sprite.width - 6),
+    beam = Glow.headlights(car.heading, length),
+    buffer = self.buf;
+
+  engine.SpriteRenderer.picture(
+    layer,
+    self,
+    beam,
+    Math.floor(buffer[0] - beam.pivotX + 0.5),
+    Math.floor(buffer[1] - beam.pivotY + 0.5),
+  );
+}
 
 function Car(man) {
   engine.GameObject.init(this, "car");

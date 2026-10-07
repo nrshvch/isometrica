@@ -309,6 +309,31 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the
   street it stands on.
+- The city is lit as it is drawn, by the hour of the game's clock
+  (`src/client/js/lighting.js`): the sun comes up at six behind the walls
+  looking one way, goes over at noon and down at eight in the evening behind
+  the walls looking the other, lower and redder towards either end of the
+  day, and the shade goes from sky blue to the dark blue of night. Every
+  picture painted out of boxes is painted as its faces side by side too - what
+  of it looks one way, the other, and up, black where a pixel looks another
+  way (`src/shared/gen/isobox.js` setMode) - and the ground, the roads and the
+  buildings are drawn into one canvas for each face (`vendor/engine`
+  Canvas2dRenderer drawLit), each multiplied by the light falling that way
+  and the three added up: drawImage, multiply and lighter only, so nothing
+  leaves the fast path and what is half see-through still comes out right.
+  What is not painted out of boxes - trees, cars, the ground - is lit as if
+  it looked up. At night a fourth canvas holds what shines: the lit panes of
+  every window, a street light's lamp and the pool it throws on the road, a
+  car's headlights (`src/client/js/glow.js`) - black wherever anything else
+  stands, so what is in front hides it - added in over the dark; every
+  building puts its lights on of an evening and out late at night at hours of
+  its own. `?light=0` draws the city as it is painted, by the one sun of old;
+  `/lab/lighting.html` is the bench the ways of doing it were weighed on.
+- The sea moves: every tile of water is painted in eight frames, its
+  ripples running on a wave across it and its glints flashing one after
+  another (`src/shared/gen/terrain.js` ripples), shown in turn by
+  `src/client/js/animatedsprite.js` - the way Transport Tycoon's water
+  moves, pixel for pixel.
 - Whatever is painted out of boxes - buildings, roads, vehicles - keeps to
   the pixels the way a picture drawn by hand does (`src/shared/gen/isobox.js`
   snap): every box is snapped to whole units before it is painted, so an
