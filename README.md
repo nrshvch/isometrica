@@ -311,6 +311,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   street it stands on.
 - The game's clock moves on a minute every second (`src/core/vtime.js`), a
   day going by in 24 minutes.
+- The game is drawn at most 30 frames a second (`vendor/engine/game.js`),
+  and holds still - its clock and its drawing - while the page is out of
+  sight (`src/client/js/vkaria.js`).
 - The city is lit as it is drawn, by the hour of the game's clock
   (`src/client/js/lighting.js`): the sun comes up at six behind the walls
   looking one way, goes over at noon and down at eight in the evening behind
