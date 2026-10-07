@@ -916,21 +916,19 @@ VehicleRenderer.prototype.render = function (
   viewport,
   self,
 ) {
+  engine.SpriteRenderer.prototype.render.call(
+    self,
+    layer,
+    viewportRenderer,
+    viewport,
+    self,
+  );
+
   var lit = self.lit,
     pass = engine.SpriteRenderer.pass;
 
-  //at night it does not hide what shines behind it: the pool of a street
-  //light it drives through shows through it, and so lights it up
-  //(client/lighting) - and its headlights light the road ahead (client/glow)
+  //at night, its headlights on the road ahead (client/glow)
   if (pass === Lighting.SHINE) headlights(self, layer);
-  else
-    engine.SpriteRenderer.prototype.render.call(
-      self,
-      layer,
-      viewportRenderer,
-      viewport,
-      self,
-    );
 
   //a lamp shines where things look up by day, and with what shines at
   //night; in the other passes of the light the car hides what is behind it
@@ -969,6 +967,10 @@ VehicleRenderer.prototype.render = function (
 
 //drawn in every pass of the light (engine Canvas2dRenderer drawLit)
 VehicleRenderer.prototype.litPasses = true;
+
+//its headlights and tail lights are on all night (client/cachedsprite
+//lightPass)
+VehicleRenderer.prototype.lamps = true;
 
 function headlights(self, layer) {
   var car = self.gameObject !== null ? self.gameObject.car : undefined;

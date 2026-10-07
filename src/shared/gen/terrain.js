@@ -808,7 +808,7 @@ function ripples(s, palette, light, dark) {
   else if (ripple < -0.93 && dash < -0.25) c = mix(c, dark, 0.5);
   //and here and there a glint, coming and going in turn as the frames go
   //round (s.t)
-  else if (s.random(5) < 0.05 && (s.random(6) + s.t) % 1 < 0.25)
+  else if (s.random(5) < 0.05 && (s.random(6) + s.t) % 1 < 1 / WAVE_FRAMES)
     c = mix(c, light, 0.35);
 
   return grain(c, s, 0.03, 2);
@@ -1450,8 +1450,8 @@ Out.prototype.put = function (p, c, alpha) {
 
 //water's frames: how many make a round of its ripples (see ripples), and
 //how long each is shown, in ms
-var WAVE_FRAMES = 8,
-  WAVE_MS = 220;
+var WAVE_FRAMES = 3,
+  WAVE_MS = 440;
 
 /**
  * A diffuse tile: the tileset's base tile of that slope where its ground
@@ -1611,10 +1611,11 @@ function underLine(beyond, edge, p, salt, k, clump) {
  * is flat, the water of the set's own tiles; the beach is lit as the ground
  * under it is.
  */
-function paintShore(set, slope, surf, light, seed, look) {
+function paintShore(set, slope, surf, light, seed, look, t) {
   var out = new Out(look, slope, light),
     image = out.image,
-    sampler = new Sampler(seed + "/" + set.id, 0, slope),
+    //its water ripples as the water's tiles do, frame by frame (ripples)
+    sampler = new Sampler(seed + "/" + set.id, 0, slope, t),
     z = heights(slope),
     low = Math.min(z.w, z.n, z.e, z.s),
     key = seed + "/shore",
@@ -1778,7 +1779,7 @@ export function createPainter(sources, o) {
     return slope !== FLAT;
   }
 
-  function shore(id, slope, look) {
+  function shore(id, slope, look, f) {
     if (!hasShore(slope)) return null;
 
     return paintShore(
@@ -1788,6 +1789,7 @@ export function createPainter(sources, o) {
       lightOf(),
       o.seed,
       look,
+      f === undefined ? undefined : f / WAVE_FRAMES,
     );
   }
 
@@ -1805,7 +1807,8 @@ export function createPainter(sources, o) {
     /**
      * One tile, by where the manifest says it is - "grass/base/2222_0.png",
      * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png" - and for
-     * water, a frame of its ripples after it: "water_deep/base/2222_1.png@t3"
+     * water and its shore, a frame of its ripples after it:
+     * "water_deep/base/2222_1.png@t2", "water_shallow/shore/2101.png@t1"
      * - painted as look has it (see Out): "faces", "night", or lit.
      */
     paint: function (rel, look) {
@@ -1835,7 +1838,12 @@ export function createPainter(sources, o) {
         );
       if (m[2] === "diffuse") return diffuse(m[1], m[3], m[4], +m[5], look);
 
-      var picture = shore(m[1], m[3], look);
+      var picture = shore(
+        m[1],
+        m[3],
+        look,
+        frame === null ? undefined : +frame[1],
+      );
 
       if (picture === null) throw new Error("no such tile: " + rel);
 

@@ -103,8 +103,16 @@ function tileSprite(x, y, type, slope) {
     !gridShown,
   );
 
+  //the water moves: a tile of it, and the water up a shore over the ground
   if ((kind === "water" || kind === "deep") && terrain.waves)
-    return waves(parts, terrain.waves);
+    return waves(parts, terrain.waves, 0);
+  if (
+    kind === "shore" &&
+    terrain.waves &&
+    parts.length > 1 &&
+    /\/shore\//.test(parts[1])
+  )
+    return waves(parts, terrain.waves, 1);
 
   return vkaria.sprites.getComposite(parts);
 }
@@ -114,11 +122,11 @@ function tileSprite(x, y, type, slope) {
 var moving = {};
 
 /**
- * The sea's waves on a tile of water: its parts, its own water frame by
- * frame (client/animatedsprite) - what spills over it and the grid laid
- * over it as they are.
+ * The sea's ripples on a tile of water, or on the water up a shore: its
+ * parts, the one at index - its water - frame by frame
+ * (client/animatedsprite), the rest as they are.
  */
-function waves(parts, w) {
+function waves(parts, w, index) {
   var key = parts.join("+");
 
   if (moving[key] === undefined) {
@@ -127,7 +135,9 @@ function waves(parts, w) {
     for (var f = 0; f < w.frames; f++)
       frames.push(
         vkaria.sprites.getComposite(
-          [vkaria.sprites.frameName(parts[0], f)].concat(parts.slice(1)),
+          parts.map(function (part, i) {
+            return i === index ? vkaria.sprites.frameName(part, f) : part;
+          }),
         ),
       );
 

@@ -933,9 +933,43 @@ export function paint(name, look) {
 
   //painted for the light to be worked out as it is drawn (shared/gen/looks)
   if (look === "faces") return renderFaces(boxes);
-  if (look === "night") return Looks.night(toImage(render(boxes)));
+  if (look === "night") return renderNight(boxes);
 
   return toImage(render(boxes));
+}
+
+/**
+ * For the night (shared/gen/looks): its headlights shining white and its
+ * tail lights red, and all of it black.
+ */
+function renderNight(boxes) {
+  var at = measure(boxes),
+    w = at.w,
+    h = at.h,
+    out = Looks.blank(w, h, 2);
+
+  for (var j = 0; j < h; j++)
+    for (var i = 0; i < w; i++) {
+      if (cast(boxes, at.x + i + 0.5, at.y + j + 0.5) === null) continue;
+
+      Looks.put(out, w, 0, i, j, shines(hitColor));
+      Looks.put(out, w, 1, i, j, [0, 0, 0]);
+    }
+
+  return out;
+}
+
+//what a colour of a vehicle shines at night: its headlights and its tail
+//lights, nothing else
+function shines(c) {
+  if (same(c, HEADLIGHT)) return [255, 248, 214];
+  if (same(c, TAILLIGHT)) return [255, 36, 24];
+
+  return [0, 0, 0];
+}
+
+function same(a, b) {
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
 }
 
 //a lamp's picture on the picture of what looks up, black on the others
