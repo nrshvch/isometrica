@@ -330,17 +330,17 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   drawn by hand, are lit as if they looked up. At night a fourth canvas holds
   what shines: the lit panes of every window, the signs and billboards of the
   shops and offices in their own colours, a street light's lamp and the pool
-  it throws on the road, a car's headlights (`src/client/js/glow.js`) -
+  it throws on the road, a car's headlights shining white with their beams
+  on the road ahead (`src/client/js/glow.js`) and its tail lights red -
   black wherever anything else stands, so what is in front hides it - added
   in over the dark; every building puts its lights on of an evening and out
-  late at night at hours of its own. A car does not hide what shines behind
-  it, so the pool of a street light it drives through lights it up. `?light=0` draws the city as it is painted, by the one sun of old;
+  late at night at hours of its own. `?light=0` draws the city as it is painted, by the one sun of old;
   `/lab/lighting.html` is the bench the ways of doing it were weighed on.
-- The sea moves: every tile of water is painted in eight frames, its
-  ripples running on a wave across it and its glints flashing one after
-  another (`src/shared/gen/terrain.js` ripples), shown in turn by
-  `src/client/js/animatedsprite.js` - the way Transport Tycoon's water
-  moves, pixel for pixel.
+- The sea moves: every tile of water, and the water up every shore, is
+  painted in three frames, its ripples running on a wave across it and its
+  glints flashing one after another (`src/shared/gen/terrain.js` ripples),
+  shown in turn for 440 ms each by `src/client/js/animatedsprite.js` - the
+  way Transport Tycoon's water moves, pixel for pixel.
 - Whatever is painted out of boxes - buildings, roads, vehicles - keeps to
   the pixels the way a picture drawn by hand does (`src/shared/gen/isobox.js`
   snap): every box is snapped to whole units before it is painted, so an
