@@ -510,12 +510,13 @@ function addParts(parent, compound, turns, opacity, layer, look, seed) {
  * Hangs the pieces of something put together out of parts under parent -
  * see client/compoundbuilding pieces - each tile at its own place - every
  * piece with the hours its lights are on by at night, the same for the whole
- * building (client/lighting windowsOn).
+ * building (client/lighting windowsOn), and which of its two ways it is lit
+ * at night, a toss of its own (client/cachedsprite nightSection).
  */
 function addPieces(parent, pieces, opacity, layer, seed) {
   var windows = seed === undefined ? undefined : windowsSeed(seed);
 
-  pieces.forEach(function (piece) {
+  pieces.forEach(function (piece, i) {
     //a tile of a site with something moving over it draws that too
     var renderer =
         piece.overlays.length > 0
@@ -530,6 +531,10 @@ function addPieces(parent, pieces, opacity, layer, seed) {
     renderer.pivotY = piece.pivotY;
     renderer.setSprite(piece.sprite);
     renderer.windows = windows;
+    renderer.variant =
+      seed === undefined || windowsSeed((seed | 0) * 131 + i * 7 + 3) < 0.5
+        ? 0
+        : 1;
 
     go.addComponent(renderer);
     //the renderer resets its opacity once it is attached

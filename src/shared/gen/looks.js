@@ -4,13 +4,16 @@
  * out from as it is drawn - as shared/gen/isobox setMode has them: "faces",
  * what of it looks towards -x, -y and up side by side, black where a pixel
  * looks another way, adding up to its colours with no light on them; and
- * "night", what of it shines with the first of its lights on, what with more
- * of them, and the whole of it in black, side by side.
+ * "night", what of it shines with the first of its lights on and with more
+ * of them, one way and another, the whole of it in black, and the light it
+ * throws on the ground, side by side (NIGHT).
  */
 
 //how many pictures side by side the night is painted in: what shines with
-//the first lights on, with more of them, and the whole of it in black
-export var NIGHT = 3;
+//the first lights on and with more of them, one way and another, the whole
+//of it in black, and the light it throws on the ground round it (see
+//shared/gen/isobox NIGHT)
+export var NIGHT = 6;
 
 /**
  * How much of a surface looking along n - x, y and up as the boxes have

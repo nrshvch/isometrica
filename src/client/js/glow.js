@@ -98,19 +98,24 @@ var pool = null,
  * the lamp is.
  */
 function lampPool() {
-  if (pool === null)
+  if (pool === null) {
     pool = paint(
-      13,
+      POOL_REACH,
       function (x, y) {
-        var d = Math.sqrt(x * x + y * y) / 13;
+        var d = Math.sqrt(x * x + y * y) / POOL_REACH;
 
         return d < 1 ? 0.9 * (1 - d * d) : 0;
       },
       [255, 190, 110],
     );
+    pool.reach = POOL_REACH;
+  }
 
   return pool;
 }
+
+//how far the pool under a street light reaches from the spot under the lamp
+var POOL_REACH = 13;
 
 /**
  * The beams of a car's headlights going heading as it is seen ("x+", "y-"

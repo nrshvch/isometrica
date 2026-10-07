@@ -389,13 +389,16 @@ function cast(boxes, sx, sy) {
   //which way it looks, for the light to be worked out as it is drawn
   if (mode === "map") return facing(face, normal, hit.finish);
 
-  //at night: what of it shines - a pane lit behind a window - with the
-  //first of the lights on and with more of them, and all of it black, to
-  //hide whatever shines behind it
+  //at night: what of it shines - a pane lit behind a window - in either of
+  //its two ways, with the first of the lights on and with more of them; all
+  //of it black, to hide whatever shines behind it; and the light thrown on
+  //the ground round it by what shines near
   if (mode === "night") {
-    var glows = shine(hit, face, normal, z - best);
+    var glows = shine(hit, face, normal, x + best, y + best, z - best);
 
-    return [glows[0], glows[1], BLACK];
+    glows.push(BLACK, spill(boxes, hit, face, x + best, y + best, z - best));
+
+    return glows;
   }
 
   //a box lit already is its own colour on every face - with what it is
@@ -462,33 +465,60 @@ var BLACK = [0, 0, 0],
   //lamps, now and then the blue of a screen
   FIRST_PANES = 0.2,
   MORE_PANES = 0.45,
+  //how wide a pane of a long run of glass is, along the wall
+  PANE_W = 4,
   WARM = [255, 204, 128],
   COOL = [196, 212, 255],
   //a street light's: sodium orange
   LAMP_LIGHT = [255, 196, 112];
 
 /**
- * The light a point of box b gives off at night, with the first of a
- * building's lights on and with more of them: a lamp's own (a finish with
- * glow), a sign's (with sign), either way; lit where it is a pane of glass
- * in a wall (a finish with sheen) - every pane lit or not by a toss of its
- * own, and every storey of a wall of glass by one of its own, a few of them
- * first and more later, never all. What the toss goes by is the same
- * whichever way the box was turned, so a turn of the camera does not switch
- * lights on and off.
+ * The light a point x, y, z of box b gives off at night, either of two ways
+ * - with the first of a building's lights on, with more of them, and the
+ * same over again with other windows lit - for a storey that comes up again
+ * and again not to be lit alike every time (client/cachedsprite). A lamp's
+ * own (a finish with glow) and a sign's (with sign) shine all four ways; a
+ * pane of glass in a wall (a finish with sheen) is lit or not by a toss of
+ * its own, a few first and more later, never all - a long run of glass
+ * being panes PANE_W across, and every storey of it on its own. What the
+ * toss goes by is the same whichever way the box was turned, so a turn of
+ * the camera does not switch lights on and off.
  *
- * @returns {Array[]} its colour with the first lights on, and with more
+ * @returns {Array[]} its colour with the first lights on and with more, one
+ *          way and then the other
  */
-function shine(b, face, normal, z) {
+function shine(b, face, normal, x, y, z) {
   var f = b.finish,
     c;
 
   //a lamp, its own light; a sign, its own colour
-  if (f !== undefined && f.glow) return [LAMP_LIGHT, LAMP_LIGHT];
+  if (f !== undefined && f.glow)
+    return [LAMP_LIGHT, LAMP_LIGHT, LAMP_LIGHT, LAMP_LIGHT];
   if (f !== undefined && f.sign) {
     c = lighter(b.color, 0.1);
-    return [c, c];
+    return [c, c, c, c];
   }
+
+  var lit = paneLit(b, face, normal, x, y, z);
+
+  if (lit === null) return [BLACK, BLACK, BLACK, BLACK];
+
+  return [
+    lit.a < FIRST_PANES ? lit.c : BLACK,
+    lit.a < MORE_PANES ? lit.c : BLACK,
+    lit.b < FIRST_PANES ? lit.c : BLACK,
+    lit.b < MORE_PANES ? lit.c : BLACK,
+  ];
+}
+
+/**
+ * The tosses a pane of glass at x, y, z of box b is lit by, one for either
+ * way of lighting a storey (a, b, 0..1 - lit with the first lights under
+ * FIRST_PANES, with more under MORE_PANES), and the light behind it (c);
+ * null for what is no pane of glass in a wall.
+ */
+function paneLit(b, face, normal, x, y, z) {
+  var f = b.finish;
 
   if (
     f === undefined ||
@@ -496,22 +526,90 @@ function shine(b, face, normal, z) {
     face === 2 ||
     (normal !== null && Math.abs(normal[2]) > 0.7)
   )
-    return [BLACK, BLACK];
+    return null;
 
   var cx = (b.x0 + b.x1) / 2 - TILE / 2,
     cy = (b.y0 + b.y1) / 2 - TILE / 2,
     pane = Math.round((cx * cx + cy * cy) * 4),
     size = Math.round((b.x1 - b.x0 + b.y1 - b.y0) * 4),
     storey = Math.floor((z - (f.base || 0)) / (f.storey || 12)),
-    level = Math.round(b.z0 * 4) * 64 + storey;
+    level = Math.round(b.z0 * 4) * 64 + storey,
+    //along the wall: a long run of glass is so many panes
+    along = face === 1 ? x - b.x0 : y - b.y0,
+    long = face === 1 ? b.x1 - b.x0 : b.y1 - b.y0,
+    col = long > PANE_W * 1.5 ? Math.floor(along / PANE_W) : 0;
 
-  var toss = hash(pane, size, level);
+  return {
+    a: hash(pane + col * 7919, size, level),
+    b: hash(pane + col * 7919 + 4099, size + 3, level),
+    c: hash(pane + col * 7919, level, size + 7) < 0.8 ? WARM : COOL,
+  };
+}
 
-  if (toss >= MORE_PANES) return [BLACK, BLACK];
+//how far the light of what shines falls on the ground round it, and how
+//bright it is there at the most
+var SPILL_REACH = 9,
+  SPILL = 0.55;
 
-  c = hash(pane, level, size + 7) < 0.8 ? WARM : COOL;
+/**
+ * The light thrown at night on the ground at x, y, z of box b - a surface
+ * looking up, down by the foot of the building - by what shines near it:
+ * signs, lamps, and the glass of the ground storey, lit (client/lighting
+ * adds it to the light on what looks up). Black anywhere else.
+ */
+function spill(boxes, b, face, x, y, z) {
+  if (face !== 2 || z > SPILL_LOW) return BLACK;
 
-  return [toss < FIRST_PANES ? c : BLACK, c];
+  var from = emitters(boxes),
+    r = 0,
+    g = 0,
+    bl = 0;
+
+  for (var i = 0; i < from.length; i++) {
+    var e = from[i],
+      dx = Math.max(e.box.x0 - x, 0, x - e.box.x1),
+      dy = Math.max(e.box.y0 - y, 0, y - e.box.y1),
+      dz = Math.max(e.box.z0 - z, 0, z - e.box.z1),
+      d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (d >= SPILL_REACH) continue;
+
+    var k = (1 - d / SPILL_REACH) * (1 - d / SPILL_REACH) * SPILL;
+
+    r += e.color[0] * k;
+    g += e.color[1] * k;
+    bl += e.color[2] * k;
+  }
+
+  return [Math.min(255, r), Math.min(255, g), Math.min(255, bl)];
+}
+
+//how high the ground the light falls on can be: a pavement, a step
+var SPILL_LOW = 4;
+
+//what of a picture's boxes throws light on the ground round it at night,
+//each with its light - worked out once a picture
+var emitting = new WeakMap();
+
+function emitters(boxes) {
+  var out = emitting.get(boxes);
+
+  if (out !== undefined) return out;
+
+  out = [];
+  boxes.forEach(function (b) {
+    var f = b.finish;
+
+    if (f === undefined) return;
+    if (f.glow) out.push({ box: b, color: LAMP_LIGHT });
+    else if (f.sign) out.push({ box: b, color: lighter(b.color, 0.1) });
+    //the glass of a shop window or the ground storey's windows
+    else if (f.sheen && b.z0 < (f.base || 0) + (f.storey || 12))
+      out.push({ box: b, color: WARM });
+  });
+  emitting.set(boxes, out);
+
+  return out;
 }
 
 /**
@@ -520,11 +618,17 @@ function shine(b, face, normal, z) {
  * ("albedo"), which way each pixel of it looks ("map"), the colours of what
  * of it looks towards -x, -y and up, side by side - the three adding up to
  * the albedo ("faces") - for the light to be worked out as it is drawn,
- * wherever the sun is; or, for the night, what of it shines with the first
- * of its lights on, what with more of them, and the whole of it in black,
- * side by side ("night").
+ * wherever the sun is; or, for the night, what of it shines - with the
+ * first of its lights on and with more of them, one way and another - the
+ * whole of it in black, and the light it throws on the ground round it,
+ * side by side ("night", see NIGHT).
  */
 var mode = "lit";
+
+//how many pictures the night is painted in, side by side: what shines one
+//way, with the first lights on and with more, the same the other way, all
+//of it in black, and the light it throws on the ground round it
+var NIGHT = 6;
 
 function setMode(m) {
   mode = m;
@@ -1047,10 +1151,10 @@ function sideBySide(boxes, minX, minY, w, h, n) {
 
 /**
  * How many pictures side by side the mode paints (see mode): three for the
- * faces, three for the night, one for anything else.
+ * faces, NIGHT for the night, one for anything else.
  */
 function sections() {
-  return mode === "faces" || mode === "night" ? 3 : 1;
+  return mode === "faces" ? 3 : mode === "night" ? NIGHT : 1;
 }
 
 function getMode() {
