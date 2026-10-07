@@ -15,7 +15,12 @@
  *
  * At night there is a fourth canvas, of what shines - the lit panes of every
  * window, black wherever anything else stands, so that a building in front
- * hides the windows behind it - added in last, over the dark. Nothing fades:
+ * hides the windows behind it - added in last, over the dark; and a fifth,
+ * of the light thrown on the ground - the pools under the street lights, the
+ * beams of the headlights (client/glow), as hidden by what stands in front
+ * of them - added to the light on what looks up before that is multiplied
+ * in, so that it lights the road in the road's own colours rather than
+ * lying over it like a haze. Nothing fades:
  * a light is on or off (shines). Every building turns its lights on of an
  * evening and off late at night at times of its own (windowsOn); the street
  * lights all go on at once, and off at once in the morning (cityOn); every
@@ -33,12 +38,13 @@ import VTime from "core/vtime";
 import RenderLayer from "./renderlayer";
 import View from "./view";
 
-//the faces, and what shines, in the order they are drawn in (engine
-//SpriteRenderer.pass)
+//the faces, what shines, and the light thrown on the ground, in the order
+//they are drawn in (engine SpriteRenderer.pass)
 var LEFT = 0,
   RIGHT = 1,
   UP = 2,
-  SHINE = 3;
+  SHINE = 3,
+  GLOW = 4;
 
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
@@ -64,7 +70,7 @@ function Lighting(root) {
   this.canvases = [];
   this.contexts = [];
 
-  for (var k = 0; k < 4; k++) {
+  for (var k = 0; k < 5; k++) {
     var c = document.createElement("canvas"),
       ctx = c.getContext("2d");
 
@@ -127,7 +133,7 @@ Lighting.prototype.begin = function (viewport) {
     k;
 
   if (this.canvases[0].width !== w || this.canvases[0].height !== h)
-    for (k = 0; k < 4; k++) {
+    for (k = 0; k < 5; k++) {
       this.canvases[k].width = w;
       this.canvases[k].height = h;
       this.contexts[k].imageSmoothingEnabled = false;
@@ -135,7 +141,7 @@ Lighting.prototype.begin = function (viewport) {
 
   hourNow = this.hour();
   this.light = sun(hourNow);
-  this.passes = within(hourNow, SHINE_FROM, SHINE_TO) ? 4 : 3;
+  this.passes = within(hourNow, SHINE_FROM, SHINE_TO) ? 5 : 3;
 
   //black, so that where nothing is drawn nothing is added
   for (k = 0; k < this.passes; k++) {
@@ -153,7 +159,12 @@ Lighting.prototype.end = function (context, viewport) {
 
   over(c[LEFT], s[LEFT].color(L.left), "multiply", w, h);
   over(c[RIGHT], s[RIGHT].color(L.right), "multiply", w, h);
-  over(c[UP], s[UP].color(L.up), "multiply", w, h);
+  //and what looks up by the light on it, and at night by whatever light is
+  //thrown on it besides
+  if (this.passes > GLOW) {
+    over(c[GLOW], s[UP].color(L.up), "lighter", w, h);
+    over(c[UP], this.canvases[GLOW], "multiply", w, h);
+  } else over(c[UP], s[UP].color(L.up), "multiply", w, h);
   over(c[LEFT], this.canvases[RIGHT], "lighter", w, h);
   over(c[LEFT], this.canvases[UP], "lighter", w, h);
 
@@ -312,5 +323,6 @@ function over(ctx, src, op, w, h) {
 
 Lighting.UP = UP;
 Lighting.SHINE = SHINE;
+Lighting.GLOW = GLOW;
 
 export default Lighting;

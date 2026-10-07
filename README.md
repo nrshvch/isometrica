@@ -331,12 +331,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   face of it the ray went in through; only the stones, painted from pictures
   drawn by hand, are lit as if they looked up. At night a fourth canvas holds
   what shines: the lit panes of every window, the signs and billboards of the
-  shops and offices in their own colours, a street light's lamp and the pool
-  it throws on the road, a car's headlights shining white with their two
-  beams on the road ahead (`src/client/js/glow.js`) and its tail lights red, a
-  car parked with its lamps off -
-  black wherever anything else stands, so what is in front hides it - added
-  in over the dark. Nothing fades - a light is on or off: every building
+  shops and offices in their own colours, a street light's lamp, a car's
+  headlights shining white and its tail lights red, a car parked with its
+  lamps off - black wherever anything else stands, so what is in front hides
+  it - added in over the dark. A fifth holds the light thrown on the ground,
+  the pool under every street light and the two beams of a car's headlights
+  (`src/client/js/glow.js`), hidden as well by what is in front: it is added
+  to the light on what looks up before that is multiplied in, so it lights
+  the road and the grass in their own colours rather than lying over them
+  like a haze. Nothing fades - a light is on or off: every building
   puts a few of its lights on between half past six and nine, more of them
   a while later, and those out again a while before the last go out late at
   night, each at hours of its own, so the windows come on one by one and
