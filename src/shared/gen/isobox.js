@@ -383,7 +383,8 @@ function cast(boxes, sx, sy) {
 
   if (hit === null) return null;
 
-  var normal = face >= 3 ? hit.cuts[face - 3].n : null;
+  var normal = face >= 3 ? hit.cuts[face - 3].n : null,
+    color;
 
   //which way it looks, for the light to be worked out as it is drawn
   if (mode === "map") return facing(face, normal, hit.finish);
@@ -391,29 +392,56 @@ function cast(boxes, sx, sy) {
   //a box lit already is its own colour on every face - with what it is
   //made of over it, if anything
   if (hit.finish !== undefined && hit.finish.lit)
-    return hit.finish.material === undefined
-      ? hit.color
-      : finish(hit.color, face, null, hit.finish, x + best, y + best, z - best);
+    color =
+      hit.finish.material === undefined
+        ? hit.color
+        : finish(
+            hit.color,
+            face,
+            null,
+            hit.finish,
+            x + best,
+            y + best,
+            z - best,
+          );
+  else {
+    //unlit, every face is the colour a top is in the sun - the light it is
+    //drawn in takes the walls down from there
+    color =
+      mode !== "lit"
+        ? shade(hit.color, 2)
+        : normal === null
+          ? shade(hit.color, face)
+          : lit(hit.color, normal[0], normal[1], normal[2]);
 
-  //unlit, every face is the colour a top is in the sun - the light it is
-  //drawn in takes the walls down from there
-  var color =
-    mode === "albedo"
-      ? shade(hit.color, 2)
-      : normal === null
-        ? shade(hit.color, face)
-        : lit(hit.color, normal[0], normal[1], normal[2]);
+    if (
+      hit.finish !== undefined &&
+      hit.finish.shadow &&
+      shadowed(boxes, hit, x + best, y + best, z - best)
+    )
+      color = darker(color, SHADOW);
 
-  if (
-    hit.finish !== undefined &&
-    hit.finish.shadow &&
-    shadowed(boxes, hit, x + best, y + best, z - best)
-  )
-    color = darker(color, SHADOW);
+    if (hit.finish !== undefined)
+      color = finish(
+        color,
+        face,
+        normal,
+        hit.finish,
+        x + best,
+        y + best,
+        z - best,
+      );
+  }
 
-  return hit.finish === undefined
-    ? color
-    : finish(color, face, normal, hit.finish, x + best, y + best, z - best);
+  //of a face's picture, as much of the colour as looks that way - black
+  //where none of it does, so it still covers what is behind it
+  if (mode in SIDES) {
+    var k = weights(face, normal, hit.finish)[SIDES[mode]];
+
+    return [color[0] * k, color[1] * k, color[2] * k];
+  }
+
+  return color;
 }
 
 //how much darker a spot in another box's shadow is
@@ -422,34 +450,44 @@ var SHADOW = 0.32;
 /**
  * What render paints (see setMode): the picture lit by the one sun every
  * picture is painted in ("lit"), its colours with no light on them
- * ("albedo"), or which way each pixel of it looks ("map") - for the light to
- * be worked out as it is drawn, wherever the sun is.
+ * ("albedo"), which way each pixel of it looks ("map"), or the colours of
+ * what of it looks towards -x ("left"), -y ("right") or up ("up") - the three
+ * adding up to the albedo - for the light to be worked out as it is drawn,
+ * wherever the sun is.
  */
-var mode = "lit";
+var mode = "lit",
+  SIDES = { left: 0, right: 1, up: 2 };
 
 function setMode(m) {
   mode = m;
 }
 
 /**
+ * How much of a pixel looks towards -x, towards -y and up, adding up to one:
+ * all of a box's face one way, a slope shared out by how far it leans each
+ * way. What gives off light of its own is lit as a top is.
+ */
+function weights(face, normal, f) {
+  if (f !== undefined && f.lit) return [0, 0, 1];
+  if (normal === null)
+    return face === 0 ? [1, 0, 0] : face === 1 ? [0, 1, 0] : [0, 0, 1];
+
+  var l = Math.max(0, -normal[0]),
+    r = Math.max(0, -normal[1]),
+    u = Math.max(0, normal[2]),
+    all = l + r + u;
+
+  return all > 0 ? [l / all, r / all, u / all] : [0, 0, 1];
+}
+
+/**
  * The grey of a map (see mode) for a pixel looking that way: black where it
  * looks towards -x, white where it looks towards -y, half way between where
- * it looks up - and a slope as far between those as it leans each way. What
- * gives off light of its own is lit as a top is.
+ * it looks up - and a slope as far between those as it leans each way.
  */
 function facing(face, normal, f) {
-  var l, r, u, v;
-
-  if (f !== undefined && f.lit) v = 0.5;
-  else if (normal === null) v = face === 0 ? 0 : face === 1 ? 1 : 0.5;
-  else {
-    l = Math.max(0, -normal[0]);
-    r = Math.max(0, -normal[1]);
-    u = Math.max(0, normal[2]);
-    v = l + r + u > 0 ? (0.5 * u + r) / (l + r + u) : 0.5;
-  }
-
-  v = Math.round(v * 255);
+  var w = weights(face, normal, f),
+    v = Math.round((0.5 * w[2] + w[1]) * 255);
 
   return [v, v, v];
 }

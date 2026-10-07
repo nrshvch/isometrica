@@ -1,11 +1,18 @@
 /**
- * A bench for lighting the city as it is drawn rather than as it is painted:
- * every sprite painted twice by the generators (shared/gen/isobox setMode) -
- * its colours with no light on them, and a map of which way each pixel looks,
- * black for -x, white for -y, grey for up - the map drawn into a canvas of its
- * own in the same order as the sprites, then turned into light for wherever
- * the sun is and multiplied over the frame. drawImage only: every flat colour
- * is a 1x1 swatch stretched over the canvas.
+ * A bench for lighting the city as it is drawn rather than as it is painted,
+ * two ways, against the town as painted today:
+ *
+ * - a map: every sprite painted by the generators (shared/gen/isobox
+ *   setMode) as its colours with no light on them and a map of which way
+ *   each pixel looks, black for -x, white for -y, grey for up - the map
+ *   drawn into a canvas of its own in the same order as the sprites, then
+ *   turned into light for wherever the sun is and multiplied over the frame;
+ * - three faces: every sprite painted as what of it looks towards -x, -y
+ *   and up, each on a canvas of its own, black where a pixel looks another
+ *   way - each times the light on that face, and added up.
+ *
+ * drawImage only: every flat colour is a 1x1 swatch stretched over the
+ * canvas.
  *
  * Open /lab/lighting.html on the dev server (npm run dev).
  */
@@ -43,7 +50,7 @@ function sprite(boxes) {
   var mid = iso.project(TILE / 2, TILE / 2, 0),
     out = {};
 
-  ["lit", "albedo", "map"].forEach(function (m) {
+  ["lit", "albedo", "map", "left", "right", "up"].forEach(function (m) {
     iso.setMode(m);
     var pic = iso.render(boxes);
 
@@ -120,7 +127,7 @@ var pages = (function () {
     row = Math.max(row, h);
   });
 
-  ["lit", "albedo", "map"].forEach(function (kind) {
+  ["lit", "albedo", "map", "left", "right", "up"].forEach(function (kind) {
     var c = document.createElement("canvas"),
       ctx = c.getContext("2d");
 
@@ -181,13 +188,19 @@ var frame = document.getElementById("frame"),
   bctx = lightB.getContext("2d"),
   lightC = document.createElement("canvas"),
   cctx = lightC.getContext("2d"),
+  //what looks towards -y and up, for the three faces' way (what looks
+  //towards -x goes straight into the frame)
+  faceR = document.createElement("canvas"),
+  rctx = faceR.getContext("2d"),
+  faceU = document.createElement("canvas"),
+  uctx = faceU.getContext("2d"),
   W = 0,
   H = 0;
 
 function resize() {
   W = window.innerWidth;
   H = window.innerHeight;
-  [frame, map, lightA, lightB, lightC].forEach(function (c) {
+  [frame, map, lightA, lightB, lightC, faceR, faceU].forEach(function (c) {
     c.width = W;
     c.height = H;
     c.getContext("2d").imageSmoothingEnabled = false;
@@ -220,6 +233,10 @@ function swatch() {
 }
 
 var HALF = swatch().set(128, 128, 128),
+  BLACK = swatch().set(0, 0, 0),
+  swL = swatch(),
+  swR = swatch(),
+  swU = swatch(),
   WHITE = swatch().set(255, 255, 255),
   swA = swatch(),
   swA1 = swatch(),
@@ -332,6 +349,41 @@ function drawBoth(ox, oy) {
   }
 }
 
+function drawFaces(ox, oy) {
+  var left = pages.left,
+    right = pages.right,
+    up = pages.up;
+
+  for (var i = 0; i < scene.length; i++) {
+    var t = scene[i],
+      s = t.s,
+      p = iso.project(t.x * TILE + TILE / 2, t.y * TILE + TILE / 2, 0),
+      dx = (ox + p[0] - s.pivotX) | 0,
+      dy = (oy + p[1] - s.pivotY) | 0;
+
+    fctx.drawImage(left, s.sx, s.sy, s.w, s.h, dx, dy, s.w, s.h);
+    rctx.drawImage(right, s.sx, s.sy, s.w, s.h, dx, dy, s.w, s.h);
+    uctx.drawImage(up, s.sx, s.sy, s.w, s.h, dx, dy, s.w, s.h);
+  }
+}
+
+/**
+ * The three faces' way: each face's colours, black wherever a pixel does not
+ * look that way, times the light on that face, added up - multiply and
+ * lighter, both on the fast path, and nothing else.
+ */
+function lightFaces(L) {
+  swL.set(to255(L.left[0]), to255(L.left[1]), to255(L.left[2]));
+  swR.set(to255(L.right[0]), to255(L.right[1]), to255(L.right[2]));
+  swU.set(to255(L.top[0]), to255(L.top[1]), to255(L.top[2]));
+
+  over(fctx, swL, "multiply");
+  over(rctx, swR, "multiply");
+  over(uctx, swU, "multiply");
+  over(fctx, faceR, "lighter");
+  over(fctx, faceU, "lighter");
+}
+
 function to255(v) {
   return Math.round(Math.max(0, Math.min(1, v)) * 255);
 }
@@ -428,7 +480,24 @@ function tick(now) {
   fctx.clearRect(0, 0, W, H);
 
   if (mode === "lit") draw(fctx, "lit", ox, oy);
-  else {
+  else if (mode === "faces" || mode === "faces1") {
+    //black, so where nothing stands nothing is added
+    over(fctx, BLACK, "copy");
+    over(rctx, BLACK, "copy");
+    over(uctx, BLACK, "copy");
+    fctx.globalCompositeOperation = "source-over";
+    rctx.globalCompositeOperation = "source-over";
+    uctx.globalCompositeOperation = "source-over";
+
+    if (mode === "faces") {
+      draw(fctx, "left", ox, oy);
+      draw(rctx, "right", ox, oy);
+      draw(uctx, "up", ox, oy);
+    } else drawFaces(ox, oy);
+
+    if (showSel.value === "frame") lightFaces(sun(+timeIn.value));
+    else over(fctx, showSel.value === "map" ? faceU : faceR, "copy");
+  } else {
     //the map's backdrop looks up, so where nothing stands the light is T
     over(mctx, HALF, "copy");
     mctx.globalCompositeOperation = "source-over";
@@ -457,7 +526,7 @@ function tick(now) {
 
   stats.textContent =
     "sprites  " +
-    scene.length * (mode === "lit" ? 1 : 2) +
+    scene.length * (mode === "lit" ? 1 : /^faces/.test(mode) ? 3 : 2) +
     " draws\n" +
     "frame    " +
     avg(times).toFixed(2) +
