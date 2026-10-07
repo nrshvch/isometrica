@@ -928,7 +928,7 @@ VehicleRenderer.prototype.render = function (
     pass = engine.SpriteRenderer.pass;
 
   //at night, its headlights on the road ahead (client/glow)
-  if (pass === Lighting.SHINE) headlights(self, layer);
+  if (pass === Lighting.GLOW) headlights(self, layer);
 
   //a lamp shines where things look up by day, and with what shines at
   //night; in the other passes of the light the car hides what is behind it

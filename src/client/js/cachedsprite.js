@@ -130,7 +130,8 @@ CachedSprite.prototype.paint = function (ctx, x, y) {
 //the passes a lit layer is drawn in (engine SpriteRenderer.pass): where
 //things look up, and what shines at night
 var UP = Lighting.UP,
-  SHINE = Lighting.SHINE;
+  SHINE = Lighting.SHINE,
+  GLOW = Lighting.GLOW;
 
 //which of its pictures for the night is drawn with none, the first or more
 //of its lights on (Lighting shines, shared/gen/looks)
@@ -165,13 +166,19 @@ CachedSprite.prototype.at = null;
 CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
   var layers;
 
-  if (pass === SHINE) {
+  //what shines, or - with the light thrown on the ground - nothing, only
+  //hiding what is behind it
+  if (pass === SHINE || pass === GLOW) {
     if (flat) return null;
 
     layers = layersOf(this, "night");
     if (layers !== null && layers.acquire())
       //the first of its lights, more of them, or itself in black
-      return section(this, layers, NIGHT[Lighting.shines(renderer)]);
+      return section(
+        this,
+        layers,
+        NIGHT[pass === GLOW ? 0 : Lighting.shines(renderer)],
+      );
 
     return shadowOf(this);
   }
