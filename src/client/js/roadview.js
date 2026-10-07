@@ -217,6 +217,8 @@ function addLight(parent, name) {
     sprite = new engine.SpriteRenderer();
 
   sprite.layer = RenderLayer.buildingsLayer;
+  //its lamp lit with every other street light (client/lighting shines)
+  sprite.city = true;
   part.addComponent(sprite);
   setPiece(sprite, name);
   parent.transform.addChild(part.transform);
@@ -243,6 +245,7 @@ function addPool(parent, at) {
     dy = lamp[1] - 16;
 
   sprite.layer = RenderLayer.buildingsLayer;
+  sprite.city = true;
   part.addComponent(sprite);
   sprite.setSprite(pool);
   sprite.setPivot(pool.pivotX - (dx - dy), pool.pivotY + (dx + dy) / 2);

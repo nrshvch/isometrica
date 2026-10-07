@@ -15,9 +15,12 @@
  *
  * At night there is a fourth canvas, of what shines - the lit panes of every
  * window, black wherever anything else stands, so that a building in front
- * hides the windows behind it - added in last, over the dark. Every building
- * turns its lights on of an evening and off late at night at times of its
- * own (windowsOn).
+ * hides the windows behind it - added in last, over the dark. Nothing fades:
+ * a light is on or off (shines). Every building turns its lights on of an
+ * evening and off late at night at times of its own (windowsOn); the street
+ * lights all go on at once, and off at once in the morning (cityOn); every
+ * car puts its lamps on and off a while after them, each in its own time
+ * (lampsOn).
  *
  * Every flat colour is a 1x1 swatch stretched over a canvas: nothing is
  * filled.
@@ -40,6 +43,20 @@ var LEFT = 0,
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
 
+//when the street lights go on of an evening and off of a morning, all at
+//once (cityOn)
+var CITY_ON = 19.5,
+  CITY_OFF = 6.5;
+
+//how long after them a car is, at the most, in putting its lamps on and off
+//(lampsOn)
+var CAR_LAG = 0.75;
+
+//from when to when anything shines at all: the first windows to come on
+//(windowsOn), the last car to put its lamps out
+var SHINE_FROM = 18.5,
+  SHINE_TO = CITY_OFF + CAR_LAG;
+
 function Lighting(root) {
   this.root = root;
   this.enabled = !/[?&]light=0/.test(location.search);
@@ -56,7 +73,7 @@ function Lighting(root) {
     this.contexts.push(ctx);
   }
 
-  this.swatches = [swatch(), swatch(), swatch(), swatch()];
+  this.swatches = [swatch(), swatch(), swatch()];
   this.black = swatch().set(0, 0, 0);
 
   //the clock as it last moved on, and when, to move the sun on smoothly in
@@ -118,7 +135,7 @@ Lighting.prototype.begin = function (viewport) {
 
   hourNow = this.hour();
   this.light = sun(hourNow);
-  this.passes = this.light.shine > 0 ? 4 : 3;
+  this.passes = between(hourNow, SHINE_FROM, SHINE_TO) ? 4 : 3;
 
   //black, so that where nothing is drawn nothing is added
   for (k = 0; k < this.passes; k++) {
@@ -140,39 +157,72 @@ Lighting.prototype.end = function (context, viewport) {
   over(c[LEFT], this.canvases[RIGHT], "lighter", w, h);
   over(c[LEFT], this.canvases[UP], "lighter", w, h);
 
-  if (this.passes > SHINE) {
-    over(
-      c[SHINE],
-      s[SHINE].color([L.shine, L.shine, L.shine]),
-      "multiply",
-      w,
-      h,
-    );
-    over(c[LEFT], this.canvases[SHINE], "lighter", w, h);
-  }
+  //what shines, as bright as it is painted
+  if (this.passes > SHINE) over(c[LEFT], this.canvases[SHINE], "lighter", w, h);
 
   c[LEFT].globalCompositeOperation = "source-over";
   context.drawImage(this.canvases[LEFT], 0, 0);
 };
 
 /**
+ * Whether what renderer draws shines at this hour (client/cachedsprite
+ * lightPass, client/glow): a building's windows by its own hours (windows,
+ * see windowsOn), a car's lamps by its own (lamps, see lampsOn), a street
+ * light's with every other one's (city, see cityOn); anything else never.
+ */
+Lighting.shines = function (renderer) {
+  if (renderer.lamps !== undefined) return lampsOn(renderer.lamps);
+  if (renderer.windows !== undefined) return windowsOn(renderer.windows);
+
+  return renderer.city === true && cityOn();
+};
+
+/**
  * Whether a building's windows are lit at this hour: every one comes on at
- * an hour of its own between half past five and eight in the evening, and
+ * an hour of its own between half past six and nine in the evening, and
  * goes off at one of its own between half past ten and three in the
- * morning; some come on again at six for an hour or so before the day.
+ * morning; some come on again at five for a while before the day.
  *
  * @param seed {number} the building's own, 0..1 (see BuildingView)
  */
-Lighting.windowsOn = function (seed) {
-  var h = hourNow,
-    on = 17.5 + seed * 2.5,
+function windowsOn(seed) {
+  var on = SHINE_FROM + seed * 2.5,
     off = 22.5 + ((seed * 7.31) % 1) * 4.5,
     early = (seed * 3.77) % 1 < 0.35;
 
-  if (off < 24 ? h >= on && h < off : h >= on || h < off - 24) return true;
+  return (
+    between(hourNow, on, off) ||
+    (early && between(hourNow, 5, 5.5 + seed * 1.5))
+  );
+}
 
-  return early && h >= 6 && h < 7 + seed;
-};
+//whether the street lights are on: from half past seven in the evening to
+//half past six in the morning, all of them
+function cityOn() {
+  return between(hourNow, CITY_ON, CITY_OFF);
+}
+
+/**
+ * Whether a car's lamps are on: it puts them on a while after the street
+ * lights come on, and out a while after they go out, each car in its own
+ * time.
+ *
+ * @param seed {number} the car's own, 0..1 (see client/carman Car)
+ */
+function lampsOn(seed) {
+  return between(
+    hourNow,
+    CITY_ON + seed * CAR_LAG,
+    CITY_OFF + ((seed * 5.17) % 1) * CAR_LAG,
+  );
+}
+
+//whether hour h is from on until off, the night over midnight
+function between(h, on, off) {
+  off %= 24;
+
+  return on < off ? h >= on && h < off : h >= on || h < off;
+}
 
 /* --- Sun --------------------------------------------------------------- */
 
@@ -187,8 +237,7 @@ function mix(a, b, k) {
 }
 
 /**
- * The light on what looks each way at hour h, and how much the windows
- * shine: the sun comes up behind what looks towards -x and +y, goes over the
+ * The light on what looks each way at hour h: the sun comes up behind what looks towards -x and +y, goes over the
  * corner between the two faces seen at noon and down behind what looks
  * towards +x and -y - in the world; as it is seen, wherever the camera is
  * turned to - lower and redder towards either end of the day; the shade is
@@ -216,7 +265,6 @@ function sun(h) {
     left: on(-seen[0]),
     right: on(-seen[1]),
     up: on(up),
-    shine: Math.max(0, Math.min(1, (0.08 - el) * 6)),
   };
 }
 
