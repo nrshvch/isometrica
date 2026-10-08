@@ -954,9 +954,8 @@ function renderNight(boxes) {
 
       //its lamps are the same with the first lights on and with more, either
       //way; it throws no light of its own on the ground there
-      for (var k = 0; k < 4; k++) Looks.put(out, w, k, i, j, shines(hitColor));
-      Looks.put(out, w, 4, i, j, [0, 0, 0]);
-      Looks.put(out, w, 5, i, j, [0, 0, 0]);
+      for (var k = 0; k < Looks.NIGHT; k++)
+        Looks.put(out, w, k, i, j, k < 4 ? shines(hitColor) : [0, 0, 0]);
     }
 
   return out;

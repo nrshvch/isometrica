@@ -135,9 +135,9 @@ var UP = Lighting.UP,
 
 //its pictures for the night, side by side (shared/gen/looks NIGHT): what
 //shines one way with the first of its lights on and with more of them, the
-//same the other way, itself in black, and the light it throws on the ground
-//round it
-var NIGHT = 6,
+//same the other way, itself in black, and the light it throws round it each
+//of those ways
+var NIGHT = 9,
   DARK = 4,
   SPILT = 5;
 
@@ -145,15 +145,16 @@ var NIGHT = 6,
  * Which of its pictures for the night a sprite is drawn with in pass: of
  * what shines, the one its lights are on in at this hour (Lighting shines)
  * the way its renderer lights it (variant, 0 or 1), or itself in black; of
- * the light thrown on the ground, what it throws while its lights are on.
+ * the light thrown round, what it throws with those lights on.
  */
 function nightSection(pass, renderer) {
   var on = Lighting.shines(renderer);
 
   if (on === 0) return DARK;
-  if (pass === GLOW) return SPILT;
 
-  return (renderer.variant === 1 ? 2 : 0) + on - 1;
+  return (
+    (pass === GLOW ? SPILT : 0) + (renderer.variant === 1 ? 2 : 0) + on - 1
+  );
 }
 
 //what it is painted as for the light to be worked out as it is drawn - its
@@ -325,7 +326,8 @@ Layers.prototype.paint = function (ctx, x, y) {
       for (k = 0; k < n; k++)
         ctx.drawImage(
           own.image,
-          (k < DARK ? k ^ swap : k) * f.w,
+          (k < DARK ? k ^ swap : k > DARK ? SPILT + ((k - SPILT) ^ swap) : k) *
+            f.w,
           0,
           f.w,
           f.h,

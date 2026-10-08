@@ -49,10 +49,15 @@ var LEFT = 0,
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
 
-//when the street lights go on of an evening and off of the next morning
-//(30.5, half past six), all at once (cityOn)
-var CITY_ON = 19.5,
-  CITY_OFF = 30.5;
+//when the sun comes up, and when it goes down: a long day and a short night
+var SUNRISE = 5,
+  SUNSET = 21.5;
+
+//when the street lights go on of an evening, half an hour before the sun is
+//down, and off the next morning, half an hour after it is up (29.5, half
+//past five) - all at once (cityOn)
+var CITY_ON = SUNSET - 0.5,
+  CITY_OFF = 24 + SUNRISE + 0.5;
 
 //how long after them a car is, at the most, in putting its lamps on and off
 //(lampsOn)
@@ -60,7 +65,7 @@ var CAR_LAG = 0.75;
 
 //from when to when anything shines at all: the first windows to come on
 //(windowsOn), the last car to put its lamps out
-var SHINE_FROM = 18.5,
+var SHINE_FROM = 20,
   SHINE_TO = CITY_OFF + CAR_LAG;
 
 function Lighting(root) {
@@ -193,27 +198,27 @@ Lighting.shines = function (renderer) {
 /**
  * How many of a building's windows are lit at this hour, 0, 1 for the first
  * few or 2 for more: every one puts the first few on at an hour of its own
- * between half past six and nine in the evening, and more of them on a
- * while later; it puts those out again a while before it puts the last out,
- * at an hour of its own between half past ten and three in the morning - or,
- * one in eight, it keeps a few on all night, till between six and seven in
- * the morning. No building ever has all its windows lit.
+ * between eight and ten in the evening, and more of them on a while later;
+ * it puts those out again a while before it puts the last out, at an hour of
+ * its own between eleven and half past three in the morning - or, one in
+ * eight, it keeps a few on all night, till between five and six in the
+ * morning. No building ever has all its windows lit.
  *
  * @param seed {number} the building's own, 0..1 (see BuildingView)
  */
 function windowsOn(seed) {
   var late = (seed * 3.77) % 1 < 0.125,
-    first = SHINE_FROM + seed * 2.5,
+    first = SHINE_FROM + seed * 2,
     more = first + 0.5 + ((seed * 4.13) % 1) * 1.5,
-    bed = 22.5 + ((seed * 7.31) % 1) * 4.5,
-    off = late ? 30 + ((seed * 5.93) % 1) : bed,
+    bed = 23 + ((seed * 7.31) % 1) * 4.5,
+    off = late ? 24 + SUNRISE + ((seed * 5.93) % 1) : bed,
     fewer = late ? bed : bed - 0.5 - ((seed * 2.71) % 1) * 1.5;
 
   return within(hourNow, more, fewer) ? 2 : within(hourNow, first, off) ? 1 : 0;
 }
 
-//whether the street lights are on: from half past seven in the evening to
-//half past six in the morning, all of them
+//whether the street lights are on: from nine in the evening to half past
+//five in the morning, all of them
 function cityOn() {
   return within(hourNow, CITY_ON, CITY_OFF);
 }
@@ -259,8 +264,8 @@ function mix(a, b, k) {
  * sky blue by day and dark blue at night.
  */
 function sun(h) {
-  //up at six, down at eight in the evening
-  var day = (h - 6) / 14,
+  //how far through the day, up at SUNRISE, down at SUNSET
+  var day = (h - SUNRISE) / (SUNSET - SUNRISE),
     el = Math.sin(Math.PI * day),
     phi = Math.PI * (0.75 + day),
     up = Math.max(0, el) * 0.9,

@@ -309,15 +309,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the
   street it stands on.
-- The game's clock moves on a minute every second (`src/core/vtime.js`), a
-  day going by in 24 minutes.
+- The game's clock moves on five minutes every second (`src/core/vtime.js`),
+  a day going by in under five minutes.
 - The game is drawn at most 30 frames a second (`vendor/engine/game.js`),
   and holds still - its clock and its drawing - while the page is out of
   sight (`src/client/js/vkaria.js`).
 - The city is lit as it is drawn, by the hour of the game's clock
-  (`src/client/js/lighting.js`): the sun comes up at six behind the walls
-  looking one way, goes over at noon and down at eight in the evening behind
-  the walls looking the other, lower and redder towards either end of the
+  (`src/client/js/lighting.js`): the sun comes up at five behind the walls
+  looking one way, goes over and down at half past nine in the evening
+  behind the walls looking the other - a long day and a short night - lower and redder towards either end of the
   day, and the shade goes from sky blue to the dark blue of night. Every
   picture painted out of boxes is painted as its faces side by side too - what
   of it looks one way, the other, and up, black where a pixel looks another
@@ -339,22 +339,23 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   lamps off - black wherever anything else stands, so what is in front hides
   it - added in over the dark. A fifth holds the light thrown on the ground,
   the pool under every street light and the two beams of a car's headlights
-  (`src/client/js/glow.js`), and the glow round the foot of a building from
-  its signs and its lit shop windows (`src/shared/gen/isobox.js` spill),
+  (`src/client/js/glow.js`), and the glow its signs, its billboards and its
+  lit shop windows throw on the ground and the roof round them, stepped and
+  dithered as the pools are, and only where those windows are lit
+  (`src/shared/gen/isobox.js` spill),
   hidden as well by what is in front - a street light's pool sorted by its
   nearest edge, so a car driving through it is lit by it: it is added
   to the light on what looks up before that is multiplied in, so it lights
   the road and the grass in their own colours rather than lying over them
   like a haze. Nothing fades - a light is on or off: every building
-  puts a few of its lights on between half past six and nine, more of them
+  puts a few of its lights on between eight and ten, more of them
   a while later, and those out again a while before the last go out late at
   night, each at hours of its own, so the windows come on one by one and
   never all of them - every storey and every tile of a building lit one of
   two ways, a long run of glass pane by pane, so no two floors of a block
   are lit alike - one in eight keeping a few on till the morning; the
   street
-  lights all go on at half past seven and off at half past six in the
-  morning; every car puts its lamps on and off up to three quarters of an
+  lights all go on at nine and off at half past five in the morning; every car puts its lamps on and off up to three quarters of an
   hour after them, each in its own time. `?light=0` draws the city as it is painted, by the one sun of old;
   `/lab/lighting.html` is the bench the ways of doing it were weighed on.
 - The sea moves: every tile of water, and the water up every shore, is
