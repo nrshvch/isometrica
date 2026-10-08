@@ -1,7 +1,7 @@
 //A picture that moves by itself - the sea's waves: a few CachedSprites, the
 //frames of a round, shown one after another by the clock, each for so long.
 //Whatever draws it draws it as it would any picture (engine SpriteRenderer
-//acquires it, client/cachedsprite lightPass), and is handed the frame of the
+//acquires it, client/cachedsprite glQuad), and is handed the frame of the
 //moment - so nothing has to be told when the frame changes. The frames not
 //showing are kept on their pages, or the round would paint them over and over.
 
@@ -46,8 +46,8 @@ AnimatedSprite.prototype.keep = function () {
   for (var i = 0; i < this.frames.length; i++) this.frames[i].keep();
 };
 
-AnimatedSprite.prototype.lightPass = function (pass, flat, renderer) {
-  return current(this).lightPass(pass, flat, renderer);
+AnimatedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
+  return current(this).glQuad(renderer, flat, lit, night, d, o);
 };
 
 export default AnimatedSprite;

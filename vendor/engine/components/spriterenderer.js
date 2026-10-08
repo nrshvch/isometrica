@@ -143,15 +143,11 @@ define(function (require) {
     };
 
     /**
-     * While the renderer draws the layers that are lit (see Canvas2dRenderer,
-     * Config.lighting), which of the lighting's canvases it is drawing into -
-     * 0 the colours, then which way things look, and the rest of the
-     * lighting's own (see client/lighting) - and
-     * whether the layer is flat ground, where nothing has to be hidden
-     * behind what is drawn; -1 while it draws as it always has.
+     * While the renderer draws in WebGL (Config.gl), what every picture drawn
+     * is handed to instead of being drawn: collect(renderer, sprite, x0, y0);
+     * null otherwise.
      */
-    Sprite.pass = -1;
-    Sprite.flat = false;
+    Sprite.collect = null;
 
     /**
      * Draws the sprite with its top left corner at x0, y0 - whole screen
@@ -164,40 +160,33 @@ define(function (require) {
 
     /**
      * Draws a picture of the renderer's - its sprite, or anything it draws
-     * over it - at x0, y0, as the pass being drawn wants it: a picture that
-     * knows how it is lit (lightPass) gives what it is in that pass, or
-     * nothing; one that does not is drawn whole with the colours, and
-     * nowhere else.
+     * over it - at x0, y0; or, while the renderer draws in WebGL, hands it
+     * to what does (collect).
      */
     function picture(layer, self, sprite, x0, y0) {
-        var w = sprite.width,
-            h = sprite.height,
-            pass = Sprite.pass,
-            src = sprite;
-
-        if (pass >= 0 && sprite.lightPass !== undefined) {
-            src = sprite.lightPass(pass, Sprite.flat, self);
-
-            if (src === null)
-                return;
-        } else {
-            if (pass >= 0 && pass !== 0)
-                return;
-
-            //a sprite kept somewhere it can be put away from - a cache of
-            //what is on screen - is fetched back first, and marked as still
-            //wanted; one that cannot be just now is not drawn
-            if (sprite.acquire !== undefined && !sprite.acquire())
-                return;
+        //drawn by whatever collects what is drawn instead (see
+        //Canvas2dRenderer, Config.gl)
+        if (Sprite.collect !== null) {
+            Sprite.collect.collect(self, sprite, x0, y0);
+            return;
         }
+
+        var w = sprite.width,
+            h = sprite.height;
+
+        //a sprite kept somewhere it can be put away from - a cache of what is
+        //on screen - is fetched back first, and marked as still wanted; one
+        //that cannot be just now is not drawn
+        if (sprite.acquire !== undefined && !sprite.acquire())
+            return;
 
         if (self.opacity !== 1) {
             layer.save();
             layer.globalAlpha = self.opacity;
-            layer.drawImage(src.sourceImage, src.offsetX, src.offsetY, w, h, x0, y0, w, h);
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, x0, y0, w, h);
             layer.restore();
         } else
-            layer.drawImage(src.sourceImage, src.offsetX, src.offsetY, w, h, x0, y0, w, h);
+            layer.drawImage(sprite.sourceImage, sprite.offsetX, sprite.offsetY, w, h, x0, y0, w, h);
     }
 
     Sprite.picture = picture;

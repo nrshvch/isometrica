@@ -1,4 +1,5 @@
 import Lighting from "./lighting";
+import GLView from "./glview";
 
 //A picture as the renderers draw it: one or more parts, each a sprite on some
 //sheet, laid over one another - a tile, or the tile with its shore on it, or
@@ -27,9 +28,8 @@ function CachedSprite(sprites, key, parts, width, height) {
   this.width = width;
   this.height = height;
 
-  //one part can be drawn straight from its sheet when there is no room for
-  //it on the pages - and so gives its slot up to one that cannot
-  this.direct = parts.length === 1;
+  //drawn from a page, always: there is nothing else to draw it from
+  this.direct = false;
 
   //where it is while it is on a page, set by the canvas cache
   this.slot = -1;
@@ -41,8 +41,8 @@ function CachedSprite(sprites, key, parts, width, height) {
 /**
  * Makes it drawable from sourceImage at offsetX, offsetY this frame.
  *
- * @returns {boolean} false while a part's sheet is still loading - or when a
- *          picture of more than one part finds no room left on the pages
+ * @returns {boolean} false while a part's sheet is still loading - or when it
+ *          finds no room left on the pages
  */
 CachedSprite.prototype.acquire = function () {
   var cache = this.sprites.cache;
@@ -54,21 +54,7 @@ CachedSprite.prototype.acquire = function () {
 
   if (this.parts.length === 0 || !this.ready()) return false;
 
-  if (cache.acquire(this)) return true;
-
-  //no room left: a picture of one part is drawn straight from its sheet,
-  //and tries for a slot again once there may be one
-  if (this.direct) {
-    var part = this.parts[0];
-
-    this.sourceImage = part.sheet.image;
-    this.offsetX = part.frame.x;
-    this.offsetY = part.frame.y;
-
-    return true;
-  }
-
-  return false;
+  return cache.acquire(this);
 };
 
 /**
@@ -79,10 +65,9 @@ CachedSprite.prototype.keep = function () {
   var cache = this.sprites.cache;
 
   cache.keep(this);
-  //and as it is drawn lit, where it is (see lightPass)
+  //and as it is drawn lit, where it is (see glQuad)
   if (this.deferred) cache.keep(this.deferred);
   if (this.night) cache.keep(this.night);
-  if (this.shadow) cache.keep(this.shadow);
 };
 
 /**
@@ -127,18 +112,17 @@ CachedSprite.prototype.paint = function (ctx, x, y) {
 
 /* --- Lit -------------------------------------------------------------- */
 
-//the passes a lit layer is drawn in (engine SpriteRenderer.pass): its
-//colours, the ways it looks, and at night how high it stands, what shines,
-//and the light thrown round it
-var ALBEDO = Lighting.ALBEDO,
-  NORMAL = Lighting.NORMAL,
-  HEIGHT = Lighting.HEIGHT,
-  SHINE = Lighting.SHINE,
-  GLOW = Lighting.GLOW;
+//how a picture is drawn into one of the pictures of the screen (client/
+//glview): not at all, in black where it is, or from a picture of its own
+var SKIP = GLView.SKIP,
+  DARK_ = GLView.DARK,
+  FROM = GLView.FROM;
 
 //its pictures to be lit as it is drawn, side by side (shared/gen/looks
 //DEFERRED): its colours, and which way every pixel looks
-var DEFERRED = 2;
+var DEFERRED = 2,
+  ALBEDO = 0,
+  NORMAL = 1;
 
 //its pictures for the night, side by side (shared/gen/looks NIGHT): what
 //shines one way with the first of its lights on and with more of them, the
@@ -150,40 +134,22 @@ var NIGHT = 11,
   TALL = 9,
   WHOLE = 10;
 
-/**
- * Which of its pictures for the night a sprite is drawn with in pass: of
- * what shines, the one its lights are on in at this hour (Lighting shines)
- * the way its renderer lights it (variant, 0 or 1), or itself in black; of
- * the light thrown round, what it throws with those lights on.
- */
-function nightSection(pass, renderer) {
-  var on = Lighting.shines(renderer);
-
-  if (on === 0) return DARK;
-
-  return (
-    (pass === GLOW ? SPILT : 0) + (renderer.variant === 1 ? 2 : 0) + on - 1
-  );
-}
-
 //what it is painted as for the light to be worked out as it is drawn - its
 //colours and the ways it looks side by side, and its pictures for the
 //night - each put together when it is first wanted (see Layers), or null
 //where no part of it can be painted so
 CachedSprite.prototype.deferred = undefined;
 CachedSprite.prototype.night = undefined;
-//itself in black, for the passes it has nothing of its own in (see Shadow)
-CachedSprite.prototype.shadow = null;
-//what lightPass hands out: where on a page what it draws is
-CachedSprite.prototype.at = null;
 
 /**
- * What to draw of it in a pass of a lit layer (engine SpriteRenderer), on
- * a page: its colours, the ways it looks, how high it stands, what of it
- * shines - lights on or not - or the light it throws round it; and where it
- * has none, itself as it is with the colours and in black otherwise - which
- * is looking up, standing on the ground, and nothing shining - so it still
- * hides what is behind it; null for nothing to draw.
+ * Where it is drawn from into each of the pictures of the screen (client/
+ * glview add): d, from o on, five times over the page, x and y there and
+ * how (SKIP, DARK, FROM) - into the colours, the ways things look, how high
+ * things stand, what shines, and the light thrown round. In a lit layer,
+ * from its pictures to be lit; anywhere else, its picture as it is painted.
+ * Where it has none of its own, it is drawn as it is with the colours, and in
+ * black otherwise - which is looking up, standing on the ground, nothing
+ * shining - so it still hides what is behind it.
  *
  * On flat ground (flat) nothing behind it needs hiding: what is black is not
  * drawn there - nor how high it stands, being on the ground, nor anything of
@@ -191,37 +157,61 @@ CachedSprite.prototype.at = null;
  *
  * @param renderer {Object} what draws it, and with it whether what of it
  *        shines is lit at this hour (see Lighting shines)
- * @returns {{sourceImage, offsetX, offsetY}|null}
+ * @param lit {boolean} in a lit layer
+ * @param night {boolean} with what shines, how high things stand and the
+ *        light thrown round drawn too
+ * @returns {boolean} false while there is nothing to draw yet
  */
-CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
-  var layers;
+CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
+  var layers = lit ? layersOf(this, "deferred") : null,
+    W = this.width;
 
-  //how high it stands, what shines, or the light it throws round it
-  if (pass >= HEIGHT) {
-    if (flat) return null;
-
-    layers = layersOf(this, "night");
-    if (layers !== null && layers.acquire())
-      return section(
-        this,
-        layers,
-        pass === HEIGHT ? TALL : nightSection(pass, renderer),
-      );
-
-    return shadowOf(this);
-  }
-
-  layers = layersOf(this, "deferred");
   if (layers !== null && layers.acquire()) {
-    if (flat && (layers.sides & (1 << pass)) === 0) return null;
-
-    return section(this, layers, pass);
+    put(d, o, layers, ALBEDO * W, FROM);
+    if (flat && (layers.sides & (1 << NORMAL)) === 0) skip(d, o + 4);
+    else put(d, o + 4, layers, NORMAL * W, FROM);
+  } else {
+    if (!this.acquire()) return false;
+    put(d, o, this, 0, FROM);
+    if (flat || !lit) skip(d, o + 4);
+    else put(d, o + 4, this, 0, DARK_);
   }
 
-  if (pass === ALBEDO) return this.acquire() ? this : null;
+  if (!night || flat) {
+    skip(d, o + 8);
+    skip(d, o + 12);
+    skip(d, o + 16);
+    return true;
+  }
 
-  return flat ? null : shadowOf(this);
+  layers = layersOf(this, "night");
+  if (layers !== null && layers.acquire()) {
+    var on = Lighting.shines(renderer),
+      way = (renderer.variant === 1 ? 2 : 0) + on - 1;
+
+    put(d, o + 8, layers, TALL * W, FROM);
+    put(d, o + 12, layers, (on === 0 ? DARK : way) * W, FROM);
+    put(d, o + 16, layers, (on === 0 ? DARK : SPILT + way) * W, FROM);
+  } else {
+    put(d, o + 8, this, 0, DARK_);
+    put(d, o + 12, this, 0, DARK_);
+    put(d, o + 16, this, 0, DARK_);
+  }
+
+  return true;
 };
+
+//drawn from what is on a page, x across from where it is there
+function put(d, o, from, x, how) {
+  d[o] = from.sourceImage;
+  d[o + 1] = from.offsetX + x;
+  d[o + 2] = from.offsetY;
+  d[o + 3] = how;
+}
+
+function skip(d, o) {
+  d[o + 3] = SKIP;
+}
 
 //whether part i of a sprite is lit at night the other way round from the
 //way the sprite is (see Layers paint) - by a toss of its own, the same every
@@ -237,16 +227,6 @@ function swapped(part, i) {
   return ((h >>> 7) & 1) === 1;
 }
 
-function section(self, layers, k) {
-  var at = self.at || (self.at = { sourceImage: null, offsetX: 0, offsetY: 0 });
-
-  at.sourceImage = layers.sourceImage;
-  at.offsetX = layers.offsetX + k * self.width;
-  at.offsetY = layers.offsetY;
-
-  return at;
-}
-
 function layersOf(self, look) {
   if (self[look] !== undefined) return self[look];
 
@@ -255,12 +235,6 @@ function layersOf(self, look) {
   });
 
   return (self[look] = any ? new Layers(self, look) : null);
-}
-
-function shadowOf(self) {
-  var shadow = self.shadow || (self.shadow = new Shadow(self));
-
-  return shadow.acquire() ? shadow : null;
 }
 
 /**
@@ -405,53 +379,6 @@ function lift(ctx, image, f, x, y, up) {
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
 }
-
-/**
- * The sprite in black, where it is: for the passes it has nothing of its own
- * to draw in, so that it still hides what is behind it there.
- */
-function Shadow(sprite) {
-  this.sprite = sprite;
-  this.width = sprite.width;
-  this.height = sprite.height;
-  this.direct = false;
-  this.slot = -1;
-  this.sourceImage = null;
-  this.offsetX = 0;
-  this.offsetY = 0;
-}
-
-Shadow.prototype.acquire = function () {
-  var cache = this.sprite.sprites.cache;
-
-  if (this.slot >= 0) {
-    cache.slotUsed[this.slot] = cache.clock.frame;
-    return true;
-  }
-
-  return this.sprite.ready() && cache.acquire(this);
-};
-
-Shadow.prototype.paint = function (ctx, x, y) {
-  var parts = this.sprite.parts;
-
-  for (var i = 0; i < parts.length; i++) {
-    var part = parts[i],
-      f = part.frame;
-
-    ctx.drawImage(
-      black(part),
-      0,
-      0,
-      f.w,
-      f.h,
-      x + part.x,
-      y + part.y,
-      f.w,
-      f.h,
-    );
-  }
-};
 
 //a part in black, on a scratch canvas - painted there rather than blacked
 //out where it lands, which would black out what is under it too

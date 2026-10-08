@@ -108,8 +108,7 @@ SiteRenderer.prototype.render = function (
   }
 };
 
-//drawn in every pass of the light, not only where things look up (engine
-//Canvas2dRenderer drawLit)
+//it draws only pictures (engine Canvas2dRenderer renderGL)
 SiteRenderer.prototype.litPasses = true;
 
 /**
