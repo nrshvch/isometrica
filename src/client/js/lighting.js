@@ -1,20 +1,22 @@
 /**
- * The light the city is drawn in, worked out pixel by pixel as it is drawn:
- * the sun going over by the hour of the game's clock, the shade bluer and
- * darker towards night, and at night the windows, the street lights and the
- * headlights.
+ * The city drawn in WebGL, and the light it is drawn in, worked out pixel by
+ * pixel: the sun going over by the hour of the game's clock, the shade bluer
+ * and darker towards night, and at night the windows, the street lights and
+ * the headlights.
  *
- * Every picture painted out of boxes - and the ground, the trees and the
- * vehicles - is painted as its colours with no light on them and which way
- * every pixel of it looks; at night, too, as what of it shines, how high
- * every pixel of it stands, and the light it throws round its foot
- * (shared/gen/looks, client/cachedsprite lightPass). The lit layers are drawn
- * into one canvas for each of those (engine Canvas2dRenderer drawLit), in the
- * same order, so whatever is in front hides what is behind it in all of them
- * alike; and they are handed to WebGL to be lit pixel by pixel (deferred):
- * the sun on every pixel by the way it looks, every lamp on every pixel it
- * reaches by how far it is and how squarely it faces it - stepped and
- * dithered, as pixel art is - what shines added in over the dark.
+ * The engine hands every layer to it (engine Canvas2dRenderer renderGL),
+ * every picture of it to be drawn in one batch (collect, client/glview). A
+ * picture painted out of boxes - and the ground, the trees and the vehicles
+ * - is drawn from its colours with no light on them and which way every
+ * pixel of it looks; at night, too, from what of it shines, how high every
+ * pixel of it stands, and the light it throws round its foot (shared/gen/
+ * looks, client/cachedsprite glQuad) - into as many pictures of the screen,
+ * in the order the engine sorts them, so whatever is in front hides what is
+ * behind it in all of them alike. Once the lit layers are in, they are lit
+ * (light): the sun on every pixel by the way it looks, every lamp on every
+ * pixel it reaches by how far it is and how squarely it faces it - stepped
+ * and dithered, as pixel art is - what shines added in over the dark. The
+ * layers over the city go on top as they are painted.
  *
  * Nothing fades: a light is on or off (shines). Every building turns its
  * lights on in the same hour of an evening, each at its own time; a home
@@ -24,25 +26,15 @@
  * car puts its lamps on and off a while after them, each in its own time
  * (lampsOn).
  *
- * Without WebGL2, or with ?light=0, everything is drawn as it is painted,
- * lit by the one sun of old.
+ * With ?light=0 everything is drawn as it is painted, lit by the one sun of
+ * old.
  */
 import engine from "engine";
 import Config from "core/config";
 import VTime from "core/vtime";
 import RenderLayer from "./renderlayer";
 import View from "./view";
-import Deferred from "./deferred";
-
-//the canvases, in the order they are drawn in (engine SpriteRenderer.pass):
-//the colours, the ways things look, and at night how high things stand,
-//what shines, and the light thrown round the buildings
-var ALBEDO = Deferred.ALBEDO,
-  NORMAL = Deferred.NORMAL,
-  HEIGHT = Deferred.HEIGHT,
-  SHINE = Deferred.SHINE,
-  GLOW = Deferred.GLOW,
-  CANVASES = 5;
+import GLView from "./glview";
 
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
@@ -88,27 +80,22 @@ var HEAD_HIGH = 3,
 //to take it in
 var TALL = 60;
 
-function Lighting(root) {
+/**
+ * @param root {Vkaria}
+ * @param cache {CanvasCache} whose pages the pictures are drawn from
+ */
+function Lighting(root, cache) {
   this.root = root;
-  this.deferred = new Deferred();
-  this.enabled =
-    !/[?&]light=0/.test(location.search) && this.deferred.supported();
-  this.passes = 2;
-  this.canvases = [];
-  this.contexts = [];
-
-  for (var k = 0; k < CANVASES; k++) {
-    var c = document.createElement("canvas"),
-      ctx = c.getContext("2d");
-
-    ctx.imageSmoothingEnabled = false;
-    this.canvases.push(c);
-    this.contexts.push(ctx);
-  }
-
-  this.black = swatch().set(0, 0, 0);
+  this.view = new GLView(cache.pageSize, cache.maxPages);
+  //what is painted goes straight into its slot on its page, on the GPU
+  cache.upload = this.view.upload.bind(this.view);
+  cache.alphaAt = this.view.alphaAt.bind(this.view);
+  //?light=0: the city as it is painted, lit by the one sun of old
+  this.plain = /[?&]light=0/.test(location.search);
   this.lamps = [];
   this.M = null;
+  this.lit = false;
+  this.flat = false;
 
   //the clock as it last moved on, and when, to move the sun on smoothly in
   //between (see hour)
@@ -117,9 +104,10 @@ function Lighting(root) {
 }
 
 /**
- * Wires it into the engine: the layers from the ground up to the buildings
- * are lit, and of them the ground, what is drawn on it and the roads are
- * flat (see engine Canvas2dRenderer).
+ * Wires it into the engine: everything is drawn through it, in WebGL; the
+ * layers from the ground up to the buildings are lit, and of them the
+ * ground, what is drawn on it and the roads are flat (see engine
+ * Canvas2dRenderer renderGL).
  */
 Lighting.prototype.install = function () {
   var lit = 0;
@@ -127,12 +115,12 @@ Lighting.prototype.install = function () {
   for (var l = RenderLayer.groundLayer; l <= RenderLayer.buildingsLayer; l++)
     lit |= 1 << l;
 
-  engine.Config.litLayersMask = lit;
+  engine.Config.litLayersMask = this.plain ? 0 : lit;
   engine.Config.flatLayersMask =
     (1 << RenderLayer.groundLayer) |
     (1 << RenderLayer.groundDrawLayer) |
     (1 << RenderLayer.roadLayer);
-  engine.Config.lighting = this;
+  engine.Config.gl = this;
 };
 
 /**
@@ -156,38 +144,59 @@ Lighting.prototype.hour = function () {
 };
 
 /**
- * @param M {number[]} where on the screen the world is (engine
- *        Canvas2dRenderer), for where the lamps are
+ * Starts a frame (engine Canvas2dRenderer renderGL).
+ *
+ * @param M {number[]} where on the screen the world is, for where the lamps
+ *        are
  */
 Lighting.prototype.begin = function (viewport, M) {
-  var w = viewport.width,
-    h = viewport.height,
-    k;
-
-  if (this.canvases[0].width !== w || this.canvases[0].height !== h)
-    for (k = 0; k < CANVASES; k++) {
-      this.canvases[k].width = w;
-      this.canvases[k].height = h;
-      this.contexts[k].imageSmoothingEnabled = false;
-    }
-
   hourNow = this.hour();
   this.sky = sun(hourNow);
-  this.night = within(hourNow, SHINE_FROM, SHINE_TO);
-  this.passes = this.night ? CANVASES : 2;
+  this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
-
-  //black: nothing, and looking up, where nothing is drawn
-  for (k = 0; k < this.passes; k++) {
-    over(this.contexts[k], this.black, "copy", w, h);
-    this.contexts[k].globalCompositeOperation = "source-over";
-  }
+  this.view.begin(viewport.width, viewport.height, this.night);
 };
 
-Lighting.prototype.end = function (context, viewport) {
-  var w = viewport.width,
-    h = viewport.height,
-    M = this.M;
+//the layer drawn next: lit, flat ground
+Lighting.prototype.layer = function (lit, flat) {
+  this.lit = lit;
+  this.flat = flat;
+};
+
+/**
+ * A picture drawn by renderer at x0, y0 (engine SpriteRenderer picture):
+ * into the batch of the layer, as it knows to be drawn (client/cachedsprite
+ * glQuad) - and nothing that does not.
+ */
+Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
+  if (sprite.glQuad === undefined) return;
+
+  var view = this.view,
+    d = view.add(x0, y0, sprite.width, sprite.height, renderer.opacity);
+
+  if (
+    sprite.glQuad(
+      renderer,
+      this.flat,
+      this.lit,
+      this.lit && this.night,
+      d,
+      view.offset,
+    )
+  )
+    view.keep();
+};
+
+//the layer's batch drawn, and over it what it drew on the canvas
+Lighting.prototype.flush = function (canvas) {
+  this.view.flush(this.lit, canvas);
+};
+
+//the lit layers in: lit, by the sun and at night by the lamps
+Lighting.prototype.light = function () {
+  var M = this.M,
+    w = this.view.width,
+    h = this.view.height;
 
   this.lamps.length = 0;
   if (this.night) {
@@ -195,19 +204,13 @@ Lighting.prototype.end = function (context, viewport) {
     headlights(this.lamps, M, w, h, this.root.carman);
   }
 
-  context.drawImage(
-    this.deferred.render(
-      this.canvases,
-      w,
-      h,
-      this.night,
-      this.lamps,
-      this.sky,
-      [Math.round(M[12]), Math.round(M[13])],
-    ),
-    0,
-    0,
-  );
+  this.view.light(this.lamps, this.sky, [Math.round(M[12]), Math.round(M[13])]);
+};
+
+//the frame, onto the screen
+Lighting.prototype.end = function (context, viewport) {
+  context.clearRect(0, 0, viewport.width, viewport.height);
+  context.drawImage(this.view.canvas, 0, 0);
 };
 
 /* --- Lamps ------------------------------------------------------------- */
@@ -445,41 +448,5 @@ function sun(h) {
     dir: [seen[0], seen[1], up],
   };
 }
-
-/* --- Drawing ----------------------------------------------------------- */
-
-//a 1x1 canvas of one colour, stretched over a canvas in place of a fill
-function swatch() {
-  var c = document.createElement("canvas"),
-    ctx = c.getContext("2d"),
-    key = "";
-
-  c.width = c.height = 1;
-  c.set = function (r, g, b) {
-    var k = r + "," + g + "," + b;
-
-    if (k !== key) {
-      key = k;
-      ctx.clearRect(0, 0, 1, 1);
-      ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
-      ctx.fillRect(0, 0, 1, 1);
-    }
-
-    return c;
-  };
-
-  return c;
-}
-
-function over(ctx, src, op, w, h) {
-  ctx.globalCompositeOperation = op;
-  ctx.drawImage(src, 0, 0, src.width, src.height, 0, 0, w, h);
-}
-
-Lighting.ALBEDO = ALBEDO;
-Lighting.NORMAL = NORMAL;
-Lighting.HEIGHT = HEIGHT;
-Lighting.SHINE = SHINE;
-Lighting.GLOW = GLOW;
 
 export default Lighting;

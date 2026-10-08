@@ -11,7 +11,7 @@ import SmokeScript from "./components/smokeScript";
 import VTime from "core/vtime";
 import CoreConfig from "core/config";
 import BuildingClassCode from "data/classcode";
-import Lighting from "./lighting";
+import GLView from "./glview";
 
 var Terrain = Core.Terrain;
 
@@ -923,17 +923,9 @@ VehicleRenderer.prototype.render = function (
     self,
   );
 
-  var lit = self.lit,
-    pass = engine.SpriteRenderer.pass;
+  var lit = self.lit;
 
-  //a lamp is drawn as it is with the colours by day, and with what shines
-  //at night; in the other passes of the light the car hides what is behind
-  //it (client/lighting)
-  if (
-    lit === null ||
-    (pass >= 0 && pass !== Lighting.ALBEDO && pass !== Lighting.SHINE)
-  )
-    return;
+  if (lit === null) return;
 
   var sprite = lit.sprite,
     flashes = self.flashes;
@@ -942,26 +934,50 @@ VehicleRenderer.prototype.render = function (
     for (var i = 0; i < flashes.length; i++)
       if (flashes[i] !== lit) flashes[i].sprite.keep();
 
-  if (sprite.width === 0 || !sprite.acquire()) return;
+  if (sprite.width === 0) return;
 
   //where the vehicle itself was just drawn; the lamp was painted standing on
   //the car, about the same point, so its own pivot puts it back there
   var buffer = self.buf;
 
-  layer.drawImage(
-    sprite.sourceImage,
-    sprite.offsetX,
-    sprite.offsetY,
-    sprite.width,
-    sprite.height,
+  engine.SpriteRenderer.picture(
+    layer,
+    self,
+    lit.glow || (lit.glow = new Lamp(sprite)),
     Math.floor(buffer[0] - lit.pivotX + 0.5),
     Math.floor(buffer[1] - lit.pivotY + 0.5),
-    sprite.width,
-    sprite.height,
   );
 };
 
-//drawn in every pass of the light (engine Canvas2dRenderer drawLit)
+/**
+ * A lamp on a vehicle - a police car's - as it is drawn over it: its colours
+ * as painted, and at night its own light (client/glview).
+ */
+function Lamp(sprite) {
+  this.sprite = sprite;
+  this.width = sprite.width;
+  this.height = sprite.height;
+}
+
+Lamp.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
+  var s = this.sprite;
+
+  if (!s.acquire()) return false;
+
+  d[o] = d[o + 4] = d[o + 12] = s.sourceImage;
+  d[o + 1] = d[o + 5] = d[o + 13] = s.offsetX;
+  d[o + 2] = d[o + 6] = d[o + 14] = s.offsetY;
+  d[o + 3] = GLView.FROM;
+  //looking up, as high as the car under it stands
+  d[o + 7] = lit ? GLView.DARK : GLView.SKIP;
+  d[o + 11] = GLView.SKIP;
+  d[o + 15] = night ? GLView.FROM : GLView.SKIP;
+  d[o + 19] = GLView.SKIP;
+
+  return true;
+};
+
+//it draws only pictures (engine Canvas2dRenderer renderGL)
 VehicleRenderer.prototype.litPasses = true;
 
 function Car(man) {

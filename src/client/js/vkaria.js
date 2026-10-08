@@ -64,7 +64,7 @@ function Vkaria(core, ui, callback) {
     maxPages: 32,
   });
   //the light the city is drawn in, by the hour (client/lighting)
-  this.lighting = new Lighting(this);
+  this.lighting = new Lighting(this, this.sprites.cache);
   this.lighting.install();
   //what was worked out painting the pictures the game paints for itself
   this.generated = null;

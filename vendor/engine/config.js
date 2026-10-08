@@ -8,13 +8,14 @@ define(function(require) {
         layersCount: 1,
         useOctree: false,
         renderOctree: false,
-        //the layers drawn lit, and of them those of flat ground (see
-        //Canvas2dRenderer drawLit), and whatever lights them: {enabled,
-        //passes, contexts, begin(viewport), end(context, viewport)} - null
-        //for everything drawn as it is
+        //the layers drawn lit, and of them those of flat ground, and what
+        //draws every layer instead of the canvas - in WebGL: {begin(viewport,
+        //M), layer(lit, flat), collect(renderer, sprite, x0, y0),
+        //flush(canvas), light(), end(context, viewport)} (see
+        //Canvas2dRenderer renderGL) - null for everything drawn on the canvas
         litLayersMask: 0,
         flatLayersMask: 0,
-        lighting: null
+        gl: null
     };
 
     return Engine.Config;

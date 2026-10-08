@@ -1,7 +1,9 @@
-//The pictures being drawn, kept on a few big canvases - pages - instead of
-//each on a canvas of its own. A page lives on the GPU the way any canvas
-//does, so the pages are the game's picture memory, and there is only so much
-//of it: at most maxPages of pageSize by pageSize.
+//The pictures being drawn, kept on a few big pages instead of each on a
+//canvas of its own. A page lives on the GPU - a layer of the texture the
+//city is drawn from in WebGL (client/glview) - so the pages are the game's
+//picture memory, and there is only so much of it: at most maxPages of
+//pageSize by pageSize. A picture is painted on a canvas of its own the size
+//of its slot, and handed over into its slot on its page (upload).
 //
 //Only what is being drawn is on the pages. Whatever draws a picture acquires
 //it first (see CachedSprite): the picture is painted onto a free piece of a
@@ -12,9 +14,10 @@
 //whoever is painted there next, not before.
 //
 //The cache knows nothing of what it holds. Whatever it holds - an entry - has
-//a width, a height and paint(ctx, x, y), which puts its picture on a page at
-//x, y; the cache writes where it put it back onto it (slot, sourceImage,
-//offsetX, offsetY), and sets slot to -1 when it takes the slot away again.
+//a width, a height and paint(ctx, x, y), which puts its picture on a canvas
+//at x, y; the cache writes where it put it back onto it (slot, sourceImage -
+//the page - offsetX, offsetY), and sets slot to -1 when it takes the slot
+//away again.
 //An entry that can be drawn from somewhere else as well says so with direct:
 //it does without a slot when there is none, and gives its slot up, even
 //while it is being drawn, to one that cannot.
@@ -37,8 +40,8 @@ var FREE = 0,
 
 /**
  * @param clock {{frame: number}} counts the frames drawn - engine Time
- * @param options {Object} canvas(w, h), makes a page; pageSize, 1024 unless
- *        given; maxPages, 4 unless given
+ * @param options {Object} canvas(w, h), makes the canvas a picture is painted
+ *        on; pageSize, 1024 unless given; maxPages, 4 unless given
  */
 function CanvasCache(clock, options) {
   this.clock = clock;
@@ -46,8 +49,15 @@ function CanvasCache(clock, options) {
   this.pageSize = options.pageSize || 1024;
   this.maxPages = options.maxPages || 4;
 
+  //the pages there are, by number; and where a picture painted goes,
+  //upload(page, x, y, w, h, pixels) - its slot on its page (client/glview)
   this.pages = [];
-  this.contexts = [];
+  this.upload = null;
+  //and how see-through a pixel on a page is, alphaAt(page, x, y)
+  this.alphaAt = null;
+  //the canvas a picture is painted on, as big as the biggest so far
+  this.scratch = null;
+  this.scratchCtx = null;
   //where the next shelf of each page starts
   this.pageTop = new Uint16Array(this.maxPages);
 
@@ -133,14 +143,18 @@ CanvasCache.prototype.acquire = function (entry) {
 
   var shelf = this.slotShelf[slot],
     page = this.shelfPage[shelf],
-    ctx = this.contexts[page],
     x = this.slotX[slot],
-    y = this.shelfY[shelf];
+    y = this.shelfY[shelf],
+    w = this.slotW[slot],
+    h = this.shelfH[shelf],
+    ctx = scratch(this, w, h);
 
-  if (this.slotDirty[slot] === 1)
-    ctx.clearRect(x, y, this.slotW[slot], this.shelfH[shelf]);
-
-  entry.paint(ctx, x, y);
+  //painted on a clear canvas the size of the slot, and handed over whole -
+  //which clears whatever was in the slot before
+  ctx.clearRect(0, 0, w, h);
+  entry.paint(ctx, 0, 0);
+  if (this.upload !== null)
+    this.upload(page, x, y, w, h, ctx.getImageData(0, 0, w, h).data);
   this.painted++;
 
   this.slotState[slot] = TAKEN;
@@ -149,7 +163,7 @@ CanvasCache.prototype.acquire = function (entry) {
   this.owners[slot] = entry;
 
   entry.slot = slot;
-  entry.sourceImage = this.pages[page];
+  entry.sourceImage = page;
   entry.offsetX = x;
   entry.offsetY = y;
 
@@ -344,12 +358,24 @@ function free(self, slot) {
 }
 
 function addPage(self) {
-  var canvas = self.makeCanvas(self.pageSize, self.pageSize);
-
-  self.pages.push(canvas);
-  self.contexts.push(canvas.getContext("2d"));
+  self.pages.push(self.pages.length);
 
   return self.pages.length - 1;
+}
+
+//the canvas a picture is painted on, at least w by h
+function scratch(self, w, h) {
+  var c = self.scratch;
+
+  if (c === null || c.width < w || c.height < h) {
+    c = self.scratch = self.makeCanvas(
+      Math.max(w, c ? c.width : 0, 256),
+      Math.max(h, c ? c.height : 0, 256),
+    );
+    self.scratchCtx = c.getContext("2d", { willReadFrequently: true });
+  }
+
+  return self.scratchCtx;
 }
 
 function addShelf(self, page, h) {

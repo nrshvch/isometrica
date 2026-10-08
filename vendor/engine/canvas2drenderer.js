@@ -398,45 +398,16 @@ define(function (require) {
         count = cull(world, gameObjects, viewport, self);
         groupLayers(count, layersCount);
 
+        //everything drawn in WebGL instead, but what is drawn on a canvas
+        if (config.gl !== null && config.gl !== undefined) {
+            renderGL(self, viewport, config.gl);
+            return;
+        }
+
         context.clearRect(0, 0, viewport.width, viewport.height);
-
-        var lighting = config.lighting,
-            lit = lighting !== null && lighting.enabled === true,
-            litMask = config.litLayersMask,
-            lastLit = -1,
-            begun = false;
-
-        if (lit)
-            for (i = 0; i < layersCount; i++)
-                if (litMask & 1 << i)
-                    lastLit = i;
 
         for (i = 0; i < layersCount; i++) {
             ctx = viewport.layers[i];
-
-            //a lit layer is drawn into the lighting's canvases instead, and
-            //they into the frame once the last of them is
-            if (lit && (litMask & 1 << i)) {
-                start = layerStarts[i];
-                end = layerStarts[i + 1];
-
-                if (end - start > 1 && (~noLayerDepthSortingMask & 1 << i))
-                    depthSort(start, end);
-
-                if (!begun) {
-                    //with where on the screen the world is, for whatever
-                    //it works out from where things stand
-                    lighting.begin(viewport, self.M);
-                    begun = true;
-                }
-
-                drawLit(self, viewport, lighting, start, end, (config.flatLayersMask & 1 << i) !== 0);
-
-                if (i === lastLit)
-                    lighting.end(context, viewport);
-
-                continue;
-            }
 
             if (~noLayerClearMask & 1 << i) {
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -471,44 +442,71 @@ define(function (require) {
 
     Canvas2dRenderer.render = render;
 
-    //the pass whatever has no light of its own worked out is drawn in, as it
-    //is: the colours (see SpriteRenderer.pass)
-    var PLAIN = 0;
-
     /**
-     * Draws a layer's entries start .. end into each of the lighting's
-     * canvases in turn, the whole layer once per canvas, in the same order:
-     * a sprite as it is in that pass, anything else only with the colours -
-     * unless it says it draws itself in every pass (litPasses).
+     * Draws the frame through gl (client/lighting): every layer in turn, its
+     * pictures handed to it to be drawn in WebGL as one batch, in the order
+     * they are sorted in - and whatever a layer draws on a canvas instead (a
+     * renderer that does not say it draws only pictures, litPasses), drawn
+     * on the layer's own and handed over with it, laid over its pictures.
+     * The layers that are lit (Config.litLayersMask) are lit once the last
+     * of them is in; the rest go over that as they are.
      */
-    function drawLit(self, viewport, lighting, start, end, flat) {
-        var passes = lighting.passes,
-            contexts = lighting.contexts,
-            k, j, entry, renderer, ctx;
+    function renderGL(self, viewport, gl) {
+        var layersCount = config.layersCount,
+            litMask = config.litLayersMask,
+            flatMask = config.flatLayersMask,
+            noLayerDepthSortingMask = config.noLayerDepthSortingMask,
+            lastLit = -1,
+            i, j, start, end, entry, renderer, ctx, drawn;
 
-        SpriteRenderer.flat = flat;
+        for (i = 0; i < layersCount; i++)
+            if (litMask & 1 << i)
+                lastLit = i;
 
-        for (k = 0; k < passes; k++) {
-            ctx = contexts[k];
-            SpriteRenderer.pass = k;
+        gl.begin(viewport, self.M);
+        SpriteRenderer.collect = gl;
+
+        for (i = 0; i < layersCount; i++) {
+            start = layerStarts[i];
+            end = layerStarts[i + 1];
+            ctx = viewport.layers[i];
+            drawn = false;
+
+            if (end - start > 1 && (~noLayerDepthSortingMask & 1 << i))
+                depthSort(start, end);
+
+            gl.layer((litMask & 1 << i) !== 0, (flatMask & 1 << i) !== 0);
 
             for (j = end - 1; j >= start; j--) {
                 entry = order[j];
                 renderer = visibleRenderers[entry];
+                //nothing is kept alive from here until the next frame
+                visibleRenderers[entry] = null;
 
                 if (entryDraw[entry] === DRAW_SPRITE)
                     drawSprite(ctx, renderer, drawX[entry], drawY[entry]);
-                else if (k === PLAIN || renderer.litPasses === true)
+                else if (renderer.litPasses === true)
                     renderer.render(ctx, self, viewport, renderer);
+                else {
+                    //on the layer's canvas, as it always was
+                    if (!drawn) {
+                        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                        drawn = true;
+                    }
+                    SpriteRenderer.collect = null;
+                    renderer.render(ctx, self, viewport, renderer);
+                    SpriteRenderer.collect = gl;
+                }
             }
+
+            gl.flush(drawn ? ctx.canvas : null);
+
+            if (i === lastLit)
+                gl.light();
         }
 
-        SpriteRenderer.pass = -1;
-        SpriteRenderer.flat = false;
-
-        //nothing is kept alive from here until the next frame
-        for (j = start; j < end; j++)
-            visibleRenderers[order[j]] = null;
+        SpriteRenderer.collect = null;
+        gl.end(viewport.context, viewport);
     }
 
     p.graphics = null;

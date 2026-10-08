@@ -388,9 +388,7 @@ CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
     text = gameObject.textRenderer;
 
     if (sprite !== undefined && sprite.enabled) {
-      var spriteImage = sprite.sprite,
-        w = spriteImage.width,
-        h = spriteImage.height;
+      var spriteImage = sprite.sprite;
 
       x0 = vec3Buffer1[0] - sprite.pivotX;
       y0 = vec3Buffer1[1] - sprite.pivotY;
@@ -404,22 +402,17 @@ CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
         x <= x1 &&
         y >= y0 &&
         y <= y1 &&
-        (spriteImage.acquire === undefined || spriteImage.acquire())
+        spriteImage.acquire !== undefined &&
+        spriteImage.acquire()
       ) {
-        //detailed test
-        tmpctx.clearRect(0, 0, w, h);
-        tmpctx.drawImage(
-          spriteImage.sourceImage,
-          spriteImage.offsetX,
-          spriteImage.offsetY,
-          w,
-          h,
-          0,
-          0,
-          w,
-          h,
-        );
-        if (tmpctx.getImageData(x - x0, y - y0, 1, 1).data[3] > 0) {
+        //detailed test: the pixel itself, on the page the picture is on
+        if (
+          vkaria.sprites.cache.alphaAt(
+            spriteImage.sourceImage,
+            spriteImage.offsetX + Math.floor(x - x0),
+            spriteImage.offsetY + Math.floor(y - y0),
+          ) > 0
+        ) {
           result.push(gameObject);
         }
       }
