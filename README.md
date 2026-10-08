@@ -328,8 +328,12 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   (`src/shared/gen/looks.js`) - is painted as its colours with no light on
   them and which way every pixel of it looks, x, y and z in the red, the
   green and the blue (`src/shared/gen/isobox.js` setMode, normalOf), so a
-  sloped roof, a hill or a tree's crown is lit by the way each pixel of it
-  actually looks. Every layer of the city is drawn as one batch of squares,
+  sloped roof or a hill is lit by the way each pixel of it actually looks -
+  and a tree's crown in the flat patches of its three greens, each patch
+  looking the way its leaves do on the whole (`src/shared/gen/trees.js`
+  flatten). Which way a pixel looks and how high it stands are never mixed
+  the way colours are: smoke, a shadow or a line laid over the grass leaves
+  them as they are under it, unless it is mostly there. Every layer of the city is drawn as one batch of squares,
   a picture each, in the order the engine sorts them (`vendor/engine`
   Canvas2dRenderer renderGL) - the lit ones into as many pictures of the
   screen at once, so whatever is in front hides what is behind it in all of
