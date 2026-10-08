@@ -93,7 +93,7 @@ var CARS_PER_ROAD = 1 / 4,
   FAILING_SMOKE_EVERY = 500,
   //how long one stands broken down, in minutes of the game's time - give or
   //take
-  BREAKDOWN_MINUTES = 12,
+  BREAKDOWN_MINUTES = 60,
   //whether smoke comes out of the tailpipe as it drives
   EXHAUST = false,
   //how often a puff of it does, ms

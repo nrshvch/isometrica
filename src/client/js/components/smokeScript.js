@@ -6,7 +6,11 @@ function SmokeScript() {
 
 SmokeScript.prototype = Object.create(engine.Component.prototype);
 
-SmokeScript.prototype.ttl = 1600;
+//how long a puff lasts, ms, and how fast it rises and drifts - slowly, as
+//high as ever in the end
+SmokeScript.prototype.ttl = 2400;
+var RISE = 13.3,
+  DRIFT = 0.67;
 SmokeScript.prototype.startedAt = 0;
 SmokeScript.prototype.spriten = 0;
 
@@ -46,9 +50,9 @@ SmokeScript.prototype.start = function () {
 SmokeScript.prototype.tick = function (time) {
   var d = time.dt / 1000;
   this.gameObject.transform.translate(
-    Math.random() * d,
-    20 * d,
-    Math.random() * d,
+    Math.random() * d * DRIFT,
+    RISE * d,
+    Math.random() * d * DRIFT,
     "world",
   );
 
