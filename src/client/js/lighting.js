@@ -18,9 +18,11 @@
  * hides the windows behind it - added in last, over the dark; and a fifth,
  * of the light thrown on the ground - the pools under the street lights, the
  * beams of the headlights (client/glow), as hidden by what stands in front
- * of them - added to the light on what looks up before that is multiplied
- * in, so that it lights the road in the road's own colours rather than
- * lying over it like a haze. Nothing fades:
+ * of them - which lights every face of what it falls on, in its own
+ * colours, rather than lying over it like a haze: the faces' colours added
+ * up, multiplied by it, and added in. It lies on the road under everything
+ * standing, which hides it; a car under a street light is lit by it as a
+ * whole (client/carman underLamps). Nothing fades:
  * a light is on or off (shines). Every building turns its lights on in the
  * same hour of an evening, each at its own time; a home turns them off late
  * at night, a shop keeps them on all night, an office a few of them; a
@@ -46,7 +48,14 @@ var LEFT = 0,
   RIGHT = 1,
   UP = 2,
   SHINE = 3,
-  GLOW = 4;
+  GLOW = 4,
+  //and where the light thrown on things is worked out, at the end
+  THROWN = 5,
+  CANVASES = 6;
+
+//how much of the light thrown on something from above falls on its sides,
+//to what looks up
+var SIDES = 0.5;
 
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
@@ -77,7 +86,7 @@ function Lighting(root) {
   this.canvases = [];
   this.contexts = [];
 
-  for (var k = 0; k < 5; k++) {
+  for (var k = 0; k < CANVASES; k++) {
     var c = document.createElement("canvas"),
       ctx = c.getContext("2d");
 
@@ -140,7 +149,7 @@ Lighting.prototype.begin = function (viewport) {
     k;
 
   if (this.canvases[0].width !== w || this.canvases[0].height !== h)
-    for (k = 0; k < 5; k++) {
+    for (k = 0; k < CANVASES; k++) {
       this.canvases[k].width = w;
       this.canvases[k].height = h;
       this.contexts[k].imageSmoothingEnabled = false;
@@ -164,16 +173,27 @@ Lighting.prototype.end = function (context, viewport) {
     c = this.contexts,
     s = this.swatches;
 
+  //at night, the light thrown on things - on the ground round the lamps
+  //and the shop windows, on a car under a street light - falls on every
+  //face of them, from above: what looks up lit by it, the sides by half as
+  //much, added up and added in with the rest
+  var thrown = this.passes > GLOW;
+
+  if (thrown) {
+    over(c[THROWN], this.canvases[UP], "copy", w, h);
+    c[THROWN].globalAlpha = SIDES;
+    over(c[THROWN], this.canvases[LEFT], "lighter", w, h);
+    over(c[THROWN], this.canvases[RIGHT], "lighter", w, h);
+    c[THROWN].globalAlpha = 1;
+    over(c[THROWN], this.canvases[GLOW], "multiply", w, h);
+  }
+
   over(c[LEFT], s[LEFT].color(L.left), "multiply", w, h);
   over(c[RIGHT], s[RIGHT].color(L.right), "multiply", w, h);
-  //and what looks up by the light on it, and at night by whatever light is
-  //thrown on it besides
-  if (this.passes > GLOW) {
-    over(c[GLOW], s[UP].color(L.up), "lighter", w, h);
-    over(c[UP], this.canvases[GLOW], "multiply", w, h);
-  } else over(c[UP], s[UP].color(L.up), "multiply", w, h);
+  over(c[UP], s[UP].color(L.up), "multiply", w, h);
   over(c[LEFT], this.canvases[RIGHT], "lighter", w, h);
   over(c[LEFT], this.canvases[UP], "lighter", w, h);
+  if (thrown) over(c[LEFT], this.canvases[THROWN], "lighter", w, h);
 
   //what shines, as bright as it is painted
   if (this.passes > SHINE) over(c[LEFT], this.canvases[SHINE], "lighter", w, h);
