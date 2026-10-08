@@ -1411,24 +1411,16 @@ function paintBase(set, slope, variant, surf, light, seed, t, look) {
 
 /**
  * Where a tile is painted, as look has it (shared/gen/looks): lit, as it
- * always was; its faces side by side ("faces") - every pixel's colour, lit
- * by nothing, shared out between them by which way its quarter of the slope
- * looks; or for the night ("night"), nothing of it shining and all of it
- * black. faces says whether its colours are to come unlit.
+ * always was; to be lit as it is drawn ("deferred") - every pixel's colour,
+ * lit by nothing, and which way its quarter of the slope looks; or for the
+ * night ("night"), nothing of it shining, all of it black, and all of it on
+ * the ground. faces says whether its colours are to come unlit.
  */
 function Out(look, slope, light) {
   this.n =
-    look === "faces"
-      ? 3
-      : look === "night"
-        ? Looks.NIGHT
-        : look === "height"
-          ? Looks.HEIGHT
-          : 1;
-  this.faces = look === "faces";
+    look === "deferred" ? Looks.DEFERRED : look === "night" ? Looks.NIGHT : 1;
+  this.faces = look === "deferred";
   this.night = look === "night";
-  //the ground is as high as the ground: nothing over it
-  this.height = look === "height";
   this.normals = light === null ? null : light.normals[slope];
   this.image = Looks.blank(WIDTH, HEIGHT, this.n);
 }
@@ -1438,29 +1430,28 @@ Out.prototype.put = function (p, c, alpha) {
 
   if (this.night) {
     for (var n = 0; n < this.n; n++)
-      Looks.put(this.image, WIDTH, n, p.x, p.y, [0, 0, 0], alpha);
+      Looks.put(
+        this.image,
+        WIDTH,
+        n,
+        p.x,
+        p.y,
+        n === this.n - 1 ? [255, 255, 255] : [0, 0, 0],
+        alpha,
+      );
     return;
   }
 
-  if (this.height) {
-    Looks.put(this.image, WIDTH, 0, p.x, p.y, [0, 0, 0], alpha);
-    Looks.put(this.image, WIDTH, 1, p.x, p.y, [255, 255, 255], alpha);
-    return;
-  }
-
-  var w =
-    this.normals === null ? [0, 0, 1] : Looks.weights(this.normals[p.quad]);
-
-  for (var k = 0; k < 3; k++)
-    Looks.put(
-      this.image,
-      WIDTH,
-      k,
-      p.x,
-      p.y,
-      [c[0] * w[k], c[1] * w[k], c[2] * w[k]],
-      alpha,
-    );
+  Looks.put(this.image, WIDTH, 0, p.x, p.y, c, alpha);
+  Looks.put(
+    this.image,
+    WIDTH,
+    1,
+    p.x,
+    p.y,
+    this.normals === null ? [0, 0, 0] : Looks.normal(this.normals[p.quad]),
+    alpha,
+  );
 };
 
 //water's frames: how many make a round of its ripples (see ripples), and
@@ -1824,7 +1815,7 @@ export function createPainter(sources, o) {
      * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png" - and for
      * water and its shore, a frame of its ripples after it:
      * "water_deep/base/2222_1.png@t2", "water_shallow/shore/2101.png@t1"
-     * - painted as look has it (see Out): "faces", "night", or lit.
+     * - painted as look has it (see Out): "deferred", "night", or lit.
      */
     paint: function (rel, look) {
       var frame = /@t(\d+)$/.exec(rel);

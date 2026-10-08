@@ -314,51 +314,54 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - The game is drawn at most 30 frames a second (`vendor/engine/game.js`),
   and holds still - its clock and its drawing - while the page is out of
   sight (`src/client/js/vkaria.js`).
-- The city is lit as it is drawn, by the hour of the game's clock
-  (`src/client/js/lighting.js`): the sun comes up at five behind the walls
-  looking one way, goes over and down at half past nine in the evening
-  behind the walls looking the other - a long day and a short night - lower and redder towards either end of the
-  day, and the shade goes from sky blue to the dark blue of night. Every
-  picture painted out of boxes is painted as its faces side by side too - what
-  of it looks one way, the other, and up, black where a pixel looks another
-  way (`src/shared/gen/isobox.js` setMode) - and the ground, the roads and the
-  buildings are drawn into one canvas for each face (`vendor/engine`
-  Canvas2dRenderer drawLit), each multiplied by the light falling that way
-  and the three added up: drawImage, multiply and lighter only, so nothing
-  leaves the fast path and what is half see-through still comes out right.
-  The ground, the trees and the vehicles, which are not painted out of boxes,
-  paint their own faces (`src/shared/gen/looks.js`): every quarter of a
-  slope of the ground by which way it looks, every pixel of a tree on the
-  face it looks most towards in its tone - so a hill and a tree's crown catch
-  the morning sun on one side and the evening sun on the other - a car by the
-  face of it the ray went in through; only the stones, painted from pictures
-  drawn by hand, are lit as if they looked up. At night a fourth canvas holds
-  what shines: the lit panes of every window, the signs and billboards of the
-  shops and offices in their own colours, a street light's lamp, a car's
-  headlights shining white and its tail lights red, a car parked with its
-  lamps off - black wherever anything else stands, so what is in front hides
-  it - added in over the dark. A fifth holds the light thrown on the ground,
-  the pool under every street light and the two beams of a car's headlights
-  (`src/client/js/glow.js`), and the glow its signs, its billboards and its
-  lit shop windows throw on the ground and the roof round them, stepped and
-  dithered as the pools are, and only where those windows are lit
-  (`src/shared/gen/isobox.js` spill),
-  - the pools and the beams lie on the road, under every car and building
-    standing over them, and a car under a street light is lit by it as a
-    whole instead, in the pool's own steps, by how near the lamp it is
-    (`src/client/js/carman.js` underLamps). That light falls on every face of
-    what it lights, from above - what looks up lit by it, the sides by half -
-    in their own colours rather than lying over them like a haze. Nothing fades - a light is on or off: every finished building
-    puts a few of its lights on in the hour from half past eight, each at a
-    time of its own, so the windows come on one by one all over the city, and
-    more of them a while later - never all of them, every storey and every
-    tile of a building lit one of two ways, a long run of glass pane by pane,
-    so no two floors of a block are lit alike. A home puts them out again late
-    at night, at an hour of its own; a shop keeps them all on through the
-    night, an office only a few; a building still going up has none. The
-    street lights all go on at nine and off at half past five in the morning; every car puts its lamps on and off up to three quarters of an
-    hour after them, each in its own time. `?light=0` draws the city as it is painted, by the one sun of old;
-    `/lab/lighting.html` is the bench the ways of doing it were weighed on.
+- The city is lit pixel by pixel as it is drawn, in WebGL
+  (`src/client/js/lighting.js`, `src/client/js/deferred.js`), by the hour of
+  the game's clock: the sun comes up at five behind the walls looking one
+  way, goes over and down at half past nine in the evening behind the walls
+  looking the other - a long day and a short night - lower and redder
+  towards either end of the day, and the shade goes from sky blue to the
+  dark blue of night. Every picture painted out of boxes - and the ground,
+  the trees and the vehicles, which paint their own (`src/shared/gen/looks.js`)
+  - is painted as its colours with no light on them and which way every pixel
+    of it looks, x, y and z in the red, the green and the blue
+    (`src/shared/gen/isobox.js` setMode, normalOf), so a sloped roof, a hill or
+    a tree's crown is lit by the way each pixel of it actually looks. The
+    ground, the roads and the buildings are drawn into a canvas of colours and
+    one of the ways things look, in the same order, so whatever is in front
+    hides what is behind it in both alike (`vendor/engine` Canvas2dRenderer
+    drawLit); WebGL lights every pixel from them by the sun, and the picture
+    comes back into the frame like any other.
+- At night three more canvases go with them: how high every pixel stands,
+  a pixel a unit - a storey laid on another lifted by as much as it is laid
+  higher (`src/client/js/cachedsprite.js` Layers) - what shines (the lit
+  panes of every window, the signs and billboards of the shops and offices
+  in their own colours, a street light's lamp, a car's headlights white and
+  its tail lights red, a parked car's none), and the glow its signs,
+  billboards and lit shop windows throw round the foot of a building and on
+  the roof round them (`src/shared/gen/isobox.js` spill). Every street light
+  and every headlight is a lamp: a little square over just the pixels it
+  can reach, lighting each by how far it is from the lamp in the world -
+  worked out from where it is on the screen and how high it stands - and how
+  squarely it faces it, the headlights in a cone ahead. So a lorry passing
+  under a street light is lit on its roof and the side towards the lamp, a
+  wall by the street catches the light, a tree's crown is lit on the side
+  facing the lamp, and the road under the lamp in its own colours. The light
+  is put in steps of a third, dithered between them by where on the ground
+  each pixel is, so it stays put as the city scrolls by: pixel art, lit as
+  the world would be.
+- Nothing fades - a light is on or off: every finished building puts a few
+  of its lights on in the hour from half past eight, each at a time of its
+  own, so the windows come on one by one all over the city, and more of them
+  a while later - never all of them, every storey and every tile of a
+  building lit one of two ways, a long run of glass pane by pane, so no two
+  floors of a block are lit alike. A home puts them out again late at night,
+  at an hour of its own; a shop keeps them all on through the night, an
+  office only a few; a building still going up has none. The street lights
+  all go on at nine and off at half past five in the morning; every car puts
+  its lamps on and off up to three quarters of an hour after them, each in
+  its own time. Without WebGL2, or with `?light=0`, the city is drawn as it
+  is painted, by the one sun of old; `/lab/lighting.html` is the bench the
+  ways of doing it with the canvas alone were weighed on.
 - The sea moves: every tile of water, and the water up every shore, is
   painted in three frames, its ripples running on a wave across it and its
   glints flashing one after another (`src/shared/gen/terrain.js` ripples),

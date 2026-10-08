@@ -12,7 +12,6 @@ import VTime from "core/vtime";
 import CoreConfig from "core/config";
 import BuildingClassCode from "data/classcode";
 import Lighting from "./lighting";
-import Glow from "./glow";
 
 var Terrain = Core.Terrain;
 
@@ -927,15 +926,12 @@ VehicleRenderer.prototype.render = function (
   var lit = self.lit,
     pass = engine.SpriteRenderer.pass;
 
-  //at night, lit by the street lights it stands under, as a whole
-  if (pass === Lighting.GLOW) underLamps(self, layer);
-
-  //a lamp shines where things look up by day, and with what shines at
-  //night; in the other passes of the light the car hides what is behind it
-  //(client/lighting)
+  //a lamp is drawn as it is with the colours by day, and with what shines
+  //at night; in the other passes of the light the car hides what is behind
+  //it (client/lighting)
   if (
     lit === null ||
-    (pass >= 0 && pass !== Lighting.UP && pass !== Lighting.SHINE)
+    (pass >= 0 && pass !== Lighting.ALBEDO && pass !== Lighting.SHINE)
   )
     return;
 
@@ -968,137 +964,6 @@ VehicleRenderer.prototype.render = function (
 //drawn in every pass of the light (engine Canvas2dRenderer drawLit)
 VehicleRenderer.prototype.litPasses = true;
 
-/**
- * Lights it by the street lights it stands under (client/glow lightAt), as
- * a whole and in steps as the pools are: its shape in their light, as much
- * of it as reaches it, over the black it is drawn in there - added to the
- * light on every face of it (client/lighting).
- */
-function underLamps(self, layer) {
-  var go = self.gameObject,
-    sprite = self._sprite;
-
-  if (go === null || sprite === null || sprite.width === 0) return;
-
-  go.transform.getPosition(position);
-
-  var k = Glow.lightAt(position[0], position[2]),
-    warm = k > 0 ? warmOf(sprite) : null;
-
-  if (warm === null) return;
-
-  var buffer = self.buf;
-
-  layer.globalAlpha = k;
-  layer.drawImage(
-    warm,
-    Math.floor(buffer[0] - self.pivotX + 0.5),
-    Math.floor(buffer[1] - self.pivotY + 0.5),
-  );
-  layer.globalAlpha = 1;
-}
-
-//a 1x1 canvas in the street lights' light, stretched over a shape
-var lampLight = null;
-
-/**
- * A picture's shape in the street lights' light, painted once and kept on
- * it: the picture, and the light over it where it is.
- */
-function warmOf(sprite) {
-  if (sprite.warm !== undefined) return sprite.warm;
-  if (!sprite.acquire()) return null;
-
-  var w = sprite.width,
-    h = sprite.height,
-    c = document.createElement("canvas"),
-    ctx;
-
-  if (lampLight === null) {
-    var L = Glow.POOL_LIGHT;
-
-    lampLight = document.createElement("canvas");
-    lampLight.width = lampLight.height = 1;
-    ctx = lampLight.getContext("2d");
-    ctx.fillStyle = "rgb(" + L[0] + "," + L[1] + "," + L[2] + ")";
-    ctx.fillRect(0, 0, 1, 1);
-  }
-
-  c.width = w;
-  c.height = h;
-  ctx = c.getContext("2d");
-  ctx.drawImage(
-    sprite.sourceImage,
-    sprite.offsetX,
-    sprite.offsetY,
-    w,
-    h,
-    0,
-    0,
-    w,
-    h,
-  );
-  ctx.globalCompositeOperation = "source-atop";
-  ctx.drawImage(lampLight, 0, 0, 1, 1, 0, 0, w, h);
-
-  return (sprite.warm = c);
-}
-
-/**
- * Draws the beams of a car's headlights on the road ahead of it at night
- * (client/glow headlights): on the road layer, under every car and building,
- * all of which stand over the light and hide it - hung on the car, so it
- * goes where the car goes.
- */
-function BeamRenderer(car, vehicle) {
-  engine.SpriteRenderer.call(this);
-  this.car = car;
-  this.vehicle = vehicle;
-  this.layer = RenderLayer.roadLayer;
-  //on and off with the car's own lamps (client/lighting shines)
-  this.lamps = vehicle.lamps;
-  this.setSprite(Glow.headlights("x+", 14));
-  this.setPivot(this._sprite.pivotX, this._sprite.pivotY);
-}
-
-BeamRenderer.prototype = Object.create(engine.SpriteRenderer.prototype);
-
-BeamRenderer.prototype.constructor = BeamRenderer;
-
-//drawn in every pass of the light (engine Canvas2dRenderer drawLit): the
-//beams themselves only into the light thrown on the ground
-BeamRenderer.prototype.litPasses = true;
-
-BeamRenderer.prototype.render = function (
-  layer,
-  viewportRenderer,
-  viewport,
-  self,
-) {
-  var car = self.car.car,
-    sprite = self.vehicle._sprite;
-
-  if (!car || car.heading === null || sprite === null) return;
-
-  //how long it is: across the screen its picture is as long as it is and as
-  //wide, about 6 (shared/gen/vehicles)
-  var beam = Glow.headlights(car.heading, Math.max(8, sprite.width - 6));
-
-  if (beam !== self._sprite) {
-    self.setSprite(beam);
-    self.setPivot(beam.pivotX, beam.pivotY);
-  }
-
-  //drawn as a sprite is, only where the light thrown on the ground is (Glow)
-  engine.SpriteRenderer.prototype.render.call(
-    self,
-    layer,
-    viewportRenderer,
-    viewport,
-    self,
-  );
-};
-
 function Car(man) {
   engine.GameObject.init(this, "car");
 
@@ -1113,12 +978,6 @@ function Car(man) {
   //after the street lights (client/lighting lampsOn)
   renderer.lamps = Math.random();
   this.addComponent(renderer);
-
-  //and the beams of its headlights on the road ahead, at night
-  var beams = new engine.GameObject();
-
-  beams.addComponent(new BeamRenderer(this, renderer));
-  this.transform.addChild(beams.transform);
 
   this.car = this.addComponent(new CarScript(man));
 }
