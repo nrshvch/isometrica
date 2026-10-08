@@ -10,6 +10,7 @@
  * hides it.
  */
 import Lighting from "./lighting";
+import Config from "./config";
 
 //the dither the steps of light are broken up with, 4x4
 var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
@@ -104,9 +105,9 @@ function lampPool() {
       function (x, y) {
         var d = Math.sqrt(x * x + y * y) / POOL_REACH;
 
-        return d < 1 ? 0.9 * (1 - d * d) : 0;
+        return d < 1 ? POOL_PEAK * (1 - d * d) : 0;
       },
-      [255, 190, 110],
+      POOL_LIGHT,
     );
     pool.reach = POOL_REACH;
   }
@@ -114,8 +115,11 @@ function lampPool() {
   return pool;
 }
 
-//how far the pool under a street light reaches from the spot under the lamp
-var POOL_REACH = 13;
+//how far the pool under a street light reaches from the spot under the lamp,
+//how much it lights there at the most, and in what light
+var POOL_REACH = 13,
+  POOL_PEAK = 0.9,
+  POOL_LIGHT = [255, 190, 110];
 
 /**
  * The beams of a car's headlights going heading as it is seen ("x+", "y-"
@@ -152,4 +156,67 @@ function headlights(heading, length) {
   return beams[key];
 }
 
-export default { Glow: Glow, lampPool: lampPool, headlights: headlights };
+/* --- What the street lights light ------------------------------------ */
+
+//the pools of the street lights, by the tile they lie on - each the game
+//object the pool hangs on, the spot under its lamp
+var lamps = {},
+  at = new Float32Array(3);
+
+/**
+ * Keeps the pool hung on go (client/roadview), in place, for lightAt to find
+ * - in place of whatever pool lay on that tile before.
+ */
+function addLamp(go) {
+  go.transform.getPosition(at);
+  lamps[
+    Math.floor(at[0] / Config.tileSize) +
+      "," +
+      Math.floor(at[2] / Config.tileSize)
+  ] = go;
+}
+
+/**
+ * How much the street lights light something standing at x, z in the world
+ * - 0 out of reach of them all, up to POOL_PEAK under a lamp - as the pools
+ * they cast are lit there (lampPool), in the same three steps; 0 while they
+ * are off.
+ */
+function lightAt(x, z) {
+  if (!Lighting.shines(CITY)) return 0;
+
+  var tx = Math.floor(x / Config.tileSize),
+    tz = Math.floor(z / Config.tileSize),
+    most = 0;
+
+  for (var i = -1; i <= 1; i++)
+    for (var j = -1; j <= 1; j++) {
+      var go = lamps[tx + i + "," + (tz + j)];
+
+      //a pool gone with its road
+      if (go === undefined || go.world === null) continue;
+
+      go.transform.getPosition(at);
+
+      //how far, a pixel of the picture a unit, as the pool's own are
+      var dx = ((at[0] - x) / Config.tileSize) * 32,
+        dz = ((at[2] - z) / Config.tileSize) * 32,
+        d = Math.sqrt(dx * dx + dz * dz) / POOL_REACH;
+
+      if (d < 1) most = Math.max(most, 1 - d * d);
+    }
+
+  return Math.round(most * POOL_PEAK * 3) / 3;
+}
+
+//what a street light's pool lights (Lighting shines)
+var CITY = { city: true };
+
+export default {
+  Glow: Glow,
+  lampPool: lampPool,
+  headlights: headlights,
+  addLamp: addLamp,
+  lightAt: lightAt,
+  POOL_LIGHT: POOL_LIGHT,
+};
