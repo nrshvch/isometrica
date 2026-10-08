@@ -522,6 +522,8 @@ function paintTree(tree, look) {
     //for every pixel: -1 nothing, else the part and tone, part * 3 + tone -
     //leaves 0, bark 1
     tones = new Int8Array(W * H).fill(-1),
+    //and how high it is there, for the height picture
+    zs = look === "height" ? new Float32Array(W * H) : null,
     leaves = [tree.kind.leaves[1], tree.kind.leaves[2], tree.kind.leaves[3]],
     bark = [tree.kind.bark[0], tree.kind.bark[1], tree.kind.bark[2]],
     px,
@@ -552,6 +554,7 @@ function paintTree(tree, look) {
         ];
 
         tree.shape(p);
+        if (zs !== null) zs[i] = p[2];
 
         var part = tree.part === "leaves" ? 0 : 1,
           n = normalAt(tree, p),
@@ -608,6 +611,30 @@ function paintTree(tree, look) {
 
   if (look === "faces" || look === "night")
     return sideBySide(data, tones, sides, leaves, bark, look);
+
+  //how high every pixel of it is - its shadow on the ground not at all - and
+  //the whole of it in white (shared/gen/looks HEIGHT)
+  if (look === "height") {
+    var out = Looks.blank(W, H, Looks.HEIGHT);
+
+    for (i = 0; i < W * H; i++) {
+      var a = tones[i] < 0 ? data[i * 4 + 3] : 255;
+
+      if (a === 0) continue;
+      Looks.put(
+        out,
+        W,
+        0,
+        i % W,
+        (i / W) | 0,
+        Looks.height1(tones[i] < 0 ? 0 : zs[i]),
+        a,
+      );
+      Looks.put(out, W, 1, i % W, (i / W) | 0, [255, 255, 255], a);
+    }
+
+    return out;
+  }
 
   for (i = 0; i < W * H; i++) {
     if (tones[i] < 0) continue;

@@ -389,6 +389,11 @@ function cast(boxes, sx, sy) {
   //which way it looks, for the light to be worked out as it is drawn
   if (mode === "map") return facing(face, normal, hit.finish);
 
+  //how high the point is over the ground the picture stands on, a pixel a
+  //unit, for the light of a lamp near it to be worked out as it is drawn;
+  //and the whole of it, to lift a storey laid on another (Looks.height)
+  if (mode === "height") return [heightOf(z - best), WHITE];
+
   //at night: what of it shines - a pane lit behind a window - in either of
   //its two ways, with the first of the lights on and with more of them; all
   //of it black, to hide whatever shines behind it; and the light thrown on
@@ -693,7 +698,8 @@ function emitters(boxes) {
  * wherever the sun is; or, for the night, what of it shines - with the
  * first of its lights on and with more of them, one way and another - the
  * whole of it in black, and the light it throws round it each of those
- * ways, side by side ("night", see NIGHT).
+ * ways, side by side ("night", see NIGHT); or how high every pixel of it is
+ * and the whole of it in white ("height", see HEIGHT).
  */
 var mode = "lit";
 
@@ -701,6 +707,19 @@ var mode = "lit";
 //way, with the first lights on and with more, the same the other way, all
 //of it in black, and the light it throws round it the four ways again
 var NIGHT = 9;
+
+//and the height of every pixel of it, painted as two pictures side by side
+//(heightOf): how high, and the whole of it in white
+var HEIGHT = 2,
+  WHITE = [255, 255, 255];
+
+/**
+ * A height as the height picture has it: in the red, a pixel a unit, up to
+ * 255 - higher than anything there is.
+ */
+function heightOf(z) {
+  return [Math.max(0, Math.min(255, Math.round(z))), 0, 0];
+}
 
 function setMode(m) {
   mode = m;
@@ -1226,7 +1245,13 @@ function sideBySide(boxes, minX, minY, w, h, n) {
  * faces, NIGHT for the night, one for anything else.
  */
 function sections() {
-  return mode === "faces" ? 3 : mode === "night" ? NIGHT : 1;
+  return mode === "faces"
+    ? 3
+    : mode === "night"
+      ? NIGHT
+      : mode === "height"
+        ? HEIGHT
+        : 1;
 }
 
 function getMode() {
@@ -1382,6 +1407,7 @@ export {
   setMode,
   getMode,
   sections,
+  heightOf,
   facesOf,
   paintTiles,
   toImage,
