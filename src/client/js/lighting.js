@@ -21,8 +21,10 @@
  * of them - added to the light on what looks up before that is multiplied
  * in, so that it lights the road in the road's own colours rather than
  * lying over it like a haze. Nothing fades:
- * a light is on or off (shines). Every building turns its lights on of an
- * evening and off late at night at times of its own (windowsOn); the street
+ * a light is on or off (shines). Every building turns its lights on in the
+ * same hour of an evening, each at its own time; a home turns them off late
+ * at night, a shop keeps them on all night, an office a few of them; a
+ * building still going up has none (windowsOn); the street
  * lights all go on at once, and off at once in the morning (cityOn); every
  * car puts its lamps on and off a while after them, each in its own time
  * (lampsOn).
@@ -65,7 +67,7 @@ var CAR_LAG = 0.75;
 
 //from when to when anything shines at all: the first windows to come on
 //(windowsOn), the last car to put its lamps out
-var SHINE_FROM = 20,
+var SHINE_FROM = 20.5,
   SHINE_TO = CITY_OFF + CAR_LAG;
 
 function Lighting(root) {
@@ -190,31 +192,37 @@ Lighting.prototype.end = function (context, viewport) {
  */
 Lighting.shines = function (renderer) {
   if (renderer.lamps !== undefined) return lampsOn(renderer.lamps) ? 2 : 0;
-  if (renderer.windows !== undefined) return windowsOn(renderer.windows);
+  if (renderer.windows !== undefined)
+    return windowsOn(renderer.windows, renderer.lights);
 
   return renderer.city === true && cityOn() ? 2 : 0;
 };
 
 /**
  * How many of a building's windows are lit at this hour, 0, 1 for the first
- * few or 2 for more: every one puts the first few on at an hour of its own
- * between eight and ten in the evening, and more of them on a while later;
- * it puts those out again a while before it puts the last out, at an hour of
- * its own between eleven and half past three in the morning - or, one in
- * eight, it keeps a few on all night, till between five and six in the
- * morning. No building ever has all its windows lit.
+ * few or 2 for more. Every building puts its first few on at a time of its
+ * own in the hour from half past eight, all over the city, and more of them
+ * a while later - each at its own pace, and every tile of it lit its own way
+ * (client/cachedsprite nightSection), so no two are alike. A home puts the
+ * more out again a while before it goes to bed, at an hour of its own
+ * between eleven and three in the morning, and the rest then; a shop keeps
+ * them all on through the night; an office keeps only the few on, through
+ * the night - all till a while after the sun is up.
  *
  * @param seed {number} the building's own, 0..1 (see BuildingView)
+ * @param lights {string} "home", "shop" or "office" (BuildingView lightsOf)
  */
-function windowsOn(seed) {
-  var late = (seed * 3.77) % 1 < 0.125,
-    first = SHINE_FROM + seed * 2,
-    more = first + 0.5 + ((seed * 4.13) % 1) * 1.5,
-    bed = 23 + ((seed * 7.31) % 1) * 4.5,
-    off = late ? 24 + SUNRISE + ((seed * 5.93) % 1) : bed,
-    fewer = late ? bed : bed - 0.5 - ((seed * 2.71) % 1) * 1.5;
+function windowsOn(seed, lights) {
+  var first = SHINE_FROM + seed,
+    more = first + 0.25 + ((seed * 4.13) % 1),
+    morning = 24 + SUNRISE + ((seed * 5.93) % 1) * 0.5,
+    bed = 23 + ((seed * 7.31) % 1) * 4,
+    fewer = bed - 0.5 - ((seed * 2.71) % 1);
 
-  return within(hourNow, more, fewer) ? 2 : within(hourNow, first, off) ? 1 : 0;
+  if (lights === "shop") return within(hourNow, first, morning) ? 2 : 0;
+  if (lights === "office") return within(hourNow, first, morning) ? 1 : 0;
+
+  return within(hourNow, more, fewer) ? 2 : within(hourNow, first, bed) ? 1 : 0;
 }
 
 //whether the street lights are on: from nine in the evening to half past
