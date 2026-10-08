@@ -424,7 +424,9 @@ define(function (require) {
                     depthSort(start, end);
 
                 if (!begun) {
-                    lighting.begin(viewport);
+                    //with where on the screen the world is, for whatever
+                    //it works out from where things stand
+                    lighting.begin(viewport, self.M);
                     begun = true;
                 }
 
@@ -469,14 +471,15 @@ define(function (require) {
 
     Canvas2dRenderer.render = render;
 
-    //the pass things that look up are drawn in (see SpriteRenderer.pass)
-    var UP = 2;
+    //the pass whatever has no light of its own worked out is drawn in, as it
+    //is: the colours (see SpriteRenderer.pass)
+    var PLAIN = 0;
 
     /**
      * Draws a layer's entries start .. end into each of the lighting's
      * canvases in turn, the whole layer once per canvas, in the same order:
-     * a sprite as it is in that pass, anything else only where things look
-     * up - unless it says it draws itself in every pass (litPasses).
+     * a sprite as it is in that pass, anything else only with the colours -
+     * unless it says it draws itself in every pass (litPasses).
      */
     function drawLit(self, viewport, lighting, start, end, flat) {
         var passes = lighting.passes,
@@ -495,7 +498,7 @@ define(function (require) {
 
                 if (entryDraw[entry] === DRAW_SPRITE)
                     drawSprite(ctx, renderer, drawX[entry], drawY[entry]);
-                else if (k === UP || renderer.litPasses === true)
+                else if (k === PLAIN || renderer.litPasses === true)
                     renderer.render(ctx, self, viewport, renderer);
             }
         }

@@ -389,11 +389,6 @@ function cast(boxes, sx, sy) {
   //which way it looks, for the light to be worked out as it is drawn
   if (mode === "map") return facing(face, normal, hit.finish);
 
-  //how high the point is over the ground the picture stands on, a pixel a
-  //unit, for the light of a lamp near it to be worked out as it is drawn;
-  //and the whole of it, to lift a storey laid on another (Looks.height)
-  if (mode === "height") return [heightOf(z - best), WHITE];
-
   //at night: what of it shines - a pane lit behind a window - in either of
   //its two ways, with the first of the lights on and with more of them; all
   //of it black, to hide whatever shines behind it; and the light thrown on
@@ -406,7 +401,13 @@ function cast(boxes, sx, sy) {
 
     glows.push(BLACK);
 
-    return glows.concat(spill(boxes, face, normal, px, py, pz, sx, sy));
+    //and how high the point is over the ground the picture stands on, a
+    //pixel a unit, for the light of a lamp near it to be worked out as it
+    //is drawn - with the whole of it in white, to lift a storey laid on
+    //another by as much (client/cachedsprite Layers)
+    return glows
+      .concat(spill(boxes, face, normal, px, py, pz, sx, sy))
+      .concat([heightOf(pz), WHITE]);
   }
 
   //a box lit already is its own colour on every face - with what it is
@@ -453,6 +454,24 @@ function cast(boxes, sx, sy) {
         z - best,
       );
   }
+
+  //its colour with no light on it, and which way it looks (normalOf) - for
+  //the light to be worked out pixel by pixel as it is drawn
+  if (mode === "deferred")
+    return [
+      color,
+      hit.finish !== undefined && hit.finish.lit
+        ? BLACK
+        : normalOf(
+            normal !== null
+              ? normal
+              : face === 0
+                ? [-1, 0, 0]
+                : face === 1
+                  ? [0, -1, 0]
+                  : [0, 0, 1],
+          ),
+    ];
 
   //of each face's picture, as much of the colour as looks that way - black
   //where none of it does, so it still covers what is behind it
@@ -698,20 +717,43 @@ function emitters(boxes) {
  * wherever the sun is; or, for the night, what of it shines - with the
  * first of its lights on and with more of them, one way and another - the
  * whole of it in black, and the light it throws round it each of those
- * ways, side by side ("night", see NIGHT); or how high every pixel of it is
- * and the whole of it in white ("height", see HEIGHT).
+ * ways, how high every pixel of it is and the whole of it in white, side by
+ * side ("night", see NIGHT); or its colours with no light on them and which
+ * way every pixel of it looks, side by side ("deferred", see normalOf).
  */
 var mode = "lit";
 
 //how many pictures the night is painted in, side by side: what shines one
 //way, with the first lights on and with more, the same the other way, all
-//of it in black, and the light it throws round it the four ways again
-var NIGHT = 9;
-
-//and the height of every pixel of it, painted as two pictures side by side
-//(heightOf): how high, and the whole of it in white
-var HEIGHT = 2,
+//of it in black, the light it throws round it the four ways again, how high
+//every pixel of it is (heightOf), and the whole of it in white
+var NIGHT = 11,
   WHITE = [255, 255, 255];
+
+//and how many it is painted in to be lit as it is drawn: its colours with
+//no light on them, and which way every pixel of it looks (normalOf)
+var DEFERRED = 2;
+
+/**
+ * Which way a pixel looks, n, as the picture of that has it: x, y and z of
+ * it from -1..1 to 0..255 in the red, the green and the blue - black for
+ * straight up, which is what anything with no picture of its own is taken
+ * for as well (client/deferred), and which flat ground then need not draw.
+ */
+function normalOf(n) {
+  var l = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]) || 1,
+    x = n[0] / l,
+    y = n[1] / l,
+    z = n[2] / l;
+
+  if (z > 0.999) return BLACK;
+
+  return [
+    Math.round((x * 0.5 + 0.5) * 255),
+    Math.round((y * 0.5 + 0.5) * 255),
+    Math.round((z * 0.5 + 0.5) * 255),
+  ];
+}
 
 /**
  * A height as the height picture has it: in the red, a pixel a unit, up to
@@ -1249,8 +1291,8 @@ function sections() {
     ? 3
     : mode === "night"
       ? NIGHT
-      : mode === "height"
-        ? HEIGHT
+      : mode === "deferred"
+        ? DEFERRED
         : 1;
 }
 
@@ -1336,10 +1378,16 @@ function to16(c) {
 }
 
 /**
- * A painted picture as RGBA pixels, {width, height, data}, in 16 bit colour.
+ * A painted picture as RGBA pixels, {width, height, data}, in 16 bit colour -
+ * its colours, that is: what is not a colour (which way a pixel looks, how
+ * high it is, as the mode paints them) is kept as it is.
  */
 function toImage(picture) {
   var data = new Uint8ClampedArray(picture.w * picture.h * 4),
+    //how wide the pictures side by side in it are, and how many of them,
+    //from the first, are colours
+    w = picture.w / sections(),
+    colours = mode === "night" ? 0 : mode === "deferred" ? 1 : sections(),
     c,
     k;
 
@@ -1347,7 +1395,7 @@ function toImage(picture) {
     c = picture.pixels[i];
     if (c === null) continue;
 
-    c = to16(c);
+    if (Math.floor((i % picture.w) / w) < colours) c = to16(c);
     k = i * 4;
     data[k] = c[0];
     data[k + 1] = c[1];
@@ -1393,6 +1441,7 @@ export {
   lighter,
   darker,
   lit,
+  shade,
   box,
   plane,
   cut,
@@ -1408,6 +1457,7 @@ export {
   getMode,
   sections,
   heightOf,
+  normalOf,
   facesOf,
   paintTiles,
   toImage,

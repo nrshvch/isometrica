@@ -1,25 +1,25 @@
 /**
  * What the painters that do not paint out of boxes (shared/gen/terrain,
  * trees, vehicles) share for painting a picture the ways the light is worked
- * out from as it is drawn - as shared/gen/isobox setMode has them: "faces",
- * what of it looks towards -x, -y and up side by side, black where a pixel
- * looks another way, adding up to its colours with no light on them; and
- * "night", what of it shines with the first of its lights on and with more
- * of them, one way and another, the whole of it in black, and the light it
- * throws on the ground, side by side (NIGHT).
+ * out from as it is drawn - as shared/gen/isobox setMode has them:
+ * "deferred", its colours with no light on them and which way every pixel of
+ * it looks, side by side (DEFERRED); and "night", what of it shines with the
+ * first of its lights on and with more of them, one way and another, the
+ * whole of it in black, the light it throws round it, how high every pixel
+ * of it is and the whole of it in white, side by side (NIGHT).
  */
 
 //how many pictures side by side the night is painted in: what shines with
 //the first lights on and with more of them, one way and another, the whole
-//of it in black, and the light it throws round it each of those ways (see
-//shared/gen/isobox NIGHT)
-export var NIGHT = 9;
+//of it in black, the light it throws round it each of those ways, how high
+//every pixel of it is, and the whole of it in white (see shared/gen/isobox
+//NIGHT) - and which of them the height is
+export var NIGHT = 11,
+  HEIGHT = 9;
 
-//and how many the height of it is painted in: how high every pixel of it is
-//over the ground it stands on, in the red a pixel a unit, and the whole of
-//it in white - for a part laid higher up to be lifted by as much
-//(client/cachedsprite Layers)
-export var HEIGHT = 2;
+//how many it is painted in to be lit as it is drawn: its colours with no
+//light on them, and which way every pixel of it looks (normal)
+export var DEFERRED = 2;
 
 //a height as the height picture has it, in the red, a pixel a unit
 export function height1(z) {
@@ -27,44 +27,20 @@ export function height1(z) {
 }
 
 /**
- * The height picture of image (HEIGHT): z(i, j), how high its pixel i, j
- * is, as see-through as the picture is.
+ * Which way a pixel looks, as the picture of that has it: x, y, z from
+ * -1..1 to 0..255 in the red, the green and the blue - black for straight
+ * up (isobox normalOf).
  */
-export function height(image, z) {
-  var w = image.width,
-    out = blank(w, image.height, HEIGHT);
+export function normal(n) {
+  var l = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]) || 1;
 
-  for (var j = 0; j < image.height; j++)
-    for (var i = 0; i < w; i++) {
-      var a = image.data[(j * w + i) * 4 + 3];
+  if (n[2] / l > 0.999) return [0, 0, 0];
 
-      if (a === 0) continue;
-      put(
-        out,
-        w,
-        0,
-        i,
-        j,
-        [Math.max(0, Math.min(255, Math.round(z(i, j)))), 0, 0],
-        a,
-      );
-      put(out, w, 1, i, j, [255, 255, 255], a);
-    }
-
-  return out;
-}
-
-/**
- * How much of a surface looking along n - x, y and up as the boxes have
- * them - looks towards -x, -y and up, adding up to one.
- */
-export function weights(n) {
-  var l = Math.max(0, -n[0]),
-    r = Math.max(0, -n[1]),
-    u = Math.max(0, n[2]),
-    all = l + r + u;
-
-  return all > 0 ? [l / all, r / all, u / all] : [0, 0, 1];
+  return [
+    Math.round(((n[0] / l) * 0.5 + 0.5) * 255),
+    Math.round(((n[1] / l) * 0.5 + 0.5) * 255),
+    Math.round(((n[2] / l) * 0.5 + 0.5) * 255),
+  ];
 }
 
 /**
@@ -92,8 +68,38 @@ export function put(image, w, k, i, j, c, a) {
 }
 
 /**
- * At night: nothing of a picture shines, and the whole of it is black,
- * as see-through as it is - for whatever has no light of its own.
+ * To be lit as it is drawn, a picture that looks up all over: its colours
+ * as they are, and black for the way it looks (normal).
+ */
+export function deferred(image) {
+  var w = image.width,
+    out = blank(w, image.height, DEFERRED);
+
+  for (var j = 0; j < image.height; j++)
+    for (var i = 0; i < w; i++) {
+      var o = (j * w + i) * 4,
+        a = image.data[o + 3];
+
+      if (a === 0) continue;
+      put(
+        out,
+        w,
+        0,
+        i,
+        j,
+        [image.data[o], image.data[o + 1], image.data[o + 2]],
+        a,
+      );
+      put(out, w, 1, i, j, [0, 0, 0], a);
+    }
+
+  return out;
+}
+
+/**
+ * At night: nothing of a picture shines, and the whole of it is black, as
+ * see-through as it is, on the ground (height nought) - for whatever has no
+ * light of its own and stands no higher than the ground.
  */
 export function night(image) {
   var w = image.width,
@@ -104,7 +110,8 @@ export function night(image) {
       var a = image.data[(j * w + i) * 4 + 3];
 
       if (a === 0) continue;
-      for (var k = 0; k < NIGHT; k++) put(out, w, k, i, j, [0, 0, 0], a);
+      for (var k = 0; k < NIGHT; k++)
+        put(out, w, k, i, j, k === NIGHT - 1 ? [255, 255, 255] : [0, 0, 0], a);
     }
 
   return out;

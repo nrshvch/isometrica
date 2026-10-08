@@ -75,8 +75,9 @@ var BLOCKS = {
 
 /**
  * The generators that can paint a picture of theirs the ways the light is
- * worked out from as it is drawn: its faces side by side, or what of it
- * shines at night (isobox setMode, shared/gen/looks) - those that paint out
+ * worked out from as it is drawn: its colours with no light on them and
+ * which way every pixel of it looks, or what of it shines at night and how
+ * high it stands (isobox setMode, shared/gen/looks) - those that paint out
  * of boxes, and the ground, the trees and the vehicles, which paint their
  * own - see createPainter. Only the stones, painted from pictures drawn by
  * hand, cannot.
@@ -285,7 +286,7 @@ export function createPainter(loadPixels) {
      * @param spec {{gen: string, key: string, look: string}} the generator,
      *        and what it calls the picture - the key describe gives - and
      *        for one of the FACED, how it is to be painted, if not lit: as
-     *        isobox setMode has it, "faces" or "night"
+     *        isobox setMode has it, "deferred" or "night"
      * @returns {Promise<{width, height, data}>}
      */
     paint: function (spec) {

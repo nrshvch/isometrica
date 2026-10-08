@@ -145,7 +145,8 @@ define(function (require) {
     /**
      * While the renderer draws the layers that are lit (see Canvas2dRenderer,
      * Config.lighting), which of the lighting's canvases it is drawing into -
-     * 0 what looks one way, 1 the other, 2 up, 3 what shines at night - and
+     * 0 the colours, then which way things look, and the rest of the
+     * lighting's own (see client/lighting) - and
      * whether the layer is flat ground, where nothing has to be hidden
      * behind what is drawn; -1 while it draws as it always has.
      */
@@ -165,7 +166,7 @@ define(function (require) {
      * Draws a picture of the renderer's - its sprite, or anything it draws
      * over it - at x0, y0, as the pass being drawn wants it: a picture that
      * knows how it is lit (lightPass) gives what it is in that pass, or
-     * nothing; one that does not is drawn whole where things look up, and
+     * nothing; one that does not is drawn whole with the colours, and
      * nowhere else.
      */
     function picture(layer, self, sprite, x0, y0) {
@@ -180,7 +181,7 @@ define(function (require) {
             if (src === null)
                 return;
         } else {
-            if (pass >= 0 && pass !== 2)
+            if (pass >= 0 && pass !== 0)
                 return;
 
             //a sprite kept somewhere it can be put away from - a cache of

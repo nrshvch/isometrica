@@ -512,18 +512,16 @@ function toneOf(light) {
  * meets it, or as its shadow where it meets the ground in it.
  */
 function paintTree(tree, look) {
-  var faces = look === "faces",
+  var faces = look === "deferred",
     data = new Uint8ClampedArray(W * H * 4),
-    //for its faces (shared/gen/looks): which way every pixel looks the most
-    //- 0 towards -x, 1 -y, 2 up - each pixel's light then the light that
-    //falls that way, as it is drawn
-    sides = new Int8Array(W * H).fill(2),
+    //to be lit as it is drawn (shared/gen/looks): which way every pixel
+    //looks, and at night how high it is
+    ns = faces ? new Array(W * H) : null,
+    zs = look === "night" ? new Float32Array(W * H) : null,
     back = 90,
     //for every pixel: -1 nothing, else the part and tone, part * 3 + tone -
     //leaves 0, bark 1
     tones = new Int8Array(W * H).fill(-1),
-    //and how high it is there, for the height picture
-    zs = look === "height" ? new Float32Array(W * H) : null,
     leaves = [tree.kind.leaves[1], tree.kind.leaves[2], tree.kind.leaves[3]],
     bark = [tree.kind.bark[0], tree.kind.bark[1], tree.kind.bark[2]],
     px,
@@ -564,7 +562,7 @@ function paintTree(tree, look) {
           //is; the light on it comes with the face it looks most towards
           light = faces ? 0.15 + 0.85 * open : (0.15 + 0.85 * sun) * open;
 
-        if (faces) sides[i] = mostOf(Looks.weights(n));
+        if (ns !== null) ns[i] = n;
 
         //the trunk is never caught by the sun the way the leaves are
         tones[i] = part * 3 + Math.min(toneOf(light), part ? 1 : 2);
@@ -606,35 +604,10 @@ function paintTree(tree, look) {
       }
 
     tones = next;
-    if (faces) sides = alone(sides, tones);
   }
 
-  if (look === "faces" || look === "night")
-    return sideBySide(data, tones, sides, leaves, bark, look);
-
-  //how high every pixel of it is - its shadow on the ground not at all - and
-  //the whole of it in white (shared/gen/looks HEIGHT)
-  if (look === "height") {
-    var out = Looks.blank(W, H, Looks.HEIGHT);
-
-    for (i = 0; i < W * H; i++) {
-      var a = tones[i] < 0 ? data[i * 4 + 3] : 255;
-
-      if (a === 0) continue;
-      Looks.put(
-        out,
-        W,
-        0,
-        i % W,
-        (i / W) | 0,
-        Looks.height1(tones[i] < 0 ? 0 : zs[i]),
-        a,
-      );
-      Looks.put(out, W, 1, i % W, (i / W) | 0, [255, 255, 255], a);
-    }
-
-    return out;
-  }
+  if (look === "deferred" || look === "night")
+    return sideBySide(data, tones, ns, zs, leaves, bark, look);
 
   for (i = 0; i < W * H; i++) {
     if (tones[i] < 0) continue;
@@ -689,64 +662,44 @@ export function paint(name, look) {
   );
 }
 
-//which of three it is most of
-function mostOf(w) {
-  return w[0] >= w[1] && w[0] >= w[2] ? 0 : w[1] >= w[2] ? 1 : 2;
-}
-
-//a pixel looking a way none of the pixels round it of the same part do
-//takes the way most of them look - as a tone alone among another does
-function alone(sides, tones) {
-  var next = sides.slice();
-
-  for (var py = 1; py < H - 1; py++)
-    for (var px = 1; px < W - 1; px++) {
-      var i = py * W + px,
-        count = [0, 0, 0],
-        same = 0;
-
-      if (tones[i] < 0) continue;
-
-      [i - 1, i + 1, i - W, i + W].forEach(function (j) {
-        if (tones[j] < 0 || ((tones[j] / 3) | 0) !== ((tones[i] / 3) | 0))
-          return;
-        count[sides[j]]++;
-        if (sides[j] === sides[i]) same++;
-      });
-
-      var m = mostOf(count);
-
-      if (same === 0 && count[m] >= 3) next[i] = m;
-    }
-
-  return next;
-}
-
 /**
- * The tree's pictures side by side (shared/gen/looks): its faces, every
- * pixel of it in its tone on the picture of the way it looks the most and
- * black on the others; or for the night, nothing of it shining and all of
- * it black - its shadow, as see-through as it is, on all of them.
+ * The tree's pictures side by side (shared/gen/looks): to be lit as it is
+ * drawn, every pixel of it in its tone, and which way it looks (ns); or for
+ * the night, nothing of it shining, all of it black, and how high every
+ * pixel of it is (zs) - its shadow, as see-through as it is, on the ground.
  */
-function sideBySide(data, tones, sides, leaves, bark, look) {
-  var n = look === "faces" ? 3 : Looks.NIGHT,
+function sideBySide(data, tones, ns, zs, leaves, bark, look) {
+  var n = look === "deferred" ? Looks.DEFERRED : Looks.NIGHT,
     out = Looks.blank(W, H, n),
     i,
     k;
 
   for (i = 0; i < W * H; i++) {
     var px = i % W,
-      py = (i / W) | 0;
+      py = (i / W) | 0,
+      shadow = tones[i] < 0,
+      a = shadow ? data[i * 4 + 3] : 255;
 
-    if (tones[i] < 0) {
-      //its shadow on the ground
-      if (data[i * 4 + 3] > 0)
-        for (k = 0; k < n; k++)
-          Looks.put(out, W, k, px, py, [0, 0, 0], data[i * 4 + 3]);
+    if (a === 0) continue;
+
+    if (look === "deferred") {
+      //its shadow darkens the ground under it, looking up as the ground does
+      Looks.put(
+        out,
+        W,
+        0,
+        px,
+        py,
+        shadow
+          ? [0, 0, 0]
+          : tones[i] < 3
+            ? leaves[tones[i]]
+            : bark[tones[i] - 3],
+        a,
+      );
+      Looks.put(out, W, 1, px, py, shadow ? [0, 0, 0] : Looks.normal(ns[i]), a);
       continue;
     }
-
-    var c = tones[i] < 3 ? leaves[tones[i]] : bark[tones[i] - 3];
 
     for (k = 0; k < n; k++)
       Looks.put(
@@ -755,7 +708,12 @@ function sideBySide(data, tones, sides, leaves, bark, look) {
         k,
         px,
         py,
-        look === "faces" && k === sides[i] ? c : [0, 0, 0],
+        k === n - 1
+          ? [255, 255, 255]
+          : k === Looks.HEIGHT && !shadow
+            ? Looks.height1(zs[i])
+            : [0, 0, 0],
+        a,
       );
   }
 

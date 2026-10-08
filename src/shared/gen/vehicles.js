@@ -706,37 +706,48 @@ function render(boxes, lit) {
 }
 
 /**
- * Its faces side by side (shared/gen/looks): every pixel in the colour a
- * top of it is in the sun, on the picture of the face the ray went in
- * through, and black on the others - its edge darkened on all of them, as
- * render darkens it.
+ * To be lit as it is drawn (shared/gen/looks DEFERRED): every pixel in the
+ * colour a top of it is in the sun - its edge darkened, as render darkens
+ * it - and which way the face the ray went in through looks.
  */
-function renderFaces(boxes) {
+function renderDeferred(boxes) {
   var at = measure(boxes),
     w = at.w,
     h = at.h,
-    sections = [[], [], []],
+    colors = [],
+    faces = [],
     i,
-    j,
-    k;
+    j;
 
   for (j = 0; j < h; j++)
     for (i = 0; i < w; i++) {
       var c = cast(boxes, at.x + i + 0.5, at.y + j + 0.5);
 
-      for (k = 0; k < 3; k++)
-        sections[k].push(
-          c === null ? null : k === hitFace ? shade(hitColor, 2) : [0, 0, 0],
-        );
+      colors.push(c === null ? null : shade(hitColor, 2));
+      faces.push(hitFace);
     }
 
-  var out = Looks.blank(w, h, 3);
+  var out = Looks.blank(w, h, Looks.DEFERRED);
 
-  sections.forEach(function (pixels, k) {
-    outline(pixels, w, h);
-    pixels.forEach(function (c, n) {
-      if (c !== null) Looks.put(out, w, k, n % w, (n / w) | 0, c);
-    });
+  //its edge darkened, as when it is lit (outline)
+  outline(colors, w, h);
+  colors.forEach(function (c, n) {
+    if (c === null) return;
+
+    var x = n % w,
+      y = (n / w) | 0;
+
+    Looks.put(out, w, 0, x, y, c);
+    Looks.put(
+      out,
+      w,
+      1,
+      x,
+      y,
+      Looks.normal(
+        faces[n] === 0 ? [-1, 0, 0] : faces[n] === 1 ? [0, -1, 0] : [0, 0, 1],
+      ),
+    );
   });
 
   return out;
@@ -914,12 +925,8 @@ export function paint(name, look) {
 
     //a lamp is lit as a top is, and at night shines (client/carman draws it
     //where things look up, and with what shines)
-    if (look === "faces") return lampFaces(picture);
+    if (look === "deferred") return Looks.deferred(picture);
     if (look === "night") return Looks.night(picture);
-    if (look === "height")
-      return Looks.height(picture, function () {
-        return 0;
-      });
 
     return picture;
   }
@@ -938,16 +945,16 @@ export function paint(name, look) {
   );
 
   //painted for the light to be worked out as it is drawn (shared/gen/looks)
-  if (look === "faces") return renderFaces(boxes);
+  if (look === "deferred") return renderDeferred(boxes);
   if (look === "night") return renderNight(boxes);
-  if (look === "height") return renderHeight(boxes);
 
   return toImage(render(boxes));
 }
 
 /**
  * For the night (shared/gen/looks): its headlights shining white and its
- * tail lights red, and all of it black.
+ * tail lights red, all of it black, and how high every pixel of it is - for
+ * the lamps it passes under to light it as they would.
  */
 function renderNight(boxes) {
   var at = measure(boxes),
@@ -962,33 +969,20 @@ function renderNight(boxes) {
       //its lamps are the same with the first lights on and with more, either
       //way; it throws no light of its own on the ground there
       for (var k = 0; k < Looks.NIGHT; k++)
-        Looks.put(out, w, k, i, j, k < 4 ? shines(hitColor) : [0, 0, 0]);
-    }
-
-  return out;
-}
-
-/**
- * How high every pixel of it is, and the whole of it in white
- * (shared/gen/looks HEIGHT) - for the lamps it passes under to light it as
- * they would.
- */
-function renderHeight(boxes) {
-  var at = measure(boxes),
-    w = at.w,
-    h = at.h,
-    out = Looks.blank(w, h, Looks.HEIGHT);
-
-  for (var j = 0; j < h; j++)
-    for (var i = 0; i < w; i++) {
-      if (cast(boxes, at.x + i + 0.5, at.y + j + 0.5) === null) continue;
-
-      Looks.put(out, w, 0, i, j, [
-        Math.max(0, Math.min(255, Math.round(hitZ))),
-        0,
-        0,
-      ]);
-      Looks.put(out, w, 1, i, j, [255, 255, 255]);
+        Looks.put(
+          out,
+          w,
+          k,
+          i,
+          j,
+          k < 4
+            ? shines(hitColor)
+            : k === Looks.HEIGHT
+              ? Looks.height1(hitZ)
+              : k === Looks.NIGHT - 1
+                ? [255, 255, 255]
+                : [0, 0, 0],
+        );
     }
 
   return out;
@@ -1005,28 +999,6 @@ function shines(c) {
 
 function same(a, b) {
   return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
-}
-
-//a lamp's picture on the picture of what looks up, black on the others
-function lampFaces(picture) {
-  var w = picture.width,
-    out = Looks.blank(w, picture.height, 3);
-
-  for (var n = 0; n < w * picture.height; n++) {
-    if (picture.data[n * 4 + 3] === 0) continue;
-
-    var c = [
-      picture.data[n * 4],
-      picture.data[n * 4 + 1],
-      picture.data[n * 4 + 2],
-    ];
-
-    Looks.put(out, w, 0, n % w, (n / w) | 0, [0, 0, 0]);
-    Looks.put(out, w, 1, n % w, (n / w) | 0, [0, 0, 0]);
-    Looks.put(out, w, 2, n % w, (n / w) | 0, c);
-  }
-
-  return out;
 }
 
 function toImage(p) {

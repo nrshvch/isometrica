@@ -1,61 +1,48 @@
 /**
- * The light the city is drawn in, worked out as it is drawn: the sun going
- * over by the hour of the game's clock, the shade bluer and darker towards
- * night, and at night the windows lit.
+ * The light the city is drawn in, worked out pixel by pixel as it is drawn:
+ * the sun going over by the hour of the game's clock, the shade bluer and
+ * darker towards night, and at night the windows, the street lights and the
+ * headlights.
  *
- * Every picture painted out of boxes is painted as its faces side by side -
- * what of it looks one way, the other, and up, as it is seen, black where a
- * pixel looks another way, the three adding up to its colours with no light
- * on them (shared/gen/isobox setMode, client/cachedsprite lightPass). The
- * lit layers are drawn into one canvas for each face (engine
- * Canvas2dRenderer, Config.lighting), each multiplied by the light that falls
- * that way, and the three added up into the frame - drawImage, multiply and
- * lighter, nothing off the fast path (3d-with-canvas2d §5.6, §6.13). Whatever
- * is drawn half see-through comes out right, every step being linear.
+ * Every picture painted out of boxes - and the ground, the trees and the
+ * vehicles - is painted as its colours with no light on them and which way
+ * every pixel of it looks; at night, too, as what of it shines, how high
+ * every pixel of it stands, and the light it throws round its foot
+ * (shared/gen/looks, client/cachedsprite lightPass). The lit layers are drawn
+ * into one canvas for each of those (engine Canvas2dRenderer drawLit), in the
+ * same order, so whatever is in front hides what is behind it in all of them
+ * alike; and they are handed to WebGL to be lit pixel by pixel (deferred):
+ * the sun on every pixel by the way it looks, every lamp on every pixel it
+ * reaches by how far it is and how squarely it faces it - stepped and
+ * dithered, as pixel art is - what shines added in over the dark.
  *
- * At night there is a fourth canvas, of what shines - the lit panes of every
- * window, black wherever anything else stands, so that a building in front
- * hides the windows behind it - added in last, over the dark; and a fifth,
- * of the light thrown on the ground - the pools under the street lights, the
- * beams of the headlights (client/glow), as hidden by what stands in front
- * of them - which lights every face of what it falls on, in its own
- * colours, rather than lying over it like a haze: the faces' colours added
- * up, multiplied by it, and added in. It lies on the road under everything
- * standing, which hides it; a car under a street light is lit by it as a
- * whole (client/carman underLamps). Nothing fades:
- * a light is on or off (shines). Every building turns its lights on in the
- * same hour of an evening, each at its own time; a home turns them off late
- * at night, a shop keeps them on all night, an office a few of them; a
- * building still going up has none (windowsOn); the street
+ * Nothing fades: a light is on or off (shines). Every building turns its
+ * lights on in the same hour of an evening, each at its own time; a home
+ * turns them off late at night, a shop keeps them on all night, an office a
+ * few of them; a building still going up has none (windowsOn); the street
  * lights all go on at once, and off at once in the morning (cityOn); every
  * car puts its lamps on and off a while after them, each in its own time
  * (lampsOn).
  *
- * Every flat colour is a 1x1 swatch stretched over a canvas: nothing is
- * filled.
- *
- * ?light=0 draws everything as it is painted, lit by the one sun of old.
+ * Without WebGL2, or with ?light=0, everything is drawn as it is painted,
+ * lit by the one sun of old.
  */
 import engine from "engine";
 import Config from "core/config";
 import VTime from "core/vtime";
 import RenderLayer from "./renderlayer";
 import View from "./view";
+import Deferred from "./deferred";
 
-//the faces, what shines, and the light thrown on the ground, in the order
-//they are drawn in (engine SpriteRenderer.pass)
-var LEFT = 0,
-  RIGHT = 1,
-  UP = 2,
-  SHINE = 3,
-  GLOW = 4,
-  //and where the light thrown on things is worked out, at the end
-  THROWN = 5,
-  CANVASES = 6;
-
-//how much of the light thrown on something from above falls on its sides,
-//to what looks up
-var SIDES = 0.5;
+//the canvases, in the order they are drawn in (engine SpriteRenderer.pass):
+//the colours, the ways things look, and at night how high things stand,
+//what shines, and the light thrown round the buildings
+var ALBEDO = Deferred.ALBEDO,
+  NORMAL = Deferred.NORMAL,
+  HEIGHT = Deferred.HEIGHT,
+  SHINE = Deferred.SHINE,
+  GLOW = Deferred.GLOW,
+  CANVASES = 5;
 
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
@@ -79,10 +66,34 @@ var CAR_LAG = 0.75;
 var SHINE_FROM = 20.5,
   SHINE_TO = CITY_OFF + CAR_LAG;
 
+//a street light: how high its lamp hangs over the road, a pixel a unit
+//(shared/gen/roads streetLight), how far its light reaches, how bright it is
+//on the road under it, and in what light
+var LAMP_HIGH = 20.5,
+  LAMP_REACH = 28,
+  LAMP_PEAK = 0.9,
+  LAMP_LIGHT = [1, 0.745, 0.43];
+
+//a headlight: how high it is, how far ahead its light reaches, how bright,
+//in what light, and how wide (the cosine of half the cone); how far either
+//is from the middle of the car, across it
+var HEAD_HIGH = 3,
+  HEAD_REACH = 22,
+  HEAD_PEAK = 1,
+  HEAD_LIGHT = [1, 0.96, 0.82],
+  HEAD_CONE = 0.82,
+  HEAD_APART = 2.5;
+
+//how high anything a lamp lights can stand, for the square it is drawn in
+//to take it in
+var TALL = 60;
+
 function Lighting(root) {
   this.root = root;
-  this.enabled = !/[?&]light=0/.test(location.search);
-  this.passes = 3;
+  this.deferred = new Deferred();
+  this.enabled =
+    !/[?&]light=0/.test(location.search) && this.deferred.supported();
+  this.passes = 2;
   this.canvases = [];
   this.contexts = [];
 
@@ -95,8 +106,9 @@ function Lighting(root) {
     this.contexts.push(ctx);
   }
 
-  this.swatches = [swatch(), swatch(), swatch()];
   this.black = swatch().set(0, 0, 0);
+  this.lamps = [];
+  this.M = null;
 
   //the clock as it last moved on, and when, to move the sun on smoothly in
   //between (see hour)
@@ -126,7 +138,7 @@ Lighting.prototype.install = function () {
 /**
  * The hour of the game's day, with the minutes and how far the clock has
  * got towards its next tick - so the sun goes over smoothly rather than a
- * minute at a time.
+ * tick at a time.
  */
 Lighting.prototype.hour = function () {
   var time = this.root.core.time,
@@ -143,7 +155,11 @@ Lighting.prototype.hour = function () {
   return (ms % 86400000) / 3600000;
 };
 
-Lighting.prototype.begin = function (viewport) {
+/**
+ * @param M {number[]} where on the screen the world is (engine
+ *        Canvas2dRenderer), for where the lamps are
+ */
+Lighting.prototype.begin = function (viewport, M) {
   var w = viewport.width,
     h = viewport.height,
     k;
@@ -156,10 +172,12 @@ Lighting.prototype.begin = function (viewport) {
     }
 
   hourNow = this.hour();
-  this.light = sun(hourNow);
-  this.passes = within(hourNow, SHINE_FROM, SHINE_TO) ? 5 : 3;
+  this.sky = sun(hourNow);
+  this.night = within(hourNow, SHINE_FROM, SHINE_TO);
+  this.passes = this.night ? CANVASES : 2;
+  this.M = M;
 
-  //black, so that where nothing is drawn nothing is added
+  //black: nothing, and looking up, where nothing is drawn
   for (k = 0; k < this.passes; k++) {
     over(this.contexts[k], this.black, "copy", w, h);
     this.contexts[k].globalCompositeOperation = "source-over";
@@ -169,42 +187,155 @@ Lighting.prototype.begin = function (viewport) {
 Lighting.prototype.end = function (context, viewport) {
   var w = viewport.width,
     h = viewport.height,
-    L = this.light,
-    c = this.contexts,
-    s = this.swatches;
+    M = this.M;
 
-  //at night, the light thrown on things - on the ground round the lamps
-  //and the shop windows, on a car under a street light - falls on every
-  //face of them, from above: what looks up lit by it, the sides by half as
-  //much, added up and added in with the rest
-  var thrown = this.passes > GLOW;
-
-  if (thrown) {
-    over(c[THROWN], this.canvases[UP], "copy", w, h);
-    c[THROWN].globalAlpha = SIDES;
-    over(c[THROWN], this.canvases[LEFT], "lighter", w, h);
-    over(c[THROWN], this.canvases[RIGHT], "lighter", w, h);
-    c[THROWN].globalAlpha = 1;
-    over(c[THROWN], this.canvases[GLOW], "multiply", w, h);
+  this.lamps.length = 0;
+  if (this.night) {
+    streetLights(this.lamps, M, w, h);
+    headlights(this.lamps, M, w, h, this.root.carman);
   }
 
-  over(c[LEFT], s[LEFT].color(L.left), "multiply", w, h);
-  over(c[RIGHT], s[RIGHT].color(L.right), "multiply", w, h);
-  over(c[UP], s[UP].color(L.up), "multiply", w, h);
-  over(c[LEFT], this.canvases[RIGHT], "lighter", w, h);
-  over(c[LEFT], this.canvases[UP], "lighter", w, h);
-  if (thrown) over(c[LEFT], this.canvases[THROWN], "lighter", w, h);
+  context.drawImage(
+    this.deferred.render(
+      this.canvases,
+      w,
+      h,
+      this.night,
+      this.lamps,
+      this.sky,
+      [Math.round(M[12]), Math.round(M[13])],
+    ),
+    0,
+    0,
+  );
+};
 
-  //what shines, as bright as it is painted
-  if (this.passes > SHINE) over(c[LEFT], this.canvases[SHINE], "lighter", w, h);
+/* --- Lamps ------------------------------------------------------------- */
 
-  c[LEFT].globalCompositeOperation = "source-over";
-  context.drawImage(this.canvases[LEFT], 0, 0);
+//the street lights, by the tile they stand on - each the road they stand
+//by, and where the spot under the lamp is from it (client/roadview)
+var streets = {},
+  at = new Float32Array(3);
+
+/**
+ * Keeps a street light by road on tile, x, z from the middle of its tile in
+ * the world, to light the city round it at night - in place of whatever
+ * stood on that tile before.
+ */
+Lighting.addLamp = function (road, tile, x, z) {
+  streets[tile] = { road: road, x: x, z: z };
+};
+
+//where on the screen a point of the world is
+function screen(M, x, y, z, out) {
+  out[0] = M[0] * x + M[4] * y + M[8] * z + M[12];
+  out[1] = M[1] * x + M[5] * y + M[9] * z + M[13];
+
+  return out;
+}
+
+var spot = [0, 0];
+
+//whether a lamp at x, y on the screen can light anything there is on it
+function seen(x, y, reach, w, h) {
+  var r = reach * 1.5;
+
+  return x > -r && x < w + r && y > -r && y < h + r + TALL;
+}
+
+/**
+ * Every street light on the screen while they are on: its lamp over the
+ * spot under it, shining all round.
+ */
+function streetLights(out, M, w, h) {
+  if (!cityOn()) return;
+
+  for (var key in streets) {
+    var lamp = streets[key];
+
+    //its road not in the world - not yet, or no more
+    if (lamp.road.world === null) continue;
+
+    lamp.road.transform.getPosition(at);
+    screen(M, at[0] + lamp.x, at[1], at[2] + lamp.z, spot);
+    if (!seen(spot[0], spot[1], LAMP_REACH, w, h)) continue;
+
+    out.push({
+      x: spot[0],
+      y: spot[1],
+      z: LAMP_HIGH,
+      reach: LAMP_REACH,
+      color: LAMP_LIGHT,
+      peak: LAMP_PEAK,
+      aim: null,
+      cone: -1,
+      tall: TALL,
+    });
+  }
+}
+
+//which way a car is going as it is seen ("x+", "y-" - see client/view
+//heading), along the ground
+var AIM = {
+  "x+": [1, 0],
+  "x-": [-1, 0],
+  "y+": [0, 1],
+  "y-": [0, -1],
 };
 
 /**
+ * Every headlight on the screen of a car with its lamps on: two of them,
+ * either side of the front of it, shining ahead.
+ */
+function headlights(out, M, w, h, carman) {
+  var cars = carman ? carman.cars || [] : [];
+
+  for (var i = 0; i < cars.length; i++) {
+    var go = cars[i],
+      car = go.car,
+      renderer = go.spriteRenderer;
+
+    if (!car || car.heading === null || !renderer || go.world === null)
+      continue;
+    if (renderer.lamps === undefined || !lampsOn(renderer.lamps)) continue;
+
+    var aim = AIM[car.heading],
+      sprite = renderer._sprite;
+
+    if (aim === undefined || !sprite) continue;
+
+    go.transform.getPosition(at);
+    screen(M, at[0], at[1], at[2], spot);
+    if (!seen(spot[0], spot[1], HEAD_REACH * 2, w, h)) continue;
+
+    //how far ahead of its middle the front is: across the screen its
+    //picture is as long as it is and as wide, about 6 (shared/gen/vehicles)
+    var ahead = Math.max(4, (sprite.width - 6) / 2);
+
+    for (var side = -1; side <= 1; side += 2) {
+      //along the ground as it is seen, then onto the screen (x - y across,
+      //-(x + y) / 2 up)
+      var gx = aim[0] * ahead - aim[1] * side * HEAD_APART,
+        gy = aim[1] * ahead + aim[0] * side * HEAD_APART;
+
+      out.push({
+        x: spot[0] + gx - gy,
+        y: spot[1] - (gx + gy) / 2,
+        z: HEAD_HIGH,
+        reach: HEAD_REACH,
+        color: HEAD_LIGHT,
+        peak: HEAD_PEAK,
+        aim: aim,
+        cone: HEAD_CONE,
+        tall: 20,
+      });
+    }
+  }
+}
+
+/**
  * How much of what renderer draws shines at this hour (client/cachedsprite
- * lightPass, client/glow): 0 for nothing, 1 for the first of its lights, 2
+ * lightPass, lamps): 0 for nothing, 1 for the first of its lights, 2
  * for more of them - a building's windows by its own hours (windows, see
  * windowsOn); a car's lamps by its own (lamps, see lampsOn), and a street
  * light's with every other one's (city, see cityOn), all or nothing;
@@ -285,11 +416,16 @@ function mix(a, b, k) {
 }
 
 /**
- * The light on what looks each way at hour h: the sun comes up behind what looks towards -x and +y, goes over the
- * corner between the two faces seen at noon and down behind what looks
- * towards +x and -y - in the world; as it is seen, wherever the camera is
- * turned to - lower and redder towards either end of the day; the shade is
- * sky blue by day and dark blue at night.
+ * The light of the sky and of the sun at hour h: the sun comes up behind
+ * what looks towards -x and +y, goes over the corner between the two faces
+ * seen at noon and down behind what looks towards +x and -y - in the world;
+ * as it is seen, wherever the camera is turned to - lower and redder towards
+ * either end of the day; the shade is sky blue by day and dark blue at
+ * night.
+ *
+ * @returns {{ambient: number[], sun: number[], dir: number[]}} the sky's
+ *          light, the sun's, and which way the sun is, as it is seen - a
+ *          surface looking along n lit ambient + max(0, n.dir) * sun
  */
 function sun(h) {
   //how far through the day, up at SUNRISE, down at SUNSET
@@ -303,16 +439,10 @@ function sun(h) {
     amb = mix([0.12, 0.14, 0.26], [0.36, 0.39, 0.46], el * 2.5 + 0.55),
     strength = 0.75 * Math.max(0, Math.min(1, el * 4));
 
-  function on(k) {
-    return [0, 1, 2].map(function (c) {
-      return Math.min(1, amb[c] + Math.max(0, k) * color[c] * strength);
-    });
-  }
-
   return {
-    left: on(-seen[0]),
-    right: on(-seen[1]),
-    up: on(up),
+    ambient: amb,
+    sun: [color[0] * strength, color[1] * strength, color[2] * strength],
+    dir: [seen[0], seen[1], up],
   };
 }
 
@@ -337,14 +467,6 @@ function swatch() {
 
     return c;
   };
-  //one of the light's colours, 0..1 a channel
-  c.color = function (rgb) {
-    return c.set(
-      Math.round(rgb[0] * 255),
-      Math.round(rgb[1] * 255),
-      Math.round(rgb[2] * 255),
-    );
-  };
 
   return c;
 }
@@ -354,7 +476,9 @@ function over(ctx, src, op, w, h) {
   ctx.drawImage(src, 0, 0, src.width, src.height, 0, 0, w, h);
 }
 
-Lighting.UP = UP;
+Lighting.ALBEDO = ALBEDO;
+Lighting.NORMAL = NORMAL;
+Lighting.HEIGHT = HEIGHT;
 Lighting.SHINE = SHINE;
 Lighting.GLOW = GLOW;
 
