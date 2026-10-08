@@ -314,24 +314,31 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
 - The game is drawn at most 30 frames a second (`vendor/engine/game.js`),
   and holds still - its clock and its drawing - while the page is out of
   sight (`src/client/js/vkaria.js`).
-- The city is lit pixel by pixel as it is drawn, in WebGL
-  (`src/client/js/lighting.js`, `src/client/js/deferred.js`), by the hour of
+- The city is drawn in WebGL and lit pixel by pixel as it is drawn
+  (`src/client/js/glview.js`, `src/client/js/lighting.js`), by the hour of
   the game's clock: the sun comes up at five behind the walls looking one
   way, goes over and down at half past nine in the evening behind the walls
   looking the other - a long day and a short night - lower and redder
   towards either end of the day, and the shade goes from sky blue to the
-  dark blue of night. Every picture painted out of boxes - and the ground,
-  the trees and the vehicles, which paint their own (`src/shared/gen/looks.js`)
-  - is painted as its colours with no light on them and which way every pixel
-    of it looks, x, y and z in the red, the green and the blue
-    (`src/shared/gen/isobox.js` setMode, normalOf), so a sloped roof, a hill or
-    a tree's crown is lit by the way each pixel of it actually looks. The
-    ground, the roads and the buildings are drawn into a canvas of colours and
-    one of the ways things look, in the same order, so whatever is in front
-    hides what is behind it in both alike (`vendor/engine` Canvas2dRenderer
-    drawLit); WebGL lights every pixel from them by the sun, and the picture
-    comes back into the frame like any other.
-- At night three more canvases go with them: how high every pixel stands,
+  dark blue of night. The canvas only paints the pictures: every picture is
+  painted once on a canvas of its own and handed over into its slot on a
+  page of the canvas cache - the pages being the layers of one texture on
+  the GPU (`src/client/js/canvascache.js`). Every picture painted out of
+  boxes - and the ground, the trees and the vehicles, which paint their own
+  (`src/shared/gen/looks.js`) - is painted as its colours with no light on
+  them and which way every pixel of it looks, x, y and z in the red, the
+  green and the blue (`src/shared/gen/isobox.js` setMode, normalOf), so a
+  sloped roof, a hill or a tree's crown is lit by the way each pixel of it
+  actually looks. Every layer of the city is drawn as one batch of squares,
+  a picture each, in the order the engine sorts them (`vendor/engine`
+  Canvas2dRenderer renderGL) - the lit ones into as many pictures of the
+  screen at once, so whatever is in front hides what is behind it in all of
+  them alike - and whatever a layer draws on a canvas instead, the lines
+  round a city or the price over a building, is laid over its pictures. A
+  click is told what it falls on by the pixel itself, read back off its
+  page.
+- At night three more pictures of the screen go with them: how high every
+  pixel stands,
   a pixel a unit - a storey laid on another lifted by as much as it is laid
   higher (`src/client/js/cachedsprite.js` Layers) - what shines (the lit
   panes of every window, the signs and billboards of the shops and offices
@@ -359,9 +366,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   office only a few; a building still going up has none. The street lights
   all go on at nine and off at half past five in the morning; every car puts
   its lamps on and off up to three quarters of an hour after them, each in
-  its own time. Without WebGL2, or with `?light=0`, the city is drawn as it
-  is painted, by the one sun of old; `/lab/lighting.html` is the bench the
-  ways of doing it with the canvas alone were weighed on.
+  its own time. With `?light=0`, the city is drawn as it is painted, by the
+  one sun of old; `/lab/lighting.html` is the bench the ways of doing it with
+  the canvas alone were weighed on.
 - The sea moves: every tile of water, and the water up every shore, is
   painted in three frames, its ripples running on a wave across it and its
   glints flashing one after another (`src/shared/gen/terrain.js` ripples),
