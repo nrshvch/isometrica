@@ -347,15 +347,15 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   nearest edge, so a car driving through it is lit by it: it is added
   to the light on what looks up before that is multiplied in, so it lights
   the road and the grass in their own colours rather than lying over them
-  like a haze. Nothing fades - a light is on or off: every building
-  puts a few of its lights on between eight and ten, more of them
-  a while later, and those out again a while before the last go out late at
-  night, each at hours of its own, so the windows come on one by one and
-  never all of them - every storey and every tile of a building lit one of
-  two ways, a long run of glass pane by pane, so no two floors of a block
-  are lit alike - one in eight keeping a few on till the morning; the
-  street
-  lights all go on at nine and off at half past five in the morning; every car puts its lamps on and off up to three quarters of an
+  like a haze. Nothing fades - a light is on or off: every finished building
+  puts a few of its lights on in the hour from half past eight, each at a
+  time of its own, so the windows come on one by one all over the city, and
+  more of them a while later - never all of them, every storey and every
+  tile of a building lit one of two ways, a long run of glass pane by pane,
+  so no two floors of a block are lit alike. A home puts them out again late
+  at night, at an hour of its own; a shop keeps them all on through the
+  night, an office only a few; a building still going up has none. The
+  street lights all go on at nine and off at half past five in the morning; every car puts its lamps on and off up to three quarters of an
   hour after them, each in its own time. `?light=0` draws the city as it is painted, by the one sun of old;
   `/lab/lighting.html` is the bench the ways of doing it were weighed on.
 - The sea moves: every tile of water, and the water up every shore, is
