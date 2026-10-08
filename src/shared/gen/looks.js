@@ -11,9 +11,9 @@
 
 //how many pictures side by side the night is painted in: what shines with
 //the first lights on and with more of them, one way and another, the whole
-//of it in black, and the light it throws on the ground round it (see
+//of it in black, and the light it throws round it each of those ways (see
 //shared/gen/isobox NIGHT)
-export var NIGHT = 6;
+export var NIGHT = 9;
 
 /**
  * How much of a surface looking along n - x, y and up as the boxes have

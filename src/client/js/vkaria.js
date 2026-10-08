@@ -59,10 +59,9 @@ function Vkaria(core, ui, callback) {
   //there first, going by the frames the game counts
   this.sprites = new SpriteCache(this.game.time, {
     //every picture painted out of boxes is kept as its faces side by side
-    //too, and at night as what of it shines, six pictures of it (see
-    //client/lighting) - room enough for the whole city at night, seen from
-    //as far out as the camera goes, without putting any away
-    maxPages: 16,
+    //too, and at night as what of it shines and the light it throws round
+    //it, nine pictures of it (see client/lighting) - room to spare
+    maxPages: 32,
   });
   //the light the city is drawn in, by the hour (client/lighting)
   this.lighting = new Lighting(this);

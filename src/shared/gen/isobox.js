@@ -394,11 +394,14 @@ function cast(boxes, sx, sy) {
   //of it black, to hide whatever shines behind it; and the light thrown on
   //the ground round it by what shines near
   if (mode === "night") {
-    var glows = shine(hit, face, normal, x + best, y + best, z - best);
+    var px = x + best,
+      py = y + best,
+      pz = z - best,
+      glows = shine(hit, face, normal, px, py, pz);
 
-    glows.push(BLACK, spill(boxes, hit, face, x + best, y + best, z - best));
+    glows.push(BLACK);
 
-    return glows;
+    return glows.concat(spill(boxes, face, normal, px, py, pz, sx, sy));
   }
 
   //a box lit already is its own colour on every face - with what it is
@@ -546,49 +549,118 @@ function paneLit(b, face, normal, x, y, z) {
   };
 }
 
-//how far the light of what shines falls on the ground round it, and how
-//bright it is there at the most
+//how far the light of what shines falls round it, and how much light it
+//gives there at the most
 var SPILL_REACH = 9,
-  SPILL = 0.55;
+  SPILL = 0.6;
+
+//the dither the steps of that light are broken up with, 4x4 - as the
+//client's pools of light are (client/glow)
+var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 /**
- * The light thrown at night on the ground at x, y, z of box b - a surface
- * looking up, down by the foot of the building - by what shines near it:
- * signs, lamps, and the glass of the ground storey, lit (client/lighting
- * adds it to the light on what looks up). Black anywhere else.
+ * The light thrown at night on x, y, z - a surface looking up: the ground at
+ * the foot of a building, a roof round a billboard - by what shines near it,
+ * signs and lamps, and the glass of the ground storey where it is lit: with
+ * the first lights on and with more, one way and the other, as shine has
+ * them (client/lighting adds it to the light on what looks up). Stepped,
+ * and dithered between the steps by where on the screen it is, sx, sy.
+ * Black anywhere else.
+ *
+ * @returns {Array[]} its light in the four ways shine has
  */
-function spill(boxes, b, face, x, y, z) {
-  if (face !== 2 || z > SPILL_LOW) return BLACK;
+function spill(boxes, face, normal, x, y, z, sx, sy) {
+  if (face !== 2 && (normal === null || normal[2] < 0.7))
+    return [BLACK, BLACK, BLACK, BLACK];
 
   var from = emitters(boxes),
-    r = 0,
-    g = 0,
-    bl = 0;
+    sum = [0, 0, 0, 0],
+    rgb = [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    w,
+    i,
+    k;
 
-  for (var i = 0; i < from.length; i++) {
-    var e = from[i],
-      dx = Math.max(e.box.x0 - x, 0, x - e.box.x1),
-      dy = Math.max(e.box.y0 - y, 0, y - e.box.y1),
-      dz = Math.max(e.box.z0 - z, 0, z - e.box.z1),
-      d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  for (i = 0; i < from.length; i++) {
+    var e = from[i].box,
+      nx = Math.max(e.x0, Math.min(e.x1, x)),
+      ny = Math.max(e.y0, Math.min(e.y1, y)),
+      nz = Math.max(e.z0, Math.min(e.z1, z)),
+      d = Math.sqrt((nx - x) ** 2 + (ny - y) ** 2 + (nz - z) ** 2);
 
-    if (d >= SPILL_REACH) continue;
+    //nothing it could not shine down on: no higher than the bottom of a
+    //window, than the top of a sign
+    if (d >= SPILL_REACH || z > (from[i].color === null ? e.z0 + 1 : e.z1))
+      continue;
 
-    var k = (1 - d / SPILL_REACH) * (1 - d / SPILL_REACH) * SPILL;
+    w = (1 - d / SPILL_REACH) * (1 - d / SPILL_REACH);
 
-    r += e.color[0] * k;
-    g += e.color[1] * k;
-    bl += e.color[2] * k;
+    //a sign or a lamp is lit whichever way; a pane only as it is lit,
+    //the one nearest
+    var lit = from[i].color,
+      on = [true, true, true, true];
+
+    if (lit === null) {
+      var pane = paneLit(
+        e,
+        e.x1 - e.x0 >= e.y1 - e.y0 ? 1 : 0,
+        null,
+        nx,
+        ny,
+        nz,
+      );
+
+      if (pane === null) continue;
+      lit = pane.c;
+      on = [
+        pane.a < FIRST_PANES,
+        pane.a < MORE_PANES,
+        pane.b < FIRST_PANES,
+        pane.b < MORE_PANES,
+      ];
+    }
+
+    for (k = 0; k < 4; k++) {
+      if (!on[k]) continue;
+      sum[k] += w;
+      rgb[k][0] += lit[0] * w;
+      rgb[k][1] += lit[1] * w;
+      rgb[k][2] += lit[2] * w;
+    }
   }
 
-  return [Math.min(255, r), Math.min(255, g), Math.min(255, bl)];
+  var bayer =
+    (BAYER[
+      (((Math.floor(sy) % 4) + 4) % 4) * 4 + (((Math.floor(sx) % 4) + 4) % 4)
+    ] +
+      0.5) /
+    16;
+
+  return sum.map(function (all, k) {
+    if (all === 0) return BLACK;
+
+    //three steps of it, dithered between
+    var level = Math.min(1, all) * 3,
+      step = Math.floor(level),
+      s = Math.min(3, step + (level - step > bayer ? 1 : 0)) / 3;
+
+    if (s === 0) return BLACK;
+
+    return [
+      (rgb[k][0] / all) * s * SPILL,
+      (rgb[k][1] / all) * s * SPILL,
+      (rgb[k][2] / all) * s * SPILL,
+    ];
+  });
 }
 
-//how high the ground the light falls on can be: a pavement, a step
-var SPILL_LOW = 4;
-
-//what of a picture's boxes throws light on the ground round it at night,
-//each with its light - worked out once a picture
+//what of a picture's boxes throws light round it at night, each with its
+//light - or null for a pane of glass, lit or not as it is (paneLit) -
+//worked out once a picture
 var emitting = new WeakMap();
 
 function emitters(boxes) {
@@ -605,7 +677,7 @@ function emitters(boxes) {
     else if (f.sign) out.push({ box: b, color: lighter(b.color, 0.1) });
     //the glass of a shop window or the ground storey's windows
     else if (f.sheen && b.z0 < (f.base || 0) + (f.storey || 12))
-      out.push({ box: b, color: WARM });
+      out.push({ box: b, color: null });
   });
   emitting.set(boxes, out);
 
@@ -620,15 +692,15 @@ function emitters(boxes) {
  * the albedo ("faces") - for the light to be worked out as it is drawn,
  * wherever the sun is; or, for the night, what of it shines - with the
  * first of its lights on and with more of them, one way and another - the
- * whole of it in black, and the light it throws on the ground round it,
- * side by side ("night", see NIGHT).
+ * whole of it in black, and the light it throws round it each of those
+ * ways, side by side ("night", see NIGHT).
  */
 var mode = "lit";
 
 //how many pictures the night is painted in, side by side: what shines one
 //way, with the first lights on and with more, the same the other way, all
-//of it in black, and the light it throws on the ground round it
-var NIGHT = 6;
+//of it in black, and the light it throws round it the four ways again
+var NIGHT = 9;
 
 function setMode(m) {
   mode = m;
