@@ -5,17 +5,16 @@
  * "deferred", its colours with no light on them and which way every pixel of
  * it looks, side by side (DEFERRED); and "night", what of it shines with the
  * first of its lights on and with more of them, one way and another, the
- * whole of it in black, the light it throws round it, how high every pixel
- * of it is and the whole of it in white, side by side (NIGHT).
+ * whole of it in black, how high every pixel of it is and the whole of it in
+ * white, side by side (NIGHT).
  */
 
 //how many pictures side by side the night is painted in: what shines with
 //the first lights on and with more of them, one way and another, the whole
-//of it in black, the light it throws round it each of those ways, how high
-//every pixel of it is, and the whole of it in white (see shared/gen/isobox
-//NIGHT) - and which of them the height is
-export var NIGHT = 11,
-  HEIGHT = 9;
+//of it in black, how high every pixel of it is, and the whole of it in
+//white (see shared/gen/isobox NIGHT) - and which of them the height is
+export var NIGHT = 7,
+  HEIGHT = 5;
 
 //how many it is painted in to be lit as it is drawn: its colours with no
 //light on them, and which way every pixel of it looks (normal)

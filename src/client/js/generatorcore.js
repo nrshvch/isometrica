@@ -49,12 +49,14 @@ GeneratorCore.prototype.init = function (message) {
 GeneratorCore.prototype.paint = function (message) {
   var self = this,
     name = message.name,
-    sides = 0;
+    sides = 0,
+    lights = null;
 
   this.painter
     .paint(message)
     .then(function (painted) {
       if (message.look) sides = sidesOf(painted, SECTIONS[message.look] || 1);
+      if (message.look === "night") lights = lightsOf(painted);
 
       return createImageBitmap(
         new ImageData(
@@ -66,9 +68,16 @@ GeneratorCore.prototype.paint = function (message) {
     })
     .then(
       function (image) {
-        self.post({ type: "picture", name: name, image: image, sides: sides }, [
-          image,
-        ]);
+        self.post(
+          {
+            type: "picture",
+            name: name,
+            image: image,
+            sides: sides,
+            lights: lights,
+          },
+          [image],
+        );
       },
       function (e) {
         self.post({ type: "failed", name: name, error: String(e) }, []);
@@ -78,7 +87,90 @@ GeneratorCore.prototype.paint = function (message) {
 
 //how many pictures side by side each look is painted in (shared/gen/isobox
 //sections, shared/gen/looks)
-var SECTIONS = { deferred: 2, night: 11 };
+var SECTIONS = { deferred: 2, night: 7 };
+
+//the night's pictures (shared/gen/looks NIGHT): what shines, the four ways
+//its lights can be on, then the whole of it in black, how high every pixel
+//of it stands, and the whole of it in white
+var NIGHT = 7,
+  WAYS = 4,
+  HIGH = 5;
+
+//how big a patch of what shines makes one light, a side, and how many of its
+//pixels lit make it shine as bright as it can
+var CELL = 6,
+  FULL = 10;
+
+/**
+ * The lights of what shines of a picture at night - for it to light what is
+ * round it as it is drawn (client/lighting): what of it shines, every patch
+ * of it CELL by CELL, as one light where its pixels shining are - x, y, how
+ * high they stand, the light they give and how much of it they give with
+ * the first lights on and with more, one way and another, 0..1 - packed,
+ * eight numbers a light: x, y, z, colour (0xrrggbb), and the four.
+ */
+function lightsOf(painted) {
+  var w = painted.width / NIGHT,
+    h = painted.height,
+    data = painted.data,
+    cols = Math.ceil(w / CELL),
+    rows = Math.ceil(h / CELL),
+    //per cell: x, y, z summed, r, g, b summed, how many, and per way
+    sums = new Float64Array(cols * rows * 11),
+    out = [],
+    x,
+    y,
+    k;
+
+  for (y = 0; y < h; y++)
+    for (x = 0; x < w; x++) {
+      var cell = (Math.floor(y / CELL) * cols + Math.floor(x / CELL)) * 11,
+        any = false;
+
+      for (k = 0; k < WAYS; k++) {
+        var o = (y * painted.width + k * w + x) * 4;
+
+        if (data[o + 3] === 0 || (data[o] | data[o + 1] | data[o + 2]) === 0)
+          continue;
+
+        if (!any) {
+          var t = (y * painted.width + HIGH * w + x) * 4;
+
+          sums[cell] += x;
+          sums[cell + 1] += y;
+          sums[cell + 2] += data[t];
+          sums[cell + 3] += data[o];
+          sums[cell + 4] += data[o + 1];
+          sums[cell + 5] += data[o + 2];
+          sums[cell + 6]++;
+          any = true;
+        }
+        sums[cell + 7 + k]++;
+      }
+    }
+
+  for (k = 0; k < cols * rows; k++) {
+    var c = k * 11,
+      n = sums[c + 6];
+
+    if (n === 0) continue;
+
+    out.push(
+      Math.round((sums[c] / n) * 10) / 10,
+      Math.round((sums[c + 1] / n) * 10) / 10,
+      Math.round(sums[c + 2] / n),
+      (Math.round(sums[c + 3] / n) << 16) |
+        (Math.round(sums[c + 4] / n) << 8) |
+        Math.round(sums[c + 5] / n),
+      Math.min(1, sums[c + 7] / FULL),
+      Math.min(1, sums[c + 8] / FULL),
+      Math.min(1, sums[c + 9] / FULL),
+      Math.min(1, sums[c + 10] / FULL),
+    );
+  }
+
+  return out.length > 0 ? out : null;
+}
 
 /**
  * Of n pictures side by side, which have any pixel in them that is not black

@@ -103,6 +103,8 @@ function receive(self, message) {
 
   sheet.image = message.image;
   sheet.sides = message.sides || 0;
+  //and at night, the lights of what shines of it (generatorcore lightsOf)
+  sheet.lights = message.lights || null;
   self.memory.set(message.name, sheet);
   self.painted++;
 
