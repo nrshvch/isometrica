@@ -15,6 +15,45 @@
 //shared/gen/isobox NIGHT)
 export var NIGHT = 9;
 
+//and how many the height of it is painted in: how high every pixel of it is
+//over the ground it stands on, in the red a pixel a unit, and the whole of
+//it in white - for a part laid higher up to be lifted by as much
+//(client/cachedsprite Layers)
+export var HEIGHT = 2;
+
+//a height as the height picture has it, in the red, a pixel a unit
+export function height1(z) {
+  return [Math.max(0, Math.min(255, Math.round(z))), 0, 0];
+}
+
+/**
+ * The height picture of image (HEIGHT): z(i, j), how high its pixel i, j
+ * is, as see-through as the picture is.
+ */
+export function height(image, z) {
+  var w = image.width,
+    out = blank(w, image.height, HEIGHT);
+
+  for (var j = 0; j < image.height; j++)
+    for (var i = 0; i < w; i++) {
+      var a = image.data[(j * w + i) * 4 + 3];
+
+      if (a === 0) continue;
+      put(
+        out,
+        w,
+        0,
+        i,
+        j,
+        [Math.max(0, Math.min(255, Math.round(z(i, j)))), 0, 0],
+        a,
+      );
+      put(out, w, 1, i, j, [255, 255, 255], a);
+    }
+
+  return out;
+}
+
 /**
  * How much of a surface looking along n - x, y and up as the boxes have
  * them - looks towards -x, -y and up, adding up to one.

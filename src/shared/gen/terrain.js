@@ -1417,9 +1417,18 @@ function paintBase(set, slope, variant, surf, light, seed, t, look) {
  * black. faces says whether its colours are to come unlit.
  */
 function Out(look, slope, light) {
-  this.n = look === "faces" ? 3 : look === "night" ? Looks.NIGHT : 1;
+  this.n =
+    look === "faces"
+      ? 3
+      : look === "night"
+        ? Looks.NIGHT
+        : look === "height"
+          ? Looks.HEIGHT
+          : 1;
   this.faces = look === "faces";
   this.night = look === "night";
+  //the ground is as high as the ground: nothing over it
+  this.height = look === "height";
   this.normals = light === null ? null : light.normals[slope];
   this.image = Looks.blank(WIDTH, HEIGHT, this.n);
 }
@@ -1430,6 +1439,12 @@ Out.prototype.put = function (p, c, alpha) {
   if (this.night) {
     for (var n = 0; n < this.n; n++)
       Looks.put(this.image, WIDTH, n, p.x, p.y, [0, 0, 0], alpha);
+    return;
+  }
+
+  if (this.height) {
+    Looks.put(this.image, WIDTH, 0, p.x, p.y, [0, 0, 0], alpha);
+    Looks.put(this.image, WIDTH, 1, p.x, p.y, [255, 255, 255], alpha);
     return;
   }
 
