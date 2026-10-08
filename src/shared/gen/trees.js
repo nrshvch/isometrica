@@ -40,6 +40,10 @@ var W = 80,
 
 //the boxes' sun (isobox SUN), x and y along the tile, z up
 var SUN = normalize([-0.45, 0.35, 1]);
+
+//how much of the way a patch of a tree looks it keeps, lit as it is drawn,
+//against straight up (flatten)
+var FLAT = 1;
 //the sun the shadow is cast by: higher, so it falls short
 var SHADOW_SUN = normalize([-0.22, 0.18, 1]);
 var SHADOW_ALPHA = 0.12;
@@ -512,11 +516,11 @@ function toneOf(light) {
  * meets it, or as its shadow where it meets the ground in it.
  */
 function paintTree(tree, look) {
-  var faces = look === "deferred",
+  var deferred = look === "deferred",
     data = new Uint8ClampedArray(W * H * 4),
     //to be lit as it is drawn (shared/gen/looks): which way every pixel
     //looks, and at night how high it is
-    ns = faces ? new Array(W * H) : null,
+    ns = deferred ? new Array(W * H) : null,
     zs = look === "night" ? new Float32Array(W * H) : null,
     back = 90,
     //for every pixel: -1 nothing, else the part and tone, part * 3 + tone -
@@ -558,9 +562,7 @@ function paintTree(tree, look) {
           n = normalAt(tree, p),
           sun = Math.max(0, dot(n, SUN)),
           open = openness(tree, p, n),
-          //lit as it is drawn, the tone is only how far into the leaves it
-          //is; the light on it comes with the face it looks most towards
-          light = faces ? 0.15 + 0.85 * open : (0.15 + 0.85 * sun) * open;
+          light = (0.15 + 0.85 * sun) * open;
 
         if (ns !== null) ns[i] = n;
 
@@ -606,6 +608,8 @@ function paintTree(tree, look) {
     tones = next;
   }
 
+  if (ns !== null) flatten(tones, ns);
+
   if (look === "deferred" || look === "night")
     return sideBySide(data, tones, ns, zs, leaves, bark, look);
 
@@ -621,6 +625,53 @@ function paintTree(tree, look) {
   }
 
   return { width: W, height: H, data: data };
+}
+
+/**
+ * A tree to be lit as it is drawn is lit in the same flat patches it is
+ * painted in, not pixel by pixel over every lump of it: every patch of a
+ * tone - as it is painted lit by the boxes' sun - looks the one way, the
+ * way its pixels look on the whole, and half of the way up, the patches
+ * told apart by their tones more than by the light on them.
+ */
+function flatten(tones, ns) {
+  var seen = new Uint8Array(W * H),
+    stack = [],
+    patch = [];
+
+  for (var start = 0; start < W * H; start++) {
+    if (tones[start] < 0 || seen[start]) continue;
+
+    var tone = tones[start],
+      sum = [0, 0, 0];
+
+    patch.length = 0;
+    stack.push(start);
+    seen[start] = 1;
+
+    while (stack.length > 0) {
+      var i = stack.pop(),
+        px = i % W;
+
+      patch.push(i);
+      sum[0] += ns[i][0];
+      sum[1] += ns[i][1];
+      sum[2] += ns[i][2];
+
+      [px > 0 ? i - 1 : -1, px < W - 1 ? i + 1 : -1, i - W, i + W].forEach(
+        function (j) {
+          if (j < 0 || j >= W * H || seen[j] || tones[j] !== tone) return;
+          seen[j] = 1;
+          stack.push(j);
+        },
+      );
+    }
+
+    var n = normalize(sum);
+
+    n = normalize([n[0] * FLAT, n[1] * FLAT, n[2] * FLAT + 1]);
+    for (var k = 0; k < patch.length; k++) ns[patch[k]] = n;
+  }
 }
 
 /**
