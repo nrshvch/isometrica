@@ -80,7 +80,7 @@ CachedSprite.prototype.keep = function () {
 
   cache.keep(this);
   //and as it is drawn lit, where it is (see lightPass)
-  if (this.faces) cache.keep(this.faces);
+  if (this.deferred) cache.keep(this.deferred);
   if (this.night) cache.keep(this.night);
   if (this.shadow) cache.keep(this.shadow);
 };
@@ -127,19 +127,28 @@ CachedSprite.prototype.paint = function (ctx, x, y) {
 
 /* --- Lit -------------------------------------------------------------- */
 
-//the passes a lit layer is drawn in (engine SpriteRenderer.pass): where
-//things look up, and what shines at night
-var UP = Lighting.UP,
+//the passes a lit layer is drawn in (engine SpriteRenderer.pass): its
+//colours, the ways it looks, and at night how high it stands, what shines,
+//and the light thrown round it
+var ALBEDO = Lighting.ALBEDO,
+  NORMAL = Lighting.NORMAL,
+  HEIGHT = Lighting.HEIGHT,
   SHINE = Lighting.SHINE,
   GLOW = Lighting.GLOW;
 
+//its pictures to be lit as it is drawn, side by side (shared/gen/looks
+//DEFERRED): its colours, and which way every pixel looks
+var DEFERRED = 2;
+
 //its pictures for the night, side by side (shared/gen/looks NIGHT): what
 //shines one way with the first of its lights on and with more of them, the
-//same the other way, itself in black, and the light it throws round it each
-//of those ways
-var NIGHT = 9,
+//same the other way, itself in black, the light it throws round it each of
+//those ways, how high every pixel stands, and the whole of it in white
+var NIGHT = 11,
   DARK = 4,
-  SPILT = 5;
+  SPILT = 5,
+  TALL = 9,
+  WHOLE = 10;
 
 /**
  * Which of its pictures for the night a sprite is drawn with in pass: of
@@ -158,10 +167,10 @@ function nightSection(pass, renderer) {
 }
 
 //what it is painted as for the light to be worked out as it is drawn - its
-//faces side by side, what of it shines at night and itself in black - each
-//put together when it is first wanted (see Layers), or null where no part of
-//it can be painted so
-CachedSprite.prototype.faces = undefined;
+//colours and the ways it looks side by side, and its pictures for the
+//night - each put together when it is first wanted (see Layers), or null
+//where no part of it can be painted so
+CachedSprite.prototype.deferred = undefined;
 CachedSprite.prototype.night = undefined;
 //itself in black, for the passes it has nothing of its own in (see Shadow)
 CachedSprite.prototype.shadow = null;
@@ -170,14 +179,15 @@ CachedSprite.prototype.at = null;
 
 /**
  * What to draw of it in a pass of a lit layer (engine SpriteRenderer), on
- * a page: its picture of what looks the pass's way - or of what shines,
- * lights on or not - and where it has none, itself in black, so it still
+ * a page: its colours, the ways it looks, how high it stands, what of it
+ * shines - lights on or not - or the light it throws round it; and where it
+ * has none, itself as it is with the colours and in black otherwise - which
+ * is looking up, standing on the ground, and nothing shining - so it still
  * hides what is behind it; null for nothing to draw.
  *
- * Its faces are drawn once they are painted; until then, and for a picture
- * that has none, it is drawn as it is where things look up, and in black in
- * the other passes. On flat ground (flat) nothing behind it needs hiding:
- * what is black is not drawn there, nor anything of what shines.
+ * On flat ground (flat) nothing behind it needs hiding: what is black is not
+ * drawn there - nor how high it stands, being on the ground, nor anything of
+ * what shines.
  *
  * @param renderer {Object} what draws it, and with it whether what of it
  *        shines is lit at this hour (see Lighting shines)
@@ -186,26 +196,29 @@ CachedSprite.prototype.at = null;
 CachedSprite.prototype.lightPass = function (pass, flat, renderer) {
   var layers;
 
-  //what shines, or - with the light thrown on the ground - nothing, only
-  //hiding what is behind it
-  if (pass === SHINE || pass === GLOW) {
+  //how high it stands, what shines, or the light it throws round it
+  if (pass >= HEIGHT) {
     if (flat) return null;
 
     layers = layersOf(this, "night");
     if (layers !== null && layers.acquire())
-      return section(this, layers, nightSection(pass, renderer));
+      return section(
+        this,
+        layers,
+        pass === HEIGHT ? TALL : nightSection(pass, renderer),
+      );
 
     return shadowOf(this);
   }
 
-  layers = layersOf(this, "faces");
+  layers = layersOf(this, "deferred");
   if (layers !== null && layers.acquire()) {
     if (flat && (layers.sides & (1 << pass)) === 0) return null;
 
     return section(this, layers, pass);
   }
 
-  if (pass === UP) return this.acquire() ? this : null;
+  if (pass === ALBEDO) return this.acquire() ? this : null;
 
   return flat ? null : shadowOf(this);
 };
@@ -254,12 +267,12 @@ function shadowOf(self) {
  * A picture put together the way it is to be drawn lit (shared/gen/isobox
  * setMode): its n pictures side by side - n its width over the sprite's - a
  * part painted out of boxes as its own n, any other in black where it has
- * no picture of its own: where things look up, in the faces, it is as it is.
+ * no picture of its own: with the colours, it is as it is.
  */
 function Layers(sprite, look) {
   this.sprite = sprite;
   this.look = look;
-  this.n = look === "night" ? NIGHT : 3;
+  this.n = look === "night" ? NIGHT : DEFERRED;
   this.width = sprite.width * this.n;
   this.height = sprite.height;
   //which of its n pictures have anything but black in them
@@ -304,10 +317,17 @@ Layers.prototype.paint = function (ctx, x, y) {
     parts = this.sprite.parts,
     W = this.sprite.width,
     n = this.n,
+    night = this.look === "night",
+    //where the ground is in it: the foot of the lowest part - every part
+    //laid higher than that stands as much higher (see lift)
+    ground = -Infinity,
     i,
     k;
 
   this.sides = 0;
+
+  for (i = 0; i < parts.length; i++)
+    ground = Math.max(ground, parts[i].y + parts[i].frame.pivotY);
 
   for (i = 0; i < parts.length; i++) {
     var part = parts[i],
@@ -321,13 +341,16 @@ Layers.prototype.paint = function (ctx, x, y) {
       //for the night, a part lit the other way round from the rest now and
       //then - so that a storey that comes up again and again is not lit
       //alike every time
-      var swap = this.look === "night" && swapped(part, i) ? 2 : 0;
+      var swap = night && swapped(part, i) ? 2 : 0;
 
       for (k = 0; k < n; k++)
         ctx.drawImage(
           own.image,
-          (k < DARK ? k ^ swap : k > DARK ? SPILT + ((k - SPILT) ^ swap) : k) *
-            f.w,
+          (k < DARK || !night
+            ? k ^ swap
+            : k > DARK && k < TALL
+              ? SPILT + ((k - SPILT) ^ swap)
+              : k) * f.w,
           0,
           f.w,
           f.h,
@@ -337,22 +360,51 @@ Layers.prototype.paint = function (ctx, x, y) {
           f.h,
         );
 
+      if (night)
+        lift(
+          ctx,
+          own.image,
+          f,
+          x + TALL * W + part.x,
+          y + part.y,
+          ground - (part.y + f.pivotY),
+        );
+
       continue;
     }
 
     if (part.sheet.generated !== null) sprites.generator.use(part.sheet);
 
+    //a part with no pictures of its own: as it is with the colours, and
+    //black - looking up, on the ground, nothing shining - otherwise
     for (k = 0; k < n; k++) {
       var dx = x + k * W + part.x,
         dy = y + part.y;
 
-      if (this.look === "faces" && k === UP) {
+      if (!night && k === ALBEDO) {
         ctx.drawImage(part.sheet.image, f.x, f.y, f.w, f.h, dx, dy, f.w, f.h);
-        this.sides |= 1 << UP;
+        this.sides |= 1 << ALBEDO;
       } else ctx.drawImage(black(part), 0, 0, f.w, f.h, dx, dy, f.w, f.h);
     }
   }
 };
+
+/**
+ * Lifts how high a part stands by up, where it was just drawn at x, y in
+ * the picture of how high things stand: the part as painted stands on its
+ * own foot, which is up higher than the ground the whole stands on - added
+ * on, a pixel a unit, wherever the part is (its picture in white, by
+ * up / 255).
+ */
+function lift(ctx, image, f, x, y, up) {
+  if (up <= 0) return;
+
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = Math.min(1, up / 255);
+  ctx.drawImage(image, WHOLE * f.w, 0, f.w, f.h, x, y, f.w, f.h);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+}
 
 /**
  * The sprite in black, where it is: for the passes it has nothing of its own

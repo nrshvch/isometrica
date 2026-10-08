@@ -592,11 +592,16 @@ function stamps(picture, up) {
     color = iso.lit(STRIPE, -p.gx, -p.gy, 1),
     //painted for the light to be worked out as it is drawn (isobox
     //setMode), the stripe goes onto each face's picture as much as it
-    //looks that way - and at night shines no more than the road does
+    //looks that way, or its colour and the way it looks onto theirs - and
+    //at night shines no more than the road does
     n = iso.sections(),
     w = picture.w / n,
     faces =
-      iso.getMode() === "faces" ? iso.facesOf(STRIPE, [-p.gx, -p.gy, 1]) : null;
+      iso.getMode() === "faces"
+        ? iso.facesOf(STRIPE, [-p.gx, -p.gy, 1])
+        : iso.getMode() === "deferred"
+          ? [iso.shade(STRIPE, 2), iso.normalOf([-p.gx, -p.gy, 1])]
+          : null;
 
   if (iso.getMode() === "night") return;
 
@@ -623,7 +628,7 @@ function stamps(picture, up) {
       p1 = at(a + 3.5),
       dx = p1[0] - p0[0],
       dy = p1[1] - p0[1],
-      n = Math.max(Math.abs(dx), Math.abs(dy));
+      len = Math.max(Math.abs(dx), Math.abs(dy));
 
     //up a gentle slope the road runs nearly level across the screen: three
     //pixels in a row, where its middle is
@@ -637,10 +642,10 @@ function stamps(picture, up) {
       continue;
     }
 
-    for (var k = 0; k <= n; k++)
+    for (var k = 0; k <= len; k++)
       put(
-        p0[0] + Math.round((dx * k) / (n || 1)),
-        p0[1] + Math.round((dy * k) / (n || 1)),
+        p0[0] + Math.round((dx * k) / (len || 1)),
+        p0[1] + Math.round((dy * k) / (len || 1)),
       );
   }
 }
