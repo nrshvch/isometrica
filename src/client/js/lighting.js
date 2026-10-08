@@ -76,11 +76,18 @@ var HEAD_HIGH = 3,
   HEAD_CONE = 0.82,
   HEAD_APART = 2.5;
 
+//a tail light: how far it reaches behind the car, how bright, its colour,
+//and how wide it spreads (as HEAD_CONE)
+var TAIL_REACH = 10,
+  TAIL_PEAK = 0.35,
+  TAIL_LIGHT = [1, 0.12, 0.06],
+  TAIL_CONE = 0.1;
+
 //what shines of a building - a lit window, a sign, a billboard - as the
 //light it throws round it: how far it reaches, and how bright it is close
 //by, the most of it lit (client/cachedsprite nightLights)
 var WINDOW_REACH = 18,
-  WINDOW_PEAK = 0.8;
+  WINDOW_PEAK = 0.5;
 
 //a police car's flash: how high it is, how far it reaches, how bright
 var FLASH_HIGH = 9,
@@ -341,10 +348,17 @@ var AIM = {
   "y-": [0, -1],
 };
 
+//and the way behind it
+var BEHIND = {};
+
+Object.keys(AIM).forEach(function (heading) {
+  BEHIND[heading] = [-AIM[heading][0], -AIM[heading][1]];
+});
+
 /**
  * Every headlight on the screen of a car with its lamps on: two of them,
- * either side of the front of it, shining ahead - and the flash of a police
- * car, all round.
+ * either side of the front of it, shining ahead, and two tail lights behind
+ * it - and the flash of a police car, all round.
  */
 function headlights(out, M, w, h, carman) {
   var cars = carman ? carman.cars || [] : [];
@@ -408,6 +422,22 @@ function headlights(out, M, w, h, carman) {
         peak: HEAD_PEAK,
         aim: aim,
         cone: HEAD_CONE,
+        tall: 20,
+      });
+
+      //and a tail light at the back, red and dim, behind it
+      gx = -aim[0] * ahead - aim[1] * side * HEAD_APART;
+      gy = -aim[1] * ahead + aim[0] * side * HEAD_APART;
+
+      out.push({
+        x: spot[0] + gx - gy,
+        y: spot[1] - (gx + gy) / 2,
+        z: HEAD_HIGH,
+        reach: TAIL_REACH,
+        color: TAIL_LIGHT,
+        peak: TAIL_PEAK,
+        aim: BEHIND[car.heading],
+        cone: TAIL_CONE,
         tall: 20,
       });
     }
