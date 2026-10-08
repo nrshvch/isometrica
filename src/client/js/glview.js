@@ -8,14 +8,15 @@
  * A layer of the city is drawn as one batch of squares, a picture each, in
  * the order the engine sorts them (sprites): from the pictures it is painted
  * as - its colours with no light on them, which way every pixel looks, and
- * at night how high every pixel stands, what shines of it and the light it
- * throws round it (client/cachedsprite glQuad) - into as many pictures of the
+ * at night how high every pixel stands and what shines of it (client/
+ * cachedsprite glQuad) - into as many pictures of the
  * screen at once, the frame's (the G-buffer), each covering what was drawn
  * there before as a picture drawn over another does. What a layer draws with
  * the canvas instead - the lines round a city, the price over a building -
  * comes as a canvas, laid over the layer (canvas).
  *
- * Once the lit layers are in, they are lit (light): every lamp a square over
+ * Once the lit layers are in, they are lit (light): every lamp - a street
+ * light, a headlight, a lit window or sign, a police car's flash - a square over
  * just the pixels it can reach, adding its light by how far each is from it
  * in the world - worked out from where it is on the screen and how high it
  * stands - and how squarely it faces it; then every pixel by the sun, the
@@ -27,9 +28,9 @@
 //what a square of a picture is to the shader, so many floats: where it is
 //on the screen and how big; how see-through; and for each of the pictures
 //of the screen it is drawn into - the colours, the ways things look, how
-//high things stand, what shines, the light thrown round - where it is drawn
-//from: the page, x and y there, and how (SKIP, DARK, FROM)
-var FLOATS = 28;
+//high things stand, what shines - where it is drawn from: the page, x and y
+//there, and how (SKIP, DARK, FROM)
+var FLOATS = 24;
 
 //how a square is drawn into one of the pictures of the screen: not at all;
 //in black where the picture is (looking up, on the ground, nothing
@@ -42,16 +43,19 @@ var SKIP = 0,
 //it is on the screen, how high it hangs and how far it reaches; its light
 //and how much of it there is under it; which way it shines, how wide, and
 //how high whatever it can reach stands
-var LAMP_FLOATS = 12;
+var LAMP_FLOATS = 16;
+
+//how far round a thing a lamp lights it, past the side facing it, unless the
+//lamp says otherwise
+var WRAP = 0.25;
 
 //the pictures of the screen: the colours, the ways things look, how high
-//things stand - drawn together - and at night what shines and the light
-//thrown round, drawn together after them; and the lamps' light
+//things stand - drawn together - and at night what shines, drawn after
+//them; and the lamps' light
 var ALBEDO = 0,
   NORMAL = 1,
   HEIGHT = 2,
-  SHINE = 3,
-  GLOW = 4;
+  SHINE = 3;
 
 var SPRITE_VS = `#version 300 es
 precision highp float;
@@ -179,12 +183,14 @@ in vec2 corner;
 in vec4 lamp;
 in vec4 tint;
 in vec4 aim;
+in vec4 shape;
 
 uniform vec2 size;
 
 flat out vec4 vLamp;
 flat out vec4 vTint;
 flat out vec4 vAim;
+flat out vec4 vShape;
 
 void main() {
   //how far the light can reach across the screen and up it: a circle on
@@ -198,6 +204,7 @@ void main() {
   vLamp = lamp;
   vTint = tint;
   vAim = aim;
+  vShape = shape;
   gl_Position = vec4(at.x / size.x * 2.0 - 1.0, 1.0 - at.y / size.y * 2.0, 0.0, 1.0);
 }
 `;
@@ -220,6 +227,7 @@ uniform vec2 size;
 flat in vec4 vLamp;
 flat in vec4 vTint;
 flat in vec4 vAim;
+flat in vec4 vShape;
 
 out vec4 light;
 ${NORMAL_OF}
@@ -238,12 +246,14 @@ void main() {
   if (far >= reach) discard;
 
   vec3 l = -p / max(far, 0.001);
-  //how squarely it faces the lamp - wrapped a little round, so the lit side
-  //of a thing does not end in a hard line
-  float facing = clamp((dot(n, l) + 0.25) / 1.25, 0.0, 1.0);
-  //as bright as it is under the lamp, there, and falling off to nothing
+  //how squarely it faces the lamp - wrapped round as far as the lamp's
+  //shape says, so the lit side of a thing does not end in a hard line
+  float wrap = vShape.x;
+  float facing = clamp((dot(n, l) + wrap) / (1.0 + wrap), 0.0, 1.0);
+  //falling off to nothing: as bright as it is under the lamp, there - or,
+  //for a lamp with no foot, close by it
   float under = 1.0 - (vLamp.z * vLamp.z) / (reach * reach);
-  float k = (1.0 - (far * far) / (reach * reach)) / max(under, 0.05);
+  float k = (1.0 - (far * far) / (reach * reach)) / mix(1.0, max(under, 0.05), vShape.y);
 
   //a headlight's cone, along the ground the way it shines
   if (vAim.z > -1.0) {
@@ -263,7 +273,6 @@ uniform sampler2D albedo;
 uniform sampler2D normals;
 uniform sampler2D heights;
 uniform sampler2D shine;
-uniform sampler2D glow;
 uniform sampler2D light;
 uniform vec2 size;
 //where the world's origin is on the screen, for the dither to stay put
@@ -303,11 +312,7 @@ void main() {
       l *= s / most;
     }
 
-    //the light thrown round the buildings, from below: on what looks up the
-    //most, on the sides by half
-    vec3 spilt = texelFetch(glow, px, 0).rgb * mix(0.5, 1.0, max(n.z, 0.0));
-
-    c += a * (l + spilt) + texelFetch(shine, px, 0).rgb;
+    c += a * l + texelFetch(shine, px, 0).rgb;
   }
 
   color = vec4(min(c, vec3(1.0)), 1.0);
@@ -409,7 +414,7 @@ GLView.prototype.setup = function () {
   this.grow(4);
 
   //the pictures of the screen, and the lamps' light
-  this.targets = [0, 1, 2, 3, 4].map(function () {
+  this.targets = [0, 1, 2, 3].map(function () {
     return texture2d(gl);
   });
   this.lightTex = texture2d(gl);
@@ -420,8 +425,7 @@ GLView.prototype.setup = function () {
   this.width = this.height = 0;
 
   //the squares of the pictures, each of the batches it is drawn in: the
-  //colours, the ways things look and how high they stand; what shines and
-  //the light thrown round
+  //colours, the ways things look and how high they stand; what shines
   var self = this;
 
   this.vaos = [0, 1].map(function (group) {
@@ -444,16 +448,7 @@ GLView.prototype.setup = function () {
         group === 0 ? 48 : 80,
         1,
       );
-      attribute(
-        gl,
-        p,
-        "src2",
-        self.spriteBuffer,
-        4,
-        FLOATS * 4,
-        group === 0 ? 64 : 96,
-        1,
-      );
+      attribute(gl, p, "src2", self.spriteBuffer, 4, FLOATS * 4, 64, 1);
 
       return vao;
     });
@@ -490,6 +485,16 @@ GLView.prototype.setup = function () {
     4,
     LAMP_FLOATS * 4,
     32,
+    1,
+  );
+  attribute(
+    gl,
+    this.lampProgram,
+    "shape",
+    this.lampBuffer,
+    4,
+    LAMP_FLOATS * 4,
+    48,
     1,
   );
 
@@ -599,8 +604,8 @@ GLView.prototype.alphaAt = function (page, x, y) {
 /* --- A frame ----------------------------------------------------------- */
 
 /**
- * Starts a frame w by h - at night with what shines, the light thrown round
- * and how high things stand drawn too.
+ * Starts a frame w by h - at night with what shines and how high things
+ * stand drawn too.
  */
 GLView.prototype.begin = function (w, h, night) {
   var gl = this.gl;
@@ -649,7 +654,7 @@ GLView.prototype.resize = function (w, h) {
   });
 
   attach(gl, this.first, [t[ALBEDO], t[NORMAL], t[HEIGHT]]);
-  attach(gl, this.second, [t[SHINE], t[GLOW]]);
+  attach(gl, this.second, [t[SHINE]]);
   attach(gl, this.lightFrame, [this.lightTex]);
 };
 
@@ -713,7 +718,7 @@ GLView.prototype.flush = function (lit, canvas) {
           this.vaos[1][0],
           false,
           n,
-          2,
+          1,
         );
     } else this.batch(null, this.plainProgram, this.vaos[0][1], true, n, 1);
   }
@@ -768,7 +773,10 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
  * every lamp.
  *
  * @param lamps {Array} at night, every lamp on the screen (LAMP_FLOATS):
- *        {x, y, z, reach, color, peak, aim, cone, tall}
+ *        {x, y, z, reach, color, peak, aim, cone, tall, [wrap], [foot]} -
+ *        wrap, how far round what it lights it reaches (WRAP), and foot,
+ *        false for its peak to be how bright it is close by rather than on
+ *        the ground under it
  * @param sky {{ambient, sun, dir}} the light of the sky and the sun, 0..1
  * @param origin {number[]} where the world's origin is on the screen
  */
@@ -807,8 +815,7 @@ GLView.prototype.light = function (lamps, sky, origin) {
   bind(gl, p, "normals", t[NORMAL], 1);
   bind(gl, p, "heights", t[HEIGHT], 2);
   bind(gl, p, "shine", t[SHINE], 3);
-  bind(gl, p, "glow", t[GLOW], 4);
-  bind(gl, p, "light", this.lightTex, 5);
+  bind(gl, p, "light", this.lightTex, 4);
   gl.uniform2f(gl.getUniformLocation(p, "size"), w, h);
   gl.uniform2f(gl.getUniformLocation(p, "origin"), origin[0], origin[1]);
   gl.uniform3fv(gl.getUniformLocation(p, "ambient"), sky.ambient);
@@ -852,6 +859,10 @@ GLView.prototype.uploadLamps = function (lamps) {
     d[o + 9] = l.aim ? l.aim[1] : 0;
     d[o + 10] = l.aim ? l.cone : -1;
     d[o + 11] = l.tall;
+    d[o + 12] = l.wrap === undefined ? WRAP : l.wrap;
+    d[o + 13] = l.foot === false ? 0 : 1;
+    d[o + 14] = 0;
+    d[o + 15] = 0;
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.lampBuffer);

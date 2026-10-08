@@ -46,6 +46,10 @@ AnimatedSprite.prototype.keep = function () {
   for (var i = 0; i < this.frames.length; i++) this.frames[i].keep();
 };
 
+AnimatedSprite.prototype.nightLights = function () {
+  return current(this).nightLights();
+};
+
 AnimatedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
   return current(this).glQuad(renderer, flat, lit, night, d, o);
 };

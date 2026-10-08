@@ -293,6 +293,8 @@ var TYPES = {
     lamps: function () {
       return [lampBoxes(true), lampBoxes(false)];
     },
+    //and the light each flash throws round it at night
+    glows: [LAMP_BLUE, LAMP_RED],
   },
   hatchback: {
     length: 11,
@@ -894,6 +896,9 @@ function walk(see) {
 
         return at;
       });
+
+      //what light each flash throws round the vehicle, if any
+      if (t.glows !== undefined) types[type].glows = t.glows;
     }
   });
 

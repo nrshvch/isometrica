@@ -343,10 +343,19 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   higher (`src/client/js/cachedsprite.js` Layers) - what shines (the lit
   panes of every window, the signs and billboards of the shops and offices
   in their own colours, a street light's lamp, a car's headlights white and
-  its tail lights red, a parked car's none), and the glow its signs,
-  billboards and lit shop windows throw round the foot of a building and on
-  the roof round them (`src/shared/gen/isobox.js` spill). Every street light
-  and every headlight is a lamp: a little square over just the pixels it
+  its tail lights red, a parked car's none). Nothing round what shines is
+  painted lit: every street light, every headlight and the flash of a police
+  car - blue, then red - is a lamp, and so is what shines of a building. As
+  a building is painted, its lit pixels are gathered into cells six across,
+  each a light where they are, as high as they stand, in their own colour
+  and as bright as how much of the cell is lit - one way for each of the two
+  ways a building is lit and each of its two stages
+  (`src/client/js/generatorcore.js` lightsOf) - and every building lit on
+  the screen adds those of the way it is lit just now
+  (`src/client/js/lighting.js` windowLights). So a shop front throws its
+  colours on the pavement in front of it, a billboard on the roof under it,
+  a home's lit windows on its garden, and a police car colours the road and
+  the walls round it. Every lamp is a little square over just the pixels it
   can reach, lighting each by how far it is from the lamp in the world -
   worked out from where it is on the screen and how high it stands - and how
   squarely it faces it, the headlights in a cone ahead. So a lorry passing

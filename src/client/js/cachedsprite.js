@@ -126,13 +126,12 @@ var DEFERRED = 2,
 
 //its pictures for the night, side by side (shared/gen/looks NIGHT): what
 //shines one way with the first of its lights on and with more of them, the
-//same the other way, itself in black, the light it throws round it each of
-//those ways, how high every pixel stands, and the whole of it in white
-var NIGHT = 11,
+//same the other way, itself in black, how high every pixel stands, and the
+//whole of it in white
+var NIGHT = 7,
   DARK = 4,
-  SPILT = 5,
-  TALL = 9,
-  WHOLE = 10;
+  TALL = 5,
+  WHOLE = 6;
 
 //what it is painted as for the light to be worked out as it is drawn - its
 //colours and the ways it looks side by side, and its pictures for the
@@ -143,9 +142,9 @@ CachedSprite.prototype.night = undefined;
 
 /**
  * Where it is drawn from into each of the pictures of the screen (client/
- * glview add): d, from o on, five times over the page, x and y there and
+ * glview add): d, from o on, four times over the page, x and y there and
  * how (SKIP, DARK, FROM) - into the colours, the ways things look, how high
- * things stand, what shines, and the light thrown round. In a lit layer,
+ * things stand, and what shines. In a lit layer,
  * from its pictures to be lit; anywhere else, its picture as it is painted.
  * Where it has none of its own, it is drawn as it is with the colours, and in
  * black otherwise - which is looking up, standing on the ground, nothing
@@ -180,7 +179,6 @@ CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
   if (!night || flat) {
     skip(d, o + 8);
     skip(d, o + 12);
-    skip(d, o + 16);
     return true;
   }
 
@@ -191,14 +189,26 @@ CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
 
     put(d, o + 8, layers, TALL * W, FROM);
     put(d, o + 12, layers, (on === 0 ? DARK : way) * W, FROM);
-    put(d, o + 16, layers, (on === 0 ? DARK : SPILT + way) * W, FROM);
   } else {
     put(d, o + 8, this, 0, DARK_);
     put(d, o + 12, this, 0, DARK_);
-    put(d, o + 16, this, 0, DARK_);
   }
 
   return true;
+};
+
+/**
+ * The lights of what shines of it at night (client/generatorcore lightsOf),
+ * every part's moved to where it is in it, lifted as it is laid higher, and
+ * lit the other way round where the part is: {x, y, z, color, ways} - where
+ * it shines from in it, how high, its light 0..1, and how much of it with
+ * the first lights on and with more, one way and the other. Null while its
+ * pictures for the night are not drawn, or when nothing of it shines.
+ */
+CachedSprite.prototype.nightLights = function () {
+  var layers = this.night;
+
+  return layers && layers.slot >= 0 ? layers.lights : null;
 };
 
 //drawn from what is on a page, x across from where it is there
@@ -299,9 +309,11 @@ Layers.prototype.paint = function (ctx, x, y) {
     k;
 
   this.sides = 0;
+  if (night) this.lights = null;
 
+  //(a part that does not say where its foot is stands on the ground)
   for (i = 0; i < parts.length; i++)
-    ground = Math.max(ground, parts[i].y + parts[i].frame.pivotY);
+    ground = Math.max(ground, parts[i].y + (parts[i].frame.pivotY || 0));
 
   for (i = 0; i < parts.length; i++) {
     var part = parts[i],
@@ -320,11 +332,7 @@ Layers.prototype.paint = function (ctx, x, y) {
       for (k = 0; k < n; k++)
         ctx.drawImage(
           own.image,
-          (k < DARK || !night
-            ? k ^ swap
-            : k > DARK && k < TALL
-              ? SPILT + ((k - SPILT) ^ swap)
-              : k) * f.w,
+          (k < DARK ? k ^ swap : k) * f.w,
           0,
           f.w,
           f.h,
@@ -334,15 +342,12 @@ Layers.prototype.paint = function (ctx, x, y) {
           f.h,
         );
 
-      if (night)
-        lift(
-          ctx,
-          own.image,
-          f,
-          x + TALL * W + part.x,
-          y + part.y,
-          ground - (part.y + f.pivotY),
-        );
+      if (night) {
+        var up = ground - (part.y + (f.pivotY || 0));
+
+        lift(ctx, own.image, f, x + TALL * W + part.x, y + part.y, up);
+        if (own.lights) this.addLights(own.lights, part, up, swap);
+      }
 
       continue;
     }
@@ -364,6 +369,34 @@ Layers.prototype.paint = function (ctx, x, y) {
 };
 
 /**
+ * The lights of a part's pictures for the night (packed, generatorcore
+ * lightsOf), among the whole's: where they are in it, as high as the part
+ * is laid higher, and the ways it is lit swapped where the part's are.
+ */
+Layers.prototype.addLights = function (packed, part, up, swap) {
+  var out = this.lights || (this.lights = []);
+
+  up = up > 0 ? up : 0;
+
+  for (var i = 0; i < packed.length; i += 8) {
+    var c = packed[i + 3];
+
+    out.push({
+      x: part.x + packed[i],
+      y: part.y + packed[i + 1],
+      z: packed[i + 2] + up,
+      color: [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255],
+      ways: [
+        packed[i + 4 + (0 ^ swap)],
+        packed[i + 4 + (1 ^ swap)],
+        packed[i + 4 + (2 ^ swap)],
+        packed[i + 4 + (3 ^ swap)],
+      ],
+    });
+  }
+};
+
+/**
  * Lifts how high a part stands by up, where it was just drawn at x, y in
  * the picture of how high things stand: the part as painted stands on its
  * own foot, which is up higher than the ground the whole stands on - added
@@ -371,7 +404,7 @@ Layers.prototype.paint = function (ctx, x, y) {
  * up / 255).
  */
 function lift(ctx, image, f, x, y, up) {
-  if (up <= 0) return;
+  if (!(up > 0)) return;
 
   ctx.globalCompositeOperation = "lighter";
   ctx.globalAlpha = Math.min(1, up / 255);
