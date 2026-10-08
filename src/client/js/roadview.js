@@ -108,13 +108,15 @@ function draw(view, id, surface) {
   addSprite(go, id, 1, layer, sink);
 
   //the street light, among the buildings and the cars it stands with
-  var light = lightOf(id, tile);
-
-  if (light !== null) addLight(go, light);
+  var light = lightOf(id, tile),
+    pool = light !== null ? addLight(go, light, layer) : null;
 
   addBase(go, tile, surface, 1, layer, sink);
 
   place(go, tile, surface);
+
+  //where its light falls, for the cars to be lit by - once it is in place
+  if (pool) Glow.addLamp(pool);
 }
 
 //whether a road's surface is over the ground anywhere on tile - on concrete
@@ -211,8 +213,9 @@ function addBase(parent, tile, surface, opacity, layer, sink) {
   part.transform.setLocalPosition(0, -0.01 - (sink || 0) * Config.tileZStep, 0);
 }
 
-//hangs a street light under parent
-function addLight(parent, name) {
+//hangs a street light under parent - and the pool of light it casts, on the
+//layer the road is on, which it hands back
+function addLight(parent, name, layer) {
   var part = new engine.GameObject(),
     sprite = new engine.SpriteRenderer();
 
@@ -224,7 +227,7 @@ function addLight(parent, name) {
   parent.transform.addChild(part.transform);
   standPole(part, sprite, name.split("/").pop());
 
-  addPool(parent, name.split("/").pop());
+  return addPool(parent, name.split("/").pop(), layer);
 }
 
 /**
@@ -251,37 +254,34 @@ function standPole(part, sprite, at) {
 /**
  * Hangs under parent the pool of light its street light casts at night
  * (client/glow), round the spot under the lamp: where that is on the tile,
- * the roads' generator says (shared/gen/roads lampAt) - x - y across the
- * screen from the middle of the tile, (x + y) / 2 up it. It is sorted among
- * the cars by the nearest edge of it, the one in front as it is seen, so
- * that anything standing in the pool is drawn before it and is lit by it,
- * and anything in front of it still hides it.
+ * the roads' generator says (shared/gen/roads lampAt). It lies on the road,
+ * drawn with the road - under every car and building, all of which stand
+ * over it and hide it; a car in it is lit by it as a whole instead (see
+ * Glow lightAt, client/carman). On a road raised on concrete, drawn among
+ * the buildings, it is drawn with them, after the road.
  */
-function addPool(parent, at) {
+function addPool(parent, at, layer) {
   var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
     lamp = roads && roads.lamps ? roads.lamps[at] : null;
 
-  if (!lamp) return;
+  if (!lamp) return null;
 
   var pool = Glow.lampPool(),
     part = new engine.GameObject(),
     sprite = new engine.SpriteRenderer(),
-    //the nearest edge of the pool: as far in front of the lamp, straight
-    //down the screen, as the pool reaches
-    edge = pool.reach / Math.SQRT2,
-    dx = lamp[0] - edge - 16,
-    dy = lamp[1] - edge - 16,
+    dx = lamp[0] - 16,
+    dy = lamp[1] - 16,
     w = View.unvector((dx / 32) * Config.tileSize, (dy / 32) * Config.tileSize);
 
-  sprite.layer = RenderLayer.buildingsLayer;
+  sprite.layer = layer;
   sprite.city = true;
   part.addComponent(sprite);
   sprite.setSprite(pool);
-  //drawn round the lamp, sorted where its edge is - straight down the
-  //screen from the lamp by edge
-  sprite.setPivot(pool.pivotX, pool.pivotY + edge);
+  sprite.setPivot(pool.pivotX, pool.pivotY);
   part.transform.setLocalPosition(w[0], 0, w[1]);
   parent.transform.addChild(part.transform);
+
+  return part;
 }
 
 /**
