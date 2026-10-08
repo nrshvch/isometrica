@@ -284,6 +284,7 @@ BuildingView.prototype.update = function () {
             )
           : look,
         b.data.tile,
+        lightsOf(staticData),
       );
 
       //smoke out of the chimneys of a house put together out of parts
@@ -412,8 +413,19 @@ BuildingView.prototype.dispose = function () {
  *        building it is, for one that is not a building yet
  * @param [seed] {number} for one put together out of parts, the same for the
  *        same building every time - where it stands: the cars in its car park
+ * @param [lights] {string} the lights it has on at night, a finished building
+ *        - see lightsOf; none for a building site, nor for a preview
  */
-function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
+function addSprites(
+  parent,
+  staticData,
+  rotation,
+  opacity,
+  layer,
+  look,
+  seed,
+  lights,
+) {
   if (staticData.compound) {
     addParts(
       parent,
@@ -423,6 +435,7 @@ function addSprites(parent, staticData, rotation, opacity, layer, look, seed) {
       layer,
       look,
       seed,
+      lights,
     );
     return;
   }
@@ -489,7 +502,7 @@ function mirrored(staticData, rotation) {
  * Hangs a building put together out of parts under parent: a sprite for each
  * of its tiles, each the parts of that tile put together.
  */
-function addParts(parent, compound, turns, opacity, layer, look, seed) {
+function addParts(parent, compound, turns, opacity, layer, look, seed, lights) {
   var sprites = vkaria.sprites;
 
   look = look || CompoundBuilding.sampleLook(sprites, compound);
@@ -503,18 +516,37 @@ function addParts(parent, compound, turns, opacity, layer, look, seed) {
     opacity,
     layer,
     seed,
+    lights,
   );
+}
+
+/**
+ * The lights a finished building has on at night (client/lighting
+ * windowsOn): a shop's, an office's, a home's - or none, for what has no
+ * windows to light (a park, the waterworks).
+ */
+function lightsOf(staticData) {
+  var gen = staticData.compound ? staticData.compound.gen : null;
+
+  if (gen === "shops") return "shop";
+  if (gen === "offices") return "office";
+  if (gen === "houses" || gen === "flats" || gen === "oldtown") return "home";
+
+  return undefined;
 }
 
 /**
  * Hangs the pieces of something put together out of parts under parent -
  * see client/compoundbuilding pieces - each tile at its own place - every
- * piece with the hours its lights are on by at night, the same for the whole
+ * piece of a finished building with the lights it has (lights, see
+ * lightsOf) and the hours they are on by at night, the same for the whole
  * building (client/lighting windowsOn), and which of its two ways it is lit
- * at night, a toss of its own (client/cachedsprite nightSection).
+ * at night, a toss of its own (client/cachedsprite nightSection). A building
+ * site, or a building being placed, has no lights on at all.
  */
-function addPieces(parent, pieces, opacity, layer, seed) {
-  var windows = seed === undefined ? undefined : windowsSeed(seed);
+function addPieces(parent, pieces, opacity, layer, seed, lights) {
+  var windows =
+    seed === undefined || lights === undefined ? undefined : windowsSeed(seed);
 
   pieces.forEach(function (piece, i) {
     //a tile of a site with something moving over it draws that too
@@ -531,6 +563,7 @@ function addPieces(parent, pieces, opacity, layer, seed) {
     renderer.pivotY = piece.pivotY;
     renderer.setSprite(piece.sprite);
     renderer.windows = windows;
+    renderer.lights = lights;
     renderer.variant =
       seed === undefined || windowsSeed((seed | 0) * 131 + i * 7 + 3) < 0.5
         ? 0
