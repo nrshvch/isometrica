@@ -972,7 +972,6 @@ Lamp.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
   d[o + 7] = lit ? GLView.DARK : GLView.SKIP;
   d[o + 11] = GLView.SKIP;
   d[o + 15] = night ? GLView.FROM : GLView.SKIP;
-  d[o + 19] = GLView.SKIP;
 
   return true;
 };
@@ -1295,6 +1294,9 @@ function loadTypes(self) {
         lamps: null,
         //and every flash by the way it faces: {"x+": [picture, ...]}
         flashes: null,
+        //the light each flash throws round it at night, 0..255, if any
+        //(client/lighting)
+        glows: data.glows || null,
       };
 
     Object.keys(data.colors).forEach(function (color) {

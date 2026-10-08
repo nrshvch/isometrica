@@ -76,6 +76,17 @@ var HEAD_HIGH = 3,
   HEAD_CONE = 0.82,
   HEAD_APART = 2.5;
 
+//what shines of a building - a lit window, a sign, a billboard - as the
+//light it throws round it: how far it reaches, and how bright it is close
+//by, the most of it lit (client/cachedsprite nightLights)
+var WINDOW_REACH = 18,
+  WINDOW_PEAK = 0.8;
+
+//a police car's flash: how high it is, how far it reaches, how bright
+var FLASH_HIGH = 9,
+  FLASH_REACH = 30,
+  FLASH_PEAK = 0.7;
+
 //how high anything a lamp lights can stand, for the square it is drawn in
 //to take it in
 var TALL = 60;
@@ -154,6 +165,7 @@ Lighting.prototype.begin = function (viewport, M) {
   this.sky = sun(hourNow);
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
+  this.lamps.length = 0;
   this.view.begin(viewport.width, viewport.height, this.night);
 };
 
@@ -175,7 +187,7 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
     d = view.add(x0, y0, sprite.width, sprite.height, renderer.opacity);
 
   if (
-    sprite.glQuad(
+    !sprite.glQuad(
       renderer,
       this.flat,
       this.lit,
@@ -184,7 +196,13 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
       view.offset,
     )
   )
-    view.keep();
+    return;
+
+  view.keep();
+
+  //what shines of a building at night lights what is round it
+  if (this.lit && this.night && renderer.windows !== undefined)
+    windowLights(this.lamps, renderer, sprite, x0, y0);
 };
 
 //the layer's batch drawn, and over it what it drew on the canvas
@@ -198,7 +216,6 @@ Lighting.prototype.light = function () {
     w = this.view.width,
     h = this.view.height;
 
-  this.lamps.length = 0;
   if (this.night) {
     streetLights(this.lamps, M, w, h);
     headlights(this.lamps, M, w, h, this.root.carman);
@@ -277,6 +294,44 @@ function streetLights(out, M, w, h) {
   }
 }
 
+/**
+ * The lights of what shines of a building's piece, drawn at x0, y0 - its lit
+ * windows, its signs - as it is lit just now (client/cachedsprite
+ * nightLights): each where it shines from, as bright as how much of it is
+ * lit.
+ */
+function windowLights(out, renderer, sprite, x0, y0) {
+  var on = Lighting.shines(renderer),
+    lights = on > 0 && sprite.nightLights ? sprite.nightLights() : null;
+
+  if (lights === null) return;
+
+  var way = (renderer.variant === 1 ? 2 : 0) + on - 1;
+
+  for (var i = 0; i < lights.length; i++) {
+    var l = lights[i],
+      k = l.ways[way];
+
+    if (k <= 0) continue;
+
+    out.push({
+      x: x0 + l.x,
+      //the spot under it, on the ground
+      y: y0 + l.y + l.z,
+      z: l.z,
+      reach: WINDOW_REACH,
+      color: l.color,
+      peak: WINDOW_PEAK * k,
+      aim: null,
+      cone: -1,
+      tall: TALL,
+      //not round onto the wall it is in, and as bright as it is close by
+      wrap: 0,
+      foot: false,
+    });
+  }
+}
+
 //which way a car is going as it is seen ("x+", "y-" - see client/view
 //heading), along the ground
 var AIM = {
@@ -288,7 +343,8 @@ var AIM = {
 
 /**
  * Every headlight on the screen of a car with its lamps on: two of them,
- * either side of the front of it, shining ahead.
+ * either side of the front of it, shining ahead - and the flash of a police
+ * car, all round.
  */
 function headlights(out, M, w, h, carman) {
   var cars = carman ? carman.cars || [] : [];
@@ -300,7 +356,6 @@ function headlights(out, M, w, h, carman) {
 
     if (!car || car.heading === null || !renderer || go.world === null)
       continue;
-    if (renderer.lamps === undefined || !lampsOn(renderer.lamps)) continue;
 
     var aim = AIM[car.heading],
       sprite = renderer._sprite;
@@ -309,7 +364,30 @@ function headlights(out, M, w, h, carman) {
 
     go.transform.getPosition(at);
     screen(M, at[0], at[1], at[2], spot);
-    if (!seen(spot[0], spot[1], HEAD_REACH * 2, w, h)) continue;
+    if (!seen(spot[0], spot[1], FLASH_REACH * 2, w, h)) continue;
+
+    //a police car's flash, blue and red over everything round it
+    var glows = car.type ? car.type.glows : null;
+
+    if (glows) {
+      var g = glows[car.lamp % glows.length];
+
+      out.push({
+        x: spot[0],
+        y: spot[1],
+        z: FLASH_HIGH,
+        reach: FLASH_REACH,
+        color: [g[0] / 255, g[1] / 255, g[2] / 255],
+        peak: FLASH_PEAK,
+        aim: null,
+        cone: -1,
+        tall: TALL,
+        //round onto the car itself, and about
+        wrap: 0.6,
+      });
+    }
+
+    if (renderer.lamps === undefined || !lampsOn(renderer.lamps)) continue;
 
     //how far ahead of its middle the front is: across the screen its
     //picture is as long as it is and as wide, about 6 (shared/gen/vehicles)
