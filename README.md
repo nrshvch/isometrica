@@ -348,26 +348,29 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   panes of every window, the signs and billboards of the shops and offices
   in their own colours, a street light's lamp, a car's headlights white and
   its tail lights red, a parked car's none). Nothing round what shines is
-  painted lit: every street light, every headlight and the flash of a police
-  car - blue, then red - is a lamp, and so is what shines of a building. As
-  a building is painted, its lit pixels are gathered into cells six across,
-  each a light where they are, as high as they stand, in their own colour
-  and as bright as how much of the cell is lit - one way for each of the two
+  painted lit: every street light, every headlight and tail light and the
+  flash of a police car - blue, then red - is a lamp, and so is what shines
+  of a building. As a building is painted, its lit pixels are gathered into
+  cells eight across, each a light where they are, as high as they stand,
+  in their own colour and as bright as how much of the cell is lit and how
+  brightly - rising quickly, so a single window throws its light and a whole
+  lit glass front no more than so much more - one way for each of the two
   ways a building is lit and each of its two stages
   (`src/client/js/generatorcore.js` lightsOf) - and every building lit on
   the screen adds those of the way it is lit just now
   (`src/client/js/lighting.js` windowLights). So a shop front throws its
   colours on the pavement in front of it, a billboard on the roof under it,
-  a home's lit windows on its garden, and a police car colours the road and
-  the walls round it. Every lamp is a little square over just the pixels it
+  a home's lit windows on its garden, a car's tail lights the road red
+  behind it, and a police car colours the road and the walls round it. Every lamp is a little square over just the pixels it
   can reach, lighting each by how far it is from the lamp in the world -
   worked out from where it is on the screen and how high it stands - and how
   squarely it faces it, the headlights in a cone ahead. So a lorry passing
   under a street light is lit on its roof and the side towards the lamp, a
   wall by the street catches the light, a tree's crown is lit on the side
   facing the lamp, and the road under the lamp in its own colours. The light
-  is put in steps of a third, dithered between them by where on the ground
-  each pixel is, so it stays put as the city scrolls by: pixel art, lit as
+  is put in steps of a third, at most a third over a pixel's own colours so
+  nothing is lit white, dithered between them by where on the ground each
+  pixel is, so it stays put as the city scrolls by: pixel art, lit as
   the world would be.
 - Nothing fades - a light is on or off: every finished building puts a few
   of its lights on in the hour from half past eight, each at a time of its

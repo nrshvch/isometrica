@@ -298,6 +298,9 @@ uniform bool night;
 
 out vec4 color;
 ${NORMAL_OF}
+//as many thirds of light as a pixel can take from the lamps, over its own
+//colour: no more than a third over, for nothing to be lit white
+const float MOST_STEPS = 4.0;
 const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
   3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 
@@ -319,7 +322,7 @@ void main() {
       vec2 ground = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y + h) - origin;
       ivec2 g = ivec2(floor(ground)) & 3;
       float b = (BAYER[g.y * 4 + g.x] + 0.5) / 16.0;
-      float s = min(floor(most * 3.0 + b), 6.0) / 3.0;
+      float s = min(floor(most * 3.0 + b), MOST_STEPS) / 3.0;
 
       l *= s / most;
     }

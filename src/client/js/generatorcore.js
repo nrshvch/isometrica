@@ -96,10 +96,11 @@ var NIGHT = 7,
   WAYS = 4,
   HIGH = 5;
 
-//how big a patch of what shines makes one light, a side, and how many of its
-//pixels lit make it shine as bright as it can
-var CELL = 6,
-  FULL = 10;
+//how big a patch of what shines makes one light, a side. It shines as much
+//as how much of it is lit, and how brightly - all of it in white the most -
+//rising quickly at first, so a single window still throws its light, and a
+//whole lit shop front no more than so much more
+var CELL = 8;
 
 /**
  * The lights of what shines of a picture at night - for it to light what is
@@ -145,7 +146,7 @@ function lightsOf(painted) {
           sums[cell + 6]++;
           any = true;
         }
-        sums[cell + 7 + k]++;
+        sums[cell + 7 + k] += Math.max(data[o], data[o + 1], data[o + 2]) / 255;
       }
     }
 
@@ -162,14 +163,19 @@ function lightsOf(painted) {
       (Math.round(sums[c + 3] / n) << 16) |
         (Math.round(sums[c + 4] / n) << 8) |
         Math.round(sums[c + 5] / n),
-      Math.min(1, sums[c + 7] / FULL),
-      Math.min(1, sums[c + 8] / FULL),
-      Math.min(1, sums[c + 9] / FULL),
-      Math.min(1, sums[c + 10] / FULL),
+      shining(sums[c + 7]),
+      shining(sums[c + 8]),
+      shining(sums[c + 9]),
+      shining(sums[c + 10]),
     );
   }
 
   return out.length > 0 ? out : null;
+}
+
+//how much a patch shines, 0..1, from how bright its pixels are, summed
+function shining(sum) {
+  return Math.round(Math.sqrt(Math.min(1, sum / (CELL * CELL))) * 100) / 100;
 }
 
 /**
