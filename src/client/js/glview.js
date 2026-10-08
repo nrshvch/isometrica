@@ -57,6 +57,18 @@ var ALBEDO = 0,
   HEIGHT = 2,
   SHINE = 3;
 
+//which way a pixel looks, and how high it stands, are not colours to be
+//mixed: half of the way one looks and half of black is another way
+//altogether, a see-through pixel - smoke, a shadow, a line over the grass -
+//turning what is under it away from the sun. They are taken whole from
+//what is drawn over them where it is mostly there, and left as they were
+//where it is mostly not.
+var WHOLE = `
+vec4 whole(vec4 c) {
+  return vec4(c.rgb, step(0.5, c.a));
+}
+`;
+
 var SPRITE_VS = `#version 300 es
 precision highp float;
 
@@ -126,7 +138,7 @@ vec4 drawn(vec4 src, ivec2 at, float shape) {
 
 uniform bool colours;
 uniform vec4 albedoSrc;
-
+${WHOLE}
 void main() {
   ivec2 at = local();
   vec4 c = fetch(vSrc0, at);
@@ -136,8 +148,8 @@ void main() {
 
   if (colours) {
     out0 = vec4(c.rgb, shape);
-    out1 = drawn(vSrc1, at, shape);
-    out2 = drawn(vSrc2, at, shape);
+    out1 = whole(drawn(vSrc1, at, shape));
+    out2 = whole(drawn(vSrc2, at, shape));
   } else {
     out0 = drawn(vSrc1, at, shape);
     out1 = drawn(vSrc2, at, shape);
@@ -158,7 +170,7 @@ void main() {
 //ground where it is
 var CANVAS_FS = `#version 300 es
 precision highp float;
-
+${WHOLE}
 uniform sampler2D picture;
 uniform vec2 size;
 
@@ -171,8 +183,8 @@ void main() {
 
   if (c.a <= 0.0) discard;
   out0 = c;
-  out1 = vec4(0.0, 0.0, 0.0, c.a);
-  out2 = vec4(0.0, 0.0, 0.0, c.a);
+  out1 = whole(vec4(0.0, 0.0, 0.0, c.a));
+  out2 = whole(vec4(0.0, 0.0, 0.0, c.a));
 }
 `;
 

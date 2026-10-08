@@ -114,7 +114,7 @@ CityBorderRenderer.prototype.render = function (ctx, viewportrenderer) {
 
   ctx.lineWidth = 3;
   ctx.setLineDash(dash);
-  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
   ctx.stroke();
 };
 
