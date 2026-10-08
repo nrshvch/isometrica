@@ -54,8 +54,7 @@ GeneratorCore.prototype.paint = function (message) {
   this.painter
     .paint(message)
     .then(function (painted) {
-      if (message.look)
-        sides = sidesOf(painted, message.look === "faces" ? 3 : 2);
+      if (message.look) sides = sidesOf(painted, SECTIONS[message.look] || 1);
 
       return createImageBitmap(
         new ImageData(
@@ -76,6 +75,10 @@ GeneratorCore.prototype.paint = function (message) {
       },
     );
 };
+
+//how many pictures side by side each look is painted in (shared/gen/isobox
+//sections, shared/gen/looks)
+var SECTIONS = { faces: 3, night: 9, height: 2 };
 
 /**
  * Of n pictures side by side, which have any pixel in them that is not black

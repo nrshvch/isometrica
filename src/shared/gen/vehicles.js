@@ -623,13 +623,15 @@ function cast(boxes, sx, sy) {
 
   hitColor = hit === null ? null : hit.color;
   hitFace = face;
+  hitZ = hit === null ? 0 : z - best;
 
   return hit === null ? null : shade(hit.color, face);
 }
 
 //what the last ray cast hit: its colour, and the face it went in through
 var hitColor = null,
-  hitFace = -1;
+  hitFace = -1,
+  hitZ = 0;
 
 /**
  * @param boxes {object[]}
@@ -914,6 +916,10 @@ export function paint(name, look) {
     //where things look up, and with what shines)
     if (look === "faces") return lampFaces(picture);
     if (look === "night") return Looks.night(picture);
+    if (look === "height")
+      return Looks.height(picture, function () {
+        return 0;
+      });
 
     return picture;
   }
@@ -934,6 +940,7 @@ export function paint(name, look) {
   //painted for the light to be worked out as it is drawn (shared/gen/looks)
   if (look === "faces") return renderFaces(boxes);
   if (look === "night") return renderNight(boxes);
+  if (look === "height") return renderHeight(boxes);
 
   return toImage(render(boxes));
 }
@@ -956,6 +963,32 @@ function renderNight(boxes) {
       //way; it throws no light of its own on the ground there
       for (var k = 0; k < Looks.NIGHT; k++)
         Looks.put(out, w, k, i, j, k < 4 ? shines(hitColor) : [0, 0, 0]);
+    }
+
+  return out;
+}
+
+/**
+ * How high every pixel of it is, and the whole of it in white
+ * (shared/gen/looks HEIGHT) - for the lamps it passes under to light it as
+ * they would.
+ */
+function renderHeight(boxes) {
+  var at = measure(boxes),
+    w = at.w,
+    h = at.h,
+    out = Looks.blank(w, h, Looks.HEIGHT);
+
+  for (var j = 0; j < h; j++)
+    for (var i = 0; i < w; i++) {
+      if (cast(boxes, at.x + i + 0.5, at.y + j + 0.5) === null) continue;
+
+      Looks.put(out, w, 0, i, j, [
+        Math.max(0, Math.min(255, Math.round(hitZ))),
+        0,
+        0,
+      ]);
+      Looks.put(out, w, 1, i, j, [255, 255, 255]);
     }
 
   return out;
