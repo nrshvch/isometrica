@@ -1,10 +1,10 @@
 import Events from "events";
 
-//The clock the city runs on: one tick of the world is five minutes, so a day
-//goes by in under five minutes of the real thing. Nothing keeps a date any
-//more - the game only ever shows the time of day - so this counts the ticks
-//and says what time of day it is now.
-var millisecondsInTick = 300000,
+//The clock the city runs on: one tick of the world is a minute, so a day
+//goes by in 24 minutes of the real thing. Nothing keeps a date any more - the
+//game only ever shows the time of day - so this counts the ticks and says
+//what time of day it is now.
+var millisecondsInTick = 60000,
   millisecondsInDay = 86400000;
 
 function VTime(world) {
@@ -75,7 +75,7 @@ VTime.prototype.toString = function () {
 };
 
 /**
- * The time of day, as it is shown: "00:00" to "23:55".
+ * The time of day, as it is shown: "00:00" to "23:59".
  */
 VTime.prototype.toHM = function () {
   return (
