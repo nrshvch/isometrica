@@ -72,6 +72,26 @@
   background-image: url(@cobble-road-image);
 }
 
+//which ways a road goes, picked after what it is laid in: both ways, or
+//one way only
+@two-way-road-image: "../icons/two-way-road.png";
+@one-way-road-image: "../icons/one-way-road.png";
+
+.two-way-road-icon,
+.one-way-road-icon {
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  .cover;
+}
+
+.two-way-road-icon {
+  background-image: url(@two-way-road-image);
+}
+
+.one-way-road-icon {
+  background-image: url(@one-way-road-image);
+}
+
 .back-icon {
   .sprite(@back);
   .cover;
