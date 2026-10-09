@@ -96,16 +96,16 @@ WorldScreen.prototype.startFresh = function () {
 /**
  * Asks what a road is to be laid in before it is laid - gravel, the lanes of
  * a village and the default; cobbles; or asphalt - the way the ground is
- * shaped by picking what to do to it first. Gravel laid by the old town
- * comes out cobbled (client/road materialAt).
+ * shaped by picking what to do to it first, and then which ways it goes
+ * (pickWay). Gravel laid by the old town comes out cobbled (client/road
+ * materialAt).
  */
 WorldScreen.prototype.pickRoad = function () {
   var self = this;
 
   function lay(material) {
     return function () {
-      self.hideHint();
-      self.ui.navigate("build", [BuildingCode.road, material]);
+      self.pickWay(material);
     };
   }
 
@@ -121,6 +121,34 @@ WorldScreen.prototype.pickRoad = function () {
     { icon: "gravel-road-icon", action: lay("gravel") },
     { icon: "cobble-road-icon", action: lay("cobble") },
     { icon: "road-icon", action: lay("asphalt") },
+  ]);
+};
+
+/**
+ * Asks, a road's material picked, whether it is driven both ways or one way
+ * only - a one-way road going the way it is dragged (client/buildman) - or
+ * back to the materials.
+ */
+WorldScreen.prototype.pickWay = function (material) {
+  var self = this;
+
+  function lay(way) {
+    return function () {
+      self.hideHint();
+      self.ui.navigate("build", [BuildingCode.road, material, way]);
+    };
+  }
+
+  this.showHint("Both ways, or one way only?");
+  this.showTools([
+    {
+      icon: "back-icon",
+      action: function () {
+        self.pickRoad();
+      },
+    },
+    { icon: "two-way-road-icon", action: lay("two") },
+    { icon: "one-way-road-icon", action: lay("one") },
   ]);
 };
 

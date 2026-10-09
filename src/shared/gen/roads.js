@@ -15,6 +15,11 @@
  *   - cobble: setts of stone between a gutter of darker stone either side -
  *     the old town's streets.
  *
+ * A one-way road is laid the same, but with no line down the middle of a
+ * straight piece: an arrow down it instead, the way the traffic goes - white
+ * on the asphalt, in darker stones on gravel and paler ones among cobbles -
+ * and no dashes up a ramp.
+ *
  * And a street light, apart: a sprite of its own, for it is tall and has to
  * be drawn among the buildings and the cars rather than under them.
  *
@@ -172,6 +177,42 @@ function centreLines(b, joins, ramp, z) {
 }
 
 /**
+ * The arrow down the middle of a straight piece of one-way road, the way the
+ * traffic goes - `to`, one of SIDES - a shaft two units wide and a head
+ * nine across at the end of it, in the middle of the tile.
+ */
+function arrow(b, to, z, color, finish) {
+  var along = to === "-x" || to === "+x",
+    back = to === "-x" || to === "-y";
+
+  //along the way it points, a from 0 to TILE; across it, c
+  function put(a0, a1, c0, c1) {
+    if (back) {
+      var t = a0;
+
+      a0 = TILE - a1;
+      a1 = TILE - t;
+    }
+
+    if (along) patch(b, null, a0, a1, c0, c1, z, SKIN, color, finish);
+    else patch(b, null, c0, c1, a0, a1, z, SKIN, color, finish);
+  }
+
+  put(9, 19, 15, 17);
+  for (var k = 0; k < 5; k++) put(19 + k, 20 + k, 12 + k, 20 - k);
+}
+
+//what the arrow of a one-way road is painted in: white on asphalt, darker
+//stones on the pale gravel, pale stones among the setts
+function arrowOf(kind) {
+  return kind === "gravel"
+    ? { color: TRACK_EDGE, finish: STONES }
+    : kind === "cobble"
+      ? { color: KERB, finish: COBBLED }
+      : { color: STRIPE, finish: undefined };
+}
+
+/**
  * Zebra crossings over every arm of a junction, just out from its middle:
  * stripes two units wide with two between, four long.
  */
@@ -271,10 +312,20 @@ function pavement(b, joins, ramp) {
  * before (iso snap) - the gravel, the asphalt over it, the markings over
  * that - so that nothing of it stands up off the ground to show an edge.
  */
-function piece(joins, ramp, paved) {
+function piece(joins, ramp, paved, oneway) {
   var b = [];
 
-  if (paved === "gravel" || paved === "cobble") return laid(joins, ramp, paved);
+  if (paved === "gravel" || paved === "cobble") {
+    b = laid(joins, ramp, paved);
+
+    if (oneway && !ramp) {
+      var mark = arrowOf(paved);
+
+      arrow(b, oneway, SKIN, mark.color, mark.finish);
+    }
+
+    return b;
+  }
 
   //a strip of gravel along the edges of the asphalt - kept on the tile, or
   //it would lie across the next tile's asphalt where they meet. On a ramp
@@ -302,7 +353,10 @@ function piece(joins, ramp, paved) {
     patch(b, ramp, r[0], r[1], r[2], r[3], SKIN, SKIN, ASPHALT, TARMAC);
   });
 
-  centreLines(b, joins, ramp, SKIN);
+  //a one-way road has its arrow instead of the line down the middle - and
+  //no dashes up a ramp
+  if (oneway === undefined) centreLines(b, joins, ramp, SKIN);
+  else if (oneway && !ramp) arrow(b, oneway, SKIN, STRIPE);
 
   if (paved) {
     pavement(b, joins, ramp);
@@ -477,7 +531,9 @@ function poleAt(at) {
  * cobble - the joins in the order
  * client/road reads its neighbours, -x, -y, +x, +y - "gen/roads/paved/ramp3",
  * and "gen/roads/light/x" - the street light beside a road along x, along y,
- * or at a corner.
+ * or at a corner. A one-way road's straight pieces, the way the traffic goes
+ * one of SIDES by number: "gen/roads/plain/oneway2/1010" along +x - and its
+ * ramps, with no dashes up them: "gen/roads/paved/oneway/ramp3".
  */
 function sprites() {
   var out = {};
@@ -497,6 +553,22 @@ function sprites() {
         joins: joins,
         paved: paved,
       };
+
+      //a straight piece of one-way road, an arrow down it either way
+      var alongX = joins["-x"] || joins["+x"],
+        alongY = joins["-y"] || joins["+y"];
+
+      if (alongX === alongY) continue;
+
+      SIDES.forEach(function (to, k) {
+        if ((k % 2 === 0) !== alongX) return;
+
+        out["gen/roads/" + kind + "/oneway" + k + "/" + bits.join("")] = {
+          joins: joins,
+          paved: paved,
+          oneway: to,
+        };
+      });
     }
 
     Object.keys(RAMPS).forEach(function (n) {
@@ -512,6 +584,15 @@ function sprites() {
         ramp: up,
         paved: paved,
       };
+
+      //and one-way, with no dashes up it - asphalt alone has any
+      if (kind === "plain" || kind === "paved")
+        out["gen/roads/" + kind + "/oneway/ramp" + n] = {
+          joins: joins,
+          ramp: up,
+          paved: paved,
+          oneway: false,
+        };
     });
   });
 
@@ -531,7 +612,7 @@ export function boxesOf(name) {
 
   return s.light
     ? streetLight(s.light)
-    : piece(s.joins, s.ramp || null, s.paved);
+    : piece(s.joins, s.ramp || null, s.paved, s.oneway);
 }
 
 /**
@@ -567,7 +648,7 @@ export function paint(name) {
     picture = free(boxesOf(name));
 
   //the dashes down the middle of an asphalt ramp
-  if (s.ramp && (s.paved === true || s.paved === false))
+  if (s.ramp && (s.paved === true || s.paved === false) && s.oneway !== false)
     stamps(picture, s.ramp);
 
   return iso.toImage(picture);

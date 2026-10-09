@@ -134,6 +134,10 @@ function onChunkRemove(sender, chunk, self) {
   }
 }
 
+//from a tile to the next one at each side, -x, -y, +x, +y - the ways a
+//one-way road can go (client/road wayOf)
+var WAY_STEPS = [-1, -Terrain.dy, 1, Terrain.dy];
+
 //how see-through a preview is: one that would go up, and one that could not
 //go up right now - its ground is taken, too steep, or not paid for
 var PREVIEW_OPACITY = 0.75,
@@ -853,14 +857,96 @@ Buildman.prototype.unfade = function () {
  * Puts the player to placing code: a selection to drag about and resize,
  * the buildings it would put down shown on it, until they confirm or leave.
  *
- * @param [options] {{material: string}} for a road, what it is laid in -
- *        "gravel", the default, "cobble" or "asphalt" (see Road.materialAt)
+ * @param [options] {{material: string, way: string}} for a road, what it is
+ *        laid in - "gravel", the default, "cobble" or "asphalt" (see
+ *        Road.materialAt) - and "one" for a one-way road, "two", the
+ *        default, for one driven both ways
  */
 Buildman.prototype.build = function (code, options) {
   var self = this;
   var root = this.root;
   var data = BuildingData[code];
   var material = (options && options.material) || "gravel";
+  var oneWay =
+    data.classCode === BuildingClassCode.road &&
+    !!options &&
+    options.way === "one";
+
+  //a one-way road goes the way it is dragged: from the end it was started
+  //at - the tile the selection was on while it was a single one - on to the
+  //finger, and round every corner on the way; turned round, the other way
+  //(a single tile turns a quarter at a time). The way of each tile of it,
+  //0..3 for -x, -y, +x, +y (client/road wayOf)
+  var start = -1,
+    turn = 0,
+    ways = Object.create(null);
+
+  function flowOf(tiles) {
+    var on = Object.create(null),
+      out = Object.create(null),
+      first = -1,
+      best = Infinity;
+
+    tiles.forEach(function (tile) {
+      on[tile] = true;
+    });
+
+    function around(tile) {
+      return WAY_STEPS.filter(function (step) {
+        return on[tile + step] === true;
+      }).length;
+    }
+
+    if (tiles.length === 1) {
+      out[tiles[0]] = [2, 3, 0, 1][turn];
+      return out;
+    }
+
+    //from whichever end of the run is nearest where it was started
+    tiles.forEach(function (tile) {
+      if (around(tile) > 1) return;
+
+      var d =
+        start < 0
+          ? 0
+          : Math.abs(Terrain.extractX(tile) - Terrain.extractX(start)) +
+            Math.abs(Terrain.extractY(tile) - Terrain.extractY(start));
+
+      if (d < best) {
+        best = d;
+        first = tile;
+      }
+    });
+
+    if (first < 0) first = on[start] === true ? start : tiles[0];
+
+    //on along the run from there, each tile the way it is come into - the
+    //first the way it is left by
+    var queue = [first],
+      seen = Object.create(null);
+
+    seen[first] = true;
+
+    for (var head = 0; head < queue.length; head++)
+      WAY_STEPS.forEach(function (step, side) {
+        var next = queue[head] + step;
+
+        if (on[next] !== true || seen[next] === true) return;
+
+        seen[next] = true;
+        out[next] = side;
+        if (out[queue[head]] === undefined) out[queue[head]] = side;
+        queue.push(next);
+      });
+
+    //turned round, every tile the other way
+    if (turn % 2 === 1)
+      Object.keys(out).forEach(function (tile) {
+        out[tile] = (out[tile] + 2) % 4;
+      });
+
+    return out;
+  }
 
   //what this thing would water from where it is being placed, so that a
   //tower is placed by what it will reach rather than by guesswork
@@ -941,11 +1027,16 @@ Buildman.prototype.build = function (code, options) {
   var looks = Object.create(null);
 
   function lookAt(tile) {
-    //a road: what it is laid in, there
-    if (data.classCode === BuildingClassCode.road)
-      return {
+    //a road: what it is laid in, there - and the way it goes, one-way
+    if (data.classCode === BuildingClassCode.road) {
+      var look = {
         material: Road.materialAt(material, tile, root.core.buildingService),
       };
+
+      if (oneWay && ways[tile] !== undefined) look.way = ways[tile];
+
+      return look;
+    }
 
     var compound = BuildingData[variantAt(tile)].compound,
       slot = slots[tile];
@@ -962,7 +1053,11 @@ Buildman.prototype.build = function (code, options) {
   root.ui
     .gameScreen()
     .worldScreen()
-    .showHint("Drag to place, pull arrows to resize!");
+    .showHint(
+      oneWay
+        ? "Drag the way the traffic goes, turn to flip it!"
+        : "Drag to place, pull arrows to resize!",
+    );
 
   //the selection covers whole footprints, one building each
   var tokens = [];
@@ -1127,7 +1222,12 @@ Buildman.prototype.build = function (code, options) {
           self,
           tile,
           net.surface(tile) !== null
-            ? Road.profile(tile, net, kindAt(tile))
+            ? Road.profile(
+                tile,
+                net,
+                kindAt(tile),
+                oneWay && ways[tile] !== undefined ? ways[tile] : -1,
+              )
             : Road.shapeOf(surface) > 0
               ? Road.shapeOf(surface)
               : 90000,
@@ -1144,7 +1244,12 @@ Buildman.prototype.build = function (code, options) {
 
         seen[next] = true;
         //a street stays a street, joined up with the new road
-        id = Road.profile(next, net, Road.kindOf(roadman, road.data));
+        id = Road.profile(
+          next,
+          net,
+          Road.kindOf(roadman, road.data),
+          Road.wayOf(road.data),
+        );
 
         if (id !== road.typeCode) {
           road.view.showPiece(id);
@@ -1160,6 +1265,13 @@ Buildman.prototype.build = function (code, options) {
       quotes;
 
     layout(tiles);
+
+    //the way a one-way road goes, from where it was started
+    if (oneWay) {
+      if (tiles.length === 1) start = tiles[0];
+      ways = flowOf(tiles);
+    }
+
     quotes = root.core.cities
       .getCity(0)
       .buildingService.quoteSelection(code, tiles, rotation);
@@ -1205,8 +1317,15 @@ Buildman.prototype.build = function (code, options) {
   var controls = root.ui.gameScreen().showActionControls();
   //anything can be turned round - what was never painted that way is drawn
   //flipped over (see BuildingView) - unless it says otherwise
-  controls.canRotate(data.canRotate !== false);
+  controls.canRotate(data.canRotate !== false || oneWay);
   controls.onRotate = function () {
+    //a one-way road turns round the way it goes
+    if (oneWay) {
+      turn = (turn + 1) % 4;
+      updateHilite();
+      return;
+    }
+
     rotation = Rotation.next(rotation);
     //the whole selection turns with the buildings on it - which redraws
     //it all
@@ -1216,6 +1335,7 @@ Buildman.prototype.build = function (code, options) {
     var anchors = ts.anchors();
 
     layout(anchors);
+    if (oneWay) ways = flowOf(anchors);
 
     //roads laid as the preview showed them, each with its surface
     var surfaces = null;

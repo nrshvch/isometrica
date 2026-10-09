@@ -17,14 +17,40 @@ var Terrain = Core.Terrain;
 //what a road's piece number (see Road.profile) is drawn with: the roads
 //generator's pieces (shared/gen/roads) - plain or paved asphalt, gravel or
 //cobbles, by how the road joins up with its neighbours, or a ramp - as it is
-//seen, the camera turned (see client/view)
+//seen, the camera turned (see client/view). A one-way road's straight piece
+//has an arrow down it the way its traffic goes, as that is seen, and its
+//ramp no dashes up it
 function spriteOf(id) {
   var shape = id % Road_PAVED,
-    kind = KINDS[Math.floor(id / Road_PAVED)] || "plain";
+    kind = KINDS[Math.floor(id / Road_PAVED) % 10] || "plain",
+    way = Math.floor(id / ONE_WAY) - 1;
 
-  if (shape < 10) return "gen/roads/" + kind + "/ramp" + View.ramp(shape);
+  if (shape < 10)
+    return (
+      "gen/roads/" +
+      kind +
+      (way >= 0 && (kind === "plain" || kind === "paved") ? "/oneway" : "") +
+      "/ramp" +
+      View.ramp(shape)
+    );
 
-  return "gen/roads/" + kind + "/" + seenJoins(shape).join("");
+  var j = seenJoins(shape),
+    alongX = j[0] || j[2],
+    alongY = j[1] || j[3],
+    to = way >= 0 ? seenSide(way) : -1;
+
+  //an arrow only down a straight piece, the way it runs
+  if (to >= 0 && alongX !== alongY && (to % 2 === 0) === !!alongX)
+    return "gen/roads/" + kind + "/oneway" + to + "/" + j.join("");
+
+  return "gen/roads/" + kind + "/" + j.join("");
+}
+
+//a side of a tile, -x, -y, +x, +y as 0..3, in the world - as it is seen
+function seenSide(side) {
+  var d = View.vector([-1, 0, 1, 0][side], [0, -1, 0, 1][side]);
+
+  return d[0] < 0 ? 0 : d[1] < 0 ? 1 : d[0] > 0 ? 2 : 3;
 }
 
 //which sides a flat piece of road joins on as it is seen: -x, -y, +x, +y
@@ -43,7 +69,7 @@ function seenJoins(shape) {
 function lightOf(id, tile) {
   var shape = id % Road_PAVED;
 
-  if (Math.floor(id / Road_PAVED) !== 1 || shape < 10) return null;
+  if (Math.floor(id / Road_PAVED) % 10 !== 1 || shape < 10) return null;
   if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
 
   var j = seenJoins(shape),
@@ -68,6 +94,10 @@ function setPiece(renderer, name) {
 //twice and three times over for gravel and for cobbles: what it is laid in
 var Road_PAVED = 100000,
   KINDS = ["plain", "paved", "gravel", "cobble"];
+
+//and for a one-way road, this more for each of the way it goes + 1 (client/
+//road ONE_WAY)
+var ONE_WAY = 1000000;
 
 function BuildingView() {
   this.gameObject = new engine.GameObject("building");
