@@ -115,7 +115,10 @@ function canDrive(roadman, from, dir) {
     (roadAxes(roadman, to) & axis) !== 0 &&
     //only where the two roads meet level - never over a step, nor off the
     //side of a ramp (client/road)
-    Road.meets(a.surface(), SIDE_OF[dir[0] + "," + dir[1]], b.surface())
+    Road.meets(a.surface(), SIDE_OF[dir[0] + "," + dir[1]], b.surface()) &&
+    //and never against the way a one-way road goes
+    Road.goes(a, SIDE_OF[dir[0] + "," + dir[1]]) &&
+    Road.goes(b, SIDE_OF[dir[0] + "," + dir[1]])
   );
 }
 
