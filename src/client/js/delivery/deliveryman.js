@@ -15,6 +15,7 @@ import View from "../view";
 import RenderLayer from "../renderlayer";
 import Carman from "../carman";
 import Terrain from "core/terrain";
+import Marker from "./marker";
 import Courier from "./courier";
 import Roads from "./roads";
 import Places from "./places";
@@ -29,20 +30,13 @@ var BODY = "hatchback",
 //how often the order, the markers and the board are looked at again, ms
 var CHECK_EVERY = 250;
 
-//how high over the ground the words over a place hang, and the mark over the
+//how high over the ground the pin over a place floats, and the mark over the
 //car
-var LABEL_HEIGHT = Config.tileSize * 1.2,
+var PIN_HEIGHT = Config.tileSize,
   MARK_HEIGHT = Config.tileSize * 0.5;
 
-var PICKUP_FILL = "rgba(255,160,40,0.35)",
-  PICKUP_BORDER = "rgba(255,190,90,0.95)",
-  DROPOFF_FILL = "rgba(80,220,120,0.35)",
-  DROPOFF_BORDER = "rgba(130,255,160,0.95)",
-  //the way there: tinted lightly and arrowed, over everything - the layers
-  //under the buildings are lit, and so dark at night (client/lighting)
-  ROUTE_FILL = "rgba(80,200,255,0.14)",
-  ROUTE_BORDER = "rgba(80,200,255,0)",
-  ROUTE_ARROW = "rgba(150,225,255,0.95)",
+var PICKUP_COLOR = "rgb(255,176,64)",
+  DROPOFF_COLOR = "rgb(110,230,140)",
   CAR_MARK_COLOR = "rgb(255,220,60)";
 
 var COS30 = Math.cos(Math.PI / 6);
@@ -126,25 +120,6 @@ CourierCarScript.prototype.tick = function () {
   this.man.frame(Date.now());
 };
 
-/**
- * A mark hung over the courier's car, so it is found at a glance among the
- * traffic - at night as well.
- */
-function CarMark() {
-  engine.GameObject.init(this, "courierMark");
-
-  var renderer = this.addComponent(new engine.TextRenderer());
-
-  renderer.layer = RenderLayer.overlayLayer;
-  renderer.color = CAR_MARK_COLOR;
-  renderer.style = "bold 14px Courier New";
-  renderer.strokeStyle = "black";
-  renderer.lineWidth = 4;
-  renderer.text = "▼";
-}
-
-CarMark.prototype = Object.create(engine.GameObject.prototype);
-
 function CourierCar(man) {
   engine.GameObject.init(this, "courier");
 
@@ -180,11 +155,10 @@ function Deliveryman(root) {
   this._phase = null;
   this._sinceCheck = CHECK_EVERY;
   this._lastFrame = 0;
-  //hilite tokens and labels of the markers up now
-  this._marks = [];
-  this._labels = [];
-  //route tiles marked, by tile, with their hilite tokens
-  this._route = new Map();
+  //the pins over the restaurant and the customer of the order on, while
+  //they are up
+  this.pickupPin = null;
+  this.dropoffPin = null;
   //page pixels the car is kept above the middle of the screen - half of
   //what the panel over the bottom of it takes (ui/modules/delivery)
   this.raise = 0;
@@ -222,7 +196,8 @@ Deliveryman.prototype.init = function () {
   this.looks = root.carman.looksOf(BODY, COLOR);
   this.car = new CourierCar(this);
   root.game.logic.world.addGameObject(this.car);
-  this.mark = new CarMark();
+  //found at a glance among the traffic, at night as well
+  this.mark = new Marker("car", CAR_MARK_COLOR);
   root.game.scene.addGameObject(this.mark);
 
   //where it is parked, until something says otherwise
@@ -363,6 +338,7 @@ Deliveryman.prototype.frame = function (now) {
   this.y = pos.y;
 
   draw(this, headingOf(pos.dx, pos.dy));
+  showProgress(this, status);
 
   this._sinceCheck += now - (this._lastFrame || now);
   this._lastFrame = now;
@@ -406,20 +382,17 @@ function draw(self, heading) {
 }
 
 /**
- * The order moved on to another phase: the markers go up for where the car
- * is going now. Otherwise, the route behind the car is taken off the map as
- * it goes, and a board that has been up too long is replaced.
+ * The order moved on to another phase: the pins go up for where the car is
+ * going now. Otherwise, a board that has been up too long is replaced.
  */
 function check(self, status, now) {
   var courier = self.courier;
 
   if (status.phase !== self._phase) {
     self._phase = status.phase;
-    mark(self, status);
+    pin(self, status);
     self.changed();
   }
-
-  trimRoute(self, status);
 
   if (
     status.order === null &&
@@ -429,59 +402,16 @@ function check(self, status, now) {
     self.refreshBoard();
 }
 
-function clearMarks(self) {
-  var hilites = self.root.hiliteMan;
-
-  hilites.disable(self._marks);
-  self._marks = [];
-
-  self._labels.forEach(function (label) {
-    label.destroy();
-  });
-  self._labels = [];
-
-  self._route.forEach(function (token) {
-    hilites.disable(token);
-  });
-  self._route.clear();
-}
-
-function markPlace(self, place, fill, border, words, color) {
-  self._marks = self._marks.concat(
-    self.root.hiliteMan.hilite(
-      place.footprint.map(function (tile) {
-        return {
-          x: Terrain.extractX(tile),
-          y: Terrain.extractY(tile),
-          fillColor: fill,
-          borderColor: border,
-          borderWidth: 2,
-        };
-      }),
-    ),
-  );
-
-  self._labels.push(label(self, place, words, color));
-}
-
 /**
- * Words hung over the middle of a place.
+ * A pin floating over the middle of a place.
  */
-function label(self, place, words, color) {
+function pinOver(self, place, color) {
   var terrain = self.root.terrain,
     tiles = place.footprint,
     x = 0,
     y = 0,
     z = 0,
-    go = new engine.GameObject("deliveryLabel"),
-    renderer = go.addComponent(new engine.TextRenderer());
-
-  renderer.layer = RenderLayer.overlayLayer;
-  renderer.color = color;
-  renderer.style = "bold 16px Courier New";
-  renderer.strokeStyle = "black";
-  renderer.lineWidth = 4;
-  renderer.text = words;
+    go = new Marker("pin", color, place.icon);
 
   tiles.forEach(function (tile) {
     x += terrain.tileXPos(tile);
@@ -489,101 +419,58 @@ function label(self, place, words, color) {
     z += terrain.tileZPos(tile);
   });
 
-  go.transform.setPosition(
-    x / tiles.length,
-    y + LABEL_HEIGHT,
-    z / tiles.length,
-  );
+  go.transform.setPosition(x / tiles.length, y + PIN_HEIGHT, z / tiles.length);
   self.root.game.scene.addGameObject(go);
 
   return go;
 }
 
+function unpin(self) {
+  if (self.pickupPin !== null) self.pickupPin.destroy();
+  if (self.dropoffPin !== null) self.dropoffPin.destroy();
+
+  self.pickupPin = self.dropoffPin = null;
+}
+
 /**
- * Marks where the car is going: the restaurant until the food is in the car,
- * the customer all along - and the way there.
+ * Pins where the car is going: the restaurant until the food is in the car,
+ * the customer all along.
  */
-function mark(self, status) {
+function pin(self, status) {
   var order = status.order,
     phase = status.phase;
 
-  clearMarks(self);
+  unpin(self);
 
   if (order === null || phase === Phase.delivered) return;
 
   if (phase === Phase.toRestaurant || phase === Phase.atRestaurant)
-    markPlace(
-      self,
-      order.pickup,
-      PICKUP_FILL,
-      PICKUP_BORDER,
-      "PICK UP",
-      "rgb(255,190,90)",
-    );
+    self.pickupPin = pinOver(self, order.pickup, PICKUP_COLOR);
 
-  markPlace(
-    self,
-    order.dropoff,
-    DROPOFF_FILL,
-    DROPOFF_BORDER,
-    "DROP OFF",
-    "rgb(130,255,160)",
-  );
-
-  var legs = phase === Phase.toRestaurant ? order.legs : [order.legs[1]],
-    hilites = self.root.hiliteMan;
-
-  //the way there, an arrow on every tile of it pointing on to the next
-  legs.forEach(function (tiles) {
-    tiles.forEach(function (tile, i) {
-      var next = tiles[i + 1];
-
-      if (self._route.has(tile)) return;
-
-      self._route.set(
-        tile,
-        hilites.hilite({
-          x: Terrain.extractX(tile),
-          y: Terrain.extractY(tile),
-          fillColor: ROUTE_FILL,
-          borderColor: ROUTE_BORDER,
-          borderWidth: 0,
-          arrow:
-            next === undefined
-              ? null
-              : [
-                  Terrain.extractX(next) - Terrain.extractX(tile),
-                  Terrain.extractY(next) - Terrain.extractY(tile),
-                ],
-          square: next === undefined,
-          markerColor: ROUTE_ARROW,
-        }),
-      );
-    });
-  });
+  self.dropoffPin = pinOver(self, order.dropoff, DROPOFF_COLOR);
 }
 
 /**
- * Takes the marks off the road the car has driven over.
+ * The small bars of how far along things are: over the restaurant, the food
+ * being cooked while the car is on its way; over the car, whatever it is
+ * standing there for - the food, loading it, handing it over. And the pins
+ * kept clear of the panel at the bottom of the screen.
  */
-function trimRoute(self, status) {
-  if (status.order === null || self._route.size === 0) return;
+function showProgress(self, status) {
+  var phase = status.phase,
+    stopped = phase === Phase.atRestaurant || phase === Phase.atDoor,
+    bottom = (self.raise * 2) / self.root.camera.cameraScript.zoom();
 
-  var tiles = status.order.legs[status.leg],
-    passed = Math.floor(status.legDone * (tiles.length - 1)),
-    hilites = self.root.hiliteMan,
-    ahead = new Set(tiles.slice(passed)),
-    i;
+  if (self.mark !== null)
+    self.mark.marker.progress = stopped ? status.step : null;
 
-  //the second leg may cross the first: a tile still to come on it stays
-  if (status.leg === 0) status.order.legs[1].forEach((t) => ahead.add(t));
-
-  for (i = 0; i < passed; i++) {
-    if (ahead.has(tiles[i]) || !self._route.has(tiles[i])) continue;
-
-    hilites.disable(self._route.get(tiles[i]));
-    self._route.delete(tiles[i]);
+  if (self.pickupPin !== null) {
+    self.pickupPin.marker.progress =
+      phase === Phase.toRestaurant && status.cooked < 1 ? status.cooked : null;
+    self.pickupPin.marker.bottom = bottom;
   }
+
+  if (self.dropoffPin !== null) self.dropoffPin.marker.bottom = bottom;
 }
 
 export default Deliveryman;

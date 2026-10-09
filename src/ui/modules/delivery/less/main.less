@@ -160,6 +160,32 @@
       float: right;
       color: #fc6;
     }
+
+    //how far along this stop is: the food cooking, the drive over - and,
+    //brighter, the loading and the handing over
+    .mini {
+      height: 3px;
+      margin: 2px 0 4px 22px;
+      background: rgba(255, 255, 255, 0.12);
+
+      .fill {
+        height: 100%;
+        width: 0;
+        transition: width 0.25s linear;
+      }
+    }
+
+    &.pickup .mini .fill {
+      background: #ffa028;
+    }
+
+    &.dropoff .mini .fill {
+      background: #50dc78;
+    }
+
+    .mini.loading .fill {
+      background: #fff;
+    }
   }
 
   .bar {

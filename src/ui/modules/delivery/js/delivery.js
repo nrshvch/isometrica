@@ -52,7 +52,7 @@ var PHASES = {
     return "Driving to " + order.pickup.name;
   },
   atRestaurant: function (order, status) {
-    return status.readyIn > 0 ? "Waiting for the food" : "Picking it up";
+    return status.loading ? "Loading the order" : "Waiting for the food";
   },
   toCustomer: function (order) {
     return "Delivering to " + order.dropoff.name;
@@ -180,12 +180,46 @@ var View = Backbone.View.extend({
     $(".left", this.$el).text(
       delivered ? "" : duration(status.left) + " to go",
     );
-    $(".ready", this.$el).text(
-      status.phase === "toRestaurant" || status.phase === "atRestaurant"
-        ? status.readyIn > 0
-          ? "ready in " + duration(status.readyIn)
-          : "ready"
-        : "✓",
+    var phase = status.phase,
+      pickingUp = phase === "toRestaurant" || phase === "atRestaurant",
+      t = order.times;
+
+    //at the restaurant: the food cooking, then loading it
+    $(".stop.pickup .when", this.$el).text(
+      !pickingUp
+        ? "✓ picked up"
+        : status.loading
+          ? "loading…"
+          : status.readyIn > 0
+            ? "ready in " + duration(status.readyIn)
+            : "ready",
+    );
+    $(".stop.pickup .mini .fill", this.$el).css(
+      "width",
+      (pickingUp && status.loading ? status.step : status.cooked) * 100 + "%",
+    );
+    $(".stop.pickup .mini", this.$el).toggleClass(
+      "loading",
+      pickingUp && status.loading,
+    );
+
+    //at the customer's: the drive over, then handing it over
+    $(".stop.dropoff .when", this.$el).text(
+      phase === "toCustomer"
+        ? "in " + duration(t.arriveCustomer - now)
+        : phase === "atDoor"
+          ? "handing over…"
+          : delivered
+            ? "✓ delivered"
+            : "",
+    );
+    $(".stop.dropoff .mini .fill", this.$el).css(
+      "width",
+      (pickingUp ? 0 : delivered ? 1 : status.step) * 100 + "%",
+    );
+    $(".stop.dropoff .mini", this.$el).toggleClass(
+      "loading",
+      phase === "atDoor",
     );
     $(".stop.pickup", this.$el).toggleClass(
       "now",
