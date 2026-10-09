@@ -22,14 +22,19 @@ game with `?edit` in the address (`/?edit#/<city id>`) for it.
   the whole run takes and what it pays. A board is put up from where the car
   stands and replaced every three minutes, and after every delivery.
 - Taking an order sends the car to the restaurant, where it waits for the
-  food if it is not ready yet, then over to the customer, who has it handed
-  over at the door. The restaurant, the customer and the way there are marked
-  on the map - the route arrowed, taken off as the car drives over it. The
-  panel shows what the car is doing, the food, when it will be ready, how
-  long is left and how far along it is; once it is handed over, the money is
-  collected from it.
+  food if it is not ready yet and loads it - four seconds, once both are
+  there - then over to the customer, where it is handed over in five. A pin
+  floats over the restaurant and one over the customer, each with what the
+  place is in it (`src/client/js/delivery/marker.js`), waiting at the edge of
+  the screen, pointing, while the place is off it; nothing is laid on the
+  ground or the buildings. A small bar over the restaurant's pin fills as the
+  food cooks, and one over the car while it waits, loads or hands it over.
+  The panel shows what the car is doing, the food, each stop with a small
+  bar of its own - the cooking and the loading, the drive over and the
+  handing over - how long is left and how far along the order is; once it is
+  handed over, the money is collected from it.
 - The courier's time is what they sell: an order pays for all of it - the
-  drive to the restaurant, the wait, the drive over and the walk to the door
+  drive to the restaurant, the wait, the drive over and the handing over
   - at a rate that goes up with the kind of order (`src/client/js/delivery/orders.js`):
     a quick bite is over in a minute or two, dinner in two or three, groceries
     out of the stores in a few more, and an office's lunch takes a quarter of

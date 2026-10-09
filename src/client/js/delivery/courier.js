@@ -20,12 +20,12 @@
 //how many road tiles the car drives in a second
 var SPEED = 1.5;
 
-//at the least, how long it takes to carry the food out of a restaurant to the
-//car, ms - longer when it is not ready yet
-var AT_RESTAURANT = 6000;
+//how long it takes to load the food into the car once it is ready and the
+//car is there, ms - quick, and always the same
+var LOAD = 4000;
 
-//and to walk it from the car up to the door
-var AT_DOOR = 10000;
+//and to hand it over at the door
+var UNLOAD = 5000;
 
 var KEY_PREFIX = "isometrica.v3.courier.";
 var VERSION = 1;
@@ -35,10 +35,10 @@ var Phase = {
   //no order: the board is up, or nothing to deliver
   idle: "idle",
   toRestaurant: "toRestaurant",
-  //waiting for the food, or carrying it out
+  //waiting for the food, or loading it
   atRestaurant: "atRestaurant",
   toCustomer: "toCustomer",
-  //walking it up to the door
+  //handing it over
   atDoor: "atDoor",
   //handed over - the money is waiting to be collected
   delivered: "delivered",
@@ -55,8 +55,9 @@ function driveTime(tiles) {
 
 /**
  * The timeline of an order taken at `at`: when the car gets to the
- * restaurant, when the food is ready, when it sets off with it, gets to the
- * customer and has handed it over. All ms, on the wall clock.
+ * restaurant, when the food is ready, when it sets off with it - loaded once
+ * both are there - gets to the customer and has handed it over. All ms, on
+ * the wall clock.
  *
  * @param order {{legs: number[][], prep: number}} prep in ms, from `at`
  * @param at {number}
@@ -64,7 +65,7 @@ function driveTime(tiles) {
 function schedule(order, at) {
   var arriveRestaurant = at + driveTime(order.legs[0]),
     ready = at + order.prep,
-    leave = Math.max(arriveRestaurant + AT_RESTAURANT, ready),
+    leave = Math.max(arriveRestaurant, ready) + LOAD,
     arriveCustomer = leave + driveTime(order.legs[1]);
 
   return {
@@ -73,7 +74,7 @@ function schedule(order, at) {
     ready: ready,
     leave: leave,
     arriveCustomer: arriveCustomer,
-    delivered: arriveCustomer + AT_DOOR,
+    delivered: arriveCustomer + UNLOAD,
   };
 }
 
@@ -123,8 +124,8 @@ function Courier(cityId, storage) {
 }
 
 Courier.SPEED = SPEED;
-Courier.AT_RESTAURANT = AT_RESTAURANT;
-Courier.AT_DOOR = AT_DOOR;
+Courier.LOAD = LOAD;
+Courier.UNLOAD = UNLOAD;
 Courier.Phase = Phase;
 Courier.schedule = schedule;
 Courier.driveTime = driveTime;
@@ -254,11 +255,15 @@ Courier.prototype.accept = function (offerId, now) {
  * the route it is on, and how far along the whole order.
  *
  * @returns {{phase: string, order: Object|null, leg: number,
- *          legDone: number, done: number, left: number, readyIn: number}}
+ *          legDone: number, done: number, left: number, readyIn: number,
+ *          cooked: number, loading: boolean, step: number}}
  *          leg - 0 to the restaurant, 1 to the customer - and legDone, how
  *          far along it the car is, 0..1; done, how far along the order,
  *          0..1; left, ms until it is handed over; readyIn, ms until the
- *          food is
+ *          food is, and cooked, how far along it is, 0..1; loading, whether
+ *          the food is being put in the car; step, how far along what the
+ *          car is doing now is - the drive, the wait, the loading or the
+ *          handing over - 0..1
  */
 Courier.prototype.status = function (now) {
   var order = this.state.order,
@@ -270,6 +275,9 @@ Courier.prototype.status = function (now) {
       done: 0,
       left: 0,
       readyIn: 0,
+      cooked: 0,
+      loading: false,
+      step: 0,
     };
 
   if (order === null) return out;
@@ -279,21 +287,27 @@ Courier.prototype.status = function (now) {
   out.done = fraction(now, t.taken, t.delivered);
   out.left = Math.max(0, t.delivered - now);
   out.readyIn = Math.max(0, t.ready - now);
+  out.cooked = fraction(now, t.taken, t.ready);
 
   if (now < t.arriveRestaurant) {
     out.phase = Phase.toRestaurant;
-    out.legDone = fraction(now, t.taken, t.arriveRestaurant);
+    out.legDone = out.step = fraction(now, t.taken, t.arriveRestaurant);
   } else if (now < t.leave) {
     out.phase = Phase.atRestaurant;
     out.legDone = 1;
+    out.loading = now >= t.leave - LOAD;
+    out.step = out.loading
+      ? fraction(now, t.leave - LOAD, t.leave)
+      : out.cooked;
   } else if (now < t.arriveCustomer) {
     out.phase = Phase.toCustomer;
     out.leg = 1;
-    out.legDone = fraction(now, t.leave, t.arriveCustomer);
+    out.legDone = out.step = fraction(now, t.leave, t.arriveCustomer);
   } else {
     out.phase = now < t.delivered ? Phase.atDoor : Phase.delivered;
     out.leg = 1;
     out.legDone = 1;
+    out.step = fraction(now, t.arriveCustomer, t.delivered);
   }
 
   return out;
