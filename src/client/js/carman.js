@@ -2,8 +2,7 @@ import engine from "engine";
 import Core from "core/main";
 import Config from "./config";
 import View from "./view";
-import Road from "./road";
-import RoadView from "./roadview";
+import Traffic from "./traffic";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import SmokeSource from "./components/smokesource";
@@ -11,6 +10,7 @@ import SmokeScript from "./components/smokeScript";
 import VTime from "core/vtime";
 import CoreConfig from "core/config";
 import BuildingClassCode from "data/classcode";
+import BuildingData from "data/buildings";
 import GLView from "./glview";
 
 var Terrain = Core.Terrain;
@@ -18,16 +18,23 @@ var Terrain = Core.Terrain;
 //Cars driving about the roads, for the look of it - they carry nothing and
 //nobody waits for them.
 //
-//There is one for every four road tiles that are loaded. Each goes from a
-//random road tile to another one it can reach, found with the pathfinder, and
-//on from there to the next once it gets there. Whenever the roads under one
-//go - demolished, or their chunk unloaded - it is put on some other road.
+//There is one for every four road tiles that are loaded through the day, and
+//more in the rush hours - one for every two and a half at eight in the
+//morning and at five in the evening. Each goes from a random road tile to
+//another one it can reach, found with the pathfinder, and on from there to the
+//next once it gets there. Whenever the roads under one go - demolished, or
+//their chunk unloaded - it is put on some other road. Once the rush is over,
+//the light cars more than the hour wants are done when they get where they
+//are going.
 //
-//A car keeps to the right hand side of the road: it drives along a line off
-//the middle of the tile, to the right of the way it is going.
+//How they drive is client/traffic's: each keeps to the right hand side of the
+//road, in its lane, and keeps its distance from what is in front of it; they
+//take turns at the junctions, queue - and jam - and go round a car broken
+//down in their way one at a time.
 //
 //Each one is some body type - a sedan, a van, a bus... - in some colour, with
-//a picture for each of the four ways it can drive, all painted by
+//a picture for each of the eight ways it can drive - along x and y and half
+//way between, which is how it goes round a corner - all painted by
 //shared/gen/vehicles as they are first drawn (see client/generator). Bigger
 //ones drive slower.
 //
@@ -37,24 +44,27 @@ var Terrain = Core.Terrain;
 //on, and is taken off when it gets there rather than setting out again. One
 //still driving at six carries on and heads to work like the rest.
 //
-//The buses stop for the night too: one that reaches a stop between midnight
-//and six is done, and goes back out in the morning.
+//The buses run from one bus stop to the next (client/road, a road with a
+//stop on it), a round of a few of them near each other, pulling in to the
+//kerb at each for a few seconds and out again when the lane behind is clear.
+//There are as many buses out as one for every two stops loaded, and none
+//where there are fewer than two. They stop for the night too: one that is at
+//a stop between midnight and six is done, and goes back out in the morning.
 //
 //A few light cars do go out in the small hours, from anywhere to anywhere, and
 //at that time of night they are in a hurry. Those are out for the night: they
 //keep driving until it is over, rather than stopping at the first place they
 //get to the way the evening's traffic does.
 //Vans and lorries are about their own business and go wherever, at any hour.
-//A bus is given two stops when it goes out and spends the rest of its day
-//going between them. Only the choice of a new destination goes by any of this
-//- one already on its way keeps its route.
+//Only the choice of a new destination goes by any of this - one already on
+//its way keeps its route.
 //
 //Every so many tiles one breaks down: it stops where it is, smoke coming out
 //of its engine as thick as a chimney's, for a few hours of the game's time,
 //then carries on with its trip. It gives some warning: for the last few tiles
 //before it goes it crawls along, its engine already smoking - thinner, two
-//puffs a second. The rest of the traffic goes by it the way cars go
-//by each other here - straight through. Every one can puff a little smoke out
+//puffs a second. The traffic behind it queues, and goes round it a car at a
+//time where the other lane is clear (client/traffic). Every one can puff a little smoke out
 //of its tailpipe as it drives too - two puffs a second, thinner than a chimney
 //- but that is switched off (EXHAUST).
 //
@@ -63,8 +73,15 @@ var Terrain = Core.Terrain;
 //off it.
 
 var CARS_PER_ROAD = 1 / 4,
-  //how far off the middle of the road a lane is, in tiles
-  LANE = 0.15,
+  //and at the height of the rush hours
+  RUSH_PER_ROAD = 0.4,
+  //how long one waits in a queue that does not move before it gives up on
+  //it, ms
+  STUCK_FOR = 60000,
+  //how long a bus stands at a stop, ms
+  BUS_DWELL = 6000,
+  //how many stops it calls at on its round
+  BUS_ROUND = 4,
   //tiles a second
   SPEED = 1.4,
   //how far a destination can be, in road tiles looked at to find it
@@ -145,61 +162,9 @@ var HOURS = [
 //until this hour a light car that arrives somewhere stays there
 var LIGHTS_OUT_UNTIL = 6;
 
-var dy = Terrain.dy;
-
 var position = new Float32Array(3);
 
-//the four ways out of a tile: [dx, dy, tile offset]
-var DIRECTIONS = [
-  [1, 0, 1],
-  [-1, 0, -1],
-  [0, 1, dy],
-  [0, -1, -dy],
-];
-
-/**
- * Which ways a road on this tile can be driven: along x, along y or both. A
- * ramp only runs up and down its slope.
- */
-function roadAxes(root, tile) {
-  var road = root.roadman.getRoad(tile),
-    shape = road !== null ? road.typeCode % RoadView.PAVED : 90000;
-
-  if (shape === 1 || shape === 3)
-    return 2; //along y
-  else if (shape === 2 || shape === 4) return 1; //along x
-
-  return 3;
-}
-
-function canDrive(root, from, dir) {
-  var to = from + dir[2],
-    axis = dir[0] !== 0 ? 1 : 2;
-
-  return (
-    root.roadman.getRoad(to) !== null &&
-    (roadAxes(root, from) & axis) !== 0 &&
-    (roadAxes(root, to) & axis) !== 0 &&
-    //only where the two roads meet level - never over a step, nor off the
-    //side of a ramp (client/road)
-    Road.meets(
-      root.roadman.getRoad(from).surface(),
-      SIDE_OF[dir[0] + "," + dir[1]],
-      root.roadman.getRoad(to).surface(),
-    )
-  );
-}
-
-//which side of a tile, -x, -y, +x, +y, each way out of it goes through
-var SIDE_OF = { "-1,0": 0, "0,-1": 1, "1,0": 2, "0,1": 3 };
-
-function neighbours(root, tile, out) {
-  for (var i = 0; i < DIRECTIONS.length; i++) {
-    if (canDrive(root, tile, DIRECTIONS[i])) out.push(tile + DIRECTIONS[i][2]);
-  }
-
-  return out;
-}
+var DIRECTIONS = Traffic.DIRECTIONS;
 
 function distance(a, b) {
   return Pathfinder.manhattan(
@@ -224,7 +189,7 @@ function pickDestination(root, start) {
 
   for (var head = 0; head < queue.length && queue.length < REACH; head++) {
     next.length = 0;
-    neighbours(root, queue[head], next);
+    Traffic.neighbours(root.roadman, queue[head], next);
 
     for (i = 0; i < next.length; i++) {
       tile = next[i];
@@ -247,7 +212,7 @@ function routeTo(root, start, end) {
     start,
     end,
     function (tile, out) {
-      neighbours(root, tile, out);
+      Traffic.neighbours(root.roadman, tile, out);
     },
     distance,
   );
@@ -324,86 +289,6 @@ function findRoute(man, start, kind) {
   return end === -1 ? [] : routeTo(root, start, end);
 }
 
-function direction(from, to) {
-  return [
-    Terrain.extractX(to) - Terrain.extractX(from),
-    Terrain.extractY(to) - Terrain.extractY(from),
-  ];
-}
-
-//to the right of going d, seen from above: +x is up and to the right on the
-//screen, +y up and to the left
-function rightX(d) {
-  return d[1];
-}
-
-function rightY(d) {
-  return -d[0];
-}
-
-function waypoint(out, tile, x, y) {
-  out.push({ tile: tile, x: x, y: y });
-}
-
-/**
- * The points a car drives through along a route, each in its tile's lane.
- * Between two of them it always goes straight along x or y: turning, it drives
- * up to where the lane it is in meets the one it is turning into - short of
- * the middle turning right, past it turning left.
- *
- * @param route {number[]} road tiles
- * @param [from] {number[]} the way the car came into the first tile; it is
- *        already in that lane, just short of the middle. Without it the car
- *        starts in the middle of the first tile, in the lane it leaves by.
- */
-function routeWaypoints(route, from) {
-  var out = [],
-    last = route.length - 1,
-    tile,
-    x,
-    y,
-    din,
-    dout,
-    i;
-
-  for (i = 0; i <= last; i++) {
-    tile = route[i];
-    x = Terrain.extractX(tile);
-    y = Terrain.extractY(tile);
-    din = i === 0 ? from : direction(route[i - 1], tile);
-    dout = i === last ? null : direction(tile, route[i + 1]);
-
-    if (!din) {
-      waypoint(out, tile, x + rightX(dout) * LANE, y + rightY(dout) * LANE);
-    } else if (!dout || (din[0] === dout[0] && din[1] === dout[1])) {
-      waypoint(out, tile, x + rightX(din) * LANE, y + rightY(din) * LANE);
-    } else if (din[0] === -dout[0] && din[1] === -dout[1]) {
-      //turning round: on past the middle, then over into the other lane
-      waypoint(
-        out,
-        tile,
-        x + (rightX(din) + din[0]) * LANE,
-        y + (rightY(din) + din[1]) * LANE,
-      );
-      waypoint(
-        out,
-        tile,
-        x + (rightX(dout) + din[0]) * LANE,
-        y + (rightY(dout) + din[1]) * LANE,
-      );
-    } else {
-      waypoint(
-        out,
-        tile,
-        x + (rightX(din) + rightX(dout)) * LANE,
-        y + (rightY(din) + rightY(dout)) * LANE,
-      );
-    }
-  }
-
-  return out;
-}
-
 /**
  * The height of the ground at a point, in tiles, the way the terrain is drawn:
  * straight between the heights of the tile's corners - or of a road's own
@@ -442,17 +327,14 @@ function groundHeight(root, x, y) {
 function CarScript(man) {
   engine.Component.call(this);
   this.man = man;
-  this.waypoints = [];
+  this.driver = null;
 }
 
 CarScript.prototype = Object.create(engine.Component.prototype);
 
 CarScript.prototype.man = null;
-CarScript.prototype.waypoints = null;
-CarScript.prototype.target = 0;
-CarScript.prototype.x = 0;
-CarScript.prototype.y = 0;
-CarScript.prototype.speed = SPEED;
+//how it drives the roads, among everything else on them (client/traffic)
+CarScript.prototype.driver = null;
 //what it drives at when it is not in a hurry
 CarScript.prototype.baseSpeed = SPEED;
 //its pictures, one for each way it drives: {"x+": sprite, ...}
@@ -462,8 +344,13 @@ CarScript.prototype.traffic = COMMUTER;
 //out for a drive in the small hours rather than on its way home for the night
 CarScript.prototype.nightRider = false;
 CarScript.prototype.type = null;
-//a bus's two stops, whichever of them it is not at being where it goes next
+//a bus's stops, in the order it calls at them, and which it is going to
 CarScript.prototype.stops = null;
+CarScript.prototype.stop = 0;
+//how long it has stood at the stop it is at, ms
+CarScript.prototype.dwelt = 0;
+//how long it has waited in traffic without moving, ms
+CarScript.prototype.waited = 0;
 //real time left before it drives on again when it has broken down, ms; none
 //when it is running
 CarScript.prototype.stalled = 0;
@@ -476,9 +363,38 @@ CarScript.prototype.lamp = 0;
 CarScript.prototype.sinceLamp = 0;
 
 /**
+ * The Driver for it, made as it is first put on the roads, and the same one
+ * whenever it is put somewhere else - it takes its place among the traffic
+ * once and for all.
+ */
+CarScript.prototype.driverFor = function () {
+  var self = this,
+    type = this.type,
+    traffic = this.man.traffic;
+
+  if (this.driver === null)
+    this.driver = traffic.add(
+      new Traffic.Driver(traffic, type.length, type.width, {
+        nearEnd: function () {
+          self.extend();
+        },
+        end: function () {
+          self.arrive();
+        },
+      }),
+    );
+
+  this.driver.length = type.length;
+  this.driver.width = type.width;
+
+  return this.driver;
+};
+
+/**
  * Puts the car on the roads, off on a route. A light car starts where the
  * people in it would be at this hour - outside a house in the morning, outside
- * work in the evening; anything else starts on a road picked at random.
+ * work in the evening; a bus at one of its stops; anything else on a road
+ * picked at random. Never on top of something already there.
  *
  * @returns {boolean} false when there was no road to put it on
  */
@@ -488,6 +404,8 @@ CarScript.prototype.spawn = function (traffic) {
     origin,
     tile,
     route,
+    wps,
+    driver,
     attempt;
 
   //it is put on the new road running, some way off its next breakdown - not
@@ -497,6 +415,12 @@ CarScript.prototype.spawn = function (traffic) {
   //and does not puff in step with everything put out with it
   this.sinceSmoke = Math.random() * EXHAUST_EVERY;
   this.dress(traffic);
+
+  driver = this.driverFor();
+  driver.stalled = driver.broken = false;
+  driver.stopAtEnd = false;
+
+  if (this.traffic === SHUTTLE) return this.startRound();
 
   origin = this.traffic === COMMUTER ? originKind(root) : null;
 
@@ -510,30 +434,56 @@ CarScript.prototype.spawn = function (traffic) {
 
     route = this.nextRoute(tile);
 
-    if (route.length > 1) {
-      //a bus keeps the two ends of its first route and runs between them
-      if (this.traffic === SHUTTLE)
-        this.stops = [route[0], route[route.length - 1]];
+    if (route.length < 2) continue;
 
-      this.waypoints = routeWaypoints(route, null);
-      this.target = 1;
-      this.x = this.waypoints[0].x;
-      this.y = this.waypoints[0].y;
-      this.place();
+    wps = Traffic.routeWaypoints(route, null);
 
-      return true;
-    }
+    if (!man.traffic.roomAt(wps[0].x, wps[0].y, driver.length)) continue;
+
+    driver.setPath(wps);
+    driver.v = driver.v0 * 0.5;
+    man.traffic.enter(driver);
+    this.place();
+
+    return true;
   }
 
   return false;
 };
 
 /**
- * Got there. A light car that arrives between midnight and six is off the
- * roads for the night; anything else sets off again from where it stands -
- * one that was still driving at six among them, which now has the morning's
- * run to work ahead of it like any other.
+ * A bus going out: a round of the stops near one of them, which it starts
+ * from, standing at it.
  */
+CarScript.prototype.startRound = function () {
+  var man = this.man,
+    stops = man.busStops(),
+    driver = this.driver,
+    first,
+    d;
+
+  if (stops.length < 2) return false;
+
+  first = stops[(Math.random() * stops.length) | 0];
+  d = man.kerbSide(first);
+
+  if (d === null) return false;
+
+  this.stops = man.round(first, stops);
+  this.stop = 1 % this.stops.length;
+  this.dwelt = Math.random() * BUS_DWELL;
+
+  var at = Traffic.kerb(first, d);
+
+  if (!man.traffic.roomAt(at.x, at.y, driver.length)) return false;
+
+  driver.parkAt(first, d);
+  man.traffic.enter(driver);
+  this.place();
+
+  return true;
+};
+
 /**
  * Whether it is to be taken off the roads when it gets where it is going. In
  * the small hours the buses stop running and the evening's light cars are done
@@ -547,20 +497,51 @@ CarScript.prototype.retires = function () {
   );
 };
 
-CarScript.prototype.arrive = function () {
-  var wps = this.waypoints,
-    last = wps[wps.length - 1],
-    before = wps[wps.length - 2],
-    from =
-      before === undefined || before.tile === last.tile
-        ? null
-        : direction(before.tile, last.tile),
-    route,
-    next,
-    i;
+/**
+ * Whether, a light car, it is one more than the hour wants: it goes no
+ * further than where it is going.
+ */
+CarScript.prototype.done = function () {
+  return this.traffic === COMMUTER && this.man.surplus() > 0;
+};
 
-  if (this.retires()) {
+/**
+ * Whether a light car is where the hour has it go: outside work in the
+ * morning, a house in the evening.
+ */
+CarScript.prototype.home = function (tile) {
+  var kind = wantedKind(this.man.root);
+
+  return (
+    this.traffic === COMMUTER &&
+    kind !== null &&
+    this.man.getDestinations(kind).indexOf(tile) !== -1
+  );
+};
+
+/**
+ * Got there. A light car that arrives between midnight and six is off the
+ * roads for the night; a bus stands at its stop; anything else sets off again
+ * from where it stands - one that was still driving at six among them, which
+ * now has the morning's run to work ahead of it like any other.
+ */
+CarScript.prototype.arrive = function () {
+  var driver = this.driver,
+    last = driver.last(),
+    route;
+
+  //done for the night - or, the rush over, done for the day where it got to;
+  //or at work, or home, where it was going: parked there, and somebody else
+  //sets out in its place
+  if (this.retires() || this.done() || this.home(last.tile)) {
     this.man.remove(this);
+    return;
+  }
+
+  //at the stop, pulled in: it waits there for its time (tick)
+  if (this.traffic === SHUTTLE) {
+    this.dwelt = 0;
+    this.stop = (this.stop + 1) % this.stops.length;
     return;
   }
 
@@ -573,18 +554,16 @@ CarScript.prototype.arrive = function () {
 
   //it stands still at the end of the old route, so that is where the new one
   //starts from - no jump onto its first point
-  next = routeWaypoints(route, from);
-  wps = [{ tile: last.tile, x: this.x, y: this.y }];
-
-  for (i = 0; i < next.length; i++) wps.push(next[i]);
-
-  this.waypoints = wps;
-  this.target = 1;
+  driver.setPath(
+    [
+      { tile: last.tile, x: driver.x, y: driver.y, din: last.din, dout: null },
+    ].concat(Traffic.routeWaypoints(route, last.din)),
+  );
 };
 
 /**
- * Where it goes from here, as road tiles - by the clock for a light car, to
- * the other stop for a bus that has its two, anywhere for the rest.
+ * Where it goes from here, as road tiles - by the clock for a light car,
+ * anywhere for the rest.
  */
 CarScript.prototype.nextRoute = function (from) {
   var man = this.man;
@@ -594,14 +573,7 @@ CarScript.prototype.nextRoute = function (from) {
   if (lightAllowed(man.root)) this.nightRider = false;
 
   //whoever is out in a light car in the small hours is in no mood to hang about
-  this.speed = this.nightRider ? this.baseSpeed * SPEEDING : this.baseSpeed;
-
-  if (this.traffic === SHUTTLE && this.stops !== null)
-    return routeTo(
-      man.root,
-      from,
-      this.stops[0] === from ? this.stops[1] : this.stops[0],
-    );
+  this.driver.v0 = this.nightRider ? this.baseSpeed * SPEEDING : this.baseSpeed;
 
   return findRoute(
     man,
@@ -615,7 +587,7 @@ CarScript.prototype.nextRoute = function (from) {
  * colour, and the speed that goes with it.
  *
  * @param [traffic] {number} COMMUTER, ERRAND or SHUTTLE to have one of those;
- *        leave it out for any type at all
+ *        leave it out for any type but a bus
  */
 CarScript.prototype.dress = function (traffic) {
   var type = this.man.pickType(traffic),
@@ -641,44 +613,39 @@ CarScript.prototype.dress = function (traffic) {
  * of stopping there first.
  */
 CarScript.prototype.extend = function () {
-  var wps = this.waypoints,
+  var driver = this.driver,
+    wps = driver.wps,
     last = wps[wps.length - 1],
-    before = wps[wps.length - 2],
-    route,
-    from,
-    next,
-    i;
+    route;
 
   //in the small hours nothing is joined on for a light car on its way home:
   //it drives the last of this route and it is seen to when it gets there
-  if (this.retires()) return;
+  if (
+    this.retires() ||
+    this.done() ||
+    this.home(last.tile) ||
+    this.traffic === SHUTTLE ||
+    last.din === null
+  )
+    return;
 
   route = this.nextRoute(last.tile);
 
   if (route.length < 2) return;
 
-  //the way the car came into the tile it is driving to - the last tile of a
-  //route has only the one point, so the one before is in the tile it came from
-  from = direction(before.tile, last.tile);
-  next = routeWaypoints(route, from);
-
-  //what is behind the car is dropped, and its last point too - the new route
-  //starts in that same tile
-  wps = wps.slice(this.target - 1, wps.length - 1);
-
-  for (i = 0; i < next.length; i++) wps.push(next[i]);
-
-  this.waypoints = wps;
-  this.target = 1;
+  //the new route starts in that same tile, the way the car came into it
+  driver.extend(Traffic.routeWaypoints(route, last.din));
 };
 
 /**
- * Stops where it is, smoke coming out of the engine, for a while.
+ * Stops where it is, smoke coming out of the engine, for a while - and the
+ * traffic behind it goes round it.
  */
 CarScript.prototype.breakDown = function () {
   this.stalled =
     (BREAKDOWN_MINUTES * MINUTE * (0.6 + Math.random() * 0.8)) / GAME_SPEED;
   this.driven = 0;
+  this.driver.stalled = this.driver.broken = true;
 };
 
 /**
@@ -689,6 +656,40 @@ CarScript.prototype.failing = function () {
   return this.stalled <= 0 && this.driven >= BREAKDOWN_EVERY - FAILING_FOR;
 };
 
+/**
+ * A bus at its stop: once it has stood there long enough, and it can pull
+ * out, off to the next one.
+ */
+CarScript.prototype.atStop = function (dt) {
+  var driver = this.driver,
+    man = this.man,
+    here = driver.tile(),
+    next = this.stops[this.stop],
+    d = [Math.round(driver.hx), Math.round(driver.hy)],
+    route;
+
+  this.dwelt += dt;
+
+  if (this.dwelt < BUS_DWELL) return;
+
+  //the night is no time for a bus
+  if (this.retires()) {
+    man.remove(this);
+    return;
+  }
+
+  if (!driver.canPullOut()) return;
+
+  route = man.routeOn(here, d, next);
+
+  if (route.length < 2) {
+    //that stop is gone, or cannot be got to: another round
+    man.respawn(this);
+    return;
+  }
+
+  driver.pullOut(route, true);
+};
 /**
  * A puff of smoke every so often: out of the tailpipe while it drives, out of
  * the engine, black, when it is about to break down, and more often still
@@ -731,29 +732,15 @@ CarScript.prototype.smoke = function (dt) {
   );
 };
 
-/**
- * Where the car is in the world, and which way round it is drawn.
- */
 CarScript.prototype.place = function () {
   var root = this.man.root,
-    to = this.waypoints[this.target],
-    from = this.waypoints[this.target - 1],
-    dx = to.x - from.x,
-    dy = to.y - from.y,
+    driver = this.driver,
     //which way it goes as it is seen, the camera turned (see client/view)
-    heading = View.heading(
-      Math.abs(dx) > Math.abs(dy)
-        ? dx > 0
-          ? "x+"
-          : "x-"
-        : dy > 0
-          ? "y+"
-          : "y-",
-    ),
+    heading = View.heading(View.headingOf(driver.hx, driver.hy) || "x+"),
     renderer,
     frame;
 
-  if (heading !== this.heading) {
+  if (heading !== this.heading && this.looks[heading] !== undefined) {
     this.heading = heading;
     frame = this.looks[heading];
     renderer = this.gameObject.spriteRenderer;
@@ -764,9 +751,9 @@ CarScript.prototype.place = function () {
   }
 
   this.gameObject.transform.setPosition(
-    this.x * Config.tileSize,
-    groundHeight(root, this.x, this.y) * Config.tileZStep,
-    this.y * Config.tileSize,
+    driver.x * Config.tileSize,
+    groundHeight(root, driver.x, driver.y) * Config.tileZStep,
+    driver.y * Config.tileSize,
   );
 };
 
@@ -807,23 +794,29 @@ CarScript.prototype.blink = function (dt) {
   this.showLamp();
 };
 
+//whether what it queues behind - or what that queues behind, and so on -
+//is broken down: a queue that will move once it is going again
+function behindBreakdown(driver) {
+  for (var d = driver.leader, n = 0; d !== null && n < 12; d = d.leader, n++)
+    if (d.broken) return true;
+
+  return false;
+}
+
 CarScript.prototype.tick = function (time) {
   var roadman = this.man.root.roadman,
-    wps = this.waypoints,
-    travel =
-      ((this.speed * time.dt) / 1000) * (this.failing() ? FAILING_SPEED : 1),
-    step = travel,
-    wp,
-    dx,
-    dy,
-    d;
+    driver = this.driver,
+    wps = driver === null ? [] : driver.wps,
+    x,
+    y;
 
   if (wps.length === 0) return;
 
   //the road it is on or heading for is gone
   if (
-    roadman.getRoad(wps[this.target].tile) === null ||
-    roadman.getRoad(wps[this.target - 1].tile) === null
+    roadman.getRoad(driver.tile()) === null ||
+    (driver.target < wps.length &&
+      roadman.getRoad(wps[driver.target].tile) === null)
   ) {
     this.man.respawn(this);
     return;
@@ -834,41 +827,45 @@ CarScript.prototype.tick = function (time) {
 
   if (this.stalled > 0) {
     this.stalled -= time.dt;
+
+    if (this.stalled <= 0) driver.stalled = driver.broken = false;
+
+    driver.update(time.dt);
     return;
   }
 
-  this.driven += travel;
-
-  while (step > 0) {
-    wp = wps[this.target];
-    dx = wp.x - this.x;
-    dy = wp.y - this.y;
-    d = Math.abs(dx) + Math.abs(dy);
-
-    if (d > step) {
-      this.x += (dx / d) * step;
-      this.y += (dy / d) * step;
-      break;
-    }
-
-    this.x = wp.x;
-    this.y = wp.y;
-    step -= d;
-
-    //nothing was joined on, so this is where the route ends
-    if (this.target === wps.length - 1) {
-      this.arrive();
-      return;
-    }
-
-    this.target++;
-
-    if (this.target === wps.length - 1) {
-      this.extend();
-      wps = this.waypoints;
-    }
+  if (driver.parked && this.traffic === SHUTTLE) {
+    this.atStop(time.dt);
+    if (this.driver === null || this.gameObject === null) return;
   }
 
+  //crawling along on its last legs
+  driver.v0 =
+    (this.nightRider ? this.baseSpeed * SPEEDING : this.baseSpeed) *
+    (this.failing() ? FAILING_SPEED : 1);
+
+  x = driver.x;
+  y = driver.y;
+  driver.update(time.dt);
+
+  if (driver.wps.length === 0 || this.driver === null) return;
+
+  //stuck for good - a block of streets locked solid, which a city's traffic
+  //does now and then: it turns off somewhere out of sight, and is put on
+  //some other road
+  this.waited =
+    driver.v < 0.05 && driver.held !== "" && !behindBreakdown(driver)
+      ? this.waited + time.dt
+      : 0;
+
+  if (this.waited > STUCK_FOR) {
+    this.waited = 0;
+    this.man.unstuck++;
+    this.man.respawn(this);
+    return;
+  }
+
+  this.driven += Math.abs(driver.x - x) + Math.abs(driver.y - y);
   this.place();
 
   if (this.driven >= BREAKDOWN_EVERY) this.breakDown();
@@ -999,14 +996,30 @@ function Car(man) {
 
 Car.prototype = Object.create(engine.GameObject.prototype);
 
+/**
+ * How many cars a road tile takes at this hour: more in the rush hours, the
+ * most at eight in the morning and five in the evening.
+ */
+function perRoad(root) {
+  var time = root.core.time,
+    h = time.hour + (time.minute || 0) / 60,
+    rush = Math.max(
+      Math.max(0, 1 - Math.abs(h - 8) / 1.5),
+      Math.max(0, 1 - Math.abs(h - 17) / 1.75),
+    );
+
+  return CARS_PER_ROAD + (RUSH_PER_ROAD - CARS_PER_ROAD) * rush;
+}
+
 function reconcile(self) {
   if (self.types === null) return;
 
   var light = lightAllowed(self.root),
+    roads = self.root.roadman.getRoadCount(),
     //as many as the roads take - though in the small hours the buses are
     //not running and the light cars are down to a few tearing about, so
     //what is left is the vans and the lorries
-    most = Math.floor(self.root.roadman.getRoadCount() * CARS_PER_ROAD),
+    most = Math.floor(roads * CARS_PER_ROAD),
     target,
     cars = self.cars,
     car,
@@ -1014,10 +1027,13 @@ function reconcile(self) {
 
   self.most = most;
   self.speeders = light ? 0 : Math.max(1, Math.round(most * NIGHT_LIGHT_SHARE));
+  //a bus for every two stops, while they are running
+  self.buses = light ? Math.floor(self.busStops().length / 2) : 0;
 
   target = light
-    ? most
+    ? Math.floor(roads * perRoad(self.root))
     : Math.floor((most * self.nightWeight) / self.totalWeight) + self.speeders;
+  self.target = target;
 
   //the few light cars of the night have their places kept for them, however
   //much else is out - the rest of the traffic is not turned out for them
@@ -1026,7 +1042,10 @@ function reconcile(self) {
 
     car = new Car(self);
 
-    if (!car.car.spawn(self.wantsTraffic())) break;
+    if (!car.car.spawn(self.wantsTraffic())) {
+      if (car.car.driver !== null) self.traffic.remove(car.car.driver);
+      break;
+    }
 
     cars.push(car);
     self.root.game.logic.world.addGameObject(car);
@@ -1034,7 +1053,8 @@ function reconcile(self) {
 
   //only when the roads themselves are gone - the night thins the traffic out
   //by letting the light cars finish and stay where they got to
-  while (cars.length > most) cars.pop().destroy();
+  while (cars.length > Math.floor(roads * RUSH_PER_ROAD) + self.buses)
+    self.remove(cars[cars.length - 1].car);
 }
 
 function CarManScript(man) {
@@ -1046,8 +1066,14 @@ CarManScript.prototype = Object.create(engine.Component.prototype);
 
 CarManScript.prototype.elapsed = 0;
 
+CarManScript.prototype.clock = 0;
+
 CarManScript.prototype.tick = function (time) {
   this.elapsed += time.dt;
+  this.clock += time.dt;
+
+  //where everything is, for everything to look at as it drives
+  this.man.traffic.frame(this.clock);
 
   if (this.elapsed >= RECONCILE_INTERVAL) {
     this.elapsed = 0;
@@ -1066,6 +1092,20 @@ function Carman(root) {
   this.most = 0;
   //light cars allowed out at this hour of the night
   this.speeders = 0;
+  //how many cars there are to be now, and how many of them buses
+  this.target = 0;
+  this.buses = 0;
+  //what else drives the roads with them, to be lit as they are at night
+  //(client/lighting) - the courier's car
+  this.extras = [];
+  //how many have given up on a queue that would not move (CarScript#tick)
+  this.unstuck = 0;
+  //everything on the roads, these and whatever else drives them
+  //(client/traffic)
+  this.traffic = new Traffic(root.roadman);
+  //the bus stops loaded, as last found
+  this._stops = null;
+  this._stopsAt = 0;
   //roads by the places people drive to, by kind
   this.destinations = {};
 }
@@ -1076,7 +1116,108 @@ Carman.prototype.init = function () {
   this.root.game.logic.world.addGameObject(go);
 
   loadTypes(this);
+  ensureStops(this.root);
 };
+
+//how far apart the stops put in a city are, at the least, in tiles - and how
+//many road tiles of it there are to a stop
+var STOP_APART = 7,
+  ROADS_TO_A_STOP = 45;
+
+/**
+ * A city with no bus stops in it - one built before there were any - is
+ * given a few: on straight streets of its road network with something built
+ * along them, the nearest the middle of town first, none too close to
+ * another. Kept with the roads in the save, like anything else about them.
+ */
+function ensureStops(root) {
+  var city = root.core.cities.getCities()[0];
+
+  if (!city) return;
+
+  var buildings = city.buildings.getBuildings(),
+    roads = new Map(),
+    built = new Set(),
+    i;
+
+  for (i = 0; i < buildings.length; i++) {
+    var b = buildings[i],
+      data = BuildingData[b.buildingCode];
+
+    if (data && data.classCode === BuildingClassCode.road) {
+      if (b.look && b.look.stop) return;
+      roads.set(b.tile, b);
+    } else if (data && data.classCode !== BuildingClassCode.tree)
+      built.add(b.tile);
+  }
+
+  function near(tile) {
+    for (var dx = -2; dx <= 2; dx++)
+      for (var dy = -2; dy <= 2; dy++)
+        if (built.has(tile + dx + dy * Terrain.dy)) return true;
+
+    return false;
+  }
+
+  function flat(b) {
+    return (
+      !Array.isArray(b.surface) ||
+      b.surface.every(function (h) {
+        return h === b.surface[0];
+      })
+    );
+  }
+
+  var c = city.center(),
+    candidates = [];
+
+  roads.forEach(function (b, tile) {
+    var l = roads.has(tile - 1),
+      r = roads.has(tile + 1),
+      u = roads.has(tile - Terrain.dy),
+      d = roads.has(tile + Terrain.dy);
+
+    if (((l && r && !u && !d) || (u && d && !l && !r)) && flat(b) && near(tile))
+      if (city.roads.inNetwork(tile)) candidates.push(tile);
+  });
+
+  candidates.sort(function (a, b) {
+    return (
+      Math.abs(Terrain.extractX(a) - c.x) +
+      Math.abs(Terrain.extractY(a) - c.y) -
+      (Math.abs(Terrain.extractX(b) - c.x) +
+        Math.abs(Terrain.extractY(b) - c.y))
+    );
+  });
+
+  var picked = [],
+    most = Math.max(2, Math.min(6, Math.floor(roads.size / ROADS_TO_A_STOP)));
+
+  for (i = 0; i < candidates.length && picked.length < most; i++) {
+    var tile = candidates[i];
+
+    if (
+      picked.every(function (p) {
+        return distance(p, tile) >= STOP_APART;
+      })
+    )
+      picked.push(tile);
+  }
+
+  if (picked.length < 2) return;
+
+  picked.forEach(function (tile) {
+    var b = roads.get(tile),
+      road = root.roadman.getRoad(tile);
+
+    b.look = Object.assign({}, b.look || {}, { stop: true });
+
+    if (road !== null) {
+      if (road.data !== b) road.data.look = b.look;
+      road.updateProfile();
+    }
+  });
+}
 
 /**
  * Takes the car off the road it is on and puts it on another - or off the map
@@ -1094,9 +1235,99 @@ Carman.prototype.respawn = function (script) {
  * @returns {number|undefined}
  */
 Carman.prototype.wantsTraffic = function () {
-  if (lightAllowed(this.root)) return undefined;
+  if (lightAllowed(this.root))
+    return this.countTraffic(SHUTTLE) < this.buses ? SHUTTLE : undefined;
 
   return this.countLight() < this.speeders ? COMMUTER : ERRAND;
+};
+
+/**
+ * How many light cars are out over what the hour wants - which are done
+ * when they get where they are going.
+ */
+Carman.prototype.surplus = function () {
+  return this.cars.length - this.target;
+};
+
+/**
+ * The bus stops loaded: road tiles with a stop on them (client/road). Found
+ * again every so often, as roads come and go.
+ */
+Carman.prototype.busStops = function () {
+  var now = Date.now();
+
+  if (this._stops !== null && now - this._stopsAt < DESTINATIONS_TTL)
+    return this._stops;
+
+  this._stops = this.root.roadman.getStops();
+  this._stopsAt = now;
+
+  return this._stops;
+};
+
+/**
+ * Which way something pulled in at the kerb of a stop faces: along the road,
+ * either way it runs - or null when it is not a straight piece of road.
+ */
+Carman.prototype.kerbSide = function (tile) {
+  var roadman = this.root.roadman,
+    ways = DIRECTIONS.filter(function (d) {
+      return Traffic.canDrive(roadman, tile, d);
+    }),
+    d;
+
+  if (ways.length === 0) return null;
+
+  d = ways[(Math.random() * ways.length) | 0];
+
+  return [d[0], d[1]];
+};
+
+/**
+ * A bus's round: from the first stop on to the nearest one not called at
+ * yet, and so on - a few stops, all of them ones it can get to.
+ */
+Carman.prototype.round = function (first, stops) {
+  var root = this.root,
+    out = [first],
+    left = stops.filter(function (s) {
+      return s !== first;
+    }),
+    at = first;
+
+  while (out.length < BUS_ROUND && left.length > 0) {
+    left.sort(function (a, b) {
+      return distance(at, a) - distance(at, b);
+    });
+
+    var next = left.shift();
+
+    if (routeTo(root, at, next).length > 1) {
+      out.push(next);
+      at = next;
+    }
+  }
+
+  return out;
+};
+
+/**
+ * The way from tile, setting off the way d faces, to the tile `to`: straight
+ * on into the next tile first if there is a road there, turning round on
+ * this one if not.
+ */
+Carman.prototype.routeOn = function (tile, d, to) {
+  var root = this.root,
+    ahead = tile + d[0] + d[1] * Terrain.dy,
+    on;
+
+  if (
+    Traffic.canDrive(root.roadman, tile, [d[0], d[1], ahead - tile]) &&
+    (on = routeTo(root, ahead, to)).length > 0
+  )
+    return [tile].concat(on);
+
+  return routeTo(root, tile, to);
 };
 
 /**
@@ -1106,7 +1337,10 @@ Carman.prototype.wantsTraffic = function () {
 Carman.prototype.remove = function (script) {
   var i = this.cars.indexOf(script.gameObject);
 
-  script.waypoints = [];
+  if (script.driver !== null) {
+    this.traffic.remove(script.driver);
+    script.driver = null;
+  }
 
   if (i !== -1) {
     this.cars.splice(i, 1);
@@ -1198,8 +1432,12 @@ Carman.prototype.pickType = function (traffic) {
   return byWeight(short.length > 0 ? short : wanted);
 };
 
+//anything but a bus, unless a bus is asked for: a bus only goes out when
+//there are stops for it
 function allowed(type, traffic) {
-  return traffic === undefined || type.traffic === traffic;
+  return traffic === undefined
+    ? type.traffic !== SHUTTLE
+    : type.traffic === traffic;
 }
 
 //one of them, the common ones more often
@@ -1239,6 +1477,19 @@ Carman.prototype.countTypes = function () {
   }
 
   return counts;
+};
+
+/**
+ * How many of that kind of traffic are out right now.
+ */
+Carman.prototype.countTraffic = function (traffic) {
+  var cars = this.cars,
+    n = 0;
+
+  for (var i = 0; i < cars.length; i++)
+    if (cars[i].car.traffic === traffic) n++;
+
+  return n;
 };
 
 /**
@@ -1287,6 +1538,9 @@ function loadTypes(self) {
       type = {
         name: name,
         speed: data.speed,
+        //in tiles - a tile is 32 units
+        length: (data.length || 13) / 32,
+        width: (data.width || 6) / 32,
         weight: data.weight,
         traffic: TRAFFIC[name] !== undefined ? TRAFFIC[name] : COMMUTER,
         frames: {},
@@ -1360,9 +1614,11 @@ Carman.prototype.looksOf = function (name, color) {
 
 //for anything else that drives the roads the way the traffic does - the
 //courier's car (client/delivery)
-Carman.routeWaypoints = routeWaypoints;
+Carman.routeWaypoints = Traffic.routeWaypoints;
 Carman.groundHeight = groundHeight;
 Carman.VehicleRenderer = VehicleRenderer;
-Carman.LANE = LANE;
+Carman.LANE = Traffic.LANE;
+Carman.routeTo = routeTo;
+Carman.ensureStops = ensureStops;
 
 export default Carman;

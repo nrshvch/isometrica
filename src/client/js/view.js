@@ -133,17 +133,54 @@ View.anchor = function (x, y, sizeX, sizeY) {
   };
 };
 
-var HEADINGS = { "x+": [1, 0], "x-": [-1, 0], "y+": [0, 1], "y-": [0, -1] };
+var HEADINGS = {
+  "x+": [1, 0],
+  "x-": [-1, 0],
+  "y+": [0, 1],
+  "y-": [0, -1],
+  "x+y+": [1, 1],
+  "x-y+": [-1, 1],
+  "x-y-": [-1, -1],
+  "x+y-": [1, -1],
+};
+
+//the eight headings round from +x, anticlockwise seen from above
+var ROUND = ["x+", "x+y+", "y+", "x-y+", "x-", "x-y-", "y-", "x+y-"];
 
 /**
- * Which way something going `heading` in the world - "x+", "y-" - goes as it
- * is seen.
+ * Which way something going `heading` in the world - "x+", "y-", or one of
+ * the four half way between, "x+y-" - goes as it is seen.
  */
 View.heading = function (heading) {
   var v = HEADINGS[heading],
     d = View.vector(v[0], v[1]);
 
-  return d[0] > 0 ? "x+" : d[0] < 0 ? "x-" : d[1] > 0 ? "y+" : "y-";
+  return (
+    (d[0] > 0 ? "x+" : d[0] < 0 ? "x-" : "") +
+    (d[1] > 0 ? "y+" : d[1] < 0 ? "y-" : "")
+  );
+};
+
+/**
+ * The nearest of the eight headings to going (dx, dy) in the world, or null
+ * for not going anywhere.
+ */
+View.headingOf = function (dx, dy) {
+  if (dx === 0 && dy === 0) return null;
+
+  var k = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+
+  return ROUND[(k + 8) % 8];
+};
+
+/**
+ * A heading's way along the ground, [dx, dy] - a unit long.
+ */
+View.headingVector = function (heading) {
+  var v = HEADINGS[heading],
+    l = Math.sqrt(v[0] * v[0] + v[1] * v[1]);
+
+  return [v[0] / l, v[1] / l];
 };
 
 /**

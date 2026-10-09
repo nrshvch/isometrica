@@ -1,14 +1,20 @@
 /**
  * The courier: the player, their car, their money and the order they are on.
  *
- * Everything here goes by the clock on the wall, not the game's: an order is
- * a timeline laid down the moment it is taken - drive to the restaurant, wait
- * there for the food, drive it over, walk it up to the door - and where the
- * car is and what it is doing is worked out from that and the time it is now
- * (Courier#status). So nothing has to run for an order to go on: with the
- * game closed, or the tab out of sight, the car is where it would have got to
- * by the time the player comes back, and an order that was due is delivered,
- * its money waiting to be collected.
+ * An order goes: drive to the restaurant, wait there for the food, load it,
+ * drive it over, hand it over at the door. The driving is done for real, in
+ * the city's traffic (client/delivery/deliveryman): the car gets there when
+ * it gets there - held up by queues at the junctions, a slow lorry in front,
+ * a car broken down in the way, or its own engine giving out - and is told so
+ * here (Courier#arrived). The rest goes by the clock on the wall: the food
+ * cooks from the moment the order is taken, loading and handing over take as
+ * long as they take, and a breakdown is over at a time on it - so those go
+ * on while the game is closed, while the car only drives while it is open.
+ *
+ * What the panel shows ahead of the car - when it will get there, when the
+ * whole order will be done - is worked out from how far it still has to go
+ * at the speed it would drive on an empty road: a guess, which the traffic
+ * makes come out later.
  *
  * Kept in a storage row of its own per city, next to the city's save
  * (core/persistence) - the city is the scene, this is the game played in it.
@@ -28,7 +34,8 @@ var LOAD = 4000;
 var UNLOAD = 5000;
 
 var KEY_PREFIX = "isometrica.v3.courier.";
-var VERSION = 1;
+//2: the car drives in the traffic; an order's times are filled in as it goes
+var VERSION = 2;
 
 //what the car is doing, by the timeline of the order it is on
 var Phase = {
@@ -54,10 +61,10 @@ function driveTime(tiles) {
 }
 
 /**
- * The timeline of an order taken at `at`: when the car gets to the
- * restaurant, when the food is ready, when it sets off with it - loaded once
- * both are there - gets to the customer and has handed it over. All ms, on
- * the wall clock.
+ * How an order taken at `at` would go on empty roads: when the car would get
+ * to the restaurant, when the food is ready, when it would set off with it -
+ * loaded once both are there - get to the customer and have handed it over.
+ * All ms, on the wall clock. What an offer is priced by.
  *
  * @param order {{legs: number[][], prep: number}} prep in ms, from `at`
  * @param at {number}
@@ -101,9 +108,14 @@ function blank() {
     //everything ever earned, and how many orders it took
     earned: 0,
     deliveries: 0,
-    //the road tile the car stands on when it is not on an order, or -1 for
-    //nowhere yet - put on the road by whoever has the roads
+    //the road tile the car is on - where it stands when it is not on an
+    //order - or -1 for nowhere yet: put on the road by whoever has the roads
     car: -1,
+    //which way it faces there, [dx, dy] along x or y, or null for any way
+    facing: null,
+    //broken down: since when, and when it will be going again by itself -
+    //on the wall clock - or null
+    breakdown: null,
     order: null,
     //the orders to pick from, and when they went up
     board: { at: 0, offers: [] },
@@ -142,6 +154,19 @@ Courier.prototype.load = function () {
   }
 
   this.state = blank();
+
+  //an older courier keeps the money and the car; an order on the way it
+  //went then is let go
+  if (
+    saved !== null &&
+    typeof saved === "object" &&
+    saved.version < VERSION &&
+    saved.version > 0
+  ) {
+    saved.order = null;
+    saved.board = { at: 0, offers: [] };
+    saved.version = VERSION;
+  }
 
   if (saved !== null && typeof saved === "object" && saved.version === VERSION)
     for (var key in this.state)
@@ -201,14 +226,134 @@ Courier.prototype.carTile = function () {
 };
 
 /**
- * Parks the car somewhere else - for when there was nowhere yet, or the road
- * it stood on is gone.
+ * Which way the car faces where it stands, [dx, dy], or null for any way.
  */
-Courier.prototype.park = function (tile) {
-  if (this.state.car === tile) return;
+Courier.prototype.facing = function () {
+  return this.state.facing;
+};
+
+/**
+ * Parks the car somewhere else - for when there was nowhere yet, or the road
+ * it stood on is gone - or has it face another way where it is.
+ */
+Courier.prototype.park = function (tile, facing) {
+  if (
+    this.state.car === tile &&
+    (facing === undefined || String(this.state.facing) === String(facing))
+  )
+    return;
 
   this.state.car = tile;
+  if (facing !== undefined) this.state.facing = facing;
   changed(this);
+};
+
+/**
+ * The car has driven on to tile, with so many tiles of the way it is on
+ * still to go - for the panel to go by. Kept in storage once in a while: the
+ * car is put back about there when the game is opened again.
+ */
+Courier.prototype.progress = function (tile, left, facing) {
+  var order = this.state.order;
+
+  if (order !== null) order.left = left;
+
+  if (this.state.car !== tile) {
+    this.state.car = tile;
+    if (facing) this.state.facing = facing;
+    this.save();
+  }
+};
+
+/**
+ * The car has got where it was going: to the restaurant, to wait for the
+ * food, or to the customer's, to hand it over.
+ */
+Courier.prototype.arrived = function (now) {
+  var order = this.state.order;
+
+  if (order === null) return;
+
+  if (order.phase === Phase.toRestaurant) {
+    order.phase = Phase.atRestaurant;
+    order.times.arriveRestaurant = now;
+  } else if (order.phase === Phase.toCustomer) {
+    order.phase = Phase.atDoor;
+    order.times.arriveCustomer = now;
+  } else return;
+
+  order.left = 0;
+  changed(this);
+};
+
+/**
+ * Moves the order on by the clock: once the food is ready and the car there,
+ * it is loaded and the car sets off; once it is handed over, it is
+ * delivered. A breakdown over is over.
+ *
+ * @returns {boolean} whether anything changed
+ */
+Courier.prototype.tick = function (now) {
+  var order = this.state.order,
+    t = order !== null ? order.times : null,
+    moved = false;
+
+  if (this.state.breakdown !== null && now >= this.state.breakdown.until) {
+    this.state.breakdown = null;
+    moved = true;
+  }
+
+  if (order !== null && order.phase === Phase.atRestaurant) {
+    var leave = Math.max(t.arriveRestaurant, t.ready) + LOAD;
+
+    if (now >= leave) {
+      t.leave = leave;
+      order.phase = Phase.toCustomer;
+      order.left = order.legs[1].length - 1;
+      moved = true;
+    }
+  } else if (order !== null && order.phase === Phase.atDoor) {
+    if (now >= t.arriveCustomer + UNLOAD) {
+      t.delivered = t.arriveCustomer + UNLOAD;
+      order.phase = Phase.delivered;
+      moved = true;
+    }
+  }
+
+  if (moved) changed(this);
+
+  return moved;
+};
+
+/**
+ * The car has broken down: it stands until `until` on the wall clock - or
+ * until it is fixed (repair).
+ */
+Courier.prototype.breakDown = function (now, until) {
+  this.state.breakdown = { at: now, until: until, fixing: false };
+  changed(this);
+};
+
+/**
+ * The player has called somebody out to fix it: it goes again a moment from
+ * now rather than when it would have.
+ */
+Courier.prototype.repair = function (now, takes) {
+  var b = this.state.breakdown;
+
+  if (b === null || b.fixing) return;
+
+  b.fixing = true;
+  b.fixAt = now;
+  b.until = Math.min(b.until, now + takes);
+  changed(this);
+};
+
+/**
+ * The breakdown the car is in - {at, until, fixing} - or null.
+ */
+Courier.prototype.breakdown = function () {
+  return this.state.breakdown;
 };
 
 /**
@@ -240,7 +385,18 @@ Courier.prototype.accept = function (offerId, now) {
 
   if (offer === null) return null;
 
-  offer.times = schedule(offer, now);
+  //what is known so far: when it was taken and when the food will be
+  //ready; the rest is filled in as the car gets there
+  offer.times = {
+    taken: now,
+    ready: now + offer.prep,
+    arriveRestaurant: null,
+    leave: null,
+    arriveCustomer: null,
+    delivered: null,
+  };
+  offer.phase = Phase.toRestaurant;
+  offer.left = Math.max(0, offer.legs[0].length - 1);
   this.state.order = offer;
   //what is left on the board was found from where the car stood - it will
   //be somewhere else by the time it is free again
@@ -252,21 +408,26 @@ Courier.prototype.accept = function (offerId, now) {
 
 /**
  * Where the order is at, at time now: what the car is doing, how far along
- * the route it is on, and how far along the whole order.
+ * the way it is on it is, and how far along the whole order - the times
+ * still to come guessed from how far it still has to drive (see above).
  *
  * @returns {{phase: string, order: Object|null, leg: number,
  *          legDone: number, done: number, left: number, readyIn: number,
- *          cooked: number, loading: boolean, step: number}}
+ *          cooked: number, loading: boolean, step: number, times: Object,
+ *          broken: Object|null}}
  *          leg - 0 to the restaurant, 1 to the customer - and legDone, how
  *          far along it the car is, 0..1; done, how far along the order,
- *          0..1; left, ms until it is handed over; readyIn, ms until the
- *          food is, and cooked, how far along it is, 0..1; loading, whether
- *          the food is being put in the car; step, how far along what the
- *          car is doing now is - the drive, the wait, the loading or the
- *          handing over - 0..1
+ *          0..1; left, ms until it is handed over, as it looks now; readyIn,
+ *          ms until the food is, and cooked, how far along it is, 0..1;
+ *          loading, whether the food is being put in the car; step, how far
+ *          along what the car is doing now is - the drive, the wait, the
+ *          loading or the handing over - 0..1; times, the order's times,
+ *          those still to come as they look now; broken, the breakdown the
+ *          car is in, with how far along it is (done, 0..1), or null
  */
 Courier.prototype.status = function (now) {
   var order = this.state.order,
+    b = this.state.breakdown,
     out = {
       phase: Phase.idle,
       order: order,
@@ -278,36 +439,74 @@ Courier.prototype.status = function (now) {
       cooked: 0,
       loading: false,
       step: 0,
+      times: null,
+      broken: null,
+    };
+
+  if (b !== null)
+    out.broken = {
+      at: b.at,
+      until: b.until,
+      fixing: b.fixing,
+      left: Math.max(0, b.until - now),
+      done: b.fixing
+        ? fraction(now, b.fixAt, b.until)
+        : fraction(now, b.at, b.until),
     };
 
   if (order === null) return out;
 
-  var t = order.times;
+  var t = order.times,
+    phase = order.phase,
+    //standing broken down, the drive is put off by as much
+    stood = b !== null ? Math.max(0, b.until - now) : 0,
+    drive0 = driveTime(order.legs[0]),
+    drive1 = driveTime(order.legs[1]),
+    ahead = (order.left / SPEED) * 1000 + stood,
+    est = {
+      taken: t.taken,
+      ready: t.ready,
+      arriveRestaurant: t.arriveRestaurant,
+      leave: t.leave,
+      arriveCustomer: t.arriveCustomer,
+      delivered: t.delivered,
+    };
 
-  out.done = fraction(now, t.taken, t.delivered);
-  out.left = Math.max(0, t.delivered - now);
+  if (est.arriveRestaurant === null) est.arriveRestaurant = now + ahead;
+  if (est.leave === null)
+    est.leave = Math.max(est.arriveRestaurant, t.ready, now) + LOAD;
+  if (est.arriveCustomer === null)
+    est.arriveCustomer =
+      phase === Phase.toCustomer ? now + ahead : est.leave + drive1;
+  if (est.delivered === null)
+    est.delivered = Math.max(est.arriveCustomer, now) + UNLOAD;
+
+  out.phase = phase;
+  out.times = est;
+  out.done = fraction(now, t.taken, est.delivered);
+  out.left = Math.max(0, est.delivered - now);
   out.readyIn = Math.max(0, t.ready - now);
   out.cooked = fraction(now, t.taken, t.ready);
 
-  if (now < t.arriveRestaurant) {
-    out.phase = Phase.toRestaurant;
-    out.legDone = out.step = fraction(now, t.taken, t.arriveRestaurant);
-  } else if (now < t.leave) {
-    out.phase = Phase.atRestaurant;
+  if (phase === Phase.toRestaurant) {
+    out.legDone = out.step =
+      drive0 <= 0 ? 1 : 1 - Math.min(1, ((order.left / SPEED) * 1000) / drive0);
+  } else if (phase === Phase.atRestaurant) {
+    var loadFrom = Math.max(t.arriveRestaurant, t.ready);
+
     out.legDone = 1;
-    out.loading = now >= t.leave - LOAD;
+    out.loading = now >= loadFrom;
     out.step = out.loading
-      ? fraction(now, t.leave - LOAD, t.leave)
+      ? fraction(now, loadFrom, loadFrom + LOAD)
       : out.cooked;
-  } else if (now < t.arriveCustomer) {
-    out.phase = Phase.toCustomer;
+  } else if (phase === Phase.toCustomer) {
     out.leg = 1;
-    out.legDone = out.step = fraction(now, t.leave, t.arriveCustomer);
+    out.legDone = out.step =
+      drive1 <= 0 ? 1 : 1 - Math.min(1, ((order.left / SPEED) * 1000) / drive1);
   } else {
-    out.phase = now < t.delivered ? Phase.atDoor : Phase.delivered;
     out.leg = 1;
     out.legDone = 1;
-    out.step = fraction(now, t.arriveCustomer, t.delivered);
+    out.step = fraction(now, t.arriveCustomer, t.arriveCustomer + UNLOAD);
   }
 
   return out;
@@ -323,15 +522,11 @@ Courier.prototype.status = function (now) {
 Courier.prototype.collect = function (now) {
   var order = this.state.order;
 
-  if (order === null || this.status(now).phase !== Phase.delivered) return 0;
-
-  var legs = order.legs,
-    last = legs[1].length > 0 ? legs[1] : legs[0];
+  if (order === null || order.phase !== Phase.delivered) return 0;
 
   this.state.money = Math.round((this.state.money + order.pay) * 100) / 100;
   this.state.earned = Math.round((this.state.earned + order.pay) * 100) / 100;
   this.state.deliveries++;
-  this.state.car = last[last.length - 1];
   this.state.order = null;
   this.state.board = { at: 0, offers: [] };
   changed(this);

@@ -219,3 +219,53 @@
     color: #7f7;
   }
 }
+
+// broken down: how long until it goes again, and a button to fix it now
+.delivery-card .breakdown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  padding: 4px 6px;
+  background: rgba(255, 96, 72, 0.18);
+  border-left: 3px solid #ff6048;
+  color: #ffd2c8;
+
+  button.fix {
+    margin-left: auto;
+    background: #d4452f;
+    border-color: #e9664f #8f2a1a #8f2a1a #e9664f;
+    padding: 3px 10px;
+  }
+}
+
+// over the car broken down, its point down at it
+.fix-popup {
+  position: fixed;
+  z-index: 20;
+  transform: translate(-50%, -100%);
+  font-family: "Courier New", Courier, monospace;
+  font-weight: bold;
+  font-size: 14px;
+  color: #fff;
+  background: #d4452f;
+  border: 2px solid rgba(0, 0, 0, 0.85);
+  padding: 5px 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+
+  &:after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    margin-left: -6px;
+    border: 6px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.85);
+    border-bottom: 0;
+  }
+
+  &:active {
+    background: #b8381f;
+  }
+}

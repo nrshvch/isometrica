@@ -203,6 +203,20 @@ Roadman.prototype.getRoadTiles = function () {
 };
 
 /**
+ * The loaded road tiles with a bus stop on them.
+ *
+ * @returns {number[]}
+ */
+Roadman.prototype.getStops = function () {
+  var out = [];
+
+  for (var i = 0; i < this._tiles.length; i++)
+    if (this._roads[this._tiles[i]].isStop()) out.push(this._tiles[i]);
+
+  return out;
+};
+
+/**
  * A loaded road tile picked at random, or -1 when there is none.
  */
 Roadman.prototype.getRandomRoadTile = function () {
