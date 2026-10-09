@@ -21,6 +21,10 @@ var events = {
 
 function UIManager() {
   this.rootNode = $(".game-ui");
+
+  //?edit opens the city builder of old - for building the city the courier
+  //drives in. Otherwise it is the delivery game
+  this.editMode = /[?&]edit(=|&|$)/.test(window.location.search);
 }
 
 UIManager.events = events;

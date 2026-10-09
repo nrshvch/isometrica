@@ -2,6 +2,7 @@ import WorldScreenView from "./views/worldscreenview";
 import Controls from "./worldaction";
 import ReactiveProperty from "reactive-property";
 import BuildingCode from "data/buildingcode";
+import DeliveryPanel from "ui/modules/delivery/js/delivery";
 
 function WorldScreen(ui, client) {
   this.ui = ui;
@@ -37,6 +38,13 @@ WorldScreen.prototype.updateSize = function () {
 WorldScreen.prototype.show = function (name) {
   this.busy(false);
 
+  //the delivery game: no building, just the courier's panel
+  if (!this.ui.editMode) {
+    this.view.showDeliveryButtons();
+    this.deliveryPanel();
+    return;
+  }
+
   switch (name) {
     case "build":
       this.view.showBuildButtons();
@@ -45,6 +53,18 @@ WorldScreen.prototype.show = function (name) {
       if (this.client.core.cities.getCity(0)) this.view.showBuildButtons();
       else this.view.showInitialButtons();
   }
+};
+
+/**
+ * The courier's panel, put up over the world the first time it is asked for.
+ */
+WorldScreen.prototype.deliveryPanel = function () {
+  if (this._deliveryPanel === undefined) {
+    this._deliveryPanel = new DeliveryPanel(this.client);
+    this.view.addOverlay(this._deliveryPanel.view.el);
+  }
+
+  return this._deliveryPanel;
 };
 
 WorldScreen.prototype.showControls = function (controls) {

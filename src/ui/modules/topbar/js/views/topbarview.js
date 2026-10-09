@@ -36,6 +36,11 @@ var View = Backbone.View.extend({
 
     this.time = options.app.client.core.time;
 
+    //the delivery game shows the courier's money rather than the city's
+    this.deliveryman = options.ui.editMode
+      ? null
+      : options.app.client.deliveryman;
+
     var tmTkn = Events.on(
       this.time,
       this.time.constructor.events.advance,
@@ -47,10 +52,22 @@ var View = Backbone.View.extend({
 
     var updTkn = this.city.update().on(onCityUpdate, this);
 
+    var dlvTkn =
+      this.deliveryman === null
+        ? null
+        : Events.on(
+            this.deliveryman,
+            this.deliveryman.events.change,
+            onCityUpdate,
+            this,
+          );
+
     this.onDispose().once(function (s, a, self) {
       Events.off(self.time, self.time.constructor.events.advance, tmTkn);
       self.city.rename().off(rnmTkn);
       self.city.update().off(updTkn);
+      if (dlvTkn !== null)
+        Events.off(self.deliveryman, self.deliveryman.events.change, dlvTkn);
     }, this);
 
     //render all
@@ -61,11 +78,23 @@ var View = Backbone.View.extend({
     return this;
   },
   renderMoney: function () {
+    var courier = this.deliveryman === null ? null : this.deliveryman.courier;
+
+    if (this.deliveryman !== null) {
+      $(".money", this.$el).text(
+        "$" + Numeral(courier === null ? 0 : courier.money()).format("0,0.00"),
+      );
+      return;
+    }
+
     var money =
       this.city.resources.getResources()[Isometrica.Core.ResourceCode.money];
     $(".money", this.$el).text("$" + Numeral(money).format("0,0"));
   },
   toggleCity: function () {
+    //nothing of the city's to look at in the delivery game
+    if (this.deliveryman !== null) return;
+
     if (this.options.app.showing() === "city") {
       this.options.ui.navigate("world");
       return;

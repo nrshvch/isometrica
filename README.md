@@ -6,6 +6,55 @@ Keeping it alive for historical reference only.
 
 ![Isoville](public/miniville.gif)
 
+### The delivery game
+
+The game is now a food delivery game played in the city: the player is a
+courier with a car, like those of Wolt or Uber Eats. The city is only the
+scene - nothing about it is built or managed while playing - and the city
+builder of old is kept for building the city the courier drives in: open the
+game with `?edit` in the address (`/?edit#/<city id>`) for it.
+
+- The camera follows the courier's car - a blue hatchback with a yellow mark
+  over it - always; it can be zoomed and turned, not dragged off it
+  (`CameraScript#follow`).
+- While the car stands free, a board of orders is up
+  (`src/ui/modules/delivery`): what to pick up where, where it goes, how long
+  the whole run takes and what it pays. A board is put up from where the car
+  stands and replaced every three minutes, and after every delivery.
+- Taking an order sends the car to the restaurant, where it waits for the
+  food if it is not ready yet, then over to the customer, who has it handed
+  over at the door. The restaurant, the customer and the way there are marked
+  on the map - the route arrowed, taken off as the car drives over it. The
+  panel shows what the car is doing, the food, when it will be ready, how
+  long is left and how far along it is; once it is handed over, the money is
+  collected from it.
+- The courier's time is what they sell: an order pays for all of it - the
+  drive to the restaurant, the wait, the drive over and the walk to the door
+  - at a rate that goes up with the kind of order (`src/client/js/delivery/orders.js`):
+    a quick bite is over in a minute or two, dinner in two or three, groceries
+    out of the stores in a few more, and an office's lunch takes a quarter of
+    an hour to cook and pays the most for every minute of it.
+- Everything about an order goes by the clock on the wall, not the game's
+  (`src/client/js/delivery/courier.js`): it is a timeline laid down when it is
+  taken, and where the car is and what it is doing is worked out from that
+  and the time it is now. So it goes on with the game closed: come back
+  later and the car is where it would have got to, or the order is delivered
+  and its money waiting.
+- The places come out of the buildings standing in the city
+  (`src/client/js/delivery/places.js`): the small shops are restaurants -
+  burgers, pizza, sushi, noodles, kebabs, tacos - the stores and markets sell
+  groceries and the old town bakes; the houses, flats and offices order. Each
+  is what it is by the tile it stands on, so the same building is always the
+  same restaurant and the same customer, and the car pulls up on the road
+  alongside it nearest its middle.
+- The car drives the city's roads the way the traffic does, keeping to its
+  lane, but over every road there is rather than the ones loaded on screen
+  (`src/client/js/delivery/roads.js`): two join where they meet level
+  (`Surface.meets`).
+- The courier - money, the car, the order on and the board - is saved in a
+  storage row of its own, `isometrica.v3.courier.<city id>`, next to the
+  city's save.
+
 ### Live demo
 
 https://peeps.land

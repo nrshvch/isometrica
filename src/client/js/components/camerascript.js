@@ -189,6 +189,9 @@ CameraScript.prototype.onPinch = null;
 CameraScript.prototype.onPinchEnd = null;
 CameraScript.prototype.panSens = 1;
 CameraScript.prototype._lock = false;
+//held on something that moves it every frame (client/delivery): it cannot be
+//dragged off it, and zooms about the middle of the screen
+CameraScript.prototype.follow = false;
 
 CameraScript.prototype.lock = function (l) {
   if (l === undefined) return this._lock;
@@ -282,7 +285,7 @@ CameraScript.prototype.moveTo = function (transform) {
 };
 
 CameraScript.prototype.pan = function (x, y) {
-  if (this._lock) return;
+  if (this._lock || this.follow) return;
 
   //the way along the ground that goes that way on screen as it is seen,
   //and in the world, the camera turned (see client/view)
@@ -292,6 +295,28 @@ CameraScript.prototype.pan = function (x, y) {
   );
 
   this.gameObject.transform.translate(d[0], 0, d[1], "world");
+};
+
+/**
+ * Puts the camera on a point of the ground, moved on the screen by so many
+ * pixels - for keeping something in sight above a panel over the bottom of
+ * the screen, say. Held on it (follow) or not.
+ *
+ * @param x {number} in the world
+ * @param z {number}
+ * @param [up] {number} how far over the middle of the screen the point is
+ *        shown, in the viewport's pixels - the page's over the zoom
+ */
+CameraScript.prototype.lookAt = function (x, z, up) {
+  var follow = this.follow;
+
+  this.gameObject.transform.setPosition(x, 0, z);
+
+  if (up) {
+    this.follow = false;
+    this.pan(0, -up);
+    this.follow = follow;
+  }
 };
 
 //how far the camera turns about the up axis for a quarter turn of the view,
