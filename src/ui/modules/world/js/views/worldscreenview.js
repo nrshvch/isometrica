@@ -124,6 +124,22 @@ WorldScreenView.prototype.showInitialButtons = function () {
   renderBtns(this);
 };
 
+/**
+ * The delivery game has no buttons of its own over the world - the courier's
+ * panel is all there is (ui/modules/delivery).
+ */
+WorldScreenView.prototype.showDeliveryButtons = function () {
+  unsetBtns(this);
+  renderBtns(this);
+};
+
+/**
+ * Lays el over the world, under the buttons.
+ */
+WorldScreenView.prototype.addOverlay = function (el) {
+  $(".body", this.el).append(el);
+};
+
 WorldScreenView.prototype.showBuildButtons = function () {
   var view = this;
   unsetBtns(this);

@@ -166,4 +166,36 @@ Surface.standsOn = function (terrain, building) {
 
 namespace("Isometrica.Core").Surface = Surface;
 
+//the heights along each side of a surface, -x, -y, +x, +y, each from its
+//end nearer A
+function edge(surface, side) {
+  switch (side) {
+    case 0:
+      return [surface[0], surface[2]];
+    case 1:
+      return [surface[0], surface[1]];
+    case 2:
+      return [surface[1], surface[3]];
+    default:
+      return [surface[2], surface[3]];
+  }
+}
+
+/**
+ * Whether a road with surface a joins one with surface b next to it at side
+ * - 0..3: -x, -y, +x, +y: where they meet level, at the same height all
+ * along the edge between them. So never over a step, and never onto the
+ * side of a ramp.
+ *
+ * @param b {number[]|null} null for no road there
+ */
+Surface.meets = function (a, side, b) {
+  if (b === null) return false;
+
+  var ours = edge(a, side),
+    theirs = edge(b, (side + 2) % 4);
+
+  return ours[0] === ours[1] && ours[0] === theirs[0] && ours[1] === theirs[1];
+};
+
 export default Surface;

@@ -1343,4 +1343,26 @@ function loadTypes(self) {
   self.nightWeight = night;
 }
 
+/**
+ * The pictures of a body type in a colour, one for each way it drives -
+ * {"x+": {sprite, pivotX, pivotY}, ...} - or null when there is no such thing
+ * or the vehicles are not loaded.
+ */
+Carman.prototype.looksOf = function (name, color) {
+  var types = this.types || [],
+    i;
+
+  for (i = 0; i < types.length; i++)
+    if (types[i].name === name) return types[i].frames[color] || null;
+
+  return null;
+};
+
+//for anything else that drives the roads the way the traffic does - the
+//courier's car (client/delivery)
+Carman.routeWaypoints = routeWaypoints;
+Carman.groundHeight = groundHeight;
+Carman.VehicleRenderer = VehicleRenderer;
+Carman.LANE = LANE;
+
 export default Carman;

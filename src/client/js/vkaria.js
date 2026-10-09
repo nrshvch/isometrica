@@ -24,6 +24,7 @@ import CameraMan from "./cameraman";
 import Carman from "./carman";
 import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
+import Deliveryman from "./delivery/deliveryman";
 
 function Vkaria(core, ui, callback) {
   // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
@@ -84,6 +85,8 @@ function Vkaria(core, ui, callback) {
   this.carman = new Carman(this);
   this.cameraControl = new CameraControl(this);
   this.cameraman = new CameraMan(this);
+  //the delivery game played in the city - unless it is being edited
+  this.deliveryman = new Deliveryman(this);
 
   this.player = new Player(this);
 }
@@ -183,6 +186,14 @@ Vkaria.prototype.startServices = function () {
   this.cameraControl.init();
 
   this.carman.init();
+
+  //the city is the scene: nothing about it is shown, and the camera stays
+  //on the courier's car
+  if (!this.ui.editMode) {
+    this.serviceman.quiet();
+    this.camera.cameraScript.follow = true;
+    this.deliveryman.init();
+  }
 };
 
 /**

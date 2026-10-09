@@ -1,0 +1,74 @@
+<div class="delivery-panel">
+  {{#if unavailable}}
+    <div class="delivery-card">
+      <div class="head"><span class="title">No streets to drive</span></div>
+      <div class="note">
+        This city has no roads yet. Open it with ?edit in the address to lay
+        some.
+      </div>
+    </div>
+  {{/if}}
+  {{#if board}}
+    <div class="delivery-card board">
+      <div class="head">
+        <span class="title">Orders</span>
+        <span class="aside">new in <span class="board-left"></span></span>
+      </div>
+      {{#if offers.length}}
+        <ul class="offers">
+          {{#each offers}}
+            <li class="offer">
+              <div class="route">
+                <span class="icon">{{pickup.icon}}</span>
+                <b>{{pickup.name}}</b>
+                <span class="arrow">→</span>
+                <span class="icon">{{dropoff.icon}}</span>
+                {{dropoff.name}}<span class="where">, {{dropoff.where}}</span>
+              </div>
+              <div class="items"><span class="kind">{{label}}</span>
+                {{itemsText}}</div>
+              <div class="meta">
+                <span class="time">⏱ {{timeText}}</span>
+                <span class="pay">{{payText}}</span>
+                <button class="take" data-id="{{id}}">Take</button>
+              </div>
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        <div class="note">Nobody is ordering right now.</div>
+      {{/if}}
+      <div class="foot">{{deliveries}} delivered · {{earnedText}} earned</div>
+    </div>
+  {{/if}}
+  {{#if active}}
+    <div class="delivery-card active">
+      <div class="head">
+        <span class="title phase"></span>
+        <span class="pay">{{order.payText}}</span>
+      </div>
+      <div class="stops">
+        <div class="stop pickup">
+          <span class="icon">{{order.pickup.icon}}</span>
+          <b>{{order.pickup.name}}</b>
+          <span class="when ready"></span>
+        </div>
+        <div class="stop dropoff">
+          <span class="icon">{{order.dropoff.icon}}</span>
+          <b>{{order.dropoff.name}}</b><span class="where">,
+            {{order.dropoff.where}}</span>
+        </div>
+      </div>
+      <div class="items"><span class="kind">{{order.label}}</span>
+        {{order.itemsText}}</div>
+      <div class="bar">
+        <div class="fill"></div>
+        <div class="pin" style="left: {{pickupAt}}%"></div>
+      </div>
+      <div class="meta">
+        <span class="left"></span>
+        <button class="collect">Collect {{order.payText}}</button>
+      </div>
+    </div>
+  {{/if}}
+</div>
