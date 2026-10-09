@@ -443,11 +443,14 @@ Road.profile = function (tile, net, kind) {
 
 /**
  * What a road is laid in (see Road.profile): gravel or cobbles, as it was
- * laid - or asphalt, paved for a street of the city's (Roadman#paved), plain
+ * laid - a bus stop, a street with a stop on it, where one was put - or asphalt, paved for a street of the city's (Roadman#paved), plain
  * otherwise. Roads laid before there was any choice are asphalt.
  */
 Road.kindOf = function (roadman, data) {
   var material = data.look && data.look.material;
+
+  //a stop for the buses (client/carman): a street, with its shelter
+  if (data.look && data.look.stop) return "stop";
 
   if (material === "gravel" || material === "cobble") return material;
 
@@ -474,6 +477,13 @@ Road.materialAt = function (material, tile, buildings) {
     }
 
   return material;
+};
+
+/**
+ * Whether there is a bus stop on it.
+ */
+Road.prototype.isStop = function () {
+  return !!(this.data && this.data.look && this.data.look.stop);
 };
 
 /**

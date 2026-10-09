@@ -16,7 +16,10 @@
  *     the old town's streets.
  *
  * And a street light, apart: a sprite of its own, for it is tall and has to
- * be drawn among the buildings and the cars rather than under them.
+ * be drawn among the buildings and the cars rather than under them - and so
+ * is a bus stop's shelter: on the pavement of a paved street, glass at the
+ * back, a bench in it and the stop's sign on a post at the end of it, one on
+ * each side of the road for the buses going each way.
  *
  * Units as everywhere: a tile is 32 along the ground - about ten metres -
  * heights in pixels. The asphalt is 20 across, two lanes of the cars' width
@@ -43,7 +46,12 @@ var GRAVEL = [150, 140, 122],
   GUTTER = [110, 104, 98],
   KERB = [204, 202, 196],
   LAMP = [252, 238, 180],
-  POLE = [112, 120, 130];
+  POLE = [112, 120, 130],
+  SHELTER_GLASS = [150, 196, 214],
+  SHELTER_ROOF = [70, 78, 88],
+  BENCH = [150, 104, 64],
+  STOP_SIGN = [246, 200, 40],
+  STOP_BAND = [36, 120, 72];
 
 //the asphalt's edges across the tile, and how high a pavement stands - all
 //whole units, so that every edge of a road comes out a clean step of two
@@ -472,6 +480,56 @@ function poleAt(at) {
   return [x + 0.5, y + 0.5];
 }
 
+//the sides of a tile, -x, -y, +x, +y, as client/road reads them
+var STOP_SIDES = ["-x", "-y", "+x", "+y"];
+
+/**
+ * A box on the pavement along side of the tile: a0..a1 along that side,
+ * v0..v1 in from its edge.
+ */
+function sideBox(side, a0, a1, v0, v1, z0, z1, color, finish) {
+  if (side === "-y") return box(a0, a1, v0, v1, z0, z1, color, finish);
+  if (side === "+y")
+    return box(a0, a1, TILE - v1, TILE - v0, z0, z1, color, finish);
+  if (side === "-x") return box(v0, v1, a0, a1, z0, z1, color, finish);
+
+  return box(TILE - v1, TILE - v0, a0, a1, z0, z1, color, finish);
+}
+
+/**
+ * A bus shelter on the pavement along side: a roof on two posts, glass at
+ * the back, a bench under it - and the stop's sign, a plate on a post, at the
+ * end of it.
+ */
+function shelter(side) {
+  var b = [],
+    z = KERB_H;
+
+  b.push(sideBox(side, 9, 10, 1, 4.5, z, z + 11, POLE));
+  b.push(sideBox(side, 22, 23, 1, 4.5, z, z + 11, POLE));
+  b.push(sideBox(side, 10, 22, 0.6, 1.2, z + 1, z + 10, SHELTER_GLASS));
+  b.push(sideBox(side, 8, 24, 0.2, 5.2, z + 11, z + 12, SHELTER_ROOF));
+  b.push(sideBox(side, 11, 21, 1.4, 3, z + 3, z + 3.6, BENCH));
+  b.push(sideBox(side, 11, 12, 1.6, 2.6, z, z + 3, POLE));
+  b.push(sideBox(side, 20, 21, 1.6, 2.6, z, z + 3, POLE));
+
+  b.push(sideBox(side, 26, 27, 2.5, 3.5, z, z + 14, POLE));
+  b.push(sideBox(side, 24.5, 28.5, 2.6, 3.4, z + 13, z + 17, STOP_SIGN, LIT));
+  b.push(sideBox(side, 24.5, 28.5, 2.5, 3.5, z + 15, z + 16, STOP_BAND, LIT));
+
+  return b;
+}
+
+/**
+ * Where a shelter along side stands on its tile, x, y - for it to be sorted
+ * among the cars by that (client/roadview).
+ */
+function stopAt(side) {
+  var at = sideBox(side, 17, 17, 3, 3, 0, 0);
+
+  return [at.x0 + 0.5, at.y0 + 0.5];
+}
+
 /**
  * Every sprite, by name: "gen/roads/plain/1010" - plain, paved, gravel or
  * cobble - the joins in the order
@@ -519,6 +577,11 @@ function sprites() {
     out["gen/roads/light/" + at] = { light: at };
   });
 
+  //a bus stop's shelter, on each side of the tile
+  STOP_SIDES.forEach(function (side, k) {
+    out["gen/roads/stop/shelter" + k] = { stop: true, side: side };
+  });
+
   return out;
 }
 
@@ -528,6 +591,8 @@ export function boxesOf(name) {
   var s = SPRITES[name];
 
   if (s === undefined) throw new Error("no such sprite: " + name);
+
+  if (s.stop) return shelter(s.side);
 
   return s.light
     ? streetLight(s.light)
@@ -553,6 +618,11 @@ export function describe() {
       lamps: { x: lampAt("x"), y: lampAt("y"), corner: lampAt("corner") },
       //and where its pole stands
       poles: { x: poleAt("x"), y: poleAt("y"), corner: poleAt("corner") },
+      //and where a bus stop's shelters stand, by name
+      stops: STOP_SIDES.reduce(function (out, side, k) {
+        out["shelter" + k] = stopAt(side);
+        return out;
+      }, {}),
     },
   };
 }

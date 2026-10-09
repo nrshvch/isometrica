@@ -3,10 +3,15 @@
  * following it, the restaurant and the customer marked out, and the board of
  * orders kept up while the car stands free.
  *
- * Where the car is comes from the courier (client/delivery/courier) and the
- * time on the wall, frame by frame - nothing here moves it along. So when the
- * game comes back after a while away, the car is just where it would have got
- * to.
+ * The car drives among the traffic, the way everything else does
+ * (client/traffic): when the order says go - to the restaurant, then the
+ * customer - it pulls out from the kerb as soon as the lane behind it is
+ * clear, drives there as fast as the roads let it, and pulls in to the kerb
+ * again there, out of the way of the traffic, while the food is cooked and
+ * loaded or handed over. Every so often its engine gives out on the way: it
+ * stands where it is, smoking, the traffic going round it, until it is going
+ * again by itself a minute or so later - or the player calls somebody out to
+ * it (Deliveryman#fix) and it is going in a few seconds.
  */
 import engine from "engine";
 import Events from "events";
@@ -14,7 +19,10 @@ import Config from "../config";
 import View from "../view";
 import RenderLayer from "../renderlayer";
 import Carman from "../carman";
+import Traffic from "../traffic";
 import Terrain from "core/terrain";
+import SmokeSource from "../components/smokesource";
+import SmokeScript from "../components/smokeScript";
 import Marker from "./marker";
 import Courier from "./courier";
 import Roads from "./roads";
@@ -23,12 +31,25 @@ import Orders from "./orders";
 
 var Phase = Courier.Phase;
 
-//the courier's car: a blue hatchback
+//the courier's car: a blue hatchback, as long and wide as one is
+//(shared/gen/vehicles) - in tiles
 var BODY = "hatchback",
-  COLOR = "blue";
+  COLOR = "blue",
+  LENGTH = 11 / 32,
+  WIDTH = 6 / 32;
 
 //how often the order, the markers and the board are looked at again, ms
 var CHECK_EVERY = 250;
+
+//how far the car drives between breakdowns, on average, in tiles - give or
+//take a lot: it is down to luck
+var BREAK_EVERY = 160,
+  //how long it stands broken down if nobody is called out to it, ms
+  BREAK_FOR = [45000, 75000],
+  //and how long fixing it takes once somebody is
+  FIX_TAKES = 4000,
+  //how often a puff of black smoke comes out of its engine meanwhile, ms
+  SMOKE_EVERY = 450;
 
 //how high over the ground the pin over a place floats, and the mark over the
 //car
@@ -37,77 +58,18 @@ var PIN_HEIGHT = Config.tileSize,
 
 var PICKUP_COLOR = "rgb(255,176,64)",
   DROPOFF_COLOR = "rgb(110,230,140)",
-  CAR_MARK_COLOR = "rgb(255,220,60)";
+  CAR_MARK_COLOR = "rgb(255,220,60)",
+  BROKEN_COLOR = "rgb(255,96,72)";
 
 var COS30 = Math.cos(Math.PI / 6);
+
+var position = new Float32Array(3);
 
 var events = {
   //anything the panel shows has changed: the phase of the order, the
   //board, the money
   change: 0,
 };
-
-/**
- * A route as the car drives it: its points, each in its lane, and how far
- * along it each one is, in tiles.
- */
-function Path(tiles) {
-  var points = tiles.length > 0 ? Carman.routeWaypoints(tiles, null) : [],
-    at = [0],
-    i;
-
-  for (i = 1; i < points.length; i++)
-    at.push(
-      at[i - 1] +
-        Math.abs(points[i].x - points[i - 1].x) +
-        Math.abs(points[i].y - points[i - 1].y),
-    );
-
-  this.tiles = tiles;
-  this.points = points;
-  this.at = at;
-  this.length = at[at.length - 1];
-}
-
-/**
- * Where on it the car is, done of the way along: {x, y, dx, dy}, dx and dy
- * the way it is going - both 0 when it is not going anywhere.
- */
-Path.prototype.position = function (done) {
-  var points = this.points,
-    at = this.at,
-    d = done * this.length,
-    i = 1;
-
-  if (points.length === 1)
-    return { x: points[0].x, y: points[0].y, dx: 0, dy: 0 };
-
-  while (i < points.length - 1 && at[i] < d) i++;
-
-  var a = points[i - 1],
-    b = points[i],
-    span = at[i] - at[i - 1],
-    f = span <= 0 ? 1 : Math.min(1, Math.max(0, (d - at[i - 1]) / span));
-
-  return {
-    x: a.x + (b.x - a.x) * f,
-    y: a.y + (b.y - a.y) * f,
-    dx: b.x - a.x,
-    dy: b.y - a.y,
-  };
-};
-
-/**
- * Which way it is drawn going (dx, dy), as the camera sees it - or null for
- * no way at all.
- */
-function headingOf(dx, dy) {
-  if (dx === 0 && dy === 0) return null;
-
-  return View.heading(
-    Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "x+" : "x-") : dy > 0 ? "y+" : "y-",
-  );
-}
 
 function CourierCarScript(man) {
   engine.Component.call(this);
@@ -116,8 +78,8 @@ function CourierCarScript(man) {
 
 CourierCarScript.prototype = Object.create(engine.Component.prototype);
 
-CourierCarScript.prototype.tick = function () {
-  this.man.frame(Date.now());
+CourierCarScript.prototype.tick = function (time) {
+  this.man.frame(Date.now(), time.dt);
 };
 
 function CourierCar(man) {
@@ -131,6 +93,9 @@ function CourierCar(man) {
   this.addComponent(renderer);
 
   this.addComponent(new CourierCarScript(man));
+
+  //its headlights, the way a car of the traffic has them (client/lighting)
+  this.car = { heading: null, type: null, lamp: 0 };
 }
 
 CourierCar.prototype = Object.create(engine.GameObject.prototype);
@@ -146,14 +111,17 @@ function Deliveryman(root) {
   this.mark = null;
   this.looks = null;
   this.heading = null;
-  //where the car was last drawn, in tiles - where it stays when it stops
+  //how it drives, among the traffic (client/traffic)
+  this.driver = null;
+  //the road tile it is driving to, or -1 while it stands
+  this.dest = -1;
+  //where the car was last drawn, in tiles
   this.x = 0;
   this.y = 0;
-  //the routes of the order on, as driven (Path), by its id
-  this._paths = null;
-  this._pathsOf = null;
   this._phase = null;
+  this._broken = false;
   this._sinceCheck = CHECK_EVERY;
+  this._sinceSmoke = 0;
   this._lastFrame = 0;
   //the pins over the restaurant and the customer of the order on, while
   //they are up
@@ -166,6 +134,7 @@ function Deliveryman(root) {
 
 Deliveryman.events = Deliveryman.prototype.events = events;
 Deliveryman.Phase = Phase;
+Deliveryman.FIX_TAKES = FIX_TAKES;
 
 /**
  * Whether there is anything to deliver in: a city, with roads the car can
@@ -196,16 +165,28 @@ Deliveryman.prototype.init = function () {
   this.looks = root.carman.looksOf(BODY, COLOR);
   this.car = new CourierCar(this);
   root.game.logic.world.addGameObject(this.car);
+  root.carman.extras.push(this.car);
   //found at a glance among the traffic, at night as well
   this.mark = new Marker("car", CAR_MARK_COLOR);
   root.game.scene.addGameObject(this.mark);
 
-  //where it is parked, until something says otherwise
-  var parked = parkedAt(this.courier.carTile());
-  this.x = parked.x;
-  this.y = parked.y;
+  var traffic = root.carman.traffic;
 
-  this.frame(Date.now());
+  this.driver = traffic.add(
+    new Traffic.Driver(traffic, LENGTH, WIDTH, {
+      nearEnd: function () {},
+      end: function () {
+        self.arrive();
+      },
+    }),
+  );
+  this.driver.v0 = Courier.SPEED;
+
+  //where it was left, pulled in at the kerb - and if it was on its way
+  //somewhere, it sets off again from there
+  standAt(this, this.courier.carTile());
+
+  this.frame(Date.now(), 0);
 };
 
 /**
@@ -229,15 +210,47 @@ function placeCar(self) {
   for (i = 0; i < buildings.length; i++)
     if (roads.inNetwork(buildings[i].tile)) network.push(buildings[i].tile);
 
-  courier.park(Roads.nearest(network, c.x, c.y));
+  courier.park(Roads.nearest(network, c.x, c.y), null);
 }
 
-//the middle of a road tile, in the lane of something parked going +x
-function parkedAt(tile) {
-  return {
-    x: Terrain.extractX(tile),
-    y: Terrain.extractY(tile) - Carman.LANE,
-  };
+/**
+ * Which way the car can face standing on tile: the way it faced there, if
+ * that is along the road - else along the road, whichever way it goes on.
+ */
+function facingOn(self, tile) {
+  var facing = self.courier.facing(),
+    next = self.roads.neighbours(tile, []),
+    x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    i;
+
+  //the road runs on that way, or back the other
+  for (i = 0; facing && i < next.length; i++) {
+    var dx = Terrain.extractX(next[i]) - x,
+      dy = Terrain.extractY(next[i]) - y;
+
+    if (
+      Math.abs(dx) === Math.abs(facing[0]) &&
+      Math.abs(dy) === Math.abs(facing[1])
+    )
+      return facing;
+  }
+
+  if (next.length === 0) return facing || [1, 0];
+
+  return [Terrain.extractX(next[0]) - x, Terrain.extractY(next[0]) - y];
+}
+
+//pulls the car in to the kerb on tile, standing there
+function standAt(self, tile) {
+  var d = facingOn(self, tile);
+
+  self.dest = -1;
+  self.driver.parkAt(tile, d);
+  self.root.carman.traffic.enter(self.driver);
+  self.courier.park(tile, d);
+  self.x = self.driver.x;
+  self.y = self.driver.y;
 }
 
 /**
@@ -277,7 +290,7 @@ Deliveryman.prototype.refreshBoard = function () {
 Deliveryman.prototype.accept = function (offerId) {
   var order = this.courier.accept(offerId, Date.now());
 
-  if (order !== null) this.frame(Date.now());
+  if (order !== null) this.frame(Date.now(), 0);
 
   return order;
 };
@@ -300,6 +313,40 @@ Deliveryman.prototype.collect = function () {
 };
 
 /**
+ * Calls somebody out to the car broken down: it is going again in a few
+ * seconds.
+ */
+Deliveryman.prototype.fix = function () {
+  this.courier.repair(Date.now(), FIX_TAKES);
+};
+
+/**
+ * Where the car is on the page, in page pixels - for something to be put up
+ * over it - or null when it is not on the screen.
+ */
+Deliveryman.prototype.carOnPage = function () {
+  var r = this.mark !== null ? this.mark.marker : null;
+
+  if (r === null || r.canvas === null || r.screenX === null) return null;
+
+  //the marks are drawn on a canvas of their own, laid over the one on the
+  //page pixel for pixel
+  var viewport = this.root.camera.cameraScript.gameObject.camera.viewport,
+    shown = viewport !== null ? viewport.canvas : null;
+
+  if (!shown || !r.canvas.width || !r.canvas.height) return null;
+
+  var rect = shown.getBoundingClientRect(),
+    kx = rect.width / r.canvas.width,
+    ky = rect.height / r.canvas.height;
+
+  return {
+    x: rect.left + r.screenX * kx,
+    y: rect.top + r.screenY * ky,
+  };
+};
+
+/**
  * Where the order is at now (Courier#status).
  */
 Deliveryman.prototype.status = function () {
@@ -310,34 +357,136 @@ Deliveryman.prototype.changed = function () {
   Events.fire(this, events.change, this);
 };
 
-function pathsOf(self, order) {
-  if (self._pathsOf !== order.id) {
-    self._paths = [new Path(order.legs[0]), new Path(order.legs[1])];
-    self._pathsOf = order.id;
-  }
+//where the order has the car go: the restaurant's road, then the
+//customer's - or -1 for nowhere, standing where it is
+function destination(status) {
+  var order = status.order;
 
-  return self._paths;
+  if (order === null) return -1;
+  if (status.phase === Phase.toRestaurant) return order.pickup.road;
+  if (status.phase === Phase.toCustomer) return order.dropoff.road;
+
+  return -1;
 }
 
 /**
- * Puts the car where it is at time now, and the camera on it - every frame.
- * Every so often it also looks at whether the order has moved on, and keeps
- * the markers and the board up to date.
+ * Sets off for tile from the kerb it stands at, once the lane is clear -
+ * straight on along the road first if it goes on, turning round if not.
+ * Already there, it has arrived.
  */
-Deliveryman.prototype.frame = function (now) {
-  var status = this.courier.status(now),
-    order = status.order,
-    pos;
+function setOff(self, to) {
+  var driver = self.driver,
+    here = driver.tile(),
+    d = [Math.round(driver.hx), Math.round(driver.hy)],
+    ahead = here + d[0] + d[1] * Terrain.dy,
+    route = [],
+    on;
 
-  if (order !== null) {
-    //standing at the restaurant or the door, it faces the way it came in
-    pos = pathsOf(this, order)[status.leg].position(status.legDone);
-  } else pos = { x: this.x, y: this.y, dx: 0, dy: 0 };
+  if (here === to) {
+    self.courier.arrived(Date.now());
+    return;
+  }
 
-  this.x = pos.x;
-  this.y = pos.y;
+  if (!driver.canPullOut()) return;
 
-  draw(this, headingOf(pos.dx, pos.dy));
+  if (
+    self.roads.neighbours(here, []).indexOf(ahead) !== -1 &&
+    (on = self.roads.route(ahead, to)).length > 0
+  )
+    route = [here].concat(on);
+  else route = self.roads.route(here, to);
+
+  //no way there any more: it is there as near as it can get
+  if (route.length < 2) {
+    self.courier.arrived(Date.now());
+    return;
+  }
+
+  self.dest = to;
+  driver.pullOut(route, true);
+}
+
+/**
+ * It got where it was going: pulled in at the kerb there.
+ */
+Deliveryman.prototype.arrive = function () {
+  var driver = this.driver;
+
+  this.dest = -1;
+  this.courier.park(driver.tile(), [
+    Math.round(driver.hx),
+    Math.round(driver.hy),
+  ]);
+  this.courier.arrived(Date.now());
+};
+
+//how many tiles of its way it still has to drive
+function tilesLeft(driver) {
+  var wps = driver.wps,
+    n = 0,
+    last = driver.tile(),
+    i;
+
+  for (i = driver.target; i < wps.length; i++)
+    if (wps[i].tile !== last) {
+      n++;
+      last = wps[i].tile;
+    }
+
+  return n;
+}
+
+/**
+ * Every frame: the order moved on by the clock; the car set off, driven, or
+ * broken down; and drawn where it is, the camera on it. Every so often it
+ * also looks at whether the order has moved on, and keeps the markers and
+ * the board up to date.
+ *
+ * @param dt {number} ms since the last frame
+ */
+Deliveryman.prototype.frame = function (now, dt) {
+  var courier = this.courier,
+    driver = this.driver;
+
+  if (driver === null) return;
+
+  courier.tick(now);
+
+  var status = courier.status(now),
+    broken = status.broken !== null,
+    to = destination(status);
+
+  driver.stalled = driver.broken = broken;
+
+  if (broken) smoke(this, dt);
+  else if (to !== -1 && this.dest !== to && driver.parked) setOff(this, to);
+
+  var x = driver.x,
+    y = driver.y;
+
+  driver.update(dt);
+
+  //on its way: how far it has to go, and every so often its engine gives
+  //out
+  if (this.dest !== -1 && !driver.parked) {
+    var moved = Math.abs(driver.x - x) + Math.abs(driver.y - y);
+
+    courier.progress(driver.tile(), tilesLeft(driver), [
+      Math.round(driver.hx),
+      Math.round(driver.hy),
+    ]);
+
+    if (!broken && moved > 0 && Math.random() < moved / BREAK_EVERY)
+      courier.breakDown(
+        now,
+        now + BREAK_FOR[0] + Math.random() * (BREAK_FOR[1] - BREAK_FOR[0]),
+      );
+  }
+
+  this.x = driver.x;
+  this.y = driver.y;
+
+  draw(this, View.heading(View.headingOf(driver.hx, driver.hy) || "x+"));
   showProgress(this, status);
 
   this._sinceCheck += now - (this._lastFrame || now);
@@ -349,6 +498,32 @@ Deliveryman.prototype.frame = function (now) {
   }
 };
 
+/**
+ * Black smoke out of the engine, as out of a car of the traffic broken down.
+ */
+function smoke(self, dt) {
+  var frame = self.looks !== null ? self.looks[self.heading] : null;
+
+  self._sinceSmoke += dt;
+
+  if (frame === null || frame === undefined || self._sinceSmoke < SMOKE_EVERY)
+    return;
+
+  self._sinceSmoke = 0;
+  self.car.transform.getPosition(position);
+
+  var at = frame.engine,
+    off = View.unvector(at[0], at[2]);
+
+  SmokeSource.puff(
+    self.car.world,
+    position[0] + off[0] * Config.tileSize,
+    position[1] + at[1] * Config.tileZStep,
+    position[2] + off[1] * Config.tileSize,
+    SmokeScript.soot,
+  );
+}
+
 function draw(self, heading) {
   var car = self.car;
 
@@ -356,7 +531,11 @@ function draw(self, heading) {
 
   heading = heading || self.heading || View.heading("x+");
 
-  if (heading !== self.heading && self.looks !== null) {
+  if (
+    heading !== self.heading &&
+    self.looks !== null &&
+    self.looks[heading] !== undefined
+  ) {
     var frame = self.looks[heading],
       renderer = car.spriteRenderer;
 
@@ -365,6 +544,7 @@ function draw(self, heading) {
     renderer.pivotY = frame.pivotY;
     renderer.setLit(null);
     self.heading = heading;
+    car.car.heading = heading;
   }
 
   var x = self.x * Config.tileSize,
@@ -392,6 +572,19 @@ function check(self, status, now) {
     self._phase = status.phase;
     pin(self, status);
     self.changed();
+  }
+
+  if ((status.broken !== null) !== self._broken) {
+    self._broken = status.broken !== null;
+    self.changed();
+  }
+
+  //the road under it gone: put back on the nearest there is, and on its
+  //way from there
+  if (!self.roads.isRoad(self.driver.tile())) {
+    courier.park(-1, null);
+    placeCar(self);
+    if (courier.carTile() !== -1) standAt(self, courier.carTile());
   }
 
   if (
@@ -453,7 +646,8 @@ function pin(self, status) {
 /**
  * The small bars of how far along things are: over the restaurant, the food
  * being cooked while the car is on its way; over the car, whatever it is
- * standing there for - the food, loading it, handing it over. And the pins
+ * standing there for - the food, loading it, handing it over, or being got
+ * going again after a breakdown. And the pins
  * kept clear of the panel at the bottom of the screen.
  */
 function showProgress(self, status) {
@@ -461,8 +655,17 @@ function showProgress(self, status) {
     stopped = phase === Phase.atRestaurant || phase === Phase.atDoor,
     bottom = (self.raise * 2) / self.root.camera.cameraScript.zoom();
 
-  if (self.mark !== null)
-    self.mark.marker.progress = stopped ? status.step : null;
+  //broken down, red over the car, and how long until it goes again
+  if (self.mark !== null) {
+    self.mark.marker.color =
+      status.broken !== null ? BROKEN_COLOR : CAR_MARK_COLOR;
+    self.mark.marker.progress =
+      status.broken !== null
+        ? status.broken.done
+        : stopped
+          ? status.step
+          : null;
+  }
 
   if (self.pickupPin !== null) {
     self.pickupPin.marker.progress =

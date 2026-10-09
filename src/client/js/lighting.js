@@ -346,6 +346,10 @@ var AIM = {
   "x-": [-1, 0],
   "y+": [0, 1],
   "y-": [0, -1],
+  "x+y+": [Math.SQRT1_2, Math.SQRT1_2],
+  "x-y+": [-Math.SQRT1_2, Math.SQRT1_2],
+  "x-y-": [-Math.SQRT1_2, -Math.SQRT1_2],
+  "x+y-": [Math.SQRT1_2, -Math.SQRT1_2],
 };
 
 //and the way behind it
@@ -361,7 +365,8 @@ Object.keys(AIM).forEach(function (heading) {
  * it - and the flash of a police car, all round.
  */
 function headlights(out, M, w, h, carman) {
-  var cars = carman ? carman.cars || [] : [];
+  //the traffic, and whatever else drives with it - the courier's car
+  var cars = carman ? (carman.cars || []).concat(carman.extras || []) : [];
 
   for (var i = 0; i < cars.length; i++) {
     var go = cars[i],
