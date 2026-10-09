@@ -332,6 +332,9 @@ function onBusyChange(sender, busy, self) {
 }
 
 function onClick(sender, e, self) {
+  //the delivery game has nothing to say about buildings (quiet)
+  if (self._quiet) return;
+
   //while an action owns the world (placing a building, clearing ground) the
   //clicks are that action's - it passes on the ones it has no use for
   if (self.root.ui.gameScreen().worldScreen().busy()) return;
@@ -360,6 +363,8 @@ function ServiceMan(root) {
   this._raised = [];
   //the words over the buildings put away (toggleLabels)
   this._labelsHidden = false;
+  //for good, and nothing shown for a click either (quiet)
+  this._quiet = false;
 }
 
 /**
@@ -410,7 +415,18 @@ ServiceMan.prototype.toggleLabels = function () {
  * Brings the words over the world back, if they were put away.
  */
 ServiceMan.prototype.showLabels = function () {
-  if (this._labelsHidden) this.toggleLabels();
+  if (this._labelsHidden && !this._quiet) this.toggleLabels();
+};
+
+/**
+ * Puts the words over the world away for good - what the buildings go
+ * without, the cities' names, the grid - and has clicks on buildings show
+ * nothing: for the delivery game, where the city is only the scene.
+ */
+ServiceMan.prototype.quiet = function () {
+  if (!this._labelsHidden) this.toggleLabels();
+
+  this._quiet = true;
 };
 
 /**
