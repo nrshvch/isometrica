@@ -358,8 +358,8 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the
   street it stands on.
-- The game's clock moves on five minutes every second (`src/core/vtime.js`),
-  a day going by in under five minutes.
+- The game's clock moves on a minute every second (`src/core/vtime.js`), a
+  day going by in 24 minutes.
 - The game is drawn at most 30 frames a second (`vendor/engine/game.js`),
   and holds still - its clock and its drawing - while the page is out of
   sight (`src/client/js/vkaria.js`).
