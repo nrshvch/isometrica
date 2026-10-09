@@ -19,11 +19,13 @@ game with `?edit` in the address (`/?edit#/<city id>`) for it.
   (`CameraScript#follow`).
 - While the car stands free, a board of orders is up
   (`src/ui/modules/delivery`): what to pick up where, where it goes, how long
-  the whole run takes and what it pays. A board is put up from where the car
-  stands and replaced every three minutes, and after every delivery.
-- Taking an order sends the car to the restaurant, where it waits for the
-  food if it is not ready yet and loads it - four seconds, once both are
-  there - then over to the customer, where it is handed over in five. A pin
+  the whole run would take on empty roads and what it pays. A board is put
+  up from where the car stands and replaced every three minutes, and after
+  every delivery.
+- Taking an order sends the car to the restaurant, where it pulls in to the
+  kerb, out of the traffic's way, waits for the food if it is not ready yet
+  and loads it - four seconds, once both are there - then over to the
+  customer, where it pulls in again and the food is handed over in five. A pin
   floats over the restaurant and one over the customer, each with what the
   place is in it (`src/client/js/delivery/marker.js`), waiting at the edge of
   the screen, pointing, while the place is off it; nothing is laid on the
@@ -39,12 +41,21 @@ game with `?edit` in the address (`/?edit#/<city id>`) for it.
     a quick bite is over in a minute or two, dinner in two or three, groceries
     out of the stores in a few more, and an office's lunch takes a quarter of
     an hour to cook and pays the most for every minute of it.
-- Everything about an order goes by the clock on the wall, not the game's
-  (`src/client/js/delivery/courier.js`): it is a timeline laid down when it is
-  taken, and where the car is and what it is doing is worked out from that
-  and the time it is now. So it goes on with the game closed: come back
-  later and the car is where it would have got to, or the order is delivered
-  and its money waiting.
+- The car really drives there, in the city's traffic
+  (`src/client/js/delivery/deliveryman.js`, `src/client/js/traffic.js`): as
+  fast as the roads let it, so an order takes as long as the queues at the
+  junctions, the slow lorry in front and the car broken down in the way make
+  it - the times the panel shows ahead of the car are what is left at the
+  speed it would make on empty roads, and come out later in traffic. The
+  rest goes by the clock on the wall (`src/client/js/delivery/courier.js`):
+  the food cooks from the moment the order is taken, and loading and handing
+  over take what they take, with the game closed too. The drive itself only
+  goes on while the game is open; the car is kept where it had got to.
+- Every so often the car's own engine gives out on the way - about once in
+  every 160 tiles it drives, at random. It stands where it is, smoking, the
+  traffic going round it, for a minute or so before it goes again by
+  itself; or the player clicks the Fix button that comes up over it (or the
+  one in the panel), and it is going again in four seconds.
 - The places come out of the buildings standing in the city
   (`src/client/js/delivery/places.js`): the small shops are restaurants -
   burgers, pizza, sushi, noodles, kebabs, tacos - the stores and markets sell
@@ -52,13 +63,52 @@ game with `?edit` in the address (`/?edit#/<city id>`) for it.
   is what it is by the tile it stands on, so the same building is always the
   same restaurant and the same customer, and the car pulls up on the road
   alongside it nearest its middle.
-- The car drives the city's roads the way the traffic does, keeping to its
-  lane, but over every road there is rather than the ones loaded on screen
-  (`src/client/js/delivery/roads.js`): two join where they meet level
-  (`Surface.meets`).
+- The car's way is found over every road there is rather than the ones
+  loaded on screen (`src/client/js/delivery/roads.js`): two join where they
+  meet level (`Surface.meets`).
 - The courier - money, the car, the order on and the board - is saved in a
   storage row of its own, `isometrica.v3.courier.<city id>`, next to the
   city's save.
+
+### Traffic
+
+- Everything on the roads drives the same way (`src/client/js/traffic.js`):
+  in its lane, on the right, looking a couple of tiles along its way for
+  whatever is on it. It brakes to keep a gap that grows with its speed and
+  speeds up again a little at a time, so a queue sets off one car after
+  another rather than all at once, and nothing ever drives through anything
+  else.
+- A junction - a road tile joined three or four ways - is taken a turn at a
+  time. The first car in each lane asks for it on the way up, and goes in
+  once nothing in it crosses its way (straight across, or a left turn
+  across what comes the other way), nobody who has waited longer for a way
+  that crosses it is ready, and there is room on the far side to come out
+  into - nobody stops in the middle of a junction. Junctions next to each
+  other are asked for together. So queues back up from a busy junction,
+  into the junction behind it, and clear the way a jam does.
+- There is a car for every four road tiles loaded through the day, and more
+  in the rush hours - about one for every two and a half at eight in the
+  morning and five in the evening (`src/client/js/carman.js`). In the
+  morning the light cars set out from the houses and are done when they get
+  to work, in the evening the other way round; afterwards the ones more
+  than the hour wants are done when they get where they are going. A car
+  that has waited a minute in a queue that does not move turns off out of
+  sight and is put on some other road - a queue behind a breakdown waits
+  for it.
+- A car breaks down every so often and stands, smoking, for a while. The
+  traffic behind it queues; the first car to get to it goes round it
+  through the other lane, once that is clear well ahead and there is no
+  junction in the way, and the next only when that one is back in its lane.
+- The buses run between the bus stops (a stop is a road with a shelter on
+  each pavement, `src/shared/gen/roads.js`; `Road#isStop`), each a round of a
+  few stops near each other, pulling in to the kerb at each for a few
+  seconds and out again when the lane behind is clear. There is a bus for
+  every two stops loaded, and none at night. The city a new player starts
+  on has a few stops on its streets; a city with none is given a few as it
+  is opened, on straight streets with something built along them.
+- Cars are painted eight ways round: along x and y and half way between,
+  which is how they cut the corner turning at a junction, swing round to
+  turn back, pull in to the kerb and pull out round a car broken down.
 
 ### Live demo
 

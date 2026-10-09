@@ -22,6 +22,9 @@ function spriteOf(id) {
   var shape = id % Road_PAVED,
     kind = KINDS[Math.floor(id / Road_PAVED)] || "plain";
 
+  //a bus stop is laid as a street is; its shelter and sign stand on it
+  if (kind === "stop") kind = "paved";
+
   if (shape < 10) return "gen/roads/" + kind + "/ramp" + View.ramp(shape);
 
   return "gen/roads/" + kind + "/" + seenJoins(shape).join("");
@@ -56,6 +59,41 @@ function lightOf(id, tile) {
   );
 }
 
+//which side of a tile, -x, -y, +x, +y, a way along the ground goes through
+var SIDE_OF = { "-1,0": 0, "0,-1": 1, "1,0": 2, "0,1": 3 };
+
+/**
+ * Where a bus stop has its shelters, if piece id is one: on the pavements
+ * either side of the road - as the sides they are seen on, the camera
+ * turned. Null for anything else, or a stop that is not a straight piece of
+ * road.
+ */
+function stopOf(id) {
+  var shape = id % Road_PAVED;
+
+  if (KINDS[Math.floor(id / Road_PAVED)] !== "stop" || shape < 10) return null;
+
+  var j = [
+      Math.floor(shape / 1000) % 10,
+      Math.floor(shape / 100) % 10,
+      Math.floor(shape / 10) % 10,
+      shape % 10,
+    ],
+    alongX = (j[0] || j[2]) && !j[1] && !j[3],
+    alongY = (j[1] || j[3]) && !j[0] && !j[2];
+
+  if (!alongX && !alongY) return null;
+
+  var side = alongX ? [0, -1] : [-1, 0],
+    seen = View.vector(side[0], side[1]),
+    k = SIDE_OF[seen[0] + "," + seen[1]];
+
+  return [
+    "gen/roads/stop/shelter" + k,
+    "gen/roads/stop/shelter" + ((k + 2) % 4),
+  ];
+}
+
 //a sprite of the generator's, its pivot where its tile's middle is
 function setPiece(renderer, name) {
   var frame = vkaria.sprites.frame(name);
@@ -67,7 +105,7 @@ function setPiece(renderer, name) {
 //added to a road's piece number for the paved one (see Road.profile) - and
 //twice and three times over for gravel and for cobbles: what it is laid in
 var Road_PAVED = 100000,
-  KINDS = ["plain", "paved", "gravel", "cobble"];
+  KINDS = ["plain", "paved", "gravel", "cobble", "stop"];
 
 function BuildingView() {
   this.gameObject = new engine.GameObject("building");
@@ -112,6 +150,14 @@ function draw(view, id, surface) {
     pool = light !== null ? addLight(go, light) : null;
 
   addBase(go, tile, surface, 1, layer, sink);
+
+  //a bus stop's shelters, among the buildings and the cars
+  var stop = stopOf(id);
+
+  if (stop !== null)
+    stop.forEach(function (name) {
+      addStand(go, name);
+    });
 
   place(go, tile, surface);
 
@@ -231,6 +277,23 @@ function addLight(parent, name) {
   return lampAt(name.split("/").pop());
 }
 
+//hangs something standing on a road's pavement under parent - a bus stop's
+//shelter - where it stands (standPole)
+function addStand(parent, name) {
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer(),
+    roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    key = name.split("/").pop(),
+    at = roads && roads.stops ? roads.stops[key] : null;
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  part.addComponent(sprite);
+  setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+
+  if (at) standAt(part, sprite, at);
+}
+
 /**
  * Puts a street light where its pole stands on the tile, the roads'
  * generator says (shared/gen/roads poleAt) - its picture kept where it was
@@ -241,8 +304,14 @@ function standPole(part, sprite, at) {
   var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
     pole = roads && roads.poles ? roads.poles[at] : null;
 
-  if (!pole) return;
+  if (pole) standAt(part, sprite, pole);
+}
 
+/**
+ * Puts part where pole - x, y on its tile as it is painted - is, its picture
+ * kept where it was painted: it is sorted among the cars by where it stands.
+ */
+function standAt(part, sprite, pole) {
   //how far from the middle of the tile, as it is seen, a pixel a unit
   var dx = pole[0] - 16,
     dy = pole[1] - 16,

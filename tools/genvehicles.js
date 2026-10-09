@@ -4,8 +4,8 @@
  * change to the painting on before the game gets it.
  *
  * vehicles.png has a row for every body type: each colour it comes in, each
- * way it drives (x+, x-, y+, y-), and then the lit bits laid over it, one
- * picture per flash. vehicles.json is everything else the painting worked
+ * way it drives (x+, x-, y+, y-, and half way between), and then the lit bits
+ * laid over it, one picture per flash. vehicles.json is everything else the painting worked
  * out - speeds, pivots, where the smoke comes out - as the game gets it.
  *
  * Usage:

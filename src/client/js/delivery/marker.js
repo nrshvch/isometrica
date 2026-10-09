@@ -49,6 +49,11 @@ MarkerRenderer.prototype.hidden = false;
 //px at the bottom of the screen a pin off it keeps clear of - the panel
 //over it (ui/modules/delivery)
 MarkerRenderer.prototype.bottom = 0;
+//where it was last drawn: on what canvas, and where on it - for something
+//on the page to be put over it (client/delivery Deliveryman#carOnPage)
+MarkerRenderer.prototype.canvas = null;
+MarkerRenderer.prototype.screenX = null;
+MarkerRenderer.prototype.screenY = null;
 
 //a pin off the screen is still drawn, at the edge of it
 MarkerRenderer.prototype.cullingTest = function (viewport, renderer) {
@@ -124,6 +129,10 @@ MarkerRenderer.prototype.render = function (ctx, renderer) {
 
   var x = Math.round(at[0]),
     y = Math.round(at[1]);
+
+  this.canvas = ctx.canvas;
+  this.screenX = x;
+  this.screenY = y;
 
   ctx.save();
 

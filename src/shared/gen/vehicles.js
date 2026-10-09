@@ -8,9 +8,10 @@
  * shaded by which way the face it hits looks. So all of them are lit the same,
  * and every body type comes out in every colour without anybody drawing it.
  *
- * A vehicle is painted four times, once for each way it can drive: along x or
- * y, towards + or -. Unlike a mirrored picture, a truck driving away still has
- * its cab in front and the light still comes from the same side.
+ * A vehicle is painted eight times, once for each way it can drive: along x
+ * or y, towards + or -, and the four ways half way between, for cutting a
+ * corner or pulling over. Unlike a mirrored picture, a truck driving away
+ * still has its cab in front and the light still comes from the same side.
  *
  * Units: one along the ground is one pixel across the screen - a tile is 32 of
  * them each way, a road about 20 wide, a lane 10. Heights are in pixels.
@@ -494,20 +495,50 @@ var TYPES = {
   },
 };
 
-//the four ways a vehicle drives, and where its own frame lies in the world
+//the eight ways a vehicle drives, and where its own frame lies in the world:
+//along x or y, and the four ways half way between - those turned by an
+//angle, anticlockwise from +x seen from above (+y is a quarter turn round)
 var DIRECTIONS = {
   "x+": { alongX: true, forward: true },
   "x-": { alongX: true, forward: false },
   "y+": { alongX: false, forward: true },
   "y-": { alongX: false, forward: false },
+  "x+y+": { angle: Math.PI / 4 },
+  "x-y+": { angle: (3 * Math.PI) / 4 },
+  "x-y-": { angle: (-3 * Math.PI) / 4 },
+  "x+y-": { angle: -Math.PI / 4 },
 };
 
 /**
  * The boxes in world axes, for a vehicle of this length and width going that
  * way with its middle at the origin. Its front is at the end it is going to;
  * its left side is to the left of the way it is going.
+ *
+ * Going one of the ways half way between x and y, a box is no longer square
+ * to the world: the boxes are given in the vehicle's own frame - f forward
+ * from its middle, s to its left, in x and y - and the array carries the
+ * angle that frame is turned by (rot), for cast and measure to turn the
+ * world into it.
  */
 function place(boxes, length, width, dir) {
+  if (dir.angle !== undefined) {
+    var turned = boxes.map(function (b) {
+      return {
+        x0: length / 2 - b.l1,
+        x1: length / 2 - b.l0,
+        y0: width / 2 - b.w1,
+        y1: width / 2 - b.w0,
+        z0: b.z0,
+        z1: b.z1,
+        color: b.color,
+      };
+    });
+
+    turned.rot = dir.angle;
+
+    return turned;
+  }
+
   return boxes.map(function (b) {
     //along the way it goes, front first
     var a0 = dir.forward ? length / 2 - b.l1 : b.l0 - length / 2,
@@ -541,14 +572,25 @@ var TILE = 32,
  * the land, the way a building gives where its chimney smokes.
  */
 function placePoint(p, length, width, dir) {
-  var b = place(
-    [box(p[0], p[0], p[1], p[1], p[2], p[2])],
-    length,
-    width,
-    dir,
-  )[0];
+  var placed = place(
+      [box(p[0], p[0], p[1], p[1], p[2], p[2])],
+      length,
+      width,
+      dir,
+    ),
+    b = placed[0],
+    x = b.x0,
+    y = b.y0;
 
-  return [round(b.x0 / TILE), round(b.z0 / STEP), round(b.y0 / TILE)];
+  if (placed.rot !== undefined) {
+    var c = Math.cos(placed.rot),
+      s = Math.sin(placed.rot);
+
+    x = b.x0 * c - b.y0 * s;
+    y = b.x0 * s + b.y0 * c;
+  }
+
+  return [round(x / TILE), round(b.z0 / STEP), round(y / TILE)];
 }
 
 function round(v) {
@@ -575,6 +617,8 @@ function shade(color, face) {
  * (1, 1, -1), which is what every point that lands on the same pixel lies on.
  */
 function cast(boxes, sx, sy) {
+  if (boxes.rot !== undefined) return castTurned(boxes, sx, sy);
+
   //a point on the ray, well in front of everything
   var y = -100,
     x = y + sx,
@@ -625,15 +669,115 @@ function cast(boxes, sx, sy) {
 
   hitColor = hit === null ? null : hit.color;
   hitFace = face;
+  hitNormal = face === 0 ? [-1, 0, 0] : face === 1 ? [0, -1, 0] : [0, 0, 1];
   hitZ = hit === null ? 0 : z - best;
 
   return hit === null ? null : shade(hit.color, face);
 }
 
-//what the last ray cast hit: its colour, and the face it went in through
+//what the last ray cast hit: its colour, the face it went in through - and
+//which way that face looks in the world
 var hitColor = null,
   hitFace = -1,
+  hitNormal = [0, 0, 1],
   hitZ = 0;
+
+/**
+ * The entry and exit of a ray along one axis of a box: the ray at o going d
+ * along it, the box from b0 to b1. [tin, tout], or null when it never goes
+ * between them.
+ */
+function slab(o, d, b0, b1) {
+  if (Math.abs(d) < 1e-9)
+    return o >= b0 && o <= b1 ? [-Infinity, Infinity] : null;
+
+  var t0 = (b0 - o) / d,
+    t1 = (b1 - o) / d;
+
+  return t0 < t1 ? [t0, t1] : [t1, t0];
+}
+
+/**
+ * cast, for boxes given in a vehicle's own frame turned by boxes.rot (see
+ * place): the ray is turned into that frame instead, and the face it goes in
+ * through turned back out to see which way it looks.
+ */
+function castTurned(boxes, sx, sy) {
+  var y = -100,
+    x = y + sx,
+    z = -(x + y) / 2 - sy,
+    c = Math.cos(boxes.rot),
+    s = Math.sin(boxes.rot),
+    //the point and the ray's way, (1, 1, -1), in the vehicle's frame
+    of = x * c + y * s,
+    os = -x * s + y * c,
+    df = c + s,
+    ds = c - s,
+    best = Infinity,
+    hit = null,
+    axis = -1,
+    i,
+    b,
+    f,
+    w,
+    tin,
+    tout,
+    a;
+
+  for (i = 0; i < boxes.length; i++) {
+    b = boxes[i];
+    f = slab(of, df, b.x0, b.x1);
+    if (f === null) continue;
+    w = slab(os, ds, b.y0, b.y1);
+    if (w === null) continue;
+
+    tin = f[0];
+    a = 0;
+    if (w[0] > tin) {
+      tin = w[0];
+      a = 1;
+    }
+    //down the ray z falls, so the top is gone into first
+    if (z - b.z1 > tin) {
+      tin = z - b.z1;
+      a = 2;
+    }
+    tout = Math.min(f[1], w[1], z - b.z0);
+
+    if (tin < tout && tin < best) {
+      best = tin;
+      hit = b;
+      axis = a;
+    }
+  }
+
+  var normal;
+
+  if (axis === 0) normal = df > 0 ? [-c, -s, 0] : [c, s, 0];
+  else if (axis === 1) normal = ds > 0 ? [s, -c, 0] : [-s, c, 0];
+  else normal = [0, 0, 1];
+
+  hitColor = hit === null ? null : hit.color;
+  hitFace = axis === 2 ? 2 : normal[1] < normal[0] ? 1 : 0;
+  hitNormal = normal;
+  hitZ = hit === null ? 0 : z - best;
+
+  return hit === null ? null : shadeNormal(hit.color, normal);
+}
+
+/**
+ * shade, for a face that looks any way along the ground: as dark as a face
+ * looking -x is for as much as it looks that way, and as one looking -y for
+ * as much as it looks that way.
+ */
+function shadeNormal(color, n) {
+  if (n[2] > 0.5) return shade(color, 2);
+
+  var k =
+    (n[0] < 0 ? n[0] * n[0] * 0.1 : 0) + (n[1] < 0 ? n[1] * n[1] * 0.3 : 0);
+
+  return darker(color, k);
+}
 
 /**
  * @param boxes {object[]}
@@ -649,6 +793,9 @@ function measure(boxes) {
     maxX = -Infinity,
     minY = Infinity,
     maxY = -Infinity,
+    turned = boxes.rot !== undefined,
+    c = turned ? Math.cos(boxes.rot) : 1,
+    s = turned ? Math.sin(boxes.rot) : 0,
     corners,
     p;
 
@@ -664,8 +811,10 @@ function measure(boxes) {
       [b.x1, b.y1, b.z1],
     ];
 
-    corners.forEach(function (c) {
-      p = project(c[0], c[1], c[2]);
+    corners.forEach(function (k) {
+      p = turned
+        ? project(k[0] * c - k[1] * s, k[0] * s + k[1] * c, k[2])
+        : project(k[0], k[1], k[2]);
       minX = Math.min(minX, p[0]);
       maxX = Math.max(maxX, p[0]);
       minY = Math.min(minY, p[1]);
@@ -726,7 +875,7 @@ function renderDeferred(boxes) {
       var c = cast(boxes, at.x + i + 0.5, at.y + j + 0.5);
 
       colors.push(c === null ? null : shade(hitColor, 2));
-      faces.push(hitFace);
+      faces.push(hitNormal);
     }
 
   var out = Looks.blank(w, h, Looks.DEFERRED);
@@ -740,16 +889,7 @@ function renderDeferred(boxes) {
       y = (n / w) | 0;
 
     Looks.put(out, w, 0, x, y, c);
-    Looks.put(
-      out,
-      w,
-      1,
-      x,
-      y,
-      Looks.normal(
-        faces[n] === 0 ? [-1, 0, 0] : faces[n] === 1 ? [0, -1, 0] : [0, 0, 1],
-      ),
-    );
+    Looks.put(out, w, 1, x, y, Looks.normal(faces[n]));
   });
 
   return out;
@@ -793,7 +933,7 @@ function outline(pixels, w, h) {
  *          vehicle, on the ground; types, every body type by name, with how
  *          fast it drives next to a car (1) and how often it turns up next to
  *          the others, and for each colour and each way it drives (x+, x-, y+,
- *          y-) the name of its picture, its pivot and where smoke comes out:
+ *          y-, x+y+...) the name of its picture, its pivot and where smoke comes out:
  *          engine and tailpipe, each [x, z, y] off its middle - along x, up
  *          and along y, in tiles and steps of the land, like a building's
  *          smokeSource. The tailpipe puffs as it drives, the engine smokes
@@ -853,7 +993,14 @@ function walk(see) {
   Object.keys(TYPES).forEach(function (type) {
     var t = TYPES[type];
 
-    types[type] = { speed: t.speed, weight: t.weight, colors: {} };
+    types[type] = {
+      speed: t.speed,
+      weight: t.weight,
+      //how long and how wide it is, in units - a tile is 32
+      length: t.length,
+      width: t.width,
+      colors: {},
+    };
 
     //a machine for building sites - never sent out into the traffic
     if (t.street === false) types[type].street = false;

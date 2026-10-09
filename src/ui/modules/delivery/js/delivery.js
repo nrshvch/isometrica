@@ -3,10 +3,14 @@
  * the car stands free, and the order on - where to, what, how far along, and
  * the money to collect once it is handed over.
  *
- * What it shows goes by the clock on the wall (client/delivery/courier), so
- * it is looked at a few times a second: the bar and the times are moved
- * along in place, and the whole of it drawn again only when there is
- * something else to show.
+ * What it shows moves on as the car drives and the clock goes round
+ * (client/delivery/courier), so it is looked at a few times a second: the
+ * bar and the times are moved along in place, and the whole of it drawn
+ * again only when there is something else to show.
+ *
+ * When the car breaks down, a button goes up over it to call somebody out to
+ * fix it (client/delivery Deliveryman#fix) - kept over the car every frame
+ * while it is up.
  */
 import Backbone from "backbone";
 import Handlebars from "handlebars";
@@ -69,6 +73,7 @@ var View = Backbone.View.extend({
   events: {
     "click .take": "take",
     "click .collect": "collect",
+    "click .fix": "fix",
   },
 
   initialize: function (options) {
@@ -121,14 +126,15 @@ var View = Backbone.View.extend({
       context.offers = courier.offers().map(function (offer) {
         return $.extend({}, offer, {
           itemsText: itemsText(offer.items),
-          timeText: duration(offer.estimate),
+          //on empty roads: the traffic will have its say
+          timeText: "~" + duration(offer.estimate),
           payText: money(offer.pay),
         });
       });
 
     if (context.active) {
       var order = status.order,
-        t = order.times;
+        t = status.times;
 
       context.order = $.extend({}, order, {
         itemsText: itemsText(order.items),
@@ -173,16 +179,30 @@ var View = Backbone.View.extend({
     }
 
     var order = status.order,
-      delivered = status.phase === "delivered";
+      delivered = status.phase === "delivered",
+      broken = status.broken;
 
-    $(".phase", this.$el).text(PHASES[status.phase](order, status));
+    $(".phase", this.$el).text(
+      broken !== null
+        ? broken.fixing
+          ? "Getting the car going…"
+          : "Broken down!"
+        : PHASES[status.phase](order, status),
+    );
+    $(".breakdown", this.$el).toggle(broken !== null);
+    if (broken !== null)
+      $(".breakdown .when", this.$el).text(
+        (broken.fixing ? "going in " : "going again by itself in ") +
+          duration(broken.left),
+      );
+    $(".breakdown .fix", this.$el).toggle(broken !== null && !broken.fixing);
     $(".bar .fill", this.$el).css("width", status.done * 100 + "%");
     $(".left", this.$el).text(
-      delivered ? "" : duration(status.left) + " to go",
+      delivered ? "" : "~" + duration(status.left) + " to go",
     );
     var phase = status.phase,
       pickingUp = phase === "toRestaurant" || phase === "atRestaurant",
-      t = order.times;
+      t = status.times;
 
     //at the restaurant: the food cooking, then loading it
     $(".stop.pickup .when", this.$el).text(
@@ -206,7 +226,7 @@ var View = Backbone.View.extend({
     //at the customer's: the drive over, then handing it over
     $(".stop.dropoff .when", this.$el).text(
       phase === "toCustomer"
-        ? "in " + duration(t.arriveCustomer - now)
+        ? "in ~" + duration(t.arriveCustomer - now)
         : phase === "atDoor"
           ? "handing over…"
           : delivered
@@ -242,7 +262,63 @@ var View = Backbone.View.extend({
     this.man().collect();
     this.render();
   },
+
+  fix: function () {
+    this.man().fix();
+    this.tick();
+  },
 });
+
+/**
+ * The button over the car broken down, to call somebody out to it - kept
+ * over the car as it is drawn, while it is broken down and nobody is called.
+ */
+function FixPopup(view) {
+  var self = this;
+
+  this.view = view;
+  this.$el = $(
+    "<button class='fix-popup' title='Call somebody out to fix it'>" +
+      "<span class='icon'>🔧</span> Fix</button>",
+  );
+  //among the rest of the game's page, for its styles
+  var page = $(".game-ui").first();
+
+  this.$el.hide().appendTo(page.length > 0 ? page : document.body);
+  this.$el.on("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    view.fix();
+  });
+  //the game takes the pointer going down on the canvas; this is not it
+  this.$el.on("mousedown touchstart", function (e) {
+    e.stopPropagation();
+  });
+
+  function frame() {
+    self.place();
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+FixPopup.prototype.place = function () {
+  var man = this.view.man(),
+    courier = man.courier,
+    b = courier !== null ? courier.breakdown() : null,
+    at = b !== null && !b.fixing ? man.carOnPage() : null;
+
+  if (at === null || document.hidden) {
+    this.$el.hide();
+    return;
+  }
+
+  this.$el.show().css({
+    left: Math.round(at.x) + "px",
+    top: Math.round(at.y - 34) + "px",
+  });
+};
 
 /**
  * @param client {Vkaria}
@@ -252,6 +328,7 @@ function DeliveryPanel(client) {
 
   this.client = client;
   this.view = new View({ controller: this });
+  this.fixPopup = new FixPopup(this.view);
 
   Events.on(client.deliveryman, client.deliveryman.events.change, function () {
     self.view.tick();
