@@ -177,7 +177,10 @@ function canDrive(root, from, dir) {
     axis = dir[0] !== 0 ? 1 : 2;
 
   return (
+    //a road there, and still one where it is - the roads go as the part of
+    //the map they are on is let go of
     root.roadman.getRoad(to) !== null &&
+    root.roadman.getRoad(from) !== null &&
     (roadAxes(root, from) & axis) !== 0 &&
     (roadAxes(root, to) & axis) !== 0 &&
     //only where the two roads meet level - never over a step, nor off the
@@ -186,7 +189,10 @@ function canDrive(root, from, dir) {
       root.roadman.getRoad(from).surface(),
       SIDE_OF[dir[0] + "," + dir[1]],
       root.roadman.getRoad(to).surface(),
-    )
+    ) &&
+    //and never against the way a one-way road goes
+    Road.goes(root.roadman.getRoad(from), SIDE_OF[dir[0] + "," + dir[1]]) &&
+    Road.goes(root.roadman.getRoad(to), SIDE_OF[dir[0] + "," + dir[1]])
   );
 }
 
