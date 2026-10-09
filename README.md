@@ -303,6 +303,17 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   town comes out cobbled (`src/client/js/road.js` materialAt). What a road
   is laid in is kept with it, in the save; a road from before is asphalt,
   paved or plain as above.
+- Then whether it goes both ways or one way only. A one-way road looks and
+  is driven like any other, cars keeping to their lane, but nothing goes
+  against it: no car drives along it the other way, into it or out of it,
+  though one can come into it from a side road and go the way it goes, and
+  leave it at a junction. It goes the way it is dragged, from the end it
+  was started at on to the finger and on round every corner on the way;
+  the turn button turns it round (`src/client/js/buildman.js` flowOf). Each
+  tile of it keeps the way it goes in the save (`src/client/js/road.js`
+  wayOf, goes). Its straight pieces have no line down the middle but an
+  arrow the way it goes - white on asphalt, darker stones on gravel, pale
+  ones among cobbles - and its ramps no dashes.
 - The catalogue offers only what is painted: the hand-drawn houses, shops,
   offices, flats, town hall, trees and cliff are kept for the cities that
   already have them, but no longer offered.

@@ -419,12 +419,15 @@ Road.plan = function (terrain, roadman, tiles, run) {
  * @param net {{surface: function(number)}} the roads' surfaces (Road.network)
  * @param [kind] {boolean|string} what it is laid in: "plain" or "paved"
  *        asphalt - or true for paved - "gravel" or "cobble"
+ * @param [way] {number} for a one-way road, the way its traffic goes
+ *        (Road.wayOf); none, or -1, for a road driven both ways
  * @returns {number} the piece: 9abcd for one joined up towards -x, -y, +x and
  *          +y as the digits say, 1..4 for a ramp, 1 up towards -y, 2 -x, 3 +y
  *          and 4 +x, RoadView.PAVED more for the paved one, twice and three
- *          times that for gravel and cobbles - see RoadView
+ *          times that for gravel and cobbles - and for a one-way road
+ *          Road.ONE_WAY more for each of way + 1 - see RoadView
  */
-Road.profile = function (tile, net, kind) {
+Road.profile = function (tile, net, kind, way) {
   var surface = net.surface(tile),
     id = Road.shapeOf(surface);
 
@@ -438,7 +441,48 @@ Road.profile = function (tile, net, kind) {
 
   if (kind === true) kind = "paved";
 
-  return id + Math.max(0, RoadView.KINDS.indexOf(kind)) * RoadView.PAVED;
+  return (
+    id +
+    Math.max(0, RoadView.KINDS.indexOf(kind)) * RoadView.PAVED +
+    (way >= 0 ? (way + 1) * Road.ONE_WAY : 0)
+  );
+};
+
+/*
+ * A one-way road is driven only the one way: each tile of it keeps the way
+ * its traffic goes - one of its sides, -x, -y, +x, +y as 0..3 - in its look,
+ * as it was laid (look.way). Nothing goes the other way along it - not out of
+ * it, not into it - though a car can come into it from the side and turn the
+ * way it goes, and leave it to the side where it can. A run is laid the way
+ * the player drags it, a corner tile going the way it was come into
+ * (client/buildman), so the traffic goes on round the corner and never back.
+ */
+
+//added to a road's piece number for each of the way it goes + 1 (see
+//Road.profile)
+Road.ONE_WAY = 1000000;
+
+/**
+ * The way a one-way road's traffic goes, from its core model - 0..3 for -x,
+ * -y, +x, +y - or -1 for a road driven both ways.
+ */
+Road.wayOf = function (data) {
+  var way = data && data.look ? data.look.way : undefined;
+
+  return way === 0 || way === 1 || way === 2 || way === 3 ? way : -1;
+};
+
+/**
+ * Whether a car can go out of a road, or into it, going towards side - 0..3
+ * for -x, -y, +x, +y: always on a road driven both ways, and on a one-way
+ * road anything but against the way it goes.
+ *
+ * @param road {Road}
+ */
+Road.goes = function (road, side) {
+  var way = Road.wayOf(road.data);
+
+  return way < 0 || way === side || way % 2 !== side % 2;
 };
 
 /**
@@ -503,6 +547,7 @@ Road.prototype.updateProfile = function () {
       this.data.tile,
       Road.network(roadman),
       Road.kindOf(roadman, this.data),
+      Road.wayOf(this.data),
     );
 
   //the same piece as it was: nothing to draw again
