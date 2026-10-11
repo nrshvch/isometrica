@@ -6,19 +6,55 @@ Keeping it alive for historical reference only.
 
 ![Isoville](public/miniville.gif)
 
+### Two games, one city
+
+There are two games played in the same city, out of the one codebase, each a
+page of its own:
+
+- `/` (`src/index.html`) - the city builder: found a city, build it, lay its
+  roads, shape the ground and buy land.
+- `/delivery.html` (`src/delivery.html`) - the delivery game: the player is
+  a courier with a car, and the city is only the scene.
+
+Everything the city is - the world, the terrain, the buildings, the roads,
+the traffic, the lighting, the generators - is shared (`src/core`,
+`src/client/js`, `src/ui`, `src/shared`). What is a game's own lives in
+`src/games/<game>`: its page's entry (`main.js`), what it is
+(`game.js` - how long a tick of its clock is, what its saves are kept
+under, its screens, what goes over the world and in the top bar), its own
+part of the world (`play.js`, loaded with it) and its own styles. The city
+builder's catalogue, city screen, building tools, land and ground shaping
+are in `src/games/builder`; the courier, the orders and the courier's panel
+in `src/games/delivery`. The shared code asks the game played for what is
+its own (`UIManager`, `src/ui/js/main.js`) and never imports it:
+`npm run check:games` (run before every build) fails on anything shared that
+imports a game's, or a game that imports another's.
+
+- `npm run build` builds both pages into `dist/`.
+- `npm run build:builder` and `npm run build:delivery` build one game alone,
+  into `dist-builder/` or `dist-delivery/`, its page as `index.html` -
+  nothing of the other game in it, to be published on its own.
+- Each game keeps its cities apart in localStorage: the city builder's where
+  they always were, `isometrica.v3.*`, the delivery game's under
+  `isometrica.delivery.v1.*` - playing one never opens or writes over the
+  other's.
+- The city both start on is `src/data/initialcity.js`. Build it in the city
+  builder, open the city screen (a click on the money) and press "Download
+  as the initial city" at the bottom of it: the download is the file, to be
+  saved over `src/data/initialcity.js`.
+
 ### The delivery game
 
-The game is now a food delivery game played in the city: the player is a
-courier with a car, like those of Wolt or Uber Eats. The city is only the
-scene - nothing about it is built or managed while playing - and the city
-builder of old is kept for building the city the courier drives in: open the
-game with `?edit` in the address (`/?edit#/<city id>`) for it.
+A food delivery game played in the city: the player is a courier with a car,
+like those of Wolt or Uber Eats. The city is only the scene - nothing about
+it is built or managed while playing; it is built in the city builder and
+handed over (see above).
 
 - The camera follows the courier's car - a blue hatchback with a yellow mark
   over it - always; it can be zoomed and turned, not dragged off it
   (`CameraScript#follow`).
 - While the car stands free, a board of orders is up
-  (`src/ui/modules/delivery`): what to pick up where, where it goes, how long
+  (`src/games/delivery/ui`): what to pick up where, where it goes, how long
   the whole run would take on empty roads and what it pays. A board is put
   up from where the car stands and replaced every three minutes, and after
   every delivery.
@@ -27,7 +63,7 @@ game with `?edit` in the address (`/?edit#/<city id>`) for it.
   and loads it - four seconds, once both are there - then over to the
   customer, where it pulls in again and the food is handed over in five. A pin
   floats over the restaurant and one over the customer, each with what the
-  place is in it (`src/client/js/delivery/marker.js`), waiting at the edge of
+  place is in it (`src/games/delivery/client/marker.js`), waiting at the edge of
   the screen, pointing, while the place is off it; nothing is laid on the
   ground or the buildings. A small bar over the restaurant's pin fills as the
   food cooks, and one over the car while it waits, loads or hands it over.
@@ -37,17 +73,17 @@ game with `?edit` in the address (`/?edit#/<city id>`) for it.
   handed over, the money is collected from it.
 - The courier's time is what they sell: an order pays for all of it - the
   drive to the restaurant, the wait, the drive over and the handing over
-  - at a rate that goes up with the kind of order (`src/client/js/delivery/orders.js`):
+  - at a rate that goes up with the kind of order (`src/games/delivery/client/orders.js`):
     a quick bite is over in a minute or two, dinner in two or three, groceries
     out of the stores in a few more, and an office's lunch takes a quarter of
     an hour to cook and pays the most for every minute of it.
 - The car really drives there, in the city's traffic
-  (`src/client/js/delivery/deliveryman.js`, `src/client/js/traffic.js`): as
+  (`src/games/delivery/client/deliveryman.js`, `src/client/js/traffic.js`): as
   fast as the roads let it, so an order takes as long as the queues at the
   junctions, the slow lorry in front and the car broken down in the way make
   it - the times the panel shows ahead of the car are what is left at the
   speed it would make on empty roads, and come out later in traffic. The
-  rest goes by the clock on the wall (`src/client/js/delivery/courier.js`):
+  rest goes by the clock on the wall (`src/games/delivery/client/courier.js`):
   the food cooks from the moment the order is taken, and loading and handing
   over take what they take, with the game closed too. The drive itself only
   goes on while the game is open; the car is kept where it had got to.
@@ -57,18 +93,18 @@ game with `?edit` in the address (`/?edit#/<city id>`) for it.
   itself; or the player clicks the Fix button that comes up over it (or the
   one in the panel), and it is going again in four seconds.
 - The places come out of the buildings standing in the city
-  (`src/client/js/delivery/places.js`): the small shops are restaurants -
+  (`src/games/delivery/client/places.js`): the small shops are restaurants -
   burgers, pizza, sushi, noodles, kebabs, tacos - the stores and markets sell
   groceries and the old town bakes; the houses, flats and offices order. Each
   is what it is by the tile it stands on, so the same building is always the
   same restaurant and the same customer, and the car pulls up on the road
   alongside it nearest its middle.
 - The car's way is found over every road there is rather than the ones
-  loaded on screen (`src/client/js/delivery/roads.js`): two join where they
+  loaded on screen (`src/games/delivery/client/roads.js`): two join where they
   meet level (`Surface.meets`).
 - The courier - money, the car, the order on and the board - is saved in a
-  storage row of its own, `isometrica.v3.courier.<city id>`, next to the
-  city's save.
+  storage row of its own, `isometrica.delivery.v1.courier.<city id>`, next
+  to the city's save.
 
 ### Traffic
 
@@ -129,11 +165,18 @@ https://peeps.land
 
 > npm start
 
-This runs Vite, rooted at `app/`, with the game served at `/`.
+This runs Vite, rooted at `src/`, with the city builder served at `/` and
+the delivery game at `/delivery.html`.
 
-- Build an optimized bundle into `/dist`
+- Build an optimized bundle of both games into `/dist`
 
 > npm run build
+
+- Or of one game alone, into `/dist-builder` or `/dist-delivery`
+
+> npm run build:builder
+
+> npm run build:delivery
 
 - Preview the production build locally
 
@@ -424,8 +467,9 @@ This runs Vite, rooted at `app/`, with the game served at `/`.
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the
   street it stands on.
-- The game's clock moves on a minute every second (`src/core/vtime.js`), a
-  day going by in 24 minutes.
+- The game's clock moves on every second (`src/core/vtime.js`): five minutes
+  in the city builder, a day going by in under five minutes, and a minute in
+  the delivery game, a day going by in 24.
 - The game is drawn at most 30 frames a second (`vendor/engine/game.js`),
   and holds still - its clock and its drawing - while the page is out of
   sight (`src/client/js/vkaria.js`).

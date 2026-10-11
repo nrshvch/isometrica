@@ -3,9 +3,13 @@
  *
  * Every city gets a row of its own - "isometrica.v3.city.<id>" - so that a
  * single save can be read, hand edited or thrown away without touching the
- * rest. One more row, "isometrica.v3.cities", is the directory of them: it says which key
- * each city id is stored under, and which city the game opens when the url
- * does not name one.
+ * rest. One more row, "isometrica.v3.cities", is the directory of them: it
+ * says which key each city id is stored under, and which city the game opens
+ * when the url does not name one.
+ *
+ * Each game keeps its cities under a name of its own (games/*): the city
+ * builder under "isometrica.v3" - where they always were - the delivery game
+ * under its own, so that playing one never opens nor writes over the other's.
  *
  * Ids are six characters out of [0-9A-Za-z], short enough to carry around in
  * the address bar (/#/pA4b1c).
@@ -19,8 +23,7 @@ Core.CityStore = CityStore;
 //are not there any more (the cottage, the bank - folded into the looks of the
 //house and the shop), so they are left behind rather than read. Bump it again
 //whenever old saves stop making sense
-var INDEX_KEY = "isometrica.v3.cities";
-var CITY_KEY_PREFIX = "isometrica.v3.city.";
+var SAVES = "isometrica.v3";
 var ID_LENGTH = 6;
 var ID_ALPHABET =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -73,14 +76,20 @@ function emptyIndex() {
 }
 
 function writeIndex(self, index) {
-  return write(self, INDEX_KEY, index);
+  return write(self, self.indexKey, index);
 }
 
 /**
  * @param [storage] {Storage} defaults to localStorage
+ * @param [saves] {string} what the cities are kept under - SAVES unless a
+ *        game says otherwise: "<saves>.cities", "<saves>.city.<id>"
  * @constructor
  */
-function CityStore(storage) {
+function CityStore(storage, saves) {
+  saves = saves || SAVES;
+
+  this.indexKey = saves + ".cities";
+  this.cityKeyPrefix = saves + ".city.";
   this.storage =
     storage || (typeof localStorage !== "undefined" ? localStorage : null);
 
@@ -88,8 +97,7 @@ function CityStore(storage) {
     console.warn("No storage available, cities will not be saved");
 }
 
-CityStore.INDEX_KEY = INDEX_KEY;
-CityStore.CITY_KEY_PREFIX = CITY_KEY_PREFIX;
+CityStore.SAVES = SAVES;
 CityStore.ID_LENGTH = ID_LENGTH;
 
 /**
@@ -107,8 +115,8 @@ CityStore.isValidId = function (id) {
  * @param id {string}
  * @returns {string}
  */
-CityStore.key = function (id) {
-  return CITY_KEY_PREFIX + id;
+CityStore.prototype.key = function (id) {
+  return this.cityKeyPrefix + id;
 };
 
 /**
@@ -117,7 +125,7 @@ CityStore.key = function (id) {
 CityStore.prototype.index = function () {
   if (this.storage === null) return emptyIndex();
 
-  var index = read(this, INDEX_KEY);
+  var index = read(this, this.indexKey);
 
   if (index === null || typeof index !== "object" || index.cities === undefined)
     return emptyIndex();
@@ -153,8 +161,7 @@ CityStore.prototype.has = function (id) {
   if (this.storage === null || !CityStore.isValidId(id)) return false;
 
   return (
-    this.index().cities[id] !== undefined &&
-    read(this, CityStore.key(id)) !== null
+    this.index().cities[id] !== undefined && read(this, this.key(id)) !== null
   );
 };
 
@@ -165,7 +172,7 @@ CityStore.prototype.has = function (id) {
 CityStore.prototype.read = function (id) {
   if (this.storage === null || !CityStore.isValidId(id)) return null;
 
-  return read(this, CityStore.key(id));
+  return read(this, this.key(id));
 };
 
 /**
@@ -179,7 +186,7 @@ CityStore.prototype.read = function (id) {
 CityStore.prototype.write = function (id, data, name) {
   if (this.storage === null || !CityStore.isValidId(id)) return false;
 
-  var key = CityStore.key(id);
+  var key = this.key(id);
 
   if (!write(this, key, data)) return false;
 
@@ -201,7 +208,7 @@ CityStore.prototype.write = function (id, data, name) {
 CityStore.prototype.remove = function (id) {
   if (this.storage === null || !CityStore.isValidId(id)) return false;
 
-  drop(this, CityStore.key(id));
+  drop(this, this.key(id));
 
   var index = this.index();
 

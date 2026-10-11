@@ -1,9 +1,7 @@
 import View from "./views/gamescreenview";
 import TopBar from "ui/modules/topbar/js/main";
 import WorldScreen from "ui/modules/world/js/main";
-import Catalogue from "ui/modules/catalogue/js/catalogue";
 import Prompt from "ui/modules/prompt/prompt";
-import City from "ui/modules/city/js/city";
 import Events from "events";
 
 function GameScreen(ui) {
@@ -77,21 +75,31 @@ GameScreen.prototype.topBar = function () {
   return this._topBar || (this._topBar = new TopBar(this));
 };
 
-GameScreen.prototype.catalogue = function () {
-  return this._catalogue || (this._catalogue = new Catalogue(this));
-};
-
 GameScreen.prototype.prompt = function () {
   return this._prompt || (this._prompt = new Prompt(this));
 };
 
-GameScreen.prototype.city = function () {
-  return this._city || (this._city = new City(this));
+/**
+ * One of the screens of the game played (games/*): the city builder's
+ * catalogue, its city screen - made the first time it is asked for.
+ *
+ * @param name {string}
+ * @returns {Object|null} null for a screen the game has none of
+ */
+GameScreen.prototype.screen = function (name) {
+  var screens = this.ui.played.screens || {};
+
+  if (screens[name] === undefined) return null;
+
+  this._screens = this._screens || {};
+
+  return this._screens[name] || (this._screens[name] = new screens[name](this));
 };
 
 /**
- * @returns {string|null} what the body shows - "world", "catalogue", "city" -
- *                        or null before anything has been shown
+ * @returns {string|null} what the body shows - "world", or one of the game's
+ *                        screens, "catalogue", "city" - or null before
+ *                        anything has been shown
  */
 GameScreen.prototype.showing = function () {
   return this._showing || null;
@@ -100,25 +108,20 @@ GameScreen.prototype.showing = function () {
 GameScreen.prototype.show = function (name, args) {
   this._showing = name;
 
-  switch (name) {
-    case "world":
-      var vs = this.worldScreen();
-      this.view.body(vs.view);
-      vs.updateSize();
-      break;
-    case "catalogue":
-      var catalogue = this.catalogue();
-      var view = catalogue.execute.apply(catalogue, args);
-      this.view.body(view);
-      return catalogue;
-      break;
-    case "city":
-      var city = this.city();
-      var view = city.execute.apply(city, args);
-      if (view) {
-        this.view.body(view);
-        return city;
-      }
+  if (name === "world") {
+    var vs = this.worldScreen();
+    this.view.body(vs.view);
+    vs.updateSize();
+    return;
+  }
+
+  //one of the game's own
+  var screen = this.screen(name),
+    view = screen !== null ? screen.execute.apply(screen, args || []) : null;
+
+  if (view) {
+    this.view.body(view);
+    return screen;
   }
 };
 
@@ -134,39 +137,19 @@ GameScreen.prototype.showPrompt = function (
 };
 
 GameScreen.prototype.execute = function (module, args) {
+  var game = this.ui.played;
+
   this.init(function (gs) {
-    switch (module) {
-      case "world":
-        gs.show("world");
-        var world = gs.worldScreen();
-        world.show.apply(world, args);
-        break;
-      case "catalogue":
-        gs.show("catalogue", args);
-        break;
-      case "build":
-        gs.show("world");
-        //and for a road, what it is laid in and which ways it goes
-        //(WorldScreen pickRoad, pickWay)
-        gs.client.buildman.build(
-          args[0],
-          args[1] ? { material: args[1], way: args[2] } : undefined,
-        );
-        //gs.worldScreen().show("build");
-        //gs.client.tools.selectTool(ToolCode.builder).setBuilding(args[0]);
-        break;
-      case "terrain":
-        gs.show("world");
-        gs.client.terrainman.enter();
-        break;
-      case "land":
-        gs.show("world");
-        gs.client.landman.enter();
-        break;
-      case "city":
-        gs.show("city", args);
-        break;
+    if (module === "world") {
+      gs.show("world");
+      var world = gs.worldScreen();
+      world.show.apply(world, args);
+      return;
     }
+
+    //the rest is the game's own: building, shaping the ground, buying land
+    //in the city builder (games/*)
+    if (game.route) game.route(gs, module, args || []);
   });
 };
 

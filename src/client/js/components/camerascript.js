@@ -189,7 +189,7 @@ CameraScript.prototype.onPinch = null;
 CameraScript.prototype.onPinchEnd = null;
 CameraScript.prototype.panSens = 1;
 CameraScript.prototype._lock = false;
-//held on something that moves it every frame (client/delivery): it cannot be
+//held on something that moves it every frame (games/delivery): it cannot be
 //dragged off it, and zooms about the middle of the screen
 CameraScript.prototype.follow = false;
 

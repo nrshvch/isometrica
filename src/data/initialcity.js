@@ -1,16 +1,14 @@
 /**
- * The city a brand new player starts on.
+ * The city a brand new player starts on - in the city builder, and in the
+ * delivery game, whose streets it is.
  *
  * It is a save like any other, and it is opened the way a save is: under a
  * fresh id of its own, so the moment the player changes anything it becomes
  * their own city in their own storage row, leaving this one untouched.
  *
- * To fill it in, take one of your own saves out of localStorage - the row
- * named "isometrica.v3.city.<id>", see Core.CityStore - and paste its contents
- * here. The "id" and "savedAt" fields of the pasted save are ignored.
- *
- * Every building in it is one of the generated ones (data/houses, flats,
- * offices, shops), so it shows the game as it is drawn now.
+ * To fill it in, build the city in the city builder and download it from
+ * the city screen ("Download as the initial city"), then save the file over
+ * this one. The "id" and "savedAt" fields are ignored.
  *
  * null means there is nothing to start from: the game opens on a blank world
  * and the player founds their city themselves.

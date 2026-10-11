@@ -19,12 +19,35 @@ var events = {
   ready: 0,
 };
 
-function UIManager() {
+/**
+ * The game's screens, for one of the games played in the city - each page has
+ * one (games/*: index.html the city builder, delivery.html the delivery game):
+ *
+ *   name       - what it is called
+ *   tick       - how much game time a tick of the clock is, ms (core/vtime)
+ *   saves      - what its cities are saved under in localStorage
+ *                (core/persistence/citystore)
+ *   client     - () => import of its own part of the client, loaded with the
+ *                world: {create, init, start} (client/vkaria)
+ *   screens    - {name: Module} its screens besides the world, each
+ *                new Module(gameScreen) with execute(...args) handing back
+ *                the view to show (ui/modules/gamescreen)
+ *   route      - (gameScreen, module, args) for whatever is navigated to
+ *                that is not the world
+ *   showWorld  - (worldScreen, name) puts up what goes over the world when
+ *                nothing else is going on (ui/modules/world)
+ *   purse      - (client) => {text(), watch(f) => unwatch}: the money the top
+ *                bar shows instead of the city's (ui/modules/topbar)
+ *   moneyClick - (gameScreen, city) for a click on it
+ *
+ * Only name and tick are wanted; the rest is there or not.
+ *
+ * @param game {Object} kept as `played` - UIManager#game is what loads the
+ *        world it is played in
+ */
+function UIManager(game) {
   this.rootNode = $(".game-ui");
-
-  //?edit opens the city builder of old - for building the city the courier
-  //drives in. Otherwise it is the delivery game
-  this.editMode = /[?&]edit(=|&|$)/.test(window.location.search);
+  this.played = game;
 }
 
 UIManager.events = events;
@@ -58,15 +81,26 @@ UIManager.prototype.game = function (callback) {
     callback(this._core, this._client);
     return;
   }
-  Promise.all([import("client/main"), import("core/main")]).then(
-    function (modules) {
-      var Vkaria = modules[0].default.Vkaria;
-      var Core = modules[1].default;
-      var core = (self._core = new Core.Logic());
-      var client = (self._client = new Vkaria(core, self));
-      callback(core, client);
-    },
-  );
+  var game = this.played;
+
+  Promise.all([
+    import("client/main"),
+    import("core/main"),
+    game.client ? game.client() : null,
+  ]).then(function (modules) {
+    var Vkaria = modules[0].default.Vkaria;
+    var Core = modules[1].default;
+    var core = (self._core = new Core.Logic({
+      tick: game.tick,
+      saves: game.saves,
+    }));
+    var client = (self._client = new Vkaria(
+      core,
+      self,
+      modules[2] ? modules[2].default : null,
+    ));
+    callback(core, client);
+  });
 };
 
 /**

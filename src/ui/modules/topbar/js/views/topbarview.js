@@ -36,10 +36,11 @@ var View = Backbone.View.extend({
 
     this.time = options.app.client.core.time;
 
-    //the delivery game shows the courier's money rather than the city's
-    this.deliveryman = options.ui.editMode
-      ? null
-      : options.app.client.deliveryman;
+    //the money the game played shows instead of the city's, if any - the
+    //courier's (games/*)
+    var game = options.ui.played;
+
+    this.purse = game.purse ? game.purse(options.app.client) : null;
 
     var tmTkn = Events.on(
       this.time,
@@ -52,22 +53,19 @@ var View = Backbone.View.extend({
 
     var updTkn = this.city.update().on(onCityUpdate, this);
 
-    var dlvTkn =
-      this.deliveryman === null
-        ? null
-        : Events.on(
-            this.deliveryman,
-            this.deliveryman.events.change,
-            onCityUpdate,
-            this,
-          );
+    var self = this,
+      unwatch =
+        this.purse === null
+          ? null
+          : this.purse.watch(function () {
+              self.render();
+            });
 
     this.onDispose().once(function (s, a, self) {
       Events.off(self.time, self.time.constructor.events.advance, tmTkn);
       self.city.rename().off(rnmTkn);
       self.city.update().off(updTkn);
-      if (dlvTkn !== null)
-        Events.off(self.deliveryman, self.deliveryman.events.change, dlvTkn);
+      if (unwatch !== null) unwatch();
     }, this);
 
     //render all
@@ -78,12 +76,8 @@ var View = Backbone.View.extend({
     return this;
   },
   renderMoney: function () {
-    var courier = this.deliveryman === null ? null : this.deliveryman.courier;
-
-    if (this.deliveryman !== null) {
-      $(".money", this.$el).text(
-        "$" + Numeral(courier === null ? 0 : courier.money()).format("0,0.00"),
-      );
+    if (this.purse !== null) {
+      $(".money", this.$el).text(this.purse.text());
       return;
     }
 
@@ -92,19 +86,11 @@ var View = Backbone.View.extend({
     $(".money", this.$el).text("$" + Numeral(money).format("0,0"));
   },
   toggleCity: function () {
-    //nothing of the city's to look at in the delivery game
-    if (this.deliveryman !== null) return;
+    //whatever the game played makes of it - the city builder opens the
+    //city screen (games/*)
+    var game = this.options.ui.played;
 
-    if (this.options.app.showing() === "city") {
-      this.options.ui.navigate("world");
-      return;
-    }
-
-    //an action owns the world while it runs - opening the city screen from
-    //under it would leave the action with no buttons and no way to finish
-    if (this.options.app.worldScreen().busy()) return;
-
-    this.options.ui.navigate("city", [this.city.id()]);
+    if (game.moneyClick) game.moneyClick(this.options.app, this.city);
   },
   render: function () {
     this.renderTime();
