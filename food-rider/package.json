@@ -1,5 +1,6 @@
 {
   "name": "food-rider",
+  "version": "0.1.0",
   "description": "The delivery game: a courier's car in the city, taking food from restaurants to customers",
   "private": true,
   "type": "module",
