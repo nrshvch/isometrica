@@ -1,0 +1,36 @@
+{
+  "name": "isometrica",
+  "description": "The world the games are played in: terrain, what stands where, roads, traffic, lighting, and the generators that paint it all",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./vite": "./vite.mjs",
+    "./*": "./src/*.js"
+  },
+  "scripts": {
+    "prebuild": "npm run build --prefix ../engine",
+    "build": "node tools/packsprites.js",
+    "predev": "npm run build",
+    "dev": "vite lab",
+    "generate:terrain": "node tools/genterrain.js",
+    "generate:vehicles": "node tools/genvehicles.js",
+    "generate:stones": "node tools/genstones.js",
+    "generate:buildings": "node tools/genbuildings.js",
+    "generate:trees": "node tools/gentrees.js"
+  },
+  "dependencies": {
+    "engine": "file:../engine/engine",
+    "events": "file:../engine/events",
+    "namespace": "file:../engine/namespace",
+    "reactive-property": "file:../engine/reactive-property",
+    "gl-matrix": "2.2.0",
+    "numeral": "1.5.6",
+    "simplex-noise": "2.4.0",
+    "underscore": "1.6.0",
+    "yabh": "1.2.0"
+  },
+  "devDependencies": {
+    "pngjs": "^7.0.0",
+    "vite": "^6.4.3"
+  }
+}

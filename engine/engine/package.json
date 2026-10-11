@@ -1,0 +1,11 @@
+{
+  "name": "engine",
+  "private": true,
+  "type": "module",
+  "main": "dist/engine.js",
+  "dependencies": {
+    "events": "file:../events",
+    "namespace": "file:../namespace",
+    "gl-matrix": "2.2.0"
+  }
+}
