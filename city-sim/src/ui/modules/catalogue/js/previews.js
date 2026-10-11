@@ -2,9 +2,9 @@ import Data from "isometrica/data/buildings";
 import CompoundBuilding from "isometrica/client/compoundbuilding";
 
 /**
- * Draws the picture of every building in el put together out of parts -
- * which has no picture drawn by hand - as it is painted, and puts it where
- * the hand-drawn one would be (see client/compoundbuilding preview).
+ * Draws the picture of every building in el as it is painted - every one of
+ * them is put together out of parts - and puts it on its card (see
+ * client/compoundbuilding preview).
  *
  * @param el {Element} what the cards are in
  */
@@ -16,7 +16,6 @@ export default function showPreviews(el) {
   Array.prototype.forEach.call(
     el.querySelectorAll("[data-preview]"),
     function (img) {
-      //empty on the cards of buildings drawn by hand
       var data = Data[img.getAttribute("data-preview")];
 
       if (!data || !data.compound) return;
