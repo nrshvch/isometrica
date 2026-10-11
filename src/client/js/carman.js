@@ -120,9 +120,13 @@ var CARS_PER_ROAD = 1 / 4,
   //how long a police car's lamp stays blue before it turns red, ms
   LAMP_EVERY = 240;
 
-//game time that goes by in a millisecond of the real thing
-var GAME_SPEED = VTime.millisecondsPerTick / CoreConfig.tickDelay,
-  MINUTE = 60000;
+//game time that goes by in a millisecond of the real thing - as long as a
+//tick of the clock is in the game played (core/vtime)
+function gameSpeed() {
+  return VTime.millisecondsPerTick / CoreConfig.tickDelay;
+}
+
+var MINUTE = 60000;
 
 //what a building has to be for cars to drive to it
 var WORK = "work",
@@ -643,7 +647,7 @@ CarScript.prototype.extend = function () {
  */
 CarScript.prototype.breakDown = function () {
   this.stalled =
-    (BREAKDOWN_MINUTES * MINUTE * (0.6 + Math.random() * 0.8)) / GAME_SPEED;
+    (BREAKDOWN_MINUTES * MINUTE * (0.6 + Math.random() * 0.8)) / gameSpeed();
   this.driven = 0;
   this.driver.stalled = this.driver.broken = true;
 };
@@ -1613,7 +1617,7 @@ Carman.prototype.looksOf = function (name, color) {
 };
 
 //for anything else that drives the roads the way the traffic does - the
-//courier's car (client/delivery)
+//courier's car (games/delivery)
 Carman.routeWaypoints = Traffic.routeWaypoints;
 Carman.groundHeight = groundHeight;
 Carman.VehicleRenderer = VehicleRenderer;

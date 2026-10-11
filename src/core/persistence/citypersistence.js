@@ -129,19 +129,9 @@ CityPersistence.prototype.open = function (requestedId) {
  * @returns {boolean} whether it went to storage
  */
 CityPersistence.prototype.save = function () {
-  var city = this._city;
+  var data = this.snapshot();
 
-  if (city === null || this._id === null) return false;
-
-  var data = {
-    version: VERSION,
-    id: this._id,
-    savedAt: Date.now(),
-    time: this.world.time.now,
-    //the ground is the world's, whoever paid for shaping it
-    terrain: this.world.terrain.save(),
-    city: city.save(),
-  };
+  if (data === null) return false;
 
   if (!this._store.write(this._id, data, data.city.name)) return false;
 
@@ -150,6 +140,28 @@ CityPersistence.prototype.save = function () {
   this._store.setActiveCityId(this._id);
 
   return true;
+};
+
+/**
+ * The city as it goes into a save - or into data/initialcity, for another
+ * game to start on (games/builder/ui/city).
+ *
+ * @returns {Object|null} null until there is a city
+ */
+CityPersistence.prototype.snapshot = function () {
+  var city = this._city;
+
+  if (city === null || this._id === null) return null;
+
+  return {
+    version: VERSION,
+    id: this._id,
+    savedAt: Date.now(),
+    time: this.world.time.now,
+    //the ground is the world's, whoever paid for shaping it
+    terrain: this.world.terrain.save(),
+    city: city.save(),
+  };
 };
 
 /**

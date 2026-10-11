@@ -10,11 +10,22 @@ import MarketService from "./world/marketsrv";
 import MessagingService from "./msgsrv";
 import CityService from "./citysrv";
 import CityPersistence from "./persistence/citypersistence";
+import CityStore from "./persistence/citystore";
 import namespace from "namespace";
 
 namespace("Isometrica.Core").Logic = Logic;
 
-function Logic() {
+/**
+ * @param [options] {{tick: number, saves: string}} what the game played in
+ *        the world wants of it: how much game time a tick of it is worth, ms
+ *        (VTime.setTickLength), and what its cities are saved under in
+ *        localStorage (CityStore)
+ */
+function Logic(options) {
+  options = options || {};
+
+  VTime.setTickLength(options.tick);
+
   this.world = this;
 
   this.messagingService = new MessagingService(this);
@@ -32,7 +43,10 @@ function Logic() {
 
   //the player's city goes to localStorage through here - nothing starts
   //until whoever knows the url asks it to open a city
-  this.persistence = new CityPersistence(this);
+  this.persistence = new CityPersistence(
+    this,
+    new CityStore(undefined, options.saves),
+  );
 }
 
 var events =

@@ -16,17 +16,23 @@ import ChunkMan from "./chunkman";
 import Cityman from "./cityman";
 import Roadman from "./roadman";
 import ServiceMan from "./serviceman";
-import Landman from "./landman";
-import Terrainman from "./terrainman";
 import CameraControl from "./cameracontrol";
 import Player from "./player";
 import CameraMan from "./cameraman";
 import Carman from "./carman";
 import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
-import Deliveryman from "./delivery/deliveryman";
 
-function Vkaria(core, ui, callback) {
+/**
+ * @param core {Logic} the world (core/logic)
+ * @param ui {UIManager}
+ * @param [play] {{create, init, start}} the game played's own part of the
+ *        client (games/*): create(vkaria) as it is put together - its own
+ *        managers hung on it - init(vkaria) as the services come up, before
+ *        the camera goes onto the city, and start(vkaria) once they are all
+ *        up
+ */
+function Vkaria(core, ui, play) {
   // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
   // It means, that when point goes about 1px by X, it moves 1/2 pixel by Y.
   // We can calculate camera angle around X axis like this: Math.asin(1/2)*180/Math.PI = 30deg, where 1/2 is our
@@ -79,16 +85,16 @@ function Vkaria(core, ui, callback) {
   this.cityman = new Cityman(this);
   this.roadman = new Roadman(this);
   this.serviceman = new ServiceMan(this);
-  this.landman = new Landman(this);
-  this.terrainman = new Terrainman(this);
   this.pathman = new PathMan();
   this.carman = new Carman(this);
   this.cameraControl = new CameraControl(this);
   this.cameraman = new CameraMan(this);
-  //the delivery game played in the city - unless it is being edited
-  this.deliveryman = new Deliveryman(this);
-
   this.player = new Player(this);
+
+  //and whatever the game played brings of its own: the city builder's land
+  //and ground shaping, the courier
+  this.play = play || {};
+  if (this.play.create) this.play.create(this);
 }
 
 /**
@@ -174,7 +180,7 @@ Vkaria.prototype.startServices = function () {
   //order below is no longer the only thing holding this together.
   this.roadman.init();
   this.serviceman.init();
-  this.landman.init();
+  if (this.play.init) this.play.init(this);
 
   //moves the camera onto a loaded city, which streams that city's chunks in
   this.cityman.init();
@@ -187,13 +193,7 @@ Vkaria.prototype.startServices = function () {
 
   this.carman.init();
 
-  //the city is the scene: nothing about it is shown, and the camera stays
-  //on the courier's car
-  if (!this.ui.editMode) {
-    this.serviceman.quiet();
-    this.camera.cameraScript.follow = true;
-    this.deliveryman.init();
-  }
+  if (this.play.start) this.play.start(this);
 };
 
 /**

@@ -4,7 +4,7 @@
  * the kerb and out again, and getting past a car broken down in its way.
  *
  * Whatever drives - the traffic (client/carman), the courier's car
- * (client/delivery), a bus - is a Driver: a line of points through the lanes
+ * (games/delivery), a bus - is a Driver: a line of points through the lanes
  * it takes, and how fast it goes along them. Each frame it looks along that
  * line, a couple of tiles ahead, for anything on it:
  *

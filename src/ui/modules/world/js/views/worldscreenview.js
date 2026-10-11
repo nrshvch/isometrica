@@ -2,52 +2,8 @@ import Backbone from "backbone";
 import __templateSource from "../../templates/worldscreen.hbs?raw";
 import Handlebars from "handlebars";
 import $ from "jquery";
-import BuildingCode from "data/buildingcode";
 
 var template = Handlebars.compile(__templateSource);
-
-var btns = {
-  confirm: {
-    icon: "tick-icon",
-    action: function (view) {},
-  },
-  cancel: {
-    icon: "cross-icon",
-    action: function (view) {},
-  },
-  return: {
-    icon: "back-icon",
-    action: function (view) {},
-  },
-  config: {
-    icon: "gear-icon",
-    action: function (view) {},
-  },
-  lab: {
-    icon: "face-icon",
-    action: function (view) {},
-  },
-  destroy: {
-    icon: "bulldozer-icon",
-    action: function (view) {},
-  },
-  build: {
-    icon: "coin-icon",
-    action: function (view) {
-      view.showBuildButtons();
-    },
-  },
-  "build-road": {
-    icon: "clock-icon",
-    action: function (view) {
-      view.showMainButtons();
-    },
-  },
-  pan: {
-    icon: "clock-icon",
-    action: function (view) {},
-  },
-};
 
 function setBtn(self, index, icon, f) {
   var state = self._state;
@@ -114,52 +70,11 @@ WorldScreenView.prototype.render = function () {
   return this;
 };
 
-WorldScreenView.prototype.showInitialButtons = function () {
-  var view = this;
-  unsetBtns(this);
-  setBtn(this, 2, "house-icon", function () {
-    view.controller.client.cityman.establish();
-  });
-
-  renderBtns(this);
-};
-
-/**
- * The delivery game has no buttons of its own over the world - the courier's
- * panel is all there is (ui/modules/delivery).
- */
-WorldScreenView.prototype.showDeliveryButtons = function () {
-  unsetBtns(this);
-  renderBtns(this);
-};
-
 /**
  * Lays el over the world, under the buttons.
  */
 WorldScreenView.prototype.addOverlay = function (el) {
   $(".body", this.el).append(el);
-};
-
-WorldScreenView.prototype.showBuildButtons = function () {
-  var view = this;
-  unsetBtns(this);
-  setBtn(this, 0, "cross-icon", function () {
-    view.controller.startFresh();
-  });
-  setBtn(this, 1, "house-icon", function () {
-    view.controller.ui.navigate("catalogue");
-  });
-  setBtn(this, 2, "road-icon", function () {
-    view.controller.pickRoad();
-  });
-  setBtn(this, 3, "bulldozer-icon", function () {
-    view.controller.ui.navigate("terrain");
-  });
-  setBtn(this, 4, "tile-dollar-icon", function () {
-    view.controller.ui.navigate("land");
-  });
-
-  renderBtns(this);
 };
 
 WorldScreenView.prototype.showActionButtons = function (controls) {

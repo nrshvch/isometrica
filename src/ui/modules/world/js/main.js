@@ -1,8 +1,6 @@
 import WorldScreenView from "./views/worldscreenview";
 import Controls from "./worldaction";
 import ReactiveProperty from "reactive-property";
-import BuildingCode from "data/buildingcode";
-import DeliveryPanel from "ui/modules/delivery/js/delivery";
 
 function WorldScreen(ui, client) {
   this.ui = ui;
@@ -35,36 +33,35 @@ WorldScreen.prototype.updateSize = function () {
   this.viewport.setSize(cnv.offsetWidth, cnv.offsetHeight);
 };
 
+/**
+ * The world with nothing else going on: what the game played puts over it -
+ * the city builder's building tools, the courier's panel (games/*).
+ *
+ * @param [name] {string} which of its states, for the game to make of
+ */
 WorldScreen.prototype.show = function (name) {
   this.busy(false);
 
-  //the delivery game: no building, just the courier's panel
-  if (!this.ui.editMode) {
-    this.view.showDeliveryButtons();
-    this.deliveryPanel();
-    return;
-  }
+  var game = this.ui.played;
 
-  switch (name) {
-    case "build":
-      this.view.showBuildButtons();
-      break;
-    default:
-      if (this.client.core.cities.getCity(0)) this.view.showBuildButtons();
-      else this.view.showInitialButtons();
-  }
+  if (game.showWorld) game.showWorld(this, name);
+  else this.showButtons([]);
 };
 
 /**
- * The courier's panel, put up over the world the first time it is asked for.
+ * Puts up the buttons along the bottom, nothing holding them.
+ *
+ * @param buttons {Object[]} see WorldScreenView#showToolButtons
  */
-WorldScreen.prototype.deliveryPanel = function () {
-  if (this._deliveryPanel === undefined) {
-    this._deliveryPanel = new DeliveryPanel(this.client);
-    this.view.addOverlay(this._deliveryPanel.view.el);
-  }
+WorldScreen.prototype.showButtons = function (buttons) {
+  this.view.showToolButtons(buttons);
+};
 
-  return this._deliveryPanel;
+/**
+ * Lays el over the world, under the buttons - a game's panel of its own.
+ */
+WorldScreen.prototype.addOverlay = function (el) {
+  this.view.addOverlay(el);
 };
 
 WorldScreen.prototype.showControls = function (controls) {
@@ -85,91 +82,6 @@ WorldScreen.prototype.showControls = function (controls) {
 WorldScreen.prototype.showTools = function (buttons) {
   this.view.showToolButtons(buttons);
   this.busy(true);
-};
-
-/**
- * Asks whether the player really means to leave this city behind, and starts
- * a new blank one under a new id if they do. The city they are on is kept -
- * it stays in storage under its own address.
- */
-WorldScreen.prototype.startFresh = function () {
-  var self = this;
-
-  this.showHint("Do you really want to start fresh?");
-
-  var controls = this.showControls();
-  controls.canRotate(false);
-
-  controls.onSubmit = function () {
-    self.hideHint();
-    self.ui.startFreshCity();
-  };
-
-  controls.onDiscard = function () {
-    self.hideHint();
-    self.show();
-  };
-
-  return controls;
-};
-
-/**
- * Asks what a road is to be laid in before it is laid - gravel, the lanes of
- * a village and the default; cobbles; or asphalt - the way the ground is
- * shaped by picking what to do to it first, and then which ways it goes
- * (pickWay). Gravel laid by the old town comes out cobbled (client/road
- * materialAt).
- */
-WorldScreen.prototype.pickRoad = function () {
-  var self = this;
-
-  function lay(material) {
-    return function () {
-      self.pickWay(material);
-    };
-  }
-
-  this.showHint("Lay the road in gravel, cobbles or asphalt");
-  this.showTools([
-    {
-      icon: "cross-icon",
-      action: function () {
-        self.hideHint();
-        self.show();
-      },
-    },
-    { icon: "gravel-road-icon", action: lay("gravel") },
-    { icon: "cobble-road-icon", action: lay("cobble") },
-    { icon: "road-icon", action: lay("asphalt") },
-  ]);
-};
-
-/**
- * Asks, a road's material picked, whether it is driven both ways or one way
- * only - a one-way road going the way it is dragged (client/buildman) - or
- * back to the materials.
- */
-WorldScreen.prototype.pickWay = function (material) {
-  var self = this;
-
-  function lay(way) {
-    return function () {
-      self.hideHint();
-      self.ui.navigate("build", [BuildingCode.road, material, way]);
-    };
-  }
-
-  this.showHint("Both ways, or one way only?");
-  this.showTools([
-    {
-      icon: "back-icon",
-      action: function () {
-        self.pickRoad();
-      },
-    },
-    { icon: "two-way-road-icon", action: lay("two") },
-    { icon: "one-way-road-icon", action: lay("one") },
-  ]);
 };
 
 WorldScreen.prototype.showHint = function (text) {
