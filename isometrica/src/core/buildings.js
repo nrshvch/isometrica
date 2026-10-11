@@ -1,0 +1,251 @@
+//TODO do something with trees
+//if trees are simply generated and planted on start up, then
+//when saving game they all appear in savegame file making it huuuge
+//BUT you can make trees being generated on the fly , each time when undentified tile is requsted,
+//don't forget that second approach will take more cpu time.
+//Try instancing only one tree and each time, when tile is requested put that instance in tile. Kinda singleton tree))
+
+import Events from "events";
+import BuildingData from "../data/buildings";
+import Building from "./building";
+/**
+ * @type {BuildingClassCode}
+ */
+import BuildingCode from "../data/buildingcode";
+import BuildingClassCode from "../data/classcode";
+
+/**
+ * @type {ErrorCode}
+ */
+import ErrorCode from "./errorcode";
+/**
+ * @type {Terrain}
+ */
+import Terrain from "./terrain";
+import TerrainType from "./terraintype";
+import TileIterator from "./tileiterator";
+import TileIteratorAction from "./tileiteratoraction";
+/**
+ * @type {BuildingPositioning}
+ */
+import BuildingPositioning from "./buildingpositioning";
+
+import Namespace from "namespace";
+import Surface from "./surface";
+import Rotation from "./rotation";
+
+var Core = Namespace("Isometrica.Core");
+Core.ConstructionService = Buildings;
+
+var events = {
+  buildingBuilt: 0,
+  buildingUpdated: 1,
+  buildingRemoved: 2,
+  buildingStateChange: 3,
+};
+
+/**
+ *
+ * @param {Buildings} self
+ * @returns {number}
+ */
+function buildTest(self, code, tile, rotation) {
+  var data = BuildingData[code],
+    positioning = data.positioning || BuildingPositioning.flat,
+    sizeX = Rotation.sizeX(data, rotation),
+    sizeY = Rotation.sizeY(data, rotation),
+    slopeId,
+    terrain,
+    terrainType,
+    resource,
+    tile1 = tile + (sizeX - 1) + (sizeY - 1) * Terrain.dy,
+    tileIterator = new TileIterator(tile, tile1),
+    //how far the ground under it rises and falls
+    ground = groundRange(self.world.terrain, tile, sizeX, sizeY),
+    //a building stands on a flat surface at its highest corner, on concrete
+    //where the ground is lower (core/surface) - as long as that fits every
+    //tile of it. A tree grows on the slope as it is, a road has a surface of
+    //its own, and a cliff wants it flat
+    levelled =
+      data.classCode !== BuildingClassCode.tree &&
+      data.classCode !== BuildingClassCode.road,
+    flat = [ground.max, ground.max, ground.max, ground.max];
+
+  while (!tileIterator.done) {
+    tile = TileIterator.next(tileIterator);
+
+    terrain = self.world.terrain;
+    slopeId = terrain.tileSlope(tile);
+    terrainType = terrain.getTerrainType(tile);
+    resource = terrain.getResource(tile);
+
+    if (terrainType === TerrainType.water) return ErrorCode.CANT_BUILD_ON_WATER;
+    //nothing grows on the beach - the world never puts a tree there either
+    else if (
+      data.classCode === BuildingClassCode.tree &&
+      terrainType === TerrainType.shore
+    )
+      return ErrorCode.LAND_NOT_SUITABLE;
+    //a deposit does not keep an ordinary building off a tile - nothing
+    //draws deposits, and nothing can be built on them either while the
+    //mines are out of the game, so a tile that looks like bare grass has
+    //to take a building like bare grass does. Put back the flat-building
+    //CANT_BUILD_HERE check here once deposits are drawn and mined again
+    else if (
+      positioning === BuildingPositioning.resource &&
+      resource !== data.resource
+    )
+      return ErrorCode.WRONG_RESOURCE_TILE;
+    //on ground a surface does not fit (core/surface): a building's flat
+    //one over it, a road's own - too steep for a step of concrete
+    else if (levelled && !Surface.fits(terrain, tile, flat))
+      return ErrorCode.LAND_NOT_SUITABLE;
+    else if (
+      data.classCode === BuildingClassCode.road &&
+      !Surface.fits(terrain, tile, Surface.natural(terrain, tile))
+    )
+      return ErrorCode.LAND_NOT_SUITABLE;
+    //a tree grows on a hillside, but a cliff stands on flat ground only
+    else if (
+      data.buildingCode === BuildingCode.cliff &&
+      Terrain.isSlope(slopeId)
+    )
+      return ErrorCode.FLAT_LAND_REQUIRED;
+    else {
+      var b = self.get(tile);
+      if (
+        b !== null &&
+        BuildingData[b.buildingCode].classCode !== BuildingClassCode.tree
+      )
+        return ErrorCode.TILE_TAKEN;
+    }
+  }
+
+  return ErrorCode.NONE;
+}
+
+/**
+ * The lowest and the highest grid point under sizeX by sizeY tiles from tile.
+ */
+function groundRange(terrain, tile, sizeX, sizeY) {
+  var x0 = Terrain.extractX(tile),
+    y0 = Terrain.extractY(tile),
+    min = Infinity,
+    max = -Infinity,
+    h;
+
+  for (var x = x0; x <= x0 + sizeX; x++)
+    for (var y = y0; y <= y0 + sizeY; y++) {
+      h = terrain.getGridPointHeight(x, y);
+      if (h < min) min = h;
+      if (h > max) max = h;
+    }
+
+  return { min: min, max: max };
+}
+
+function onTileCleared(terrain, tile, self) {
+  var building = self.byTile[tile];
+  if (building !== null && building !== undefined) remove(self, building);
+}
+
+function onBuildingStateChange(building, state, self) {
+  Events.fire(self, self.events.buildingUpdated, building);
+  Events.fire(self, events.buildingStateChange, building);
+}
+
+function onBuildingDispose(building, args, meta) {
+  Events.off(building, Building.events.stateChange, meta[0]);
+  //Events.off(building, Building.events.update, meta[1]);
+}
+
+function removeTree(self, tile) {
+  var tree;
+  tree = self.byTile[tile];
+  if (
+    tree !== undefined &&
+    tree !== null &&
+    tree.data.classCode === BuildingClassCode.tree
+  )
+    remove(self, tree);
+}
+
+function remove(self, building) {
+  var tile,
+    occupiedTiles,
+    id = building.id;
+
+  if (building !== null && building !== undefined) {
+    occupiedTiles = building.occupiedTiles();
+
+    while (!occupiedTiles.done) {
+      tile = TileIterator.next(occupiedTiles);
+      self.byTile[tile] = null;
+    }
+
+    delete self.buildings[id];
+
+    building.dispose();
+
+    Events.fire(self, self.events.buildingRemoved, building);
+
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @class Buildings
+ * @param world {World}
+ * @constructor
+ */
+function Buildings(world) {
+  this.world = world;
+  this.buildings = Object.create(null);
+  this.byTile = Object.create(null);
+}
+
+Buildings.events = events;
+
+Buildings.prototype.events = events;
+
+Buildings.prototype.init = function () {
+  var terrain = this.world.terrain;
+  Events.on(terrain, Terrain.events.tileCleared, onTileCleared, this);
+};
+
+Buildings.prototype.get = function (idx, y) {
+  if (arguments.length === 2) idx = Terrain.convertToIndex(idx, y);
+
+  return this.byTile[idx] || null;
+};
+
+Buildings.prototype.build = function (building) {
+  var tile,
+    iter = building.occupiedTiles();
+
+  this.buildings[building.id] = building;
+
+  while (!iter.done) {
+    tile = TileIterator.next(iter);
+    removeTree(this, tile);
+    this.byTile[tile] = building;
+  }
+
+  var sub1 = Events.on(
+    building,
+    Building.events.stateChange,
+    onBuildingStateChange,
+    this,
+  );
+
+  Events.once(building, "dispose", onBuildingDispose, [sub1]);
+
+  Events.fire(this, events.buildingBuilt, building);
+};
+
+Buildings.prototype.test = function (code, tile, rotation) {
+  return buildTest(this, code, tile, rotation);
+};
+
+export default Buildings;

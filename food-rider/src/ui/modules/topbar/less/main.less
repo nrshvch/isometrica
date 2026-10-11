@@ -1,0 +1,91 @@
+.top-bar {
+  height: 24px;
+  position: relative;
+
+  .box-shadow;
+
+  &:extend(.ui-block);
+
+  .left {
+    float: left;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    .icon {
+      margin-right: 4px;
+    }
+
+    .section {
+      float: left;
+      padding-left: 1%;
+    }
+  }
+
+  .right {
+    position: absolute;
+    float: right;
+    height: 100%;
+    width: 100%;
+
+    .icon {
+      margin-right: 4px;
+    }
+    .section {
+      float: right;
+      padding-right: 1%;
+    }
+  }
+
+  .money {
+    cursor: pointer;
+  }
+
+  .section {
+    float: left;
+    height: 100%;
+
+    & > .icon-val {
+      font-size: 0;
+      white-space: nowrap;
+
+      height: 100%;
+
+      &:extend(.middle-position all);
+
+      .icon {
+        display: inline-block;
+        height: 80%;
+        vertical-align: middle;
+
+        img {
+          display: block;
+          height: 100%;
+        }
+      }
+
+      .text {
+        &:extend(.middle-position all);
+
+        padding-left: 1%;
+
+        display: inline-block;
+        height: 100%;
+        font-size: 14px;
+        font-weight: bold;
+        vertical-align: middle;
+        font-variant: small-caps;
+
+        font-family: "Courier New", Courier, monospace;
+        text-shadow:
+          -1px 0 0 #000,
+          0 -1px 0 #000,
+          0 1px 0 #000,
+          1px 0 0 #000,
+          -1px -1px 1px #000,
+          1px -1px 1px #000,
+          -1px 1px 1px #000,
+          1px 1px 1px #000;
+      }
+    }
+  }
+}
