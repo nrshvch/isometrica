@@ -424,7 +424,13 @@ engine in `engine/`.
   (`isometrica/src/client/lighting.js` windowLights). So a shop front throws its
   colours on the pavement in front of it, a billboard on the roof under it,
   a home's lit windows on its garden, a car's tail lights the road red
-  behind it, and a police car colours the road and the walls round it. Every lamp is a little square over just the pixels it
+  behind it, and a police car colours the road and the walls round it. A
+  police car's lamp and a cab's sign glow in their own colours at every hour,
+  never darkened by the dusk (glview GLOW). A car about to turn - its way
+  bending within a couple of tiles ahead of it, round something in the road
+  or in to the kerb - blinks its indicators amber at its corners on that side
+  (`isometrica/src/client/traffic.js` Driver signal, lighting blinkers),
+  throwing a little amber light round them at night. Every lamp is a little square over just the pixels it
   can reach, lighting each by how far it is from the lamp in the world -
   worked out from where it is on the screen and how high it stands - and how
   squarely it faces it, the headlights in a cone ahead and a street light in

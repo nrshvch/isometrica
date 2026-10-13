@@ -32,15 +32,18 @@ import GLCanvas from "./glcanvas";
 //on the screen and how big; how see-through; and for each of the pictures
 //of the screen it is drawn into - the colours, the ways things look, how
 //high things stand, what shines - where it is drawn from: the page, x and y
-//there, and how (SKIP, DARK, FROM)
+//there, and how (SKIP, DARK, FROM, GLOW)
 var FLOATS = 24;
 
 //how a square is drawn into one of the pictures of the screen: not at all;
 //in black where the picture is (looking up, on the ground, nothing
-//shining); or from a picture of its own
+//shining); from a picture of its own; or, into how high things stand, as
+//glowing where the picture is - as bright as its own colours whatever the
+//light, by day or night (a police car's lamp, a cab's sign)
 var SKIP = 0,
   DARK = 1,
-  FROM = 2;
+  FROM = 2,
+  GLOW = 3;
 
 //what a lamp is to the shader, so many floats of it: where the spot under
 //it is on the screen, how high it hangs and how far it reaches; its light
@@ -131,10 +134,12 @@ vec4 fetch(vec4 src, ivec2 at) {
 }
 
 //one of its pictures, at, as it is drawn: not at all, in black where the
-//colours are, or from its own
+//colours are, from its own, or glowing where they are (the blue of how
+//high things stand)
 vec4 drawn(vec4 src, ivec2 at, float shape) {
   if (src.w < 0.5) return vec4(0.0);
   if (src.w < 1.5) return vec4(0.0, 0.0, 0.0, shape);
+  if (src.w > 2.5) return vec4(0.0, 0.0, 1.0, shape);
   vec4 t = fetch(src, at);
   return vec4(t.rgb, t.a * vAlpha);
 }
@@ -216,7 +221,7 @@ out vec4 out0;
 
 void main() {
   //drawn from a picture of how high it stands, or not at all
-  if (vSrc.w < 1.5) discard;
+  if (vSrc.w < 1.5 || vSrc.w > 2.5) discard;
 
   ivec2 at = ivec2(int(gl_FragCoord.x), int(size.y - gl_FragCoord.y)) - ivec2(vRect.xy);
   float over = texelFetch(pages, ivec3(ivec2(vSrc.yz) + at, int(vSrc.x)), 0).g;
@@ -413,7 +418,9 @@ void main() {
   if (shadows && sun > 0.0) sun *= 1.0 - shadowed(px, n, b);
 
   vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
-  vec3 c = a * lit;
+  //what glows is as bright as its own colours, whatever the light
+  float glow = texelFetch(heights, px, 0).b;
+  vec3 c = a * mix(lit, vec3(1.0), glow);
 
   if (night) {
     vec3 l = texelFetch(light, px, 0).rgb * 2.0;
@@ -1155,5 +1162,6 @@ GLView.FLOATS = FLOATS;
 GLView.SKIP = SKIP;
 GLView.DARK = DARK;
 GLView.FROM = FROM;
+GLView.GLOW = GLOW;
 
 export default GLView;

@@ -96,7 +96,7 @@ function CourierCar(man) {
   this.addComponent(new CourierCarScript(man));
 
   //its headlights, the way a car of the traffic has them (client/lighting)
-  this.car = { heading: null, type: null, lamp: 0 };
+  this.car = { heading: null, type: null, lamp: 0, signal: 0 };
 }
 
 CourierCar.prototype = Object.create(engine.GameObject.prototype);
@@ -167,6 +167,9 @@ Deliveryman.prototype.init = function () {
   this.car = new CourierCar(this);
   root.game.logic.world.addGameObject(this.car);
   root.carman.extras.push(this.car);
+  //never lost behind the buildings: whatever stands in front of it is
+  //drawn see-through
+  root.lighting.seeThrough(this.car.spriteRenderer);
   //found at a glance among the traffic, at night as well
   this.mark = new Marker("car", CAR_MARK_COLOR);
   root.game.scene.addGameObject(this.mark);
@@ -559,6 +562,9 @@ function draw(self, heading) {
     self.heading = heading;
     car.car.heading = heading;
   }
+
+  //its indicators, as the traffic's (client/traffic Driver signal)
+  car.car.signal = self.driver ? self.driver.signal() : 0;
 
   var x = self.x * Config.tileSize,
     z = self.y * Config.tileSize,

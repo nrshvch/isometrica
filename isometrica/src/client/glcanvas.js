@@ -65,6 +65,8 @@ precision highp float;
 layout(location = 0) out vec4 out0;
 layout(location = 1) out vec4 out1;
 layout(location = 2) out vec4 out2;
+//glowing as bright as its colours, whatever the light (client/glview GLOW)
+uniform float glow;
 vec4 whole(vec4 c) {
   return vec4(c.rgb, step(0.5, c.a));
 }
@@ -73,7 +75,7 @@ void main() {
   if (c.a <= 0.0) discard;
   out0 = c;
   out1 = whole(vec4(0.0, 0.0, 0.0, c.a));
-  out2 = whole(vec4(0.0, 0.0, 0.0, c.a));
+  out2 = whole(vec4(0.0, 0.0, glow, c.a));
 }
 `
       : `
@@ -176,6 +178,9 @@ p.reset = function () {
   this.textAlign = "start";
   this.textBaseline = "alphabetic";
   this.dash = [];
+  //drawn glowing in the lit city, as bright as its colours whatever the
+  //light - not a canvas's own (client/glview GLOW)
+  this.glow = false;
   this.saved = [];
   this.beginPath();
 };
@@ -190,6 +195,7 @@ var STATE = [
   "textAlign",
   "textBaseline",
   "dash",
+  "glow",
 ];
 
 p.save = function () {
@@ -249,6 +255,69 @@ p.closePath = function () {
   this.moveTo(pts[0], pts[1]);
 };
 
+p.rect = function (x, y, w, h) {
+  this.moveTo(x, y);
+  this.lineTo(x + w, y);
+  this.lineTo(x + w, y + h);
+  this.lineTo(x, y + h);
+  this.closePath();
+};
+
+/**
+ * Round from angle a0 to a1 about x, y, r out - the other way round if
+ * anticlockwise - joined on from where the path is, as the canvas does: in
+ * short straight steps, about two pixels each.
+ */
+p.arc = function (x, y, r, a0, a1, anticlockwise) {
+  var full = Math.PI * 2,
+    //a whole turn and more is round once; anything less goes the short way
+    //on from a0 that the direction says, as the canvas has it
+    sweep = anticlockwise
+      ? a0 - a1 >= full
+        ? -full
+        : -((((a0 - a1) % full) + full) % full)
+      : a1 - a0 >= full
+        ? full
+        : (((a1 - a0) % full) + full) % full;
+
+  var n = Math.max(8, Math.ceil((Math.abs(sweep) * r) / 2));
+
+  for (var i = 0; i <= n; i++) {
+    var a = a0 + (sweep * i) / n,
+      px = x + Math.cos(a) * r,
+      py = y + Math.sin(a) * r;
+
+    if (i === 0 && this.sub === null) this.moveTo(px, py);
+    else this.lineTo(px, py);
+  }
+};
+
+//a rectangle filled, or its outline drawn, with the path left as it was
+p.fillRect = function (x, y, w, h) {
+  this.alone(function () {
+    this.rect(x, y, w, h);
+    this.fill();
+  });
+};
+
+p.strokeRect = function (x, y, w, h) {
+  this.alone(function () {
+    this.rect(x, y, w, h);
+    this.stroke();
+  });
+};
+
+//draws on a path of its own, the path as it was kept for after
+p.alone = function (draw) {
+  var path = this.path,
+    sub = this.sub;
+
+  this.beginPath();
+  draw.call(this);
+  this.path = path;
+  this.sub = sub;
+};
+
 /* --- Filling ----------------------------------------------------------- */
 
 p.fill = function () {
@@ -274,7 +343,11 @@ p.fill = function () {
   });
 
   this.ops.push({ kind: "count", tris: this.corners(tris, c) });
-  this.ops.push({ kind: "cover", tris: this.corners(rect(box), c) });
+  this.ops.push({
+    kind: "cover",
+    tris: this.corners(rect(box), c),
+    glow: this.glow,
+  });
 };
 
 /* --- Lines ------------------------------------------------------------- */
@@ -504,9 +577,14 @@ p.shape = function (kind, tris, c) {
     data = this.corners(tris, c);
 
   //run on with the shapes just before it that are drawn the same way
-  if (kind === "plain" && last !== undefined && last.kind === "plain")
+  if (
+    kind === "plain" &&
+    last !== undefined &&
+    last.kind === "plain" &&
+    last.glow === this.glow
+  )
     last.tris[1] += data[1];
-  else this.ops.push({ kind: kind, tris: data });
+  else this.ops.push({ kind: kind, tris: data, glow: this.glow });
 };
 
 //the corners of triangles - or the ends of lines - each in colour c, into
@@ -605,6 +683,7 @@ p.draw = function (frame, lit) {
     gl.useProgram(s);
     gl.bindVertexArray(this.shapeVaos[k]);
     gl.uniform2f(gl.getUniformLocation(s, "size"), view.width, view.height);
+    if (lit) gl.uniform1f(gl.getUniformLocation(s, "glow"), op.glow ? 1 : 0);
 
     if (op.kind === "plain") {
       gl.stencilFunc(gl.ALWAYS, 0, 0xff);
@@ -654,11 +733,18 @@ p.draw = function (frame, lit) {
 };
 
 /**
- * A frame starts: words not drawn for a while are put away.
+ * A frame starts: from nothing drawn, and words not drawn for a while are
+ * put away.
  */
 p.begin = function () {
   var frame = ++this.frame,
     gl = this.gl;
+
+  //nothing left over from a frame that broke off half way, to turn up in
+  //the wrong layer of this one
+  this.ops.length = 0;
+  this.used = 0;
+  this.reset();
 
   if (frame % WORDS_SWEEP !== 0) return;
 

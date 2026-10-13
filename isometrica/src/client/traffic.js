@@ -775,6 +775,45 @@ Driver.prototype.scan = function (from, to) {
   return best;
 };
 
+//how far ahead along its way a driver looks for where it turns, tiles, and
+//how far its way has to swing from the way it goes for that to be a turn
+//(the sine of the angle) - a lane change round something counts too
+var SIGNAL_AHEAD = 2,
+  SIGNAL_SWING = 0.4;
+
+/**
+ * Which way it is about to turn, for its indicators: -1 left, 1 right, 0
+ * neither - by how its way bends within SIGNAL_AHEAD of it, the way it
+ * bends the most; turning back the way it came is to the left, across the
+ * other lane, as is going round something. Pulling in at the kerb is to the
+ * right, and out again from it to the left.
+ */
+Driver.prototype.signal = function () {
+  if (this.pullingOver) return 1;
+  if (this.parked) return 0;
+
+  var hx = this.hx,
+    hy = this.hy,
+    most = 0;
+
+  ahead(this, SIGNAL_AHEAD);
+
+  for (var i = 0; i < SEG.length; i++) {
+    var sg = SEG[i],
+      sx = (sg[2] - sg[0]) / sg[5],
+      sy = (sg[3] - sg[1]) / sg[5],
+      //to the left of the way it goes, plus; right, minus (see rightOf)
+      swing = hx * sy - hy * sx;
+
+    //back the way it came
+    if (hx * sx + hy * sy < -0.3 && Math.abs(swing) < SIGNAL_SWING) swing = 1;
+
+    if (Math.abs(swing) > Math.abs(most)) most = swing;
+  }
+
+  return most > SIGNAL_SWING ? -1 : most < -SIGNAL_SWING ? 1 : 0;
+};
+
 /**
  * The first junction on its way it has not been given, and those straight
  * after it: {tiles, moves, stop, out}, stop and out how far along its way
