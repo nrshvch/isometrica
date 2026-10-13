@@ -358,6 +358,7 @@ CarScript.prototype.traffic = COMMUTER;
 //out for a drive in the small hours rather than on its way home for the night
 CarScript.prototype.nightRider = false;
 CarScript.prototype.type = null;
+CarScript.prototype.color = null;
 //a bus's stops, in the order it calls at them, and which it is going to
 CarScript.prototype.stops = null;
 CarScript.prototype.stop = 0;
@@ -622,6 +623,7 @@ CarScript.prototype.dress = function (traffic) {
     color = colors[(Math.random() * colors.length) | 0];
 
   this.type = type;
+  this.color = color;
   this.looks = type.frames[color];
   this.heading = null;
   this.lamp = type.lamps === null ? 0 : (Math.random() * type.lamps.length) | 0;
@@ -1110,6 +1112,13 @@ function perRoad(root) {
 function reconcile(self) {
   if (self.types === null) return;
 
+  //the traffic as it was left, before anything new is put out - once the
+  //roads it was on are loaded, or a few tries on, whatever is there by then
+  if (!self.restored) {
+    if (!restore(self, ++self.restoreTries >= RESTORE_TRIES)) return;
+    self.restored = true;
+  }
+
   var light = lightAllowed(self.root),
     roads = self.root.roadman.getRoadCount(),
     //as many as the roads take - though in the small hours the buses are
@@ -1164,9 +1173,17 @@ CarManScript.prototype.elapsed = 0;
 
 CarManScript.prototype.clock = 0;
 
+CarManScript.prototype.saved = 0;
+
 CarManScript.prototype.tick = function (time) {
   this.elapsed += time.dt;
   this.clock += time.dt;
+  this.saved += time.dt;
+
+  if (this.saved >= SAVE_EVERY) {
+    this.saved = 0;
+    this.man.save();
+  }
 
   //where everything is, for everything to look at as it drives
   this.man.traffic.frame(this.clock);
@@ -1204,16 +1221,220 @@ function Carman(root) {
   this._stopsAt = 0;
   //roads by the places people drive to, by kind
   this.destinations = {};
+  //whether the traffic kept from the last time has been put back yet, and
+  //how many times it has been tried
+  this.restored = false;
+  this.restoreTries = 0;
 }
 
 Carman.prototype.init = function () {
-  var go = new engine.GameObject("carman");
+  var go = new engine.GameObject("carman"),
+    self = this;
+
   go.addComponent(new CarManScript(this));
   this.root.game.logic.world.addGameObject(go);
 
   loadTypes(this);
   ensureStops(this.root);
+
+  //the traffic is left as it is, jams and all, whenever the game is
+  if (typeof window !== "undefined")
+    window.addEventListener("beforeunload", function () {
+      self.save();
+    });
 };
+
+/* --- Kept ------------------------------------------------------------- */
+
+//how often the traffic is kept, ms - and on the way out
+var SAVE_EVERY = 5000,
+  SAVE_VERSION = 1;
+
+/**
+ * Where the traffic of the city being played is kept, beside its save
+ * (core/persistence/citystore sideKey) - null for a city not saved yet.
+ */
+function trafficKey(self) {
+  var persistence = self.root.core.persistence,
+    id = persistence ? persistence.cityId() : null,
+    store = persistence ? persistence.store() : null;
+
+  if (!id || !store || store.storage === null) return null;
+
+  return { storage: store.storage, key: store.sideKey("traffic", id) };
+}
+
+//everything about a car to put it back as it was: what it is, where it is
+//on its way and the rest of the way, how fast, and what it is about
+function keep(car) {
+  var s = car.car,
+    d = s.driver;
+
+  if (d === null || s.type === null || d.wps.length === 0) return null;
+
+  var from = Math.max(0, d.target - 1);
+
+  return {
+    type: s.type.name,
+    color: s.color,
+    lamps: car.spriteRenderer.lamps,
+    speed: s.baseSpeed,
+    night: s.nightRider,
+    stops: s.stops,
+    stop: s.stop,
+    dwelt: s.dwelt,
+    stalled: s.stalled,
+    driven: s.driven,
+    wps: d.wps.slice(from),
+    target: d.target - from,
+    x: d.x,
+    y: d.y,
+    hx: d.hx,
+    hy: d.hy,
+    v: d.v,
+    v0: d.v0,
+    passable: d.passable,
+    parked: d.parked,
+    stopAtEnd: d.stopAtEnd,
+    pullIn: d.pullIn,
+    pullingOver: d.pullingOver,
+  };
+}
+
+/**
+ * Keeps every car on the roads where it is, beside the city's save - so the
+ * traffic is found where it was left, jams and all, not put out afresh.
+ */
+Carman.prototype.save = function () {
+  var at = trafficKey(this);
+
+  if (at === null || !this.restored) return;
+
+  var cars = [];
+
+  for (var i = 0; i < this.cars.length; i++) {
+    var k = keep(this.cars[i]);
+
+    if (k !== null) cars.push(k);
+  }
+
+  try {
+    at.storage.setItem(
+      at.key,
+      JSON.stringify({ version: SAVE_VERSION, cars: cars }),
+    );
+  } catch (e) {
+    console.warn("Could not keep the traffic", e);
+  }
+};
+
+//how many times, half a second apart, the roads the kept traffic was on
+//are waited for to load before it is put back without those not there
+var RESTORE_TRIES = 6;
+
+/**
+ * Puts the traffic back as it was kept - every car whose way is all still
+ * road, the kind of car still about, where it was and going where it went.
+ *
+ * @param last {boolean} put back whatever can be, whether every road it
+ *        was on is loaded yet or not
+ * @returns {boolean} false to be tried again a little later: roads it was
+ *          on are not loaded yet
+ */
+function restore(self, last) {
+  var at = trafficKey(self),
+    kept = null;
+
+  if (at === null) return true;
+
+  try {
+    kept = JSON.parse(at.storage.getItem(at.key) || "null");
+  } catch (e) {
+    kept = null;
+  }
+
+  if (kept === null || kept.version !== SAVE_VERSION) return true;
+
+  var byName = {},
+    roadman = self.root.roadman;
+
+  //the roads come in as the chunks round the camera load
+  if (
+    !last &&
+    (kept.cars || []).some(function (k) {
+      return (k.wps || []).some(function (wp) {
+        return roadman.getRoad(wp.tile) === null;
+      });
+    })
+  )
+    return false;
+
+  self.types.forEach(function (t) {
+    byName[t.name] = t;
+  });
+
+  (kept.cars || []).forEach(function (k) {
+    var type = byName[k.type];
+
+    if (type === undefined || !k.wps || k.wps.length === 0) return;
+
+    //a way over a road that is gone - or a bus round stops that are - is
+    //not driven any more
+    var gone = k.wps.some(function (wp) {
+      return roadman.getRoad(wp.tile) === null;
+    });
+
+    if (!gone && k.stops)
+      gone = k.stops.some(function (tile) {
+        return roadman.getRoad(tile) === null;
+      });
+
+    if (gone) return;
+
+    var car = new Car(self),
+      s = car.car,
+      color = type.frames[k.color] ? k.color : Object.keys(type.frames)[0];
+
+    s.type = type;
+    s.color = color;
+    s.looks = type.frames[color];
+    s.heading = null;
+    s.lamp = type.lamps === null ? 0 : (Math.random() * type.lamps.length) | 0;
+    s.baseSpeed = k.speed || SPEED * type.speed;
+    s.traffic = type.traffic;
+    s.nightRider = !!k.night;
+    s.stops = k.stops || null;
+    s.stop = k.stop || 0;
+    s.dwelt = k.dwelt || 0;
+    s.stalled = k.stalled || 0;
+    s.driven = k.driven || 0;
+    s.sinceSmoke = Math.random() * EXHAUST_EVERY;
+    if (typeof k.lamps === "number") car.spriteRenderer.lamps = k.lamps;
+
+    var d = s.driverFor();
+
+    d.setPath(k.wps);
+    d.target = Math.min(k.target, k.wps.length - 1);
+    d.x = k.x;
+    d.y = k.y;
+    d.hx = k.hx;
+    d.hy = k.hy;
+    d.v = k.v;
+    d.v0 = k.v0;
+    d.passable = !!k.passable;
+    d.parked = !!k.parked;
+    d.stopAtEnd = !!k.stopAtEnd;
+    d.pullIn = !!k.pullIn;
+    d.pullingOver = !!k.pullingOver;
+
+    self.traffic.enter(d);
+    self.cars.push(car);
+    self.root.game.logic.world.addGameObject(car);
+    s.place();
+  });
+
+  return true;
+}
 
 //how far apart the stops put in a city are, at the least, in tiles - and how
 //many road tiles of it there are to a stop

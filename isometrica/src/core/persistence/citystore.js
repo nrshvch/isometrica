@@ -88,6 +88,7 @@ function writeIndex(self, index) {
 function CityStore(storage, saves) {
   saves = saves || SAVES;
 
+  this.saves = saves;
   this.indexKey = saves + ".cities";
   this.cityKeyPrefix = saves + ".city.";
   this.storage =
@@ -118,6 +119,22 @@ CityStore.isValidId = function (id) {
 CityStore.prototype.key = function (id) {
   return this.cityKeyPrefix + id;
 };
+
+/**
+ * The row something kept beside a city's save is kept in - the traffic on
+ * its roads, say (client/carman): "<saves>.<kind>.<id>". It goes when the
+ * city does.
+ *
+ * @param kind {string}
+ * @param id {string}
+ * @returns {string}
+ */
+CityStore.prototype.sideKey = function (kind, id) {
+  return this.saves + "." + kind + "." + id;
+};
+
+//what is kept beside every city's save (sideKey)
+var SIDES = ["traffic"];
 
 /**
  * @returns {{version: number, activeCityId: string|null, cities: Object}}
@@ -209,6 +226,7 @@ CityStore.prototype.remove = function (id) {
   if (this.storage === null || !CityStore.isValidId(id)) return false;
 
   drop(this, this.key(id));
+  for (var k = 0; k < SIDES.length; k++) drop(this, this.sideKey(SIDES[k], id));
 
   var index = this.index();
 
