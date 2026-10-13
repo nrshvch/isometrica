@@ -72,6 +72,16 @@
   background-image: url(@cobble-road-image);
 }
 
+//another building picked at random while one is being placed
+@dice-image: "../icons/dice.png";
+
+.dice-icon {
+  background-image: url(@dice-image);
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  .cover;
+}
+
 //which ways a road goes, picked after what it is laid in: both ways, or
 //one way only
 @two-way-road-image: "../icons/two-way-road.png";

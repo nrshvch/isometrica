@@ -1331,6 +1331,36 @@ Buildman.prototype.build = function (code, options) {
     //it all
     ts.rotate();
   };
+  //another of the same kind on every footprint of the selection, picked at
+  //random - the selection staying as it is. Each is picked again until it is
+  //another than it was, a few times over, where there is another to be had
+  if (controls.canShuffle)
+    controls.canShuffle(data.classCode !== BuildingClassCode.road);
+  controls.onShuffle = function () {
+    var before = { variants: variants, looks: looks };
+
+    variants = Object.create(null);
+    looks = Object.create(null);
+
+    ts.anchors().forEach(function (tile) {
+      var slot = slots[tile];
+
+      for (var tries = 0; tries < 8; tries++) {
+        delete variants[slot];
+        delete looks[slot];
+        variantAt(tile);
+        lookAt(tile);
+
+        if (
+          variants[slot] !== before.variants[slot] ||
+          JSON.stringify(looks[slot]) !== JSON.stringify(before.looks[slot])
+        )
+          break;
+      }
+    });
+
+    updateHilite();
+  };
   controls.onSubmit = function () {
     var anchors = ts.anchors();
 
