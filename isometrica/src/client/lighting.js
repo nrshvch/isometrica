@@ -106,8 +106,12 @@ var WINDOW_REACH = 18,
 
 //a police car's flash: how high it is, how far it reaches, how bright
 var FLASH_HIGH = 9,
-  FLASH_REACH = 30,
-  FLASH_PEAK = 0.7;
+  FLASH_REACH = 34,
+  FLASH_PEAK = 0.85,
+  //how wide each of its beams is (the cosine of half of it), and how long
+  //they take to sweep round once, ms
+  FLASH_CONE = 0.82,
+  FLASH_TURN = 900;
 
 //how high anything a lamp lights can stand, for the square it is drawn in
 //to take it in
@@ -354,7 +358,10 @@ Lighting.prototype.light = function () {
     w = this.view.width,
     h = this.view.height;
 
-  if (this.night) {
+  //at any hour: the street lights and the cars' headlights are only on
+  //after dark, but a police car's lights, indicators, brake lights and
+  //beacons shine by day too (client/glview, lost in the sun mostly)
+  if (!this.plain) {
     streetLights(this.lamps, M, w, h);
     headlights(this.lamps, M, w, h, this.root.carman);
   }
@@ -516,25 +523,35 @@ function headlights(out, M, w, h, carman) {
     screen(M, at[0], at[1], at[2], spot);
     if (!seen(spot[0], spot[1], FLASH_REACH * 2, w, h)) continue;
 
-    //a police car's flash, blue and red over everything round it
+    //a police car's lightbar: a beam of each of its colours, sweeping
+    //round and round across the road and the walls about it, the one
+    //opposite the other - each car at its own point of the turn
     var glows = car.type ? car.type.glows : null;
 
     if (glows) {
-      var g = glows[car.lamp % glows.length];
+      var turn =
+        ((Date.now() + (renderer.lamps || 0) * FLASH_TURN) / FLASH_TURN) *
+        Math.PI *
+        2;
 
-      out.push({
-        x: spot[0],
-        y: spot[1],
-        z: FLASH_HIGH,
-        reach: FLASH_REACH,
-        color: [g[0] / 255, g[1] / 255, g[2] / 255],
-        peak: FLASH_PEAK,
-        aim: null,
-        cone: -1,
-        tall: TALL,
-        //round onto the car itself, and about
-        wrap: 0.6,
-      });
+      for (var f = 0; f < glows.length; f++) {
+        var g = glows[f],
+          a = turn + (f * Math.PI * 2) / glows.length;
+
+        out.push({
+          x: spot[0],
+          y: spot[1],
+          z: FLASH_HIGH,
+          reach: FLASH_REACH,
+          color: [g[0] / 255, g[1] / 255, g[2] / 255],
+          peak: FLASH_PEAK,
+          aim: [Math.cos(a), Math.sin(a)],
+          cone: FLASH_CONE,
+          tall: TALL,
+          //round onto the car itself, and about
+          wrap: 0.6,
+        });
+      }
     }
 
     //its indicators, blinking amber on the road round them
@@ -628,7 +645,7 @@ Lighting.prototype.workLight = function (
   aim,
   cone,
 ) {
-  if (!this.night || !seen(x, y, reach, this.view.width, this.view.height))
+  if (this.plain || !seen(x, y, reach, this.view.width, this.view.height))
     return;
 
   this.lamps.push({

@@ -80,7 +80,9 @@ WorkLights.draw = function (layer, renderer, x, y, lights, phase) {
       1,
     );
 
-    if (night && l.reach)
+    //and lights what is round it - by day too, a beacon, lost in the sun
+    //mostly (client/glview)
+    if (l.reach)
       gl.workLight(
         x + l.x,
         y + l.y,
@@ -199,8 +201,8 @@ WorkLights.siteLight = function (l) {
       z: l.z,
       color: WorkLights.WHITE,
       night: true,
-      reach: 40 + l.z,
-      peak: 0.55,
+      reach: 30 + l.z,
+      peak: 0.28,
     };
 
   return {
@@ -209,8 +211,8 @@ WorkLights.siteLight = function (l) {
     z: l.z,
     color: WorkLights.WHITE,
     night: true,
-    reach: 44,
-    peak: 0.7,
+    reach: 34,
+    peak: 0.36,
     size: 3,
   };
 };
