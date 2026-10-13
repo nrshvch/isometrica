@@ -494,11 +494,18 @@ engine in `engine/`.
   its corners on the side it turns to (`isometrica/src/client/traffic.js`
   Driver signal, lighting blinkers), throwing a little amber light round
   them at night: all the way to the next junction on its way, and through
-  it, if it turns there - nothing if it goes straight over, whatever it
-  does at the next one, and nothing round a bend, or a turn where the road
-  goes no other way; turning round left, unless at a dead end. And just
-  before it changes lanes: out round something in the road, out from the
-  kerb or in to it. Every lamp is a little square over just the pixels it
+  it, if it turns there and the road up to it is straight - nothing if it
+  goes straight over, whatever it does at the next one, nothing round a
+  bend or a turn where the road goes no other way, and nothing for the
+  junction past a bend till it is round it; turning round left, unless at
+  a dead end. Going round something it shows left as it pulls out and
+  right as it is about to pull back in; out from the kerb or in to it, just
+  before. A car broken down at the kerb, and the courier waiting at the
+  side of the road, has all four going - its hazard lights. And a car on
+  the brakes - slowing down, or standing in the traffic - shows its brake
+  lights, a brighter red at the back of it than the tail lights painted on
+  it, and at night throws more red light behind it (lighting brakeLights).
+  Every lamp is a little square over just the pixels it
   can reach, lighting each by how far it is from the lamp in the world -
   worked out from where it is on the screen and how high it stands - and how
   squarely it faces it, the headlights in a cone ahead and a street light in

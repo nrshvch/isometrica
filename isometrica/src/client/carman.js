@@ -359,6 +359,8 @@ CarScript.prototype.heading = null;
 //which way it is about to turn: -1 left, 1 right, 0 neither (client/traffic
 //Driver signal)
 CarScript.prototype.signal = 0;
+//whether it is on the brakes (client/traffic Driver braking)
+CarScript.prototype.braking = false;
 CarScript.prototype.traffic = COMMUTER;
 //out for a drive in the small hours rather than on its way home for the night
 CarScript.prototype.nightRider = false;
@@ -848,8 +850,10 @@ CarScript.prototype.place = function () {
     renderer,
     frame;
 
-  //which way it is about to turn, for its indicators
+  //which way it is about to turn, for its indicators, and whether it is on
+  //the brakes, for its brake lights
   this.signal = driver.signal();
+  this.braking = driver.braking;
 
   if (heading !== this.heading && this.looks[heading] !== undefined) {
     this.heading = heading;
@@ -938,8 +942,12 @@ CarScript.prototype.tick = function (time) {
 
   //broken down: on its way over to the kerb, crawling, then standing there
   if (this.stalled > 0) {
-    if (driver.parked) this.stalled -= time.dt;
-    else {
+    //stood at the kerb, its hazard lights going
+    if (driver.parked) {
+      this.stalled -= time.dt;
+      this.signal = Lighting.HAZARD;
+      this.braking = false;
+    } else {
       driver.v0 = this.baseSpeed * FAILING_SPEED;
       driver.update(time.dt);
       this.place();
@@ -1012,8 +1020,10 @@ CarScript.prototype.tick = function (time) {
  * It is also where a darkened car will part company with its lamp: night
  * shading belongs on the draw below, not on this one.
  */
-//an indicator's colour, lit
-var BLINKER = "#ffb21e";
+//an indicator's colour, lit - and a brake light's, a brighter red than the
+//tail lights painted on it
+var BLINKER = "#ffb21e",
+  BRAKE_LIGHT = "#ff2a1c";
 
 function VehicleRenderer() {
   engine.SpriteRenderer.call(this);
@@ -1054,23 +1064,23 @@ VehicleRenderer.prototype.render = function (
     self,
   );
 
-  //its indicators, blinking amber at its corners as it turns: glowing,
-  //whatever the light (client/lighting blinkers)
-  var at = self.buf,
-    blink = Lighting.blinkers(self.gameObject, at[0], at[1], true);
+  //its indicators, blinking amber at its corners as it turns, and its
+  //brake lights red at the back as it slows down and stands: glowing,
+  //whatever the light (client/lighting blinkers, brakeLights)
+  var at = self.buf;
 
-  if (blink !== null) {
-    layer.save();
-    layer.glow = true;
-    //hidden behind whatever stands in front of the car, as high as its
-    //lamps - and a little nearer, not to be lost in the car's own corner
-    layer.standsAt =
-      engine.Config.gl.elevation(self.gameObject) + Lighting.CAR_LAMP_HIGH + 2;
-    layer.fillStyle = BLINKER;
-    for (var b = 0; b < blink.length; b += 2)
-      layer.fillRect(Math.floor(blink[b]), Math.floor(blink[b + 1]), 1, 1);
-    layer.restore();
-  }
+  lamps(
+    self,
+    layer,
+    Lighting.blinkers(self.gameObject, at[0], at[1], true),
+    BLINKER,
+  );
+  lamps(
+    self,
+    layer,
+    Lighting.brakeLights(self.gameObject, at[0], at[1], true),
+    BRAKE_LIGHT,
+  );
 
   var lit = self.lit;
 
@@ -1097,6 +1107,22 @@ VehicleRenderer.prototype.render = function (
     Math.floor(buffer[1] - lit.pivotY + 0.5),
   );
 };
+
+//a pixel of colour at each of points, [x, y, x, y], on the screen: hidden
+//behind whatever stands in front of the car, as high as its lamps - and a
+//little nearer, not to be lost in the car's own corner
+function lamps(self, layer, points, color) {
+  if (points === null) return;
+
+  layer.save();
+  layer.glow = true;
+  layer.standsAt =
+    engine.Config.gl.elevation(self.gameObject) + Lighting.CAR_LAMP_HIGH + 2;
+  layer.fillStyle = color;
+  for (var b = 0; b < points.length; b += 2)
+    layer.fillRect(Math.floor(points[b]), Math.floor(points[b + 1]), 1, 1);
+  layer.restore();
+}
 
 /**
  * A lamp on a vehicle - a police car's - as it is drawn over it: its colours

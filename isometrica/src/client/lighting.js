@@ -85,6 +85,9 @@ var HEAD_HIGH = 3,
 //and how wide it spreads (as HEAD_CONE)
 var TAIL_REACH = 10,
   TAIL_PEAK = 0.35,
+  //and on the brakes, brighter and further
+  BRAKE_REACH = 13,
+  BRAKE_PEAK = 0.8,
   TAIL_LIGHT = [1, 0.12, 0.06],
   TAIL_CONE = 0.1;
 
@@ -552,7 +555,9 @@ function headlights(out, M, w, h, carman) {
           wrap: 0.6,
         });
 
-    if (renderer.lamps === undefined || !lampsOn(renderer.lamps)) continue;
+    var lamps = renderer.lamps !== undefined && lampsOn(renderer.lamps);
+
+    if (!lamps && !car.braking) continue;
 
     //how far ahead of its middle the front is: across the screen its
     //picture is as long as it is and as wide, about 6 (shared/gen/vehicles)
@@ -564,19 +569,21 @@ function headlights(out, M, w, h, carman) {
       var gx = aim[0] * ahead - aim[1] * side * HEAD_APART,
         gy = aim[1] * ahead + aim[0] * side * HEAD_APART;
 
-      out.push({
-        x: spot[0] + gx - gy,
-        y: spot[1] - (gx + gy) / 2,
-        z: HEAD_HIGH,
-        reach: HEAD_REACH,
-        color: HEAD_LIGHT,
-        peak: HEAD_PEAK,
-        aim: aim,
-        cone: HEAD_CONE,
-        tall: 20,
-      });
+      if (lamps)
+        out.push({
+          x: spot[0] + gx - gy,
+          y: spot[1] - (gx + gy) / 2,
+          z: HEAD_HIGH,
+          reach: HEAD_REACH,
+          color: HEAD_LIGHT,
+          peak: HEAD_PEAK,
+          aim: aim,
+          cone: HEAD_CONE,
+          tall: 20,
+        });
 
-      //and a tail light at the back, red and dim, behind it
+      //and a tail light at the back, red and dim, behind it - brighter on
+      //the brakes
       gx = -aim[0] * ahead - aim[1] * side * HEAD_APART;
       gy = -aim[1] * ahead + aim[0] * side * HEAD_APART;
 
@@ -584,9 +591,9 @@ function headlights(out, M, w, h, carman) {
         x: spot[0] + gx - gy,
         y: spot[1] - (gx + gy) / 2,
         z: HEAD_HIGH,
-        reach: TAIL_REACH,
+        reach: car.braking ? BRAKE_REACH : TAIL_REACH,
         color: TAIL_LIGHT,
-        peak: TAIL_PEAK,
+        peak: car.braking ? BRAKE_PEAK : TAIL_PEAK,
         aim: BEHIND[car.heading],
         cone: TAIL_CONE,
         tall: 20,
@@ -638,6 +645,10 @@ Lighting.prototype.workLight = function (
   });
 };
 
+//a car's signal (car.signal) with all four of its indicators going, as one
+//broken down at the kerb or stood waiting at the side of the road has
+Lighting.HAZARD = 2;
+
 /**
  * Where a car's indicators are on the screen while they are lit - the one
  * at the front and the one at the back on the side it is turning to, the
@@ -663,14 +674,49 @@ Lighting.blinkers = function (go, x, y, up) {
   if (Math.floor((Date.now() + phase) / BLINK_MS) % 2 === 1) return null;
 
   //as far ahead as its headlights, and out to its side - on the right
-  //of the way it goes as it is seen, the side as it turns
+  //of the way it goes as it is seen, the side as it turns; both sides for
+  //its hazard lights
   var ahead = Math.max(4, (sprite.width - 6) / 2),
-    side = car.signal * (HEAD_APART + 0.5),
+    sides = car.signal === Lighting.HAZARD ? [-1, 1] : [car.signal],
     out = [];
 
-  for (var end = 1; end >= -1; end -= 2) {
-    var gx = aim[0] * ahead * end + aim[1] * side,
-      gy = aim[1] * ahead * end - aim[0] * side;
+  for (var k = 0; k < sides.length; k++) {
+    var side = sides[k] * (HEAD_APART + 0.5);
+
+    for (var end = 1; end >= -1; end -= 2) {
+      var gx = aim[0] * ahead * end + aim[1] * side,
+        gy = aim[1] * ahead * end - aim[0] * side;
+
+      out.push(x + gx - gy, y - (gx + gy) / 2 - (up ? HEAD_HIGH : 0));
+    }
+  }
+
+  return out;
+};
+
+/**
+ * Where a car's brake lights are on the screen while it is on the brakes
+ * (car.braking - client/traffic Driver braking): at the back of it, either
+ * side, as its tail lights are - the car's middle at x, y on the screen,
+ * the ground under them or up as high as they are. Null while it is not.
+ */
+Lighting.brakeLights = function (go, x, y, up) {
+  var car = go.car,
+    renderer = go.spriteRenderer;
+
+  if (!car || !car.braking || car.heading === null || !renderer) return null;
+
+  var aim = AIM[car.heading],
+    sprite = renderer._sprite;
+
+  if (aim === undefined || !sprite) return null;
+
+  var ahead = Math.max(4, (sprite.width - 6) / 2),
+    out = [];
+
+  for (var side = -1; side <= 1; side += 2) {
+    var gx = -aim[0] * ahead - aim[1] * side * (HEAD_APART - 0.5),
+      gy = -aim[1] * ahead + aim[0] * side * (HEAD_APART - 0.5);
 
     out.push(x + gx - gy, y - (gx + gy) / 2 - (up ? HEAD_HIGH : 0));
   }
