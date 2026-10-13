@@ -1,3 +1,5 @@
+import GLCanvas from "./glcanvas";
+
 /**
  * The city drawn in WebGL, and lit pixel by pixel as it is (client/lighting).
  *
@@ -11,9 +13,10 @@
  * at night how high every pixel stands and what shines of it (client/
  * cachedsprite glQuad) - into as many pictures of the
  * screen at once, the frame's (the G-buffer), each covering what was drawn
- * there before as a picture drawn over another does. What a layer draws with
- * the canvas instead - the lines round a city, the price over a building -
- * comes as a canvas, laid over the layer (canvas).
+ * there before as a picture drawn over another does. What a layer draws as
+ * lines, shapes and words instead - the lines round a city, the price over a
+ * building - is drawn over the layer's pictures in WebGL too (client/
+ * glcanvas, overlay). The frame is drawn on the canvas shown on the page.
  *
  * Once the lit layers are in, they are lit (light): every lamp - a street
  * light, a headlight, a lit window or sign, a police car's flash - a square over
@@ -163,28 +166,6 @@ precision highp float;
 in vec2 corner;
 void main() {
   gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
-}
-`;
-
-//a canvas laid over what is drawn: its colours, looking up and on the
-//ground where it is
-var CANVAS_FS = `#version 300 es
-precision highp float;
-${WHOLE}
-uniform sampler2D picture;
-uniform vec2 size;
-
-layout(location = 0) out vec4 out0;
-layout(location = 1) out vec4 out1;
-layout(location = 2) out vec4 out2;
-
-void main() {
-  vec4 c = texelFetch(picture, ivec2(int(gl_FragCoord.x), int(size.y - gl_FragCoord.y)), 0);
-
-  if (c.a <= 0.0) discard;
-  out0 = c;
-  out1 = whole(vec4(0.0, 0.0, 0.0, c.a));
-  out2 = whole(vec4(0.0, 0.0, 0.0, c.a));
 }
 `;
 
@@ -373,22 +354,6 @@ void main() {
 }
 `;
 
-var PLAIN_CANVAS_FS = `#version 300 es
-precision highp float;
-
-uniform sampler2D picture;
-uniform vec2 size;
-
-out vec4 color;
-
-void main() {
-  vec4 c = texelFetch(picture, ivec2(int(gl_FragCoord.x), int(size.y - gl_FragCoord.y)), 0);
-
-  if (c.a <= 0.0) discard;
-  color = c;
-}
-`;
-
 /**
  * @param pageSize {number} how big a page of the canvas cache is
  * @param maxPages {number} and how many there can be
@@ -399,7 +364,8 @@ function GLView(pageSize, maxPages) {
     alpha: false,
     antialias: false,
     depth: false,
-    stencil: false,
+    //for what is drawn over the city as lines and shapes (client/glcanvas)
+    stencil: true,
     premultipliedAlpha: false,
     preserveDrawingBuffer: false,
   });
@@ -413,6 +379,9 @@ function GLView(pageSize, maxPages) {
   this.sprites = new Float32Array(FLOATS * 1024);
   this.count = 0;
   this.lampData = new Float32Array(LAMP_FLOATS * 64);
+
+  //what is drawn over the city as lines, shapes and words
+  this.overlay = new GLCanvas(this);
 }
 
 GLView.prototype.setup = function () {
@@ -420,8 +389,6 @@ GLView.prototype.setup = function () {
 
   this.spriteProgram = program(gl, SPRITE_VS, SPRITE_FS);
   this.plainProgram = program(gl, SPRITE_VS, PLAIN_FS);
-  this.canvasProgram = program(gl, FULL_VS, CANVAS_FS);
-  this.plainCanvasProgram = program(gl, FULL_VS, PLAIN_CANVAS_FS);
   this.lampProgram = program(gl, LAMP_VS, LAMP_FS);
   this.litProgram = program(gl, FULL_VS, LIT_FS);
 
@@ -450,7 +417,8 @@ GLView.prototype.setup = function () {
   this.first = gl.createFramebuffer();
   this.second = gl.createFramebuffer();
   this.lightFrame = gl.createFramebuffer();
-  this.canvasTex = texture2d(gl);
+  //a stencil for the lines and shapes drawn into the lit city
+  this.stencil = gl.createRenderbuffer();
   this.width = this.height = 0;
 
   //the squares of the pictures, each of the batches it is drawn in: the
@@ -529,11 +497,7 @@ GLView.prototype.setup = function () {
 
   this.fullVao = gl.createVertexArray();
   gl.bindVertexArray(this.fullVao);
-  [this.canvasProgram, this.plainCanvasProgram, this.litProgram].forEach(
-    function (p) {
-      attribute(gl, p, "corner", self.corners, 2, 0, 0, 0);
-    },
-  );
+  attribute(gl, this.litProgram, "corner", self.corners, 2, 0, 0, 0);
   gl.bindVertexArray(null);
 };
 
@@ -642,6 +606,7 @@ GLView.prototype.begin = function (w, h, night) {
   if (this.width !== w || this.height !== h) this.resize(w, h);
 
   this.night = night;
+  this.overlay.begin();
   gl.viewport(0, 0, w, h);
   gl.clearColor(0, 0, 0, 0);
   for (var f of [this.first, this.second]) {
@@ -683,6 +648,16 @@ GLView.prototype.resize = function (w, h) {
   });
 
   attach(gl, this.first, [t[ALBEDO], t[NORMAL], t[HEIGHT]]);
+  gl.bindRenderbuffer(gl.RENDERBUFFER, this.stencil);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, w, h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, this.first);
+  gl.framebufferRenderbuffer(
+    gl.FRAMEBUFFER,
+    gl.DEPTH_STENCIL_ATTACHMENT,
+    gl.RENDERBUFFER,
+    this.stencil,
+  );
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   attach(gl, this.second, [t[SHINE]]);
   attach(gl, this.lightFrame, [this.lightTex]);
 };
@@ -721,10 +696,11 @@ GLView.prototype.keep = function () {
 };
 
 /**
- * Draws the squares added since, and over them the canvas, if any - into
- * the pictures of the screen of the lit city (lit), or over it as they are.
+ * Draws the squares added since, and over them what was drawn as lines,
+ * shapes and words (client/glcanvas) - into the pictures of the screen of
+ * the lit city (lit), or over it as they are.
  */
-GLView.prototype.flush = function (lit, canvas) {
+GLView.prototype.flush = function (lit) {
   var gl = this.gl,
     n = this.count;
 
@@ -752,32 +728,9 @@ GLView.prototype.flush = function (lit, canvas) {
     } else this.batch(null, this.plainProgram, this.vaos[0][1], true, n, 1);
   }
 
-  if (canvas) {
-    var gl2 = this.gl;
-
-    gl2.activeTexture(gl2.TEXTURE0);
-    gl2.bindTexture(gl2.TEXTURE_2D, this.canvasTex);
-    gl2.pixelStorei(gl2.UNPACK_FLIP_Y_WEBGL, false);
-    gl2.pixelStorei(gl2.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-    gl2.texImage2D(
-      gl2.TEXTURE_2D,
-      0,
-      gl2.RGBA,
-      gl2.RGBA,
-      gl2.UNSIGNED_BYTE,
-      canvas,
-    );
-
-    var p = lit ? this.canvasProgram : this.plainCanvasProgram;
-
-    gl2.bindFramebuffer(gl2.FRAMEBUFFER, lit ? this.first : null);
-    if (lit) drawBuffers(gl2, 3);
-    gl2.useProgram(p);
-    gl2.uniform1i(gl2.getUniformLocation(p, "picture"), 0);
-    gl2.uniform2f(gl2.getUniformLocation(p, "size"), this.width, this.height);
-    gl2.bindVertexArray(this.fullVao);
-    gl2.drawArrays(gl2.TRIANGLES, 0, 6);
-  }
+  if (this.overlay.any()) this.overlay.draw(lit ? this.first : null, lit);
+  //every layer starts drawing as a canvas of its own would
+  this.overlay.reset();
 };
 
 GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {

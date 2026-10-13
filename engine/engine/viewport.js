@@ -11,20 +11,35 @@ define(function (require) {
      * @constructor
      */
     function Viewport(graphics, canvas) {
+        //everything drawn in WebGL (config.gl): what it draws on is what is
+        //shown, in the place of the canvas given - nothing copied over to
+        //it, and no 2D context on it
+        var shown = config.gl !== null && config.gl !== undefined ? config.gl.canvas : null;
+
+        if (shown && canvas && shown !== canvas) {
+            shown.id = canvas.id;
+            shown.className = canvas.className;
+            if (canvas.parentNode)
+                canvas.parentNode.replaceChild(shown, canvas);
+        }
+
         this.camera = null;
-        this.canvas = canvas || document.createElement('canvas');
-        this.context = this.canvas.getContext("2d");
-        this.context.imageSmoothingEnabled = false;
-        this.context.webkitImageSmoothingEnabled = false;
+        this.canvas = shown || canvas || document.createElement('canvas');
+        this.context = shown ? null : this.canvas.getContext("2d");
+        if (this.context !== null) {
+            this.context.imageSmoothingEnabled = false;
+            this.context.webkitImageSmoothingEnabled = false;
+        }
         this.graphics = graphics;
         this.width = 0;
         this.height = 0;
 
         this.viewportMatrix = new Float32Array(16);
 
-        //generate layers
+        //generate layers - canvases of their own to draw on, unless it is all
+        //drawn in WebGL
         this.layers = [];
-        for (var i = 0; i < config.layersCount; i++) {
+        for (var i = 0; i < (shown ? 0 : config.layersCount); i++) {
             var cnv = document.createElement("canvas");
             this.layers[i] = cnv.getContext("2d");
             this.layers[i].imageSmoothingEnabled = false;
@@ -316,6 +331,7 @@ define(function (require) {
     p.canvas = null;
 
     /**
+     * null while everything is drawn in WebGL (config.gl)
      * @type {CanvasRenderingContext2D}
      */
     p.context = null;
