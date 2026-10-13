@@ -100,8 +100,9 @@ engine in `engine/`.
   about its edges - each lit by the buildings' sun in four flat tones, its
   top the lightest, with a short shadow on the ground.
 - So is the smoke (`isometrica/src/shared/gen/smoke.js`): a puff in six sizes,
-  white out of a chimney, black out of an engine on fire. A puff grows
-  through them as it rises - slower and slower - drifts off the way the one
+  white out of a chimney, black out of a car's engine - bigger, and coming
+  out three or more times as often, rising twice as fast. A puff grows
+  through them as it rises - slower and slower - drifts off the way the
   wind blows, the higher the more, and fades in as it comes out and away as
   it thins (`isometrica/src/client/components/smokeScript.js`). A chimney
   smokes only while there is a fire going in the house, which is most
@@ -111,7 +112,14 @@ engine in `engine/`.
   blended over what is behind it but dithered, the way the lamps' light is:
   each pixel of it there or not, by where it falls in a 4x4 pattern laid
   from the world's origin (`isometrica/src/client/glview.js`, a sprite
-  renderer's `dither`).
+  renderer's `dither`). It is lit where it is, up in the air - by the sun,
+  and at night by a lamp near it - not as the ground it is drawn over (a
+  sprite renderer's `over`, how high over the ground it is).
+- One wind blows over the whole city (`isometrica/src/client/wind.js`), all
+  the smoke there is going with it at once: which way it comes from wanders
+  round over a few minutes, and how hard it blows rises and falls over a
+  minute or so, with gusts every few seconds - from near calm, the smoke
+  going straight up, to a gale that bends it over low.
 - What is on screen is drawn from a few big canvas pages
   (`isometrica/src/client/canvascache.js`), not from the sheets: a sprite is copied
   there the first time it is drawn, and whatever has gone undrawn longest

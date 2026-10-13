@@ -20,7 +20,8 @@ export var FRAMES = 6;
 var SIZES = [3, 4, 5, 7, 8, 10];
 
 //the colours, lit to in shade, of either kind - soot from as it comes out to
-//as high as it gets, greyer and thinner on the way up
+//as high as it gets, greyer and thinner on the way up - and its sizes, if
+//not SIZES
 var KINDS = {
   steam: {
     lit: [[246, 247, 249]],
@@ -29,17 +30,19 @@ var KINDS = {
   },
   soot: {
     lit: [
-      [82, 78, 74],
-      [120, 117, 114],
+      [46, 44, 42],
+      [92, 90, 88],
     ],
     mid: [
-      [58, 55, 52],
-      [98, 96, 94],
+      [30, 28, 27],
+      [72, 70, 69],
     ],
     shade: [
-      [36, 34, 33],
-      [76, 75, 74],
+      [16, 15, 15],
+      [54, 53, 52],
     ],
+    //bigger than steam, as much more of it comes out at once
+    sizes: [4, 6, 7, 9, 10, 12],
   },
 };
 
@@ -77,7 +80,7 @@ export function paint(name) {
   if (kind === undefined || f < 0 || f >= FRAMES)
     throw new Error("no such smoke: " + name);
 
-  var d = SIZES[f],
+  var d = (kind.sizes || SIZES)[f],
     up = f / (FRAMES - 1),
     out = { width: d, height: d, data: new Uint8ClampedArray(d * d * 4) },
     r = d / 2,
@@ -134,8 +137,10 @@ export function describe() {
   var sizes = {};
 
   Object.keys(KINDS).forEach(function (kind) {
+    var list = KINDS[kind].sizes || SIZES;
+
     for (var f = 0; f < FRAMES; f++)
-      sizes[kind + f] = { w: SIZES[f], h: SIZES[f] };
+      sizes[kind + f] = { w: list[f], h: list[f] };
   });
 
   return sizes;

@@ -1,4 +1,6 @@
 import engine from "engine";
+import Config from "../config";
+import Wind from "../wind";
 
 /**
  * A puff of smoke, from the moment it comes out to when it is gone: it grows
@@ -39,28 +41,47 @@ SmokeScript.steam = {
 //the higher it gets
 SmokeScript.soot = {
   looks: frames("soot"),
-  ttl: 3600,
-  rise: 11,
-  peak: 0.08,
-  thick: 0.9,
+  ttl: 3000,
+  rise: 16,
+  peak: 0.06,
+  thick: 1,
 };
 
 //what it is
 SmokeScript.prototype.kind = SmokeScript.steam;
 SmokeScript.prototype.startedAt = 0;
 SmokeScript.prototype.frame = -1;
+//how high the ground under it is, in the world
+SmokeScript.prototype.ground = 0;
+
+//which way the wind blows just now, and how hard (client/wind)
+var blowing = [0, 0];
 
 /**
- * Which way the wind blows, the same for every puff there is - turning a
- * little now and then - and how hard: world units a second, along x and z.
+ * How high the ground is under x, z in the world - world units, the way a
+ * puff's height is - for how high over it a puff is (SpriteRenderer over:
+ * lit where it is in the air, not as the ground it is drawn over).
  */
-var WIND = 2.6;
+function groundUnder(x, z) {
+  var terrain = vkaria.core.terrain,
+    gx = x / Config.tileSize + 0.5,
+    gy = z / Config.tileSize + 0.5,
+    x0 = Math.floor(gx),
+    y0 = Math.floor(gy),
+    fx = gx - x0,
+    fy = gy - y0,
+    a = terrain.getGridPointHeight(x0, y0),
+    b = terrain.getGridPointHeight(x0 + 1, y0),
+    c = terrain.getGridPointHeight(x0, y0 + 1),
+    d = terrain.getGridPointHeight(x0 + 1, y0 + 1);
 
-function wind(now) {
-  var a = 0.7 + Math.sin(now / 90000) * 0.5 + Math.sin(now / 23000) * 0.15;
-
-  return [Math.cos(a) * WIND, Math.sin(a) * WIND];
+  return (
+    ((a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy) *
+    Config.tileZStep
+  );
 }
+
+var at = new Float32Array(3);
 
 //runs every time the puff is put back into the world out of the pool, and
 //only the first time gives it something to be drawn with
@@ -77,6 +98,9 @@ SmokeScript.prototype.start = function () {
 
   this.frame = -1;
   this.startedAt = this.gameObject.world.logic.time.time;
+  this.gameObject.transform.getPosition(at);
+  this.ground = groundUnder(at[0], at[2]);
+  sprite.over = Math.max(0, at[1] - this.ground);
   this.show(0);
 };
 
@@ -116,9 +140,10 @@ SmokeScript.prototype.tick = function (time) {
   }
 
   var d = time.dt / 1000,
-    w = wind(now),
-    //the higher, the slower it rises and the more the wind has it
-    rise = kind.rise * (1 - 0.65 * t),
+    w = Wind(now, blowing),
+    //the higher, the slower it rises and the more the wind has it - and
+    //the harder it blows, the lower it bends it over
+    rise = kind.rise * (1 - 0.65 * t) * (1 - 0.55 * Wind.strength(w)),
     blown = 0.3 + t;
 
   this.gameObject.transform.translate(
@@ -127,6 +152,8 @@ SmokeScript.prototype.tick = function (time) {
     w[1] * blown * d,
     "world",
   );
+  this.gameObject.transform.getPosition(at);
+  this.gameObject.spriteRenderer.over = Math.max(0, at[1] - this.ground);
 
   this.show(t);
 };

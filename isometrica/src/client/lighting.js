@@ -286,6 +286,9 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
       renderer.opacity,
       this.lit ? elevation(this.M, renderer) : 0,
       renderer.dither === true,
+      //something up in the air with no heights of its own - a puff of
+      //smoke - lit where it is, not as the ground it is drawn over
+      this.lit && renderer.over !== undefined ? -this.M[5] * renderer.over : 0,
     ),
     from = view.offset - 8;
 
