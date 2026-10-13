@@ -598,6 +598,11 @@ function Driver(traffic, length, width, owner) {
   this.alive = true;
   //since when it has waited for the junction ahead of it, or -1
   this.asked = -1;
+  //which way it turns at the next junction (turnAhead), as worked out for
+  //which way and how far along it
+  this.turn = 0;
+  this.turnFor = null;
+  this.turnAt = -1;
 }
 
 /**
@@ -775,44 +780,124 @@ Driver.prototype.scan = function (from, to) {
   return best;
 };
 
-//how far ahead along its way a driver looks for where it turns, tiles, and
-//how far its way has to swing from the way it goes for that to be a turn
-//(the sine of the angle) - a lane change round something counts too
-var SIGNAL_AHEAD = 2,
-  SIGNAL_SWING = 0.4;
+//how far ahead along its way a driver looks for a change of lane - going
+//round something, pulling out from the kerb or in to it - tiles, and how far
+//its way has to swing off the way the road goes for that to be one (the sine
+//of the angle)
+var SIGNAL_AHEAD = 1,
+  SIGNAL_SWING = 0.4,
+  //and how many points of its way it looks along for where it turns
+  TURN_LOOK = 60;
 
 /**
  * Which way it is about to turn, for its indicators: -1 left, 1 right, 0
- * neither - by how its way bends within SIGNAL_AHEAD of it, the way it
- * bends the most; turning back the way it came is to the left, across the
- * other lane, as is going round something. Pulling in at the kerb is to the
- * right, and out again from it to the left.
+ * neither.
+ *
+ * Changing lanes - out round something, out from the kerb or in to it - it
+ * shows which way, just before. Otherwise it shows the way it turns at the
+ * next junction on its way, all the way there and through it: nothing if it
+ * goes straight over that one, whatever it does at the next, and nothing
+ * round a bend or a turn where the road goes no other way. Turning back the
+ * way it came is to the left, across the other lane - though not at a dead
+ * end, where there is nothing else to do. Pulling in at the kerb, broken
+ * down, is to the right.
  */
 Driver.prototype.signal = function () {
   if (this.pullingOver) return 1;
   if (this.parked) return 0;
 
-  var hx = this.hx,
-    hy = this.hy,
-    most = 0;
+  var lane = laneChange(this);
 
-  ahead(this, SIGNAL_AHEAD);
+  return lane !== 0 ? lane : this.turnAhead();
+};
+
+//which way it changes lanes just ahead, if it does: how its way swings off
+//the way the road goes, along the straight - or to where it pulls in
+function laneChange(self) {
+  var most = 0;
+
+  ahead(self, SIGNAL_AHEAD);
 
   for (var i = 0; i < SEG.length; i++) {
     var sg = SEG[i],
-      sx = (sg[2] - sg[0]) / sg[5],
-      sy = (sg[3] - sg[1]) / sg[5],
-      //to the left of the way it goes, plus; right, minus (see rightOf)
-      swing = hx * sy - hy * sx;
+      p = self.wps[sg[6]],
+      d = p.din;
 
-    //back the way it came
-    if (hx * sx + hy * sy < -0.3 && Math.abs(swing) < SIGNAL_SWING) swing = 1;
+    if (d === null || (p.dout !== null && !same(d, p.dout))) continue;
+
+    var sx = (sg[2] - sg[0]) / sg[5],
+      sy = (sg[3] - sg[1]) / sg[5],
+      //to the left of the way the road goes, plus; right, minus (rightOf)
+      swing = d[0] * sy - d[1] * sx;
 
     if (Math.abs(swing) > Math.abs(most)) most = swing;
   }
 
   return most > SIGNAL_SWING ? -1 : most < -SIGNAL_SWING ? 1 : 0;
+}
+
+/**
+ * Which way it turns at the next junction on its way - the next tile where
+ * it could go another way than it does - -1 left, 1 right, 0 straight over
+ * it or none ahead. Worked out again only once it is on to the next point
+ * of its way, or on another way.
+ */
+Driver.prototype.turnAhead = function () {
+  if (this.turnFor !== this.wps || this.turnAt !== this.target) {
+    this.turnFor = this.wps;
+    this.turnAt = this.target;
+    this.turn = nextTurn(this);
+  }
+
+  return this.turn;
 };
+
+function nextTurn(self) {
+  var wps = self.wps,
+    last = -1;
+
+  for (
+    var i = Math.max(0, self.target), n = 0;
+    i < wps.length && n < TURN_LOOK;
+    i++, n++
+  ) {
+    var p = wps[i];
+
+    if (p.tile === last) continue;
+    last = p.tile;
+
+    //where it set off, or where its way ends
+    if (p.din === null || p.dout === null) return 0;
+
+    var ways = onward(self.traffic, p.tile, p.din);
+
+    if (same(p.din, p.dout)) {
+      //straight over a junction: nothing to show for it, nor for what it
+      //does after
+      if (ways >= 2) return 0;
+    } else if (p.din[0] === -p.dout[0] && p.din[1] === -p.dout[1]) {
+      //turning round, where it could have gone on
+      if (ways >= 1) return -1;
+    } else if (ways >= 2) return same(p.dout, rightOf(p.din)) ? 1 : -1;
+  }
+
+  return 0;
+}
+
+//how many ways a car come into tile going din can drive on out of it - any
+//but back the way it came
+function onward(traffic, tile, din) {
+  var n = 0;
+
+  for (var i = 0; i < DIRECTIONS.length; i++) {
+    var d = DIRECTIONS[i];
+
+    if (d[0] === -din[0] && d[1] === -din[1]) continue;
+    if (canDrive(traffic.roadman, tile, d)) n++;
+  }
+
+  return n;
+}
 
 /**
  * The first junction on its way it has not been given, and those straight

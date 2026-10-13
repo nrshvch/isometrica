@@ -481,11 +481,15 @@ engine in `engine/`.
   a home's lit windows on its garden, a car's tail lights the road red
   behind it, and a police car colours the road and the walls round it. A
   police car's lamp and a cab's sign glow in their own colours at every hour,
-  never darkened by the dusk (glview GLOW). A car about to turn - its way
-  bending within a couple of tiles ahead of it, round something in the road
-  or in to the kerb - blinks its indicators amber at its corners on that side
-  (`isometrica/src/client/traffic.js` Driver signal, lighting blinkers),
-  throwing a little amber light round them at night. Every lamp is a little square over just the pixels it
+  never darkened by the dusk (glview GLOW). A car blinks its indicators amber at
+  its corners on the side it turns to (`isometrica/src/client/traffic.js`
+  Driver signal, lighting blinkers), throwing a little amber light round
+  them at night: all the way to the next junction on its way, and through
+  it, if it turns there - nothing if it goes straight over, whatever it
+  does at the next one, and nothing round a bend, or a turn where the road
+  goes no other way; turning round left, unless at a dead end. And just
+  before it changes lanes: out round something in the road, out from the
+  kerb or in to it. Every lamp is a little square over just the pixels it
   can reach, lighting each by how far it is from the lamp in the world -
   worked out from where it is on the screen and how high it stands - and how
   squarely it faces it, the headlights in a cone ahead and a street light in
