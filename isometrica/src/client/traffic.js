@@ -750,6 +750,72 @@ Driver.prototype.extend = function (next) {
   this.target = 1;
 };
 
+/**
+ * Where it could go another way, stood first at a junction because the way
+ * it goes out of it is jammed - something standing there, not driving on
+ * away - and not just waiting for the traffic across it: the junction, the
+ * way it comes into it, where on its way it does, and every other way out
+ * of it that has its lane clear - never back the way it came. Null when it
+ * is not jammed there, or there is no other way.
+ *
+ * @returns {{tile: number, din: number[], at: number, outs: number[][]}|null}
+ */
+Driver.prototype.jammedAt = function () {
+  if (this.held !== "junction" || this.passBack !== -1 || this.stopAtEnd)
+    return null;
+
+  //as far ahead as it looks for one as it drives (step)
+  var junction = this.junctionAhead(
+      this.length / 2 + MIN_GAP + this.v0 * HEADWAY + 2.4,
+    ),
+    wps = this.wps,
+    k;
+
+  if (junction === null || junction.out < 0 || junction.stop < 0) return null;
+
+  var exit = this.scan(junction.out, junction.out + this.length + MIN_GAP * 2);
+
+  if (exit === null || drivingAway(this, exit.driver)) return null;
+
+  var tile = junction.tiles[0];
+
+  for (k = this.target; k < wps.length && wps[k].tile !== tile; k++);
+
+  if (k >= wps.length || wps[k].din === null || wps[k].dout === null)
+    return null;
+
+  var din = wps[k].din,
+    dout = wps[k].dout,
+    outs = [];
+
+  for (var i = 0; i < DIRECTIONS.length; i++) {
+    var d = DIRECTIONS[i];
+
+    if (d[0] === -din[0] && d[1] === -din[1]) continue;
+    if (d[0] === dout[0] && d[1] === dout[1]) continue;
+    if (!canDrive(this.traffic.roadman, tile, d)) continue;
+    if (!this.traffic.laneFree(tile + d[2], d)) continue;
+
+    outs.push([d[0], d[1]]);
+  }
+
+  return outs.length > 0 ? { tile: tile, din: din, at: k, outs: outs } : null;
+};
+
+/**
+ * Goes another way from point `at` of its way on: next instead of the rest
+ * of it - starting in the same tile, the way it comes into it.
+ */
+Driver.prototype.divert = function (at, next) {
+  var wps = this.wps.slice(this.target - 1, at),
+    i;
+
+  for (i = 0; i < next.length; i++) wps.push(next[i]);
+
+  this.wps = wps;
+  this.target = 1;
+};
+
 //the tile it was last on the way through
 Driver.prototype.tile = function () {
   return this.wps.length === 0
@@ -1686,6 +1752,25 @@ Traffic.prototype.frame = function (now) {
 /**
  * The tiles the pieces of a way go through, as far as far along it.
  */
+/**
+ * Whether the lane going d on tile is clear to drive into: nothing there
+ * going that way, standing or crawling.
+ */
+Traffic.prototype.laneFree = function (tile, d) {
+  var here = this.index.get(tile);
+
+  if (here === undefined) return true;
+
+  for (var i = 0; i < here.length; i++) {
+    var o = here[i];
+
+    if (o.hx * d[0] + o.hy * d[1] > 0.7 && (o.v < AWAY || o.parked))
+      return false;
+  }
+
+  return true;
+};
+
 Traffic.prototype.tilesAlong = function (segs, far) {
   var out = this._tiles,
     i,

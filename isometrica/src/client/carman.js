@@ -84,6 +84,10 @@ var CARS_PER_ROAD = 1 / 4,
   //how long one waits in a queue that does not move before it gives up on
   //it, ms
   STUCK_FOR = 60000,
+  //how long one stands first at a junction it cannot get out of the way it
+  //goes before it looks for another way, ms - and how often it looks again
+  DETOUR_AFTER = 4000,
+  DETOUR_EVERY = 1500,
   //how long a bus stands at a stop, ms
   BUS_DWELL = 6000,
   //how many stops it calls at on its round
@@ -367,6 +371,8 @@ CarScript.prototype.stop = 0;
 CarScript.prototype.dwelt = 0;
 //how long it has waited in traffic without moving, ms
 CarScript.prototype.waited = 0;
+//since it last looked for another way out of a jam, ms
+CarScript.prototype.sinceDetour = 0;
 //real time left before it drives on again when it has broken down, ms; none
 //when it is running
 CarScript.prototype.stalled = 0;
@@ -668,6 +674,44 @@ CarScript.prototype.extend = function () {
 };
 
 /**
+ * Off another way from the junction it stands at, the way it goes out of it
+ * jammed (Driver jammedAt): a new route on from any of the other ways out of
+ * it with their lanes clear - wherever that takes it, as a route picked
+ * there would. A bus keeps to its round. Whether it found one.
+ */
+CarScript.prototype.detour = function () {
+  if (this.traffic === SHUTTLE) return false;
+
+  var driver = this.driver,
+    jam = driver.jammedAt();
+
+  if (jam === null) return false;
+
+  var outs = jam.outs,
+    first = (Math.random() * outs.length) | 0;
+
+  for (var i = 0; i < outs.length; i++) {
+    var d = outs[(first + i) % outs.length],
+      step = Traffic.DIRECTIONS.find(function (e) {
+        return e[0] === d[0] && e[1] === d[1];
+      })[2],
+      route = this.nextRoute(jam.tile + step, d);
+
+    if (route.length < 2 || route[0] !== jam.tile + step) continue;
+
+    driver.divert(
+      jam.at,
+      Traffic.routeWaypoints([jam.tile].concat(route), jam.din),
+    );
+    this.man.detours++;
+
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * Gives out: pulls over to the kerb, out of the traffic's way, and stands
  * there smoking for a while. Only where it can pull over - on a street,
  * clear of the junctions - so it crawls on, smoking, until it gets to one.
@@ -944,6 +988,14 @@ CarScript.prototype.tick = function (time) {
     return;
   }
 
+  //stood a while at a junction it cannot get out of the way it goes: off
+  //another way, if there is one clear
+  this.sinceDetour = this.waited > 0 ? this.sinceDetour + time.dt : 0;
+  if (this.waited > DETOUR_AFTER && this.sinceDetour > DETOUR_EVERY) {
+    this.sinceDetour = 0;
+    this.detour();
+  }
+
   this.driven += Math.abs(driver.x - x) + Math.abs(driver.y - y);
   this.place();
 
@@ -1214,6 +1266,8 @@ function Carman(root) {
   this.extras = [];
   //how many have given up on a queue that would not move (CarScript#tick)
   this.unstuck = 0;
+  //how many have gone another way out of a jam
+  this.detours = 0;
   //everything on the roads, these and whatever else drives them
   //(client/traffic)
   this.traffic = new Traffic(root.roadman);

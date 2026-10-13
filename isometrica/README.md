@@ -38,12 +38,21 @@ engine in `engine/`.
   else.
 - A junction - a road tile joined three or four ways - is taken a turn at a
   time. The first car in each lane asks for it on the way up, and goes in
-  once nothing in it crosses its way (straight across, or a left turn
-  across what comes the other way), nobody who has waited longer for a way
-  that crosses it is ready, and there is room on the far side to come out
-  into - nobody stops in the middle of a junction. Junctions next to each
-  other are asked for together. So queues back up from a busy junction,
-  into the junction behind it, and clear the way a jam does.
+  once nothing in it is in its way - crossing its way (straight across, a
+  left turn across what comes the other way, or into the same street) and
+  not yet past where it does - nobody who has waited longer for a way that
+  crosses it is ready, and there is room on the far side to come out into,
+  or what is there is driving on away - nobody stops in the middle of a
+  junction. Ways that never cross go through together: straight on from
+  either side, two turning right, one turning right and one straight on
+  into another street. Junctions next to each other are asked for
+  together. So queues back up from a busy junction, into the junction
+  behind it, and clear the way a jam does.
+- A car stood first at a junction for a few seconds because the way it goes
+  out of it is jammed, not just waiting for the traffic across it, goes
+  another way out of it instead if one has its lane clear - never back the
+  way it came - on a route picked from there (`carman.js` detour, `Driver`
+  jammedAt). A bus keeps to its round.
 - Nothing turns round in the middle of a street, across the lane coming
   the other way - that is what locked a small town's streets solid. A route
   only turns back at a junction, taking its turn there like anything else
