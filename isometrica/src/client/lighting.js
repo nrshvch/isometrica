@@ -45,7 +45,7 @@ var SUNRISE = 5,
 
 //when the street lights go on of an evening, half an hour before the sun is
 //down, and off the next morning, half an hour after it is up (29.5, half
-//past five) - all at once (cityOn)
+//past five) - a block at a time, each a while either side of it (cityOn)
 var CITY_ON = SUNSET - 0.5,
   CITY_OFF = 24 + SUNRISE + 0.5;
 
@@ -56,7 +56,7 @@ var CAR_LAG = 0.75;
 //from when to when anything shines at all: the first windows to come on
 //(windowsOn), the last car to put its lamps out
 var SHINE_FROM = 20.5,
-  SHINE_TO = CITY_OFF + CAR_LAG;
+  SHINE_TO = CITY_OFF + Math.max(CAR_LAG, 0.33);
 
 //a street light: how high its lamp hangs over the road, a pixel a unit
 //(shared/gen/roads streetLight), how far its light reaches, how bright it is
@@ -560,10 +560,11 @@ function seen(x, y, reach, w, h) {
  * spot under it, shining down in a cone and a little round it below.
  */
 function streetLights(out, M, w, h) {
-  if (!cityOn()) return;
-
   for (var key in streets) {
     var lamp = streets[key];
+
+    //on and off with the rest of its block
+    if (!cityOn(+key)) continue;
 
     //its road not in the world - not yet, or no more
     if (lamp.road.world === null) continue;
@@ -920,7 +921,7 @@ Lighting.shines = function (renderer) {
   if (renderer.windows !== undefined)
     return windowsOn(renderer.windows, renderer.lights);
 
-  return renderer.city === true && cityOn() ? 2 : 0;
+  return renderer.city === true && cityOn(renderer.cityTile) ? 2 : 0;
 };
 
 /**
@@ -942,7 +943,7 @@ function windowsOn(seed, lights) {
     morning = 24 + SUNRISE + ((seed * 5.93) % 1) * 0.5;
 
   //a park's lamps and its courts' floodlights: on with the street lights
-  if (lights === "park") return cityOn() ? 2 : 0;
+  if (lights === "park") return cityOn(undefined, seed) ? 2 : 0;
   if (lights === "shop") return within(hourNow, first, morning) ? 2 : 0;
   if (lights === "office") return within(hourNow, first, morning) ? 1 : 0;
 
@@ -953,10 +954,47 @@ function windowsOn(seed, lights) {
       : 0;
 }
 
-//whether the street lights are on: from nine in the evening to half past
-//five in the morning, all of them
-function cityOn() {
-  return within(hourNow, CITY_ON, CITY_OFF);
+/**
+ * Whether the street lights on tile are on: from about nine in the evening
+ * to about half past five in the morning - a block of the city at a time,
+ * each block going on and off at its own time within a while either side
+ * of that (BLOCK, BLOCK_SPREAD), not all of them at once. With no tile,
+ * by a seed of its own, 0..1 - a park's.
+ */
+function cityOn(tile, seed) {
+  var on, off;
+
+  if (tile === undefined) {
+    on = ((seed || 0.5) - 0.5) * 2;
+    off = (((seed || 0.5) * 7.13) % 1) * 2 - 1;
+  } else {
+    var bx = Math.floor((tile & 0xffff) / BLOCK),
+      by = Math.floor((tile >>> 16) / BLOCK);
+
+    on = hash(bx, by, 1) * 2 - 1;
+    off = hash(bx, by, 2) * 2 - 1;
+  }
+
+  return within(
+    hourNow,
+    CITY_ON + on * BLOCK_SPREAD,
+    CITY_OFF + off * BLOCK_SPREAD,
+  );
+}
+
+//how many tiles across a block of street lights going on together is, and
+//how long either side of the hour a block goes on and off, hours
+var BLOCK = 6,
+  BLOCK_SPREAD = 0.33;
+
+//a number 0..1 for x, y and a seed, always the same for them
+function hash(x, y, s) {
+  var h = (x * 374761393 + y * 668265263 + s * 1442695041) | 0;
+
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+
+  return (h >>> 0) / 4294967296;
 }
 
 /**
