@@ -41,7 +41,9 @@ function spriteOf(id) {
   var j = seenJoins(shape),
     alongX = j[0] || j[2],
     alongY = j[1] || j[3],
-    to = way >= 0 ? seenSide(way) : -1;
+    //no arrow on a road still being laid (client/roadworks): it has none
+    //painted till it is finished
+    to = way >= 0 && kind !== "dug" && kind !== "bed" ? seenSide(way) : -1;
 
   //an arrow only down a straight piece, the way it runs
   if (to >= 0 && alongX !== alongY && (to % 2 === 0) === !!alongX)
