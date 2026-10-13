@@ -531,9 +531,10 @@ engine in `engine/`.
   own, so the windows come on one by one all over the city, and more of them
   a while later - never all of them, every storey and every tile of a
   building lit one of two ways, a long run of glass pane by pane, so no two
-  floors of a block are lit alike. A home puts them out again late at night,
-  at an hour of its own; a shop keeps them all on through the night, an
-  office only a few; a building still going up has none. The street lights
+  floors of a block are lit alike: about a third of the windows with the
+  first of them, two thirds with more. A home and a shop keep them all on
+  through the night, till the sun is up - a city at night, never a ghost
+  town - an office only a few; a building still going up has none. The street lights
   all go on at nine and off at half past five in the morning; every car puts
   its lamps on and off up to three quarters of an hour after them, each in
   its own time. With `?light=0`, the city is drawn as it is painted, by the
