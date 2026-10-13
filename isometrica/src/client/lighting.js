@@ -386,8 +386,23 @@ var BEACON_MIN = 56,
   BEACON_LIGHT = [1, 0.12, 0.08],
   BEACON_ON = 900,
   BEACON_OFF = 700,
-  BEACON_REACH = 6,
-  BEACON_PEAK = 0.3;
+  BEACON_REACH = 4,
+  BEACON_PEAK = 0.15;
+
+//every building's warning lights blink in their own time, not all of the
+//city's together: how far into their round each building's start, ms
+var beaconPhase = new WeakMap();
+
+function phaseOf(key) {
+  var phase = beaconPhase.get(key);
+
+  if (phase === undefined) {
+    phase = Math.random() * (BEACON_ON + BEACON_OFF);
+    beaconPhase.set(key, phase);
+  }
+
+  return phase;
+}
 
 /**
  * Keeps the top of what renderer draws - a tile of a building - if it is
@@ -406,7 +421,12 @@ function keepTop(self, renderer, top, x0, y0) {
     right = [x0 + top.right[0], y0 + top.right[1], top.h, ground];
 
   if (kept === undefined) {
-    self.tops.set(key, { high: high, left: left, right: right });
+    self.tops.set(key, {
+      high: high,
+      left: left,
+      right: right,
+      phase: phaseOf(key),
+    });
     return;
   }
 
@@ -417,19 +437,23 @@ function keepTop(self, renderer, top, x0, y0) {
 
 /**
  * The warning lights on the tops of the tall buildings: red, lit and out
- * again all together - on the highest point of each, an aerial or a water
- * tank, and at the two ends of its roof if that is about as high - each a
- * pixel glowing whatever the light, hidden behind whatever stands in front
- * of it, and at night lighting what is round it a little.
+ * again, every building's in its own time - on the highest point of each,
+ * an aerial or a water tank, and at the two ends of its roof if that is
+ * about as high - each two pixels by two glowing whatever the light, hidden
+ * behind whatever stands in front of it, and at night lighting what is
+ * right round it, a very little.
  */
 function beacons(self, ctx, tops) {
-  if (Date.now() % (BEACON_ON + BEACON_OFF) >= BEACON_ON) return;
+  var now = Date.now();
 
   ctx.save();
   ctx.glow = true;
   ctx.fillStyle = BEACON;
 
   tops.forEach(function (t) {
+    //each building's in its own time
+    if ((now + t.phase) % (BEACON_ON + BEACON_OFF) >= BEACON_ON) return;
+
     var points = [t.high];
 
     //the ends of the roof, if they are as high as the top, more or less,
@@ -445,9 +469,9 @@ function beacons(self, ctx, tops) {
     });
 
     points.forEach(function (p) {
-      //a pixel over the top of it
-      ctx.standsAt = p[3] + p[2] + 2;
-      ctx.fillRect(Math.floor(p[0]), Math.floor(p[1]) - 1, 1, 1);
+      //a lamp of two pixels by two over the top of it
+      ctx.standsAt = p[3] + p[2] + 3;
+      ctx.fillRect(Math.floor(p[0]), Math.floor(p[1]) - 2, 2, 2);
 
       if (self.night)
         self.lamps.push({
