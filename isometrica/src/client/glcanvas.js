@@ -67,12 +67,22 @@ layout(location = 1) out vec4 out1;
 layout(location = 2) out vec4 out2;
 //glowing as bright as its colours, whatever the light (client/glview GLOW)
 uniform float glow;
+//how high in the world it stands, a pixel a unit, to be hidden behind
+//whatever stands nearer the eye - or below -999 for over everything
+uniform float standsAt;
+uniform vec2 size;
 vec4 whole(vec4 c) {
   return vec4(c.rgb, step(0.5, c.a));
+}
+float depthOf(float y, float z) {
+  return clamp(0.5 - (2.0 * y + 3.0 * z) / 16384.0, 0.0, 1.0);
 }
 void main() {
   vec4 c = colour();
   if (c.a <= 0.0) discard;
+  gl_FragDepth = standsAt > -999.0
+    ? depthOf(size.y - gl_FragCoord.y, standsAt)
+    : gl_FragCoord.z;
   out0 = c;
   out1 = whole(vec4(0.0, 0.0, 0.0, c.a));
   out2 = whole(vec4(0.0, 0.0, glow, c.a));
@@ -181,6 +191,10 @@ p.reset = function () {
   //drawn glowing in the lit city, as bright as its colours whatever the
   //light - not a canvas's own (client/glview GLOW)
   this.glow = false;
+  //how high in the world what is drawn stands, a pixel a unit, for it to be
+  //hidden behind whatever stands nearer the eye (client/glview depthOf) -
+  //null for over everything; not a canvas's own either
+  this.standsAt = null;
   this.saved = [];
   this.beginPath();
 };
@@ -196,6 +210,7 @@ var STATE = [
   "textBaseline",
   "dash",
   "glow",
+  "standsAt",
 ];
 
 p.save = function () {
@@ -347,6 +362,7 @@ p.fill = function () {
     kind: "cover",
     tris: this.corners(rect(box), c),
     glow: this.glow,
+    z: this.standsAt,
   });
 };
 
@@ -581,10 +597,17 @@ p.shape = function (kind, tris, c) {
     kind === "plain" &&
     last !== undefined &&
     last.kind === "plain" &&
-    last.glow === this.glow
+    last.glow === this.glow &&
+    last.z === this.standsAt
   )
     last.tris[1] += data[1];
-  else this.ops.push({ kind: kind, tris: data, glow: this.glow });
+  else
+    this.ops.push({
+      kind: kind,
+      tris: data,
+      glow: this.glow,
+      z: this.standsAt,
+    });
 };
 
 //the corners of triangles - or the ends of lines - each in colour c, into
@@ -665,6 +688,7 @@ p.draw = function (frame, lit) {
     if (op.kind === "words") {
       var w = this.words[k];
 
+      gl.disable(gl.DEPTH_TEST);
       gl.useProgram(w);
       gl.bindVertexArray(this.wordsVaos[k]);
       gl.uniform2f(gl.getUniformLocation(w, "size"), view.width, view.height);
@@ -683,7 +707,20 @@ p.draw = function (frame, lit) {
     gl.useProgram(s);
     gl.bindVertexArray(this.shapeVaos[k]);
     gl.uniform2f(gl.getUniformLocation(s, "size"), view.width, view.height);
-    if (lit) gl.uniform1f(gl.getUniformLocation(s, "glow"), op.glow ? 1 : 0);
+    if (lit) {
+      gl.uniform1f(gl.getUniformLocation(s, "glow"), op.glow ? 1 : 0);
+      //hidden behind whatever stands nearer, if it says how high it stands
+      gl.uniform1f(
+        gl.getUniformLocation(s, "standsAt"),
+        op.z === null || op.z === undefined ? -1000 : op.z,
+      );
+      if (op.z === null || op.z === undefined) gl.disable(gl.DEPTH_TEST);
+      else {
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.depthMask(false);
+      }
+    }
 
     if (op.kind === "plain") {
       gl.stencilFunc(gl.ALWAYS, 0, 0xff);
@@ -726,6 +763,7 @@ p.draw = function (frame, lit) {
   }
 
   gl.disable(gl.STENCIL_TEST);
+  gl.disable(gl.DEPTH_TEST);
   gl.bindVertexArray(null);
 
   ops.length = 0;

@@ -167,9 +167,9 @@ Deliveryman.prototype.init = function () {
   this.car = new CourierCar(this);
   root.game.logic.world.addGameObject(this.car);
   root.carman.extras.push(this.car);
-  //never lost behind the buildings: whatever stands in front of it is
-  //drawn see-through
-  root.lighting.seeThrough(this.car.spriteRenderer);
+  //never lost behind the buildings: wherever anything stands in front of
+  //it, it shows through in the colour of its mark
+  root.lighting.seeThrough(this.car.spriteRenderer, CAR_MARK_COLOR);
   //found at a glance among the traffic, at night as well
   this.mark = new Marker("car", CAR_MARK_COLOR);
   root.game.scene.addGameObject(this.mark);

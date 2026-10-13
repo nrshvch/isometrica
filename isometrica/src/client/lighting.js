@@ -110,11 +110,6 @@ var FLASH_HIGH = 9,
 //to take it in
 var TALL = 60;
 
-//what stands in front of what is kept in sight (seeThrough): how much of it
-//is drawn, and how much of the way there it goes each frame, fading
-var SEE_THROUGH = 0.4,
-  SEE_EASE = 0.15;
-
 //the shadows the sun casts: how far along the ground on the screen a pixel
 //looks towards the sun for what stands in its way at each step (client/
 //glview LIT_FS shadowed, 32 of them) - and so how far off the screen what
@@ -145,12 +140,14 @@ function Lighting(root, cache) {
   this.lit = false;
   this.flat = false;
 
-  //what is kept in sight (seeThrough), where it is drawn this frame, and
-  //how see-through each thing in front of it is just now, by its renderer
+  //what is kept in sight (seeThrough): its renderer, and the squares it was
+  //drawn as in the layer being drawn, with the colour it shows through in
   this.sight = null;
-  this.inSight = null;
-  this.fades = new Map();
-  this.frames = 0;
+  this.inSight = {
+    floats: new Float32Array(GLView.FLOATS * 4),
+    count: 0,
+    tint: [1, 1, 1],
+  };
 
   //the clock as it last moved on, and when, to move the sun on smoothly in
   //between (see hour)
@@ -207,14 +204,6 @@ Lighting.prototype.hour = function () {
  *        are
  */
 Lighting.prototype.begin = function (viewport, M) {
-  var frames = ++this.frames;
-
-  //what has gone from the screen while see-through is forgotten
-  if (frames % 60 === 0)
-    this.fades.forEach(function (f, renderer, fades) {
-      if (frames - f.frame > 60) fades.delete(renderer);
-    });
-
   hourNow = this.hour();
   this.sky = sun(hourNow);
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
@@ -233,58 +222,50 @@ Lighting.prototype.begin = function (viewport, M) {
 Lighting.prototype.layer = function (lit, flat) {
   this.lit = lit;
   this.flat = flat;
-  //what is kept in sight is in front of nothing in a layer of its own
-  this.inSight = null;
+  this.inSight.count = 0;
 };
 
 /**
- * Keeps what renderer draws in sight (the courier's car): whatever stands in
- * front of it - drawn after it in its layer, over where it is on the screen
- * - is drawn see-through, fading out and back in again as it passes behind
- * and out from behind it. null for nothing.
+ * Keeps what renderer draws in sight (the courier's car): wherever anything
+ * stands in front of it, it shows through, every other pixel of it in tint
+ * - a CSS colour - glowing (client/glview xray). null for nothing.
  */
-Lighting.prototype.seeThrough = function (renderer) {
+Lighting.prototype.seeThrough = function (renderer, tint) {
   this.sight = renderer;
+  if (tint) this.inSight.tint = rgb(tint);
 };
 
-/**
- * How see-through to draw what renderer draws at x0, y0, w by h: as it
- * says, or less where it stands in front of what is kept in sight.
- */
-Lighting.prototype.opacity = function (renderer, x0, y0, w, h) {
-  var keep = this.sight,
-    at = this.inSight;
+//a CSS colour - #rgb, #rrggbb or rgb(r, g, b) - as red, green and blue 0..1
+function rgb(css) {
+  if (/^rgb/.test(css))
+    return css
+      .replace(/[^0-9.,]/g, "")
+      .split(",")
+      .slice(0, 3)
+      .map(function (n) {
+        return +n / 255;
+      });
 
-  if (keep === null) return renderer.opacity;
+  var h = css.replace("#", "");
 
-  //what is kept in sight: where it is this frame, every picture of it
-  if (renderer === keep) {
-    this.inSight = at = at || [Infinity, Infinity, -Infinity, -Infinity];
-    at[0] = Math.min(at[0], x0);
-    at[1] = Math.min(at[1], y0);
-    at[2] = Math.max(at[2], x0 + w);
-    at[3] = Math.max(at[3], y0 + h);
-    return renderer.opacity;
-  }
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
 
-  var was = this.fades.get(renderer),
-    over =
-      at !== null &&
-      x0 < at[2] &&
-      x0 + w > at[0] &&
-      y0 < at[3] &&
-      y0 + h > at[1];
+  return [0, 2, 4].map(function (i) {
+    return parseInt(h.substr(i, 2), 16) / 255;
+  });
+}
 
-  if (was === undefined && !over) return renderer.opacity;
+//how high the ground under what renderer draws is, on the screen - a pixel
+//a unit, as how high its pixels stand over it is
+var where = new Float32Array(3);
 
-  var k = was === undefined ? 1 : was.k;
+function elevation(M, renderer) {
+  var go = renderer.gameObject;
 
-  k += ((over ? SEE_THROUGH : 1) - k) * SEE_EASE;
-  if (k > 0.99) this.fades.delete(renderer);
-  else this.fades.set(renderer, { k: k, frame: this.frames });
+  if (!go) return 0;
 
-  return renderer.opacity * k;
-};
+  return -M[5] * go.transform.getPosition(where)[1];
+}
 
 /**
  * A picture drawn by renderer at x0, y0 (engine SpriteRenderer picture):
@@ -300,8 +281,10 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
       y0,
       sprite.width,
       sprite.height,
-      this.opacity(renderer, x0, y0, sprite.width, sprite.height),
-    );
+      renderer.opacity,
+      this.lit ? elevation(this.M, renderer) : 0,
+    ),
+    from = view.offset - 8;
 
   if (
     !sprite.glQuad(
@@ -317,15 +300,43 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
 
   view.keep();
 
+  //what is kept in sight, to be drawn again where it is hidden
+  if (this.lit && renderer === this.sight) keepInSight(this.inSight, d, from);
+
   //what shines of a building at night lights what is round it
   if (this.lit && this.night && renderer.windows !== undefined)
     windowLights(this.lamps, renderer, sprite, x0, y0);
 };
 
-//the layer's batch drawn, and over it what it drew as lines, shapes and
-//words (context)
+//a square of what is kept in sight, its floats from d at from, among the
+//rest of it
+function keepInSight(sight, d, from) {
+  var n = GLView.FLOATS;
+
+  if ((sight.count + 1) * n > sight.floats.length) {
+    var more = new Float32Array(sight.floats.length * 2);
+
+    more.set(sight.floats);
+    sight.floats = more;
+  }
+
+  sight.floats.set(d.subarray(from, from + n), sight.count * n);
+  sight.count++;
+}
+
+//the layer's batch drawn, what is kept in sight where it is hidden, and
+//over them what it drew as lines, shapes and words (context)
 Lighting.prototype.flush = function () {
-  this.view.flush(this.lit, this.flat);
+  this.view.flush(this.lit, this.flat, this.inSight);
+};
+
+/**
+ * How high the ground under what is drawn for gameObject is on the screen,
+ * a pixel a unit - for what is drawn over it to be hidden behind what
+ * stands nearer (client/glcanvas standsAt).
+ */
+Lighting.prototype.elevation = function (gameObject) {
+  return this.M === null ? 0 : elevation(this.M, { gameObject: gameObject });
 };
 
 //the lit layers in: lit, by the sun and at night by the lamps
@@ -577,6 +588,9 @@ function headlights(out, M, w, h, carman) {
     }
   }
 }
+
+//how high a car's lamps are, a pixel a unit
+Lighting.CAR_LAMP_HIGH = HEAD_HIGH;
 
 /**
  * Where a car's indicators are on the screen while they are lit - the one

@@ -22,9 +22,9 @@ handed over (see above).
   the screen, pointing, while the place is off it; nothing is laid on the
   ground or the buildings. A small bar over the restaurant's pin fills as the
   food cooks, and one over the car while it waits, loads or hands it over.
-  The car is never lost behind the buildings: whatever stands in front of it
-  is drawn see-through, fading out as it passes behind and back in after
-  (`isometrica/src/client/lighting.js` seeThrough).
+  The car is never lost behind the buildings: wherever anything stands in
+  front of it, it shows through, every other pixel of it in the colour of
+  its arrow (`isometrica/src/client/lighting.js` seeThrough, glview xray).
   The panel shows what the car is doing, the food, each stop with a small
   bar of its own - the cooking and the loading, the drive over and the
   handing over - how long is left and how far along the order is; once it is

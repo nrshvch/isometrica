@@ -368,7 +368,14 @@ engine in `engine/`.
   looking the way its leaves do on the whole (`isometrica/src/shared/gen/trees.js`
   flatten). Which way a pixel looks and how high it stands are never mixed
   the way colours are: smoke, a shadow or a line laid over the grass leaves
-  them as they are under it, unless it is mostly there. Every layer of the city is drawn as one batch of squares,
+  them as they are under it, unless it is mostly there. How near the eye
+  every pixel of the lit city is goes into the depth buffer as it is drawn,
+  worked out from where it is on the screen and how high it stands - over
+  the ground its picture stands on, and that over the sea (glview depthOf):
+  the pictures are still drawn in the order the engine sorts them, but what
+  is drawn over them can be hidden behind whatever stands nearer - a car's
+  indicators behind the house in front of it - and the courier's car shows
+  through whatever hides it (glview xray). Every layer of the city is drawn as one batch of squares,
   a picture each, in the order the engine sorts them (`engine/engine`
   Canvas2dRenderer renderGL) - the lit ones into as many pictures of the
   screen at once, so whatever is in front hides what is behind it in all of

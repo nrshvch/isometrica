@@ -75,6 +75,17 @@ vec4 whole(vec4 c) {
 }
 `;
 
+//how near the eye a pixel is, as the depth buffer has it: the camera looks
+//down the same way at everything, so a pixel y down the screen (from its
+//top) and z high in the world (a pixel a unit) is as near as 2y + 3z -
+//down the screen and up nearer, along the way the eye looks (from screen
+//down = -(x + y) / 2 - z). 0 nearest, 1 furthest
+var DEPTH_OF = `
+float depthOf(float y, float z) {
+  return clamp(0.5 - (2.0 * y + 3.0 * z) / 16384.0, 0.0, 1.0);
+}
+`;
+
 var SPRITE_VS = `#version 300 es
 precision highp float;
 
@@ -90,6 +101,7 @@ uniform vec2 size;
 
 flat out vec4 vRect;
 flat out float vAlpha;
+flat out float vElev;
 flat out vec4 vSrc0;
 flat out vec4 vSrc1;
 flat out vec4 vSrc2;
@@ -99,6 +111,7 @@ void main() {
 
   vRect = rect;
   vAlpha = misc.x;
+  vElev = misc.y;
   vSrc0 = src0;
   vSrc1 = src1;
   vSrc2 = src2;
@@ -115,6 +128,8 @@ uniform vec2 size;
 
 flat in vec4 vRect;
 flat in float vAlpha;
+//how high the ground it stands on is, a pixel a unit
+flat in float vElev;
 //the colours, then the two other pictures this batch draws into
 flat in vec4 vSrc0;
 flat in vec4 vSrc1;
@@ -153,7 +168,13 @@ vec4 tall(vec4 src, ivec2 at, float shape) {
 
 uniform bool colours;
 uniform vec4 albedoSrc;
-${WHOLE}
+${WHOLE}${DEPTH_OF}
+//how high the pixel stands in the world: over the ground it stands on as
+//its picture of that says, nothing for one with none of its own
+float height(ivec2 at) {
+  return vElev + (vSrc2.w > 1.5 && vSrc2.w < 2.5 ? fetch(vSrc2, at).r * 255.0 : 0.0);
+}
+
 void main() {
   ivec2 at = local();
   vec4 c = fetch(vSrc0, at);
@@ -161,15 +182,63 @@ void main() {
 
   if (shape <= 0.0) discard;
 
+  gl_FragDepth = gl_FragCoord.z;
+
   if (colours) {
     out0 = vec4(c.rgb, shape);
     out1 = whole(drawn(vSrc1, at, shape));
     out2 = whole(tall(vSrc2, at, shape));
+    //how near it is, for what is drawn over the city to be hidden behind it
+    //(the pictures are still drawn in the order the engine sorts them)
+    gl_FragDepth = depthOf(size.y - gl_FragCoord.y, height(at));
   } else {
     out0 = drawn(vSrc1, at, shape);
     out1 = drawn(vSrc2, at, shape);
     out2 = vec4(0.0);
   }
+}
+`;
+
+//what is kept in sight (client/lighting seeThrough) where something stands
+//in front of it: in its own colour, every other pixel of it, glowing - drawn
+//only where what is there is well nearer the eye than it is
+var XRAY_FS = `#version 300 es
+precision highp float;
+precision highp sampler2DArray;
+
+uniform sampler2DArray pages;
+uniform vec2 size;
+uniform vec3 tint;
+
+flat in vec4 vRect;
+flat in float vAlpha;
+flat in float vElev;
+flat in vec4 vSrc0;
+flat in vec4 vSrc1;
+flat in vec4 vSrc2;
+
+layout(location = 0) out vec4 out0;
+layout(location = 1) out vec4 out1;
+layout(location = 2) out vec4 out2;
+${DEPTH_OF}
+vec4 fetch(vec4 src, ivec2 at) {
+  return texelFetch(pages, ivec3(ivec2(src.yz) + at, int(src.x)), 0);
+}
+
+void main() {
+  ivec2 at = ivec2(int(gl_FragCoord.x), int(size.y - gl_FragCoord.y)) - ivec2(vRect.xy);
+
+  //every other pixel of it, the pattern going with it as it moves
+  if (fetch(vSrc0, at).a < 0.5 || ((at.x + at.y) & 1) == 1) discard;
+
+  float h = vElev + (vSrc2.w > 1.5 && vSrc2.w < 2.5 ? fetch(vSrc2, at).r * 255.0 : 0.0);
+
+  //a little nearer than it is, so that only what stands well in front of
+  //it hides it - not the road under it, nor its own lamp
+  gl_FragDepth = depthOf(size.y - gl_FragCoord.y, h + 4.0);
+  out0 = vec4(tint, 1.0);
+  out1 = vec4(0.0, 0.0, 0.0, 1.0);
+  out2 = vec4(0.0, 0.0, 1.0, 1.0);
 }
 `;
 
@@ -506,6 +575,7 @@ GLView.prototype.setup = function () {
   this.plainProgram = program(gl, SPRITE_VS, PLAIN_FS);
   this.lampProgram = program(gl, LAMP_VS, LAMP_FS);
   this.stampProgram = program(gl, STAMP_VS, STAMP_FS);
+  this.xrayProgram = program(gl, SPRITE_VS, XRAY_FS);
   this.litProgram = program(gl, FULL_VS, LIT_FS);
 
   //a square, two triangles, 0..1
@@ -518,6 +588,7 @@ GLView.prototype.setup = function () {
   );
 
   this.spriteBuffer = gl.createBuffer();
+  this.xrayBuffer = gl.createBuffer();
   this.lampBuffer = gl.createBuffer();
 
   //the pages, as many as there are so far, and room for more (grow)
@@ -571,6 +642,42 @@ GLView.prototype.setup = function () {
       return vao;
     });
   });
+
+  //the squares of what is kept in sight, drawn again where it is hidden
+  this.xrayVao = gl.createVertexArray();
+  gl.bindVertexArray(this.xrayVao);
+  attribute(gl, this.xrayProgram, "corner", this.corners, 2, 0, 0, 0);
+  attribute(gl, this.xrayProgram, "rect", this.xrayBuffer, 4, FLOATS * 4, 0, 1);
+  attribute(
+    gl,
+    this.xrayProgram,
+    "misc",
+    this.xrayBuffer,
+    4,
+    FLOATS * 4,
+    16,
+    1,
+  );
+  attribute(
+    gl,
+    this.xrayProgram,
+    "src0",
+    this.xrayBuffer,
+    4,
+    FLOATS * 4,
+    32,
+    1,
+  );
+  attribute(
+    gl,
+    this.xrayProgram,
+    "src2",
+    this.xrayBuffer,
+    4,
+    FLOATS * 4,
+    64,
+    1,
+  );
 
   //the squares of the pictures again, for what they stand over (stamp)
   this.stampVao = gl.createVertexArray();
@@ -764,9 +871,15 @@ GLView.prototype.begin = function (w, h, night, shadows, margin) {
   this.overlay.begin();
   gl.viewport(0, 0, w, h);
   gl.clearColor(0, 0, 0, 0);
+  gl.clearDepth(1);
+  gl.depthMask(true);
   for (var f of [this.first, this.second]) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, f);
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.clear(
+      f === this.first
+        ? gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT
+        : gl.COLOR_BUFFER_BIT,
+    );
   }
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.clearColor(0, 0, 0, 1);
@@ -839,7 +952,7 @@ GLView.prototype.resize = function (w, h, margin) {
  *
  * @returns {Float32Array} where to fill them in
  */
-GLView.prototype.add = function (x, y, w, h, alpha) {
+GLView.prototype.add = function (x, y, w, h, alpha, elev) {
   if ((this.count + 1) * FLOATS > this.sprites.length) {
     var more = new Float32Array(this.sprites.length * 2);
 
@@ -855,6 +968,7 @@ GLView.prototype.add = function (x, y, w, h, alpha) {
   d[o + 2] = w;
   d[o + 3] = h;
   d[o + 4] = alpha;
+  d[o + 5] = elev || 0;
   this.offset = o + 8;
 
   return d;
@@ -871,7 +985,7 @@ GLView.prototype.keep = function () {
  * the lit city (lit), or over it as they are; and by day, what the lit ones
  * not on flat ground stand over into the map of the ground (stamp).
  */
-GLView.prototype.flush = function (lit, flat) {
+GLView.prototype.flush = function (lit, flat, sight) {
   var gl = this.gl,
     n = this.count;
 
@@ -902,9 +1016,45 @@ GLView.prototype.flush = function (lit, flat) {
     if (lit && !flat && this.shadows) this.stamp(n);
   }
 
+  //what is kept in sight, where anything stands in front of it
+  if (lit && sight && sight.count > 0) this.xray(sight);
+
   if (this.overlay.any()) this.overlay.draw(lit ? this.first : null, lit);
   //every layer starts drawing as a canvas of its own would
   this.overlay.reset();
+};
+
+/**
+ * What is kept in sight - its squares, sight.floats, sight.count of them -
+ * drawn again over the lit city where something nearer the eye hides it:
+ * every other pixel of it in sight.tint, glowing.
+ */
+GLView.prototype.xray = function (sight) {
+  var gl = this.gl,
+    p = this.xrayProgram,
+    t = sight.tint;
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.xrayBuffer);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    sight.floats.subarray(0, sight.count * FLOATS),
+    gl.STREAM_DRAW,
+  );
+  gl.bindFramebuffer(gl.FRAMEBUFFER, this.first);
+  drawBuffers(gl, 3);
+  gl.useProgram(p);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
+  gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
+  gl.uniform2f(gl.getUniformLocation(p, "size"), this.width, this.height);
+  gl.uniform3f(gl.getUniformLocation(p, "tint"), t[0], t[1], t[2]);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.GREATER);
+  gl.depthMask(false);
+  gl.bindVertexArray(this.xrayVao);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, sight.count);
+  gl.bindVertexArray(null);
+  gl.disable(gl.DEPTH_TEST);
 };
 
 /**
@@ -957,7 +1107,17 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
 
   if (loc !== null) gl.uniform1i(loc, colours ? 1 : 0);
   gl.bindVertexArray(vao);
+
+  //into the lit city, how near every pixel drawn is too: the nearest of
+  //what is seen, the pictures drawn over each other in their order
+  if (frame === this.first) {
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.ALWAYS);
+    gl.depthMask(true);
+  }
+
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+  gl.disable(gl.DEPTH_TEST);
 };
 
 /**
