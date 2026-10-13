@@ -90,7 +90,7 @@ function getStats(b) {
 
 //rarely wanted, so they go after everything the city is actually built from,
 //in this order
-var LAST = [BuildingCode.cityHall, BuildingCode.tree, BuildingCode.cliff];
+var LAST = [BuildingCode.cityHall, BuildingCode.tree];
 
 //-1 for everything else, which sorts it ahead of the LAST ones
 function lastRank(code) {

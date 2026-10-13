@@ -14,6 +14,7 @@
 import * as Terrain from "./terrain.js";
 import * as Vehicles from "./vehicles.js";
 import * as Stones from "./stones.js";
+import * as Smoke from "./smoke.js";
 import * as Flats from "./flats.js";
 import * as Offices from "./offices.js";
 import * as Sites from "./sites.js";
@@ -43,6 +44,7 @@ export var GENERATORS = [
   "terrain",
   "vehicles",
   "stones",
+  "smoke",
   "flats",
   "offices",
   "sites",
@@ -79,8 +81,8 @@ var BLOCKS = {
  * which way every pixel of it looks, or what of it shines at night and how
  * high it stands (isobox setMode, shared/gen/looks) - those that paint out
  * of boxes, and the ground, the trees and the vehicles, which paint their
- * own - see createPainter. Only the stones, painted from pictures drawn by
- * hand, cannot.
+ * own - see createPainter. The stones and the smoke are painted lit, as they
+ * are.
  */
 export var FACED = {};
 
@@ -95,10 +97,11 @@ var OWN_LOOKS = { terrain: true, trees: true, vehicles: true };
 FACED.terrain = FACED.vehicles = true;
 
 //the hand-drawn pictures each generator paints from, by what their names
-//start with
+//start with - none: everything is painted from nothing
 export var INPUTS = {
-  //painted from nothing
   terrain: [],
+  stones: [],
+  smoke: [],
   vehicles: [],
   flats: [],
   offices: [],
@@ -111,23 +114,7 @@ export var INPUTS = {
   roads: [],
   trees: [],
   foundations: [],
-  stones: ["scenery/stones/", "terrain/grass/2222.png"],
 };
-
-/**
- * The pictures under a prefix, by what they are called after it - "2222" for
- * "terrain/grass/2222.png".
- */
-function under(pixels, prefix) {
-  var out = {};
-
-  Object.keys(pixels).forEach(function (name) {
-    if (name.indexOf(prefix) === 0)
-      out[name.slice(prefix.length).replace(/\.png$/, "")] = pixels[name];
-  });
-
-  return out;
-}
 
 /**
  * What one generator will paint, without painting it.
@@ -227,14 +214,18 @@ export function describe(gen, pixels) {
     });
     data = vehicles.types;
   } else if (gen === "stones") {
-    var stones = Stones.describe(
-      under(pixels, "scenery/stones/"),
-      pixels["terrain/grass/2222.png"],
-    );
+    var stones = Stones.describe();
 
     Object.keys(stones).forEach(function (name) {
       add("gen/scenery/" + name, stones[name], name);
     });
+  } else if (gen === "smoke") {
+    var smoke = Smoke.describe();
+
+    Object.keys(smoke).forEach(function (name) {
+      add("gen/smoke/" + name, smoke[name], name);
+    });
+    data = { frames: Smoke.FRAMES };
   } else if (BLOCKS[gen] !== undefined) {
     var block = BLOCKS[gen].describe();
 
@@ -263,11 +254,8 @@ export function createPainter(loadPixels) {
       painters[gen] = loadPixels(INPUTS[gen]).then(
         function (pixels) {
           if (gen === "terrain") return Terrain.createPainter(null);
-          if (gen === "stones")
-            return Stones.createPainter(
-              under(pixels, "scenery/stones/"),
-              pixels["terrain/grass/2222.png"],
-            );
+          if (gen === "stones") return { paint: Stones.paint };
+          if (gen === "smoke") return { paint: Smoke.paint };
           if (BLOCKS[gen] !== undefined) return { paint: BLOCKS[gen].paint };
           return { paint: Vehicles.paint };
         },

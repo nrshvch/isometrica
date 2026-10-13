@@ -241,32 +241,8 @@ BuildingView.prototype.update = function () {
       //any other building goes up on a building site like the blocks' -
       //the same all the while
       addPieces(this.gameObject, lots, this.opacity);
-    } else if (b.data.getState() === BuildingState.underConstruction) {
-      //the sites not described yet: a placeholder on each tile
-      var sizeX = at.sizeX,
-        sizeY = at.sizeY;
-
-      for (var x = 0; x < sizeX; x++) {
-        for (var y = 0; y < sizeY; y++) {
-          var part = new engine.GameObject(),
-            sprite = new engine.SpriteRenderer();
-
-          sprite.layer = RenderLayer.buildingsLayer;
-          sprite
-            .setSprite(vkaria.sprites.getSprite("site.png"))
-            .setPivot(32, 24);
-
-          part.addComponent(sprite);
-          //the renderer resets its opacity once it is attached
-          sprite.opacity = this.opacity;
-          this.gameObject.transform.addChild(part.transform);
-          setSeenPosition(part, x * Config.tileSize, 0, y * Config.tileSize);
-        }
-      }
     } else if (b.data.getState() === BuildingState.ready) {
       //drawn the way it was painted, see addSprites
-      var rotated = mirrored(staticData, at.rotation);
-
       addSprites(
         this.gameObject,
         staticData,
@@ -306,31 +282,6 @@ BuildingView.prototype.update = function () {
           source.addComponent(new SmokeSource(b.data));
           this.gameObject.transform.addChild(source.transform);
         }, this);
-
-      //add smoke
-      if (staticData.smokeSource !== undefined) {
-        var smoke = staticData.smokeSource,
-          smokeSource = new engine.GameObject();
-
-        //the chimney turns round with the rest of the house
-        if (rotated)
-          setSeenPosition(
-            smokeSource,
-            smoke[2] * tileSize,
-            smoke[1] * tileZStep,
-            smoke[0] * tileSize,
-          );
-        else
-          setSeenPosition(
-            smokeSource,
-            smoke[0] * tileSize,
-            smoke[1] * tileZStep,
-            smoke[2] * tileSize,
-          );
-
-        smokeSource.addComponent(new SmokeSource(b.data));
-        this.gameObject.transform.addChild(smokeSource.transform);
-      }
     }
 
     //level on a concrete base where the ground under it is not

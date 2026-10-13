@@ -27,9 +27,10 @@ other games start on is built here, and handed over from the city screen.
   wayOf, goes). Its straight pieces have no line down the middle but an
   arrow the way it goes - white on asphalt, darker stones on gravel, pale
   ones among cobbles - and its ramps no dashes.
-- The catalogue offers only what is painted: the hand-drawn houses, shops,
-  offices, flats, town hall, trees and cliff are kept for the cities that
-  already have them, but no longer offered.
+- The catalogue offers only what the game paints for itself - which is
+  everything there is: nothing is drawn by hand. While a building is being
+  placed, the dice next to turning it round picks another of the same kind
+  for every footprint of the selection, the selection staying as it is.
 - The city screen (a click on the money) has the city's budget, its people
   and its services - and at the bottom of it, "Download as the initial
   city": the city as it stands, as `initialcity.js`, the city every new

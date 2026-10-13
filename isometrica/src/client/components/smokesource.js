@@ -21,10 +21,16 @@ var getSmoke = function () {
 };
 
 /**
+ * A chimney. A fire is going in the house under it, or it is not: lit in
+ * most houses of a morning and an evening, in a few round the middle of the
+ * day and in the small hours - each house making up its mind again every
+ * few minutes, in its own time. While it is lit, a puff comes out a little
+ * under every second, never quite in step with the last - one thin wisp.
+ *
  * @param building {Building} optional - the house the chimney is on. A house
  *                            nobody has moved into, for want of a street or of
  *                            water, has no fire going; with no building given
- *                            (a trolley) it smokes regardless.
+ *                            it smokes regardless.
  */
 function SmokeSourceScript(building) {
   engine.Component.call(this);
@@ -33,21 +39,52 @@ function SmokeSourceScript(building) {
 
 var vec3Buffer = new Float32Array(3);
 
-//how often a puff comes out of a chimney, ms
-var PUFF_EVERY = 500;
+//how often a puff comes out of a chimney with a fire going, ms, give or take
+//as much as JITTER of that
+var PUFF_EVERY = 800,
+  JITTER = 0.25;
+
+//how often a house makes up its mind about its fire, ms, give or take half
+//that again
+var RETHINK = 180000;
+
+//how many houses have a fire going, by the hour
+function lit(hour) {
+  if (hour >= 6 && hour < 9) return 0.7;
+  if (hour >= 17 && hour < 23) return 0.6;
+  if (hour >= 9 && hour < 17) return 0.22;
+  return 0.18;
+}
 
 SmokeSourceScript.prototype = Object.create(engine.Component.prototype);
 
 SmokeSourceScript.prototype.start = function () {
-  this.time = this.gameObject.world.logic.time.now;
+  this.next = this.gameObject.world.logic.time.now + Math.random() * PUFF_EVERY;
+  //whether its fire is going, decided as it is first seen
+  this.rethinkAt = 0;
+  this.burning = false;
 };
 
 SmokeSourceScript.prototype.tick = function (time) {
-  if (time.now - this.time > PUFF_EVERY) {
-    if (isLit(this.building)) this.spawnSmoke();
-    this.time = time.now;
+  var now = time.now;
+
+  if (now >= this.rethinkAt) {
+    this.burning = Math.random() < lit(hourNow());
+    this.rethinkAt = now + RETHINK * (0.5 + Math.random());
   }
+
+  if (now < this.next) return;
+
+  this.next = now + PUFF_EVERY * (1 + (Math.random() * 2 - 1) * JITTER);
+  if (this.burning && isLit(this.building)) this.spawnSmoke();
 };
+
+//the hour of the game's day
+function hourNow() {
+  var core = typeof vkaria !== "undefined" ? vkaria.core : null;
+
+  return core && core.time ? core.time.hour : 12;
+}
 
 function isLit(building) {
   if (building === null) return true;
@@ -72,11 +109,11 @@ SmokeSourceScript.prototype.spawnSmoke = function () {
  * there - for whatever smokes on its own schedule rather than with a
  * SmokeSource on it, like a car.
  *
- * @param [looks] {string[]} SmokeScript.steam, the default, or SmokeScript.soot
+ * @param [kind] {Object} SmokeScript.steam, the default, or SmokeScript.soot
  */
-SmokeSourceScript.puff = function (world, x, y, z, looks) {
+SmokeSourceScript.puff = function (world, x, y, z, kind) {
   var smoke = getSmoke();
-  smoke.smoke.looks = looks || SmokeScript.steam;
+  smoke.smoke.kind = kind || SmokeScript.steam;
   smoke.transform.setPosition(x, y, z);
   world.addGameObject(smoke);
 };

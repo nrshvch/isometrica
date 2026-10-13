@@ -1,12 +1,12 @@
 /**
- * Writes out the stones src/shared/gen/stones.js paints out of the pictures
- * in assets/sprites/scenery/stones - the same ones the game paints for itself
- * as it starts - to look at, and to try a change to the painting on before
- * the game gets it.
+ * Writes out the stones src/shared/gen/stones.js paints, and the puffs of
+ * smoke src/shared/gen/smoke.js does - the same ones the game paints for
+ * itself as it starts - to look at, and to try a change to the painting on
+ * before the game gets it.
  *
- * Writes <name>.png and <name>-m.png for every painted picture, as the game
- * gets them, and preview.png: all of them in a row, each on the grass tile
- * the stones were painted on, the way they lie in the game.
+ * Writes <name>.png for every picture, as the game gets it, and preview.png:
+ * the stones in a row on a plain grass tile, and under them the smoke, each
+ * kind growing the way a puff does as it rises, four times the size.
  *
  * Usage:
  *   node tools/genstones.js [outDir]
@@ -18,82 +18,108 @@ var fs = require("fs");
 var path = require("path");
 var PNG = require("pngjs").PNG;
 var stones = require("../src/shared/gen/stones.js");
+var smoke = require("../src/shared/gen/smoke.js");
 
 var ROOT = path.resolve(__dirname, "..");
-var SOURCE = path.join(ROOT, "assets/sprites/scenery/stones");
-var GROUND = path.join(ROOT, "assets/sprites/terrain/grass/2222.png");
 var DEFAULT_OUT = path.join(ROOT, "assets/previews/stones");
 
-var GAP = 2;
+var GAP = 4,
+  ZOOM = 4,
+  GRASS = [92, 140, 70];
 
-function read(file) {
-  return PNG.sync.read(fs.readFileSync(file));
+function write(file, picture) {
+  var png = new PNG({ width: picture.width, height: picture.height });
+
+  png.data = Buffer.from(picture.data);
+  fs.writeFileSync(file, PNG.sync.write(png));
+}
+
+//a pixel of picture over the one of out at x, y, as see-through as it is
+function over(out, x, y, picture, px, py) {
+  var i = (py * picture.width + px) * 4,
+    o = (y * out.width + x) * 4,
+    a = picture.data[i + 3] / 255;
+
+  for (var c = 0; c < 3; c++)
+    out.data[o + c] = out.data[o + c] * (1 - a) + picture.data[i + c] * a;
+  out.data[o + 3] = 255;
 }
 
 function main() {
   var out = path.resolve(process.argv[2] || DEFAULT_OUT),
-    ground = read(GROUND),
+    stoneNames = Object.keys(stones.describe()),
+    smokeNames = Object.keys(smoke.describe()),
     pictures = {};
-
-  fs.readdirSync(SOURCE)
-    .filter(function (f) {
-      return /\.png$/.test(f);
-    })
-    .sort()
-    .forEach(function (f) {
-      pictures[f.replace(/\.png$/, "")] = read(path.join(SOURCE, f));
-    });
-
-  var painted = stones.generate(pictures, ground),
-    names = Object.keys(painted),
-    preview = new PNG({
-      width: GAP + names.length * (ground.width + GAP),
-      height: ground.height + 2 * GAP,
-    });
 
   fs.mkdirSync(out, { recursive: true });
 
-  names.forEach(function (name, i) {
-    var image = painted[name],
-      png = new PNG({ width: image.width, height: image.height }),
-      x = GAP + i * (ground.width + GAP);
-
-    png.data = Buffer.from(image.data);
-    fs.writeFileSync(path.join(out, name + ".png"), PNG.sync.write(png));
-
-    over(ground, preview, x, GAP);
-    over(image, preview, x, GAP);
+  stoneNames.concat(smokeNames).forEach(function (name) {
+    pictures[name] =
+      stoneNames.indexOf(name) !== -1 ? stones.paint(name) : smoke.paint(name);
+    write(path.join(out, name + ".png"), pictures[name]);
   });
 
-  fs.writeFileSync(path.join(out, "preview.png"), PNG.sync.write(preview));
+  //the stones on a grass tile each, and the smoke under them
+  var tileW = 64,
+    tileH = 47,
+    w = (stoneNames.length * (tileW + GAP) + GAP) * ZOOM,
+    h = (tileH + GAP * 2 + 12 * 2 + GAP) * ZOOM,
+    preview = { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) },
+    i,
+    x,
+    y;
 
-  console.log(
-    "Wrote " +
-      names.join(", ") +
-      " and preview.png to " +
-      path.relative(process.cwd(), out),
-  );
-}
-
-//src laid over what is on dst already, at x0, y0
-function over(src, dst, x0, y0) {
-  for (var y = 0; y < src.height; y++) {
-    for (var x = 0; x < src.width; x++) {
-      var s = (y * src.width + x) * 4,
-        d = ((y0 + y) * dst.width + x0 + x) * 4,
-        a = src.data[s + 3] / 255,
-        b = (dst.data[d + 3] / 255) * (1 - a),
-        alpha = a + b;
-
-      if (alpha === 0) continue;
-
-      for (var c = 0; c < 3; c++)
-        dst.data[d + c] = Math.round(
-          (src.data[s + c] * a + dst.data[d + c] * b) / alpha,
-        );
-      dst.data[d + 3] = Math.round(alpha * 255);
-    }
+  for (i = 0; i < w * h; i++) {
+    preview.data[i * 4] = 40;
+    preview.data[i * 4 + 1] = 44;
+    preview.data[i * 4 + 2] = 52;
+    preview.data[i * 4 + 3] = 255;
   }
+
+  function put(picture, ox, oy, ground) {
+    for (y = 0; y < picture.height; y++)
+      for (x = 0; x < picture.width; x++)
+        for (var zy = 0; zy < ZOOM; zy++)
+          for (var zx = 0; zx < ZOOM; zx++) {
+            var X = (ox + x) * ZOOM + zx,
+              Y = (oy + y) * ZOOM + zy,
+              o = (Y * w + X) * 4,
+              //the diamond of the tile, in grass
+              onTile =
+                ground &&
+                Math.abs(x + 0.5 - 32) / 32 + Math.abs(y + 0.5 - 24) / 16 <= 1;
+
+            if (onTile) {
+              preview.data[o] = GRASS[0];
+              preview.data[o + 1] = GRASS[1];
+              preview.data[o + 2] = GRASS[2];
+            }
+            over(preview, X, Y, picture, x, y);
+          }
+  }
+
+  stoneNames.forEach(function (name, k) {
+    put(pictures[name], GAP + k * (tileW + GAP), GAP, true);
+  });
+
+  ["steam", "soot"].forEach(function (kind, row) {
+    var at = GAP;
+
+    for (var f = 0; f < smoke.FRAMES; f++) {
+      var p = pictures[kind + f];
+
+      put(p, at, GAP * 2 + tileH + row * 12 + (10 - p.height) / 2, false);
+      at += p.width + GAP;
+    }
+  });
+
+  write(path.join(out, "preview.png"), preview);
+  console.log(
+    "wrote " +
+      (stoneNames.length + smokeNames.length) +
+      " pictures and preview.png to " +
+      out,
+  );
 }
 
 main();

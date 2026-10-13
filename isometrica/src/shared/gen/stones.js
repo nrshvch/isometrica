@@ -1,237 +1,339 @@
 /**
- * Cuts the stones out of the pictures they were painted in, and paints each of
- * them the other way round as well.
+ * Stones lying about on the ground, a tile's worth of them to a picture -
+ * the thick of a rock field ("stone": five grey boulders together) and its
+ * thin edges ("stone0": three brownish ones strewn about) - and each the
+ * other way round ("-m"), for the same few not to show twice the same.
  *
- * The stones in assets/sprites/scenery/stones were painted straight onto a
- * flat grass tile - the very one in assets/sprites/terrain/grass/2222.png,
- * pixel for pixel - with
- * their shadows laid over it as black at 20%. Where a picture has that grass,
- * there is nothing but ground; where it has that grass darkened the same in
- * every channel, there is shadow, and it becomes black as see-through as the
- * shadows were on the whole - one pixel off another only by rounding;
- * everything else is stone and stays as it is. So the stones can lie on any
- * ground, sloped or whatever grass it happens to be.
+ * Every stone is a lump: a rounded, flattish boulder, its top lumpy with
+ * noise. A ray goes into the picture for every pixel, along the way the boxes
+ * are looked at, and where it meets a stone the stone is lit there by the
+ * boxes' sun - picking one of four tones outright, the way it would be drawn
+ * by hand - its lower edge darkened a little to stand out against the grass.
+ * Where the ray meets the ground in a stone's shadow, the shadow is laid
+ * there as black, see-through; everywhere else there is nothing, so the
+ * stones lie on whatever ground the tile is.
  *
- * The mirrored ones are flipped left to right, stones only: the light still
- * comes from the right, so their shadows are cast again to the left of them -
- * each stone's silhouette dragged SHADOW_LENGTH pixels along the ground, over
- * the tile and nowhere else, the way the painted ones lie.
- *
- * It paints into plain pictures, {width, height, data} with the pixels as
- * RGBA; the game paints them as it starts (client/generated).
+ * Every picture is the size of a tile of the ground, its middle where the
+ * tile's is (data/rocks: pivot 32, 24). It paints into plain pictures,
+ * {width, height, data} with the pixels as RGBA, as it is asked for them.
  */
-//how far a shadow may be off the darkening it is taken for, per channel - the
-//painted ones were rounded to whole values
-var SHADOW_TOLERANCE = 0.05;
-//how far to the left a stone's shadow reaches, as far as the painted ones do
-var SHADOW_LENGTH = 6;
 
-function blank(w, h) {
-  return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
+//the picture: a tile's worth, and where the middle of the tile is on it - so
+//that a point x, y along the tile (0..32) and z up stands at OX + x - y,
+//OY - (x + y) / 2 - z
+var W = 64,
+  H = 47,
+  OX = 32,
+  OY = 40,
+  TILE = 32;
+
+//the boxes' sun (isobox SUN), and the one the shadows are cast by - higher,
+//so they fall short, under the stones
+var SUN = normalize([-0.45, 0.35, 1]),
+  SHADOW_SUN = normalize([-0.6, 0.45, 0.65]),
+  SHADOW_ALPHA = 0.3;
+
+//as high as a stone can stand, and how finely a ray is followed down to it
+var TALLEST = 12,
+  STEP = 0.2;
+
+//the colours of the stones, light to dark, by what they are
+var GREY = [
+    [178, 178, 172],
+    [150, 150, 146],
+    [118, 118, 116],
+    [88, 88, 88],
+  ],
+  BROWN = [
+    [168, 152, 132],
+    [140, 125, 108],
+    [110, 98, 86],
+    [80, 72, 64],
+  ];
+
+//what is on each picture: how many stones, in what colours, how big round
+//(along the tile) and how high
+var PLANS = {
+  stone: {
+    count: 5,
+    colours: GREY,
+    size: [2.2, 4],
+    high: [3.5, 6.5],
+    seed: 11,
+  },
+  stone0: {
+    count: 3,
+    colours: BROWN,
+    size: [3.2, 4.8],
+    high: [4, 6.5],
+    seed: 23,
+  },
+};
+
+function normalize(v) {
+  var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+
+  return [v[0] / l, v[1] / l, v[2] / l];
 }
 
-/**
- * How much a pixel of the picture darkens the ground under it: 0 where it is
- * the ground as it is, the same for all three channels where it is shadow, and
- * null where it is neither - that is a stone.
- */
-function darkening(picture, ground, i) {
-  var ratios = [0, 1, 2].map(function (c) {
-      return picture.data[i + c] / Math.max(1, ground.data[i + c]);
-    }),
-    mean = (ratios[0] + ratios[1] + ratios[2]) / 3;
+//a number 0..1 for x, y and a seed, always the same for them
+function hash(x, y, s) {
+  var h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
 
-  if (
-    ratios.some(function (r) {
-      return Math.abs(r - mean) > SHADOW_TOLERANCE;
-    }) ||
-    mean > 1 + SHADOW_TOLERANCE
-  )
-    return null;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
 
-  return Math.max(0, 1 - mean);
+  return (h >>> 0) / 4294967296;
 }
 
-/**
- * The picture with the ground taken out of it: stones as they were painted,
- * shadows black and as see-through as they darkened the grass on the whole.
- *
- * @returns {{image: Object, stone: Uint8Array, shade: number}} stone marks the
- *          stone pixels, and shade is the alpha of the shadows
- */
-function cutOut(picture, ground) {
-  var w = picture.width,
-    h = picture.height,
-    image = blank(w, h),
-    stone = new Uint8Array(w * h),
-    shadow = [],
-    shade = 0,
-    p,
-    i,
-    d;
+//noise, smooth between whole x and y
+function noise(x, y, s) {
+  var x0 = Math.floor(x),
+    y0 = Math.floor(y),
+    fx = x - x0,
+    fy = y - y0,
+    sx = fx * fx * (3 - 2 * fx),
+    sy = fy * fy * (3 - 2 * fy),
+    a = hash(x0, y0, s),
+    b = hash(x0 + 1, y0, s),
+    c = hash(x0, y0 + 1, s),
+    d = hash(x0 + 1, y0 + 1, s);
 
-  for (p = 0; p < w * h; p++) {
-    i = p * 4;
-
-    if (picture.data[i + 3] === 0) continue;
-
-    //painted past the edge of the tile - there is no ground to be
-    //anything but stone
-    d = ground.data[i + 3] === 0 ? null : darkening(picture, ground, i);
-
-    if (d === null) {
-      stone[p] = 1;
-      image.data.set(picture.data.subarray(i, i + 4), i);
-    } else if (Math.round(d * 255) > 0) {
-      shadow.push(p);
-      shade += d;
-    }
-  }
-
-  shade = shadow.length > 0 ? Math.round((shade / shadow.length) * 255) : 0;
-
-  shadow.forEach(function (q) {
-    image.data[q * 4 + 3] = shade;
-  });
-
-  return { image: image, stone: stone, shade: shade };
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
 }
 
-/**
- * The stones of a cut out picture flipped left to right, with their shadows
- * cast again on the ground to the left of them, as dark as the shadows were.
- */
-function mirror(cut, ground) {
-  var src = cut.image,
-    w = src.width,
-    h = src.height,
-    image = blank(w, h),
-    stone = new Uint8Array(w * h),
-    x,
-    y,
-    k,
-    p,
-    i,
-    j;
+//a run of numbers 0..1 from a seed
+function random(seed) {
+  var s = seed >>> 0 || 1;
 
-  for (y = 0; y < h; y++) {
-    for (x = 0; x < w; x++) {
-      p = y * w + x;
-      j = y * w + (w - 1 - x);
+  return function () {
+    s = Math.imul(s ^ (s >>> 15), 2246822519) + 0x6d2b79f5;
+    s ^= s >>> 13;
 
-      if (cut.stone[j] === 1) {
-        stone[p] = 1;
-        image.data.set(src.data.subarray(j * 4, j * 4 + 4), p * 4);
-      }
-    }
-  }
-
-  for (y = 0; y < h; y++) {
-    for (x = 0; x < w; x++) {
-      p = y * w + x;
-      i = p * 4;
-
-      //shadows fall on the tile only, and never over a stone
-      if (stone[p] === 1 || ground.data[i + 3] === 0) continue;
-
-      for (k = 1; k <= SHADOW_LENGTH && x + k < w; k++) {
-        if (stone[p + k] === 1) {
-          image.data[i + 3] = cut.shade;
-          break;
-        }
-      }
-    }
-  }
-
-  return image;
-}
-
-/**
- * Paints the stones one picture at a time, as they are asked for, cutting
- * each painted picture out only once for both ways round.
- *
- * @param pictures {Object} the painted pictures by name, "stone"
- * @param ground {Object} the grass tile they were painted on
- */
-export function createPainter(pictures, ground) {
-  var cuts = {};
-
-  function cut(name) {
-    var picture = pictures[name];
-
-    if (picture === undefined) throw new Error("no such stones: " + name);
-
-    if (cuts[name] === undefined) {
-      if (picture.width !== ground.width || picture.height !== ground.height)
-        throw new Error(
-          name + " is not the size of the tile it was painted on",
-        );
-
-      //cut out of a copy, the picture itself is left as it is
-      cuts[name] = cutOut(
-        {
-          width: picture.width,
-          height: picture.height,
-          data: Uint8ClampedArray.from(picture.data),
-        },
-        ground,
-      );
-    }
-
-    return cuts[name];
-  }
-
-  return {
-    /**
-     * @param name {string} "stone", or "stone-m" for it the other way round
-     */
-    paint: function (name) {
-      return /-m$/.test(name)
-        ? mirror(cut(name.slice(0, -2)), ground)
-        : cut(name).image;
-    },
+    return (s >>> 0) / 4294967296;
   };
 }
 
 /**
- * What generate paints, without painting it: the name and size of every
- * picture - each painted one as it is and the other way round, the size of
- * the tile they were painted on.
- *
- * @param pictures {Object} the painted pictures by name, "stone"
- * @param ground {Object} the grass tile they were painted on
- * @returns {Object} {w, h} by name, "stone" and "stone-m" for each
+ * The stones of a picture: where each is, how big round either way, how
+ * high, how it is turned, and its colours - laid out so that none sits on
+ * another, all on the tile.
  */
-export function describe(pictures, ground) {
+function stonesOf(plan) {
+  var rnd = random(plan.seed),
+    out = [],
+    tries = 0;
+
+  while (out.length < plan.count && tries++ < 2000) {
+    var r = plan.size[0] + rnd() * (plan.size[1] - plan.size[0]),
+      x = 5 + r + rnd() * (TILE - 10 - 2 * r),
+      y = 5 + r + rnd() * (TILE - 10 - 2 * r);
+
+    //each a stone of its own, a little ground between it and the next
+    if (
+      out.some(function (o) {
+        return Math.hypot(o.x - x, o.y - y) < (o.r * o.long + r * 1.3) * 0.95;
+      })
+    )
+      continue;
+
+    out.push({
+      x: x,
+      y: y,
+      r: r,
+      //longer one way than the other, turned any way
+      long: 1 + rnd() * 0.3,
+      turn: rnd() * Math.PI,
+      high: plan.high[0] + rnd() * (plan.high[1] - plan.high[0]),
+      colours: plan.colours,
+      seed: (rnd() * 1e6) | 0,
+    });
+  }
+
+  return out;
+}
+
+/**
+ * How high the stones stand at x, y along the tile, and which of them it is
+ * there: {z, stone}, z 0 and stone null where there are none.
+ */
+function heightAt(stones, x, y) {
+  var best = 0,
+    which = null;
+
+  for (var i = 0; i < stones.length; i++) {
+    var s = stones[i],
+      dx = x - s.x,
+      dy = y - s.y,
+      c = Math.cos(s.turn),
+      n = Math.sin(s.turn),
+      u = (dx * c + dy * n) / (s.r * s.long),
+      v = (-dx * n + dy * c) / s.r,
+      d = Math.sqrt(u * u + v * v);
+
+    //a little lumpy round the edge
+    d *= 1 + (noise(x * 0.7, y * 0.7, s.seed) - 0.5) * 0.2;
+
+    if (d >= 1) continue;
+
+    //a boulder: steep round its foot, its top flattish - a face or two on
+    //it, as a broken stone has
+    var z = s.high * Math.sqrt(1 - Math.pow(d, 6));
+
+    z *= 0.92 + noise(x * 0.5, y * 0.5, s.seed + 7) * 0.16;
+
+    if (z > best) {
+      best = z;
+      which = s;
+    }
+  }
+
+  return { z: best, stone: which };
+}
+
+/**
+ * Where the ray of pixel px, py meets the stones going down from as high as
+ * they get: {x, y, z, stone}, or where it meets the ground, stone null.
+ */
+function cast(stones, px, py) {
+  var a = px + 0.5 - OX;
+
+  for (var z = TALLEST; z >= 0; z -= STEP) {
+    var b = 2 * (OY - (py + 0.5) - z),
+      x = (a + b) / 2,
+      y = (b - a) / 2,
+      at = heightAt(stones, x, y);
+
+    if (at.stone !== null && at.z >= z)
+      return { x: x, y: y, z: z, stone: at.stone };
+  }
+
+  var b0 = 2 * (OY - (py + 0.5));
+
+  return { x: (a + b0) / 2, y: (b0 - a) / 2, z: 0, stone: null };
+}
+
+//which way the stones look at x, y
+function normalAt(stones, x, y) {
+  var e = 0.5,
+    dx = heightAt(stones, x + e, y).z - heightAt(stones, x - e, y).z,
+    dy = heightAt(stones, x, y + e).z - heightAt(stones, x, y - e).z;
+
+  return normalize([-dx / (2 * e), -dy / (2 * e), 1]);
+}
+
+//whether the ground at x, y is in the shadow of a stone
+function shadowed(stones, x, y) {
+  for (var t = STEP * 2; t < 14; t += STEP * 2) {
+    var sx = x + SHADOW_SUN[0] * t,
+      sy = y + SHADOW_SUN[1] * t,
+      z = SHADOW_SUN[2] * t;
+
+    if (z > TALLEST) return false;
+    if (heightAt(stones, sx, sy).z > z) return true;
+  }
+
+  return false;
+}
+
+/**
+ * One picture: name "stone" or "stone0", "-m" after it for the other way
+ * round - its stones laid out the other way across the tile, lit by the
+ * same sun.
+ */
+export function paint(name) {
+  var turned = /-m$/.test(name),
+    plan = PLANS[name.replace(/-m$/, "")];
+
+  if (plan === undefined) throw new Error("no such stones: " + name);
+
+  var stones = stonesOf(plan),
+    out = { width: W, height: H, data: new Uint8ClampedArray(W * H * 4) },
+    hit = new Array(W * H),
+    i,
+    px,
+    py;
+
+  if (turned)
+    stones.forEach(function (s) {
+      var x = s.x;
+
+      s.x = s.y;
+      s.y = x;
+      s.turn = Math.PI / 2 - s.turn;
+    });
+
+  for (py = 0; py < H; py++)
+    for (px = 0; px < W; px++) hit[py * W + px] = cast(stones, px, py);
+
+  for (py = 0; py < H; py++)
+    for (px = 0; px < W; px++) {
+      var h = hit[py * W + px],
+        o = (py * W + px) * 4;
+
+      if (h.stone === null) {
+        //on the tile, in a stone's shadow
+        if (
+          h.x >= 0 &&
+          h.y >= 0 &&
+          h.x < TILE &&
+          h.y < TILE &&
+          shadowed(stones, h.x, h.y)
+        )
+          out.data[o + 3] = Math.round(SHADOW_ALPHA * 255);
+        continue;
+      }
+
+      var n = normalAt(stones, h.x, h.y),
+        light = Math.max(0, n[0] * SUN[0] + n[1] * SUN[1] + n[2] * SUN[2]),
+        //one of the four tones outright: the top the lightest, the side
+        //the sun is on the next, the other the darkest
+        tone =
+          n[2] > 0.88
+            ? 0
+            : Math.max(
+                1,
+                Math.min(
+                  3,
+                  Math.floor((1 - light) * 4 + (hash(px, py, 5) - 0.5) * 0.4),
+                ),
+              ),
+        below = py + 1 < H ? hit[(py + 1) * W + px] : null,
+        c = h.stone.colours[tone],
+        //the edge at its foot a shade darker, to stand out on the grass
+        edge = below === null || below.stone !== h.stone ? 0.82 : 1,
+        speck = 1 + (hash(px, py, h.stone.seed) - 0.5) * 0.08;
+
+      for (i = 0; i < 3; i++)
+        out.data[o + i] = Math.max(0, Math.min(255, c[i] * edge * speck));
+      out.data[o + 3] = 255;
+    }
+
+  return out;
+}
+
+/**
+ * What paint paints, without painting it: every picture by name, the size of
+ * a tile.
+ */
+export function describe() {
   var sizes = {};
 
-  Object.keys(pictures).forEach(function (name) {
-    if (
-      pictures[name].width !== ground.width ||
-      pictures[name].height !== ground.height
-    )
-      throw new Error(name + " is not the size of the tile it was painted on");
-
-    sizes[name] = sizes[name + "-m"] = { w: ground.width, h: ground.height };
+  Object.keys(PLANS).forEach(function (name) {
+    sizes[name] = sizes[name + "-m"] = { w: W, h: H };
   });
 
   return sizes;
 }
 
 /**
- * Cuts out every painted picture of stones and paints it the other way round.
- *
- * @param pictures {Object} the painted pictures by name, "stone"
- * @param ground {Object} the grass tile they were painted on
- * @returns {Object} the stones by name, "stone" and "stone-m" for each
+ * Every picture, painted.
  */
-export function generate(pictures, ground) {
-  var painter = createPainter(pictures, ground),
-    out = {};
+export function generate() {
+  var out = {};
 
-  Object.keys(pictures).forEach(function (name) {
-    out[name] = painter.paint(name);
-    out[name + "-m"] = painter.paint(name + "-m");
+  Object.keys(describe()).forEach(function (name) {
+    out[name] = paint(name);
   });
 
   return out;

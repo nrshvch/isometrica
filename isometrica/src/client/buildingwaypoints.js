@@ -103,16 +103,4 @@ road[(Direction.SE + 1) << 8] = [[0, 0, 0]];
 road[(Direction.SW + 1) << 8] = [[0, 0, 0]];
 road[(Direction.NW + 1) << 8] = [[0, 0, 0]];
 
-//mobile house
-var house0 = (w[BuildingCode.house0] = {});
-
-house0[1] = [[0, 0, 0]];
-house0[2] = [[0, 0, 0]];
-house0[3] = [[0, 0, 0]];
-house0[4] = [[0, 0, 0]];
-house0[1 << 8] = [[0, 0, 0]];
-house0[2 << 8] = [[0, 0, 0]];
-house0[3 << 8] = [[0, 0, 0]];
-house0[4 << 8] = [[0, 0, 0]];
-
 export default w;
