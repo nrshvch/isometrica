@@ -289,6 +289,22 @@ engine in `engine/`.
   nor onto the side of a ramp. A road up on concrete is drawn among the
   buildings rather than under all of them (`roadview.js` SINK), so the edge
   of a ramp stays over the yard of a house lower down behind it.
+- A road takes a while to lay (`isometrica/src/data/buildings.js`
+  constructionTime), in two stages: the earth dug out over the first half,
+  then a bed of crushed stone rolled in (`isometrica/src/shared/gen/roads.js`
+  works, the "dug" and "bed" pieces). Nothing drives on it, and it is no part
+  of the city's network (`isometrica/src/core/city/cityroads.js`), till it is
+  finished (`roadman.js` keeps the roads being laid apart from the ones the
+  traffic drives on). Each stretch being laid that hangs together is closed
+  off with barriers - striped boards on legs, an amber lamp blinking on each
+  end - where it meets a finished road and across its ends (`roadview.js`
+  barriersOf). A crew works along the whole of it
+  (`isometrica/src/client/roadworks.js`): the excavator from one end to the
+  other, stopping on every tile to turn and dig, a lorry a tile behind it;
+  then back the other way, the lorry ahead tipping stone, the excavator
+  behind it spreading it - a crew to every six tiles or so of a long stretch.
+  Where they are is worked out from how far along the road is, so it is the
+  same after a reload.
 - A run of road the player drags is laid all at once (Road.plan): each new
   tile gets the surface that has the run join up the most - with itself,
   and with the roads already there, which stay as they are, joining those
@@ -338,6 +354,14 @@ engine in `engine/`.
   to dig, and the crane's jib swings to and fro
   (`isometrica/src/client/siterenderer.js`); the lorry and the excavator are the
   vehicle generator's, and the excavator never drives the streets.
+- What works has its lights on (`isometrica/src/client/worklights.js`): the
+  excavators and lorries on building sites and road works an amber beacon
+  blinking on the cab, and after dark their work lamps shining ahead; a
+  building site a floodlight on a mast by its office and by its heap of
+  sand; a tower crane a red light blinking on its peak and a floodlight
+  under its cab, high over the site. Each is a pixel or two glowing whatever
+  the light, hidden behind whatever stands in front of it, and at night it
+  lights what is round it (`lighting.js` workLight).
 - Any building can be turned four ways (`isometrica/src/core/rotation.js`). Blocks are
   painted from all four sides.
 - The camera turns round the city a quarter turn at a time: two fingers

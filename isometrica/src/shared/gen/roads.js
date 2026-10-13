@@ -75,7 +75,18 @@ var SKIN = 0.1;
 var TARMAC = { material: "asphalt", base: 0, storey: 12 },
   SLABS = { material: "slabs", base: 0, storey: 12 },
   STONES = { material: "gravel", base: 0, storey: 12 },
-  COBBLED = { material: "setts", base: 0, storey: 12 };
+  COBBLED = { material: "setts", base: 0, storey: 12 },
+  EARTH = { material: "dirt", base: 0, storey: 12 };
+
+//a road being laid (client/roadworks): the earth dug out where it goes -
+//churned at its edges, the digger's trench darker down the middle - and
+//then the bed of crushed stone rolled into it, the asphalt still to come
+var DUG = [132, 100, 70],
+  DUG_EDGE = [108, 80, 56],
+  TRENCH = [96, 70, 50],
+  BED = [164, 158, 146],
+  BED_EDGE = [124, 96, 68],
+  ROLLED = [150, 144, 134];
 
 //which way each of a piece's four joins goes, in the order its name gives
 //them - as client/road's profile reads its neighbours: -x, -y, +x, +y
@@ -323,6 +334,8 @@ function pavement(b, joins, ramp) {
 function piece(joins, ramp, paved, oneway) {
   var b = [];
 
+  if (paved === "dug" || paved === "bed") return works(joins, ramp, paved);
+
   if (paved === "gravel" || paved === "cobble") {
     b = laid(joins, ramp, paved);
 
@@ -452,6 +465,75 @@ function laid(joins, ramp, kind) {
         STONES,
       );
   }
+
+  return b;
+}
+
+/**
+ * A piece of road being laid (client/roadworks), in one of its two stages:
+ * "dug" - the earth dug out over the asphalt's width, its edges churned up,
+ * a darker trench down the middle of each way it goes; or "bed" - the crushed
+ * stone rolled into it, the earth showing at its edges and the roller's
+ * passes paler down the middle. No markings, no pavements, no lights.
+ */
+function works(joins, ramp, kind) {
+  var b = [],
+    g = ramp ? 2 : 1,
+    dug = kind === "dug",
+    fill = dug ? DUG : BED,
+    edge = dug ? DUG_EDGE : BED_EDGE,
+    finish = dug ? EARTH : STONES,
+    alongX = joins["-x"] || joins["+x"],
+    alongY = joins["-y"] || joins["+y"],
+    m = (A0 + A1) / 2;
+
+  function lay(x0, x1, y0, y1, color, how) {
+    patch(b, ramp, x0, x1, y0, y1, SKIN, SKIN, color, how || finish);
+  }
+
+  asphaltRects(joins).forEach(function (r) {
+    lay(
+      Math.max(0, r[0] - g),
+      Math.min(TILE, r[1] + g),
+      Math.max(0, r[2] - g),
+      Math.min(TILE, r[3] + g),
+      edge,
+      EARTH,
+    );
+  });
+
+  lay(
+    A0 + (joins["-x"] ? 0 : 1),
+    A1 - (joins["+x"] ? 0 : 1),
+    A0 + (joins["-y"] ? 0 : 1),
+    A1 - (joins["+y"] ? 0 : 1),
+    fill,
+  );
+  if (joins["-x"]) lay(0, A0, A0 + 1, A1 - 1, fill);
+  if (joins["+x"]) lay(A1, TILE, A0 + 1, A1 - 1, fill);
+  if (joins["-y"]) lay(A0 + 1, A1 - 1, 0, A0, fill);
+  if (joins["+y"]) lay(A0 + 1, A1 - 1, A1, TILE, fill);
+
+  //down the middle of each way it goes: the trench, or the roller's passes
+  var band = dug ? TRENCH : ROLLED,
+    half = dug ? 2 : 4;
+
+  if (alongX || !alongY)
+    lay(
+      joins["-x"] ? 0 : A0 + 3,
+      joins["+x"] ? TILE : A1 - 3,
+      m - half,
+      m + half,
+      band,
+    );
+  if (alongY)
+    lay(
+      m - half,
+      m + half,
+      joins["-y"] ? 0 : A0 + 3,
+      joins["+y"] ? TILE : A1 - 3,
+      band,
+    );
 
   return b;
 }
@@ -666,19 +748,98 @@ function stopAt(side) {
   return [at.x0 + 0.5, at.y0 + 0.5];
 }
 
+//a road works barrier: its boards, striped red and white, its legs, and the
+//amber lamp blinking on top of each end (client/roadview)
+var BOARD_RED = [214, 52, 40],
+  BOARD_WHITE = [238, 238, 232],
+  LEG = [96, 100, 108],
+  WARNING = [255, 176, 40];
+
+//how far in from the edge of its tile a barrier stands, how far along it
+//goes either side of the road, and how high its lamps are
+var BARRIER_IN = 2.5,
+  BARRIER_A0 = A0 - 2,
+  BARRIER_A1 = A1 + 2,
+  WARNING_Z = 6;
+
+/**
+ * A barrier across the road at side of its tile - "-x", "-y", "+x", "+y" -
+ * the end of a stretch being laid (client/roadworks): a board striped red
+ * and white on two legs, an amber lamp on each end of it.
+ */
+function barrier(side) {
+  var b = [],
+    v0 = BARRIER_IN - 0.5,
+    v1 = BARRIER_IN + 0.5;
+
+  [BARRIER_A0, BARRIER_A1 - 1].forEach(function (a) {
+    b.push(sideBox(side, a, a + 1, v0 - 1, v1 + 1, 0, 1, LEG));
+    b.push(sideBox(side, a, a + 1, v0, v1, 1, WARNING_Z - 0.5, LEG));
+    b.push(
+      sideBox(
+        side,
+        a,
+        a + 1,
+        v0,
+        v1,
+        WARNING_Z - 0.5,
+        WARNING_Z + 1,
+        WARNING,
+        LIT,
+      ),
+    );
+  });
+
+  for (var a = BARRIER_A0 + 1, k = 0; a < BARRIER_A1 - 1; a += 3, k++)
+    b.push(
+      sideBox(
+        side,
+        a,
+        Math.min(a + 3, BARRIER_A1 - 1),
+        v0 + 0.2,
+        v1 - 0.2,
+        2.5,
+        4.5,
+        k % 2 === 0 ? BOARD_RED : BOARD_WHITE,
+      ),
+    );
+
+  return b;
+}
+
+/**
+ * Where a barrier at side stands on its tile, x, y - the middle of its
+ * board, for it to be sorted among the cars by that - and where its lamps
+ * are, x, y, z (client/roadview).
+ */
+function barrierAt(side) {
+  var mid = sideBox(side, 16, 16, BARRIER_IN, BARRIER_IN, 0, 0),
+    out = { at: [mid.x0, mid.y0], lamps: [] };
+
+  [BARRIER_A0 + 0.5, BARRIER_A1 - 0.5].forEach(function (a) {
+    var l = sideBox(side, a, a, BARRIER_IN, BARRIER_IN, 0, 0);
+
+    out.lamps.push([l.x0, l.y0, WARNING_Z + 0.5]);
+  });
+
+  return out;
+}
+
 /**
  * Every sprite, by name: "gen/roads/plain/1010" - plain, paved, gravel or
- * cobble - the joins in the order
+ * cobble, or dug and bed for a road being laid (works) - the joins in the order
  * client/road reads its neighbours, -x, -y, +x, +y - "gen/roads/paved/ramp3",
  * and "gen/roads/light/side1" - a street light, on a side of the tile or in a
  * corner of it (lightPlace). A one-way road's straight pieces, the way the traffic goes
  * one of SIDES by number: "gen/roads/plain/oneway2/1010" along +x - and its
- * ramps, with no dashes up them: "gen/roads/paved/oneway/ramp3".
+ * ramps, with no dashes up them: "gen/roads/paved/oneway/ramp3". And
+ * "gen/roads/stop/shelter0" and "gen/roads/works/barrier0", a bus shelter
+ * and a road works barrier along each side of the tile.
  */
 function sprites() {
   var out = {};
 
-  ["plain", "paved", "gravel", "cobble"].forEach(function (kind) {
+  ["plain", "paved", "gravel", "cobble", "dug", "bed"].forEach(function (kind) {
     var paved = kind === "plain" ? false : kind === "paved" ? true : kind;
 
     for (var m = 0; m < 16; m++) {
@@ -698,7 +859,8 @@ function sprites() {
       var alongX = joins["-x"] || joins["+x"],
         alongY = joins["-y"] || joins["+y"];
 
-      if (alongX === alongY) continue;
+      //and no arrow on a road still being laid
+      if (alongX === alongY || kind === "dug" || kind === "bed") continue;
 
       SIDES.forEach(function (to, k) {
         if ((k % 2 === 0) !== alongX) return;
@@ -745,6 +907,11 @@ function sprites() {
     out["gen/roads/stop/shelter" + k] = { stop: true, side: side };
   });
 
+  //and a road works barrier across each side of it
+  STOP_SIDES.forEach(function (side, k) {
+    out["gen/roads/works/barrier" + k] = { barrier: side };
+  });
+
   return out;
 }
 
@@ -756,6 +923,7 @@ export function boxesOf(name) {
   if (s === undefined) throw new Error("no such sprite: " + name);
 
   if (s.stop) return shelter(s.side);
+  if (s.barrier) return barrier(s.barrier);
 
   return s.light
     ? streetLight(s.light)
@@ -790,6 +958,11 @@ export function describe() {
       //and where a bus stop's shelters stand, by name
       stops: STOP_SIDES.reduce(function (out, side, k) {
         out["shelter" + k] = stopAt(side);
+        return out;
+      }, {}),
+      //and where a road works barrier stands, by name, and its lamps are
+      barriers: STOP_SIDES.reduce(function (out, side, k) {
+        out["barrier" + k] = barrierAt(side);
         return out;
       }, {}),
     },

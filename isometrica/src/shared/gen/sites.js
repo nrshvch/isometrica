@@ -135,6 +135,33 @@ function cabin(b, x, y) {
   b.push(box(x + 6, x + 12, y - 0.2, y, 4, 6.5, CAB_GLASS));
 }
 
+//a floodlight on its mast, lighting the site after dark: where it stands
+//on the lots that have one, how high its lamps are, and their colour
+var FLOODS = { cabin: { x: 28, y: 6 }, pile: { x: 28.5, y: 4 } },
+  FLOOD_HIGH = 22,
+  FLOOD_LAMP = [255, 248, 226];
+
+/**
+ * A floodlight's mast at x, y: a foot, a pole, and a bar of lamps on top -
+ * lit by the game, the light it throws drawn over it (client/worklights).
+ */
+function floodMast(b, x, y) {
+  b.push(box(x - 1.2, x + 1.2, y - 1.2, y + 1.2, 1, 2, CONCRETE));
+  b.push(box(x - 0.4, x + 0.4, y - 0.4, y + 0.4, 2, FLOOD_HIGH - 1, POST));
+  b.push(box(x - 2, x + 2, y - 0.6, y + 0.6, FLOOD_HIGH - 1, FLOOD_HIGH, POST));
+  b.push(
+    box(
+      x - 1.8,
+      x + 1.8,
+      y - 0.8,
+      y - 0.6,
+      FLOOD_HIGH - 0.8,
+      FLOOD_HIGH - 0.2,
+      FLOOD_LAMP,
+    ),
+  );
+}
+
 //what is painted on a lot - whatever moves on it is drawn over it (MACHINES)
 var LOTS = {
   dig: function (b) {
@@ -145,9 +172,11 @@ var LOTS = {
   },
   pile: function (b) {
     cone(b, 16, 16, 9, 8.5);
+    floodMast(b, FLOODS.pile.x, FLOODS.pile.y);
   },
   cabin: function (b) {
     cabin(b, 5, 17);
+    floodMast(b, FLOODS.cabin.x, FLOODS.cabin.y);
     b.push(box(23, 26, 19, 22, 1, 8, TOILET));
     b.push(box(22.8, 26.2, 18.8, 22.2, 8, 8.5, darker(TOILET, 0.2)));
     pallet(b, 7, 6);
@@ -573,7 +602,12 @@ export function partBoxes(key, turns) {
  *   - {frames}: pictures to go through and back, the jib from one side to
  *     the other, each with its pivot where the tile's middle is - or, with
  *     cover, the one picture of the front of the fence, to be drawn again
- *     over a machine behind it (describe).
+ *     over a machine behind it (describe);
+ *   - {lights}: the lights on the part (client/worklights) - each {x, y, z,
+ *     kind}, x, y on the screen from the middle of the tile, the ground under
+ *     it, and z how high it is over that: a floodlight on its mast
+ *     ("flood"), and on the crane the red light on its peak ("peak") and its
+ *     floodlight under the cab ("crane").
  */
 function overlays(key, turns) {
   var p = PARTS[key],
@@ -586,31 +620,50 @@ function overlays(key, turns) {
           return "gen/sites/jib/" + i + "/r" + turns;
         }),
       },
+      {
+        lights: [
+          { x: 0, y: 0, z: TOP + CAB + 6.5, kind: "peak" },
+          { x: 0, y: 0, z: TOP + CAB - 0.5, kind: "crane" },
+        ],
+      },
     ];
 
   if (p.kind !== "lot") return [];
 
-  return (MACHINES[p.lot] || []).map(function (m) {
-    var at = turnPoint(m.x, m.y, turns),
-      heading = turnHeading(m.heading, turns),
-      screen = iso.project(at[0] - TILE / 2, at[1] - TILE / 2, 1),
-      o = {
-        vehicle: m.vehicle,
-        color: pick(rnd, Vehicles.TYPES[m.vehicle].colors),
-        heading: heading,
-        x: screen[0],
-        y: screen[1],
-      };
+  var lights = [];
 
-    if (m.drive) {
-      var v = HEADING[heading];
+  if (FLOODS[p.lot] !== undefined) {
+    var f = turnPoint(FLOODS[p.lot].x, FLOODS[p.lot].y, turns),
+      fs = iso.project(f[0] - TILE / 2, f[1] - TILE / 2, 0);
 
-      o.move = iso.project(v[0] * m.drive, v[1] * m.drive, 0);
-      o.turn = turnHeading(m.turn, turns);
-    }
+    lights.push({
+      lights: [{ x: fs[0], y: fs[1], z: FLOOD_HIGH - 0.5, kind: "flood" }],
+    });
+  }
 
-    return o;
-  });
+  return lights.concat(
+    (MACHINES[p.lot] || []).map(function (m) {
+      var at = turnPoint(m.x, m.y, turns),
+        heading = turnHeading(m.heading, turns),
+        screen = iso.project(at[0] - TILE / 2, at[1] - TILE / 2, 1),
+        o = {
+          vehicle: m.vehicle,
+          color: pick(rnd, Vehicles.TYPES[m.vehicle].colors),
+          heading: heading,
+          x: screen[0],
+          y: screen[1],
+        };
+
+      if (m.drive) {
+        var v = HEADING[heading];
+
+        o.move = iso.project(v[0] * m.drive, v[1] * m.drive, 0);
+        o.turn = turnHeading(m.turn, turns);
+      }
+
+      return o;
+    }),
+  );
 }
 
 //the boxes of a frame of the jib by its name - "sites/jib/3/r1", the fourth

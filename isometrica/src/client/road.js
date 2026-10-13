@@ -3,6 +3,7 @@ import engine from "engine";
 import Building from "./building";
 import RoadNode from "./pathfinding/roadnode";
 import RoadView from "./roadview";
+import BuildingState from "../core/buildingstate";
 
 var buildingData = Core.BuildingData,
   BuildingData = buildingData;
@@ -25,8 +26,34 @@ Road.prototype.setData = function (data) {
 
   if (this.node === null) this.node = new RoadNode(this);
 
+  //finished, or come back part laid: kept as it is now (client/roadman)
+  if (this.root.roadman) this.root.roadman.refile(this);
+
   this.view.update();
   this.view.render();
+};
+
+/**
+ * Whether it is finished - not still being laid (client/roadworks), which
+ * nothing drives on.
+ */
+Road.prototype.isReady = function () {
+  return (
+    !this.data ||
+    !this.data.getState ||
+    this.data.getState() !== BuildingState.underConstruction
+  );
+};
+
+/**
+ * How far along a road being laid is: "dug" - the earth dug out - for the
+ * first half of the time it takes, "bed" - the crushed stone rolled in -
+ * for the second; null for one finished.
+ */
+Road.prototype.stage = function () {
+  if (this.isReady()) return null;
+
+  return this.data.getProgress() < 0.5 ? "dug" : "bed";
 };
 
 /*
@@ -136,7 +163,7 @@ Road.surfaceOf = function (model) {
 Road.network = function (roadman) {
   return {
     surface: function (tile) {
-      var road = roadman.getRoad(tile);
+      var road = roadman.anyRoad(tile);
 
       return road !== null ? road.surface() : null;
     },
@@ -491,7 +518,12 @@ Road.goes = function (road, side) {
  * otherwise. Roads laid before there was any choice are asphalt.
  */
 Road.kindOf = function (roadman, data) {
-  var material = data.look && data.look.material;
+  var material = data.look && data.look.material,
+    road = roadman.anyRoad(data.tile);
+
+  //still being laid: dug out, then its bed of stone (client/roadworks)
+  if (road !== null && road.data === data && road.stage() !== null)
+    return road.stage();
 
   //a stop for the buses (client/carman): a street, with its shelter
   if (data.look && data.look.stop) return "stop";

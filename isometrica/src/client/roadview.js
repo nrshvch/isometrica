@@ -11,6 +11,7 @@ import Config from "./config";
 import Core from "../core/main";
 import View from "./view";
 import Lighting from "./lighting";
+import WorkLights from "./worklights";
 
 var Terrain = Core.Terrain;
 
@@ -177,7 +178,7 @@ function setPiece(renderer, name) {
 //added to a road's piece number for the paved one (see Road.profile) - and
 //twice and three times over for gravel and for cobbles: what it is laid in
 var Road_PAVED = 100000,
-  KINDS = ["plain", "paved", "gravel", "cobble", "stop"];
+  KINDS = ["plain", "paved", "gravel", "cobble", "stop", "dug", "bed"];
 
 //and for a one-way road, this more for each of the way it goes + 1 (client/
 //road ONE_WAY)
@@ -234,6 +235,11 @@ function draw(view, id, surface) {
     stop.forEach(function (name) {
       addStand(go, name);
     });
+
+  //and a road being laid, its barriers where it ends
+  barriersOf(view.road).forEach(function (side) {
+    addBarrier(go, "gen/roads/works/barrier" + seenSide(side));
+  });
 
   place(go, tile, surface);
 
@@ -368,6 +374,84 @@ function addStand(parent, name) {
   parent.transform.addChild(part.transform);
 
   if (at) standAt(part, sprite, at);
+}
+
+//from a tile to the next one at each side, -x, -y, +x, +y
+var STEP = [-1, -Terrain.dy, 1, Terrain.dy];
+
+/**
+ * Which sides of a road being laid have a barrier across them, in the world
+ * - -x, -y, +x, +y as 0..3: where it joins a road that is finished, to keep
+ * the traffic off it; and at each end of the stretch being laid, across the
+ * way it goes - one tile on its own across both ends of whichever way it
+ * goes, along x if it goes nowhere yet. None for a road finished.
+ */
+function barriersOf(road) {
+  if (road === null || road.isReady()) return [];
+
+  var roadman = road.root.roadman,
+    tile = road.data.tile,
+    surface = road.surface(),
+    out = [],
+    works = [],
+    s;
+
+  for (s = 0; s < 4; s++) {
+    var next = roadman.anyRoad(tile + STEP[s]);
+
+    if (next === null || !Core.Surface.meets(surface, s, next.surface()))
+      continue;
+
+    if (next.isReady()) out.push(s);
+    else works.push(s);
+  }
+
+  //the end of the stretch: across the way it comes in
+  if (works.length === 1 && out.indexOf((works[0] + 2) % 4) === -1)
+    out.push((works[0] + 2) % 4);
+
+  //on its own, with nothing to close off: across either end
+  if (works.length === 0 && out.length === 0) {
+    var shape = Core.Surface.shapeOf(surface),
+      alongY = shape === 1 || shape === 3;
+
+    out.push(alongY ? 1 : 0, alongY ? 3 : 2);
+  }
+
+  return out;
+}
+
+/**
+ * Hangs a road works barrier under parent, standing where it does on its
+ * tile, its lamps blinking amber (client/worklights).
+ */
+function addBarrier(parent, name) {
+  var part = new engine.GameObject(),
+    sprite = new WorkLights.Renderer(),
+    roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    key = name.split("/").pop(),
+    at = roads && roads.barriers ? roads.barriers[key] : null;
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  part.addComponent(sprite);
+  setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+
+  if (!at) return;
+
+  standAt(part, sprite, at.at);
+  sprite.lights = at.lamps.map(function (lamp, k) {
+    var o = WorkLights.offset(lamp[0], lamp[1], lamp[2], at.at[0], at.at[1]);
+
+    o.color = WorkLights.AMBER;
+    o.blink = WorkLights.BLINK;
+    //one lamp and then the other
+    o.phase = k * WorkLights.BLINK;
+    o.reach = 9;
+    o.peak = 0.55;
+
+    return o;
+  });
 }
 
 /**

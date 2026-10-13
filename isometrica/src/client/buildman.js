@@ -1238,7 +1238,7 @@ Buildman.prototype.build = function (code, options) {
 
       for (j = 0; j < 4; j++) {
         next = tile + [1, -1, Terrain.dy, -Terrain.dy][j];
-        road = roadman.getRoad(next);
+        road = roadman.anyRoad(next);
 
         if (road === null || seen[next] === true) continue;
 
