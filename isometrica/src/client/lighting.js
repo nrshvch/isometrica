@@ -156,6 +156,9 @@ function Lighting(root, cache) {
   //?light=0: the city as it is painted, lit by the one sun of old
   this.plain = /[?&]light=0/.test(location.search);
   this.lamps = [];
+  //the tops of the tall buildings in the layer being drawn, for their
+  //warning lights (beacons): by the building
+  this.tops = new Map();
   this.M = null;
   this.lit = false;
   this.flat = false;
@@ -326,6 +329,18 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
 
   view.keep();
 
+  //the top of anything tall, for its warning lights
+  var top = sprite.top;
+
+  if (
+    this.lit &&
+    top &&
+    top.h >= BEACON_MIN &&
+    renderer.lamps === undefined &&
+    renderer.opacity > 0.99
+  )
+    keepTop(this, renderer, top, x0, y0);
+
   //what is kept in sight, to be drawn again where it is hidden
   if (this.lit && renderer === this.sight) keepInSight(this.inSight, d, from);
 
@@ -353,8 +368,105 @@ function keepInSight(sight, d, from) {
 //the layer's batch drawn, what is kept in sight where it is hidden, and
 //over them what it drew as lines, shapes and words (context)
 Lighting.prototype.flush = function () {
+  if (this.tops.size > 0) {
+    beacons(this, this.context, this.tops);
+    this.tops.clear();
+  }
+
   this.view.flush(this.lit, this.flat, this.inSight);
 };
+
+/* --- Warning lights ---------------------------------------------------- */
+
+//how high something has to stand to have red warning lights on top, a
+//pixel a unit (a storey is 12); their colour; how long they are lit and
+//then out, all together, ms; and the light each throws at night
+var BEACON_MIN = 56,
+  BEACON = "#ff2418",
+  BEACON_LIGHT = [1, 0.12, 0.08],
+  BEACON_ON = 900,
+  BEACON_OFF = 700,
+  BEACON_REACH = 6,
+  BEACON_PEAK = 0.3;
+
+/**
+ * Keeps the top of what renderer draws - a tile of a building - if it is
+ * high enough to have warning lights on it (client/cachedsprite topOf), with
+ * the rest of the building's: its highest point, and the furthest left and
+ * right of the points of its roof about as high, on the screen.
+ */
+function keepTop(self, renderer, top, x0, y0) {
+  var go = renderer.gameObject,
+    parent = go.transform.parent,
+    key = parent ? parent : go,
+    ground = elevation(self.M, renderer),
+    kept = self.tops.get(key),
+    high = [x0 + top.x, y0 + top.y, top.h, ground],
+    left = [x0 + top.left[0], y0 + top.left[1], top.h, ground],
+    right = [x0 + top.right[0], y0 + top.right[1], top.h, ground];
+
+  if (kept === undefined) {
+    self.tops.set(key, { high: high, left: left, right: right });
+    return;
+  }
+
+  if (top.h > kept.high[2]) kept.high = high;
+  if (left[0] < kept.left[0]) kept.left = left;
+  if (right[0] > kept.right[0]) kept.right = right;
+}
+
+/**
+ * The warning lights on the tops of the tall buildings: red, lit and out
+ * again all together - on the highest point of each, an aerial or a water
+ * tank, and at the two ends of its roof if that is about as high - each a
+ * pixel glowing whatever the light, hidden behind whatever stands in front
+ * of it, and at night lighting what is round it a little.
+ */
+function beacons(self, ctx, tops) {
+  if (Date.now() % (BEACON_ON + BEACON_OFF) >= BEACON_ON) return;
+
+  ctx.save();
+  ctx.glow = true;
+  ctx.fillStyle = BEACON;
+
+  tops.forEach(function (t) {
+    var points = [t.high];
+
+    //the ends of the roof, if they are as high as the top, more or less,
+    //and not where the top is
+    [t.left, t.right].forEach(function (p) {
+      if (
+        p[2] >= t.high[2] - 4 &&
+        points.every(function (q) {
+          return Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]) > 4;
+        })
+      )
+        points.push(p);
+    });
+
+    points.forEach(function (p) {
+      //a pixel over the top of it
+      ctx.standsAt = p[3] + p[2] + 2;
+      ctx.fillRect(Math.floor(p[0]), Math.floor(p[1]) - 1, 1, 1);
+
+      if (self.night)
+        self.lamps.push({
+          x: p[0],
+          y: p[1] + p[2],
+          z: p[2] + 1,
+          reach: BEACON_REACH,
+          color: BEACON_LIGHT,
+          peak: BEACON_PEAK,
+          aim: null,
+          cone: -1,
+          tall: TALL,
+          wrap: 0.6,
+        });
+    });
+  });
+
+  ctx.restore();
+}
 
 /**
  * How high the ground under what is drawn for gameObject is on the screen,

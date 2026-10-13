@@ -529,6 +529,12 @@ engine in `engine/`.
   the world's origin, so it stays put as the city scrolls by - and a wall is
   dithered as finely as the ground, not a column at a time: pixel art, lit
   as the world would be.
+- Anything tall - the water tower, an office block of four storeys and up,
+  a crane - has red warning lights on top, blinking all together, by day
+  and by night: on its highest point, an aerial or a tank, and at the two
+  ends of its roof if that is about as high. Where they go is read off the
+  picture of how high each pixel of it stands (`client/cachedsprite.js`
+  topOf, `client/lighting.js` beacons).
 - Nothing fades - a light is on or off: every finished building puts a few
   of its lights on in the hour from half past eight, each at a time of its
   own, so the windows come on one by one all over the city, and more of them
