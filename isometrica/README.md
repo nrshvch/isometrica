@@ -414,6 +414,14 @@ engine in `engine/`.
   camera is, drawn from the tile of it nearest the camera's own corner.
   It turns at any time, in the middle of placing a building or shaping the
   ground too: what is being placed is drawn again from the new side.
+- A pinch follows the fingers all the way (`client/cameracontrol.js`): the
+  camera zooms only by the steps pixel art stays crisp at, and in between
+  what is shown is scaled up on the page the rest of the way, about the
+  spot between the fingers; twisted, it is turned on the page with them -
+  a little bigger, to cover the screen - clicking over to the next side of
+  the world halfway there. Let go, it eases back to the nearest zoom and
+  side. The engine finds the fingers where the canvas stands meanwhile, not
+  where it is shown (`Viewport#restRect`).
 - The city a new player starts on (`isometrica/src/data/initialcity.js`) is built
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the

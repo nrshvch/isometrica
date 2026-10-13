@@ -236,7 +236,10 @@ define(function (require) {
      * pixels, which are only the page's while the camera is not zoomed.
      */
     function locate(viewport, e, target) {
-        var rect = viewport.canvas.getBoundingClientRect();
+        //where the canvas is with nothing laid over how it is shown - while
+        //a pinch scales and turns it on the page (restRect), not where that
+        //puts it, or the fingers would be taken for elsewhere as it turns
+        var rect = viewport.restRect || viewport.canvas.getBoundingClientRect();
 
         target.gameViewportX = (e.clientX - rect.left) / viewport.pixelSize;
         target.gameViewportY = (e.clientY - rect.top) / viewport.pixelSize;
@@ -313,6 +316,14 @@ define(function (require) {
      * @type {number}
      */
     p.pixelSize = 1;
+
+    /**
+     * Where the canvas is on the page with no transform on it, for touches
+     * and the pointer to be located by while one is (a pinch scaling and
+     * turning what is shown) - or null, to go by where it is.
+     * @type {DOMRect|null}
+     */
+    p.restRect = null;
 
     /**
      * 4x4 viewport matrix
