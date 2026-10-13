@@ -456,35 +456,119 @@ function laid(joins, ramp, kind) {
   return b;
 }
 
+//where a street light can stand on its tile, as it is painted: on the
+//pavement in the middle of a side of it - "side0".."side3", the side at -x,
+//-y, +x, +y (SIDES) - its arm reaching across the road; or in a corner of it
+//- "corner0".."corner3", the corner at -x -y, +x -y, -x +y, +x +y - its arm
+//reaching in along one of the ways the tile goes, over the arm of the road
+//beside it: "corner3-0" stands at +x +y and reaches towards -x. Which of them
+//a road has is client/roadview's to say, by where the road is in the world
+var LIGHT_WAYS = [
+    [-1, 0],
+    [0, -1],
+    [1, 0],
+    [0, 1],
+  ],
+  LIGHT_CORNERS = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ];
+
+//how far in from the edge of the tile a pole stands: on the pavement
+var POLE_IN = 3;
+
 /**
- * A street light standing on the pavement on the side of the road nearest
- * the camera - in the middle of the tile beside a road along x (`at` "x"),
- * along y ("y"), or at the corner of a junction ("corner") - its arm
- * reaching out over the road, the lamp under the end of it. A unit thick,
- * the pole and the arm: two pixels across, lit on one and in shadow on the
- * other.
+ * Where a street light stands, by its name ("side2", "corner3-0"), and which
+ * way its arm reaches: {x, y, dx, dy} on its tile.
+ */
+function lightPlace(at) {
+  var m = /^side(\d)$/.exec(at),
+    off = TILE / 2 - POLE_IN;
+
+  if (m !== null) {
+    var s = LIGHT_WAYS[+m[1]];
+
+    return {
+      x: TILE / 2 + s[0] * off,
+      y: TILE / 2 + s[1] * off,
+      dx: -s[0],
+      dy: -s[1],
+    };
+  }
+
+  m = /^corner(\d)-(\d)$/.exec(at);
+
+  var c = LIGHT_CORNERS[+m[1]],
+    d = LIGHT_WAYS[+m[2]];
+
+  return {
+    x: TILE / 2 + c[0] * off,
+    y: TILE / 2 + c[1] * off,
+    dx: d[0],
+    dy: d[1],
+  };
+}
+
+/**
+ * Every street light there is, by name: one on each side of a tile, and in
+ * each corner one reaching in each of the two ways it can.
+ */
+function lightNames() {
+  var out = [];
+
+  LIGHT_WAYS.forEach(function (s, k) {
+    out.push("side" + k);
+  });
+  LIGHT_CORNERS.forEach(function (c, k) {
+    LIGHT_WAYS.forEach(function (d, j) {
+      //only in towards the middle of the tile
+      if (d[0] === -c[0] || d[1] === -c[1]) out.push("corner" + k + "-" + j);
+    });
+  });
+
+  return out;
+}
+
+/**
+ * A street light standing on the pavement where `at` says (lightPlace), its
+ * arm reaching out over the road, the lamp under the end of it. A unit
+ * thick, the pole and the arm: two pixels across, lit on one and in shadow
+ * on the other.
  */
 function streetLight(at) {
   var b = [],
-    x = at === "y" ? 3 : at === "x" ? 16 : 3,
-    y = at === "x" ? 3 : at === "y" ? 16 : 3,
-    //which way the arm reaches: across the road
-    dx = at === "y" ? 1 : 0,
-    dy = at === "y" ? 0 : 1,
+    p = lightPlace(at),
+    x = p.x,
+    y = p.y,
+    //which way the arm reaches, and across it
+    ax = Math.abs(p.dx),
+    ay = Math.abs(p.dy),
     top = 22,
     reach = 6,
-    lx = x + dx * reach,
-    ly = y + dy * reach;
+    lx = x + p.dx * reach,
+    ly = y + p.dy * reach;
 
   b.push(box(x - 1, x + 1, y - 1, y + 1, KERB_H, KERB_H + 2, POLE));
   b.push(box(x, x + 1, y, y + 1, KERB_H, top, POLE));
-  b.push(box(x, lx + 1, y, ly + 1, top - 1, top, POLE));
   b.push(
     box(
-      lx - 1 - dy,
-      lx + 2 + dy,
-      ly - 1 - dx,
-      ly + 2 + dx,
+      Math.min(x, lx),
+      Math.max(x, lx) + 1,
+      Math.min(y, ly),
+      Math.max(y, ly) + 1,
+      top - 1,
+      top,
+      POLE,
+    ),
+  );
+  b.push(
+    box(
+      lx - 1 - ay,
+      lx + 2 + ay,
+      ly - 1 - ax,
+      ly + 2 + ax,
       top - 1,
       top,
       lighter(POLE, 0.2),
@@ -492,10 +576,10 @@ function streetLight(at) {
   );
   b.push(
     box(
-      lx - dy,
-      lx + 1 + dy,
-      ly - dx,
-      ly + 1 + dx,
+      lx - ay,
+      lx + 1 + ay,
+      ly - ax,
+      ly + 1 + ax,
       top - 2,
       top - 1,
       LAMP,
@@ -516,10 +600,9 @@ var GLOWS = Object.assign({}, LIT, { glow: true });
  * be laid round the spot under it (client/roadview).
  */
 function lampAt(at) {
-  var x = at === "y" ? 3 : at === "x" ? 16 : 3,
-    y = at === "x" ? 3 : at === "y" ? 16 : 3;
+  var p = lightPlace(at);
 
-  return [x + (at === "y" ? 6 : 0) + 0.5, y + (at === "y" ? 0 : 6) + 0.5];
+  return [p.x + p.dx * 6 + 0.5, p.y + p.dy * 6 + 0.5];
 }
 
 /**
@@ -528,10 +611,9 @@ function lampAt(at) {
  * stands rather than by the middle of its tile (client/roadview).
  */
 function poleAt(at) {
-  var x = at === "y" ? 3 : at === "x" ? 16 : 3,
-    y = at === "x" ? 3 : at === "y" ? 16 : 3;
+  var p = lightPlace(at);
 
-  return [x + 0.5, y + 0.5];
+  return [p.x + 0.5, p.y + 0.5];
 }
 
 //the sides of a tile, -x, -y, +x, +y, as client/road reads them
@@ -588,8 +670,8 @@ function stopAt(side) {
  * Every sprite, by name: "gen/roads/plain/1010" - plain, paved, gravel or
  * cobble - the joins in the order
  * client/road reads its neighbours, -x, -y, +x, +y - "gen/roads/paved/ramp3",
- * and "gen/roads/light/x" - the street light beside a road along x, along y,
- * or at a corner. A one-way road's straight pieces, the way the traffic goes
+ * and "gen/roads/light/side1" - a street light, on a side of the tile or in a
+ * corner of it (lightPlace). A one-way road's straight pieces, the way the traffic goes
  * one of SIDES by number: "gen/roads/plain/oneway2/1010" along +x - and its
  * ramps, with no dashes up them: "gen/roads/paved/oneway/ramp3".
  */
@@ -654,7 +736,7 @@ function sprites() {
     });
   });
 
-  ["x", "y", "corner"].forEach(function (at) {
+  lightNames().forEach(function (at) {
     out["gen/roads/light/" + at] = { light: at };
   });
 
@@ -696,9 +778,15 @@ export function describe() {
     data: {
       ramps: RAMPS,
       //where each street light's lamp hangs, x, y on its tile
-      lamps: { x: lampAt("x"), y: lampAt("y"), corner: lampAt("corner") },
+      lamps: lightNames().reduce(function (out, at) {
+        out[at] = lampAt(at);
+        return out;
+      }, {}),
       //and where its pole stands
-      poles: { x: poleAt("x"), y: poleAt("y"), corner: poleAt("corner") },
+      poles: lightNames().reduce(function (out, at) {
+        out[at] = poleAt(at);
+        return out;
+      }, {}),
       //and where a bus stop's shelters stand, by name
       stops: STOP_SIDES.reduce(function (out, side, k) {
         out["shelter" + k] = stopAt(side);

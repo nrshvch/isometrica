@@ -66,24 +66,69 @@ function seenJoins(shape) {
   ]);
 }
 
-//where a paved street has its street light, if it has one there: beside a
-//road along x, along y, or at the corner of anything else - every other tile
-//along a street, and never on a ramp. Along x and y as it is seen
+//where a paved street has its street light, if it has one there - every
+//other tile along a street, and never on a ramp. Where it stands is the
+//road's in the world, so it stays on its side of the street as the camera
+//turns round: beside a road along x on its -y pavement, along y on its -x
+//one; at a corner or a junction in the corner of the tile between the ways
+//it goes - the first of them with a way on both sides of it, else on one -
+//its arm reaching in over the way beside it. Then which of the roads
+//generator's lights that is as it is seen (shared/gen/roads lightPlace)
 function lightOf(id, tile) {
   var shape = id % Road_PAVED;
 
   if (Math.floor(id / Road_PAVED) % 10 !== 1 || shape < 10) return null;
   if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
 
-  var j = seenJoins(shape),
+  //the ways it goes, in the world: -x, -y, +x, +y
+  var j = [
+      Math.floor(shape / 1000) % 10,
+      Math.floor(shape / 100) % 10,
+      Math.floor(shape / 10) % 10,
+      shape % 10,
+    ],
     alongX = j[0] || j[2],
     alongY = j[1] || j[3];
 
+  if (alongX && !alongY) return "gen/roads/light/side" + seenSide(1);
+  if (alongY && !alongX) return "gen/roads/light/side" + seenSide(0);
+
+  var best = null,
+    most = 0;
+
+  LIGHT_CORNERS.forEach(function (c) {
+    var byX = j[c[0] < 0 ? 0 : 2],
+      byY = j[c[1] < 0 ? 1 : 3];
+
+    if (byX + byY > most) {
+      most = byX + byY;
+      //over the way along y beside it, if there is one - across the tile
+      //towards the middle - else over the one along x
+      best = { c: c, d: byY ? [-c[0], 0] : [0, -c[1]] };
+    }
+  });
+
+  if (best === null) return null;
+
+  var c = View.vector(best.c[0], best.c[1]),
+    d = View.vector(best.d[0], best.d[1]);
+
   return (
-    "gen/roads/light/" +
-    (alongX && !alongY ? "x" : alongY && !alongX ? "y" : "corner")
+    "gen/roads/light/corner" +
+    ((c[0] > 0 ? 1 : 0) + (c[1] > 0 ? 2 : 0)) +
+    "-" +
+    SIDE_OF[d[0] + "," + d[1]]
   );
 }
+
+//the corners of a tile, -x -y, +x -y, -x +y, +x +y (shared/gen/roads
+//LIGHT_CORNERS)
+var LIGHT_CORNERS = [
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+  [1, 1],
+];
 
 //which side of a tile, -x, -y, +x, +y, a way along the ground goes through
 var SIDE_OF = { "-1,0": 0, "0,-1": 1, "1,0": 2, "0,1": 3 };

@@ -217,7 +217,13 @@ engine in `engine/`.
   a tile joins up with its neighbours and a ramp for every slope, each
   plain - asphalt with a dashed line and gravel edges - or paved, with
   kerbs, pavements and zebra crossings over junctions, and street lights
-  along it. A road is paved where it is part of the city's road network
+  along it. A light stands on every other tile, on the pavement of one
+  side of the road in the world - so it stays where it is as the camera
+  turns round - and on a bend or a junction in the corner between two
+  joining roads, its arm reaching out over one of them. It is painted for
+  each side and each corner and arm the way they are seen, and
+  `isometrica/src/client/roadview.js` picks the one for the camera as it
+  is. A road is paved where it is part of the city's road network
   and has a building next to it (`isometrica/src/client/roadman.js` paved); out in
   the country, or on a stretch that does not join the network, it stays
   plain, and it changes back and forth as buildings go up and come down.
