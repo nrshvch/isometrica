@@ -469,6 +469,9 @@ Layers.prototype.finish = function (pixels, w) {
       o = (j * w + x0 + i) * 4;
       k = over[j * W + i];
       pixels[o + 1] = k;
+      //and nothing of it glows (client/glview GLOW) - what lifted it added
+      //to the blue as well
+      pixels[o + 2] = 0;
       if (k > 0 || pixels[o + 3] > 0) pixels[o + 3] = 255;
     }
 };

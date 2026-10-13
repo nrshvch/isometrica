@@ -1,4 +1,5 @@
 import engine from "engine";
+import Lighting from "./lighting";
 import Core from "../core/main";
 import Config from "./config";
 import View from "./view";
@@ -350,6 +351,9 @@ CarScript.prototype.baseSpeed = SPEED;
 //its pictures, one for each way it drives: {"x+": sprite, ...}
 CarScript.prototype.looks = null;
 CarScript.prototype.heading = null;
+//which way it is about to turn: -1 left, 1 right, 0 neither (client/traffic
+//Driver signal)
+CarScript.prototype.signal = 0;
 CarScript.prototype.traffic = COMMUTER;
 //out for a drive in the small hours rather than on its way home for the night
 CarScript.prototype.nightRider = false;
@@ -797,6 +801,9 @@ CarScript.prototype.place = function () {
     renderer,
     frame;
 
+  //which way it is about to turn, for its indicators
+  this.signal = driver.signal();
+
   if (heading !== this.heading && this.looks[heading] !== undefined) {
     this.heading = heading;
     frame = this.looks[heading];
@@ -950,6 +957,9 @@ CarScript.prototype.tick = function (time) {
  * It is also where a darkened car will part company with its lamp: night
  * shading belongs on the draw below, not on this one.
  */
+//an indicator's colour, lit
+var BLINKER = "#ffb21e";
+
 function VehicleRenderer() {
   engine.SpriteRenderer.call(this);
 }
@@ -989,6 +999,20 @@ VehicleRenderer.prototype.render = function (
     self,
   );
 
+  //its indicators, blinking amber at its corners as it turns: glowing,
+  //whatever the light (client/lighting blinkers)
+  var at = self.buf,
+    blink = Lighting.blinkers(self.gameObject, at[0], at[1], true);
+
+  if (blink !== null) {
+    layer.save();
+    layer.glow = true;
+    layer.fillStyle = BLINKER;
+    for (var b = 0; b < blink.length; b += 2)
+      layer.fillRect(Math.floor(blink[b]), Math.floor(blink[b + 1]), 1, 1);
+    layer.restore();
+  }
+
   var lit = self.lit;
 
   if (lit === null) return;
@@ -1017,7 +1041,8 @@ VehicleRenderer.prototype.render = function (
 
 /**
  * A lamp on a vehicle - a police car's - as it is drawn over it: its colours
- * as painted, and at night its own light (client/glview).
+ * as painted, glowing at every hour, and at night its own light too
+ * (client/glview).
  */
 function Lamp(sprite) {
   this.sprite = sprite;
@@ -1034,9 +1059,10 @@ Lamp.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
   d[o + 1] = d[o + 5] = d[o + 13] = s.offsetX;
   d[o + 2] = d[o + 6] = d[o + 14] = s.offsetY;
   d[o + 3] = GLView.FROM;
-  //looking up, as high as the car under it stands
+  //looking up; glowing as bright as its colours by day and by night alike,
+  //never darkened by the dusk - and at night shining on top of that
   d[o + 7] = lit ? GLView.DARK : GLView.SKIP;
-  d[o + 11] = GLView.SKIP;
+  d[o + 11] = lit ? GLView.GLOW : GLView.SKIP;
   d[o + 15] = night ? GLView.FROM : GLView.SKIP;
 
   return true;

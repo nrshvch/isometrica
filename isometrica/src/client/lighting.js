@@ -88,6 +88,13 @@ var TAIL_REACH = 10,
   TAIL_LIGHT = [1, 0.12, 0.06],
   TAIL_CONE = 0.1;
 
+//an indicator: how long it is on, and then off, ms; its light, and at
+//night how far its light reaches and how bright it is
+var BLINK_MS = 380,
+  BLINK_LIGHT = [1, 0.62, 0.1],
+  BLINK_REACH = 7,
+  BLINK_PEAK = 0.7;
+
 //what shines of a building - a lit window, a sign, a billboard - as the
 //light it throws round it: how far it reaches, and how bright it is close
 //by, the most of it lit (client/cachedsprite nightLights)
@@ -102,6 +109,11 @@ var FLASH_HIGH = 9,
 //how high anything a lamp lights can stand, for the square it is drawn in
 //to take it in
 var TALL = 60;
+
+//what stands in front of what is kept in sight (seeThrough): how much of it
+//is drawn, and how much of the way there it goes each frame, fading
+var SEE_THROUGH = 0.4,
+  SEE_EASE = 0.15;
 
 //the shadows the sun casts: how far along the ground on the screen a pixel
 //looks towards the sun for what stands in its way at each step (client/
@@ -132,6 +144,13 @@ function Lighting(root, cache) {
   this.M = null;
   this.lit = false;
   this.flat = false;
+
+  //what is kept in sight (seeThrough), where it is drawn this frame, and
+  //how see-through each thing in front of it is just now, by its renderer
+  this.sight = null;
+  this.inSight = null;
+  this.fades = new Map();
+  this.frames = 0;
 
   //the clock as it last moved on, and when, to move the sun on smoothly in
   //between (see hour)
@@ -188,6 +207,14 @@ Lighting.prototype.hour = function () {
  *        are
  */
 Lighting.prototype.begin = function (viewport, M) {
+  var frames = ++this.frames;
+
+  //what has gone from the screen while see-through is forgotten
+  if (frames % 60 === 0)
+    this.fades.forEach(function (f, renderer, fades) {
+      if (frames - f.frame > 60) fades.delete(renderer);
+    });
+
   hourNow = this.hour();
   this.sky = sun(hourNow);
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
@@ -206,6 +233,57 @@ Lighting.prototype.begin = function (viewport, M) {
 Lighting.prototype.layer = function (lit, flat) {
   this.lit = lit;
   this.flat = flat;
+  //what is kept in sight is in front of nothing in a layer of its own
+  this.inSight = null;
+};
+
+/**
+ * Keeps what renderer draws in sight (the courier's car): whatever stands in
+ * front of it - drawn after it in its layer, over where it is on the screen
+ * - is drawn see-through, fading out and back in again as it passes behind
+ * and out from behind it. null for nothing.
+ */
+Lighting.prototype.seeThrough = function (renderer) {
+  this.sight = renderer;
+};
+
+/**
+ * How see-through to draw what renderer draws at x0, y0, w by h: as it
+ * says, or less where it stands in front of what is kept in sight.
+ */
+Lighting.prototype.opacity = function (renderer, x0, y0, w, h) {
+  var keep = this.sight,
+    at = this.inSight;
+
+  if (keep === null) return renderer.opacity;
+
+  //what is kept in sight: where it is this frame, every picture of it
+  if (renderer === keep) {
+    this.inSight = at = at || [Infinity, Infinity, -Infinity, -Infinity];
+    at[0] = Math.min(at[0], x0);
+    at[1] = Math.min(at[1], y0);
+    at[2] = Math.max(at[2], x0 + w);
+    at[3] = Math.max(at[3], y0 + h);
+    return renderer.opacity;
+  }
+
+  var was = this.fades.get(renderer),
+    over =
+      at !== null &&
+      x0 < at[2] &&
+      x0 + w > at[0] &&
+      y0 < at[3] &&
+      y0 + h > at[1];
+
+  if (was === undefined && !over) return renderer.opacity;
+
+  var k = was === undefined ? 1 : was.k;
+
+  k += ((over ? SEE_THROUGH : 1) - k) * SEE_EASE;
+  if (k > 0.99) this.fades.delete(renderer);
+  else this.fades.set(renderer, { k: k, frame: this.frames });
+
+  return renderer.opacity * k;
 };
 
 /**
@@ -217,7 +295,13 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
   if (sprite.glQuad === undefined) return;
 
   var view = this.view,
-    d = view.add(x0, y0, sprite.width, sprite.height, renderer.opacity);
+    d = view.add(
+      x0,
+      y0,
+      sprite.width,
+      sprite.height,
+      this.opacity(renderer, x0, y0, sprite.width, sprite.height),
+    );
 
   if (
     !sprite.glQuad(
@@ -433,6 +517,24 @@ function headlights(out, M, w, h, carman) {
       });
     }
 
+    //its indicators, blinking amber on the road round them
+    var blink = Lighting.blinkers(go, spot[0], spot[1]);
+
+    if (blink !== null)
+      for (var b = 0; b < blink.length; b += 2)
+        out.push({
+          x: blink[b],
+          y: blink[b + 1],
+          z: HEAD_HIGH,
+          reach: BLINK_REACH,
+          color: BLINK_LIGHT,
+          peak: BLINK_PEAK,
+          aim: null,
+          cone: -1,
+          tall: 20,
+          wrap: 0.6,
+        });
+
     if (renderer.lamps === undefined || !lampsOn(renderer.lamps)) continue;
 
     //how far ahead of its middle the front is: across the screen its
@@ -475,6 +577,46 @@ function headlights(out, M, w, h, carman) {
     }
   }
 }
+
+/**
+ * Where a car's indicators are on the screen while they are lit - the one
+ * at the front and the one at the back on the side it is turning to, the
+ * car's middle at x, y on the screen: [x, y, x, y] - the ground under them,
+ * or up as high as they are - or null while they are off, blinking, or it
+ * is not turning (car.signal, -1 left, 1 right - see client/traffic Driver
+ * signal).
+ */
+Lighting.blinkers = function (go, x, y, up) {
+  var car = go.car,
+    renderer = go.spriteRenderer;
+
+  if (!car || !car.signal || car.heading === null || !renderer) return null;
+
+  var aim = AIM[car.heading],
+    sprite = renderer._sprite;
+
+  if (aim === undefined || !sprite) return null;
+
+  //each car blinking in its own time
+  var phase = (renderer.lamps || 0) * 997;
+
+  if (Math.floor((Date.now() + phase) / BLINK_MS) % 2 === 1) return null;
+
+  //as far ahead as its headlights, and out to its side - on the right
+  //of the way it goes as it is seen, the side as it turns
+  var ahead = Math.max(4, (sprite.width - 6) / 2),
+    side = car.signal * (HEAD_APART + 0.5),
+    out = [];
+
+  for (var end = 1; end >= -1; end -= 2) {
+    var gx = aim[0] * ahead * end + aim[1] * side,
+      gy = aim[1] * ahead * end - aim[0] * side;
+
+    out.push(x + gx - gy, y - (gx + gy) / 2 - (up ? HEAD_HIGH : 0));
+  }
+
+  return out;
+};
 
 /**
  * How much of what renderer draws shines at this hour (client/cachedsprite
