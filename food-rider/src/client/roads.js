@@ -4,14 +4,17 @@
  * loaded (client/roadman), and an order goes right across town.
  *
  * Two roads join where they meet level, at the same height all along the
- * edge between them (core/surface meets) - the same as the traffic goes by
- * (client/carman), so the courier's car takes no way the rest could not.
+ * edge between them (core/surface meets), and a one-way road is never
+ * driven against the way it goes (client/road goes) - the same as the
+ * traffic goes by (client/carman), so the courier's car takes no way the
+ * rest could not.
  */
 import Terrain from "isometrica/core/terrain";
 import Surface from "isometrica/core/surface";
 import BuildingData from "isometrica/data/buildings";
 import BuildingClassCode from "isometrica/data/classcode";
 import Pathfinder from "isometrica/client/pathfinding/pathfinder";
+import Road from "isometrica/client/road";
 
 //from a tile to the next one at each side, -x, -y, +x, +y - the sides
 //Surface.meets counts
@@ -63,7 +66,14 @@ Roads.prototype.neighbours = function (tile, out) {
   for (side = 0; side < 4; side++) {
     to = this.road(tile + STEP[side]);
 
-    if (to !== null && Surface.meets(from.surface, side, to.surface))
+    //where they meet level, and never against the way a one-way road goes
+    //(client/road goes)
+    if (
+      to !== null &&
+      Surface.meets(from.surface, side, to.surface) &&
+      Road.goes({ data: from }, side) &&
+      Road.goes({ data: to }, side)
+    )
       out.push(tile + STEP[side]);
   }
 

@@ -43,9 +43,9 @@ handed over (see above).
   over take what they take, with the game closed too. The drive itself only
   goes on while the game is open; the car is kept where it had got to.
 - Every so often the car's own engine gives out on the way - about once in
-  every 160 tiles it drives, at random. It stands where it is, smoking, the
-  traffic going round it, for a minute or so before it goes again by
-  itself; or the player clicks the Fix button that comes up over it (or the
+  every 160 tiles it drives, at random, somewhere on a street it can pull
+  over: it pulls in to the kerb, out of the traffic's way, and stands there
+  smoking for a minute or so before it goes again by itself; or the player clicks the Fix button that comes up over it (or the
   one in the panel), and it is going again in four seconds.
 - The places come out of the buildings standing in the city
   (`food-rider/src/client/places.js`): the small shops are restaurants -
