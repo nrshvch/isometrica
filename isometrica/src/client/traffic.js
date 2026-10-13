@@ -1,7 +1,8 @@
 /**
  * How everything on the roads drives: in its lane, keeping its distance from
  * whatever is in front of it, taking its turn at a junction, pulling in to
- * the kerb and out again, and getting past a bus standing at its stop.
+ * the kerb and out again, and getting past a bus standing at its stop or
+ * something slow driving on in front of it.
  *
  * Whatever drives - the traffic (client/carman), the courier's car
  * (games/delivery), a bus - is a Driver: a line of points through the lanes
@@ -92,6 +93,14 @@ var LANE = 0.15,
   //far ahead the other lane has to be clear on top of that
   PASS_CLEAR = 0.2,
   PASS_LOOK = 3,
+  //something moving is overtaken when it wants to go this much slower than
+  //the one behind it, which has followed it this long, ms - and only if it
+  //can be got past within so many tiles, with a little more for speeding up
+  SLOWER = 0.8,
+  TRAIL_FOR = 1200,
+  PASS_MOST = 5,
+  //how much faster than it would otherwise it goes, going round something
+  PASS_BOOST = 1.35,
   //how far ahead along the road something pulls over to the kerb, or pulls
   //back out into its lane
   PULL_OVER = 0.4;
@@ -708,6 +717,8 @@ function Driver(traffic, length, width, owner) {
   this.overtaking = null;
   this.passBack = -1;
   this.passer = null;
+  //how long it has followed something slow, ms
+  this.trailed = 0;
   this.alive = true;
   //since when it has waited for the junction ahead of it, or -1
   this.asked = -1;
@@ -1256,7 +1267,9 @@ Driver.prototype.step = function (dt) {
     }
   }
 
-  var vt = Math.max(0, Math.min(this.v0, (gap - MIN_GAP) / HEADWAY));
+  //going round something, a good deal quicker, to be past it soon
+  var v0 = this.overtaking !== null ? this.v0 * PASS_BOOST : this.v0,
+    vt = Math.max(0, Math.min(v0, (gap - MIN_GAP) / HEADWAY));
 
   //on the brakes: slowing down, or standing in the traffic - kept on a
   //moment, so they do not flicker as it keeps its distance
@@ -1274,7 +1287,13 @@ Driver.prototype.step = function (dt) {
 
   var step = Math.min(this.v * s, Math.max(0, gap - HARD_GAP));
 
-  if (lead !== null && lead.driver.passable) this.overtake(lead);
+  //stuck behind something slow, with the road clear ahead of it: on for a
+  //while, then round it
+  this.trailed =
+    lead !== null && slowAhead(this, lead.driver) ? this.trailed + dt : 0;
+
+  if (lead !== null && (lead.driver.passable || this.trailed > TRAIL_FOR))
+    this.overtake(lead);
 
   this.move(step);
 };
@@ -1390,19 +1409,40 @@ function drivingAway(self, other) {
   );
 }
 
+//whether other, in front of self, is in no hurry: driving on slower than
+//self would - a lorry, a car on its last legs - not just held up itself
+function slowAhead(self, other) {
+  return (
+    other.v > 0.05 &&
+    other.v0 < self.v0 * SLOWER &&
+    other.leader === null &&
+    !other.stopAtEnd &&
+    !other.pullingOver &&
+    !other.parked
+  );
+}
+
 /**
- * Goes round what stands in its lane in front of it - a bus at its stop -
- * through the other lane, if nobody is going round it already, the other lane is clear far enough
- * ahead, and its own lane past it is clear to pull back in to - all on a
- * straight bit of road with no junction on it.
+ * Goes round what is in its lane in front of it - a bus at its stop, or
+ * something driving on slower than it would, a lorry or a car on its last
+ * legs, that it has followed a while - through the other lane, a good deal
+ * quicker than it would otherwise go: if nobody is going round it already,
+ * the other lane is clear far enough ahead - as far again as what comes the
+ * other way gets while it goes past something moving - and its own lane
+ * past it is clear to pull back in to, all on a straight bit of road with
+ * no junction on it, short enough to get past in.
  */
 Driver.prototype.overtake = function (lead) {
   var other = lead.driver,
-    traffic = this.traffic;
+    traffic = this.traffic,
+    //something driving on, not standing: it is past it only once it has
+    //made up the whole of the way to past it on it, going faster
+    moving = !other.passable && other.v > 0.05;
 
   if (other.passer !== null && !other.passer.alive) other.passer = null;
   if (other.passer !== null || this.overtaking !== null) return;
-  if (lead.along - this.length / 2 > 0.4) return;
+  if (lead.along - this.length / 2 > 0.4 + (moving ? other.v * HEADWAY : 0))
+    return;
 
   var hx = Math.round(this.hx),
     hy = Math.round(this.hy);
@@ -1416,10 +1456,33 @@ Driver.prototype.overtake = function (lead) {
   if (Math.abs(off) > 0.05) return;
 
   var back = lead.along + other.length + this.length / 2 + PASS_CLEAR,
+    fast = this.v0 * PASS_BOOST,
+    //as fast as it could go meanwhile, not just as it goes now
+    slow = Math.max(other.v, other.v0),
+    gain = fast - slow,
+    //how long it takes to get past, s
+    takes = 0,
     wps = this.wps,
     at = 0,
     rest = -1,
     i;
+
+  //past something moving: as much further on as it gets in the meantime -
+  //speeding up from its speed, then gaining on it as fast as it can
+  if (moving) {
+    if (gain < 0.2) return;
+
+    var speedUp = gain / ACCEL,
+      gained = (gain * speedUp) / 2;
+
+    takes =
+      back <= gained
+        ? Math.sqrt((2 * back) / ACCEL)
+        : speedUp + (back - gained) / gain;
+    back += slow * takes;
+
+    if (back > PASS_MOST) return;
+  }
 
   //its way straight on past it, in the lane it is in, and no junction
   for (i = this.target; i < wps.length; i++) {
@@ -1453,7 +1516,9 @@ Driver.prototype.overtake = function (lead) {
       hx,
       hy,
       -0.6,
-      back + PASS_LOOK,
+      //and what comes the other way gets as far again while it goes past
+      //something moving
+      back + PASS_LOOK + (moving ? fast * takes : 0),
       this,
     ) ||
     !traffic.laneClear(

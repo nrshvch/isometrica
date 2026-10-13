@@ -77,7 +77,12 @@ engine in `engine/`.
   lane. The traffic behind it queues; the first car to get to it goes round
   it through the other lane, once that is clear well ahead and there is no
   junction in the way, and the next only when that one is back in its lane.
-  The bus waits for whoever is going round it before it moves off. There is a bus for
+  The bus waits for whoever is going round it before it moves off. A car
+  stuck behind something driving on slower than it would - a lorry, a car
+  about to break down - goes round that too, a good deal quicker than it
+  would otherwise go, once it has followed it a moment, if the road is
+  straight with no junction for as far as it takes to get past and the
+  other lane clear for as far as what comes along it would get meanwhile. There is a bus for
   every two stops loaded, and none at night. The city a new player starts
   on has a few stops on its streets; a city with none is given a few as it
   is opened, on straight streets with something built along them.
