@@ -390,7 +390,11 @@ engine in `engine/`.
   behind it, and a police car colours the road and the walls round it. Every lamp is a little square over just the pixels it
   can reach, lighting each by how far it is from the lamp in the world -
   worked out from where it is on the screen and how high it stands - and how
-  squarely it faces it, the headlights in a cone ahead. So a lorry passing
+  squarely it faces it, the headlights in a cone ahead and a street light in
+  a cone down under its shade - a pool on the road about as wide as the lamp
+  is high, with a little of its light spilling out to the sides below the
+  lamp and none up, so a wall by it is lit from its foot up, in one with the
+  pool, never in a band of its own at the lamp's height. So a lorry passing
   under a street light is lit on its roof and the side towards the lamp, a
   wall by the street catches the light, a tree's crown is lit on the side
   facing the lamp, and the road under the lamp in its own colours. The light
