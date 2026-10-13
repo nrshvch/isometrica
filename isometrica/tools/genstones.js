@@ -63,7 +63,7 @@ function main() {
   var tileW = 64,
     tileH = 47,
     w = (stoneNames.length * (tileW + GAP) + GAP) * ZOOM,
-    h = (tileH + GAP * 2 + 12 * 2 + GAP) * ZOOM,
+    h = (tileH + GAP * 2 + 14 * 2 + GAP) * ZOOM,
     preview = { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) },
     i,
     x,
@@ -108,7 +108,7 @@ function main() {
     for (var f = 0; f < smoke.FRAMES; f++) {
       var p = pictures[kind + f];
 
-      put(p, at, GAP * 2 + tileH + row * 12 + (10 - p.height) / 2, false);
+      put(p, at, GAP * 2 + tileH + row * 14 + (12 - p.height) / 2, false);
       at += p.width + GAP;
     }
   });

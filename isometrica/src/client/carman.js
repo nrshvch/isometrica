@@ -63,11 +63,12 @@ var Terrain = Core.Terrain;
 //its way keeps its route.
 //
 //Every so many tiles one breaks down: it pulls over to the kerb, out of the
-//traffic's way, and stands there with smoke coming out of its engine as
-//thick as a chimney's for a few hours of the game's time, then pulls back
-//out once the lane behind it is clear and goes on. It gives some warning:
+//traffic's way, and stands there with thick black smoke pouring out of its
+//engine - quicker and far more of it than out of a chimney - for a few
+//hours of the game's time, then pulls back out once the lane behind it is
+//clear and goes on. It gives some warning:
 //for the last few tiles before it goes it crawls along, its engine already
-//smoking - thinner, two puffs a second - and it only gives out on a street,
+//smoking - thinner, three puffs a second - and it only gives out on a street,
 //clear of the junctions, where it can pull over: until it gets to one it
 //crawls on. Every one can puff a little smoke out of its tailpipe as it
 //drives too - two puffs a second, thinner than a chimney - but that is
@@ -111,7 +112,7 @@ var CARS_PER_ROAD = 1 / 4,
   //what share of its speed it still makes then
   FAILING_SPEED = 0.5,
   //and how often a puff comes out of the engine, ms
-  FAILING_SMOKE_EVERY = 500,
+  FAILING_SMOKE_EVERY = 300,
   //how long one stands broken down, in minutes of the game's time - give or
   //take
   BREAKDOWN_MINUTES = 60,
@@ -119,9 +120,9 @@ var CARS_PER_ROAD = 1 / 4,
   EXHAUST = false,
   //how often a puff of it does, ms
   EXHAUST_EVERY = 500,
-  //and out of the engine while it stands broken down - as often as out of a
-  //chimney
-  BREAKDOWN_SMOKE_EVERY = 500,
+  //and out of the engine while it stands broken down - thick and black, far
+  //more often than out of a chimney
+  BREAKDOWN_SMOKE_EVERY = 180,
   //how long a police car's lamp stays blue before it turns red, ms
   LAMP_EVERY = 240;
 

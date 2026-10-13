@@ -103,6 +103,7 @@ flat out vec4 vRect;
 flat out float vAlpha;
 flat out float vElev;
 flat out float vDither;
+flat out float vOver;
 flat out vec4 vSrc0;
 flat out vec4 vSrc1;
 flat out vec4 vSrc2;
@@ -114,6 +115,7 @@ void main() {
   vAlpha = misc.x;
   vElev = misc.y;
   vDither = misc.z;
+  vOver = misc.w;
   vSrc0 = src0;
   vSrc1 = src1;
   vSrc2 = src2;
@@ -137,6 +139,9 @@ flat in float vAlpha;
 flat in float vElev;
 //whether how see-through it is is dithered rather than blended
 flat in float vDither;
+//how high over the ground it is, all of it, for a picture with no heights
+//of its own - a puff of smoke up in the air
+flat in float vOver;
 //the colours, then the two other pictures this batch draws into
 flat in vec4 vSrc0;
 flat in vec4 vSrc1;
@@ -206,7 +211,10 @@ void main() {
   if (colours) {
     out0 = vec4(c.rgb, shape);
     out1 = whole(drawn(vSrc1, at, shape));
-    out2 = whole(tall(vSrc2, at, shape));
+    out2 = whole(
+      vSrc2.w > 0.5 && vSrc2.w < 1.5 && vOver > 0.0
+        ? vec4(min(vOver, 255.0) / 255.0, 0.0, 0.0, shape)
+        : tall(vSrc2, at, shape));
     //how near it is, for what is drawn over the city to be hidden behind it
     //(the pictures are still drawn in the order the engine sorts them)
     gl_FragDepth = depthOf(size.y - gl_FragCoord.y, height(at));
@@ -976,9 +984,13 @@ GLView.prototype.origin = [0, 0];
  * @param [elev] {number} how high the ground under it is on the screen
  * @param [dither] {boolean} see-through a pixel at a time, dithered, rather
  *        than blended - the way pixel art is (smoke)
+ * @param [over] {number} how high over the ground the whole of it is on the
+ *        screen, for a picture with no heights of its own (smoke): lit, and
+ *        in the shade, where it is up in the air - not as the ground behind
+ *        it
  * @returns {Float32Array} where to fill them in
  */
-GLView.prototype.add = function (x, y, w, h, alpha, elev, dither) {
+GLView.prototype.add = function (x, y, w, h, alpha, elev, dither, over) {
   if ((this.count + 1) * FLOATS > this.sprites.length) {
     var more = new Float32Array(this.sprites.length * 2);
 
@@ -996,6 +1008,7 @@ GLView.prototype.add = function (x, y, w, h, alpha, elev, dither) {
   d[o + 4] = alpha;
   d[o + 5] = elev || 0;
   d[o + 6] = dither ? 1 : 0;
+  d[o + 7] = over || 0;
   this.offset = o + 8;
 
   return d;
