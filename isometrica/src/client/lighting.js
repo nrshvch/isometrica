@@ -209,6 +209,8 @@ Lighting.prototype.begin = function (viewport, M) {
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
   this.lamps.length = 0;
+  //for the dither of what is drawn see-through to stay put with the lamps'
+  this.view.origin = [Math.round(M[12]), Math.round(M[13])];
   this.view.begin(
     viewport.width,
     viewport.height,
@@ -283,6 +285,7 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
       sprite.height,
       renderer.opacity,
       this.lit ? elevation(this.M, renderer) : 0,
+      renderer.dither === true,
     ),
     from = view.offset - 8;
 

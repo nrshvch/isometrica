@@ -107,7 +107,11 @@ engine in `engine/`.
   smokes only while there is a fire going in the house, which is most
   houses of a morning and an evening and few round the middle of the day
   and in the small hours, each making up its mind every few minutes - one
-  thin wisp at a time (`smokesource.js`).
+  thin wisp at a time (`smokesource.js`). However thin it is, it is not
+  blended over what is behind it but dithered, the way the lamps' light is:
+  each pixel of it there or not, by where it falls in a 4x4 pattern laid
+  from the world's origin (`isometrica/src/client/glview.js`, a sprite
+  renderer's `dither`).
 - What is on screen is drawn from a few big canvas pages
   (`isometrica/src/client/canvascache.js`), not from the sheets: a sprite is copied
   there the first time it is drawn, and whatever has gone undrawn longest

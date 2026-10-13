@@ -102,6 +102,7 @@ uniform vec2 size;
 flat out vec4 vRect;
 flat out float vAlpha;
 flat out float vElev;
+flat out float vDither;
 flat out vec4 vSrc0;
 flat out vec4 vSrc1;
 flat out vec4 vSrc2;
@@ -112,6 +113,7 @@ void main() {
   vRect = rect;
   vAlpha = misc.x;
   vElev = misc.y;
+  vDither = misc.z;
   vSrc0 = src0;
   vSrc1 = src1;
   vSrc2 = src2;
@@ -125,11 +127,16 @@ precision highp sampler2DArray;
 
 uniform sampler2DArray pages;
 uniform vec2 size;
+//where the world's origin is on the screen, for a dithered picture's
+//pattern to stay put as the lamps' light does
+uniform vec2 origin;
 
 flat in vec4 vRect;
 flat in float vAlpha;
 //how high the ground it stands on is, a pixel a unit
 flat in float vElev;
+//whether how see-through it is is dithered rather than blended
+flat in float vDither;
 //the colours, then the two other pictures this batch draws into
 flat in vec4 vSrc0;
 flat in vec4 vSrc1;
@@ -168,6 +175,9 @@ vec4 tall(vec4 src, ivec2 at, float shape) {
 
 uniform bool colours;
 uniform vec4 albedoSrc;
+
+const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
+  3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 ${WHOLE}${DEPTH_OF}
 //how high the pixel stands in the world: over the ground it stands on as
 //its picture of that says, nothing for one with none of its own
@@ -179,6 +189,15 @@ void main() {
   ivec2 at = local();
   vec4 c = fetch(vSrc0, at);
   float shape = c.a * vAlpha;
+
+  //see-through the way pixel art is: there or not, a pixel at a time, by
+  //where it is in a pattern laid from the world's origin - as many of them
+  //there as it is solid
+  if (vDither > 0.5) {
+    ivec2 g4 = ivec2(floor(vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - origin)) & 3;
+
+    shape = shape > (BAYER[g4.y * 4 + g4.x] + 0.5) / 16.0 ? 1.0 : 0.0;
+  }
 
   if (shape <= 0.0) discard;
 
@@ -945,14 +964,21 @@ GLView.prototype.resize = function (w, h, margin) {
   attach(gl, this.lightFrame, [this.lightTex]);
 };
 
+//where the world's origin is on the screen, this frame (client/lighting
+//begin) - for the dither of what is drawn see-through to stay put
+GLView.prototype.origin = [0, 0];
+
 /**
  * A square of a picture to draw, at x, y on the screen, w by h, as see-
  * through as alpha: the floats for the rest of it (see FLOATS), from
  * offset on, to be filled in - by client/cachedsprite glQuad.
  *
+ * @param [elev] {number} how high the ground under it is on the screen
+ * @param [dither] {boolean} see-through a pixel at a time, dithered, rather
+ *        than blended - the way pixel art is (smoke)
  * @returns {Float32Array} where to fill them in
  */
-GLView.prototype.add = function (x, y, w, h, alpha, elev) {
+GLView.prototype.add = function (x, y, w, h, alpha, elev, dither) {
   if ((this.count + 1) * FLOATS > this.sprites.length) {
     var more = new Float32Array(this.sprites.length * 2);
 
@@ -969,6 +995,7 @@ GLView.prototype.add = function (x, y, w, h, alpha, elev) {
   d[o + 3] = h;
   d[o + 4] = alpha;
   d[o + 5] = elev || 0;
+  d[o + 6] = dither ? 1 : 0;
   this.offset = o + 8;
 
   return d;
@@ -1106,6 +1133,8 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
   var loc = gl.getUniformLocation(p, "colours");
 
   if (loc !== null) gl.uniform1i(loc, colours ? 1 : 0);
+  loc = gl.getUniformLocation(p, "origin");
+  if (loc !== null) gl.uniform2f(loc, this.origin[0], this.origin[1]);
   gl.bindVertexArray(vao);
 
   //into the lit city, how near every pixel drawn is too: the nearest of

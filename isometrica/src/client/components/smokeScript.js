@@ -70,6 +70,9 @@ SmokeScript.prototype.start = function () {
   if (sprite === undefined) {
     sprite = this.gameObject.addComponent(new engine.SpriteRenderer());
     sprite.layer = vkaria.layers.buildingsLayer;
+    //see-through a pixel at a time, dithered the way the lamps' light is,
+    //rather than blended over what is behind it (client/glview)
+    sprite.dither = true;
   }
 
   this.frame = -1;
