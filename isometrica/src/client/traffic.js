@@ -63,11 +63,18 @@ var LANE = 0.15,
   DECEL = 2.2,
   //how far either side of the line it drives along something is in its way
   CORRIDOR = 0.14,
-  //two ways through a junction cross when they come closer than this
+  //two ways through a junction cross when they come closer than this - and
+  //one going through it is out of the other's way this far past where they
+  //do, all of it
   CONFLICT = 0.2,
+  PAST = 0.08,
   //how far short of a junction it asks for it, past the gap it would brake
   //in
   ASK_AHEAD = 0.5,
+  //how fast what is on the far side of a junction has to be driving away for
+  //one to follow it through rather than wait for it to be gone, tiles a
+  //second
+  AWAY = 0.6,
   //the longest step of the world taken at once, ms - a long frame is taken
   //in steps no longer than this - and the most of a frame there is to take,
   //after the game has been held a while
@@ -466,8 +473,15 @@ function segmentDistance(px, py, ax, ay, bx, by) {
  * come closer than CONFLICT. Two coming in the same way never do: the one
  * behind just follows the other.
  */
+//the line each way through a junction tile drives along, by way in and way
+//out (DIRS), from the middle of the tile - and for every pair of them that
+//crosses, how far along the first it is that the two come together for the
+//last time (CLEAR): past that, with all of it, it is out of the other's way
+var LINES = [],
+  CLEAR = [];
+
 var CONFLICTS = (function () {
-  var lines = [],
+  var lines = LINES,
     table = [],
     a,
     b,
@@ -517,19 +531,61 @@ var CONFLICTS = (function () {
     for (b = 0; b < 4; b++) lines[a][b] = line(DIRS[a], DIRS[b]);
   }
 
+  //how far along p it is that p last comes closer to q than CONFLICT
+  function lastNear(p, q) {
+    var last = -Infinity,
+      at = 0,
+      i,
+      j,
+      k;
+
+    for (i = 0; i + 1 < p.length; i++) {
+      var l = Math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]);
+
+      for (k = 0; k <= 10; k++) {
+        var mx = p[i][0] + ((p[i + 1][0] - p[i][0]) * k) / 10,
+          my = p[i][1] + ((p[i + 1][1] - p[i][1]) * k) / 10;
+
+        for (j = 0; j + 1 < q.length; j++)
+          if (
+            segmentDistance(
+              mx,
+              my,
+              q[j][0],
+              q[j][1],
+              q[j + 1][0],
+              q[j + 1][1],
+            ) < CONFLICT
+          )
+            last = at + (l * k) / 10;
+      }
+
+      at += l;
+    }
+
+    return last;
+  }
+
   for (a = 0; a < 4; a++) {
     table[a] = [];
+    CLEAR[a] = [];
     for (b = 0; b < 4; b++) {
       table[a][b] = [];
+      CLEAR[a][b] = [];
       for (c = 0; c < 4; c++) {
         table[a][b][c] = [];
-        for (d = 0; d < 4; d++)
+        CLEAR[a][b][c] = [];
+        for (d = 0; d < 4; d++) {
           table[a][b][c][d] =
             a !== c &&
             Math.min(
               apart(lines[a][b], lines[c][d]),
               apart(lines[c][d], lines[a][b]),
             ) < CONFLICT;
+          CLEAR[a][b][c][d] = table[a][b][c][d]
+            ? lastNear(lines[a][b], lines[c][d])
+            : -Infinity;
+        }
       }
     }
   }
@@ -539,6 +595,59 @@ var CONFLICTS = (function () {
 
 function crosses(m, n) {
   return CONFLICTS[m.i][m.o][n.i][n.o];
+}
+
+/**
+ * Whether h, going through junction tile its way, is in the way of a car
+ * that would go through it m's way: where their ways cross, and not yet past
+ * where they do with the whole of it - so a car does not wait for one that
+ * crosses its way to be off the junction, only out of its way.
+ */
+function inWay(h, m, tile) {
+  if (!crosses(h, m)) return false;
+
+  var d = h.d,
+    line = LINES[h.i][h.o],
+    px = d.x - Terrain.extractX(tile),
+    py = d.y - Terrain.extractY(tile);
+
+  return (
+    alongLine(line, px, py) - d.length / 2 < CLEAR[h.i][h.o][m.i][m.o] + PAST
+  );
+}
+
+//how far along a line through a tile the point nearest x, y is - less than
+//0 short of where it comes into it
+function alongLine(line, x, y) {
+  var best = Infinity,
+    found = 0,
+    at = 0;
+
+  for (var i = 0; i + 1 < line.length; i++) {
+    var ax = line[i][0],
+      ay = line[i][1],
+      dx = line[i + 1][0] - ax,
+      dy = line[i + 1][1] - ay,
+      l = Math.sqrt(dx * dx + dy * dy),
+      t = l === 0 ? 0 : ((x - ax) * dx + (y - ay) * dy) / (l * l);
+
+    //before the first point, along the way it comes in
+    if (i > 0 || t > 0) t = Math.max(0, t);
+    t = Math.min(1, t);
+
+    var ex = ax + dx * t - x,
+      ey = ay + dy * t - y,
+      e = ex * ex + ey * ey;
+
+    if (e < best) {
+      best = e;
+      found = at + t * l;
+    }
+
+    at += l;
+  }
+
+  return found;
 }
 
 var nextId = 1;
@@ -1152,13 +1261,28 @@ Driver.prototype.ask = function (junction, front) {
 
   if (this.asked < 0) this.asked = traffic.now;
 
-  //room on the far side to come out into - or its way ends in there
-  var ready =
-    junction.out < 0 ||
-    this.scan(junction.out, junction.out + this.length + MIN_GAP * 2) === null;
+  //room on the far side to come out into - or its way ends in there - or
+  //what is there is driving on out of it, the way it goes, with nothing
+  //ahead of it: it follows that through
+  var exit =
+      junction.out < 0
+        ? null
+        : this.scan(junction.out, junction.out + this.length + MIN_GAP * 2),
+    ready = exit === null || drivingAway(this, exit.driver);
 
   return traffic.request(this, junction, ready);
 };
+
+//whether other is driving on away from self, the way it goes, quick enough
+//and with nothing in front of it to stop it - not about to stand there
+function drivingAway(self, other) {
+  return (
+    other.v > AWAY &&
+    other.leader === null &&
+    !other.stopAtEnd &&
+    self.hx * other.hx + self.hy * other.hy > 0.7
+  );
+}
 
 /**
  * Goes round what stands in its lane in front of it - a bus at its stop -
@@ -1619,9 +1743,12 @@ function junctionOf(self, tile) {
 
 /**
  * Asks for the junctions ahead of driver: given them when nothing going
- * through them crosses its way, nobody who has waited longer for a way that
- * crosses it is ready to go, and it is ready itself - it has somewhere to
- * come out to.
+ * through them is in its way (inWay - crosses its way, and is not yet past
+ * where it does), nobody who has waited longer for a way that crosses it is
+ * ready to go, and it is ready itself - it has somewhere to come out to.
+ * Ways that never cross go through together: straight on from either side,
+ * turning right from any two, one turning right and the other going
+ * straight - unless into the same street, where they merge.
  */
 Traffic.prototype.request = function (driver, junction, ready) {
   var now = this.now,
@@ -1654,7 +1781,11 @@ Traffic.prototype.request = function (driver, junction, ready) {
     mine.ready = ready;
 
     for (k = 0; ok && k < j.holders.length; k++)
-      if (j.holders[k].d !== driver && crosses(j.holders[k], m)) ok = false;
+      if (
+        j.holders[k].d !== driver &&
+        inWay(j.holders[k], m, junction.tiles[i])
+      )
+        ok = false;
 
     for (k = 0; ok && k < j.waiting.length; k++) {
       var w = j.waiting[k];
