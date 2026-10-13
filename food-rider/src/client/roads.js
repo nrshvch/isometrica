@@ -13,6 +13,7 @@ import Terrain from "isometrica/core/terrain";
 import Surface from "isometrica/core/surface";
 import BuildingData from "isometrica/data/buildings";
 import BuildingClassCode from "isometrica/data/classcode";
+import BuildingState from "isometrica/core/buildingstate";
 import Pathfinder from "isometrica/client/pathfinding/pathfinder";
 import Road from "isometrica/client/road";
 
@@ -43,8 +44,10 @@ function Roads(buildings) {
 Roads.prototype.road = function (tile) {
   var building = this.buildings.get(tile);
 
+  //and finished - nothing drives on one still being laid
   return building !== null &&
-    BuildingData[building.buildingCode].classCode === BuildingClassCode.road
+    BuildingData[building.buildingCode].classCode === BuildingClassCode.road &&
+    building.getState() !== BuildingState.underConstruction
     ? building
     : null;
 };

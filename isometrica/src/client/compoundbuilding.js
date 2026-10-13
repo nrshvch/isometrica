@@ -403,6 +403,16 @@ function overlaysOf(sprites, parts, up, turns, seed) {
     if (!listed) return;
 
     listed.forEach(function (o) {
+      //the lights on it (client/worklights), as high as it is laid
+      if (o.lights !== undefined) {
+        out.push({
+          lights: o.lights.map(function (l) {
+            return { x: l.x, y: l.y, z: l.z + up[i], kind: l.kind };
+          }),
+        });
+        return;
+      }
+
       if (o.bays !== undefined) {
         //those at the back first, the ones in front drawn over them
         o.bays
@@ -467,11 +477,16 @@ function overlaysOf(sprites, parts, up, turns, seed) {
           sprite: sprites.getSprite(look.sprite),
           pivotX: look.pivotX - o.x,
           pivotY: look.pivotY - o.y + up[i],
+          heading: heading,
         };
       }
 
       out.push({
         vehicle: o.vehicle,
+        //where its middle is on the screen from the tile's, the ground
+        //under it - for its lights
+        x: o.x,
+        y: o.y - up[i],
         looks:
           o.turn !== undefined && looks[o.turn]
             ? [at(o.heading), at(o.turn)]

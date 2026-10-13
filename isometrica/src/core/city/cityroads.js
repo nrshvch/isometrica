@@ -14,6 +14,7 @@
 import Events from "events";
 import BuildingData from "../../data/buildings";
 import BuildingClassCode from "../../data/classcode";
+import BuildingState from "../buildingstate";
 import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
 
@@ -35,8 +36,10 @@ CityRoads.prototype.init = function () {
   var buildings = this.city.world.buildings;
 
   //the network is only ever changed by something being built or pulled down
+  //- or by a road being finished
   Events.on(buildings, buildings.events.buildingBuilt, onChange, this);
   Events.on(buildings, buildings.events.buildingRemoved, onChange, this);
+  Events.on(buildings, buildings.events.buildingStateChange, onChange, this);
 };
 
 /**
@@ -118,12 +121,14 @@ function offer(sides, footprint, tile) {
   if (footprint[tile] !== true && sides.indexOf(tile) === -1) sides.push(tile);
 }
 
+//a road there, finished - one still being laid reaches nothing yet
 function isRoad(world, tile) {
   var building = world.buildings.get(tile);
 
   return (
     building !== null &&
-    BuildingData[building.buildingCode].classCode === BuildingClassCode.road
+    BuildingData[building.buildingCode].classCode === BuildingClassCode.road &&
+    building.getState() !== BuildingState.underConstruction
   );
 }
 

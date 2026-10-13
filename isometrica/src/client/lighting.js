@@ -592,6 +592,46 @@ function headlights(out, M, w, h, carman) {
 //how high a car's lamps are, a pixel a unit
 Lighting.CAR_LAMP_HIGH = HEAD_HIGH;
 
+//which way each heading goes along the ground as it is seen, a unit long
+Lighting.AIM = AIM;
+
+/**
+ * A light of something at work - a road works lamp, a machine's beacon or
+ * its work lamp, a building site's floodlight (client/worklights) - at x, y
+ * on the screen, the spot on the ground under it, z over that: lighting
+ * what is round it, while it is night.
+ *
+ * @param color {number[]} red, green and blue 0..1
+ * @param [aim] {number[]} for a lamp shining one way, that way along the
+ *        ground as it is seen (AIM), cone the cosine of half of how wide
+ */
+Lighting.prototype.workLight = function (
+  x,
+  y,
+  z,
+  reach,
+  color,
+  peak,
+  aim,
+  cone,
+) {
+  if (!this.night || !seen(x, y, reach, this.view.width, this.view.height))
+    return;
+
+  this.lamps.push({
+    x: x,
+    y: y,
+    z: z,
+    reach: reach,
+    color: color,
+    peak: peak,
+    aim: aim || null,
+    cone: aim ? cone : -1,
+    tall: TALL,
+    wrap: 0.6,
+  });
+};
+
 /**
  * Where a car's indicators are on the screen while they are lit - the one
  * at the front and the one at the back on the side it is turning to, the

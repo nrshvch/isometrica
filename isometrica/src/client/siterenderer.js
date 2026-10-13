@@ -1,4 +1,5 @@
 import engine from "engine";
+import WorkLights from "./worklights";
 
 //Draws a tile of a building site, and over it what moves there: the digger
 //driving up and back, stopping to turn and dig in between, and the jib of a
@@ -7,6 +8,8 @@ import engine from "engine";
 //overlays); this draws them all in one, the way a car is drawn with its lamp
 //(carman VehicleRenderer) - so that they are sorted as one with the tile, and
 //nothing can come between them. A lorry stands where it is, being loaded.
+//And the lights of it all (client/worklights): the beacons on the machines
+//and their work lamps, the site's floodlights, and the crane's.
 
 //how a digger goes about it, in ms: waiting, driving on, stopping, turning
 //to dig, digging, turning back, waiting, backing up to where it was
@@ -75,6 +78,19 @@ SiteRenderer.prototype.render = function (
       dx = 0,
       dy = 0;
 
+    //the site's floodlights, the crane's lights
+    if (o.lights !== undefined) {
+      WorkLights.draw(
+        layer,
+        self,
+        buffer[0],
+        buffer[1],
+        o.work || (o.work = o.lights.map(WorkLights.siteLight)),
+        self.phase,
+      );
+      continue;
+    }
+
     if (o.frames !== undefined) look = jibFrame(o.frames, now);
     else if (o.move === null) look = o.looks[0];
     else {
@@ -105,6 +121,21 @@ SiteRenderer.prototype.render = function (
       Math.floor(buffer[1] - look.pivotY + dy + 0.5),
     );
     self.windows = windows;
+
+    //a machine at work, its beacon going and after dark its work lamps on
+    if (o.x !== undefined && look.heading !== undefined) {
+      if (look.work === undefined)
+        look.work = WorkLights.machineOf(o.vehicle, look.heading);
+
+      WorkLights.draw(
+        layer,
+        self,
+        buffer[0] + o.x + dx,
+        buffer[1] + o.y + dy,
+        look.work,
+        self.phase + i * 331,
+      );
+    }
   }
 };
 

@@ -321,7 +321,7 @@ function groundHeight(root, x, y) {
     tile = Terrain.convertToIndex(x0, y0);
 
   //on a road, its own surface - on its concrete, if it is on any
-  var road = root.roadman.getRoad(tile);
+  var road = root.roadman.anyRoad(tile);
 
   if (road !== null) {
     var surface = road.surface();

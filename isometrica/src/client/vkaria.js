@@ -20,6 +20,7 @@ import CameraControl from "./cameracontrol";
 import Player from "./player";
 import CameraMan from "./cameraman";
 import Carman from "./carman";
+import Roadworks from "./roadworks";
 import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
 
@@ -87,6 +88,7 @@ function Vkaria(core, ui, play) {
   this.serviceman = new ServiceMan(this);
   this.pathman = new PathMan();
   this.carman = new Carman(this);
+  this.roadworks = new Roadworks(this);
   this.cameraControl = new CameraControl(this);
   this.cameraman = new CameraMan(this);
   this.player = new Player(this);
@@ -192,6 +194,7 @@ Vkaria.prototype.startServices = function () {
   this.cameraControl.init();
 
   this.carman.init();
+  this.roadworks.init();
 
   if (this.play.start) this.play.start(this);
 };

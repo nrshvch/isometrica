@@ -27,6 +27,11 @@ other games start on is built here, and handed over from the city screen.
   wayOf, goes). Its straight pieces have no line down the middle but an
   arrow the way it goes - white on asphalt, darker stones on gravel, pale
   ones among cobbles - and its ramps no dashes.
+- A road is not there the moment it is laid: it is dug out, then given a
+  bed of stone, before it is finished - closed off with barriers the while,
+  an excavator and a lorry working along it, beacons going and work lamps on
+  after dark. Nothing drives on it, and nothing counts it as on the road
+  network, till then (see the isometrica README).
 - The catalogue offers only what the game paints for itself - which is
   everything there is: nothing is drawn by hand. While a building is being
   placed, the dice next to turning it round picks another of the same kind

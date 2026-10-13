@@ -8,24 +8,42 @@ import Core from "../core/main";
 var BuildingClassCode = Core.BuildingClassCode;
 var Terrain = Core.Terrain;
 
+//the road on tile, finished or still being laid
 function getRoad(self, tile) {
   var road = self._roads[tile];
   return road || null;
 }
 
+/*
+ * Every road loaded is kept by its tile - and, packed in a list for picking
+ * one at random, the finished ones, which are what the traffic drives on;
+ * the ones still being laid (client/roadworks) are kept apart until they
+ * are finished.
+ */
 function addRoad(self, tile, road) {
-  if (self._roads[tile] === undefined) {
-    self._index[tile] = self._tiles.length;
-    self._tiles.push(tile);
-  }
-
   self._roads[tile] = road;
+  file(self, tile, road);
 }
 
-function removeRoad(self, tile) {
-  if (self._roads[tile] === undefined) return;
+//into the list of finished roads, or among the ones being laid
+function file(self, tile, road) {
+  if (road.isReady()) {
+    delete self._works[tile];
+    if (self._index[tile] === undefined) {
+      self._index[tile] = self._tiles.length;
+      self._tiles.push(tile);
+    }
+  } else {
+    unlist(self, tile);
+    self._works[tile] = road;
+  }
+}
 
-  //the last tile takes the place of the one going, so the list stays packed
+//out of the list of finished roads: the last tile takes the place of the
+//one going, so the list stays packed
+function unlist(self, tile) {
+  if (self._index[tile] === undefined) return;
+
   var i = self._index[tile],
     last = self._tiles.pop();
 
@@ -35,6 +53,13 @@ function removeRoad(self, tile) {
   }
 
   delete self._index[tile];
+}
+
+function removeRoad(self, tile) {
+  if (self._roads[tile] === undefined) return;
+
+  unlist(self, tile);
+  delete self._works[tile];
   delete self._roads[tile];
 }
 
@@ -44,6 +69,16 @@ function updateRoadsNear(self, tile) {
   (road = getRoad(self, tile + Terrain.dy)) !== null && road.updateProfile();
   (road = getRoad(self, tile - 1)) !== null && road.updateProfile();
   (road = getRoad(self, tile - Terrain.dy)) !== null && road.updateProfile();
+}
+
+//the roads next to tile drawn again whatever their pieces - their barriers
+//come and go with the road there (client/roadview)
+function redrawNear(self, tile) {
+  [1, -1, Terrain.dy, -Terrain.dy].forEach(function (d) {
+    var road = getRoad(self, tile + d);
+
+    if (road !== null) road.view.update();
+  });
 }
 
 function onBuildingLoad(sender, building, self) {
@@ -73,8 +108,7 @@ function refreshSoon(self) {
   self._refresh = setTimeout(function () {
     self._refresh = null;
 
-    for (var i = 0; i < self._tiles.length; i++)
-      self._roads[self._tiles[i]].updateProfile();
+    for (var tile in self._roads) self._roads[tile].updateProfile();
   }, 0);
 }
 
@@ -125,11 +159,34 @@ function onBuildingUnload(sender, building, self) {
 function Roadman(root) {
   this.root = root;
   this._roads = {};
-  //every loaded road tile, packed, for picking one at random
+  //every loaded road tile finished, packed, for picking one at random
   this._tiles = [];
   this._index = {};
+  //and the ones still being laid, by tile
+  this._works = {};
   this._refresh = null;
 }
+
+/**
+ * A road was finished, or came back from a save part laid (client/road
+ * setData): kept with the finished ones or among the ones being laid; and a
+ * road finished joins the traffic's network, its neighbours' barriers come
+ * down, and which roads are streets may have changed with it.
+ */
+Roadman.prototype.refile = function (road) {
+  var tile = road.data.tile;
+
+  if (this._roads[tile] !== road) return;
+
+  var was = this._works[tile] !== undefined;
+
+  file(this, tile, road);
+
+  if (was !== (this._works[tile] !== undefined)) {
+    redrawNear(this, tile);
+    refreshSoon(this);
+  }
+};
 
 Roadman.prototype.init = function () {
   var buildman = this.root.buildman;
@@ -146,8 +203,31 @@ Roadman.prototype.init = function () {
     onBuildingLoad(buildman, views[i], this);
 };
 
+/**
+ * The road on tile the traffic can drive - a finished one - or null.
+ */
 Roadman.prototype.getRoad = function (tile) {
+  var road = getRoad(this, tile);
+
+  return road !== null && this._works[tile] === undefined ? road : null;
+};
+
+/**
+ * The road on tile, finished or still being laid, or null - for how it is
+ * laid and joins up with the roads round it.
+ */
+Roadman.prototype.anyRoad = function (tile) {
   return getRoad(this, tile);
+};
+
+/**
+ * The roads loaded that are still being laid, by tile. The map itself, not a
+ * copy.
+ *
+ * @returns {Object<number, Road>}
+ */
+Roadman.prototype.getWorks = function () {
+  return this._works;
 };
 
 /**

@@ -54,7 +54,9 @@ buildingData[BuildingCode.road] = {
   demanding: {
     money: 5,
   },
-  constructionTime: 0,
+  //dug out, then a bed of crushed stone rolled in, then the asphalt
+  //(client/roadworks) - nothing drives on it till then
+  constructionTime: 40000,
   constructionCost: {
     money: 500,
   },
