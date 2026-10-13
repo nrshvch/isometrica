@@ -389,9 +389,10 @@ engine in `engine/`.
   wall by the street catches the light, a tree's crown is lit on the side
   facing the lamp, and the road under the lamp in its own colours. The light
   is put in steps of a third, at most a third over a pixel's own colours so
-  nothing is lit white, dithered between them by where on the ground each
-  pixel is, so it stays put as the city scrolls by: pixel art, lit as
-  the world would be.
+  nothing is lit white, dithered between them by where each pixel is from
+  the world's origin, so it stays put as the city scrolls by - and a wall is
+  dithered as finely as the ground, not a column at a time: pixel art, lit
+  as the world would be.
 - Nothing fades - a light is on or off: every finished building puts a few
   of its lights on in the hour from half past eight, each at a time of its
   own, so the windows come on one by one all over the city, and more of them

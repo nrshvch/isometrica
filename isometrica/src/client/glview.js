@@ -20,8 +20,8 @@
  * just the pixels it can reach, adding its light by how far each is from it
  * in the world - worked out from where it is on the screen and how high it
  * stands - and how squarely it faces it; then every pixel by the sun, the
- * lamps' light put in steps of a third, dithered by where on the ground the
- * pixel is, and what shines added in over the dark. The layers over the city
+ * lamps' light put in steps of a third, dithered by where the pixel is from
+ * the world's origin, and what shines added in over the dark. The layers over the city
  * are drawn on top of that as they are painted.
  */
 
@@ -283,7 +283,6 @@ precision highp float;
 
 uniform sampler2D albedo;
 uniform sampler2D normals;
-uniform sampler2D heights;
 uniform sampler2D shine;
 uniform sampler2D light;
 uniform vec2 size;
@@ -312,15 +311,17 @@ void main() {
   vec3 c = a * lit;
 
   if (night) {
-    float h = texelFetch(heights, px, 0).r * 255.0;
     vec3 l = texelFetch(light, px, 0).rgb * 2.0;
     float most = max(l.r, max(l.g, l.b));
 
     if (most > 0.0) {
-      //in steps of a third, dithered between them by where on the ground
-      //it is
-      vec2 ground = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y + h) - origin;
-      ivec2 g = ivec2(floor(ground)) & 3;
+      //in steps of a third, dithered between them by where the pixel is
+      //from the world's origin, so the pattern stays put as the city
+      //scrolls. Not by the ground under it: every pixel up a wall stands
+      //over the same spot of ground, and the wall would be dithered a whole
+      //column at a time, in stripes
+      vec2 at = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - origin;
+      ivec2 g = ivec2(floor(at)) & 3;
       float b = (BAYER[g.y * 4 + g.x] + 0.5) / 16.0;
       float s = min(floor(most * 3.0 + b), MOST_STEPS) / 3.0;
 
@@ -828,7 +829,6 @@ GLView.prototype.light = function (lamps, sky, origin) {
   gl.useProgram(p);
   bind(gl, p, "albedo", t[ALBEDO], 0);
   bind(gl, p, "normals", t[NORMAL], 1);
-  bind(gl, p, "heights", t[HEIGHT], 2);
   bind(gl, p, "shine", t[SHINE], 3);
   bind(gl, p, "light", this.lightTex, 4);
   gl.uniform2f(gl.getUniformLocation(p, "size"), w, h);
