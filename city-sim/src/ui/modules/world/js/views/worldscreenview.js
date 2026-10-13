@@ -103,10 +103,18 @@ WorldScreenView.prototype.showActionButtons = function (controls) {
       });
     }
 
+    //and another of the same, picked at random, on the same selection
+    if (controls.canShuffle && controls.canShuffle()) {
+      setBtn(view, 3, "dice-icon", function () {
+        controls.shuffle();
+      });
+    }
+
     renderBtns(view);
   }
 
   controls.canRotate.onChange(render, false, this);
+  if (controls.canShuffle) controls.canShuffle.onChange(render, false, this);
   controls.canSubmit.onChange(render, false, this);
   render();
 };
