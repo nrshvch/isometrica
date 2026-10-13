@@ -1007,6 +1007,10 @@ VehicleRenderer.prototype.render = function (
   if (blink !== null) {
     layer.save();
     layer.glow = true;
+    //hidden behind whatever stands in front of the car, as high as its
+    //lamps - and a little nearer, not to be lost in the car's own corner
+    layer.standsAt =
+      engine.Config.gl.elevation(self.gameObject) + Lighting.CAR_LAMP_HIGH + 2;
     layer.fillStyle = BLINKER;
     for (var b = 0; b < blink.length; b += 2)
       layer.fillRect(Math.floor(blink[b]), Math.floor(blink[b + 1]), 1, 1);
