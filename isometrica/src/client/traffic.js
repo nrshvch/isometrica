@@ -87,6 +87,9 @@ var LANE = 0.15,
   MAX_FRAME = 1000,
   //how long a turn waited for is remembered without being asked again, ms
   WAIT_TTL = 600,
+  //how long one waiting for a junction, held up by what is going through
+  //it, lets others whose ways cross its own go first, ms
+  PATIENCE = 4000,
   //how long whether a tile is a junction is taken as found, ms
   JUNCTION_TTL = 1000,
   //how far past what it overtakes it goes before pulling back in, and how
@@ -987,9 +990,14 @@ Driver.prototype.scan = function (from, to) {
         continue;
       seen.add(d);
 
+      //what is behind it going the same way is never in its way, however
+      //close up behind it it is
+      if (behind(this, d)) continue;
+
       //two that each have the other in their way would wait for each other
-      //for good: the first one out goes, the other waits for it
-      if (d.leader === this && this.id < d.id) continue;
+      //for good: the first one out goes, the other waits for it - but never
+      //into the back of one in front of it going the same way
+      if (d.leader === this && this.id < d.id && !inFront(this, d)) continue;
 
       //along it, from the back of it to the front
       for (k = 0; k <= 4; k++) {
@@ -1004,6 +1012,22 @@ Driver.prototype.scan = function (from, to) {
 
   return best;
 };
+
+//whether other is behind self, going the same way
+function behind(self, other) {
+  return (
+    self.hx * other.hx + self.hy * other.hy > 0.7 &&
+    (other.x - self.x) * self.hx + (other.y - self.y) * self.hy < 0
+  );
+}
+
+//whether other is in front of self, going the same way
+function inFront(self, other) {
+  return (
+    self.hx * other.hx + self.hy * other.hy > 0.7 &&
+    (other.x - self.x) * self.hx + (other.y - self.y) * self.hy > 0
+  );
+}
 
 //how far ahead along its way a driver looks for a change of lane - going
 //round something, pulling out from the kerb or in to it - tiles, and how far
@@ -1975,12 +1999,16 @@ function junctionOf(self, tile) {
 Traffic.prototype.request = function (driver, junction, ready) {
   var now = this.now,
     ok = ready,
+    mines = [],
+    held = false,
     i,
     k,
     j,
     m,
     mine;
 
+  //where it waits, at each of them - and whether anything going through
+  //any of them is in its way
   for (i = 0; i < junction.tiles.length; i++) {
     j = junctionOf(this, junction.tiles[i]);
     m = junction.moves[i];
@@ -2001,13 +2029,29 @@ Traffic.prototype.request = function (driver, junction, ready) {
     mine.o = m.o;
     mine.at = now;
     mine.ready = ready;
+    mines.push(mine);
 
-    for (k = 0; ok && k < j.holders.length; k++)
+    for (k = 0; k < j.holders.length; k++)
       if (
         j.holders[k].d !== driver &&
         inWay(j.holders[k], m, junction.tiles[i])
       )
-        ok = false;
+        held = true;
+  }
+
+  //held up by what is going through: it cannot go yet whoever is let
+  //through first, so it holds up nobody after it in the meantime - not for
+  //long, though: past PATIENCE its turn is kept for it whatever
+  mines.forEach(function (w) {
+    w.blocked = held;
+  });
+
+  if (held) ok = false;
+
+  for (i = 0; ok && i < junction.tiles.length; i++) {
+    j = this.junctions.get(junction.tiles[i]);
+    m = junction.moves[i];
+    mine = mines[i];
 
     for (k = 0; ok && k < j.waiting.length; k++) {
       var w = j.waiting[k];
@@ -2015,6 +2059,7 @@ Traffic.prototype.request = function (driver, junction, ready) {
       if (
         w.d !== driver &&
         w.ready &&
+        !(w.blocked && now - w.since < PATIENCE) &&
         (w.since < mine.since ||
           (w.since === mine.since && w.d.id < driver.id)) &&
         crosses(w, m)
