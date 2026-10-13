@@ -60,11 +60,16 @@ var SHINE_FROM = 20.5,
 
 //a street light: how high its lamp hangs over the road, a pixel a unit
 //(shared/gen/roads streetLight), how far its light reaches, how bright it is
-//on the road under it, and in what light
+//on the road under it, and in what light; how wide the cone it shines down
+//in is (the cosine of half of it: a pool on the ground about as wide as the
+//lamp is high), and how much of its light goes out to the sides of that, to
+//light what is round it a little
 var LAMP_HIGH = 20.5,
-  LAMP_REACH = 28,
+  LAMP_REACH = 34,
   LAMP_PEAK = 0.9,
-  LAMP_LIGHT = [1, 0.745, 0.43];
+  LAMP_LIGHT = [1, 0.745, 0.43],
+  LAMP_DOWN = 0.7,
+  LAMP_SPILL = 0.22;
 
 //a headlight: how high it is, how far ahead its light reaches, how bright,
 //in what light, and how wide (the cosine of half the cone); how far either
@@ -272,7 +277,7 @@ function seen(x, y, reach, w, h) {
 
 /**
  * Every street light on the screen while they are on: its lamp over the
- * spot under it, shining all round.
+ * spot under it, shining down in a cone and a little round it below.
  */
 function streetLights(out, M, w, h) {
   if (!cityOn()) return;
@@ -297,6 +302,8 @@ function streetLights(out, M, w, h) {
       aim: null,
       cone: -1,
       tall: TALL,
+      down: LAMP_DOWN,
+      spill: LAMP_SPILL,
     });
   }
 }

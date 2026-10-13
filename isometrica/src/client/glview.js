@@ -267,6 +267,19 @@ void main() {
   float under = 1.0 - (vLamp.z * vLamp.z) / (reach * reach);
   float k = (1.0 - (far * far) / (reach * reach)) / mix(1.0, max(under, 0.05), vShape.y);
 
+  //a lamp shining down, as a street light does under its shade: all of it
+  //in a cone under it (vShape.z the cosine of half of it), and a little of
+  //it out to the sides (vShape.w) - only below the lamp, none of it up - so
+  //that a wall is lit from its foot up as far as the light reaches it, not
+  //in a band of its own at the lamp's height
+  if (vShape.z > 0.0) {
+    float down = -p.z / max(far, 0.001);
+    float cone = smoothstep(vShape.z, mix(vShape.z, 1.0, 0.3), down);
+    float side = vShape.w * smoothstep(0.0, 0.6, down);
+
+    k *= max(cone, side);
+  }
+
   //a headlight's cone, along the ground the way it shines
   if (vAim.z > -1.0) {
     vec2 g = normalize(p.xy + vec2(0.0001));
@@ -789,10 +802,12 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
  * every lamp.
  *
  * @param lamps {Array} at night, every lamp on the screen (LAMP_FLOATS):
- *        {x, y, z, reach, color, peak, aim, cone, tall, [wrap], [foot]} -
- *        wrap, how far round what it lights it reaches (WRAP), and foot,
- *        false for its peak to be how bright it is close by rather than on
- *        the ground under it
+ *        {x, y, z, reach, color, peak, aim, cone, tall, [wrap], [foot],
+ *        [down], [spill]} - wrap, how far round what it lights it reaches
+ *        (WRAP); foot, false for its peak to be how bright it is close by
+ *        rather than on the ground under it; down, for a lamp shining down
+ *        in a cone, the cosine of half of it; and spill, how much of its
+ *        light still goes out to the sides of that cone, below the lamp
  * @param sky {{ambient, sun, dir}} the light of the sky and the sun, 0..1
  * @param origin {number[]} where the world's origin is on the screen
  */
@@ -876,8 +891,8 @@ GLView.prototype.uploadLamps = function (lamps) {
     d[o + 11] = l.tall;
     d[o + 12] = l.wrap === undefined ? WRAP : l.wrap;
     d[o + 13] = l.foot === false ? 0 : 1;
-    d[o + 14] = 0;
-    d[o + 15] = 0;
+    d[o + 14] = l.down === undefined ? 0 : l.down;
+    d[o + 15] = l.spill === undefined ? 0 : l.spill;
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.lampBuffer);
