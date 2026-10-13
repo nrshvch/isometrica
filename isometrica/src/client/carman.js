@@ -88,6 +88,17 @@ var CARS_PER_ROAD = 1 / 4,
   //goes before it looks for another way, ms - and how often it looks again
   DETOUR_AFTER = 4000,
   DETOUR_EVERY = 1500,
+  //how often a car looks over the next so many tiles of its way, for a road
+  //gone or made one way against it, ms
+  WAY_CHECK = 1000,
+  WAY_LOOK = 6,
+  //lost: how much slower it goes, how many tiles at a time it wanders,
+  //how far it looks for a road off the edge of one gone, and how long it is
+  //given before it is given up on, ms
+  LOST_SPEED = 0.5,
+  WANDER_TILES = 6,
+  ROAD_NEAR = 8,
+  LOST_FOR = 90000,
   //how long a bus stands at a stop, ms
   BUS_DWELL = 6000,
   //how many stops it calls at on its round
@@ -359,6 +370,13 @@ CarScript.prototype.heading = null;
 //which way it is about to turn: -1 left, 1 right, 0 neither (client/traffic
 //Driver signal)
 CarScript.prototype.signal = 0;
+//lost - its way gone, wandering about with its hazard lights going - since
+//how long, ms; off the road altogether, on its way back to one; and how
+//long since its way was last looked over, ms
+CarScript.prototype.lost = false;
+CarScript.prototype.lostFor = 0;
+CarScript.prototype.offRoad = false;
+CarScript.prototype.sinceCheck = 0;
 //whether it is on the brakes (client/traffic Driver braking)
 CarScript.prototype.braking = false;
 CarScript.prototype.traffic = COMMUTER;
@@ -581,10 +599,14 @@ CarScript.prototype.arrive = function () {
 
   route = this.nextRoute(last.tile, last.din);
 
+  //nowhere to go from here: about the roads there are, lost
   if (route.length < 2) {
-    this.man.respawn(this);
+    this.wander();
     return;
   }
+
+  //found its way again
+  this.lost = this.offRoad = false;
 
   //it stands still at the end of the old route, so that is where the new one
   //starts from - no jump onto its first point
@@ -593,6 +615,226 @@ CarScript.prototype.arrive = function () {
       { tile: last.tile, x: driver.x, y: driver.y, din: last.din, dout: null },
     ].concat(Traffic.routeWaypoints(route, last.din)),
   );
+};
+
+/* --- Lost --------------------------------------------------------------- */
+
+/**
+ * Keeps it on its way however the roads change under it - whether it can go
+ * on with its tick:
+ *
+ * - its road gone from under it, it drives slowly off the edge of it,
+ *   straight to the nearest road there is, its hazard lights going, and
+ *   finds its way from there (offRoad);
+ * - the way it goes gone - a road on it pulled up, or made one way against
+ *   it - it finds another from where it is (reroute);
+ * - and nowhere to go at all, it wanders about the roads it can get to, its
+ *   hazard lights going, slowly, finding its way again whenever it can -
+ *   given up on after a while (LOST_FOR).
+ *
+ * A car broken down at the kerb whose road goes is gone too.
+ */
+CarScript.prototype.findWay = function (dt) {
+  var driver = this.driver,
+    roadman = this.man.root.roadman,
+    here = driver.here();
+
+  if (this.lost) {
+    this.lostFor += dt;
+    if (this.lostFor > LOST_FOR) {
+      this.man.remove(this);
+      return false;
+    }
+  }
+
+  if (roadman.getRoad(here) === null) {
+    if (driver.parked || this.stalled > 0) {
+      this.man.remove(this);
+      return false;
+    }
+    if (!this.offRoad && !this.toRoad()) return false;
+    return true;
+  }
+
+  if (this.offRoad) return true;
+
+  var wps = driver.wps,
+    ahead = driver.target < wps.length ? wps[driver.target].tile : here;
+
+  //what it is heading for gone: another way now; and every so often, the
+  //next few tiles of its way looked over - or, lost and standing with
+  //nowhere to go, its way looked for again
+  this.sinceCheck += dt;
+
+  var look = this.sinceCheck > WAY_CHECK;
+
+  if (look) this.sinceCheck = 0;
+
+  if (
+    roadman.getRoad(ahead) === null ||
+    (look && (!wayOpen(this) || (this.lost && driver.target >= wps.length)))
+  )
+    this.reroute();
+
+  return true;
+};
+
+//whether the next few tiles of its way are still there and can still be
+//driven the way it goes - not made one way against it
+function wayOpen(self) {
+  var roadman = self.man.root.roadman,
+    driver = self.driver,
+    wps = driver.wps,
+    last = driver.here(),
+    n = 0;
+
+  for (var i = driver.target; i < wps.length && n < WAY_LOOK; i++) {
+    var t = wps[i].tile;
+
+    if (t === last) continue;
+    if (roadman.getRoad(t) === null) return false;
+
+    var dir = Traffic.DIRECTIONS.find(function (d) {
+      return d[2] === t - last;
+    });
+
+    if (dir && !Traffic.canDrive(roadman, last, dir)) return false;
+
+    last = t;
+    n++;
+  }
+
+  return true;
+}
+
+//which way it is going, along x or y
+function headingOf(driver) {
+  return Math.abs(driver.hx) >= Math.abs(driver.hy)
+    ? [driver.hx >= 0 ? 1 : -1, 0]
+    : [0, driver.hy >= 0 ? 1 : -1];
+}
+
+/**
+ * Another way from where it is, the way it is going - or, there being
+ * none, about the roads it can get to, lost.
+ */
+CarScript.prototype.reroute = function () {
+  var driver = this.driver,
+    here = driver.here(),
+    d = headingOf(driver),
+    route = this.nextRoute(here, d);
+
+  if (route.length < 2 || route[0] !== here) return this.wander();
+
+  driver.redirect(Traffic.routeWaypoints(route, d));
+  this.lost = false;
+
+  return true;
+};
+
+/**
+ * About the roads it can get to from where it is, a few tiles at random -
+ * never back the way it came where it can go on - slowly, its hazard lights
+ * going (lost); and from the end of that, its way found again if it can be.
+ * Where it can go nowhere at all, it stands there, lost, till it is given up
+ * on.
+ */
+CarScript.prototype.wander = function () {
+  var driver = this.driver,
+    roadman = this.man.root.roadman,
+    here = driver.here(),
+    d = headingOf(driver),
+    route = [here],
+    din = d,
+    out = [];
+
+  for (var k = 0; k < WANDER_TILES; k++) {
+    var at = route[route.length - 1];
+
+    out.length = 0;
+    Traffic.neighbours(roadman, at, out);
+
+    var on = out.filter(function (t) {
+        var step = Traffic.direction(at, t);
+
+        return !(step[0] === -din[0] && step[1] === -din[1]);
+      }),
+      pick = on.length > 0 ? on : out;
+
+    if (pick.length === 0) break;
+
+    var next = pick[(Math.random() * pick.length) | 0];
+
+    din = Traffic.direction(at, next);
+    route.push(next);
+  }
+
+  if (!this.lost) this.lostFor = 0;
+  this.lost = true;
+  this.offRoad = false;
+
+  //nowhere at all: it stands where it is - its way at an end, nothing to
+  //arrive at - till it can go somewhere or is given up on
+  if (route.length < 2) {
+    driver.redirect([]);
+    driver.target = driver.wps.length;
+    return false;
+  }
+
+  driver.redirect(Traffic.routeWaypoints(route, d));
+
+  return true;
+};
+
+/**
+ * Off the edge of a road that is gone from under it: straight to the
+ * nearest road tile there is, slowly, its hazard lights going - and on from
+ * there (arrive). Whether there is one near enough.
+ */
+CarScript.prototype.toRoad = function () {
+  var driver = this.driver,
+    roadman = this.man.root.roadman,
+    x = driver.x,
+    y = driver.y,
+    best = -1,
+    far = Infinity;
+
+  for (var r = 1; r <= ROAD_NEAR && best === -1; r++)
+    for (var dx = -r; dx <= r; dx++)
+      for (var dy = -r; dy <= r; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+
+        var t = Terrain.convertToIndex(Math.round(x) + dx, Math.round(y) + dy),
+          d = dx * dx + dy * dy;
+
+        if (roadman.getRoad(t) !== null && d < far) {
+          best = t;
+          far = d;
+        }
+      }
+
+  if (best === -1) {
+    this.man.remove(this);
+    return false;
+  }
+
+  var tx = Terrain.extractX(best),
+    ty = Terrain.extractY(best),
+    way =
+      Math.abs(tx - x) >= Math.abs(ty - y)
+        ? [tx >= x ? 1 : -1, 0]
+        : [0, ty >= y ? 1 : -1];
+
+  driver.setPath([
+    { tile: driver.here(), x: x, y: y, din: way, dout: way },
+    { tile: best, x: tx, y: ty, din: way, dout: null },
+  ]);
+  driver.stopAtEnd = driver.pullIn = false;
+
+  if (!this.lost) this.lostFor = 0;
+  this.lost = this.offRoad = true;
+
+  return true;
 };
 
 /**
@@ -850,9 +1092,9 @@ CarScript.prototype.place = function () {
     renderer,
     frame;
 
-  //which way it is about to turn, for its indicators, and whether it is on
-  //the brakes, for its brake lights
-  this.signal = driver.signal();
+  //which way it is about to turn, for its indicators - its hazard lights
+  //while it is lost - and whether it is on the brakes, for its brake lights
+  this.signal = this.lost ? Lighting.HAZARD : driver.signal();
   this.braking = driver.braking;
 
   if (heading !== this.heading && this.looks[heading] !== undefined) {
@@ -927,15 +1169,8 @@ CarScript.prototype.tick = function (time) {
 
   if (wps.length === 0) return;
 
-  //the road it is on or heading for is gone
-  if (
-    roadman.getRoad(driver.tile()) === null ||
-    (driver.target < wps.length &&
-      roadman.getRoad(wps[driver.target].tile) === null)
-  ) {
-    this.man.respawn(this);
-    return;
-  }
+  //the road it is on gone from under it, or the way it goes no more
+  if (!this.findWay(time.dt)) return;
 
   this.smoke(time.dt);
   this.blink(time.dt);
@@ -967,10 +1202,11 @@ CarScript.prototype.tick = function (time) {
     if (this.driver === null || this.gameObject === null) return;
   }
 
-  //crawling along on its last legs
+  //crawling along on its last legs - or lost, feeling its way
   driver.v0 =
     (this.nightRider ? this.baseSpeed * SPEEDING : this.baseSpeed) *
-    (this.failing() ? FAILING_SPEED : 1);
+    (this.failing() ? FAILING_SPEED : 1) *
+    (this.lost ? LOST_SPEED : 1);
 
   x = driver.x;
   y = driver.y;

@@ -821,6 +821,38 @@ Driver.prototype.jammedAt = function () {
 };
 
 /**
+ * The tile it is on, from where it is - not from its way, which may have
+ * gone from under it.
+ */
+Driver.prototype.here = function () {
+  return tileAt(this.x, this.y);
+};
+
+/**
+ * Drives on from where it is, at the speed it is going, along next instead
+ * of the rest of its way - a way that starts on the tile it is on, the way
+ * it is going: what of that is behind it is left out.
+ */
+Driver.prototype.redirect = function (next) {
+  var d = [Math.round(this.hx), Math.round(this.hy)],
+    here = this.here(),
+    v = this.v;
+
+  while (
+    next.length > 1 &&
+    next[0].tile === here &&
+    (next[0].x - this.x) * d[0] + (next[0].y - this.y) * d[1] < 0.05
+  )
+    next.shift();
+
+  this.setPath(
+    [{ tile: here, x: this.x, y: this.y, din: d, dout: d }].concat(next),
+  );
+  this.stopAtEnd = this.pullIn = false;
+  this.v = v;
+};
+
+/**
  * Goes another way from point `at` of its way on: next instead of the rest
  * of it - starting in the same tile, the way it comes into it.
  */
