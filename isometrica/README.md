@@ -13,11 +13,12 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   renderer and lighting (`glview.js`, `lighting.js`), the sprite cache and
   the generator worker (`generator.js`).
 - `src/shared/gen` - the generators: ground, roads, buildings, trees,
-  vehicles, stones.
+  vehicles, stones, smoke - everything there is to see; nothing is drawn by
+  hand.
 - `src/data` - what can stand in the world, and the city both games start
   on (`initialcity.js`).
-- `assets/` - the hand-drawn pictures, packed by `npm run build` into
-  `dist/gfx`, with the manifests of every generated one.
+- `npm run build` writes `dist/gfx`: the manifests of what every generator
+  will paint.
 - `vite.mjs` - the Vite plugin a game uses to serve and ship `dist/gfx`.
 - `lab/` - pages to look at the world without a game: `npm run dev` here
   opens the lighting bench at `/lighting.html`.
@@ -78,22 +79,35 @@ engine in `engine/`.
 
 ### Sprites
 
-- Hand-drawn pictures live in `isometrica/assets/sprites`, named by their
-  path there (`buildings/shop.png`). isometrica's build (`npm run build` in
-  `isometrica/`, which each game's `dev` and `build` run first) packs them
-  into `isometrica/dist/gfx`, grouping related pictures onto shared sheets,
-  and writes `gfx/manifest.json` with every sprite's size. A game's Vite
-  serves that folder at `/gfx` and copies it into the game's build
-  (`isometrica/vite.mjs`). After changing a picture while a dev server runs,
-  run it again.
-- The ground, the cars and the stones are painted by the game itself
+- Nothing is drawn by hand: every picture there is - the ground, the roads,
+  the buildings, the cars, the trees, the stones, the smoke - is painted by
+  the game itself
   (`isometrica/src/shared/gen`), one picture at a time, the first time something draws
   it, in a web worker (`isometrica/src/client/generator.js`). At build time each
   generator describes what it will paint - every picture's name and size,
   and data such as car pivots - into `gfx/generated/<generator>.json`, so
   the game knows every sprite's size before it is painted. Nothing painted
   is kept between visits: painting a picture takes a few milliseconds, so
-  each visit paints just what it draws.
+  each visit paints just what it draws. isometrica's build (`npm run build`
+  in `isometrica/`, which each game's `dev` and `build` run first) writes
+  those descriptions and `gfx/manifest.json` into `isometrica/dist/gfx`; a
+  game's Vite serves that folder at `/gfx` and copies it into the game's
+  build (`isometrica/vite.mjs`). After changing a generator while a dev
+  server runs, run it again.
+- The stones strewn over the land are painted too
+  (`isometrica/src/shared/gen/stones.js`): a few rounded boulders to a tile -
+  grey ones together in the thick of a rock field, brownish ones strewn
+  about its edges - each lit by the buildings' sun in four flat tones, its
+  top the lightest, with a short shadow on the ground.
+- So is the smoke (`isometrica/src/shared/gen/smoke.js`): a puff in six sizes,
+  white out of a chimney, black out of an engine on fire. A puff grows
+  through them as it rises - slower and slower - drifts off the way the one
+  wind blows, the higher the more, and fades in as it comes out and away as
+  it thins (`isometrica/src/client/components/smokeScript.js`). A chimney
+  smokes only while there is a fire going in the house, which is most
+  houses of a morning and an evening and few round the middle of the day
+  and in the small hours, each making up its mind every few minutes - one
+  thin wisp at a time (`smokesource.js`).
 - What is on screen is drawn from a few big canvas pages
   (`isometrica/src/client/canvascache.js`), not from the sheets: a sprite is copied
   there the first time it is drawn, and whatever has gone undrawn longest
@@ -158,8 +172,8 @@ engine in `engine/`.
   garage but no room to park on it; the two-storey houses on two and three
   tiles take the whole width of their plot, the car on a hard standing in
   the front garden, and keep their back gardens to themselves, out of their
-  back doors. Smoke rises from the chimneys of every
-  house lived in. Whatever of a house stands in front of the cars on its
+  back doors. Smoke rises from the chimneys of houses lived in, when a
+  fire is going in them. Whatever of a house stands in front of the cars on its
   drive is drawn again over them, so a car behind a hedge stays behind it
   whichever way the house is turned - and the front of a building site's
   fence over its digger and lorry the same way.
@@ -297,8 +311,7 @@ engine in `engine/`.
   rather than speckled - each painted from its four sides, so turning the
   camera shows another side of it, and a tree stands whichever way round
   its tile has it. The world grows each kind in stands
-  (`isometrica/src/core/ambient.js`); the two trees drawn by hand are the first oak and
-  beech now, so cities that had them keep their trees.
+  (`isometrica/src/core/ambient.js`).
 - A town starts without a town hall. Its name hangs over the middle of the
   land it owns, and its road network is the biggest stretch of its roads
   that hangs together - a building is on the road when it is next to that;
@@ -326,8 +339,7 @@ engine in `engine/`.
   (`isometrica/src/client/siterenderer.js`); the lorry and the excavator are the
   vehicle generator's, and the excavator never drives the streets.
 - Any building can be turned four ways (`isometrica/src/core/rotation.js`). Blocks are
-  painted from all four sides; a building drawn by hand shows its front for
-  its back and its side for the other side.
+  painted from all four sides.
 - The camera turns round the city a quarter turn at a time: two fingers
   twisted on a touch screen or trackpad, or Q and E. Nothing in the world
   moves - the engine's camera turns about the up axis, and draws things in
@@ -490,7 +502,7 @@ engine in `engine/`.
   gravel, grass, sand and bare earth on the ground. A colour can be made of
   a material wherever it is used (`blocks.js` madeOf).
 - To look at what the painting makes without starting the game, run
-  `npm run generate:terrain`, `generate:vehicles`, `generate:stones` or
-  `generate:buildings`. They
-  run the same code the game does and write pictures to `isometrica/assets/terrain/terraingen`
-  and `isometrica/assets/previews` (not committed).
+  `npm run generate:terrain`, `generate:vehicles`, `generate:stones` (the
+  stones and the smoke) or `generate:buildings`. They run the same code the
+  game does and write pictures to `isometrica/assets/terrain/terraingen` and
+  `isometrica/assets/previews` (not committed).

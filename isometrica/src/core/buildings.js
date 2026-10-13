@@ -11,7 +11,6 @@ import Building from "./building";
 /**
  * @type {BuildingClassCode}
  */
-import BuildingCode from "../data/buildingcode";
 import BuildingClassCode from "../data/classcode";
 
 /**
@@ -105,12 +104,6 @@ function buildTest(self, code, tile, rotation) {
       !Surface.fits(terrain, tile, Surface.natural(terrain, tile))
     )
       return ErrorCode.LAND_NOT_SUITABLE;
-    //a tree grows on a hillside, but a cliff stands on flat ground only
-    else if (
-      data.buildingCode === BuildingCode.cliff &&
-      Terrain.isSlope(slopeId)
-    )
-      return ErrorCode.FLAT_LAND_REQUIRED;
     else {
       var b = self.get(tile);
       if (
