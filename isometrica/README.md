@@ -43,6 +43,11 @@ engine in `engine/`.
   into - nobody stops in the middle of a junction. Junctions next to each
   other are asked for together. So queues back up from a busy junction,
   into the junction behind it, and clear the way a jam does.
+- Nothing turns round in the middle of a street, across the lane coming
+  the other way - that is what locked a small town's streets solid. A route
+  only turns back at a junction, taking its turn there like anything else
+  going through, or at the end of a road (`Traffic.route`); to get to a
+  place behind it a car drives on to the next junction and comes back.
 - There is a car for every four road tiles loaded through the day, and more
   in the rush hours - about one for every two and a half at eight in the
   morning and five in the evening (`isometrica/src/client/carman.js`). In the
@@ -50,22 +55,26 @@ engine in `engine/`.
   to work, in the evening the other way round; afterwards the ones more
   than the hour wants are done when they get where they are going. A car
   that has waited a minute in a queue that does not move turns off out of
-  sight and is put on some other road - a queue behind a breakdown waits
-  for it.
-- A car breaks down every so often and stands, smoking, for a while. The
-  traffic behind it queues; the first car to get to it goes round it
-  through the other lane, once that is clear well ahead and there is no
-  junction in the way, and the next only when that one is back in its lane.
+  sight and is put on some other road - a queue behind a bus at its stop
+  waits for it.
+- A car breaks down every so often: it pulls over to the kerb, out of the
+  traffic's way, and stands there smoking for a while, then pulls back out
+  once the lane behind it is clear. It only gives out on a street, clear of
+  the junctions, where it can pull over - until then it crawls on.
 - The buses run between the bus stops (a stop is a road with a shelter on
   each pavement, `isometrica/src/shared/gen/roads.js`; `Road#isStop`), each a round of a
-  few stops near each other, pulling in to the kerb at each for a few
-  seconds and out again when the lane behind is clear. There is a bus for
+  few stops near each other, standing at each for a few seconds in its
+  lane. The traffic behind it queues; the first car to get to it goes round
+  it through the other lane, once that is clear well ahead and there is no
+  junction in the way, and the next only when that one is back in its lane.
+  The bus waits for whoever is going round it before it moves off. There is a bus for
   every two stops loaded, and none at night. The city a new player starts
   on has a few stops on its streets; a city with none is given a few as it
   is opened, on straight streets with something built along them.
 - Cars are painted eight ways round: along x and y and half way between,
   which is how they cut the corner turning at a junction, swing round to
-  turn back, pull in to the kerb and pull out round a car broken down.
+  turn back at a junction, pull over to the kerb and out again, and pull out
+  round a bus at its stop.
 
 ### Sprites
 

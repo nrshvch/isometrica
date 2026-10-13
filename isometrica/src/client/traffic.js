@@ -1,7 +1,7 @@
 /**
  * How everything on the roads drives: in its lane, keeping its distance from
  * whatever is in front of it, taking its turn at a junction, pulling in to
- * the kerb and out again, and getting past a car broken down in its way.
+ * the kerb and out again, and getting past a bus standing at its stop.
  *
  * Whatever drives - the traffic (client/carman), the courier's car
  * (games/delivery), a bus - is a Driver: a line of points through the lanes
@@ -23,11 +23,17 @@
  * Junctions one after the other are asked for together. A queue that backs
  * up from one into the next is a jam - and it clears the way jams do.
  *
- * A car broken down stands where it is in its lane, and what comes up behind
- * it waits. The first of them to get to it goes round it through the other
- * lane - when that is clear far enough ahead and there is no junction in the
- * way - and the next one only when that one is back in its lane: one at a
- * time.
+ * A route never turns back on itself in the middle of a street (route): only
+ * at a junction, taking its turn there like anything else, or at the end of
+ * a road. Turning round across the lane coming the other way is what locks
+ * a small town's streets.
+ *
+ * A bus at its stop stands in its lane, and what comes up behind it waits -
+ * or goes round it: the first of them to get to it goes through the other
+ * lane, when that is clear far enough ahead and there is no junction in the
+ * way, and the next one only when that one is back in its lane, one at a
+ * time. A car broken down pulls over to the kerb instead, out of the way
+ * (Driver#pullOver).
  *
  * Positions are in tiles, as in client/carman: the middle of tile (x, y) is
  * at (x, y).
@@ -74,7 +80,10 @@ var LANE = 0.15,
   //how far past what it overtakes it goes before pulling back in, and how
   //far ahead the other lane has to be clear on top of that
   PASS_CLEAR = 0.2,
-  PASS_LOOK = 3;
+  PASS_LOOK = 3,
+  //how far ahead along the road something pulls over to the kerb, or pulls
+  //back out into its lane
+  PULL_OVER = 0.4;
 
 //the four ways out of a tile: [dx, dy, tile offset]
 var DIRECTIONS = [
@@ -252,6 +261,167 @@ function routeWaypoints(route, from, park) {
   return out;
 }
 
+//what turning round costs a route, on top of the tile it takes: a way that
+//goes round the block is taken over one that turns back, if it is no longer
+var TURN_ROUND = 2,
+  //the most a search for a route looks at before it gives up
+  ROUTE_LIMIT = 40000;
+
+/**
+ * The way from one road tile to another, both ends included - just the one
+ * when they are the same, empty when there is no way.
+ *
+ * It never turns back on itself where the road just goes on, along a
+ * street or round a bend: a car turning round there swings across the lane
+ * coming the other way, and what is coming waits for it while what is
+ * behind it waits too - in a small town that is how the streets lock up.
+ * It only turns round at a junction, where it takes its turn like anything
+ * else going through, or at the end of a road, where there is nobody coming.
+ * So the way it finds can go on past where it is going to turn round at
+ * the next junction and come back - the same tiles twice.
+ *
+ * @param start {number}
+ * @param from {number[]|null} the way it is going on start - it turns back
+ *        there only where it could anywhere - or null for not going any way
+ *        yet
+ * @param end {number}
+ * @param next {function(number, number[]): number[]} fills out with the
+ *        road tiles that can be driven to straight from a tile
+ * @returns {number[]}
+ */
+function route(start, from, end, next) {
+  if (start === end) return [start];
+
+  //the search goes by tile and the way it came into it: key tile * 5 + way
+  var ex = Terrain.extractX(end),
+    ey = Terrain.extractY(end),
+    g = new Map(),
+    parent = new Map(),
+    closed = new Set(),
+    turns = new Map(),
+    heap = [],
+    out = [],
+    looked = 0;
+
+  function keyOf(tile, d) {
+    return tile * 5 + (d === null ? 4 : dirIndex(d));
+  }
+
+  //whether a car can turn round on tile: anywhere but where the road just
+  //goes on, two ways out of it
+  function turnable(tile) {
+    var known = turns.get(tile);
+
+    if (known === undefined) {
+      out.length = 0;
+      known = next(tile, out).length !== 2;
+      turns.set(tile, known);
+    }
+
+    return known;
+  }
+
+  function push(f, key) {
+    var i = heap.length;
+
+    heap.push([f, key]);
+
+    while (i > 0) {
+      var up = (i - 1) >> 1;
+
+      if (heap[up][0] <= heap[i][0]) break;
+
+      var t = heap[up];
+      heap[up] = heap[i];
+      heap[i] = t;
+      i = up;
+    }
+  }
+
+  function pop() {
+    var top = heap[0],
+      last = heap.pop();
+
+    if (heap.length > 0) {
+      heap[0] = last;
+
+      for (var i = 0; ;) {
+        var l = 2 * i + 1,
+          r = l + 1,
+          m = i;
+
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+        if (m === i) break;
+
+        var t = heap[m];
+        heap[m] = heap[i];
+        heap[i] = t;
+        i = m;
+      }
+    }
+
+    return top;
+  }
+
+  function h(tile) {
+    return (
+      Math.abs(Terrain.extractX(tile) - ex) +
+      Math.abs(Terrain.extractY(tile) - ey)
+    );
+  }
+
+  var first = keyOf(start, from),
+    ways = [];
+
+  g.set(first, 0);
+  push(h(start), first);
+
+  while (heap.length > 0 && looked++ < ROUTE_LIMIT) {
+    var key = pop()[1];
+
+    if (closed.has(key)) continue;
+    closed.add(key);
+
+    var tile = Math.floor(key / 5),
+      came = key % 5,
+      din = came === 4 ? null : DIRS[came];
+
+    if (tile === end) {
+      var tiles = [tile];
+
+      while (parent.has(key)) {
+        key = parent.get(key);
+        tiles.push(Math.floor(key / 5));
+      }
+
+      return tiles.reverse();
+    }
+
+    ways.length = 0;
+    next(tile, ways);
+
+    for (var i = 0; i < ways.length; i++) {
+      var to = ways[i],
+        d = direction(tile, to),
+        back = din !== null && d[0] === -din[0] && d[1] === -din[1];
+
+      if (back && !turnable(tile)) continue;
+
+      var k = keyOf(to, d),
+        cost = g.get(key) + 1 + (back ? TURN_ROUND : 0);
+
+      if (closed.has(k) || (g.has(k) && g.get(k) <= cost)) continue;
+
+      g.set(k, cost);
+      parent.set(k, key);
+      push(cost + h(to), k);
+    }
+  }
+
+  return [];
+}
+
 /**
  * Where something stands pulled in at the kerb of tile, facing d.
  */
@@ -400,23 +570,28 @@ function Driver(traffic, length, width, owner) {
   this.v = 0;
   //how fast it would go with nothing in its way, tiles a second
   this.v0 = 1.4;
-  //standing where it is, whatever: broken down
-  this.stalled = false;
-  //and to be gone round by the traffic behind it
-  this.broken = false;
+  //standing in its lane for a while - a bus at its stop - to be gone round
+  //by the traffic behind it
+  this.passable = false;
   //pulled in at the kerb, out of everybody's way
   this.parked = false;
-  //whether it pulls in to the kerb at the end of its way, rather than
-  //driving on into whatever it is given next
+  //whether it stops at the end of its way, rather than driving on into
+  //whatever it is given next - and whether there it pulls in to the kerb,
+  //or stands in its lane
   this.stopAtEnd = false;
+  this.pullIn = false;
+  //on its way to the kerb, broken down: it stands there once it gets there
+  this.pullingOver = false;
   //what it is keeping its distance from, as last found
   this.leader = null;
-  //why it stands, if it does: "queue", "junction", "broken", "kerb", ""
+  //why it stands, if it does: "queue", "junction", "stop", "kerb", ""
   this.held = "";
-  //the junction tiles it has been given
+  //the junction tiles it has been given, and those of them it has been on
+  //- once it is off one of those again, it is through it
   this.grants = [];
-  //going round the car broken down in front of it - and to that one, the
-  //car going round it now
+  this.entered = new Set();
+  //going round what stands in front of it - and to that one, the car going
+  //round it now
   this.overtaking = null;
   this.passBack = -1;
   this.passer = null;
@@ -436,6 +611,7 @@ Driver.prototype.setPath = function (wps) {
   this.wps = wps;
   this.target = wps.length > 1 ? 1 : 0;
   this.parked = false;
+  this.pullingOver = false;
 
   if (wps.length > 0) {
     this.x = wps[0].x;
@@ -701,10 +877,11 @@ Driver.prototype.step = function (dt) {
 
   if (wps.length === 0) return;
 
-  if (this.stalled || this.parked) {
+  //at the end of its way: at the kerb, or standing in its lane
+  if (this.parked || this.target >= wps.length) {
     this.v = 0;
     this.leader = null;
-    this.held = this.stalled ? "broken" : "kerb";
+    this.held = this.parked ? "kerb" : "stop";
     return;
   }
 
@@ -748,7 +925,7 @@ Driver.prototype.step = function (dt) {
 
   var vt = Math.max(0, Math.min(this.v0, (gap - MIN_GAP) / HEADWAY));
 
-  //slowing down to stop where it is going, at the kerb
+  //slowing down to stop where it is going
   if (this.stopAtEnd) {
     vt = Math.min(vt, Math.max(0.3, Math.sqrt(2 * DECEL * end)));
   }
@@ -758,7 +935,7 @@ Driver.prototype.step = function (dt) {
 
   var step = Math.min(this.v * s, Math.max(0, gap - HARD_GAP));
 
-  if (lead !== null && lead.driver.broken) this.overtake(lead);
+  if (lead !== null && lead.driver.passable) this.overtake(lead);
 
   this.move(step);
 };
@@ -809,15 +986,20 @@ Driver.prototype.move = function (step) {
 };
 
 Driver.prototype.arrive = function () {
-  var last = this.wps[this.wps.length - 1];
+  var last = this.wps[this.wps.length - 1],
+    over = this.pullingOver;
 
   this.v = 0;
   this.target = this.wps.length;
+  this.pullingOver = false;
 
-  //pulled in, facing along the kerb, out of every junction
+  //stopped, facing along the road - pulled in at the kerb, out of every
+  //junction, or standing in its lane
   if (this.stopAtEnd) {
-    this.parked = true;
-    this.traffic.releaseAll(this);
+    if (this.pullIn) {
+      this.parked = true;
+      this.traffic.releaseAll(this);
+    }
 
     if (last.din !== null) {
       this.hx = last.din[0];
@@ -825,7 +1007,8 @@ Driver.prototype.arrive = function () {
     }
   }
 
-  this.owner.end(this);
+  //pulled over where it broke down: nowhere it was going
+  if (!over) this.owner.end(this);
 };
 
 /**
@@ -854,8 +1037,8 @@ Driver.prototype.ask = function (junction, front) {
 };
 
 /**
- * Goes round the car broken down in front of it through the other lane, if
- * nobody is going round it already, the other lane is clear far enough
+ * Goes round what stands in its lane in front of it - a bus at its stop -
+ * through the other lane, if nobody is going round it already, the other lane is clear far enough
  * ahead, and its own lane past it is clear to pull back in to - all on a
  * straight bit of road with no junction on it.
  */
@@ -966,6 +1149,64 @@ Driver.prototype.overtake = function (lead) {
   this.aim();
 };
 
+/**
+ * Whether it can pull over to the kerb just ahead of where it is: going
+ * straight along a street, with the road going on straight for a little way
+ * yet, and no junction there.
+ */
+Driver.prototype.canPullOver = function () {
+  var wps = this.wps,
+    hx = Math.round(this.hx),
+    hy = Math.round(this.hy),
+    need = PULL_OVER + 0.15,
+    at = 0,
+    i;
+
+  if (this.parked || this.target >= wps.length) return false;
+  if (Math.abs(this.hx * hx + this.hy * hy) < 0.999) return false;
+
+  for (i = this.target; i < wps.length && at < need; i++) {
+    var p = wps[i],
+      side = (p.x - this.x) * -hy + (p.y - this.y) * hx,
+      fwd = (p.x - this.x) * hx + (p.y - this.y) * hy;
+
+    if (Math.abs(side) > 0.01 || fwd < at - 1e-6) break;
+
+    at = fwd;
+  }
+
+  if (at < need) return false;
+
+  for (var a = 0; a <= need; a += 0.25)
+    if (this.traffic.isJunction(tileAt(this.x + hx * a, this.y + hy * a)))
+      return false;
+
+  return true;
+};
+
+/**
+ * Pulls over to the kerb just ahead - broken down - and stands there once
+ * it gets there, its way forgotten. See canPullOver for where it can.
+ */
+Driver.prototype.pullOver = function () {
+  var hx = Math.round(this.hx),
+    hy = Math.round(this.hy),
+    d = [hx, hy],
+    r = rightOf(d),
+    x = this.x + hx * PULL_OVER + r[0] * (PARK - LANE),
+    y = this.y + hy * PULL_OVER + r[1] * (PARK - LANE),
+    v = this.v;
+
+  this.setPath([
+    { tile: this.tile(), x: this.x, y: this.y, din: d, dout: d },
+    { tile: tileAt(x, y), x: x, y: y, din: d, dout: null },
+  ]);
+  this.stopAtEnd = this.pullIn = this.pullingOver = true;
+  this.passable = false;
+  //slowing down to it from the speed it was going
+  this.v = v;
+};
+
 Driver.prototype.endOvertake = function () {
   if (this.overtaking !== null && this.overtaking.passer === this)
     this.overtaking.passer = null;
@@ -975,17 +1216,34 @@ Driver.prototype.endOvertake = function () {
 };
 
 /**
- * Puts it at the kerb of tile, facing d, pulled in and standing there.
+ * Puts it at the kerb of tile, facing d, pulled in and standing there - or,
+ * inLane, standing in its lane in the middle of the tile.
  */
-Driver.prototype.parkAt = function (tile, d) {
-  var at = kerb(tile, d);
+Driver.prototype.parkAt = function (tile, d, inLane) {
+  var at = kerb(tile, d),
+    r = rightOf(d);
+
+  if (inLane)
+    at = {
+      x: Terrain.extractX(tile) + r[0] * LANE,
+      y: Terrain.extractY(tile) + r[1] * LANE,
+    };
 
   this.setPath([{ tile: tile, x: at.x, y: at.y, din: d, dout: null }]);
   this.target = 1;
   this.hx = d[0];
   this.hy = d[1];
-  this.parked = true;
+  this.parked = !inLane;
+  this.stopAtEnd = true;
+  this.pullIn = !inLane;
   this.v = 0;
+};
+
+/**
+ * Whether it stands at the end of its way: at the kerb, or in its lane.
+ */
+Driver.prototype.standing = function () {
+  return this.wps.length > 0 && this.target >= this.wps.length;
 };
 
 /**
@@ -1015,7 +1273,9 @@ Driver.prototype.canPullOut = function () {
  */
 Driver.prototype.pullOut = function (route, park) {
   var d = [Math.round(this.hx), Math.round(this.hy)],
+    r = rightOf(d),
     from = { tile: this.tile(), x: this.x, y: this.y, din: d, dout: d },
+    kerbed = this.parked,
     next;
 
   next = routeWaypoints(route, d, park);
@@ -1028,11 +1288,48 @@ Driver.prototype.pullOut = function (route, park) {
   )
     next.shift();
 
+  //from the kerb, out into its lane a little way ahead - not along the
+  //whole way to the next point on it
+  if (kerbed && next.length > 0) {
+    var lx = this.x - r[0] * (PARK - LANE),
+      ly = this.y - r[1] * (PARK - LANE),
+      p = next[0],
+      fwd = (p.x - lx) * d[0] + (p.y - ly) * d[1],
+      side = (p.x - lx) * -d[1] + (p.y - ly) * d[0];
+
+    if (Math.abs(side) < 0.01 && fwd > PULL_OVER + 0.15)
+      next.unshift({
+        tile: tileAt(lx + d[0] * PULL_OVER, ly + d[1] * PULL_OVER),
+        x: lx + d[0] * PULL_OVER,
+        y: ly + d[1] * PULL_OVER,
+        din: d,
+        dout: d,
+      });
+  }
+
   this.setPath([from].concat(next));
-  this.stopAtEnd = park === true;
+  this.stopAtEnd = this.pullIn = park === true;
   this.v = 0;
 
   return true;
+};
+
+/**
+ * Sets off from where it stands in its lane - a bus from its stop - along
+ * a route that starts on the tile it stands on and goes the way it faces.
+ *
+ * @param [stop] {boolean} to stand in its lane again at the end of it
+ */
+Driver.prototype.driveOn = function (route, stop) {
+  var d = [Math.round(this.hx), Math.round(this.hy)],
+    from = { tile: this.tile(), x: this.x, y: this.y, din: d, dout: d },
+    next = routeWaypoints(route, d, false);
+
+  this.setPath([from].concat(next));
+  this.stopAtEnd = stop === true;
+  this.pullIn = false;
+  this.passable = false;
+  this.v = 0;
 };
 
 /**
@@ -1281,6 +1578,7 @@ Traffic.prototype.release = function (driver, tile) {
     i = driver.grants.indexOf(tile);
 
   if (i !== -1) driver.grants.splice(i, 1);
+  driver.entered.delete(tile);
   if (j === undefined) return;
 
   j.holders = j.holders.filter(function (h) {
@@ -1293,8 +1591,13 @@ Traffic.prototype.releaseAll = function (driver) {
 };
 
 /**
- * Lets go of the junctions it is through: all of it off the tile, and the
- * tile nowhere on its way ahead.
+ * Lets go of the junctions it is through: it has been on the tile, and all of
+ * it is off it again. A junction it was given is held for that one time
+ * through - one its way comes back to later, having turned round at the next
+ * junction, is asked for again then: held all the while, nothing could
+ * cross it while the car waits its turn somewhere else, and that locks the
+ * streets round it. One given that is no longer on its way at all is let go
+ * of too.
  */
 Traffic.prototype.releasePassed = function (driver) {
   var grants = driver.grants,
@@ -1311,7 +1614,15 @@ Traffic.prototype.releasePassed = function (driver) {
         0.5 + driver.length / 2,
       coming = false;
 
-    if (!out) continue;
+    if (!out) {
+      driver.entered.add(tile);
+      continue;
+    }
+
+    if (driver.entered.has(tile)) {
+      this.release(driver, tile);
+      continue;
+    }
 
     for (k = driver.target; k < wps.length && !coming; k++)
       if (wps[k].tile === tile) coming = true;
@@ -1391,6 +1702,7 @@ Traffic.prototype.roomAt = function (x, y, length) {
 };
 
 Traffic.Driver = Driver;
+Traffic.route = route;
 Traffic.routeWaypoints = routeWaypoints;
 Traffic.neighbours = neighbours;
 Traffic.canDrive = canDrive;

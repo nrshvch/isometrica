@@ -9,9 +9,10 @@
  * clear, drives there as fast as the roads let it, and pulls in to the kerb
  * again there, out of the way of the traffic, while the food is cooked and
  * loaded or handed over. Every so often its engine gives out on the way: it
- * stands where it is, smoking, the traffic going round it, until it is going
- * again by itself a minute or so later - or the player calls somebody out to
- * it (Deliveryman#fix) and it is going in a few seconds.
+ * pulls over to the kerb, out of the traffic's way, and stands there smoking
+ * until it is going again by itself a minute or so later - or the player
+ * calls somebody out to it (Deliveryman#fix) and it is going in a few
+ * seconds - then pulls out and goes on.
  */
 import engine from "engine";
 import Events from "events";
@@ -370,17 +371,16 @@ function destination(status) {
 }
 
 /**
- * Sets off for tile from the kerb it stands at, once the lane is clear -
- * straight on along the road first if it goes on, turning round if not.
- * Already there, it has arrived.
+ * Sets off for tile from the kerb it stands at, once the lane is clear - the
+ * way it faces, turning round only at a junction or the end of a road, the
+ * way the traffic does. Already there, it has arrived.
  */
 function setOff(self, to) {
   var driver = self.driver,
     here = driver.tile(),
     d = [Math.round(driver.hx), Math.round(driver.hy)],
-    ahead = here + d[0] + d[1] * Terrain.dy,
-    route = [],
-    on;
+    roads = self.roads,
+    route;
 
   if (here === to) {
     self.courier.arrived(Date.now());
@@ -389,12 +389,11 @@ function setOff(self, to) {
 
   if (!driver.canPullOut()) return;
 
-  if (
-    self.roads.neighbours(here, []).indexOf(ahead) !== -1 &&
-    (on = self.roads.route(ahead, to)).length > 0
-  )
-    route = [here].concat(on);
-  else route = self.roads.route(here, to);
+  //on the way it faces, turning round only where the traffic does - at a
+  //junction or the end of a road (Traffic.route)
+  route = Traffic.route(here, d, to, function (tile, out) {
+    return roads.neighbours(tile, out);
+  });
 
   //no way there any more: it is there as near as it can get
   if (route.length < 2) {
@@ -456,8 +455,6 @@ Deliveryman.prototype.frame = function (now, dt) {
     broken = status.broken !== null,
     to = destination(status);
 
-  driver.stalled = driver.broken = broken;
-
   if (broken) smoke(this, dt);
   else if (to !== -1 && this.dest !== to && driver.parked) setOff(this, to);
 
@@ -476,11 +473,27 @@ Deliveryman.prototype.frame = function (now, dt) {
       Math.round(driver.hy),
     ]);
 
-    if (!broken && moved > 0 && Math.random() < moved / BREAK_EVERY)
+    //it pulls over to the kerb, out of the traffic's way - only on a
+    //street, clear of the junctions; then it stands there until it is
+    //going again, and sets off from there (setOff)
+    if (
+      !broken &&
+      !driver.pullingOver &&
+      moved > 0 &&
+      Math.random() < moved / BREAK_EVERY &&
+      driver.canPullOver()
+    ) {
+      driver.pullOver();
+      this.dest = -1;
+      courier.park(driver.last().tile, [
+        Math.round(driver.hx),
+        Math.round(driver.hy),
+      ]);
       courier.breakDown(
         now,
         now + BREAK_FOR[0] + Math.random() * (BREAK_FOR[1] - BREAK_FOR[0]),
       );
+    }
   }
 
   this.x = driver.x;
