@@ -102,7 +102,20 @@ var BLINK_MS = 380,
 //light it throws round it: how far it reaches, and how bright it is close
 //by, the most of it lit (client/cachedsprite nightLights)
 var WINDOW_REACH = 18,
-  WINDOW_PEAK = 0.5;
+  WINDOW_PEAK = 0.5,
+  //and a lamp of its own - a park's, a court's floodlight
+  OWN_LAMP_REACH = 26,
+  OWN_LAMP_PEAK = 0.75;
+
+//whether a light of something's is a lamp's: the sodium orange a lamp is
+//painted to glow with (shared/gen/isobox LAMP_LIGHT), not a window's
+function isLamp(c) {
+  return (
+    c[0] > 0.98 &&
+    Math.abs(c[1] - 0.769) < 0.03 &&
+    Math.abs(c[2] - 0.439) < 0.03
+  );
+}
 
 //a police car's flash: how high it is, how far it reaches, how bright
 var FLASH_HIGH = 9,
@@ -459,6 +472,23 @@ function windowLights(out, renderer, sprite, x0, y0) {
 
     if (k <= 0) continue;
 
+    //a lamp of its own - a park's, a court's floodlight - lights the ground
+    //round it the way a street light does, not as a window does
+    if (isLamp(l.color)) {
+      out.push({
+        x: x0 + l.x,
+        y: y0 + l.y + l.z,
+        z: l.z,
+        reach: OWN_LAMP_REACH,
+        color: l.color,
+        peak: OWN_LAMP_PEAK,
+        aim: null,
+        cone: -1,
+        tall: TALL,
+      });
+      continue;
+    }
+
     out.push({
       x: x0 + l.x,
       //the spot under it, on the ground
@@ -767,13 +797,16 @@ Lighting.shines = function (renderer) {
  * an office keeps only the few on - all till a while after the sun is up.
  *
  * @param seed {number} the building's own, 0..1 (see BuildingView)
- * @param lights {string} "home", "shop" or "office" (BuildingView lightsOf)
+ * @param lights {string} "home", "shop", "office" or "park" (BuildingView
+ *        lightsOf)
  */
 function windowsOn(seed, lights) {
   var first = SHINE_FROM + seed,
     more = first + 0.25 + ((seed * 4.13) % 1),
     morning = 24 + SUNRISE + ((seed * 5.93) % 1) * 0.5;
 
+  //a park's lamps and its courts' floodlights: on with the street lights
+  if (lights === "park") return cityOn() ? 2 : 0;
   if (lights === "shop") return within(hourNow, first, morning) ? 2 : 0;
   if (lights === "office") return within(hourNow, first, morning) ? 1 : 0;
 
