@@ -205,6 +205,12 @@ CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
 };
 
 /**
+ * The top of it, once its picture of how high it stands is drawn (topOf):
+ * for the warning lights on anything tall (client/lighting beacons).
+ */
+CachedSprite.prototype.top = null;
+
+/**
  * The lights of what shines of it at night (client/generatorcore lightsOf),
  * every part's moved to where it is in it, lifted as it is laid higher, and
  * lit the other way round where the part is: {x, y, z, color, ways} - where
@@ -464,6 +470,8 @@ Layers.prototype.finish = function (pixels, w) {
         over[k] = Math.min(over[k - W], over[k + W]);
     }
 
+  this.sprite.top = topOf(pixels, w, x0, W, H);
+
   for (j = 0; j < H; j++)
     for (i = 0; i < W; i++) {
       o = (j * w + x0 + i) * 4;
@@ -475,6 +483,49 @@ Layers.prototype.finish = function (pixels, w) {
       if (k > 0 || pixels[o + 3] > 0) pixels[o + 3] = 255;
     }
 };
+
+/**
+ * The top of a picture, from how high each pixel of it stands (the red of
+ * its picture of that, x0 across in pixels w wide): how high its highest
+ * pixel is, and where it is - and the furthest left and right of the pixels
+ * as high as that, give or take TOP_SLACK, the ends of a flat roof - x, y in
+ * it, the pixel itself. Null for one with nothing standing in it.
+ *
+ * @returns {{h: number, x: number, y: number, left: number[], right: number[]}|null}
+ */
+var TOP_SLACK = 2;
+
+function topOf(pixels, w, x0, W, H) {
+  var best = 0,
+    at = null,
+    i,
+    j,
+    o;
+
+  for (j = 0; j < H; j++)
+    for (i = 0; i < W; i++) {
+      o = (j * w + x0 + i) * 4;
+      if (pixels[o + 3] !== 0 && pixels[o] > best) {
+        best = pixels[o];
+        at = [i, j];
+      }
+    }
+
+  if (at === null) return null;
+
+  var left = at,
+    right = at;
+
+  for (j = 0; j < H; j++)
+    for (i = 0; i < W; i++) {
+      o = (j * w + x0 + i) * 4;
+      if (pixels[o + 3] === 0 || pixels[o] < best - TOP_SLACK) continue;
+      if (i < left[0]) left = [i, j];
+      if (i > right[0]) right = [i, j];
+    }
+
+  return { h: best, x: at[0], y: at[1], left: left, right: right };
+}
 
 //a part in black, on a scratch canvas - painted there rather than blacked
 //out where it lands, which would black out what is under it too
