@@ -859,7 +859,8 @@ function render(boxes, lit) {
 /**
  * To be lit as it is drawn (shared/gen/looks DEFERRED): every pixel in the
  * colour a top of it is in the sun - its edge darkened, as render darkens
- * it - and which way the face the ray went in through looks.
+ * it - which way the face the ray went in through looks, and how high it
+ * is.
  */
 function renderDeferred(boxes) {
   var at = measure(boxes),
@@ -867,6 +868,7 @@ function renderDeferred(boxes) {
     h = at.h,
     colors = [],
     faces = [],
+    zs = [],
     i,
     j;
 
@@ -876,6 +878,7 @@ function renderDeferred(boxes) {
 
       colors.push(c === null ? null : shade(hitColor, 2));
       faces.push(hitNormal);
+      zs.push(hitZ);
     }
 
   var out = Looks.blank(w, h, Looks.DEFERRED);
@@ -890,6 +893,7 @@ function renderDeferred(boxes) {
 
     Looks.put(out, w, 0, x, y, c);
     Looks.put(out, w, 1, x, y, Looks.normal(faces[n]));
+    Looks.put(out, w, Looks.DEFERRED_HEIGHT, x, y, Looks.height1(zs[n]));
   });
 
   return out;

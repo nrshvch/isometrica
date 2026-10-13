@@ -139,6 +139,13 @@ vec4 drawn(vec4 src, ivec2 at, float shape) {
   return vec4(t.rgb, t.a * vAlpha);
 }
 
+//how high it stands, as much there as its colours are: every pixel of
+//that picture is there - what it stands over the ground under it carried
+//in the green (client/cachedsprite Layers finish)
+vec4 tall(vec4 src, ivec2 at, float shape) {
+  return vec4(drawn(src, at, shape).rgb, src.w < 0.5 ? 0.0 : shape);
+}
+
 uniform bool colours;
 uniform vec4 albedoSrc;
 ${WHOLE}
@@ -152,7 +159,7 @@ void main() {
   if (colours) {
     out0 = vec4(c.rgb, shape);
     out1 = whole(drawn(vSrc1, at, shape));
-    out2 = whole(drawn(vSrc2, at, shape));
+    out2 = whole(tall(vSrc2, at, shape));
   } else {
     out0 = drawn(vSrc1, at, shape);
     out1 = drawn(vSrc2, at, shape);
@@ -166,6 +173,56 @@ precision highp float;
 in vec2 corner;
 void main() {
   gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+}
+`;
+
+//what a picture stands over the ground, as high as it stands over it, into
+//the map of the ground on the screen (the ground spot under a pixel h high
+//is h pixels lower down): the most of whatever stands over every bit of it
+//- drawn with the margin round the screen there is round the map
+var STAMP_VS = `#version 300 es
+precision highp float;
+
+in vec2 corner;
+in vec4 rect;
+in vec4 src2;
+
+uniform vec2 size;
+uniform float margin;
+
+flat out vec4 vRect;
+flat out vec4 vSrc;
+
+void main() {
+  vec2 at = rect.xy + margin + corner * rect.zw;
+
+  vRect = vec4(rect.xy + margin, rect.zw);
+  vSrc = src2;
+  gl_Position = vec4(at.x / size.x * 2.0 - 1.0, 1.0 - at.y / size.y * 2.0, 0.0, 1.0);
+}
+`;
+
+var STAMP_FS = `#version 300 es
+precision highp float;
+precision highp sampler2DArray;
+
+uniform sampler2DArray pages;
+uniform vec2 size;
+
+flat in vec4 vRect;
+flat in vec4 vSrc;
+
+out vec4 out0;
+
+void main() {
+  //drawn from a picture of how high it stands, or not at all
+  if (vSrc.w < 1.5) discard;
+
+  ivec2 at = ivec2(int(gl_FragCoord.x), int(size.y - gl_FragCoord.y)) - ivec2(vRect.xy);
+  float over = texelFetch(pages, ivec3(ivec2(vSrc.yz) + at, int(vSrc.x)), 0).g;
+
+  if (over <= 0.0) discard;
+  out0 = vec4(over, 0.0, 0.0, 1.0);
 }
 `;
 
@@ -288,6 +345,15 @@ uniform vec3 sunLight;
 uniform vec3 sunDir;
 //whether it is night, and there is anything more to it
 uniform bool night;
+//whether the sun casts shadows: how high every pixel stands, and the most
+//that stands over every bit of the ground on the screen (stamp) - with a
+//margin round it - and the way to the sun from a pixel, a step at a time:
+//along the ground on the screen, and up
+uniform bool shadows;
+uniform sampler2D heights;
+uniform sampler2D ground;
+uniform float margin;
+uniform vec3 sunStep;
 
 out vec4 color;
 ${NORMAL_OF}
@@ -297,11 +363,56 @@ const float MOST_STEPS = 4.0;
 const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
   3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 
+//how many steps towards the sun a pixel looks for what stands in its way,
+//and how much higher than the way to the sun that has to be
+const int SHADOW_STEPS = 32;
+const float SHADOW_BIAS = 2.0;
+//how far out from the side of anything, along the ground on the screen
+const float SHADOW_OUT = 2.5;
+
+//whether a pixel is in the shadow of anything: from the pixel, the way to
+//the sun - over the ground under it on the screen, and up as it goes - and
+//anything standing over the ground along it higher than that. Each pixel
+//starts a little further along than the next, dithered as the lamps' light
+//is, so the end of a long shadow frays rather than stepping
+float shadowed(ivec2 px, vec3 n, float b) {
+  float h = texelFetch(heights, px, 0).r * 255.0;
+  vec2 under = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y + h) + margin;
+  //from a little way out from a wall or the side of anything, the way it
+  //looks - not from the ground at its foot, which it stands over itself
+  vec2 side = vec2(n.x - n.y, -(n.x + n.y) * 0.5);
+
+  if (dot(side, side) > 0.01) under += normalize(side) * SHADOW_OUT;
+
+  float rows = size.y + 2.0 * margin,
+    cols = size.x + 2.0 * margin;
+
+  for (int i = 0; i < SHADOW_STEPS; i++) {
+    float t = float(i) + 1.0 + b;
+    vec2 q = under + sunStep.xy * t;
+
+    if (q.x < 0.0 || q.y < 0.0 || q.x >= cols || q.y >= rows) return 0.0;
+
+    float over = texelFetch(ground, ivec2(int(q.x), int(rows - 1.0 - floor(q.y))), 0).r * 255.0;
+
+    if (over > h + sunStep.z * t + SHADOW_BIAS) return 1.0;
+  }
+
+  return 0.0;
+}
+
 void main() {
   ivec2 px = ivec2(gl_FragCoord.xy);
   vec3 a = texelFetch(albedo, px, 0).rgb;
   vec3 n = normalOf(texelFetch(normals, px, 0));
-  vec3 lit = clamp(ambient + max(dot(n, sunDir), 0.0) * sunLight, 0.0, 1.0);
+  float sun = max(dot(n, sunDir), 0.0);
+  vec2 from = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - origin;
+  ivec2 g4 = ivec2(floor(from)) & 3;
+  float b = (BAYER[g4.y * 4 + g4.x] + 0.5) / 16.0;
+
+  if (shadows && sun > 0.0) sun *= 1.0 - shadowed(px, n, b);
+
+  vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
   vec3 c = a * lit;
 
   if (night) {
@@ -314,9 +425,6 @@ void main() {
       //scrolls. Not by the ground under it: every pixel up a wall stands
       //over the same spot of ground, and the wall would be dithered a whole
       //column at a time, in stripes
-      vec2 at = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - origin;
-      ivec2 g = ivec2(floor(at)) & 3;
-      float b = (BAYER[g.y * 4 + g.x] + 0.5) / 16.0;
       float s = min(floor(most * 3.0 + b), MOST_STEPS) / 3.0;
 
       l *= s / most;
@@ -390,6 +498,7 @@ GLView.prototype.setup = function () {
   this.spriteProgram = program(gl, SPRITE_VS, SPRITE_FS);
   this.plainProgram = program(gl, SPRITE_VS, PLAIN_FS);
   this.lampProgram = program(gl, LAMP_VS, LAMP_FS);
+  this.stampProgram = program(gl, STAMP_VS, STAMP_FS);
   this.litProgram = program(gl, FULL_VS, LIT_FS);
 
   //a square, two triangles, 0..1
@@ -414,6 +523,11 @@ GLView.prototype.setup = function () {
     return texture2d(gl);
   });
   this.lightTex = texture2d(gl);
+  //the most that stands over every bit of the ground on the screen, and
+  //round it (stamp)
+  this.groundTex = texture2d(gl);
+  this.groundFrame = gl.createFramebuffer();
+  this.margin = 0;
   this.first = gl.createFramebuffer();
   this.second = gl.createFramebuffer();
   this.lightFrame = gl.createFramebuffer();
@@ -450,6 +564,31 @@ GLView.prototype.setup = function () {
       return vao;
     });
   });
+
+  //the squares of the pictures again, for what they stand over (stamp)
+  this.stampVao = gl.createVertexArray();
+  gl.bindVertexArray(this.stampVao);
+  attribute(gl, this.stampProgram, "corner", this.corners, 2, 0, 0, 0);
+  attribute(
+    gl,
+    this.stampProgram,
+    "rect",
+    this.spriteBuffer,
+    4,
+    FLOATS * 4,
+    0,
+    1,
+  );
+  attribute(
+    gl,
+    this.stampProgram,
+    "src2",
+    this.spriteBuffer,
+    4,
+    FLOATS * 4,
+    64,
+    1,
+  );
 
   this.lampVao = gl.createVertexArray();
   gl.bindVertexArray(this.lampVao);
@@ -597,15 +736,24 @@ GLView.prototype.alphaAt = function (page, x, y) {
 /* --- A frame ----------------------------------------------------------- */
 
 /**
- * Starts a frame w by h - at night with what shines and how high things
- * stand drawn too.
+ * Starts a frame w by h - at night with what shines drawn too; by day, with
+ * the shadows the sun casts (shadows), from whatever is drawn as far as
+ * margin off the screen.
  */
-GLView.prototype.begin = function (w, h, night) {
+GLView.prototype.begin = function (w, h, night, shadows, margin) {
   var gl = this.gl;
 
-  if (this.width !== w || this.height !== h) this.resize(w, h);
+  if (this.width !== w || this.height !== h || this.margin !== margin)
+    this.resize(w, h, margin);
 
   this.night = night;
+  this.shadows = shadows;
+  if (shadows) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.groundFrame);
+    gl.viewport(0, 0, w + 2 * margin, h + 2 * margin);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+  }
   this.overlay.begin();
   gl.viewport(0, 0, w, h);
   gl.clearColor(0, 0, 0, 0);
@@ -625,12 +773,27 @@ GLView.prototype.begin = function (w, h, night) {
   );
 };
 
-GLView.prototype.resize = function (w, h) {
+GLView.prototype.resize = function (w, h, margin) {
   var gl = this.gl,
     t = this.targets;
 
   this.canvas.width = this.width = w;
   this.canvas.height = this.height = h;
+  this.margin = margin;
+
+  gl.bindTexture(gl.TEXTURE_2D, this.groundTex);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA8,
+    w + 2 * margin,
+    h + 2 * margin,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    null,
+  );
+  attach(gl, this.groundFrame, [this.groundTex]);
 
   t.concat([this.lightTex]).forEach(function (tex) {
     gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -698,9 +861,10 @@ GLView.prototype.keep = function () {
 /**
  * Draws the squares added since, and over them what was drawn as lines,
  * shapes and words (client/glcanvas) - into the pictures of the screen of
- * the lit city (lit), or over it as they are.
+ * the lit city (lit), or over it as they are; and by day, what the lit ones
+ * not on flat ground stand over into the map of the ground (stamp).
  */
-GLView.prototype.flush = function (lit) {
+GLView.prototype.flush = function (lit, flat) {
   var gl = this.gl,
     n = this.count;
 
@@ -726,11 +890,50 @@ GLView.prototype.flush = function (lit) {
           1,
         );
     } else this.batch(null, this.plainProgram, this.vaos[0][1], true, n, 1);
+
+    //and by day, what they stand over - nothing on flat ground
+    if (lit && !flat && this.shadows) this.stamp(n);
   }
 
   if (this.overlay.any()) this.overlay.draw(lit ? this.first : null, lit);
   //every layer starts drawing as a canvas of its own would
   this.overlay.reset();
+};
+
+/**
+ * What the n squares just drawn stand over, as high as they stand over it,
+ * into the map of the ground: the most of everything over every bit of it.
+ */
+GLView.prototype.stamp = function (n) {
+  var gl = this.gl,
+    p = this.stampProgram,
+    m = this.margin;
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, this.groundFrame);
+  gl.viewport(0, 0, this.width + 2 * m, this.height + 2 * m);
+  gl.useProgram(p);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
+  gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
+  gl.uniform2f(
+    gl.getUniformLocation(p, "size"),
+    this.width + 2 * m,
+    this.height + 2 * m,
+  );
+  gl.uniform1f(gl.getUniformLocation(p, "margin"), m);
+  gl.blendEquation(gl.MAX);
+  gl.blendFunc(gl.ONE, gl.ONE);
+  gl.bindVertexArray(this.stampVao);
+  gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+  gl.bindVertexArray(null);
+  gl.blendEquation(gl.FUNC_ADD);
+  gl.blendFuncSeparate(
+    gl.SRC_ALPHA,
+    gl.ONE_MINUS_SRC_ALPHA,
+    gl.ONE,
+    gl.ONE_MINUS_SRC_ALPHA,
+  );
+  gl.viewport(0, 0, this.width, this.height);
 };
 
 GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
@@ -761,7 +964,9 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
  *        rather than on the ground under it; down, for a lamp shining down
  *        in a cone, the cosine of half of it; and spill, how much of its
  *        light still goes out to the sides of that cone, below the lamp
- * @param sky {{ambient, sun, dir}} the light of the sky and the sun, 0..1
+ * @param sky {{ambient, sun, dir, step}} the light of the sky and the sun,
+ *        0..1, which way the sun is, and by day the way to it a step at a
+ *        time, along the ground on the screen and up (see LIT_FS shadowed)
  * @param origin {number[]} where the world's origin is on the screen
  */
 GLView.prototype.light = function (lamps, sky, origin) {
@@ -799,6 +1004,11 @@ GLView.prototype.light = function (lamps, sky, origin) {
   bind(gl, p, "normals", t[NORMAL], 1);
   bind(gl, p, "shine", t[SHINE], 3);
   bind(gl, p, "light", this.lightTex, 4);
+  bind(gl, p, "heights", t[HEIGHT], 5);
+  bind(gl, p, "ground", this.groundTex, 6);
+  gl.uniform1i(gl.getUniformLocation(p, "shadows"), this.shadows ? 1 : 0);
+  gl.uniform1f(gl.getUniformLocation(p, "margin"), this.margin);
+  gl.uniform3fv(gl.getUniformLocation(p, "sunStep"), sky.step || [0, 0, 1]);
   gl.uniform2f(gl.getUniformLocation(p, "size"), w, h);
   gl.uniform2f(gl.getUniformLocation(p, "origin"), origin[0], origin[1]);
   gl.uniform3fv(gl.getUniformLocation(p, "ambient"), sky.ambient);

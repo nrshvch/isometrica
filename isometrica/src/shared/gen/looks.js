@@ -2,8 +2,8 @@
  * What the painters that do not paint out of boxes (shared/gen/terrain,
  * trees, vehicles) share for painting a picture the ways the light is worked
  * out from as it is drawn - as shared/gen/isobox setMode has them:
- * "deferred", its colours with no light on them and which way every pixel of
- * it looks, side by side (DEFERRED); and "night", what of it shines with the
+ * "deferred", its colours with no light on them, which way every pixel of
+ * it looks and how high it stands, side by side (DEFERRED); and "night", what of it shines with the
  * first of its lights on and with more of them, one way and another, the
  * whole of it in black, how high every pixel of it is and the whole of it in
  * white, side by side (NIGHT).
@@ -17,8 +17,11 @@ export var NIGHT = 7,
   HEIGHT = 5;
 
 //how many it is painted in to be lit as it is drawn: its colours with no
-//light on them, and which way every pixel of it looks (normal)
-export var DEFERRED = 2;
+//light on them, which way every pixel of it looks (normal), and how high
+//every pixel stands (height1) - for the light, and the shadows the sun
+//casts - and which of them the height is
+export var DEFERRED = 3,
+  DEFERRED_HEIGHT = 2;
 
 //a height as the height picture has it, in the red, a pixel a unit
 export function height1(z) {
@@ -67,8 +70,9 @@ export function put(image, w, k, i, j, c, a) {
 }
 
 /**
- * To be lit as it is drawn, a picture that looks up all over: its colours
- * as they are, and black for the way it looks (normal).
+ * To be lit as it is drawn, a picture that looks up all over and stands on
+ * the ground: its colours as they are, and black for the way it looks
+ * (normal) and how high it stands.
  */
 export function deferred(image) {
   var w = image.width,
@@ -90,6 +94,7 @@ export function deferred(image) {
         a,
       );
       put(out, w, 1, i, j, [0, 0, 0], a);
+      put(out, w, DEFERRED_HEIGHT, i, j, [0, 0, 0], a);
     }
 
   return out;

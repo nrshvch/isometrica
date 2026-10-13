@@ -119,10 +119,13 @@ var SKIP = GLView.SKIP,
   FROM = GLView.FROM;
 
 //its pictures to be lit as it is drawn, side by side (shared/gen/looks
-//DEFERRED): its colours, and which way every pixel looks
-var DEFERRED = 2,
+//DEFERRED): its colours, which way every pixel looks, and how high every
+//pixel stands - and with that, how high it stands over the ground under
+//every pixel, for the shadows the sun casts (see Layers finish)
+var DEFERRED = 3,
   ALBEDO = 0,
-  NORMAL = 1;
+  NORMAL = 1,
+  HIGH = 2;
 
 //its pictures for the night, side by side (shared/gen/looks NIGHT): what
 //shines one way with the first of its lights on and with more of them, the
@@ -169,15 +172,23 @@ CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
     put(d, o, layers, ALBEDO * W, FROM);
     if (flat && (layers.sides & (1 << NORMAL)) === 0) skip(d, o + 4);
     else put(d, o + 4, layers, NORMAL * W, FROM);
+    //how high it stands - and over the ground, for the shadows - which on
+    //flat ground is nothing
+    if (flat) skip(d, o + 8);
+    else put(d, o + 8, layers, HIGH * W, FROM);
   } else {
     if (!this.acquire()) return false;
     put(d, o, this, 0, FROM);
-    if (flat || !lit) skip(d, o + 4);
-    else put(d, o + 4, this, 0, DARK_);
+    if (flat || !lit) {
+      skip(d, o + 4);
+      skip(d, o + 8);
+    } else {
+      put(d, o + 4, this, 0, DARK_);
+      put(d, o + 8, this, 0, DARK_);
+    }
   }
 
   if (!night || flat) {
-    skip(d, o + 8);
     skip(d, o + 12);
     return true;
   }
@@ -187,12 +198,8 @@ CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
     var on = Lighting.shines(renderer),
       way = (renderer.variant === 1 ? 2 : 0) + on - 1;
 
-    put(d, o + 8, layers, TALL * W, FROM);
     put(d, o + 12, layers, (on === 0 ? DARK : way) * W, FROM);
-  } else {
-    put(d, o + 8, this, 0, DARK_);
-    put(d, o + 12, this, 0, DARK_);
-  }
+  } else put(d, o + 12, this, 0, DARK_);
 
   return true;
 };
@@ -342,12 +349,13 @@ Layers.prototype.paint = function (ctx, x, y) {
           f.h,
         );
 
-      if (night) {
-        var up = ground - (part.y + (f.pivotY || 0));
+      var up = ground - (part.y + (f.pivotY || 0));
 
+      if (night) {
         lift(ctx, own.image, f, x + TALL * W + part.x, y + part.y, up);
         if (own.lights) this.addLights(own.lights, part, up, swap);
-      }
+      } else
+        lift(ctx, own.image, f, x + HIGH * W + part.x, y + part.y, up, true);
 
       continue;
     }
@@ -401,17 +409,69 @@ Layers.prototype.addLights = function (packed, part, up, swap) {
  * the picture of how high things stand: the part as painted stands on its
  * own foot, which is up higher than the ground the whole stands on - added
  * on, a pixel a unit, wherever the part is (its picture in white, by
- * up / 255).
+ * up / 255: the night's own, or its colours in white, deferred).
  */
-function lift(ctx, image, f, x, y, up) {
+function lift(ctx, image, f, x, y, up, deferred) {
   if (!(up > 0)) return;
+
+  var from = deferred ? silhouette(image, 0, 0, f.w, f.h, "#fff") : image;
 
   ctx.globalCompositeOperation = "lighter";
   ctx.globalAlpha = Math.min(1, up / 255);
-  ctx.drawImage(image, WHOLE * f.w, 0, f.w, f.h, x, y, f.w, f.h);
+  ctx.drawImage(from, deferred ? 0 : WHOLE * f.w, 0, f.w, f.h, x, y, f.w, f.h);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
 }
+
+/**
+ * The pixels of the deferred pictures painted (canvascache finish), w
+ * across: under every pixel of how high it stands, how high it stands over
+ * that bit of the ground - the most of what stands over it - in the green.
+ * A pixel h high stands over the ground h pixels further down the picture,
+ * a pixel a unit; a roof stands over all the ground the building does, a
+ * wall over the ground at its foot. Every pixel of it is then as there as
+ * can be, the colours' own saying how much of it there is (client/glview).
+ */
+Layers.prototype.finish = function (pixels, w) {
+  if (this.look !== "deferred") return;
+
+  var W = this.sprite.width,
+    H = this.sprite.height,
+    x0 = HIGH * W,
+    over = new Uint8Array(W * H),
+    i,
+    j,
+    o,
+    k;
+
+  for (j = 0; j < H; j++)
+    for (i = 0; i < W; i++) {
+      o = (j * w + x0 + i) * 4;
+      if (pixels[o + 3] === 0) continue;
+
+      var h = pixels[o],
+        at = j + h;
+
+      if (at < H && h > over[at * W + i]) over[at * W + i] = h;
+    }
+
+  //a slope going up away from the eye steps over a row of the ground now
+  //and then: filled in from either side of it
+  for (i = 0; i < W; i++)
+    for (j = 1; j + 1 < H; j++) {
+      k = j * W + i;
+      if (over[k] === 0 && over[k - W] > 0 && over[k + W] > 0)
+        over[k] = Math.min(over[k - W], over[k + W]);
+    }
+
+  for (j = 0; j < H; j++)
+    for (i = 0; i < W; i++) {
+      o = (j * w + x0 + i) * 4;
+      k = over[j * W + i];
+      pixels[o + 1] = k;
+      if (k > 0 || pixels[o + 3] > 0) pixels[o + 3] = 255;
+    }
+};
 
 //a part in black, on a scratch canvas - painted there rather than blacked
 //out where it lands, which would black out what is under it too
@@ -420,20 +480,26 @@ var scratch = null;
 function black(part) {
   var f = part.frame;
 
-  if (scratch === null || scratch.width < f.w || scratch.height < f.h) {
+  return silhouette(part.sheet.image, f.x, f.y, f.w, f.h, "#000");
+}
+
+//w by h of image from x, y, all in one colour, at the top left of the
+//scratch canvas
+function silhouette(image, x, y, w, h, colour) {
+  if (scratch === null || scratch.width < w || scratch.height < h) {
     scratch = document.createElement("canvas");
-    scratch.width = Math.max(f.w, scratch ? scratch.width : 0, 256);
-    scratch.height = Math.max(f.h, scratch ? scratch.height : 0, 256);
+    scratch.width = Math.max(w, scratch ? scratch.width : 0, 256);
+    scratch.height = Math.max(h, scratch ? scratch.height : 0, 256);
     scratch.ctx = scratch.getContext("2d");
   }
 
   var ctx = scratch.ctx;
 
   ctx.globalCompositeOperation = "copy";
-  ctx.drawImage(part.sheet.image, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
+  ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
   ctx.globalCompositeOperation = "source-atop";
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, f.w, f.h);
+  ctx.fillStyle = colour;
+  ctx.fillRect(0, 0, w, h);
 
   return scratch;
 }

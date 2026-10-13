@@ -858,7 +858,9 @@ function stamps(picture, up) {
     if (faces === null) picture.pixels[j * picture.w + i] = color;
     else
       for (var k = 0; k < n; k++)
-        picture.pixels[j * picture.w + i + k * w] = faces[k];
+        //how high it stands is the road's, under it
+        if (faces[k] !== undefined)
+          picture.pixels[j * picture.w + i + k * w] = faces[k];
   }
 
   //a dash every eight, as on the flat, from a half to three and a half

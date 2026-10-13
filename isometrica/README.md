@@ -383,10 +383,31 @@ engine in `engine/`.
   Viewport), nothing copied over to it, and no 2D canvas is drawn on from
   one frame to the next. A click is told what it falls on by the pixel
   itself, read back off its page.
-- At night three more pictures of the screen go with them: how high every
-  pixel stands,
-  a pixel a unit - a storey laid on another lifted by as much as it is laid
-  higher (`isometrica/src/client/cachedsprite.js` Layers) - what shines (the lit
+- With them goes how high every pixel stands, a pixel a unit - a storey
+  laid on another lifted by as much as it is laid higher
+  (`isometrica/src/client/cachedsprite.js` Layers) - painted with its colours
+  and the way it looks, a third picture side by side with them. From that,
+  as a picture is put together, comes how high it stands over the ground
+  under every pixel of it - a pixel h high stands over the ground h pixels
+  further down the picture, so a roof stands over all the ground its
+  building does and a wall over the ground at its foot (Layers finish).
+- By day the sun casts shadows, wherever it is in the sky: every building,
+  car and tree drawn - and whatever is drawn just off the screen, as far as
+  a shadow reaches - stamps what it stands over into a map of the ground on
+  the screen, the most of whatever stands over every bit of it
+  (`isometrica/src/client/glview.js` stamp). Every pixel then looks along the
+  way to the sun from where it is, a couple of pixels at a step over the
+  ground under it and as much higher as the sun is - starting a little way
+  out from the side of whatever it is on - and is out of the sun wherever
+  something along it stands higher (glview LIT_FS shadowed). So a shadow is
+  long in the morning and the evening and short at noon, falls across the
+  road and up the wall of the house next door, moves with the cars and
+  stays put as the camera turns; where it ends a long way off it frays,
+  dithered as the lamps' light is. Everything is taken to stand solid down
+  to the ground - a tree's crown casts its shadow as a column would - and
+  a tree painted to be lit as it is drawn casts no shadow of its own any
+  more. Nothing of it is worked out at night.
+- At night two more pictures of the screen go with them: what shines (the lit
   panes of every window, the signs and billboards of the shops and offices
   in their own colours, a street light's lamp, a car's headlights white and
   its tail lights red, a parked car's none). Nothing round what shines is

@@ -28,7 +28,9 @@
  * the other, so every tone lies in patches, as drawn by hand. Where the ray
  * meets the ground instead it is in the tree's shadow, or nothing: the
  * shadow is short, the sun for it higher than the one for the light, so that
- * it stays under the tree rather than across the next tile.
+ * it stays under the tree rather than across the next tile. Painted to be
+ * lit as it is drawn, it casts none of its own: the sun casts it, wherever
+ * the sun is (client/glview shadowed).
  */
 import * as Looks from "./looks.js";
 
@@ -519,9 +521,9 @@ function paintTree(tree, look) {
   var deferred = look === "deferred",
     data = new Uint8ClampedArray(W * H * 4),
     //to be lit as it is drawn (shared/gen/looks): which way every pixel
-    //looks, and at night how high it is
+    //looks, and how high it is
     ns = deferred ? new Array(W * H) : null,
-    zs = look === "night" ? new Float32Array(W * H) : null,
+    zs = look === "night" || deferred ? new Float32Array(W * H) : null,
     back = 90,
     //for every pixel: -1 nothing, else the part and tone, part * 3 + tone -
     //leaves 0, bark 1
@@ -568,7 +570,13 @@ function paintTree(tree, look) {
 
         //the trunk is never caught by the sun the way the leaves are
         tones[i] = part * 3 + Math.min(toneOf(light), part ? 1 : 2);
-      } else if (march(tree, [g[0], g[1], 0.2], SHADOW_SUN, 70) >= 0)
+      } else if (
+        look !== "deferred" &&
+        look !== "night" &&
+        march(tree, [g[0], g[1], 0.2], SHADOW_SUN, 70) >= 0
+      )
+        //lit as it is drawn, it is the sun's own shadow it casts, by day,
+        //wherever the sun is (client/glview shadowed) - and none at night
         data[i * 4 + 3] = Math.round(SHADOW_ALPHA * 255);
     }
   }
@@ -715,7 +723,8 @@ export function paint(name, look) {
 
 /**
  * The tree's pictures side by side (shared/gen/looks): to be lit as it is
- * drawn, every pixel of it in its tone, and which way it looks (ns); or for
+ * drawn, every pixel of it in its tone, which way it looks (ns) and how high
+ * it is (zs); or for
  * the night, nothing of it shining, all of it black, and how high every
  * pixel of it is (zs) - its shadow, as see-through as it is, on the ground.
  */
@@ -749,6 +758,15 @@ function sideBySide(data, tones, ns, zs, leaves, bark, look) {
         a,
       );
       Looks.put(out, W, 1, px, py, shadow ? [0, 0, 0] : Looks.normal(ns[i]), a);
+      Looks.put(
+        out,
+        W,
+        Looks.DEFERRED_HEIGHT,
+        px,
+        py,
+        Looks.height1(shadow ? 0 : zs[i]),
+        a,
+      );
       continue;
     }
 
