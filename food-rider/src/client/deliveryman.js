@@ -21,6 +21,7 @@ import View from "isometrica/client/view";
 import RenderLayer from "isometrica/client/renderlayer";
 import Carman from "isometrica/client/carman";
 import Traffic from "isometrica/client/traffic";
+import Lighting from "isometrica/client/lighting";
 import Terrain from "isometrica/core/terrain";
 import SmokeSource from "isometrica/client/components/smokesource";
 import SmokeScript from "isometrica/client/components/smokeScript";
@@ -96,7 +97,7 @@ function CourierCar(man) {
   this.addComponent(new CourierCarScript(man));
 
   //its headlights, the way a car of the traffic has them (client/lighting)
-  this.car = { heading: null, type: null, lamp: 0, signal: 0 };
+  this.car = { heading: null, type: null, lamp: 0, signal: 0, braking: false };
 }
 
 CourierCar.prototype = Object.create(engine.GameObject.prototype);
@@ -563,8 +564,15 @@ function draw(self, heading) {
     car.car.heading = heading;
   }
 
-  //its indicators, as the traffic's (client/traffic Driver signal)
-  car.car.signal = self.driver ? self.driver.signal() : 0;
+  //its indicators, as the traffic's (client/traffic Driver signal) - its
+  //hazard lights going while it stands waiting at the side of the road -
+  //and its brake lights
+  car.car.signal = !self.driver
+    ? 0
+    : self.driver.parked
+      ? Lighting.HAZARD
+      : self.driver.signal();
+  car.car.braking = !!self.driver && self.driver.braking;
 
   var x = self.x * Config.tileSize,
     z = self.y * Config.tileSize,

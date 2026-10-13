@@ -71,6 +71,10 @@ var LANE = 0.15,
   //how far short of a junction it asks for it, past the gap it would brake
   //in
   ASK_AHEAD = 0.5,
+  //how much slower than it is going it has to want to go to be braking,
+  //tiles a second, and how long its brake lights stay on after, ms
+  BRAKING = 0.12,
+  BRAKE_HOLD = 400,
   //how fast what is on the far side of a junction has to be driving away for
   //one to follow it through rather than wait for it to be gone, tiles a
   //second
@@ -707,6 +711,9 @@ function Driver(traffic, length, width, owner) {
   this.alive = true;
   //since when it has waited for the junction ahead of it, or -1
   this.asked = -1;
+  //whether it is on the brakes, for its brake lights - and when it last was
+  this.braking = false;
+  this.brakedAt = -Infinity;
   //which way it turns at the next junction (turnAhead), as worked out for
   //which way and how far along it
   this.turn = 0;
@@ -960,6 +967,9 @@ Driver.prototype.scan = function (from, to) {
 //its way has to swing off the way the road goes for that to be one (the sine
 //of the angle)
 var SIGNAL_AHEAD = 1,
+  //how far short of where it pulls back in from going round something it
+  //shows it will, tiles
+  PASS_BACK_SIGNAL = 0.6,
   SIGNAL_SWING = 0.4,
   //and how many points of its way it looks along for where it turns
   TURN_LOOK = 60;
@@ -968,11 +978,13 @@ var SIGNAL_AHEAD = 1,
  * Which way it is about to turn, for its indicators: -1 left, 1 right, 0
  * neither.
  *
- * Changing lanes - out round something, out from the kerb or in to it - it
- * shows which way, just before. Otherwise it shows the way it turns at the
+ * Going round something, it shows left as it pulls out and right as it is
+ * about to pull back in. Changing lanes otherwise - out from the kerb or in
+ * to it - it shows which way, just before. Otherwise it shows the way it turns at the
  * next junction on its way, all the way there and through it: nothing if it
  * goes straight over that one, whatever it does at the next, and nothing
- * round a bend or a turn where the road goes no other way. Turning back the
+ * round a bend or a turn where the road goes no other way - nor for the
+ * junction past a bend till it is round it, the road to it straight. Turning back the
  * way it came is to the left, across the other lane - though not at a dead
  * end, where there is nothing else to do. Pulling in at the kerb, broken
  * down, is to the right.
@@ -980,6 +992,22 @@ var SIGNAL_AHEAD = 1,
 Driver.prototype.signal = function () {
   if (this.pullingOver) return 1;
   if (this.parked) return 0;
+
+  //going round something: to the left as it pulls out, to the right as it
+  //is about to pull back in, and as it does
+  if (this.overtaking !== null && this.passBack !== -1) {
+    var k = this.target,
+      back = this.passBack;
+
+    if (k <= back - 2) return -1;
+    if (k === back - 1) {
+      var p = this.wps[k];
+
+      return Math.hypot(p.x - this.x, p.y - this.y) < PASS_BACK_SIGNAL ? 1 : 0;
+    }
+
+    return 1;
+  }
 
   var lane = laneChange(this);
 
@@ -1050,10 +1078,14 @@ function nextTurn(self) {
       //straight over a junction: nothing to show for it, nor for what it
       //does after
       if (ways >= 2) return 0;
-    } else if (p.din[0] === -p.dout[0] && p.din[1] === -p.dout[1]) {
-      //turning round, where it could have gone on
-      if (ways >= 1) return -1;
-    } else if (ways >= 2) return same(p.dout, rightOf(p.din)) ? 1 : -1;
+    } else if (p.din[0] === -p.dout[0] && p.din[1] === -p.dout[1])
+      //turning round, where it could have gone on - and at a dead end,
+      //nothing to show yet: the road there is not straight
+      return ways >= 1 ? -1 : 0;
+    else if (ways >= 2) return same(p.dout, rightOf(p.din)) ? 1 : -1;
+    //round a bend first: nothing to show till it is round it, on the
+    //straight up to the junction
+    else return 0;
   }
 
   return 0;
@@ -1176,11 +1208,13 @@ Driver.prototype.step = function (dt) {
 
   if (wps.length === 0) return;
 
-  //at the end of its way: at the kerb, or standing in its lane
+  //at the end of its way: at the kerb, or standing in its lane - with its
+  //foot on the brake
   if (this.parked || this.target >= wps.length) {
     this.v = 0;
     this.leader = null;
     this.held = this.parked ? "kerb" : "stop";
+    this.braking = !this.parked;
     return;
   }
 
@@ -1223,6 +1257,12 @@ Driver.prototype.step = function (dt) {
   }
 
   var vt = Math.max(0, Math.min(this.v0, (gap - MIN_GAP) / HEADWAY));
+
+  //on the brakes: slowing down, or standing in the traffic - kept on a
+  //moment, so they do not flicker as it keeps its distance
+  if (vt < this.v - BRAKING || (this.v < 0.05 && held !== ""))
+    this.brakedAt = traffic.now;
+  this.braking = traffic.now - this.brakedAt < BRAKE_HOLD;
 
   //slowing down to stop where it is going
   if (this.stopAtEnd) {
