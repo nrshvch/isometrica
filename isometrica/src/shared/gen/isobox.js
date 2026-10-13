@@ -488,8 +488,8 @@ var BLACK = [0, 0, 0],
   //what of the panes are lit at night - with the first of a building's
   //lights on, and with more of them - and the light behind them: mostly
   //lamps, now and then the blue of a screen
-  FIRST_PANES = 0.2,
-  MORE_PANES = 0.45,
+  FIRST_PANES = 0.35,
+  MORE_PANES = 0.65,
   //how wide a pane of a long run of glass is, along the wall
   PANE_W = 4,
   WARM = [255, 204, 128],

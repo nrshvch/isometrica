@@ -762,11 +762,9 @@ Lighting.shines = function (renderer) {
  * few or 2 for more. Every building puts its first few on at a time of its
  * own in the hour from half past eight, all over the city, and more of them
  * a while later - each at its own pace, and every tile of it lit its own way
- * (client/cachedsprite nightSection), so no two are alike. A home puts the
- * more out again a while before it goes to bed, at an hour of its own
- * between eleven and three in the morning, and the rest then; a shop keeps
- * them all on through the night; an office keeps only the few on, through
- * the night - all till a while after the sun is up.
+ * (client/cachedsprite nightSection), so no two are alike. A home and a shop
+ * keep them all on through the night - a city at night, never a ghost town;
+ * an office keeps only the few on - all till a while after the sun is up.
  *
  * @param seed {number} the building's own, 0..1 (see BuildingView)
  * @param lights {string} "home", "shop" or "office" (BuildingView lightsOf)
@@ -774,14 +772,16 @@ Lighting.shines = function (renderer) {
 function windowsOn(seed, lights) {
   var first = SHINE_FROM + seed,
     more = first + 0.25 + ((seed * 4.13) % 1),
-    morning = 24 + SUNRISE + ((seed * 5.93) % 1) * 0.5,
-    bed = 23 + ((seed * 7.31) % 1) * 4,
-    fewer = bed - 0.5 - ((seed * 2.71) % 1);
+    morning = 24 + SUNRISE + ((seed * 5.93) % 1) * 0.5;
 
   if (lights === "shop") return within(hourNow, first, morning) ? 2 : 0;
   if (lights === "office") return within(hourNow, first, morning) ? 1 : 0;
 
-  return within(hourNow, more, fewer) ? 2 : within(hourNow, first, bed) ? 1 : 0;
+  return within(hourNow, more, morning)
+    ? 2
+    : within(hourNow, first, morning)
+      ? 1
+      : 0;
 }
 
 //whether the street lights are on: from nine in the evening to half past
