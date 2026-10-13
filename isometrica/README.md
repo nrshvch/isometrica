@@ -41,7 +41,9 @@ engine in `engine/`.
   once nothing in it is in its way - crossing its way (straight across, a
   left turn across what comes the other way, or into the same street) and
   not yet past where it does - nobody who has waited longer for a way that
-  crosses it is ready, and there is room on the far side to come out into,
+  crosses it is ready (and not held up itself by what is going through: for
+  a few seconds that one lets others go first, so two junctions close
+  together do not each hold the other up), and there is room on the far side to come out into,
   or what is there is driving on away - nobody stops in the middle of a
   junction. Ways that never cross go through together: straight on from
   either side, two turning right, one turning right and one straight on
