@@ -562,7 +562,9 @@ engine in `engine/`.
   first of them, two thirds with more. A home and a shop keep them all on
   through the night, till the sun is up - a city at night, never a ghost
   town - an office only a few; a building still going up has none. The street lights
-  all go on at nine and off at half past five in the morning; every car puts
+  go on about nine and off about half past five in the morning, a block of
+  six tiles by six at a time, each block within twenty minutes either side
+  of it; every car puts
   its lamps on and off up to three quarters of an hour after them, each in
   its own time. With `?light=0`, the city is drawn as it is painted, by the
   one sun of old; `lab/lighting.html` (`npm run dev` here) is the bench the ways of doing it with

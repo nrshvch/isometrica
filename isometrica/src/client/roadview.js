@@ -226,7 +226,7 @@ function draw(view, id, surface) {
 
   //the street light, among the buildings and the cars it stands with
   var light = lightOf(id, tile),
-    pool = light !== null ? addLight(go, light) : null;
+    pool = light !== null ? addLight(go, light, tile) : null;
 
   addBase(go, tile, surface, 1, layer, sink);
 
@@ -346,13 +346,15 @@ function addBase(parent, tile, surface, opacity, layer, sink) {
 
 //hangs a street light under parent - and hands back where the spot under
 //its lamp is from the middle of the tile, in the world
-function addLight(parent, name) {
+function addLight(parent, name, tile) {
   var part = new engine.GameObject(),
     sprite = new engine.SpriteRenderer();
 
   sprite.layer = RenderLayer.buildingsLayer;
-  //its lamp lit with every other street light (client/lighting shines)
+  //its lamp lit with every other street light of its block (client/lighting
+  //shines)
   sprite.city = true;
+  sprite.cityTile = tile;
   part.addComponent(sprite);
   setPiece(sprite, name);
   parent.transform.addChild(part.transform);
