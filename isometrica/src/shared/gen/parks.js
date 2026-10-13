@@ -101,11 +101,23 @@ function bin(b, x, y) {
   b.push(box(x, x + 1, y, y + 1, 3, 3.1, darker(BIN, 0.3)));
 }
 
+//what a lamp glows with after dark, lighting what is round it - and lit, so
+//by day it is its colour whatever the light (shared/gen/isobox shine)
+var GLOWS = Object.assign({}, LIT, { glow: true });
+
 //a lamp on a post
 function lamp(b, x, y) {
   b.push(box(x, x + 1, y, y + 1, 1, 10, POLE));
-  b.push(box(x - 0.5, x + 1.5, y - 0.5, y + 1.5, 10, 11, LAMP, LIT));
+  b.push(box(x - 0.5, x + 1.5, y - 0.5, y + 1.5, 10, 11, LAMP, GLOWS));
   b.push(box(x - 0.5, x + 1.5, y - 0.5, y + 1.5, 11, 11.5, POLE));
+}
+
+//a floodlight over a court, on a tall pole: a bar of lamps across its top
+function floodlight(b, x, y) {
+  b.push(box(x - 0.8, x + 0.8, y - 0.8, y + 0.8, 1, 2, POLE));
+  b.push(box(x - 0.4, x + 0.4, y - 0.4, y + 0.4, 2, 20, POLE));
+  b.push(box(x - 1.6, x + 1.6, y - 0.6, y + 0.6, 20, 21.5, LAMP, GLOWS));
+  b.push(box(x - 1.6, x + 1.6, y - 0.6, y + 0.6, 21.5, 22, POLE));
 }
 
 //a bush, round, r across
@@ -398,6 +410,12 @@ function sports(b, W, H, variant, stage, rnd) {
     else skate(b, x0, x1, y0, y1, stage);
 
     if (full && kind !== "skate") cage(b, x0 - 1, x1 + 1, y0 - 1, y1 + 1);
+
+    //lit for playing on after dark, from two corners across from each other
+    if (full) {
+      floodlight(b, x0 - 2.5, y0 + 2);
+      floodlight(b, x1 + 2.5, y1 - 2);
+    }
   }
 
   var a = variant ? "skate" : "basket";

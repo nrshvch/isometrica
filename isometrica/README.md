@@ -222,8 +222,11 @@ engine in `engine/`.
   pattern of paved walks, a fountain where they cross and beds edged with
   box, of flowers or lawn with small trees; or a town park of gravel walks
   winding between trees, benches, bins and lamps, with a big fountain or a
-  pond on the bigger footprints. A park needs no road or water and earns
-  nothing; the town pays its upkeep.
+  pond on the bigger footprints. Its lamps, and the floodlights at two
+  corners of every court and skate spot, come on with the street lights
+  and light the ground round them the way a street light does
+  (`client/buildingview.js` lightsOf "park"). A park needs no road or water
+  and earns nothing; the town pays its upkeep.
 - The old town (`isometrica/src/shared/gen/oldtown.js`, `isometrica/src/data/oldtown.js`) is the
   commerce a village starts with, next to its cottages: it needs no road or
   water, and makes its money with the cottagers working in it. On 1x2 and

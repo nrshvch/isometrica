@@ -482,6 +482,8 @@ function lightsOf(staticData) {
   if (gen === "shops") return "shop";
   if (gen === "offices") return "office";
   if (gen === "houses" || gen === "flats" || gen === "oldtown") return "home";
+  //its lamps, with the street lights
+  if (gen === "parks") return "park";
 
   return undefined;
 }
