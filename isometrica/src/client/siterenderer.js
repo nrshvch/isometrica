@@ -108,9 +108,6 @@ SiteRenderer.prototype.render = function (
   }
 };
 
-//it draws only pictures (engine Canvas2dRenderer renderGL)
-SiteRenderer.prototype.litPasses = true;
-
 /**
  * Where the digger is now along its way, 0 where it started and 1 where it
  * drives to, and whether it is turned to dig - easing in and out as it

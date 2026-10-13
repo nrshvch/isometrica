@@ -1042,9 +1042,6 @@ Lamp.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
   return true;
 };
 
-//it draws only pictures (engine Canvas2dRenderer renderGL)
-VehicleRenderer.prototype.litPasses = true;
-
 function Car(man) {
   engine.GameObject.init(this, "car");
 

@@ -372,10 +372,17 @@ engine in `engine/`.
   a picture each, in the order the engine sorts them (`engine/engine`
   Canvas2dRenderer renderGL) - the lit ones into as many pictures of the
   screen at once, so whatever is in front hides what is behind it in all of
-  them alike - and whatever a layer draws on a canvas instead, the lines
-  round a city or the price over a building, is laid over its pictures. A
-  click is told what it falls on by the pixel itself, read back off its
-  page.
+  them alike - and whatever a layer draws as lines, shapes and words, the
+  lines round a city, a tile picked out or the price over a building, is
+  drawn over its pictures in WebGL too (`isometrica/src/client/glcanvas.js`):
+  with the same calls as on a canvas, a shape filled by counting round
+  every pixel in the stencil as a canvas fills it, a line a pixel wide drawn
+  as a line - never broken up on a slope - and words written on a canvas
+  once and drawn from there for as long as they read the same. The frame is
+  drawn straight onto the canvas shown on the page (`engine/engine`
+  Viewport), nothing copied over to it, and no 2D canvas is drawn on from
+  one frame to the next. A click is told what it falls on by the pixel
+  itself, read back off its page.
 - At night three more pictures of the screen go with them: how high every
   pixel stands,
   a pixel a unit - a storey laid on another lifted by as much as it is laid

@@ -110,6 +110,12 @@ var TALL = 60;
 function Lighting(root, cache) {
   this.root = root;
   this.view = new GLView(cache.pageSize, cache.maxPages);
+  //what the frame is drawn on, put on the page in the place of the world
+  //screen's own canvas (engine Viewport)
+  this.canvas = this.view.canvas;
+  //what the layers draw lines, shapes and words with, in place of a canvas's
+  //(engine Canvas2dRenderer renderGL, client/glcanvas)
+  this.context = this.view.overlay;
   //what is painted goes straight into its slot on its page, on the GPU
   cache.upload = this.view.upload.bind(this.view);
   cache.alphaAt = this.view.alphaAt.bind(this.view);
@@ -217,9 +223,10 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
     windowLights(this.lamps, renderer, sprite, x0, y0);
 };
 
-//the layer's batch drawn, and over it what it drew on the canvas
-Lighting.prototype.flush = function (canvas) {
-  this.view.flush(this.lit, canvas);
+//the layer's batch drawn, and over it what it drew as lines, shapes and
+//words (context)
+Lighting.prototype.flush = function () {
+  this.view.flush(this.lit);
 };
 
 //the lit layers in: lit, by the sun and at night by the lamps
@@ -236,11 +243,9 @@ Lighting.prototype.light = function () {
   this.view.light(this.lamps, this.sky, [Math.round(M[12]), Math.round(M[13])]);
 };
 
-//the frame, onto the screen
-Lighting.prototype.end = function (context, viewport) {
-  context.clearRect(0, 0, viewport.width, viewport.height);
-  context.drawImage(this.view.canvas, 0, 0);
-};
+//the frame is on the screen already: the canvas it is drawn on is the one
+//shown (engine Viewport)
+Lighting.prototype.end = function () {};
 
 /* --- Lamps ------------------------------------------------------------- */
 

@@ -26,10 +26,13 @@ WorldScreen.prototype.init = function (client) {
   var viewport = client.game.graphics.createViewport(cnv);
   viewport.setCamera(cam);
   this.viewport = viewport;
+  //the canvas the world is drawn on in WebGL, in the place of this one
+  //(engine Viewport)
+  this.view.mainCanvas = viewport.canvas;
 };
 
 WorldScreen.prototype.updateSize = function () {
-  var cnv = this.view.getCanvas();
+  var cnv = this.viewport.canvas;
   this.viewport.setSize(cnv.offsetWidth, cnv.offsetHeight);
 };
 
