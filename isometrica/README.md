@@ -67,6 +67,14 @@ engine in `engine/`.
   that has waited a minute in a queue that does not move turns off out of
   sight and is put on some other road - a queue behind a bus at its stop
   waits for it.
+- A car keeps its way however the roads change under it
+  (`carman.js` findWay): a road on its way pulled up, or made one way
+  against it, it finds another from where it is; its road pulled up from
+  under it, it drives slowly off the edge of it straight to the nearest
+  road, its hazard lights going, and on from there; nowhere to go at all, it
+  wanders about the roads it can get to, slowly, hazard lights going, till
+  it finds its way again - or, after a minute and a half lost, is given up
+  on.
 - A car breaks down every so often: it pulls over to the kerb, out of the
   traffic's way, and stands there smoking for a while, then pulls back out
   once the lane behind it is clear. It only gives out on a street, clear of
