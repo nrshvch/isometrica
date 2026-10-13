@@ -15,7 +15,8 @@
 //
 //The cache knows nothing of what it holds. Whatever it holds - an entry - has
 //a width, a height and paint(ctx, x, y), which puts its picture on a canvas
-//at x, y; the cache writes where it put it back onto it (slot, sourceImage -
+//at x, y - and maybe finish(pixels, w, h), which works on the pixels painted
+//before they are handed over; the cache writes where it put it back onto it (slot, sourceImage -
 //the page - offsetX, offsetY), and sets slot to -1 when it takes the slot
 //away again.
 //An entry that can be drawn from somewhere else as well says so with direct:
@@ -153,8 +154,13 @@ CanvasCache.prototype.acquire = function (entry) {
   //which clears whatever was in the slot before
   ctx.clearRect(0, 0, w, h);
   entry.paint(ctx, 0, 0);
-  if (this.upload !== null)
-    this.upload(page, x, y, w, h, ctx.getImageData(0, 0, w, h).data);
+  if (this.upload !== null) {
+    var pixels = ctx.getImageData(0, 0, w, h).data;
+
+    //and whatever is worked out from the pixels painted, put in among them
+    if (entry.finish !== undefined) entry.finish(pixels, w, h);
+    this.upload(page, x, y, w, h, pixels);
+  }
   this.painted++;
 
   this.slotState[slot] = TAKEN;

@@ -451,8 +451,9 @@ function cast(boxes, sx, sy) {
       );
   }
 
-  //its colour with no light on it, and which way it looks (normalOf) - for
-  //the light to be worked out pixel by pixel as it is drawn
+  //its colour with no light on it, which way it looks (normalOf) and how
+  //high it stands (heightOf) - for the light to be worked out pixel by
+  //pixel as it is drawn, and the shadows the sun casts
   if (mode === "deferred")
     return [
       color,
@@ -467,6 +468,7 @@ function cast(boxes, sx, sy) {
                   ? [0, -1, 0]
                   : [0, 0, 1],
           ),
+      heightOf(z - best),
     ];
 
   //of each face's picture, as much of the colour as looks that way - black
@@ -578,8 +580,9 @@ function paneLit(b, face, normal, x, y, z) {
  * wherever the sun is; or, for the night, what of it shines - with the
  * first of its lights on and with more of them, one way and another - the
  * whole of it in black, how high every pixel of it is and the whole of it in
- * white, side by side ("night", see NIGHT); or its colours with no light on them and which
- * way every pixel of it looks, side by side ("deferred", see normalOf).
+ * white, side by side ("night", see NIGHT); or its colours with no light on them, which
+ * way every pixel of it looks and how high it stands, side by side
+ * ("deferred", see normalOf, heightOf).
  */
 var mode = "lit";
 
@@ -591,8 +594,9 @@ var NIGHT = 7,
   WHITE = [255, 255, 255];
 
 //and how many it is painted in to be lit as it is drawn: its colours with
-//no light on them, and which way every pixel of it looks (normalOf)
-var DEFERRED = 2;
+//no light on them, which way every pixel of it looks (normalOf), and how
+//high it stands (heightOf) - for the shadows the sun casts
+var DEFERRED = 3;
 
 /**
  * Which way a pixel looks, n, as the picture of that has it: x, y and z of

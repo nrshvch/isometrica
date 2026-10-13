@@ -103,6 +103,13 @@ var FLASH_HIGH = 9,
 //to take it in
 var TALL = 60;
 
+//the shadows the sun casts: how far along the ground on the screen a pixel
+//looks towards the sun for what stands in its way at each step (client/
+//glview LIT_FS shadowed, 32 of them) - and so how far off the screen what
+//casts them can stand, and is still drawn for it
+var SHADOW_STEP = 2,
+  SHADOW_MARGIN = 64;
+
 /**
  * @param root {Vkaria}
  * @param cache {CanvasCache} whose pages the pictures are drawn from
@@ -150,6 +157,8 @@ Lighting.prototype.install = function () {
     (1 << RenderLayer.groundDrawLayer) |
     (1 << RenderLayer.roadLayer);
   engine.Config.gl = this;
+  //what is just off the screen casts its shadow on it too
+  engine.Config.cullMargin = this.plain ? 0 : SHADOW_MARGIN;
 };
 
 /**
@@ -184,7 +193,13 @@ Lighting.prototype.begin = function (viewport, M) {
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
   this.lamps.length = 0;
-  this.view.begin(viewport.width, viewport.height, this.night);
+  this.view.begin(
+    viewport.width,
+    viewport.height,
+    this.night,
+    !this.plain && this.sky.step !== null,
+    SHADOW_MARGIN,
+  );
 };
 
 //the layer drawn next: lit, flat ground
@@ -226,7 +241,7 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
 //the layer's batch drawn, and over it what it drew as lines, shapes and
 //words (context)
 Lighting.prototype.flush = function () {
-  this.view.flush(this.lit);
+  this.view.flush(this.lit, this.flat);
 };
 
 //the lit layers in: lit, by the sun and at night by the lamps
@@ -571,7 +586,27 @@ function sun(h) {
     ambient: amb,
     sun: [color[0] * strength, color[1] * strength, color[2] * strength],
     dir: [seen[0], seen[1], up],
+    step: strength > 0.01 ? stepTo([seen[0], seen[1], up]) : null,
   };
+}
+
+/**
+ * The way to the sun along dir, a step at a time: SHADOW_STEP pixels along
+ * the ground on the screen - x - y across it, -(x + y) / 2 down it, a pixel
+ * a unit - and as much higher as that takes it (client/glview LIT_FS
+ * shadowed).
+ */
+function stepTo(dir) {
+  var across = dir[0] - dir[1],
+    down = -(dir[0] + dir[1]) / 2,
+    along = Math.sqrt(across * across + down * down);
+
+  //straight overhead, nothing casts a shadow but under itself
+  if (along < 0.001) return [0, 0, 1000];
+
+  var k = SHADOW_STEP / along;
+
+  return [across * k, down * k, dir[2] * k];
 }
 
 export default Lighting;

@@ -87,7 +87,7 @@ GeneratorCore.prototype.paint = function (message) {
 
 //how many pictures side by side each look is painted in (shared/gen/isobox
 //sections, shared/gen/looks)
-var SECTIONS = { deferred: 2, night: 7 };
+var SECTIONS = { deferred: 3, night: 7 };
 
 //the night's pictures (shared/gen/looks NIGHT): what shines, the four ways
 //its lights can be on, then the whole of it in black, how high every pixel

@@ -203,6 +203,9 @@ define(function (require) {
             v8 = V[8], v9 = V[9], v12 = V[12], v13 = V[13],
             width = viewport.width,
             height = viewport.height,
+            //how far off the screen a picture is still drawn: for what it
+            //does to what is on it (Config.cullMargin)
+            pad = config.cullMargin || 0,
             count = gameObjects.length,
             visible = 0,
             renderer, sprite, kind, draw, o, x, y, z, sx, sy, i;
@@ -225,7 +228,8 @@ define(function (require) {
                 sx = Math.floor(m0 * x + m4 * y + m8 * z + m12 - slots[o + SLOT_PIVOT_X] + 0.5);
                 sy = Math.floor(m1 * x + m5 * y + m9 * z + m13 - slots[o + SLOT_PIVOT_Y] + 0.5);
 
-                if (sx > width || sx + slots[o + SLOT_WIDTH] < 0 || sy > height || sy + slots[o + SLOT_HEIGHT] < 0)
+                if (sx > width + pad || sx + slots[o + SLOT_WIDTH] < -pad ||
+                    sy > height + pad || sy + slots[o + SLOT_HEIGHT] < -pad)
                     continue;
 
                 renderer = gameObjects[i].renderer;
