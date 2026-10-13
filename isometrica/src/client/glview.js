@@ -286,6 +286,7 @@ precision highp float;
 
 in vec2 corner;
 in vec4 rect;
+in vec4 misc;
 in vec4 src2;
 
 uniform vec2 size;
@@ -293,12 +294,14 @@ uniform float margin;
 
 flat out vec4 vRect;
 flat out vec4 vSrc;
+flat out float vAlpha;
 
 void main() {
   vec2 at = rect.xy + margin + corner * rect.zw;
 
   vRect = vec4(rect.xy + margin, rect.zw);
   vSrc = src2;
+  vAlpha = misc.x;
   gl_Position = vec4(at.x / size.x * 2.0 - 1.0, 1.0 - at.y / size.y * 2.0, 0.0, 1.0);
 }
 `;
@@ -312,12 +315,14 @@ uniform vec2 size;
 
 flat in vec4 vRect;
 flat in vec4 vSrc;
+flat in float vAlpha;
 
 out vec4 out0;
 
 void main() {
-  //drawn from a picture of how high it stands, or not at all
-  if (vSrc.w < 1.5 || vSrc.w > 2.5) discard;
+  //drawn from a picture of how high it stands, or not at all - and not
+  //while it is drawn see-through, faded out of the way: no shadow then
+  if (vSrc.w < 1.5 || vSrc.w > 2.5 || vAlpha < 0.99) discard;
 
   ivec2 at = ivec2(int(gl_FragCoord.x), int(size.y - gl_FragCoord.y)) - ivec2(vRect.xy);
   float over = texelFetch(pages, ivec3(ivec2(vSrc.yz) + at, int(vSrc.x)), 0).g;
@@ -461,6 +466,8 @@ ${NORMAL_OF}
 //as many thirds of light as a pixel can take from the lamps, over its own
 //colour: no more than a third over, for nothing to be lit white
 const float MOST_STEPS = 4.0;
+//how much of a lamp's light is lost in full daylight
+const float DAY_DIM = 0.6;
 const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
   3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 
@@ -518,23 +525,25 @@ void main() {
   float glow = texelFetch(heights, px, 0).b;
   vec3 c = a * mix(lit, vec3(1.0), glow);
 
-  if (night) {
-    vec3 l = texelFetch(light, px, 0).rgb * 2.0;
-    float most = max(l.r, max(l.g, l.b));
+  //the lamps' light, at any hour - lost in the sun by day, much of it, as
+  //a lamp is in daylight: only as much as the light there is not already
+  vec3 l = texelFetch(light, px, 0).rgb * 2.0;
+  float most = max(l.r, max(l.g, l.b));
 
-    if (most > 0.0) {
-      //in steps of a third, dithered between them by where the pixel is
-      //from the world's origin, so the pattern stays put as the city
-      //scrolls. Not by the ground under it: every pixel up a wall stands
-      //over the same spot of ground, and the wall would be dithered a whole
-      //column at a time, in stripes
-      float s = min(floor(most * 3.0 + b), MOST_STEPS) / 3.0;
+  if (most > 0.0) {
+    //in steps of a third, dithered between them by where the pixel is
+    //from the world's origin, so the pattern stays put as the city
+    //scrolls. Not by the ground under it: every pixel up a wall stands
+    //over the same spot of ground, and the wall would be dithered a whole
+    //column at a time, in stripes
+    float s = min(floor(most * 3.0 + b), MOST_STEPS) / 3.0;
 
-      l *= s / most;
-    }
-
-    c += a * l + texelFetch(shine, px, 0).rgb;
+    l *= s / most;
+    c += a * l * (1.0 - DAY_DIM * clamp(dot(lit, vec3(0.3333)), 0.0, 1.0));
   }
+
+  //and what shines of a building, at night
+  if (night) c += texelFetch(shine, px, 0).rgb;
 
   color = vec4(min(c, vec3(1.0)), 1.0);
 }
@@ -710,6 +719,16 @@ GLView.prototype.setup = function () {
   this.stampVao = gl.createVertexArray();
   gl.bindVertexArray(this.stampVao);
   attribute(gl, this.stampProgram, "corner", this.corners, 2, 0, 0, 0);
+  attribute(
+    gl,
+    this.stampProgram,
+    "misc",
+    this.spriteBuffer,
+    4,
+    FLOATS * 4,
+    16,
+    1,
+  );
   attribute(
     gl,
     this.stampProgram,
@@ -1186,7 +1205,9 @@ GLView.prototype.light = function (lamps, sky, origin) {
 
   gl.disable(gl.BLEND);
 
-  if (this.night) {
+  //the lamps' light, at any hour: by day there are fewer of them on - a
+  //police car's, the cars' indicators and brake lights, the beacons
+  {
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightFrame);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
