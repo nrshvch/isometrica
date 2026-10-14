@@ -24,6 +24,8 @@ var View = Backbone.View.extend({
     //the treasury is what the city screen is mostly about - clicked
     //again, it puts it away
     "click .money": "toggleCity",
+    //the sound on and off (isometrica client/audio/soundman)
+    "click .sound": "toggleSound",
   },
   initialize: function (options) {
     this.onDispose = Events.event("dispose");
@@ -54,12 +56,18 @@ var View = Backbone.View.extend({
     var updTkn = this.city.update().on(onCityUpdate, this);
 
     var self = this,
+      sound = options.app.client.sound,
       unwatch =
         this.purse === null
           ? null
           : this.purse.watch(function () {
               self.render();
             });
+
+    if (sound)
+      sound.onChange(function () {
+        self.renderSound();
+      });
 
     this.onDispose().once(function (s, a, self) {
       Events.off(self.time, self.time.constructor.events.advance, tmTkn);
@@ -91,6 +99,19 @@ var View = Backbone.View.extend({
       this.city.resources.getResources()[Isometrica.Core.ResourceCode.money];
     $(".money", this.$el).text("$" + Numeral(money).format("0,0"));
   },
+  renderSound: function () {
+    var sound = this.options.app.client.sound;
+
+    $(".sound", this.$el)
+      .text(sound && sound.on ? "\u266b on" : "\u266b off")
+      .toggleClass("off", !(sound && sound.on));
+  },
+  toggleSound: function () {
+    var sound = this.options.app.client.sound;
+
+    //from the click itself, so that a phone lets it play
+    if (sound) sound.toggle();
+  },
   toggleCity: function () {
     //whatever the game played makes of it - the city builder opens the
     //city screen (games/*)
@@ -101,6 +122,7 @@ var View = Backbone.View.extend({
   render: function () {
     this.renderTime();
     this.renderMoney();
+    this.renderSound();
   },
   dispose: function () {
     this.onDispose(this, null);

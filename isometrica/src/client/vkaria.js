@@ -23,6 +23,7 @@ import Carman from "./carman";
 import Roadworks from "./roadworks";
 import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
+import Soundman from "./audio/soundman";
 
 /**
  * @param core {Logic} the world (core/logic)
@@ -92,6 +93,9 @@ function Vkaria(core, ui, play) {
   this.cameraControl = new CameraControl(this);
   this.cameraman = new CameraMan(this);
   this.player = new Player(this);
+  //what it sounds like: the music, the places, thunder, horns
+  //(client/audio/soundman)
+  this.sound = new Soundman(this);
 
   //and whatever the game played brings of its own: the city builder's land
   //and ground shaping, the courier
@@ -195,6 +199,7 @@ Vkaria.prototype.startServices = function () {
 
   this.carman.init();
   this.roadworks.init();
+  this.sound.init();
 
   if (this.play.start) this.play.start(this);
 };

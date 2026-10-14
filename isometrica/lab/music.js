@@ -7,7 +7,7 @@
  * seconds, in time. A new place or time fades over to its own three.
  */
 import * as Music from "../src/shared/gen/music.js";
-import { wake, audio } from "./audio.js";
+import { wake, audio } from "../src/client/audio/wake.js";
 
 //made at this rate, whatever the browser plays at - Web Audio converts
 var RATE = 44100;

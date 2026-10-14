@@ -159,12 +159,15 @@ engine in `engine/`.
 - `city` - day and night: a town from a little way off - the roar of its
   traffic coming and going, cars whooshing by, a hum, now and then a horn,
   and at night a siren far off.
-- `forest`, `sea`, `city` and `siren` loop without a seam - what goes on all
+- `gulls` - crying, and laughing: the shore - a breeze off the sea, and
+  gulls near and far, their cry falling, raspy, and the herring gull's
+  long call: one high cry, then ha-ha-ha quicker and lower.
+- `forest`, `sea`, `city`, `gulls` and `siren` loop without a seam - what goes on all
   the time is made longer than the loop and its end faded into its start;
   what happens now and then is laid in round the loop - the rest play
   once. `generate("thunder/2", rate)` makes one, the same every time - two
   channels of numbers -1..1 for Web Audio's `createBuffer` - and `list()`
-  names them all. They are not in the games yet.
+  names them all. The game plays them (see Sound in the game).
 - `npm run generate:sounds` writes them all out as .wav files to
   `assets/previews/sounds` (`tools/gensounds.js`), and `lab/sounds.html`
   (`npm run dev`) makes and plays them in the page. A 30-second loop takes
@@ -210,11 +213,41 @@ engine in `engine/`.
 - `generate("town/night/rain", rate)` makes one - the same every time - and
   `list()` names all eighteen with their tempo, bars and length. A piece
   takes three to five seconds to make at 44.1 kHz, so a game makes them in a
-  worker, ahead of when they are wanted. Not in the games yet.
+  worker, ahead of when they are wanted (see Sound in the game).
 - `npm run generate:music` writes them all out as .wav files to
   `assets/previews/music` (`tools/genmusic.js`); `lab/music.html` (`npm run
 dev`) plays them the way a game would - all three weathers together, the
   weather buttons fading between them in time.
+
+### Sound in the game
+
+- Both games sound the same way (`src/client/audio/soundman.js`), every
+  sound made in two workers (`audio.worker.js`, `maker.js`) the first time
+  it is wanted, and kept:
+- the music (`audio/music.js`) - `city` when the screen is a good part
+  town, `town` when there is a little of one on it, else `outside`; `day`
+  or `night` by the hour; all three weathers of it playing together and
+  turned up and down to the weather there is (client/weather): a storm the
+  storm, rain or a grey sky the lazy one. A new place or time has to hold
+  six seconds before its piece fades in over the old.
+- the place - what is on screen looked over twice a second, a grid of
+  points over it sorted into sea, shore, woods and town: the forest's birds
+  by day and its breeze at night, the city by day and by night, the sea
+  calm or rough by the wind, gulls over the shore by day - each as loud as
+  there is of it, louder zoomed in; rain drowns the birds a little.
+- thunder - each flash of lightning to come is known ahead of time
+  (`Weather.flashesAhead`, the same sums as `Weather.flash`), so its
+  thunder starts a moment before the sky lights up.
+- horns - a car stood in a jam three and a half seconds may honk (and again
+  after nine), and two cars going by each other now and then give a toot;
+  each kind of car its own horn - a bus or a lorry honks, a van meep-meeps,
+  a taxi beep-beeps - each car a little higher or lower, to the left or
+  right of where it is on screen and quieter further off.
+- Nothing plays until the page is touched, clicked or typed at - a browser
+  plays nothing before (`audio/wake.js` wakes it in the touch, the way
+  iPhones want it, and plays through the silent switch). M or the ♫ in the
+  top bar turns it off and on, kept in the browser; `?sound=off` too. It
+  goes quiet while the page is out of sight.
 
 ### Sprites
 

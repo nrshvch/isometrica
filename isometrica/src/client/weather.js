@@ -218,6 +218,32 @@ Weather.flash = function (wall, storm) {
 };
 
 /**
+ * The flashes of lightning to come in the next `ahead` ms after `wall` - the
+ * page's clock - in a storm this stormy: when each starts, wall ms, and its
+ * slot (one number for each flash) - for the thunder to be heard by (client/
+ * audio). The same as Weather.flash will show, as long as the storm holds.
+ */
+Weather.flashesAhead = function (wall, storm, ahead) {
+  var out = [];
+
+  if (storm < 0.3) return out;
+
+  for (
+    var slot = Math.floor(wall / FLASH_SLOT);
+    slot * FLASH_SLOT <= wall + ahead;
+    slot++
+  ) {
+    if (hash(slot, 3) > FLASH_ODDS * storm) continue;
+
+    var at = slot * FLASH_SLOT + hash(slot, 5) * (FLASH_SLOT - 600);
+
+    if (at >= wall && at <= wall + ahead) out.push({ at: at, slot: slot });
+  }
+
+  return out;
+};
+
+/**
  * The bolt of flash number `slot` on a screen w by h: the points of a
  * jagged line from over its top edge down to where it strikes, x, y from
  * its top left - at most n of them.
