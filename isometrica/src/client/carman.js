@@ -613,7 +613,7 @@ CarScript.prototype.arrive = function () {
   driver.setPath(
     [
       { tile: last.tile, x: driver.x, y: driver.y, din: last.din, dout: null },
-    ].concat(Traffic.routeWaypoints(route, last.din)),
+    ].concat(Traffic.routeWaypoints(route, last.din, false, true, last.lo)),
   );
 };
 
@@ -726,7 +726,15 @@ CarScript.prototype.reroute = function () {
 
   if (route.length < 2 || route[0] !== here) return this.wander();
 
-  driver.redirect(Traffic.routeWaypoints(route, d));
+  driver.redirect(
+    Traffic.routeWaypoints(
+      route,
+      d,
+      false,
+      this.traffic !== SHUTTLE,
+      driver.lane(),
+    ),
+  );
   this.lost = false;
 
   return true;
@@ -781,7 +789,15 @@ CarScript.prototype.wander = function () {
     return false;
   }
 
-  driver.redirect(Traffic.routeWaypoints(route, d));
+  driver.redirect(
+    Traffic.routeWaypoints(
+      route,
+      d,
+      false,
+      this.traffic !== SHUTTLE,
+      driver.lane(),
+    ),
+  );
 
   return true;
 };
@@ -914,7 +930,7 @@ CarScript.prototype.extend = function () {
   if (route.length < 2) return;
 
   //the new route starts in that same tile, the way the car came into it
-  driver.extend(Traffic.routeWaypoints(route, last.din));
+  driver.extend(Traffic.routeWaypoints(route, last.din, false, true, last.lo));
 };
 
 /**
@@ -945,7 +961,13 @@ CarScript.prototype.detour = function () {
 
     driver.divert(
       jam.at,
-      Traffic.routeWaypoints([jam.tile].concat(route), jam.din),
+      Traffic.routeWaypoints(
+        [jam.tile].concat(route),
+        jam.din,
+        false,
+        true,
+        driver.lane(),
+      ),
     );
     this.man.detours++;
 

@@ -36,6 +36,13 @@ engine in `engine/`.
   speeds up again a little at a time, so a queue sets off one car after
   another rather than all at once, and nothing ever drives through anything
   else.
+- A one-way road has two lanes going its way, and both are driven: a car
+  coming onto it takes the emptier, and keeps to it but for its turns - the
+  right lane for a junction it turns right at, the left for one it turns
+  left at, the right again just short of a road both ways - changing lanes
+  along the road only, its indicator on (planLanes). Where two side by side
+  do not cross each other's way through a junction, they go through it
+  together.
 - A junction - a road tile joined three or four ways - is taken a turn at a
   time. The first car in each lane asks for it on the way up, and goes in
   once nothing in it is in its way - crossing its way (straight across, a
