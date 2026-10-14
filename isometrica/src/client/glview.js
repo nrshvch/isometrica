@@ -1135,6 +1135,28 @@ GLView.prototype.begin = function (w, h, night, shadows, margin) {
   );
 };
 
+/**
+ * The picture of how high every pixel of the frame just drawn stands, as it
+ * is drawn (SPRITE_FS): red how high, a pixel a unit, alpha whether there is
+ * anything there - its rows from the bottom up, w by h (client/turner).
+ *
+ * @returns {{data: Uint8Array, w: number, h: number}}
+ */
+GLView.prototype.readHeights = function () {
+  var gl = this.gl,
+    w = this.width,
+    h = this.height,
+    data = new Uint8Array(w * h * 4);
+
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.first);
+  gl.readBuffer(gl.COLOR_ATTACHMENT0 + HEIGHT);
+  gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  gl.readBuffer(gl.COLOR_ATTACHMENT0);
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+
+  return { data: data, w: w, h: h };
+};
+
 GLView.prototype.resize = function (w, h, margin) {
   var gl = this.gl,
     t = this.targets;

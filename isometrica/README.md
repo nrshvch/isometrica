@@ -567,13 +567,28 @@ dev`) plays them the way a game would - all three weathers together, the
 - A pinch follows the fingers all the way (`client/cameracontrol.js`): the
   camera zooms by steps while they move, and in between what is shown is
   scaled up on the page the rest of the way, about the spot between the
-  fingers; twisted, it is turned on the page with them - a little bigger, to
-  cover the screen - clicking over to the next side of the world halfway
-  there. Let go, it stays at the zoom they left it at, anywhere from 0.5 to
+  fingers; twisted, the world turns with them (below). Let go, it stays at the zoom they left it at, anywhere from 0.5 to
   2 - pulled onto 0.5, 1 or 2, where every pixel of the pixel art is the
   same size and sharp, when within 7% of one, as it is while they move
   (snapZoom) - and eases back to the nearest side. The engine finds the fingers where the canvas stands meanwhile, not
   where it is shown (`Viewport#restRect`).
+- A turn of the camera - two fingers twisted, or Q and E over 0.45 s - is
+  shown as one smooth turn about the ground in the middle of the screen,
+  though the city is only drawn from four sides (`client/turner.js`, on its
+  own): a picture of the side the camera is on and one of the next side,
+  each taken once - zoomed out to take in half as much again as the screen
+  shows, the rain and the lightning held - are laid over the game, each over
+  a mesh lifted as high as every pixel of it stands (`GLView#readHeights`)
+  and turned about the up axis, in its own WebGL canvas: what stands up
+  stays upright and swings round where it stands, the taller the further.
+  The one fades into the other halfway, blurred the more the further from
+  either side, so what the pictures cannot show - what was behind
+  something - goes unseen; a ring on the ground round the middle, north
+  marked on it, turns with it all. There is no waiting for what the game
+  has still to paint: the side the camera is on is taken again every few
+  frames, for it to come in. Let go, it settles on the nearest side and
+  fades into the game drawn from there. The game only tells it when a frame
+  is drawn and holds the weather calm for it (`Lighting#onFrame`, `calm`).
 - The city a new player starts on (`isometrica/src/data/initialcity.js`) is built
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the
