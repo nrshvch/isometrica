@@ -783,7 +783,8 @@ dev`) plays them the way a game would - all three weathers together, the
     under it - the city is never quite dark, more so under cloud or in a
     fog - while out in the woods the night is near black;
   - in a storm, lightning: everything lit up for a moment, flickering, and
-    a jagged bolt down from the top of the screen.
+    a jagged bolt down from the top of the screen - switched off for now
+    (`LIGHTNING` in `client/weather.js`), and the thunder with it.
 - Gloomy enough - a heavy sky, a storm, a fog - the street lights come on
   by day too, a block at a time, and the cars put their lamps on.
 - What stands tall has a red warning light on top, blinking each in its own
