@@ -709,17 +709,20 @@ dev`) plays them the way a game would - all three weathers together, the
 - The weather (`isometrica/src/client/weather.js`) goes by the game's
   clock, the same whenever the game is opened at that time: the days go by
   in spells of eight hours - clear, overcast, fog, rain or a storm, picked
-  by a hash of when it is, clear the likeliest - each going over into the
-  next over an hour and a half. Rain comes and goes in showers; some
+  by a hash of when it is, clear two times in three - each going over into
+  the next over an hour and a half, little by little, following the clock
+  between its ticks too. Rain comes and goes in showers; some
   mornings a fog lies over the city from before dawn till mid-morning; the
   ground stays wet for three hours after the rain stops. The weather is
   shown after the time in the top bar. `?weather=clear|cloudy|fog|rain|storm`
   holds it at one kind, and W goes round them and back to the clock's.
 - It is drawn in the one pass that lights the city (`client/glview.js`
   LIT_FS), from what client/lighting makes of it (weatherSky):
-  - under a heavy sky the sun is lost in the cloud and its light spread
-    over the whole sky, grey: no shadows, colours duller; under a lighter
-    one the clouds' shadows drift over the city with the wind;
+  - the clouds' shadows drift over the city with the wind: a few big ones
+    on a clear day, and as the sky clouds over more and bigger, closing up
+    little by little till the whole city is under them - the sun lost in
+    the cloud, its light spread over the whole sky, grey, shadows faint,
+    colours duller;
   - a fog lies over the ground in a layer, in banks drifting with the wind,
     thicker here, thinner there, higher and lower. The eye sees through as
     much of it as lies over what it looks at: the ground deep in it, a wall
