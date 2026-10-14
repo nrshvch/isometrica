@@ -162,7 +162,9 @@ engine in `engine/`.
   the smoke there is going with it at once: which way it comes from wanders
   round over a few minutes, and how hard it blows rises and falls over a
   minute or so, with gusts every few seconds - from near calm, the smoke
-  going straight up, to a gale that bends it over low.
+  going straight up, to a gale that bends it over low. The weather has it
+  blow softer or harder: hardly a breath in a fog, a little on a clear day,
+  a gale in a storm (`Wind.factor`).
 - What is on screen is drawn from a few big canvas pages
   (`isometrica/src/client/canvascache.js`), not from the sheets: a sprite is copied
   there the first time it is drawn, and whatever has gone undrawn longest
@@ -568,6 +570,41 @@ engine in `engine/`.
   the world's origin, so it stays put as the city scrolls by - and a wall is
   dithered as finely as the ground, not a column at a time: pixel art, lit
   as the world would be.
+- The weather (`isometrica/src/client/weather.js`) goes by the game's
+  clock, the same whenever the game is opened at that time: the days go by
+  in spells of eight hours - clear, overcast, fog, rain or a storm, picked
+  by a hash of when it is, clear the likeliest - each going over into the
+  next over an hour and a half. Rain comes and goes in showers; some
+  mornings a fog lies over the city from before dawn till mid-morning; the
+  ground stays wet for three hours after the rain stops. The weather is
+  shown after the time in the top bar. `?weather=clear|cloudy|fog|rain|storm`
+  holds it at one kind, and W goes round them and back to the clock's.
+- It is drawn in the one pass that lights the city (`client/glview.js`
+  LIT_FS), from what client/lighting makes of it (weatherSky):
+  - under a heavy sky the sun is lost in the cloud and its light spread
+    over the whole sky, grey: no shadows, colours duller; under a lighter
+    one the clouds' shadows drift over the city with the wind;
+  - a fog is thin where the eye is - the middle of the screen - and thicker
+    away from it, over the ground more than up a tall building, dithered
+    in steps; pale by day, all but black at night - and the lamps glow in
+    it, their light blurred out into the air round them (the lamps' light
+    is mipmapped every frame for the blur), for a noir night. Rain far off
+    is a fog too, and in the rain the lamps glow a little whatever the fog;
+  - wet, everything is darker, a road most; puddles lie on whatever is flat
+    and grey - a road, a pavement, a car park - where noise laid from the
+    world's origin says, more of them the wetter it is, with the sky's grey
+    in them by day; and a wet road shines with the lamps over it, their
+    light drawn out up it as a wet street's is;
+  - the rain falls in streaks a pixel wide, two layers of them, slanting
+    with the wind - grey by day, seen at night only where a lamp lights
+    them - and drops splash up off the road;
+  - at night the city's lights light the sky over it, and the sky what is
+    under it - the city is never quite dark, more so under cloud or in a
+    fog - while out in the woods the night is near black;
+  - in a storm, lightning: everything lit up for a moment, flickering, and
+    a jagged bolt down from the top of the screen.
+- Gloomy enough - a heavy sky, a storm, a fog - the street lights come on
+  by day too, a block at a time, and the cars put their lamps on.
 - What stands tall has a red warning light on top, blinking each in its own
   time, by day and by night: an office tower on the telecom mast on its
   roof, and the water tower - anything tall that is no home, shop nor

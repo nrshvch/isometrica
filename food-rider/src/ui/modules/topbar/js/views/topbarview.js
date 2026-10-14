@@ -72,7 +72,13 @@ var View = Backbone.View.extend({
     this.render();
   },
   renderTime: function () {
-    $(".time", this.$el).text(this.time.toHM());
+    //and the weather, after the time (client/weather)
+    var lighting = window.vkaria && window.vkaria.lighting,
+      weather = lighting && lighting.weather;
+
+    $(".time", this.$el).text(
+      this.time.toHM() + (weather ? "  " + weather.name : ""),
+    );
     return this;
   },
   renderMoney: function () {

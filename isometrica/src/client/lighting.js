@@ -35,9 +35,16 @@ import VTime from "../core/vtime";
 import RenderLayer from "./renderlayer";
 import View from "./view";
 import GLView from "./glview";
+import Weather from "./weather";
+import Wind from "./wind";
 
 //the hour now, worked out once a frame (see begin)
 var hourNow = 12;
+
+//how gloomy the day is for the weather, 0..1: dark enough under a heavy
+//sky, or in a fog, for the street lights and the cars' lamps to go on by
+//day too (see begin, cityOn, lampsOn)
+var gloom = 0;
 
 //when the sun comes up, and when it goes down: a long day and a short night
 var SUNRISE = 5,
@@ -196,6 +203,7 @@ Lighting.prototype.install = function () {
     (1 << RenderLayer.groundDrawLayer) |
     (1 << RenderLayer.roadLayer);
   engine.Config.gl = this;
+  Weather.install();
   //what is just off the screen casts its shadow on it too
   engine.Config.cullMargin = this.plain ? 0 : SHADOW_MARGIN;
 };
@@ -228,7 +236,10 @@ Lighting.prototype.hour = function () {
  */
 Lighting.prototype.begin = function (viewport, M) {
   hourNow = this.hour();
+  this.weather = Weather.at(this.root.core.time.now);
+  Wind.factor = this.weather.wind;
   this.sky = sun(hourNow);
+  if (!this.plain) weatherSky(this, this.sky, this.weather, viewport);
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
   this.lamps.length = 0;
@@ -951,12 +962,19 @@ function cityOn(tile, seed) {
     off = hash(bx, by, 2) * 2 - 1;
   }
 
-  return within(
-    hourNow,
-    CITY_ON + on * BLOCK_SPREAD,
-    CITY_OFF + off * BLOCK_SPREAD,
+  return (
+    within(
+      hourNow,
+      CITY_ON + on * BLOCK_SPREAD,
+      CITY_OFF + off * BLOCK_SPREAD,
+    ) ||
+    //and by day too, when it is gloomy enough - a block at a time
+    gloom > GLOOM_ON + (on + 1) * 0.08
   );
 }
+
+//how gloomy a day has to be for the first lamps to go on
+var GLOOM_ON = 0.45;
 
 //how many tiles across a block of street lights going on together is, and
 //how long either side of the hour a block goes on and off, hours
@@ -981,10 +999,12 @@ function hash(x, y, s) {
  * @param seed {number} the car's own, 0..1 (see client/carman Car)
  */
 function lampsOn(seed) {
-  return within(
-    hourNow,
-    CITY_ON + seed * CAR_LAG,
-    CITY_OFF + ((seed * 5.17) % 1) * CAR_LAG,
+  return (
+    within(
+      hourNow,
+      CITY_ON + seed * CAR_LAG,
+      CITY_OFF + ((seed * 5.17) % 1) * CAR_LAG,
+    ) || gloom > GLOOM_ON - 0.1 + seed * 0.2
   );
 }
 
@@ -1027,7 +1047,9 @@ function sun(h) {
     flat = Math.sqrt(1 - up * up),
     seen = View.vector(Math.cos(phi) * flat, Math.sin(phi) * flat),
     color = mix([1, 0.62, 0.38], [1, 0.97, 0.9], el * 2),
-    amb = mix([0.12, 0.14, 0.26], [0.36, 0.39, 0.46], el * 2.5 + 0.55),
+    //out in the dark, darker than it was: the city's own lights make up for
+    //it in the city (client/glview LIT_FS glowSky)
+    amb = mix([0.085, 0.1, 0.19], [0.36, 0.39, 0.46], el * 2.5 + 0.55),
     strength = 0.75 * Math.max(0, Math.min(1, el * 4));
 
   return {
@@ -1035,6 +1057,96 @@ function sun(h) {
     sun: [color[0] * strength, color[1] * strength, color[2] * strength],
     dir: [seen[0], seen[1], up],
     step: strength > 0.01 ? stepTo([seen[0], seen[1], up]) : null,
+  };
+}
+
+/* --- Weather ----------------------------------------------------------- */
+
+function lum(c) {
+  return (c[0] + c[1] + c[2]) / 3;
+}
+
+function smooth(k) {
+  k = Math.max(0, Math.min(1, k));
+
+  return k * k * (3 - 2 * k);
+}
+
+//how far the clouds' shadows have drifted with the wind, on the screen
+var cloudAt = [0, 0],
+  lastWall = -1,
+  blowing = [0, 0];
+
+/**
+ * The sky as the weather has it (client/weather): under a heavy sky the sun
+ * is lost in the cloud, its light spread over all of it, grey, and there
+ * are no shadows; under a lighter one, the clouds' shadows drift over the
+ * city with the wind. And what more there is of it for the lighting to draw
+ * (client/glview LIT_FS): the fog, and its colour - pale by day, all but
+ * black at night; how much the lamps glow in the air in a fog or the rain;
+ * how much the city's lights light the sky at night, more under cloud; how
+ * wet the ground is and how hard it rains, slanting in the wind; and the
+ * lightning.
+ */
+function weatherSky(self, sky, w, viewport) {
+  var wall = performance.now(),
+    dt = lastWall < 0 ? 0 : Math.min(0.1, (wall - lastWall) / 1000),
+    //how light the day is, 0 at night
+    day = smooth((lum(sky.ambient) - 0.12) / 0.24),
+    //how much of the sun the cloud takes
+    dim = smooth((w.cloud - 0.45) / 0.5) * 0.9 + w.fog * 0.08,
+    grey = lum(sky.ambient) + lum(sky.sun) * 0.5,
+    over = smooth((w.cloud - 0.1) / 0.8) * 0.9,
+    dark = 1 - 0.3 * w.storm - 0.1 * w.rain,
+    k;
+
+  lastWall = wall;
+
+  for (k = 0; k < 3; k++) {
+    sky.ambient[k] =
+      (sky.ambient[k] + (grey * [0.97, 1, 1.04][k] - sky.ambient[k]) * over) *
+      dark;
+    sky.sun[k] *= 1 - dim;
+  }
+
+  if (lum(sky.sun) < 0.1) sky.step = null;
+
+  gloom = day * Math.max(dim * 0.75 + w.storm * 0.3, w.fog * 0.85);
+
+  //the wind, on the screen: across it and down it
+  var now =
+      viewport.camera && viewport.camera.world
+        ? viewport.camera.world.logic.time.time
+        : wall,
+    seen = View.vector.apply(null, Wind(now, blowing)),
+    across = seen[0] - seen[1],
+    down = -(seen[0] + seen[1]) / 2;
+
+  cloudAt[0] -= across * dt * 2.5;
+  cloudAt[1] -= down * dt * 2.5;
+
+  var flash = Weather.flash(wall, w.storm),
+    fog = [0.05, 0.055, 0.07].map(function (c, i) {
+      return (c + ([0.7, 0.72, 0.75][i] - c) * day) * (1 - 0.35 * w.storm);
+    });
+
+  sky.weather = {
+    cloud: w.cloud * (1 - dim),
+    cloudAt: cloudAt,
+    grey: 0.4 * smooth((w.cloud - 0.3) / 0.7) + 0.12 * w.fog,
+    fog: Math.min(1, w.fog * 0.75 + w.rain * 0.3),
+    fogColor: fog,
+    haze: Math.max(w.fog, w.rain * 0.7) * (1 - 0.8 * day) + 0.08 * (1 - day),
+    glowSky: (1 - day) * (0.3 + 0.5 * w.cloud + 0.4 * w.fog),
+    wet: w.wet,
+    rain: w.rain,
+    slant: Math.max(-0.7, Math.min(0.7, across * 0.06)),
+    flash: flash === null ? 0 : flash.bright,
+    bolt:
+      flash !== null && flash.bolt >= 0
+        ? Weather.bolt(flash.bolt, viewport.width, viewport.height, GLView.BOLT)
+        : null,
+    time: wall / 1000,
   };
 }
 

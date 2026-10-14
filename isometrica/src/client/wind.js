@@ -43,6 +43,9 @@ function Wind(now, out) {
         GUST * gust,
     );
 
+  //and by the weather: hardly a breath on a clear day, a gale in a storm
+  s *= Wind.factor;
+
   out = out || [0, 0];
   out[0] = Math.cos(a) * s;
   out[1] = Math.sin(a) * s;
@@ -50,7 +53,12 @@ function Wind(now, out) {
   return out;
 }
 
-//how hard it blows as a share of the most it can: 0..1
+//how much harder or softer the weather has it blow than it would: set a
+//frame at a time from the weather (client/lighting begin, client/weather)
+Wind.factor = 1;
+
+//how hard it blows as a share of the most it would on an ordinary day:
+//0..1 - a storm's is all of it
 Wind.strength = function (w) {
   return Math.min(
     1,
