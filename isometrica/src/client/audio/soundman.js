@@ -535,7 +535,9 @@ Soundman.prototype.horns = function (wall, dt) {
     if (p === null) continue;
 
     //stood in a queue or at a junction, not at a stop or by the kerb
-    var jammed = d.v < 0.05 && (d.held === "queue" || d.held === "junction"),
+    var jammed =
+        d.v < 0.05 &&
+        (d.held === "queue" || d.held === "junction" || d.held === "merge"),
       stood = jammed ? (this.stood.get(d) || 0) + dt : 0;
 
     this.stood.set(d, stood);
