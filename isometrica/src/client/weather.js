@@ -49,7 +49,7 @@ var KINDS = {
 
 var ORDER = ["clear", "cloudy", "fog", "rain", "storm"],
   //how likely each is, for a spell
-  ODDS = [0.46, 0.2, 0.08, 0.18, 0.08];
+  ODDS = [0.66, 0.14, 0.04, 0.11, 0.05];
 
 //how long a spell lasts, and how long one takes to go over into the next,
 //hours; how long the ground takes to dry off after rain; how many mornings
@@ -57,7 +57,7 @@ var ORDER = ["clear", "cloudy", "fog", "rain", "storm"],
 var SPELL = 8,
   BLEND = 1.5,
   DRY = 3,
-  MORNING_FOG = 0.3,
+  MORNING_FOG = 0.15,
   FOG_FROM = 3,
   FOG_TO = 9.5;
 
