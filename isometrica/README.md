@@ -14,14 +14,15 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   the generator worker (`generator.js`).
 - `src/shared/gen` - the generators: ground, roads, buildings, trees,
   vehicles, stones, smoke - everything there is to see; nothing is drawn by
-  hand.
+  hand - and the sounds (`sounds.js`, see Sounds).
 - `src/data` - what can stand in the world, and the city both games start
   on (`initialcity.js`).
 - `npm run build` writes `dist/gfx`: the manifests of what every generator
   will paint.
 - `vite.mjs` - the Vite plugin a game uses to serve and ship `dist/gfx`.
 - `lab/` - pages to look at the world without a game: `npm run dev` here
-  opens the lighting bench at `/lighting.html`.
+  opens the lighting bench at `/lighting.html`, and the sounds to listen
+  to at `/sounds.html`.
 
 A game depends on it by path (`"isometrica": "file:../isometrica"`) and
 imports its modules as `isometrica/<path under src>`, e.g.
@@ -119,6 +120,47 @@ engine in `engine/`.
   which is how they cut the corner turning at a junction, swing round to
   turn back at a junction, pull over to the kerb and out again, and pull out
   round a bus at its stop.
+
+### Sounds
+
+- The sounds are made the way the pictures are, out of nothing but numbers
+  (`src/shared/gen/sounds.js`): noise and plain waves, put through filters
+  and shaped by envelopes, after Andy Farnell's Designing Sound - take a
+  sound apart into what makes it and build a small model of that - with
+  the pieces every synthesis book has (Curtis Roads' Computer Music
+  Tutorial): white, pink and brown noise, band-limited saw and square
+  waves, Robert Bristow-Johnson's two-pole filters, and a little Schroeder
+  reverb of combs and all-passes for the room, the street or the sky round
+  a sound. They are a little toony on purpose, like the pixels.
+- `thunder` - overhead, near, far off and a double strike: the crack, many
+  short N-shaped waves from along the bolt, then the sky burping - trains
+  of low pulses slowing down under rumbling noise, later and softer from
+  further along the bolt - and the long roll under them, in the open sky.
+- `horn` - beep, beep-beep, a little car's meep-meep and a bus's honk: two
+  notes a third apart, squarish, through the ring of the horn, each bending
+  up into tune as it starts, and a slap back off the buildings.
+- `siren` - the wail, the yelp and the two-tone nee-naw, through a
+  loudspeaker's horn. It loops: the pitch is tuned so a whole number of
+  cycles goes into every turn of it.
+- `forest` - birdsong, and a breezier one: wind in gusts, the leaves
+  rustling when it blows hardest, and birds - chirps, trills, a two-note
+  whistle, a warble - near and far, round the listener.
+- `sea` - calm, and rough with gulls: waves - a swell rising, the break, the
+  wash fizzing back down the beach, duller as it goes - over the surf
+  further out.
+- `city` - day and night: a town from a little way off - the roar of its
+  traffic coming and going, cars whooshing by, a hum, now and then a horn,
+  and at night a siren far off.
+- `forest`, `sea`, `city` and `siren` loop without a seam - what goes on all
+  the time is made longer than the loop and its end faded into its start;
+  what happens now and then is laid in round the loop - the rest play
+  once. `generate("thunder/2", rate)` makes one, the same every time - two
+  channels of numbers -1..1 for Web Audio's `createBuffer` - and `list()`
+  names them all. They are not in the games yet.
+- `npm run generate:sounds` writes them all out as .wav files to
+  `assets/previews/sounds` (`tools/gensounds.js`), and `lab/sounds.html`
+  (`npm run dev`) makes and plays them in the page. A 30-second loop takes
+  a second or two to make at 44.1 kHz - half that at 22.05 kHz.
 
 ### Sprites
 
