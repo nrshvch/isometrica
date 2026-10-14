@@ -195,10 +195,13 @@ Weather.at = function (now) {
  * Every few seconds or so in a full storm, rarely in a lesser one.
  */
 var FLASH_SLOT = 1700,
-  FLASH_ODDS = 0.22;
+  FLASH_ODDS = 0.22,
+  //whether there is lightning at all - none for now: storms are rain and
+  //wind (and no thunder, which comes with it, client/audio)
+  LIGHTNING = false;
 
 Weather.flash = function (wall, storm) {
-  if (storm < 0.3) return null;
+  if (!LIGHTNING || storm < 0.3) return null;
 
   var slot = Math.floor(wall / FLASH_SLOT),
     seed = hash(slot, 3);
@@ -226,7 +229,7 @@ Weather.flash = function (wall, storm) {
 Weather.flashesAhead = function (wall, storm, ahead) {
   var out = [];
 
-  if (storm < 0.3) return out;
+  if (!LIGHTNING || storm < 0.3) return out;
 
   for (
     var slot = Math.floor(wall / FLASH_SLOT);
