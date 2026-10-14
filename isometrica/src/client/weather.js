@@ -34,7 +34,8 @@ var KINDS = {
     storm: 0,
     wind: 1,
   },
-  fog: { name: "Fog", cloud: 0.9, fog: 1, rain: 0, storm: 0, wind: 0.2 },
+  //a fog of a morning: the sun coming through it, soft
+  fog: { name: "Fog", cloud: 0.7, fog: 1, rain: 0, storm: 0, wind: 0.2 },
   rain: { name: "Rain", cloud: 0.95, fog: 0.3, rain: 0.7, storm: 0, wind: 1.3 },
   storm: {
     name: "Storm",
