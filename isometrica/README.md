@@ -52,7 +52,14 @@ engine in `engine/`.
   queue in the right, it goes over into the left if that is clear alongside
   and has fewer ahead; and in the left, it goes back into the right as soon
   as that is clear a good way ahead (planLanes, Driver#switchLane). It
-  changes lanes along the road only, never in a junction, its indicator on.
+  changes lanes along the road only, never in a junction, its indicator on -
+  and only once there is room for it in the other lane: it waits at the
+  start of the change, still in its own lane, till nothing is alongside
+  where it comes in nor close behind, and one coming up that lane that can
+  still stop lets it in, zip-fashion (crossingAhead, Traffic#mergeBlocker).
+  Two level with each other that each want the other's lane go one at a
+  time: the one behind puts its change off a tile, or with the junction
+  next, turns from the lane it is in (Driver#putOffMerge).
   The next stretch of its way is joined on a few tiles before the end of
   the one it is on, so it is in the lane for a turn at the start of it.
   Where two side by side do not cross each other's way through a junction,
