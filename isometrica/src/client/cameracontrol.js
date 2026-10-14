@@ -1,10 +1,26 @@
 import WorldCamera from "./components/camerascript";
 import Events from "events";
 
-//The camera stops at these alone: at any zoom in between, pixel art comes out
-//with pixels of uneven sizes. Each is twice the one before, and 1 is what
-//the game has always been drawn at.
+//The zooms the camera is drawn at while fingers pinch - what is shown is
+//scaled the rest of the way on the page. Let go, it stays at whatever zoom
+//they left it at, between the smallest and the biggest of these.
 var ZOOMS = [0.5, 0.667, 1, 1.5, 2];
+
+//The zooms every pixel of the pixel art is the same size at, a whole number
+//of the screen's or a half: sharp. A pinch that comes within SNAP of one -
+//as a share of it - is pulled onto it, while the fingers move and when they
+//let go; at any zoom in between, the pixels come out of uneven sizes.
+var SHARP = [0.5, 1, 2],
+  SNAP = 0.07;
+
+//zoom, or the sharp zoom it is within SNAP of
+function snapZoom(zoom) {
+  for (var i = 0; i < SHARP.length; i++)
+    if (Math.abs(Math.log(zoom / SHARP[i])) < Math.log(1 + SNAP))
+      return SHARP[i];
+
+  return zoom;
+}
 
 function onDrag(sender, param, me) {
   var dragX = param.dx,
@@ -37,11 +53,11 @@ function onPinchStart(sender, e, me) {
  * The fingers carry the map along as they go, the way a single one drags it,
  * and zoom and turn it with them, every bit of the way:
  *
- * - the camera takes whichever of ZOOMS is nearest to what the pinch would
- *   make of the zoom it started at - fingers twice as far apart, twice as
- *   close - and what is shown is scaled on the page by the rest of the way
- *   there, about the spot between the fingers, so it grows and shrinks
- *   smoothly as they move;
+ * - the camera takes the biggest of ZOOMS under what the pinch would make
+ *   of the zoom it started at - fingers twice as far apart, twice as close;
+ *   pulled onto a sharp zoom near it (snapZoom) - and what is shown is
+ *   scaled on the page by the rest of the way there, about the spot between
+ *   the fingers, so it grows and shrinks smoothly as they move;
  * - the world turns a quarter turn for every quarter turn of theirs, the
  *   first once they are past an eighth of one - and what is shown is turned
  *   on the page by however far they are off that, so it turns with them all
@@ -68,9 +84,11 @@ function onPinch(sender, e, me) {
   pinch.x = x;
   pinch.y = y;
 
-  var want = Math.max(
-    ZOOMS[0] * PINCH_PAST,
-    Math.min(ZOOMS[ZOOMS.length - 1] / PINCH_PAST, pinch.zoom * e.scale),
+  var want = snapZoom(
+    Math.max(
+      ZOOMS[0] * PINCH_PAST,
+      Math.min(ZOOMS[ZOOMS.length - 1] / PINCH_PAST, pinch.zoom * e.scale),
+    ),
   );
 
   //the zoom at or under where the fingers would have it, for what is shown
@@ -179,8 +197,10 @@ function show(me, x, y, scale, angle) {
 }
 
 /**
- * Lets go: what is shown eases back to the zoom and the side of the world
- * the camera is at - the nearest of them - and then is shown as it is.
+ * Lets go: the camera takes the zoom the pinch left it at - no further than
+ * the smallest and the biggest of ZOOMS, and pulled onto a sharp one near it
+ * - and what is shown eases back to that, and to the side of the world the
+ * camera is at, and then is shown as it is.
  */
 function onPinchEnd(sender, e, me) {
   var viewport = me._cam.gameObject.camera.viewport,
@@ -198,9 +218,11 @@ function onPinchEnd(sender, e, me) {
     return;
   }
 
-  //the nearest of ZOOMS it was pinched to, shown from where it is
+  //where it was pinched to, shown from where it is
   if (pinch !== null && pinch.want !== undefined) {
-    var to = nearestZoom(pinch.want),
+    var to = snapZoom(
+        Math.max(ZOOMS[0], Math.min(ZOOMS[ZOOMS.length - 1], pinch.want)),
+      ),
       at = cam.zoom();
 
     if (to !== at) {
@@ -259,20 +281,6 @@ function onDoubleTap(sender, e, me) {
         : DEFAULT_ZOOM;
 
   cam.zoom(to, e.gameViewportX, e.gameViewportY);
-}
-
-//nearest by ratio: 1.5 is nearer to 2 than to 1, as 0.7 is to 0.5
-function nearestZoom(zoom) {
-  var nearest = ZOOMS[0];
-
-  for (var i = 1; i < ZOOMS.length; i++) {
-    if (
-      Math.abs(Math.log(ZOOMS[i] / zoom)) < Math.abs(Math.log(nearest / zoom))
-    )
-      nearest = ZOOMS[i];
-  }
-
-  return nearest;
 }
 
 function onDispose(sender, args, data) {
