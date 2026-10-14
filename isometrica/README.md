@@ -604,8 +604,9 @@ dev`) plays them the way a game would - all three weathers together, the
   no rain, no lightning, nothing drawn over the city: the grid, the
   borders, the names, the signs - are laid over the game, each over a mesh
   lifted as high as every pixel of it stands (`GLView#readHeights`) and
-  turned about the up axis through that spot, in a WebGL canvas of its
-  own: what stands up stays upright and swings round where it stands, the
+  turned about the up axis through that spot - found on each side's picture
+  where the camera, turned about the middle of the screen, put it - in a
+  WebGL canvas of its own: what stands up stays upright and swings round where it stands, the
   taller the further. Each side is drawn into a target of its own and the
   two mixed, the one going over into the other halfway: where one has
   nothing the other shows, and past the edges of both their edges are
