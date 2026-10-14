@@ -164,8 +164,8 @@ engine in `engine/`.
   wash fizzing back down the beach, duller as it goes - over the surf
   further out.
 - `city` - day and night: a town from a little way off - the roar of its
-  traffic coming and going, cars whooshing by, a hum, now and then a horn,
-  and at night a siren far off.
+  traffic coming and going, cars whooshing by, a hum, now and then a horn -
+  quieter at night.
 - `gulls` - crying, and laughing: the shore - a breeze off the sea, and
   gulls near and far, their cry falling, raspy, and the herring gull's
   long call: one high cry, then ha-ha-ha quicker and lower.
@@ -250,11 +250,8 @@ dev`) plays them the way a game would - all three weathers together, the
   each kind of car its own horn - a bus or a lorry honks, a van meep-meeps,
   a taxi beep-beeps - each car a little higher or lower, to the left or
   right of where it is on screen and quieter further off.
-- sirens - every police car on screen, the nearest two of them, its siren
-  going from where it is: to the left or the right, quieter further from
-  the middle and further out.
-- For now only the music and the sirens are heard: the places, the thunder
-  and the horns are kept quiet (`QUIET` in soundman.js).
+- For now only the music is heard: the places, the thunder and the horns
+  are kept quiet (`QUIET` in soundman.js), and police cars make no sound.
 - Nothing plays until the page is touched, clicked or typed at - a browser
   plays nothing before (`audio/wake.js` wakes it in the touch, the way
   iPhones want it, and plays through the silent switch). M or the ♫ in the
@@ -784,7 +781,8 @@ dev`) plays them the way a game would - all three weathers together, the
     under it - the city is never quite dark, more so under cloud or in a
     fog - while out in the woods the night is near black;
   - in a storm, lightning: everything lit up for a moment, flickering, and
-    a jagged bolt down from the top of the screen.
+    a jagged bolt down from the top of the screen - switched off for now
+    (`LIGHTNING` in `client/weather.js`), and the thunder with it.
 - Gloomy enough - a heavy sky, a storm, a fog - the street lights come on
   by day too, a block at a time, and the cars put their lamps on.
 - What stands tall has a red warning light on top, blinking each in its own
