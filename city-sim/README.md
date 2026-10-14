@@ -17,24 +17,23 @@ other games start on is built here, and handed over from the city screen.
   town comes out cobbled (`isometrica/src/client/road.js` materialAt). What a road
   is laid in is kept with it, in the save.
 - Then whether it goes both ways or one way only. A one-way road looks like
-  any other, but both its lanes go its way, and the traffic uses both: a car
-  coming onto it takes the emptier lane, and keeps to it but for its turns -
-  in the right lane two tiles short of a junction it turns right at, the
-  left for one it turns left at, and back in the right just short of a road
-  both ways - changing lanes only along the road, never in a junction, its
-  indicator on as it goes across. Two side by side go through a junction
-  together where their ways do not cross. Buses keep to the right for their
-  stops, and a car broken down in the left lane drives on till it can pull
-  over on the right (`isometrica/src/client/traffic.js` planLanes). Nothing
-  goes against it: no car drives along it the other way, into it or out of it,
-  though one can come into it from a side road and go the way it goes, and
-  leave it at a junction. It goes the way it is dragged, from the end it
-  was started at on to the finger and on round every corner on the way;
-  the turn button turns it round (`isometrica/src/client/buildman.js` flowOf). Each
-  tile of it keeps the way it goes in the save (`isometrica/src/client/road.js`
-  wayOf, goes). Its straight pieces have no line down the middle but an
-  arrow the way it goes - white on asphalt, darker stones on gravel, pale
-  ones among cobbles - and its ramps no dashes.
+  any other, but both its lanes go its way: a car keeps to the right one
+  whenever it can, and takes the left to turn left, when the right is busy
+  - out of a queue, if the left is clear and emptier - or to overtake, and
+    goes back into the right as soon as that is clear; it changes lanes only
+    along the road, never in a junction, its indicator on as it goes across. Two side by side go through a junction
+    together where their ways do not cross. Buses keep to the right for their
+    stops, and a car broken down in the left lane drives on till it can pull
+    over on the right (`isometrica/src/client/traffic.js` planLanes). Nothing
+    goes against it: no car drives along it the other way, into it or out of it,
+    though one can come into it from a side road and go the way it goes, and
+    leave it at a junction. It goes the way it is dragged, from the end it
+    was started at on to the finger and on round every corner on the way;
+    the turn button turns it round (`isometrica/src/client/buildman.js` flowOf). Each
+    tile of it keeps the way it goes in the save (`isometrica/src/client/road.js`
+    wayOf, goes). Its straight pieces have no line down the middle but an
+    arrow the way it goes - white on asphalt, darker stones on gravel, pale
+    ones among cobbles - and its ramps no dashes.
 - A road is not there the moment it is laid: it is dug out, then given a
   bed of stone, before it is finished - closed off with barriers the while,
   an excavator and a lorry working along it, beacons going and work lamps on

@@ -331,8 +331,16 @@ var laneTraffic = null;
 
 //how many tiles short of where it turns a car is in the lane it turns from
 var LANE_AHEAD = 2,
-  //and how far on it looks for which lane is the emptier, coming onto it
-  LANE_LOOK = 4;
+  //and how far on it looks for how busy each lane is, and how many more in
+  //the right lane than in the left make it busy
+  LANE_LOOK = 4,
+  LANE_BUSY = 2,
+  //how often a car on a one-way road sees whether it would be better off in
+  //the other lane, ms
+  LANE_EVERY = 600,
+  //how many tiles before the end of its way the next is joined on - in time
+  //to be in the lane for a turn at the start of it
+  NEAR_TILES = LANE_AHEAD + 2;
 
 function heading(d) {
   return [Math.round(d.hx), Math.round(d.hy)];
@@ -390,37 +398,26 @@ function planLanes(route, from, start) {
 
   var given = start === 1 || start === -1;
 
-  //the lane with the fewer in it from tile i a little way on - either, if
-  //they are as full as each other
-  function emptier(i) {
-    var n = 0;
-
-    for (var j = i; j <= Math.min(last, i + LANE_LOOK); j++) {
-      var here = laneTraffic.index.get(route[j]);
-
-      if (cross[j] || !one[j]) break;
-      if (here !== undefined)
-        for (var k = 0; k < here.length; k++)
-          if (!here[k].parked && same(din[j], heading(here[k])))
-            n += here[k].lane();
-    }
-
-    return n > 0 ? -1 : n < 0 ? 1 : coin();
+  //the right lane, unless it is busy - LANE_BUSY more going its way in it
+  //than in the left, from tile i a little way on
+  function choose(i) {
+    return laneCount(route, din, i, 1) >=
+      laneCount(route, din, i, -1) + LANE_BUSY
+      ? -1
+      : 1;
   }
 
   function bothWays(j) {
     return !one[j] && !cross[j];
   }
 
+  //just onto a stretch of one-way road - off a road both ways, or out of a
+  //junction - where it picks its lane
   function fresh(j) {
-    if (j === 0) return !given;
-
-    return (
-      bothWays(j - 1) || (cross[j - 1] && (j === 1 ? !given : bothWays(j - 2)))
-    );
+    return j === 0 ? !given : bothWays(j - 1) || cross[j - 1];
   }
 
-  L.push(!one[0] && !cross[0] ? 1 : given ? start : !cross[0] ? coin() : 1);
+  L.push(!one[0] && !cross[0] ? 1 : given ? start : !cross[0] ? choose(0) : 1);
 
   for (i = 0; i < last; i++) {
     var lane = L[i],
@@ -442,9 +439,9 @@ function planLanes(route, from, start) {
     else {
       var need = needAt(i + 1);
 
-      //just onto it off a road both ways - or over a junction from one -
-      //either lane, unless it has to be in one
-      next = need || (fresh(i) ? emptier(i) : lane);
+      //just onto it: the right lane unless that is busy, or it has to be in
+      //the left; and on along it in that lane
+      next = need || (fresh(i) ? choose(i) : lane);
 
       //not across from one to the other in a bend, unless it turns straight
       //after it
@@ -458,8 +455,29 @@ function planLanes(route, from, start) {
   return L;
 }
 
-function coin() {
-  return Math.random() < 0.5 ? 1 : -1;
+/**
+ * How many are going the way a route goes in lane `lane` of its one-way
+ * road, from its tile i on along it for LANE_LOOK tiles.
+ */
+function laneCount(route, din, i, lane) {
+  var n = 0;
+
+  for (var j = i; j < route.length && j <= i + LANE_LOOK; j++) {
+    var here = laneTraffic.index.get(route[j]),
+      d = j === 0 ? din : direction(route[j - 1], route[j]);
+
+    if (!d || laneTraffic.isJunction(route[j]) || !oneWayAt(route[j])) break;
+    if (here !== undefined)
+      for (var k = 0; k < here.length; k++)
+        if (
+          !here[k].parked &&
+          same(d, heading(here[k])) &&
+          here[k].lane() === lane
+        )
+          n++;
+  }
+
+  return n;
 }
 
 //what turning round costs a route, on top of the tile it takes: a way that
@@ -899,6 +917,8 @@ function Driver(traffic, length, width, owner) {
   this.overtaking = null;
   this.passBack = -1;
   this.passer = null;
+  //the way it was last told it is near the end of
+  this.nearFor = null;
   //how long it has followed something slow, ms
   this.trailed = 0;
   this.alive = true;
@@ -1590,12 +1610,32 @@ Driver.prototype.move = function (step) {
     this.target++;
     this.aim();
 
-    if (this.target === wps.length - 1 && !this.stopAtEnd) {
+    if (
+      !this.stopAtEnd &&
+      (this.target === wps.length - 1 ||
+        (this.nearFor !== wps && tilesLeft(this, NEAR_TILES) < NEAR_TILES))
+    ) {
+      this.nearFor = wps;
       this.owner.nearEnd(this);
       wps = this.wps;
     }
   }
 };
+
+//how many tiles are left of its way, counted no further than most
+function tilesLeft(self, most) {
+  var wps = self.wps,
+    n = 0,
+    last = -1;
+
+  for (var i = wps.length - 1; i >= self.target && n <= most; i--)
+    if (wps[i].tile !== last) {
+      last = wps[i].tile;
+      n++;
+    }
+
+  return n;
+}
 
 Driver.prototype.arrive = function () {
   var last = this.wps[this.wps.length - 1],
@@ -1640,17 +1680,41 @@ Driver.prototype.ask = function (junction, front) {
 
   if (this.asked < 0) this.asked = traffic.now;
 
-  //room on the far side to come out into - or its way ends in there - or
-  //what is there is driving on out of it, the way it goes, with nothing
-  //ahead of it: it follows that through
-  var exit =
+  //room on the far side to come out into - for it, and for every other
+  //already let in that comes out the same way, so that none is left stood
+  //in the middle of the junction - or its way ends in there; or, nobody
+  //else on the way out, what is there is driving on out of it, the way it
+  //goes, with nothing ahead of it: it follows that through
+  var going = goingOut(this, junction),
+    exit =
       junction.out < 0
         ? null
-        : this.scan(junction.out, junction.out + this.length + MIN_GAP * 2),
-    ready = exit === null || drivingAway(this, exit.driver);
+        : this.scan(
+            junction.out,
+            junction.out + (this.length + MIN_GAP * 2) * (going + 1),
+          ),
+    ready = exit === null || (going === 0 && drivingAway(this, exit.driver));
 
   return traffic.request(this, junction, ready);
 };
+
+//how many others let into the junctions ahead go out of the last of them
+//the way self will, in the same lane, and are not out of it yet
+function goingOut(self, junction) {
+  var last = junction.tiles.length - 1,
+    m = junction.moves[last],
+    j = self.traffic.junctions.get(junction.tiles[last]),
+    n = 0;
+
+  if (j !== undefined)
+    for (var i = 0; i < j.holders.length; i++) {
+      var h = j.holders[i];
+
+      if (h.d !== self && h.o === m.o && (h.lo || 1) === (m.lo || 1)) n++;
+    }
+
+  return n;
+}
 
 //whether other is driving on away from self, the way it goes, quick enough
 //and with nothing in front of it to stop it - not about to stand there
@@ -1823,6 +1887,105 @@ Driver.prototype.overtake = function (lead) {
   other.passer = this;
   this.aim();
 };
+
+/**
+ * On a one-way road, over into the other lane, if it is better off there:
+ * out of a queue in the right lane into the left, when the left is clear
+ * alongside and has fewer in it ahead; and back into the right as soon as
+ * that is clear for a good way ahead - never where it has to be in the lane
+ * it is in for a turn coming up. Whether it did.
+ */
+Driver.prototype.switchLane = function () {
+  if (
+    this.parked ||
+    this.stopAtEnd ||
+    this.pullingOver ||
+    this.overtaking !== null ||
+    this.passBack !== -1 ||
+    this.passer !== null ||
+    this.target >= this.wps.length
+  )
+    return false;
+
+  var hx = Math.round(this.hx),
+    hy = Math.round(this.hy),
+    here = this.here(),
+    traffic = this.traffic;
+
+  if (Math.abs(this.hx * hx + this.hy * hy) < 0.999) return false;
+  if (!oneWayAt(here) || traffic.isJunction(here)) return false;
+
+  var lane = this.lane(),
+    want = -lane,
+    //the other lane: 2 LANE to the left of the right, or the right of the
+    //left
+    ox = this.x - hy * 2 * LANE * lane,
+    oy = this.y + hx * 2 * LANE * lane;
+
+  if (lane > 0) {
+    //out of a queue: something just ahead, slow
+    var lead = this.leader;
+
+    if (
+      this.held !== "queue" ||
+      lead === null ||
+      lead.v > this.v0 * 0.5 ||
+      Math.hypot(lead.x - this.x, lead.y - this.y) > 1.4
+    )
+      return false;
+    if (!traffic.laneClear(ox, oy, hx, hy, -0.8, 1.2, this)) return false;
+  } else if (!traffic.laneClear(ox, oy, hx, hy, -0.9, 2.2, this)) return false;
+
+  //the rest of its way, tile by tile, from here
+  var wps = this.wps,
+    tiles = [here],
+    i;
+
+  for (i = this.target; i < wps.length; i++)
+    if (wps[i].tile !== tiles[tiles.length - 1]) {
+      if (tiles.indexOf(wps[i].tile) !== -1) return false;
+      tiles.push(wps[i].tile);
+    }
+
+  if (tiles.length < 3) return false;
+
+  //out of a queue only into a lane with fewer in it ahead
+  if (
+    lane > 0 &&
+    laneCount(tiles, [hx, hy], 0, -1) + LANE_BUSY >
+      laneCount(tiles, [hx, hy], 0, 1)
+  )
+    return false;
+
+  var next = routeWaypoints(tiles, [hx, hy], false, true, want);
+
+  //and it can stay there a while
+  if (
+    next[next.length - 1].tile === here ||
+    (
+      next.find(function (p) {
+        return p.tile === tiles[1];
+      }) || {}
+    ).li !== want
+  )
+    return false;
+
+  //over to it some way ahead, not sideways where it is
+  while (
+    next.length > 1 &&
+    (next[0].x - this.x) * hx + (next[0].y - this.y) * hy < SWITCH_ALONG
+  )
+    next.shift();
+
+  this.redirect(next);
+
+  return true;
+};
+
+//how far along it goes over to the other lane, in tiles
+var SWITCH_ALONG = 0.45;
+
+Driver.LANE_EVERY = LANE_EVERY;
 
 /**
  * Whether it can pull over to the kerb just ahead of where it is: going
@@ -2161,19 +2324,35 @@ Traffic.prototype.tilesAlong = function (segs, far) {
 };
 
 /**
- * Whether a road tile is a junction: joined up three or four ways.
+ * Whether a road tile is a junction: joined up three or four ways - driven
+ * out of it or into it, a one-way road coming into it as much as one going
+ * out of it; or where a one-way road joins one both ways, the end of that
+ * as far as anything on it goes - the way on is against the one-way road -
+ * where it turns round across the way of what comes off the one-way road,
+ * and the two take their turns.
  */
 Traffic.prototype.isJunction = function (tile) {
   var known = this._isJunction.get(tile);
 
   if (known !== undefined) return known;
 
-  var n = 0;
+  var n = 0,
+    oneWay = false,
+    bothWays = false;
 
-  for (var i = 0; i < DIRECTIONS.length; i++)
-    if (canDrive(this.roadman, tile, DIRECTIONS[i])) n++;
+  for (var i = 0; i < DIRECTIONS.length; i++) {
+    var d = DIRECTIONS[i],
+      out = canDrive(this.roadman, tile, d),
+      into = canDrive(this.roadman, tile + d[2], [-d[0], -d[1], -d[2]]);
 
-  known = n >= 3;
+    if (out || into) {
+      n++;
+      if (out && into) bothWays = true;
+      else oneWay = true;
+    }
+  }
+
+  known = n >= 3 || (n === 2 && oneWay && bothWays);
   this._isJunction.set(tile, known);
 
   return known;
