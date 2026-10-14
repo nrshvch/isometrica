@@ -906,8 +906,12 @@ function Driver(traffic, length, width, owner) {
   this.pullingOver = false;
   //what it is keeping its distance from, as last found
   this.leader = null;
-  //why it stands, if it does: "queue", "junction", "stop", "kerb", ""
+  //why it stands, if it does: "queue", "junction", "merge", "stop", "kerb",
+  //""
   this.held = "";
+  //the change of lane on a one-way road just ahead of it, if any - over
+  //into the other lane, and whether it waits for room there (crossingAhead)
+  this.merging = null;
   //the junction tiles it has been given, and those of them it has been on
   //- once it is off one of those again, it is through it
   this.grants = [];
@@ -1212,6 +1216,22 @@ Driver.prototype.scan = function (from, to) {
       //into the back of one in front of it going the same way
       if (d.leader === this && this.id < d.id && !inFront(this, d)) continue;
 
+      //one in the other lane ahead of it, about to come over into this one:
+      //room left for it where it comes in - as long as it can still stop
+      //short of there
+      var mg = d.merging;
+
+      if (mg !== null && mg.at < MERGE_LOOK && letIn(this, d, mg)) {
+        var into = onWay(mg.x, mg.y, from, to + d.length);
+
+        if (
+          into !== -1 &&
+          into - d.length / 2 - this.length / 2 >= MIN_GAP / 2 &&
+          (best === null || into - d.length / 2 < best.along)
+        )
+          best = { along: into - d.length / 2, driver: d };
+      }
+
       //along it, from the back of it to the front
       for (k = 0; k <= 4; k++) {
         var o = ((k - 2) / 4) * d.length,
@@ -1240,6 +1260,135 @@ function inFront(self, other) {
     self.hx * other.hx + self.hy * other.hy > 0.7 &&
     (other.x - self.x) * self.hx + (other.y - self.y) * self.hy > 0
   );
+}
+
+/*
+ * Changing lanes on a one-way road - for a turn coming up, or out of a queue
+ * - a car waits at the start of the change, still in its own lane, till
+ * there is room for it in the other: nothing there alongside where it comes
+ * in, nor coming up close behind (Traffic#mergeBlocker). One coming up that
+ * lane behind it that can still stop short lets it in, zip-fashion (scan);
+ * of two level with each other that each want the other's lane, the one
+ * behind puts its change off a tile, or with a junction next turns from the
+ * lane it is in (putOffMerge). Without this, one would cut across into a car alongside and each
+ * wait for the other for good.
+ */
+
+//how far short of where it comes over a car about to change lanes is let in
+//by those coming up the lane it goes into, tiles
+var MERGE_LOOK = 1.2;
+
+/**
+ * The change of lane just ahead of it along its way, as far as far, if any:
+ * where it starts, along its way from its middle; where it ends, in the
+ * other lane; the way the road goes; and the lane it goes into, 1 the right,
+ * -1 the left. Swinging over the width of a lane along a straight bit of
+ * one-way road - not to or from the kerb, nor round in a turn.
+ */
+function crossingAhead(self, far) {
+  ahead(self, far);
+
+  for (var i = 0; i < SEG.length; i++) {
+    var sg = SEG[i],
+      p = self.wps[sg[6]],
+      d = p.din;
+
+    if (d === null || (p.dout !== null && !same(d, p.dout))) continue;
+
+    var r = rightOf(d),
+      tx = Terrain.extractX(p.tile),
+      ty = Terrain.extractY(p.tile),
+      a = (sg[0] - tx) * r[0] + (sg[1] - ty) * r[1],
+      b = (sg[2] - tx) * r[0] + (sg[3] - ty) * r[1];
+
+    if (Math.abs(a - b) > LANE * 1.5 && Math.abs(Math.abs(b) - LANE) < 0.03)
+      return {
+        at: sg[4],
+        x: sg[2],
+        y: sg[3],
+        hx: d[0],
+        hy: d[1],
+        lane: b > 0 ? 1 : -1,
+        waiting: false,
+      };
+  }
+
+  return null;
+}
+
+//whether self, waiting to come over into the lane `other` is in, is behind
+//it - or level with it and last of the two - while `other` waits to come over
+//into self's
+function swapsWith(self, other, m) {
+  var mg = other.merging;
+
+  if (mg === null || !mg.waiting || mg.lane === m.lane) return false;
+
+  var lead = (other.x - self.x) * m.hx + (other.y - self.y) * m.hy;
+
+  return lead > 0.05 || (lead > -0.05 && other.id < self.id);
+}
+
+/**
+ * Puts off the change of lane just ahead of it till the next tile: on in the
+ * lane it is in to there, and over from there. With a junction there, there
+ * is no more room to change in: it keeps to the lane it is in into the
+ * junction, and turns from that one. Whether it did either.
+ */
+Driver.prototype.putOffMerge = function () {
+  var wps = this.wps,
+    here = this.here(),
+    tiles = [here],
+    heading = [Math.round(this.hx), Math.round(this.hy)],
+    lane = this.lane(),
+    i;
+
+  for (i = this.target; i < wps.length; i++)
+    if (wps[i].tile !== tiles[tiles.length - 1]) {
+      if (tiles.indexOf(wps[i].tile) !== -1) return false;
+      tiles.push(wps[i].tile);
+    }
+
+  if (tiles.length < 3 || !same(direction(tiles[0], tiles[1]), heading))
+    return false;
+
+  if (!this.traffic.isJunction(tiles[1])) {
+    if (!oneWayAt(tiles[1])) return false;
+
+    this.redirect(routeWaypoints(tiles.slice(1), heading, false, true, lane));
+    return true;
+  }
+
+  //on this tile in its lane, and from the junction on from that lane
+  var next = tileWaypoints(
+    [],
+    here,
+    heading,
+    heading,
+    false,
+    lane,
+    lane,
+  ).concat(routeWaypoints(tiles.slice(1), heading, false, true, lane));
+
+  while (
+    next.length > 1 &&
+    (next[0].x - this.x) * heading[0] + (next[0].y - this.y) * heading[1] < 0.05
+  )
+    next.shift();
+
+  this.redirect(next);
+
+  return true;
+};
+
+//whether self, in the lane `other` is coming over into, lets it in: it is
+//ahead of self - or level with it, and first of the two
+function letIn(self, other, mg) {
+  if (self.hx * mg.hx + self.hy * mg.hy < 0.7) return false;
+
+  var lead = (other.x - self.x) * mg.hx + (other.y - self.y) * mg.hy;
+
+  return lead > 0.05 || (lead > -0.05 && other.id < self.id);
 }
 
 //how far ahead along its way a driver looks for a change of lane - going
@@ -1539,6 +1688,41 @@ Driver.prototype.step = function (dt) {
         held = "junction";
       }
     }
+  }
+
+  //over into the other lane of a one-way road just ahead: not till there is
+  //room for it there - those coming up that lane let it in (scan)
+  this.merging = null;
+
+  if (
+    this.overtaking === null &&
+    this.passBack === -1 &&
+    !this.pullingOver &&
+    !this.stopAtEnd
+  ) {
+    var m = crossingAhead(this, look + 1);
+
+    if (m !== null) {
+      this.merging = m;
+
+      var blocker = m.at > 0 ? traffic.mergeBlocker(this, m) : null;
+
+      //waiting on one level with it that wants its lane as it wants that
+      //one's: the one behind puts it off a tile and drives on, so the other
+      //has room
+      if (blocker !== null && swapsWith(this, blocker, m) && this.putOffMerge())
+        blocker = null;
+      else if (blocker !== null) {
+        m.waiting = true;
+
+        if (m.at + HARD_GAP < gap) {
+          gap = m.at + HARD_GAP;
+          held = "merge";
+        }
+      }
+    }
+
+    ahead(this, look + 3.5);
   }
 
   //going round something, a good deal quicker, to be past it soon
@@ -1976,6 +2160,19 @@ Driver.prototype.switchLane = function () {
     (next[0].x - this.x) * hx + (next[0].y - this.y) * hy < SWITCH_ALONG
   )
     next.shift();
+
+  //and room for it there where it comes in
+  if (
+    traffic.mergeBlocker(this, {
+      x: next[0].x,
+      y: next[0].y,
+      hx: hx,
+      hy: hy,
+      lane: want,
+      waiting: false,
+    }) !== null
+  )
+    return false;
 
   this.redirect(next);
 
@@ -2575,6 +2772,60 @@ Traffic.prototype.laneClear = function (x, y, hx, hy, from, to, self, also) {
   }
 
   return true;
+};
+
+/**
+ * What keeps a driver from coming over into the other lane where its change
+ * of lane `m` (crossingAhead) brings it, or null for nothing: anything in
+ * that lane alongside where it comes in, or coming up close behind - more
+ * room the quicker that comes. One stood back to let it in is not in its
+ * way.
+ */
+Traffic.prototype.mergeBlocker = function (self, m) {
+  var seen = this.seen,
+    half = self.length / 2,
+    a,
+    j;
+
+  seen.clear();
+
+  for (a = -2.5; a <= 1.5; a += 0.5) {
+    var here = this.index.get(tileAt(m.x + m.hx * a, m.y + m.hy * a));
+
+    if (here === undefined) continue;
+
+    for (j = 0; j < here.length; j++) {
+      var d = here[j];
+
+      if (d === self || d.parked || seen.has(d)) continue;
+      seen.add(d);
+
+      var lo = Infinity,
+        hi = -Infinity;
+
+      for (var k = -1; k <= 1; k++) {
+        var o = (k * d.length) / 2,
+          px = d.x + d.hx * o - m.x,
+          py = d.y + d.hy * o - m.y,
+          along = px * m.hx + py * m.hy,
+          side = Math.abs(px * -m.hy + py * m.hx);
+
+        if (side < CORRIDOR + 0.04) {
+          lo = Math.min(lo, along);
+          hi = Math.max(hi, along);
+        }
+      }
+
+      if (hi < lo) continue;
+
+      //stood back for it, far enough
+      if (d.leader === self && hi < -half - 0.02) continue;
+
+      if (hi > -(half + 0.3 + d.v * 0.7) && lo < half + MIN_GAP) return d;
+    }
+  }
+
+  return null;
 };
 
 /**
