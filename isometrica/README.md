@@ -250,11 +250,8 @@ dev`) plays them the way a game would - all three weathers together, the
   each kind of car its own horn - a bus or a lorry honks, a van meep-meeps,
   a taxi beep-beeps - each car a little higher or lower, to the left or
   right of where it is on screen and quieter further off.
-- sirens - every police car on screen, the nearest two of them, its siren
-  going from where it is: to the left or the right, quieter further from
-  the middle and further out.
-- For now only the music and the sirens are heard: the places, the thunder
-  and the horns are kept quiet (`QUIET` in soundman.js).
+- For now only the music is heard: the places, the thunder and the horns
+  are kept quiet (`QUIET` in soundman.js), and police cars make no sound.
 - Nothing plays until the page is touched, clicked or typed at - a browser
   plays nothing before (`audio/wake.js` wakes it in the touch, the way
   iPhones want it, and plays through the silent switch). M or the ♫ in the
