@@ -280,7 +280,9 @@ Turner.prototype.begin = function (x, y) {
   //where the camera is now, a quarter turn at a time from there
   this.at = 0;
   this.zoomedOut = false;
-  //how far it is turned, and about what; how much bigger it is shown about
+  //how far it is turned, and about what - the ground, flat, under what is
+  //at the spot on the screen once the first picture says how high that
+  //stands (take); how much bigger it is shown about
   //where - the fingers pinching - and the pictures by the side they are of
   this.deg = 0;
   this.spot = x === undefined ? [w / 2, h / 2] : [x, y];
@@ -557,6 +559,22 @@ Turner.prototype.take = function (side) {
   );
 
   if (old) forget(gl, old);
+
+  //the first picture: what is at the spot the turn is about, and how high
+  //it stands - the turn is about the ground under it, for that to keep its
+  //place, whatever it stands on, not the ground under it as if it were flat
+  if (this.job !== null && this.job.quick === true) {
+    var x = Math.floor(this.spot[0] / this.zoom),
+      y = Math.floor(this.spot[1] / this.zoom);
+
+    if (x >= 0 && y >= 0 && x < heights.w && y < heights.h) {
+      var i = ((heights.h - 1 - y) * heights.w + x) * 4;
+
+      if (heights.data[i + 3] > 127)
+        this.spot[1] += heights.data[i] * this.zoom;
+    }
+  }
+
   this.pictures[side] = {
     colours: colours,
     heights: high,
