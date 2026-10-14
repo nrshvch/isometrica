@@ -1,5 +1,6 @@
 import WorldCamera from "./components/camerascript";
 import Events from "events";
+import Turner from "./turner";
 
 //The zooms the camera is drawn at while fingers pinch - what is shown is
 //scaled the rest of the way on the page. Let go, it stays at whatever zoom
@@ -25,6 +26,9 @@ function snapZoom(zoom) {
 function onDrag(sender, param, me) {
   var dragX = param.dx,
     dragY = param.dy;
+
+  //held where it is while the world turns (client/turner)
+  if (me.turner.active) return;
   me._cam.pan(dragX, dragY);
 }
 
@@ -38,8 +42,6 @@ function onPinchStart(sender, e, me) {
   if (viewport) viewport.restRect = viewport.canvas.getBoundingClientRect();
 
   me._pinch = {
-    //how many quarter turns the fingers have turned the world so far
-    turned: 0,
     zoom: zoom,
     //in page pixels, which stay the same size whatever the zoom
     x: e.gameViewportX * zoom,
@@ -58,10 +60,10 @@ function onPinchStart(sender, e, me) {
  *   pulled onto a sharp zoom near it (snapZoom) - and what is shown is
  *   scaled on the page by the rest of the way there, about the spot between
  *   the fingers, so it grows and shrinks smoothly as they move;
- * - the world turns a quarter turn for every quarter turn of theirs, the
- *   first once they are past an eighth of one - and what is shown is turned
- *   on the page by however far they are off that, so it turns with them all
- *   the way and clicks over to the next side of the world halfway there.
+ * - twisted, the world turns with them, about the ground in the middle of
+ *   the screen, a quarter turn for every quarter turn of theirs (client/
+ *   turner) - held where it is meanwhile, the zoom too, all of it shown by
+ *   the turner till they let go.
  *
  * Let go, it eases back to the zoom and the side of the world the camera is
  * at (onPinchEnd).
@@ -74,7 +76,31 @@ function onPinch(sender, e, me) {
 
   var from = cam.zoom(),
     x = e.gameViewportX * from,
-    y = e.gameViewportY * from;
+    y = e.gameViewportY * from,
+    want = snapZoom(
+      Math.max(
+        ZOOMS[0] * PINCH_PAST,
+        Math.min(ZOOMS[ZOOMS.length - 1] / PINCH_PAST, pinch.zoom * e.scale),
+      ),
+    );
+
+  pinch.want = want;
+
+  //twisted: the turner shows the world turning with them, and the rest of
+  //it, from there on
+  if (
+    e.rotation !== undefined &&
+    Math.abs(e.rotation) > TWIST_START &&
+    !me.turner.active
+  )
+    me.turner.begin();
+
+  if (me.turner.active) {
+    pinch.x = x;
+    pinch.y = y;
+    me.turner.view(e.rotation || 0, want / me.turner.zoom, x, y);
+    return;
+  }
 
   //as far as the fingers moved on what is shown, scaled as it is
   cam.pan(
@@ -84,36 +110,12 @@ function onPinch(sender, e, me) {
   pinch.x = x;
   pinch.y = y;
 
-  var want = snapZoom(
-    Math.max(
-      ZOOMS[0] * PINCH_PAST,
-      Math.min(ZOOMS[ZOOMS.length - 1] / PINCH_PAST, pinch.zoom * e.scale),
-    ),
-  );
-
   //the zoom at or under where the fingers would have it, for what is shown
   //to be scaled up the rest of the way - always covering the screen
   cam.zoom(zoomUnder(want), e.gameViewportX, e.gameViewportY);
 
-  //the fingers twisted: the world turns with them, a quarter turn for every
-  //quarter turn of theirs, the first once they are past an eighth of one
-  var off = 0;
-
-  if (e.rotation !== undefined) {
-    var turns = Math.round(e.rotation / TWIST);
-
-    if (turns !== pinch.turned) {
-      me.root.turnView(turns - pinch.turned);
-      pinch.turned = turns;
-    }
-
-    off = e.rotation - turns * TWIST;
-  }
-
-  pinch.want = want;
-  pinch.off = off;
-  pinch.scale = (want / cam.zoom()) * cover(me, off);
-  show(me, x, y, pinch.scale, off);
+  pinch.scale = want / cam.zoom();
+  show(me, x, y, pinch.scale);
 }
 
 //the biggest of ZOOMS no bigger than zoom, give or take a hair - fingers
@@ -127,32 +129,12 @@ function zoomUnder(zoom) {
   return under;
 }
 
-/**
- * How much bigger what is shown turned by angle degrees has to be to cover
- * the screen, at most COVER_MOST - past that, the backdrop shows in its
- * corners.
- */
-function cover(me, angle) {
-  var viewport = me._cam.gameObject.camera.viewport;
-
-  if (!viewport || angle === 0) return 1;
-
-  var a = (Math.abs(angle) * Math.PI) / 180,
-    w = viewport.canvas.clientWidth || 1,
-    h = viewport.canvas.clientHeight || 1,
-    long = Math.max(w / h, h / w);
-
-  return Math.min(COVER_MOST, Math.cos(a) + Math.sin(a) * long);
-}
-
-//how much bigger what is shown can get to cover the screen as it turns
-var COVER_MOST = 1.3;
-
 //what shows round what is shown, where it does not cover the screen
 var BACKDROP = "#1b1f24";
 
-//how far the fingers turn for a quarter turn of the world, in degrees
-var TWIST = 90;
+//how far the fingers have to turn before the world turns with them, in
+//degrees
+var TWIST_START = 3;
 
 //how far past the smallest and the biggest zoom a pinch can go before it
 //goes no further, as a share of them
@@ -162,11 +144,11 @@ var PINCH_PAST = 0.8;
 var SETTLE_MS = 180;
 
 /**
- * Shows the world scaled by scale and turned by angle degrees on the page,
- * about x, y on the canvas in page pixels - the rest of the way a pinch
- * would take it, past the zoom and the side of the world the camera is at.
+ * Shows the world scaled by scale on the page, about x, y on the canvas in
+ * page pixels - the rest of the way a pinch would take it, past the zoom
+ * the camera is at.
  */
-function show(me, x, y, scale, angle) {
+function show(me, x, y, scale) {
   var viewport = me._cam.gameObject.camera.viewport;
 
   if (!viewport) return;
@@ -190,10 +172,7 @@ function show(me, x, y, scale, angle) {
 
   style.transition = "";
   style.transformOrigin = x + "px " + y + "px";
-  style.transform =
-    Math.abs(scale - 1) < 0.001 && Math.abs(angle) < 0.01
-      ? ""
-      : "rotate(" + angle + "deg) scale(" + scale + ")";
+  style.transform = Math.abs(scale - 1) < 0.001 ? "" : "scale(" + scale + ")";
 }
 
 /**
@@ -213,6 +192,24 @@ function onPinchEnd(sender, e, me) {
 
   var style = viewport.canvas.style;
 
+  //turned: the turner settles it on the nearest side, at the zoom they let
+  //go at, and shows the game from there once it is
+  if (me.turner.active) {
+    settle(me);
+    if (pinch !== null)
+      me.turner.end(
+        snapZoom(
+          Math.max(
+            ZOOMS[0],
+            Math.min(ZOOMS[ZOOMS.length - 1], pinch.want || pinch.zoom),
+          ),
+        ),
+        pinch.x,
+        pinch.y,
+      );
+    return;
+  }
+
   if (!style.transform) {
     settle(me);
     return;
@@ -227,7 +224,7 @@ function onPinchEnd(sender, e, me) {
 
     if (to !== at) {
       cam.zoom(to, pinch.x / at, pinch.y / at);
-      show(me, pinch.x, pinch.y, pinch.want / to, pinch.off);
+      show(me, pinch.x, pinch.y, pinch.want / to);
       //as it is now, before it eases back
       void viewport.canvas.offsetWidth;
     }
@@ -300,18 +297,21 @@ function CameraControl(root) {
   this._backdrop = null;
   //and what was raised over it for the while
   this._raised = [];
+  //what shows the world turning, between one side of it and the next
+  this.turner = new Turner(root);
 }
 
 CameraControl.prototype.init = function () {
-  var root = this.root;
+  var root = this.root,
+    turner = this.turner;
 
   //and with no fingers to twist, Q and E turn it a quarter turn either way
   window.addEventListener("keydown", function (e) {
     var target = e.target && e.target.tagName;
 
     if (target === "INPUT" || target === "TEXTAREA" || e.repeat) return;
-    if (e.key === "q" || e.key === "Q") root.turnView(-1);
-    else if (e.key === "e" || e.key === "E") root.turnView(1);
+    if (e.key === "q" || e.key === "Q") turner.turn(-1);
+    else if (e.key === "e" || e.key === "E") turner.turn(1);
   });
   var cam = (this._cam = root.camera.cameraScript);
 
