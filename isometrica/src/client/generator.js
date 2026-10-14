@@ -18,6 +18,12 @@
 
 //pictures kept in memory at most
 var LIMIT = 128;
+
+//pictures painted ahead of being wanted - the other sides of the world than
+//the one the camera is on (client/preloader) - kept apart from the rest, so
+//as not to push out what is wanted now: so many pixels of them at most (4
+//bytes each)
+var STASH = 24e6;
 //how long after a picture failed it may be asked for again, in ms
 var RETRY = 3000;
 
@@ -36,6 +42,13 @@ function Generator(inputs) {
   this.memory = new Map();
   //how many pictures have come back
   this.painted = 0;
+  //painted ahead (ahead): those on their way, by name, how many, and those
+  //come back, kept till wanted, used longest ago first
+  this.coming = {};
+  this.comingCount = 0;
+  this.stash = new Map();
+  this.stashed = 0;
+  this.waitingCount = 0;
 }
 
 /**
@@ -47,7 +60,21 @@ function Generator(inputs) {
 Generator.prototype.load = function (sheet) {
   if (sheet.loading !== null) return sheet.loading;
 
-  var g = sheet.generated;
+  var g = sheet.generated,
+    kept = this.stash.get(g.name);
+
+  //painted ahead: there already
+  if (kept !== undefined) {
+    unstash(this, g.name);
+    sheet.image = kept.image;
+    sheet.sides = kept.sides;
+    sheet.lights = kept.lights;
+    this.memory.set(g.name, sheet);
+    trim(this);
+    sheet.loading = Promise.resolve(sheet.image);
+
+    return sheet.loading;
+  }
 
   sheet.loading = new Promise(function (resolve, reject) {
     sheet.settle = { resolve: resolve, reject: reject };
@@ -56,6 +83,11 @@ Generator.prototype.load = function (sheet) {
   sheet.loading.catch(function () {});
 
   this.waiting[g.name] = sheet;
+  this.waitingCount++;
+
+  //on its way already, painted ahead: it is taken when it comes
+  if (this.coming[g.name]) return sheet.loading;
+
   port(this).post({
     type: "paint",
     name: g.name,
@@ -68,6 +100,68 @@ Generator.prototype.load = function (sheet) {
 };
 
 /**
+ * Paints a sheet's picture ahead of its being wanted - kept apart, till it
+ * is (load) - unless it is there or on its way already, or there is no room
+ * left for it (STASH). Whether it asked.
+ */
+Generator.prototype.ahead = function (sheet) {
+  var g = sheet.generated;
+
+  if (
+    !this.roomy() ||
+    sheet.image !== null ||
+    sheet.loading !== null ||
+    this.coming[g.name] ||
+    this.stash.has(g.name)
+  )
+    return false;
+
+  this.coming[g.name] = true;
+  this.comingCount++;
+  port(this).post({
+    type: "paint",
+    name: g.name,
+    gen: g.gen,
+    key: g.key,
+    look: g.look,
+  });
+
+  return true;
+};
+
+//whether nothing wanted is being waited for
+Generator.prototype.idle = function () {
+  return this.waitingCount === 0;
+};
+
+//whether there is room for more to be painted ahead
+Generator.prototype.roomy = function () {
+  return this.stashed < STASH;
+};
+
+/**
+ * Lets go of what was painted ahead and is no longer to be - not among the
+ * names `wanted` has - to make room for what is.
+ */
+Generator.prototype.keep = function (wanted) {
+  var self = this;
+
+  Array.from(this.stash.keys()).forEach(function (name) {
+    if (!wanted[name]) {
+      self.stash.get(name).image.close();
+      unstash(self, name);
+    }
+  });
+};
+
+function unstash(self, name) {
+  var kept = self.stash.get(name);
+
+  self.stashed -= kept.image.width * kept.image.height;
+  self.stash.delete(name);
+}
+
+/**
  * Marks a sheet's picture as used just now, to be let go of last.
  */
 Generator.prototype.use = function (sheet) {
@@ -77,14 +171,29 @@ Generator.prototype.use = function (sheet) {
 };
 
 function receive(self, message) {
-  var sheet = self.waiting[message.name];
+  var sheet = self.waiting[message.name],
+    ahead = self.coming[message.name] === true;
+
+  if (ahead) {
+    delete self.coming[message.name];
+    self.comingCount--;
+  }
 
   if (sheet === undefined) {
-    if (message.image) message.image.close();
+    //painted ahead, and not wanted yet: kept till it is
+    if (ahead && message.type === "picture") {
+      self.stash.set(message.name, {
+        image: message.image,
+        sides: message.sides || 0,
+        lights: message.lights || null,
+      });
+      self.stashed += message.image.width * message.image.height;
+    } else if (message.image) message.image.close();
     return;
   }
 
   delete self.waiting[message.name];
+  self.waitingCount--;
 
   var settle = sheet.settle;
 
@@ -107,7 +216,13 @@ function receive(self, message) {
   sheet.lights = message.lights || null;
   self.memory.set(message.name, sheet);
   self.painted++;
+  trim(self);
 
+  settle.resolve(sheet.image);
+}
+
+//past limit, the pictures used longest ago let go of
+function trim(self) {
   while (self.memory.size > self.limit) {
     var oldest = self.memory.keys().next().value,
       gone = self.memory.get(oldest);
@@ -117,8 +232,6 @@ function receive(self, message) {
     gone.image = null;
     gone.loading = null;
   }
-
-  settle.resolve(sheet.image);
 }
 
 /**
@@ -174,6 +287,10 @@ function onMainThread(self, why) {
   });
 
   port.post({ type: "init", inputs: self.inputs });
+
+  //what was being painted ahead is not coming
+  self.coming = {};
+  self.comingCount = 0;
 
   Object.keys(self.waiting).forEach(function (name) {
     var g = self.waiting[name].generated;

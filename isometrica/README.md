@@ -278,6 +278,16 @@ dev`) plays them the way a game would - all three weathers together, the
   game's Vite serves that folder at `/gfx` and copies it into the game's
   build (`isometrica/vite.mjs`). After changing a generator while a dev
   server runs, run it again.
+- While nothing it draws is waiting to be painted, the worker paints ahead
+  what the camera will want once it turns (`client/preloader.js`): for
+  what is on screen - what the canvas cache drew in the last frames - the
+  same things from the sides of the world next to the one the camera is
+  on, then from the side across, then the cars' other headings, a couple
+  at a time. Which picture is which side's is in its name (`r0`-`r3`, the
+  corner and road codes turned round, a car's heading). They are kept
+  apart from what is drawn (`Generator#ahead`, up to `STASH` pixels) and
+  handed over when first wanted; those for what has gone off screen are
+  let go of, for room for what is on it.
 - The stones strewn over the land are painted too
   (`isometrica/src/shared/gen/stones.js`): a few rounded boulders to a tile -
   grey ones together in the thick of a rock field, brownish ones strewn
