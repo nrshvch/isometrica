@@ -214,6 +214,14 @@ Lighting.prototype.install = function () {
  * tick at a time.
  */
 Lighting.prototype.hour = function () {
+  return (this.clock() % 86400000) / 3600000;
+};
+
+/**
+ * The game's time, ms, going on smoothly between the clock's ticks - for
+ * the sun and the weather to change little by little, not a tick at a time.
+ */
+Lighting.prototype.clock = function () {
   var time = this.root.core.time,
     wall = performance.now();
 
@@ -222,10 +230,9 @@ Lighting.prototype.hour = function () {
     this.clockSince = wall;
   }
 
-  var on = Math.min(1, (wall - this.clockSince) / Config.tickDelay),
-    ms = time.now + on * VTime.millisecondsPerTick;
+  var on = Math.min(1, (wall - this.clockSince) / Config.tickDelay);
 
-  return (ms % 86400000) / 3600000;
+  return time.now + on * VTime.millisecondsPerTick;
 };
 
 /**
@@ -236,7 +243,7 @@ Lighting.prototype.hour = function () {
  */
 Lighting.prototype.begin = function (viewport, M) {
   hourNow = this.hour();
-  this.weather = Weather.at(this.root.core.time.now);
+  this.weather = Weather.at(this.clock());
   Wind.factor = this.weather.wind;
   this.sky = sun(hourNow);
   if (!this.plain) weatherSky(this, this.sky, this.weather, viewport);
@@ -1090,10 +1097,11 @@ var cloudAt = [0, 0],
   blowing = [0, 0];
 
 /**
- * The sky as the weather has it (client/weather): under a heavy sky the sun
- * is lost in the cloud, its light spread over all of it, grey, and there
- * are no shadows; under a lighter one, the clouds' shadows drift over the
- * city with the wind. And what more there is of it for the lighting to draw
+ * The sky as the weather has it (client/weather): the clouds' shadows drift
+ * over the city with the wind - a few big ones on a clear day, more and
+ * bigger as the sky clouds over, closing up little by little till the
+ * whole of it is under them; the light spread over all the sky, grey, more
+ * so the more of it is cloud. And what more there is of it for the lighting to draw
  * (client/glview LIT_FS): the fog, and its colour - pale by day, all but
  * black at night; how much the lamps glow in the air in a fog or the rain;
  * how much the city's lights light the sky at night, more under cloud; how
@@ -1105,8 +1113,12 @@ function weatherSky(self, sky, w, viewport) {
     dt = lastWall < 0 ? 0 : Math.min(0.1, (wall - lastWall) / 1000),
     //how light the day is, 0 at night
     day = smooth((lum(sky.ambient) - 0.12) / 0.24),
-    //how much of the sun the cloud takes
-    dim = smooth((w.cloud - 0.45) / 0.5) * 0.9 + w.fog * 0.08,
+    //how much of the sky is cloud - all of it well before it is as cloudy
+    //as it gets - and how much of the sun the fog takes
+    cover = Math.min(1, Math.max(0, (w.cloud - 0.02) / 0.78)),
+    dim = w.fog * 0.08,
+    //how heavy the sky is, for the lamps to go on by day
+    heavy = smooth((w.cloud - 0.45) / 0.5) * 0.9,
     grey = lum(sky.ambient) + lum(sky.sun) * 0.5,
     over = smooth((w.cloud - 0.1) / 0.8) * 0.9,
     dark = 1 - 0.3 * w.storm - 0.1 * w.rain,
@@ -1123,7 +1135,7 @@ function weatherSky(self, sky, w, viewport) {
 
   if (lum(sky.sun) < 0.1) sky.step = null;
 
-  gloom = day * Math.max(dim * 0.75 + w.storm * 0.3, w.fog * 0.85);
+  gloom = day * Math.max(heavy * 0.75 + w.storm * 0.3, w.fog * 0.85);
 
   //the wind, on the screen: across it and down it
   var now =
@@ -1143,7 +1155,7 @@ function weatherSky(self, sky, w, viewport) {
     });
 
   sky.weather = {
-    cloud: w.cloud * (1 - dim),
+    cloud: cover,
     cloudAt: cloudAt,
     grey: 0.4 * smooth((w.cloud - 0.3) / 0.7) + 0.12 * w.fog,
     fog: Math.min(1, w.fog * 0.95 + w.rain * 0.35),
