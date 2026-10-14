@@ -487,16 +487,18 @@ Layers.prototype.finish = function (pixels, w) {
 /**
  * The top of a picture, from how high each pixel of it stands (the red of
  * its picture of that, x0 across in pixels w wide): how high its highest
- * pixel is, and where it is - and the furthest left and right of the pixels
- * as high as that, give or take TOP_SLACK, the ends of a flat roof - x, y in
- * it, the pixel itself. Null for one with nothing standing in it.
+ * pixel is, and where it is, x, y in it - and how much higher that stands
+ * than all of the rest of it more than SPIKE_APART pixels away across: a
+ * mast standing up off a roof, a lot; the top of a roof, none. Null for one
+ * with nothing standing in it.
  *
- * @returns {{h: number, x: number, y: number, left: number[], right: number[]}|null}
+ * @returns {{h: number, x: number, y: number, spike: number}|null}
  */
-var TOP_SLACK = 2;
+var SPIKE_APART = 3;
 
 function topOf(pixels, w, x0, W, H) {
   var best = 0,
+    rest = 0,
     at = null,
     i,
     j,
@@ -513,18 +515,18 @@ function topOf(pixels, w, x0, W, H) {
 
   if (at === null) return null;
 
-  var left = at,
-    right = at;
-
   for (j = 0; j < H; j++)
     for (i = 0; i < W; i++) {
       o = (j * w + x0 + i) * 4;
-      if (pixels[o + 3] === 0 || pixels[o] < best - TOP_SLACK) continue;
-      if (i < left[0]) left = [i, j];
-      if (i > right[0]) right = [i, j];
+      if (
+        pixels[o + 3] !== 0 &&
+        pixels[o] > rest &&
+        Math.abs(i - at[0]) > SPIKE_APART
+      )
+        rest = pixels[o];
     }
 
-  return { h: best, x: at[0], y: at[1], left: left, right: right };
+  return { h: best, x: at[0], y: at[1], spike: best - rest };
 }
 
 //a part in black, on a scratch canvas - painted there rather than blacked
