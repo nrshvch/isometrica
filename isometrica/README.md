@@ -14,14 +14,23 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   the generator worker (`generator.js`).
 - `src/shared/gen` - the generators: ground, roads, buildings, trees,
   vehicles, stones, smoke - everything there is to see; nothing is drawn by
-  hand.
+  hand - and the sounds and the music (`sounds.js`, `music.js`, see Sounds
+  and Music), which share what they are made with (`dsp.js`).
 - `src/data` - what can stand in the world, and the city both games start
   on (`initialcity.js`).
 - `npm run build` writes `dist/gfx`: the manifests of what every generator
   will paint.
 - `vite.mjs` - the Vite plugin a game uses to serve and ship `dist/gfx`.
 - `lab/` - pages to look at the world without a game: `npm run dev` here
-  opens the lighting bench at `/lighting.html`.
+  opens them all from `/` - every sprite the generators paint, lit or at
+  night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
+  music at `/music.html`, and the lighting bench at `/lighting.html`.
+  Everything is painted and played in the page, nothing made beforehand.
+  `npm run build:lab` builds them into `lab/dist`, and
+  `.github/workflows/isometrica.yml` puts that up on Cloudflare Workers
+  (`wrangler.jsonc`): main → the `isometrica-lab` Worker, develop →
+  `isometrica-lab-dev`, any other branch → a Preview of it,
+  `https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev`.
 
 A game depends on it by path (`"isometrica": "file:../isometrica"`) and
 imports its modules as `isometrica/<path under src>`, e.g.
@@ -119,6 +128,93 @@ engine in `engine/`.
   which is how they cut the corner turning at a junction, swing round to
   turn back at a junction, pull over to the kerb and out again, and pull out
   round a bus at its stop.
+
+### Sounds
+
+- The sounds are made the way the pictures are, out of nothing but numbers
+  (`src/shared/gen/sounds.js`): noise and plain waves, put through filters
+  and shaped by envelopes, after Andy Farnell's Designing Sound - take a
+  sound apart into what makes it and build a small model of that - with
+  the pieces every synthesis book has (Curtis Roads' Computer Music
+  Tutorial): white, pink and brown noise, band-limited saw and square
+  waves, Robert Bristow-Johnson's two-pole filters, and a little Schroeder
+  reverb of combs and all-passes for the room, the street or the sky round
+  a sound. They are a little toony on purpose, like the pixels.
+- `thunder` - overhead, near, far off and a double strike: the crack, many
+  short N-shaped waves from along the bolt, then the sky burping - trains
+  of low pulses slowing down under rumbling noise, later and softer from
+  further along the bolt - and the long roll under them, in the open sky.
+- `horn` - beep, beep-beep, a little car's meep-meep and a bus's honk: two
+  notes a third apart, squarish, through the ring of the horn, each bending
+  up into tune as it starts, and a slap back off the buildings.
+- `siren` - the wail, the yelp and the two-tone nee-naw, through a
+  loudspeaker's horn. It loops: the pitch is tuned so a whole number of
+  cycles goes into every turn of it.
+- `forest` - birdsong, and a breezier one: wind in gusts, the leaves
+  rustling when it blows hardest, and birds - chirps, trills, a two-note
+  whistle, a warble - near and far, round the listener.
+- `sea` - calm, and rough with gulls: waves - a swell rising, the break, the
+  wash fizzing back down the beach, duller as it goes - over the surf
+  further out.
+- `city` - day and night: a town from a little way off - the roar of its
+  traffic coming and going, cars whooshing by, a hum, now and then a horn,
+  and at night a siren far off.
+- `forest`, `sea`, `city` and `siren` loop without a seam - what goes on all
+  the time is made longer than the loop and its end faded into its start;
+  what happens now and then is laid in round the loop - the rest play
+  once. `generate("thunder/2", rate)` makes one, the same every time - two
+  channels of numbers -1..1 for Web Audio's `createBuffer` - and `list()`
+  names them all. They are not in the games yet.
+- `npm run generate:sounds` writes them all out as .wav files to
+  `assets/previews/sounds` (`tools/gensounds.js`), and `lab/sounds.html`
+  (`npm run dev`) makes and plays them in the page. A 30-second loop takes
+  a second or two to make at 44.1 kHz - half that at 22.05 kHz.
+
+### Music
+
+- The music is made the way the sounds are (`src/shared/gen/music.js`):
+  slow, light, a little smoky jazz, a New York trio after hours played by a
+  band of numbers - a Rhodes comping, an upright bass, brushes and a ride
+  cymbal, and a lead that says a few things and leaves a lot of room.
+- A piece for each place - `town`, the small town in the country (a jazz
+  guitar), `city` (a muted trumpet by day, a sax by night) and `outside`,
+  the fields and woods (a flute by day, a vibraphone by night) - by `day`
+  and by `night`, the way Minecraft's music lets you feel the sun has gone
+  down: slower, darker keys, sparser, strings under it, a bigger room.
+- And each of those three ways, for the weather: `clear`; `rain` - lazy: half
+  the notes, held, laid back behind the beat, the bass on the roots, the
+  drums down to a slow brush swirl, dulled, an old tape wobbling and a
+  record crackling; and `storm` - picked up: the bass walking hard with dead
+  notes kicking in, the ride busy, crashes and a tom fill every eight bars,
+  the Rhodes stabbing the offbeats, strings shivering, the lead running
+  fills between its phrases. The three are the same tune at the same tempo,
+  sample for sample as long as each other: a game starts all three together,
+  looping, and turns up the one for the weather - it picks up or slows down
+  mid-phrase, without a seam. A rainy one is quieter than a clear one and a
+  storm louder. Every one loops without a seam.
+- After the books: the harmony a standard's - ii-V-Is, turnarounds, a
+  backdoor cadence, modal pieces for the open country - in a 32-bar AABA;
+  the Rhodes in rootless voicings, each chord's voices moving as little as
+  they can, comping on the Charleston and off the beat (Mark Levine, The
+  Jazz Piano Book); the bass walking - root on the downbeat, chord tones
+  and steps, a half step into the next root - or in two (Ed Friedland,
+  Building Walking Bass Lines); the melody a motif stated, answered,
+  restated over new chords and brought home on a long note, stepping
+  through each chord's scale and landing on its tones on the strong beats
+  (Mark Levine, The Jazz Theory Book; Gerhard Nierhaus, Algorithmic
+  Composition). The instruments: the Rhodes is Chowning's FM with the click
+  of its tine; the bass and guitar Karplus-Strong plucked strings; the
+  horns saws through formants; the vibraphone inharmonic bars and a motor's
+  tremolo; the cymbals six square waves at odd ratios, as the old drum
+  machines made theirs.
+- `generate("town/night/rain", rate)` makes one - the same every time - and
+  `list()` names all eighteen with their tempo, bars and length. A piece
+  takes three to five seconds to make at 44.1 kHz, so a game makes them in a
+  worker, ahead of when they are wanted. Not in the games yet.
+- `npm run generate:music` writes them all out as .wav files to
+  `assets/previews/music` (`tools/genmusic.js`); `lab/music.html` (`npm run
+dev`) plays them the way a game would - all three weathers together, the
+  weather buttons fading between them in time.
 
 ### Sprites
 

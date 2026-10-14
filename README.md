@@ -27,6 +27,11 @@ them all.
 
 https://peeps.land (city-sim)
 
+isometrica's lab - every sprite, sound and piece of music the generators
+make, painted and played in the page: the `isometrica-lab` Worker on the
+account's workers.dev subdomain, and a Preview of it for every branch
+(`https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev`).
+
 ### Features
 
 - Procedurally generated, endless world
@@ -47,6 +52,10 @@ https://peeps.land (city-sim)
 - Look at the world without a game - isometrica's lab pages
 
 > npm run dev:isometrica
+
+- Build the lab, to put up somewhere (into `isometrica/lab/dist`)
+
+> npm run build:lab
 
 - Build both games, each into its own `dist/`
 
