@@ -34,7 +34,7 @@
  *     the rougher one gulls;
  *   - city: a town heard from a little way off - the low roar of its
  *     traffic coming and going, cars whooshing past, a hum under it all,
- *     now and then a horn, and at night a siren far off.
+ *     now and then a horn.
  *
  * The last three loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
@@ -908,7 +908,8 @@ function gulls(rnd, variant, rate) {
 //siren is heard far off, and how loud the roar of the traffic is
 var CITIES = [
   { seconds: 30, cars: 14, horns: 3, siren: false, roar: 1 },
-  { seconds: 30, cars: 5, horns: 1, siren: true, roar: 0.6 },
+  //(no siren far off at night any more: it got on the nerves, looping)
+  { seconds: 30, cars: 5, horns: 1, siren: false, roar: 0.6 },
 ];
 
 /**
