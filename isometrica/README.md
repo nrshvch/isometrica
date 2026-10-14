@@ -22,8 +22,15 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   will paint.
 - `vite.mjs` - the Vite plugin a game uses to serve and ship `dist/gfx`.
 - `lab/` - pages to look at the world without a game: `npm run dev` here
-  opens the lighting bench at `/lighting.html`, the sounds to listen to at
-  `/sounds.html`, and the music at `/music.html`.
+  opens them all from `/` - every sprite the generators paint, lit or at
+  night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
+  music at `/music.html`, and the lighting bench at `/lighting.html`.
+  Everything is painted and played in the page, nothing made beforehand.
+  `npm run build:lab` builds them into `lab/dist`, and
+  `.github/workflows/isometrica.yml` puts that up on Cloudflare Workers
+  (`wrangler.jsonc`): main → the `isometrica-lab` Worker, develop →
+  `isometrica-lab-dev`, any other branch → a Preview of it,
+  `https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev`.
 
 A game depends on it by path (`"isometrica": "file:../isometrica"`) and
 imports its modules as `isometrica/<path under src>`, e.g.
