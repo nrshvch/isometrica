@@ -1134,7 +1134,7 @@ function weatherSky(self, sky, w, viewport) {
     cloud: w.cloud * (1 - dim),
     cloudAt: cloudAt,
     grey: 0.4 * smooth((w.cloud - 0.3) / 0.7) + 0.12 * w.fog,
-    fog: Math.min(1, w.fog * 0.75 + w.rain * 0.3),
+    fog: Math.min(1, w.fog * 0.95 + w.rain * 0.35),
     fogColor: fog,
     haze: Math.max(w.fog, w.rain * 0.7) * (1 - 0.8 * day) + 0.08 * (1 - day),
     glowSky: (1 - day) * (0.3 + 0.5 * w.cloud + 0.4 * w.fog),
