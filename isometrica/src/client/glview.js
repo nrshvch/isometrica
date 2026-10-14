@@ -500,8 +500,16 @@ const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
 //how far out from the middle of the screen to its edges the fog begins -
 //clear inside that - and where it is as thick as it gets, past the edges
 //towards the corners
-const float FOG_CLEAR = 0.45;
-const float FOG_THICK = 1.4;
+const float FOG_CLEAR = 0.3;
+const float FOG_THICK = 1.25;
+//how much of it there is round where the eye is, of what there is further
+//out; how high its layer lies at the thinnest of a bank, and how much
+//higher at the thickest, a pixel a unit; and how quickly it thickens the
+//deeper in it
+const float FOG_NEAR = 0.3;
+const float FOG_LOW = 12.0;
+const float FOG_HIGH = 60.0;
+const float FOG_DENSE = 0.045;
 
 //how many steps towards the sun a pixel looks for what stands in its way,
 //and how much higher than the way to the sun that has to be
@@ -642,7 +650,8 @@ void main() {
   }
 
   //and what shines of a building, at night
-  if (night) c += texelFetch(shine, px, 0).rgb;
+  vec3 shone = night ? texelFetch(shine, px, 0).rgb : vec3(0.0);
+  c += shone;
 
   //the lamps' light round about, blurred: near, for the glow of it in the
   //air, and wide, for how much of the city round is lit
@@ -671,17 +680,31 @@ void main() {
   //an overcast day is a grey one
   c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))), grey);
 
-  //the fog: none at all round where the eye is - the middle of the screen,
-  //the shape of it - for what is looked at to be seen clearly, coming in
-  //little by little from FOG_CLEAR of the way out to the edges, and thick
-  //by the corners; over the ground more than up a tall building, in steps,
-  //dithered; lit by the lamps in it
+  //the fog: a layer of it lying over the ground, in banks drifting with
+  //the wind - thicker here, thinner there, higher and lower. Looking down
+  //into it, the eye sees through as much of it as lies over what it looks
+  //at: the ground deep in it, a wall less of it the higher up, the tops of
+  //tall buildings standing up out of it. What lights it shows through, a
+  //glow in it - the lamps' light scattered in the air round them, and the
+  //windows; by day it is lit by the sun, warm of a morning. Thinner round
+  //where the eye is, for what is looked at not to be lost in it, coming in
+  //from FOG_CLEAR of the way out to the edges of the screen
   if (fog > 0.0) {
+    vec2 at = spot + cloudAt * 0.3;
+    float bank = noise(at / vec2(200.0, 100.0)) * 0.65 + noise(at / vec2(64.0, 32.0)) * 0.35;
+    float top = fog * (FOG_LOW + FOG_HIGH * bank);
+    float deep = max(top - h, 0.0);
     vec2 off = (gl_FragCoord.xy - size * 0.5) / (0.5 * size);
-    float f = fog * smoothstep(FOG_CLEAR, FOG_THICK, length(off)) *
-      (1.0 - 0.45 * clamp(h / 120.0, 0.0, 1.0));
-    f = min(floor(f * 12.0 + b) / 12.0, 0.92);
-    if (f > 0.0) c = mix(c, fogColor + near * haze, f);
+    float f = (1.0 - exp(-deep * FOG_DENSE * (0.5 + bank))) *
+      mix(FOG_NEAR, 1.0, smoothstep(FOG_CLEAR, FOG_THICK, length(off)));
+    //a thin veil over all of it, high up too
+    f = max(f, fog * 0.12);
+    f = min(floor(f * 12.0 + b) / 12.0, 0.88);
+
+    if (f > 0.0) {
+      vec3 air = fogColor + sunLight * 0.22;
+      c = mix(c, air, f) + (near * haze * 1.3 + shone * 0.6) * f;
+    }
   }
 
   //and in the air round a lamp, a glow, whatever the fog - in the rain
