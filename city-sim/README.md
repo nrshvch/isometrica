@@ -16,9 +16,17 @@ other games start on is built here, and handed over from the city screen.
   lanes, and the default - cobbles, or asphalt. Gravel laid next to the old
   town comes out cobbled (`isometrica/src/client/road.js` materialAt). What a road
   is laid in is kept with it, in the save.
-- Then whether it goes both ways or one way only. A one-way road looks and
-  is driven like any other, cars keeping to their lane, but nothing goes
-  against it: no car drives along it the other way, into it or out of it,
+- Then whether it goes both ways or one way only. A one-way road looks like
+  any other, but both its lanes go its way, and the traffic uses both: a car
+  coming onto it takes the emptier lane, and keeps to it but for its turns -
+  in the right lane two tiles short of a junction it turns right at, the
+  left for one it turns left at, and back in the right just short of a road
+  both ways - changing lanes only along the road, never in a junction, its
+  indicator on as it goes across. Two side by side go through a junction
+  together where their ways do not cross. Buses keep to the right for their
+  stops, and a car broken down in the left lane drives on till it can pull
+  over on the right (`isometrica/src/client/traffic.js` planLanes). Nothing
+  goes against it: no car drives along it the other way, into it or out of it,
   though one can come into it from a side road and go the way it goes, and
   leave it at a junction. It goes the way it is dragged, from the end it
   was started at on to the finger and on round every corner on the way;

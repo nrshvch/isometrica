@@ -191,15 +191,25 @@ function tileAt(x, y) {
  * it; turning round, it swings over through the middle of the road into the
  * other lane.
  *
+ * On a one-way road it can be in either lane - the right, li or lo 1, or the
+ * left, -1 - coming in and going out: changing from one to the other along a
+ * straight tile, turning from the one it is in into the one it goes out in.
+ *
  * @param din {number[]|null} the way it comes into the tile, or null for
  *        starting on it - in the lane it leaves by
  * @param dout {number[]|null} the way it leaves, or null for stopping there
  * @param [park] {boolean} stopping there at the kerb rather than in its lane
+ * @param [li] {number} the lane it comes in in, 1 or -1 - the right unless
+ *        said
+ * @param [lo] {number} and the lane it goes out in
  */
-function tileWaypoints(out, tile, din, dout, park) {
+function tileWaypoints(out, tile, din, dout, park, li, lo) {
   var x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
     r;
+
+  li = li || 1;
+  lo = lo || li;
 
   function wp(along, d, right, side) {
     out.push({
@@ -208,12 +218,14 @@ function tileWaypoints(out, tile, din, dout, park) {
       y: y + d[1] * along + right[1] * side,
       din: din,
       dout: dout,
+      li: li,
+      lo: lo,
     });
   }
 
   if (din === null) {
     r = rightOf(dout);
-    wp(0, dout, r, LANE);
+    wp(0, dout, r, LANE * lo);
     return out;
   }
 
@@ -224,9 +236,15 @@ function tileWaypoints(out, tile, din, dout, park) {
       //pulled in to the kerb from the lane, short of the middle
       wp(-0.45, din, r, LANE);
       wp(-PARK_BACK, din, r, PARK);
-    } else wp(0, din, r, LANE);
-  } else if (same(din, dout)) wp(0, din, r, LANE);
-  else if (din[0] === -dout[0] && din[1] === -dout[1]) {
+    } else wp(0, din, r, LANE * li);
+  } else if (same(din, dout)) {
+    //along it, from the one lane over to the other if it changes
+    if (li === lo) wp(0, din, r, LANE * li);
+    else {
+      wp(-0.2, din, r, LANE * li);
+      wp(0.2, din, r, LANE * lo);
+    }
+  } else if (din[0] === -dout[0] && din[1] === -dout[1]) {
     //turning round: round a half circle on past the middle
     wp(0.02, din, r, LANE);
     wp(0.17, din, r, LANE / 2);
@@ -234,10 +252,12 @@ function tileWaypoints(out, tile, din, dout, park) {
     wp(0.02, din, r, -LANE);
   } else {
     var right = same(dout, r),
-      cut = right ? 0.17 : 0.27,
+      //the turn on the inside of it - right from the right lane, left from
+      //the left - short of the middle, the other past it
+      cut = right === li > 0 ? 0.17 : 0.27,
       ro = rightOf(dout),
-      kx = (r[0] + ro[0]) * LANE,
-      ky = (r[1] + ro[1]) * LANE;
+      kx = (r[0] * li + ro[0] * lo) * LANE,
+      ky = (r[1] * li + ro[1] * lo) * LANE;
 
     out.push({
       tile: tile,
@@ -245,6 +265,8 @@ function tileWaypoints(out, tile, din, dout, park) {
       y: y + ky - din[1] * cut,
       din: din,
       dout: dout,
+      li: li,
+      lo: lo,
     });
     out.push({
       tile: tile,
@@ -252,6 +274,8 @@ function tileWaypoints(out, tile, din, dout, park) {
       y: y + ky + dout[1] * cut,
       din: din,
       dout: dout,
+      li: li,
+      lo: lo,
     });
   }
 
@@ -266,10 +290,14 @@ function tileWaypoints(out, tile, din, dout, park) {
  *        already in that lane. Without it it starts in the middle of the
  *        first tile, in the lane it leaves by.
  * @param [park] {boolean} pulling in to the kerb at the end of it
+ * @param [lanes] {boolean} false to keep to the right lane all the way, a
+ *        one-way road's too - a bus, whose stops are at the kerb
+ * @param [start] {number} the lane it is in on the first tile, 1 or -1
  */
-function routeWaypoints(route, from, park) {
+function routeWaypoints(route, from, park, lanes, start) {
   var out = [],
     last = route.length - 1,
+    L = lanes === false || park === true ? null : planLanes(route, from, start),
     i;
 
   for (i = 0; i <= last; i++)
@@ -279,9 +307,159 @@ function routeWaypoints(route, from, park) {
       i === 0 ? from || null : direction(route[i - 1], route[i]),
       i === last ? null : direction(route[i], route[i + 1]),
       park === true,
+      L === null ? 1 : L[i],
+      L === null ? 1 : i < last ? L[i + 1] : L[i],
     );
 
   return out;
+}
+
+/*
+ * A one-way road has two lanes going its way, and the traffic uses both:
+ * each car takes either as it comes onto it - at random, so the two fill
+ * alike - and keeps to it, but for its turns: LANE_AHEAD tiles short of a
+ * junction it turns right at, it is in the right lane; of one it turns left
+ * at, in the left; and short of where it comes off onto a road both ways, in
+ * the right. Turning onto one, it turns into the nearer lane - right into
+ * the right, left into the left. It changes lane only along the road, never
+ * in a junction. On any other road it keeps to the right.
+ */
+
+//the traffic, for which roads are one-way and which tiles junctions - the
+//last Traffic made
+var laneTraffic = null;
+
+//how many tiles short of where it turns a car is in the lane it turns from
+var LANE_AHEAD = 2,
+  //and how far on it looks for which lane is the emptier, coming onto it
+  LANE_LOOK = 4;
+
+function heading(d) {
+  return [Math.round(d.hx), Math.round(d.hy)];
+}
+
+function oneWayAt(tile) {
+  var road = laneTraffic.roadman.getRoad(tile);
+
+  return road !== null && Road.wayOf(road.data) >= 0;
+}
+
+/**
+ * The lane of each tile of a route as it comes into it: 1 the right, -1 the
+ * left - the left only ever on a one-way road, or a junction on one.
+ */
+function planLanes(route, from, start) {
+  var last = route.length - 1,
+    L = [],
+    i;
+
+  if (laneTraffic === null) {
+    for (i = 0; i <= last; i++) L.push(1);
+    return L;
+  }
+
+  var one = [],
+    cross = [],
+    din = [],
+    dout = [];
+
+  for (i = 0; i <= last; i++) {
+    one.push(oneWayAt(route[i]));
+    cross.push(laneTraffic.isJunction(route[i]));
+    din.push(i === 0 ? from || null : direction(route[i - 1], route[i]));
+    dout.push(i === last ? null : direction(route[i], route[i + 1]));
+  }
+
+  function turns(j) {
+    return din[j] !== null && dout[j] !== null && !same(din[j], dout[j]);
+  }
+
+  //the lane it has to be in coming into tile i, if any: for the first
+  //junction it turns at, LANE_AHEAD tiles short of it, through any it goes
+  //straight over; and for a road both ways, just short of it
+  function needAt(i) {
+    for (var j = i, along = 0; j <= Math.min(last, i + LANE_AHEAD); j++) {
+      if (cross[j]) {
+        if (turns(j)) return same(dout[j], rightOf(din[j])) ? 1 : -1;
+      } else if (!one[j]) return along === 0 ? 1 : 0;
+      else along++;
+    }
+
+    return 0;
+  }
+
+  var given = start === 1 || start === -1;
+
+  //the lane with the fewer in it from tile i a little way on - either, if
+  //they are as full as each other
+  function emptier(i) {
+    var n = 0;
+
+    for (var j = i; j <= Math.min(last, i + LANE_LOOK); j++) {
+      var here = laneTraffic.index.get(route[j]);
+
+      if (cross[j] || !one[j]) break;
+      if (here !== undefined)
+        for (var k = 0; k < here.length; k++)
+          if (!here[k].parked && same(din[j], heading(here[k])))
+            n += here[k].lane();
+    }
+
+    return n > 0 ? -1 : n < 0 ? 1 : coin();
+  }
+
+  function bothWays(j) {
+    return !one[j] && !cross[j];
+  }
+
+  function fresh(j) {
+    if (j === 0) return !given;
+
+    return (
+      bothWays(j - 1) || (cross[j - 1] && (j === 1 ? !given : bothWays(j - 2)))
+    );
+  }
+
+  L.push(!one[0] && !cross[0] ? 1 : given ? start : !cross[0] ? coin() : 1);
+
+  for (i = 0; i < last; i++) {
+    var lane = L[i],
+      next;
+
+    if (!one[i + 1] && !cross[i + 1]) next = 1;
+    else if (cross[i])
+      //straight over a junction in the lane it is in; turning, into the
+      //nearer lane of a one-way road
+      next = !turns(i)
+        ? lane
+        : one[i + 1] && !cross[i + 1] && !same(dout[i], rightOf(din[i]))
+          ? -1
+          : 1;
+    else if (!one[i])
+      //onto a one-way road off one both ways: in the right lane, to begin
+      //with
+      next = 1;
+    else {
+      var need = needAt(i + 1);
+
+      //just onto it off a road both ways - or over a junction from one -
+      //either lane, unless it has to be in one
+      next = need || (fresh(i) ? emptier(i) : lane);
+
+      //not across from one to the other in a bend, unless it turns straight
+      //after it
+      if (turns(i) && next !== lane && !(cross[i + 1] && turns(i + 1)))
+        next = lane;
+    }
+
+    L.push(next);
+  }
+
+  return L;
+}
+
+function coin() {
+  return Math.random() < 0.5 ? 1 : -1;
 }
 
 //what turning round costs a route, on top of the tile it takes: a way that
@@ -485,132 +663,133 @@ function segmentDistance(px, py, ax, ay, bx, by) {
 
 /**
  * Whether two ways through a junction tile cross: the lines they drive along
- * through it - from the edge they come in at to the one they go out at -
- * come closer than CONFLICT. Two coming in the same way never do: the one
- * behind just follows the other.
+ * through it - from the edge they come in at to the one they go out at, in
+ * the lanes they are in - come closer than CONFLICT. Two coming in the same
+ * way in the same lane never do: the one behind just follows the other.
+ * And for two that do, how far along the first it is that the two come
+ * together for the last time: past that, with all of it, it is out of the
+ * other's way. Each worked out the first time it is asked for, and kept.
  */
-//the line each way through a junction tile drives along, by way in and way
-//out (DIRS), from the middle of the tile - and for every pair of them that
-//crosses, how far along the first it is that the two come together for the
-//last time (CLEAR): past that, with all of it, it is out of the other's way
-var LINES = [],
-  CLEAR = [];
 
-var CONFLICTS = (function () {
-  var lines = LINES,
-    table = [],
-    a,
-    b,
-    c,
-    d;
+//a tile, and where its middle is
+var LINE_TILE = Terrain.convertToIndex(100, 100);
 
-  //a tile, and where its middle is
-  var tile = Terrain.convertToIndex(100, 100);
+//the line a way through a junction drives along, from the middle of the
+//tile: in by way a (DIRS) in lane li, out by way b in lane lo
+var lines = new Map();
 
-  function line(din, dout) {
-    var r = rightOf(din),
-      ro = rightOf(dout),
-      pts = [[-din[0] * 0.5 + r[0] * LANE, -din[1] * 0.5 + r[1] * LANE]];
+function lineOf(a, b, li, lo) {
+  li = li || 1;
+  lo = lo || 1;
 
-    tileWaypoints([], tile, din, dout, false).forEach(function (p) {
-      pts.push([p.x - 100, p.y - 100]);
-    });
-    pts.push([dout[0] * 0.5 + ro[0] * LANE, dout[1] * 0.5 + ro[1] * LANE]);
+  var key = a * 16 + b * 4 + (li < 0 ? 2 : 0) + (lo < 0 ? 1 : 0),
+    line = lines.get(key);
 
-    return pts;
+  if (line === undefined) {
+    var din = DIRS[a],
+      dout = DIRS[b],
+      r = rightOf(din),
+      ro = rightOf(dout);
+
+    line = [
+      [-din[0] * 0.5 + r[0] * LANE * li, -din[1] * 0.5 + r[1] * LANE * li],
+    ];
+    tileWaypoints([], LINE_TILE, din, dout, false, li, lo).forEach(
+      function (p) {
+        line.push([p.x - 100, p.y - 100]);
+      },
+    );
+    line.push([
+      dout[0] * 0.5 + ro[0] * LANE * lo,
+      dout[1] * 0.5 + ro[1] * LANE * lo,
+    ]);
+    lines.set(key, line);
   }
 
-  //how close two lines come: every so often along one, to the other
-  function apart(p, q) {
-    var best = Infinity,
-      i,
-      j,
-      k;
+  return line;
+}
 
-    for (i = 0; i + 1 < p.length; i++)
-      for (k = 0; k <= 10; k++) {
-        var mx = p[i][0] + ((p[i + 1][0] - p[i][0]) * k) / 10,
-          my = p[i][1] + ((p[i + 1][1] - p[i][1]) * k) / 10;
+//how close two lines come: every so often along one, to the other
+function apart(p, q) {
+  var best = Infinity,
+    i,
+    j,
+    k;
 
-        for (j = 0; j + 1 < q.length; j++)
-          best = Math.min(
-            best,
-            segmentDistance(mx, my, q[j][0], q[j][1], q[j + 1][0], q[j + 1][1]),
-          );
-      }
+  for (i = 0; i + 1 < p.length; i++)
+    for (k = 0; k <= 10; k++) {
+      var mx = p[i][0] + ((p[i + 1][0] - p[i][0]) * k) / 10,
+        my = p[i][1] + ((p[i + 1][1] - p[i][1]) * k) / 10;
 
-    return best;
-  }
-
-  for (a = 0; a < 4; a++) {
-    lines[a] = [];
-    for (b = 0; b < 4; b++) lines[a][b] = line(DIRS[a], DIRS[b]);
-  }
-
-  //how far along p it is that p last comes closer to q than CONFLICT
-  function lastNear(p, q) {
-    var last = -Infinity,
-      at = 0,
-      i,
-      j,
-      k;
-
-    for (i = 0; i + 1 < p.length; i++) {
-      var l = Math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]);
-
-      for (k = 0; k <= 10; k++) {
-        var mx = p[i][0] + ((p[i + 1][0] - p[i][0]) * k) / 10,
-          my = p[i][1] + ((p[i + 1][1] - p[i][1]) * k) / 10;
-
-        for (j = 0; j + 1 < q.length; j++)
-          if (
-            segmentDistance(
-              mx,
-              my,
-              q[j][0],
-              q[j][1],
-              q[j + 1][0],
-              q[j + 1][1],
-            ) < CONFLICT
-          )
-            last = at + (l * k) / 10;
-      }
-
-      at += l;
+      for (j = 0; j + 1 < q.length; j++)
+        best = Math.min(
+          best,
+          segmentDistance(mx, my, q[j][0], q[j][1], q[j + 1][0], q[j + 1][1]),
+        );
     }
 
-    return last;
-  }
+  return best;
+}
 
-  for (a = 0; a < 4; a++) {
-    table[a] = [];
-    CLEAR[a] = [];
-    for (b = 0; b < 4; b++) {
-      table[a][b] = [];
-      CLEAR[a][b] = [];
-      for (c = 0; c < 4; c++) {
-        table[a][b][c] = [];
-        CLEAR[a][b][c] = [];
-        for (d = 0; d < 4; d++) {
-          table[a][b][c][d] =
-            a !== c &&
-            Math.min(
-              apart(lines[a][b], lines[c][d]),
-              apart(lines[c][d], lines[a][b]),
-            ) < CONFLICT;
-          CLEAR[a][b][c][d] = table[a][b][c][d]
-            ? lastNear(lines[a][b], lines[c][d])
-            : -Infinity;
-        }
-      }
+//how far along p it is that p last comes closer to q than CONFLICT
+function lastNear(p, q) {
+  var last = -Infinity,
+    at = 0,
+    i,
+    j,
+    k;
+
+  for (i = 0; i + 1 < p.length; i++) {
+    var l = Math.hypot(p[i + 1][0] - p[i][0], p[i + 1][1] - p[i][1]);
+
+    for (k = 0; k <= 10; k++) {
+      var mx = p[i][0] + ((p[i + 1][0] - p[i][0]) * k) / 10,
+        my = p[i][1] + ((p[i + 1][1] - p[i][1]) * k) / 10;
+
+      for (j = 0; j + 1 < q.length; j++)
+        if (
+          segmentDistance(mx, my, q[j][0], q[j][1], q[j + 1][0], q[j + 1][1]) <
+          CONFLICT
+        )
+          last = at + (l * k) / 10;
     }
+
+    at += l;
   }
 
-  return table;
-})();
+  return last;
+}
+
+//a way through by number, its lanes and all: 0..63
+function moveKey(m) {
+  return (
+    m.i * 16 + m.o * 4 + ((m.li || 1) < 0 ? 2 : 0) + ((m.lo || 1) < 0 ? 1 : 0)
+  );
+}
+
+var pairs = new Map();
+
+//{cross, clear} for way m against way n (see above)
+function pairOf(m, n) {
+  var key = moveKey(m) * 64 + moveKey(n),
+    pair = pairs.get(key);
+
+  if (pair === undefined) {
+    var lm = lineOf(m.i, m.o, m.li, m.lo),
+      ln = lineOf(n.i, n.o, n.li, n.lo),
+      cross =
+        !(m.i === n.i && (m.li || 1) === (n.li || 1)) &&
+        Math.min(apart(lm, ln), apart(ln, lm)) < CONFLICT;
+
+    pair = { cross: cross, clear: cross ? lastNear(lm, ln) : -Infinity };
+    pairs.set(key, pair);
+  }
+
+  return pair;
+}
 
 function crosses(m, n) {
-  return CONFLICTS[m.i][m.o][n.i][n.o];
+  return pairOf(m, n).cross;
 }
 
 /**
@@ -620,16 +799,16 @@ function crosses(m, n) {
  * crosses its way to be off the junction, only out of its way.
  */
 function inWay(h, m, tile) {
-  if (!crosses(h, m)) return false;
+  var pair = pairOf(h, m);
+
+  if (!pair.cross) return false;
 
   var d = h.d,
-    line = LINES[h.i][h.o],
+    line = lineOf(h.i, h.o, h.li, h.lo),
     px = d.x - Terrain.extractX(tile),
     py = d.y - Terrain.extractY(tile);
 
-  return (
-    alongLine(line, px, py) - d.length / 2 < CLEAR[h.i][h.o][m.i][m.o] + PAST
-  );
+  return alongLine(line, px, py) - d.length / 2 < pair.clear + PAST;
 }
 
 //how far along a line through a tile the point nearest x, y is - less than
@@ -829,6 +1008,20 @@ Driver.prototype.jammedAt = function () {
  */
 Driver.prototype.here = function () {
   return tileAt(this.x, this.y);
+};
+
+/**
+ * Which lane it is in, going the way it goes: 1 the right, -1 the left - of
+ * a one-way road, where it can be in either.
+ */
+Driver.prototype.lane = function () {
+  var hx = Math.round(this.hx),
+    hy = Math.round(this.hy),
+    //how far right of the middle of the road it is (rightOf)
+    side =
+      (this.x - Math.round(this.x)) * hy - (this.y - Math.round(this.y)) * hx;
+
+  return side < -LANE / 2 ? -1 : 1;
 };
 
 /**
@@ -1248,7 +1441,12 @@ function moveOf(p) {
   var din = p.din || p.dout,
     dout = p.dout || p.din;
 
-  return { i: dirIndex(din), o: dirIndex(dout) };
+  return {
+    i: dirIndex(din),
+    o: dirIndex(dout),
+    li: p.li || 1,
+    lo: p.lo || 1,
+  };
 }
 
 /**
@@ -1548,6 +1746,8 @@ Driver.prototype.overtake = function (lead) {
 
     if (Math.abs(side) > 0.01 || fwd < at - 1e-6) return;
     if (traffic.isJunction(p.tile)) return;
+    //in the left lane of a one-way road already: nowhere to go round it
+    if ((p.li || 1) < 0 || (p.lo || 1) < 0) return;
 
     at = fwd;
 
@@ -1639,6 +1839,8 @@ Driver.prototype.canPullOver = function () {
 
   if (this.parked || this.target >= wps.length) return false;
   if (Math.abs(this.hx * hx + this.hy * hy) < 0.999) return false;
+  //over to the kerb from the right lane, not across it from the left
+  if (this.lane() < 0) return false;
 
   for (i = this.target; i < wps.length && at < need; i++) {
     var p = wps[i],
@@ -1753,7 +1955,7 @@ Driver.prototype.pullOut = function (route, park) {
     kerbed = this.parked,
     next;
 
-  next = routeWaypoints(route, d, park);
+  next = routeWaypoints(route, d, park, true, 1);
 
   //what of it is behind where it stands is left out
   while (
@@ -1798,7 +2000,7 @@ Driver.prototype.pullOut = function (route, park) {
 Driver.prototype.driveOn = function (route, stop) {
   var d = [Math.round(this.hx), Math.round(this.hy)],
     from = { tile: this.tile(), x: this.x, y: this.y, din: d, dout: d },
-    next = routeWaypoints(route, d, false);
+    next = routeWaypoints(route, d, false, false);
 
   this.setPath([from].concat(next));
   this.stopAtEnd = stop === true;
@@ -1816,6 +2018,7 @@ Driver.prototype.driveOn = function (route, stop) {
  */
 function Traffic(roadman) {
   this.roadman = roadman;
+  laneTraffic = this;
   this.drivers = [];
   //the drivers by every tile they are on, some part of them
   this.index = new Map();
@@ -2027,6 +2230,8 @@ Traffic.prototype.request = function (driver, junction, ready) {
     mine.since = driver.asked < 0 ? now : driver.asked;
     mine.i = m.i;
     mine.o = m.o;
+    mine.li = m.li;
+    mine.lo = m.lo;
     mine.at = now;
     mine.ready = ready;
     mines.push(mine);
@@ -2090,6 +2295,8 @@ Traffic.prototype.grant = function (driver, junction) {
         d: driver,
         i: junction.moves[i].i,
         o: junction.moves[i].o,
+        li: junction.moves[i].li,
+        lo: junction.moves[i].lo,
       });
     }
   }
