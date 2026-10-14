@@ -585,8 +585,10 @@ dev`) plays them the way a game would - all three weathers together, the
   (snapZoom) - and eases back to the nearest side. The engine finds the fingers where the canvas stands meanwhile, not
   where it is shown (`Viewport#restRect`).
 - A turn of the camera - two fingers twisted, or Q and E - is shown as one
-  smooth turn about a spot on the ground: between the fingers, or the
-  middle of the screen for a key (`client/turner.js`, on its own). Pictures
+  smooth turn about what is at a spot on the screen: between the fingers,
+  or the middle of it for a key - about the ground under that, however high
+  it stands, so that it keeps its place, not the ground there as if the
+  world were flat (`client/turner.js`, on its own). Pictures
   of the side the camera is on and of the sides it turns to, each taken
   zoomed out to take in half as much again as the screen shows and bare -
   no rain, no lightning, nothing drawn over the city: the grid, the
