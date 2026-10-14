@@ -15,6 +15,7 @@
     "generate:terrain": "node tools/genterrain.js",
     "generate:vehicles": "node tools/genvehicles.js",
     "generate:sounds": "node tools/gensounds.js",
+    "generate:music": "node tools/genmusic.js",
     "generate:stones": "node tools/genstones.js",
     "generate:buildings": "node tools/genbuildings.js",
     "generate:trees": "node tools/gentrees.js"
