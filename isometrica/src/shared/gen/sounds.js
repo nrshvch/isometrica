@@ -783,6 +783,124 @@ function sea(rnd, variant, rate) {
 }
 
 /* ------------------------------------------------------------------------
+ * Gulls, over the shore
+ * --------------------------------------------------------------------- */
+
+//how long a loop of each is, how many gulls cry in it, how many of them
+//laugh, and how hard the breeze off the sea blows under them
+var SHORES = [
+  { seconds: 20, cries: 7, laughs: 1, breeze: 0.5 },
+  { seconds: 20, cries: 4, laughs: 3, breeze: 0.8 },
+];
+
+/**
+ * A gull laughing: ha-ha-ha-ha - short raspy cries, quicker and lower one
+ * after another, the first a long one up high (the herring gull's "long
+ * call", toony).
+ */
+function laugh(rnd, rate) {
+  var count = 5 + Math.floor(rnd() * 5),
+    top = between(rnd, 1300, 1700),
+    parts = [],
+    total = 0,
+    c;
+
+  for (c = 0; c < count; c++) {
+    var long = c === 0 ? 0.42 : Math.max(0.09, 0.2 - c * 0.014),
+      gap = c === 0 ? 0.12 : Math.max(0.05, 0.11 - c * 0.008);
+
+    parts.push({ at: total, long: long, top: top * (1 - c * 0.035) });
+    total += long + gap;
+  }
+
+  var out = new Float32Array(Math.round(total * rate)),
+    phase = 0;
+
+  parts.forEach(function (p, k) {
+    var from = Math.round(p.at * rate),
+      len = Math.round(p.long * rate);
+
+    for (var i = 0; i < len && from + i < out.length; i++) {
+      var u = i / len,
+        //up into it and down out of it; the long first one falls further
+        f =
+          p.top *
+          (1 + 0.12 * Math.sin(Math.PI * Math.min(1, u * 1.6))) *
+          (1 - (k === 0 ? 0.35 : 0.18) * u),
+        x = 0;
+
+      phase = (phase + f / rate) % 1;
+
+      for (var h = 1; h <= 5; h++) x += Math.sin(TAU * phase * h) / h;
+
+      //rasp: the throat buzzing at ~60 Hz
+      out[from + i] =
+        x * syllable(u) * (0.65 + 0.35 * Math.sin(TAU * 62 * (i / rate)));
+    }
+  });
+
+  return out;
+}
+
+/**
+ * The shore: a breeze off the sea, and gulls crying and laughing over it,
+ * near and far, round the loop.
+ */
+function gulls(rnd, variant, rate) {
+  var sh = SHORES[variant],
+    n = Math.round(sh.seconds * rate),
+    over = Math.round(1.5 * rate),
+    gust = wander(rnd, sh.seconds, 2.5),
+    ch = [],
+    side,
+    i;
+
+  //the breeze, soft and airy
+  for (side = 0; side < 2; side++) {
+    var air = pink(seeded(seedOf("shore breeze" + variant + side))),
+      bp = new Biquad(rate, "bandpass", 500, 0.5),
+      buf = new Float32Array(n + over);
+
+    for (i = 0; i < n + over; i++) {
+      var g = gust(i / rate);
+
+      if (i % 64 === 0) bp.set("bandpass", 300 + 700 * g, 0.5);
+      buf[i] = bp.run(air()) * (0.3 + 0.7 * g) * sh.breeze * 0.5;
+    }
+
+    ch.push(seamless(buf, n, over));
+  }
+
+  var calls = [new Float32Array(n), new Float32Array(n)];
+
+  for (i = 0; i < sh.cries + sh.laughs; i++) {
+    var call = i < sh.cries ? gull(rnd, rate) : laugh(rnd, rate),
+      far = rnd(),
+      dull = new OnePole(rate, 6500 - 4500 * far);
+
+    for (var j = 0; j < call.length; j++) call[j] = dull.run(call[j]);
+
+    lay(
+      calls,
+      call,
+      Math.floor(rnd() * n),
+      between(rnd, -0.85, 0.85),
+      0.22 - 0.16 * far,
+      true,
+    );
+  }
+
+  calls = spacedStereo(calls, rate, 1.6, 0.3, 0.35, true);
+
+  for (i = 0; i < n; i++) {
+    ch[0][i] += calls[0][i];
+    ch[1][i] += calls[1][i];
+  }
+
+  return level(ch, 0.1);
+}
+
+/* ------------------------------------------------------------------------
  * The city
  * --------------------------------------------------------------------- */
 
@@ -946,6 +1064,7 @@ export var SOUNDS = {
   siren: { loop: true, make: siren, ways: ["wail", "yelp", "nee-naw"] },
   forest: { loop: true, make: forest, ways: ["birdsong", "breezy"] },
   sea: { loop: true, make: sea, ways: ["calm", "rough, gulls"] },
+  gulls: { loop: true, make: gulls, ways: ["crying", "laughing"] },
   city: { loop: true, make: city, ways: ["day", "night"] },
 };
 

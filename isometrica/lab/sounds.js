@@ -6,7 +6,7 @@
  * kept, with a picture of how loud it is along its length.
  */
 import * as Sounds from "../src/shared/gen/sounds.js";
-import { wake, audio } from "./audio.js";
+import { wake, audio } from "../src/client/audio/wake.js";
 
 var made = {},
   playing = null;
