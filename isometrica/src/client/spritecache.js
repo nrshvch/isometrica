@@ -1,6 +1,7 @@
 import CanvasCache from "./canvascache";
 import CachedSprite from "./cachedsprite";
 import Generator from "./generator";
+import Preloader from "./preloader";
 
 //Sits between the pictures the game has and the renderers that draw them.
 //
@@ -108,6 +109,8 @@ SpriteCache.prototype.load = function () {
       });
 
       self.generator = new Generator(inputs);
+      //and paints ahead what the other sides of the world will want
+      self.preloader = new Preloader(self);
     });
   });
 };
