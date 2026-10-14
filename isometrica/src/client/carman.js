@@ -4,6 +4,7 @@ import Core from "../core/main";
 import Config from "./config";
 import View from "./view";
 import Traffic from "./traffic";
+import Road from "./road";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
 import SmokeSource from "./components/smokesource";
@@ -377,6 +378,8 @@ CarScript.prototype.lost = false;
 CarScript.prototype.lostFor = 0;
 CarScript.prototype.offRoad = false;
 CarScript.prototype.sinceCheck = 0;
+//since it last saw whether it is better off in the other lane, ms
+CarScript.prototype.sinceLane = 0;
 //whether it is on the brakes (client/traffic Driver braking)
 CarScript.prototype.braking = false;
 CarScript.prototype.traffic = COMMUTER;
@@ -673,8 +676,23 @@ CarScript.prototype.findWay = function (dt) {
   if (
     roadman.getRoad(ahead) === null ||
     (look && (!wayOpen(this) || (this.lost && driver.target >= wps.length)))
-  )
+  ) {
     this.reroute();
+    return true;
+  }
+
+  //on a one-way road, into the other lane if it is better off there - but a
+  //bus keeps to the right, for its stops
+  this.sinceLane += dt;
+
+  if (
+    this.sinceLane > Traffic.Driver.LANE_EVERY &&
+    this.traffic !== SHUTTLE &&
+    !this.lost
+  ) {
+    this.sinceLane = 0;
+    driver.switchLane();
+  }
 
   return true;
 };
@@ -929,6 +947,42 @@ CarScript.prototype.extend = function () {
 
   if (route.length < 2) return;
 
+  //the rest of the way it is on - past the tile it is on and the junctions
+  //it has been let into - planned again with the new route joined on, so
+  //that it is in the lane for a turn at the start of that
+  var k = driver.target,
+    here = driver.here(),
+    tiles = [],
+    i;
+
+  while (
+    k < wps.length &&
+    (wps[k].tile === here || driver.grants.indexOf(wps[k].tile) !== -1)
+  )
+    k++;
+
+  for (i = k; i < wps.length; i++)
+    if (tiles[tiles.length - 1] !== wps[i].tile) tiles.push(wps[i].tile);
+
+  if (
+    driver.passBack === -1 &&
+    tiles.length > 0 &&
+    tiles[tiles.length - 1] === route[0] &&
+    wps[k].din !== null
+  ) {
+    driver.divert(
+      k,
+      Traffic.routeWaypoints(
+        tiles.concat(route.slice(1)),
+        wps[k].din,
+        false,
+        true,
+        wps[k].li || 1,
+      ),
+    );
+    return;
+  }
+
   //the new route starts in that same tile, the way the car came into it
   driver.extend(Traffic.routeWaypoints(route, last.din, false, true, last.lo));
 };
@@ -948,11 +1002,28 @@ CarScript.prototype.detour = function () {
   if (jam === null) return false;
 
   var outs = jam.outs,
-    first = (Math.random() * outs.length) | 0;
+    first = (Math.random() * outs.length) | 0,
+    //the lane it comes into the junction in - on a one-way road, the left
+    //for straight on or left, the right for straight on or right
+    p = driver.wps[jam.at],
+    lane = (p && p.li) || 1,
+    din = jam.din,
+    road = this.man.root.roadman.getRoad(
+      jam.tile -
+        Traffic.DIRECTIONS.find(function (e) {
+          return e[0] === din[0] && e[1] === din[1];
+        })[2],
+    ),
+    oneWay = road !== null && Road.wayOf(road.data) >= 0;
 
   for (var i = 0; i < outs.length; i++) {
     var d = outs[(first + i) % outs.length],
-      step = Traffic.DIRECTIONS.find(function (e) {
+      right = d[0] === din[1] && d[1] === -din[0],
+      left = d[0] === -din[1] && d[1] === din[0];
+
+    if ((lane < 0 && right) || (oneWay && lane > 0 && left)) continue;
+
+    var step = Traffic.DIRECTIONS.find(function (e) {
         return e[0] === d[0] && e[1] === d[1];
       })[2],
       route = this.nextRoute(jam.tile + step, d);
@@ -966,7 +1037,7 @@ CarScript.prototype.detour = function () {
         jam.din,
         false,
         true,
-        driver.lane(),
+        lane,
       ),
     );
     this.man.detours++;

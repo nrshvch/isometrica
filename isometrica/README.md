@@ -36,13 +36,25 @@ engine in `engine/`.
   speeds up again a little at a time, so a queue sets off one car after
   another rather than all at once, and nothing ever drives through anything
   else.
-- A one-way road has two lanes going its way, and both are driven: a car
-  coming onto it takes the emptier, and keeps to it but for its turns - the
-  right lane for a junction it turns right at, the left for one it turns
-  left at, the right again just short of a road both ways - changing lanes
-  along the road only, its indicator on (planLanes). Where two side by side
-  do not cross each other's way through a junction, they go through it
-  together.
+- A one-way road has two lanes going its way. A car keeps to the right one
+  whenever it can, and takes the left only to turn left - two tiles short
+  of the junction - when the right is busy, or to overtake: coming onto the
+  road, it takes the left if the right has two more in it ahead; stood in a
+  queue in the right, it goes over into the left if that is clear alongside
+  and has fewer ahead; and in the left, it goes back into the right as soon
+  as that is clear a good way ahead (planLanes, Driver#switchLane). It
+  changes lanes along the road only, never in a junction, its indicator on.
+  The next stretch of its way is joined on a few tiles before the end of
+  the one it is on, so it is in the lane for a turn at the start of it.
+  Where two side by side do not cross each other's way through a junction,
+  they go through it together. A junction is wherever three or four roads
+  meet, one-way roads coming into it counted as much as those going out -
+  and where a one-way road joins one both ways, where what is on that turns
+  round across the way of what comes off the one-way road: they take their
+  turns there as at any junction. Into a junction only with room on the
+  far side for it and for everything already let in that comes out the
+  same way, so none is left stood in the middle; and a car jammed at one
+  goes another way out only where the lane it is in goes.
 - A junction - a road tile joined three or four ways - is taken a turn at a
   time. The first car in each lane asks for it on the way up, and goes in
   once nothing in it is in its way - crossing its way (straight across, a
@@ -422,12 +434,14 @@ engine in `engine/`.
   It turns at any time, in the middle of placing a building or shaping the
   ground too: what is being placed is drawn again from the new side.
 - A pinch follows the fingers all the way (`client/cameracontrol.js`): the
-  camera zooms only by the steps pixel art stays crisp at, and in between
-  what is shown is scaled up on the page the rest of the way, about the
-  spot between the fingers; twisted, it is turned on the page with them -
-  a little bigger, to cover the screen - clicking over to the next side of
-  the world halfway there. Let go, it eases back to the nearest zoom and
-  side. The engine finds the fingers where the canvas stands meanwhile, not
+  camera zooms by steps while they move, and in between what is shown is
+  scaled up on the page the rest of the way, about the spot between the
+  fingers; twisted, it is turned on the page with them - a little bigger, to
+  cover the screen - clicking over to the next side of the world halfway
+  there. Let go, it stays at the zoom they left it at, anywhere from 0.5 to
+  2 - pulled onto 0.5, 1 or 2, where every pixel of the pixel art is the
+  same size and sharp, when within 7% of one, as it is while they move
+  (snapZoom) - and eases back to the nearest side. The engine finds the fingers where the canvas stands meanwhile, not
   where it is shown (`Viewport#restRect`).
 - The city a new player starts on (`isometrica/src/data/initialcity.js`) is built
   entirely of generated buildings - houses, blocks of flats with their
@@ -554,12 +568,13 @@ engine in `engine/`.
   the world's origin, so it stays put as the city scrolls by - and a wall is
   dithered as finely as the ground, not a column at a time: pixel art, lit
   as the world would be.
-- Anything tall - the water tower, an office block of four storeys and up,
-  a crane - has red warning lights on top, blinking every building's in its
-  own time, by day and by night: on its highest point, an aerial or a tank, and at the two
-  ends of its roof if that is about as high. Where they go is read off the
-  picture of how high each pixel of it stands (`client/cachedsprite.js`
-  topOf, `client/lighting.js` beacons).
+- What stands tall has a red warning light on top, blinking each in its own
+  time, by day and by night: an office tower on the telecom mast on its
+  roof, and the water tower - anything tall that is no home, shop nor
+  office - on its highest point. Flats and offices with nothing on the roof
+  have none. Where it goes, and whether the top is a mast standing up off
+  the roof, is read off the picture of how high each pixel of it stands
+  (`client/cachedsprite.js` topOf, `client/lighting.js` beacons).
 - Nothing fades - a light is on or off: every finished building puts a few
   of its lights on in the hour from half past eight, each at a time of its
   own, so the windows come on one by one all over the city, and more of them
