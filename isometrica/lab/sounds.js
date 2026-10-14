@@ -6,16 +6,10 @@
  * kept, with a picture of how loud it is along its length.
  */
 import * as Sounds from "../src/shared/gen/sounds.js";
+import { wake, audio } from "./audio.js";
 
-var context = null,
-  made = {},
+var made = {},
   playing = null;
-
-function audio() {
-  if (context === null) context = new AudioContext();
-
-  return context;
-}
 
 function status(text) {
   document.getElementById("status").textContent = text;
@@ -81,6 +75,9 @@ function play(entry, button, canvas) {
   stop();
 
   if (was) return;
+
+  //woken now, in the click: a phone plays nothing from a context woken later
+  wake();
 
   button.disabled = true;
   status("making " + entry.name + "...");

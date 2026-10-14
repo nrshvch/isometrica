@@ -7,6 +7,7 @@
  * seconds, in time. A new place or time fades over to its own three.
  */
 import * as Music from "../src/shared/gen/music.js";
+import { wake, audio } from "./audio.js";
 
 //made at this rate, whatever the browser plays at - Web Audio converts
 var RATE = 44100;
@@ -15,8 +16,7 @@ var RATE = 44100;
 var WEATHER_FADE = 3,
   PIECE_FADE = 4;
 
-var context = null,
-  made = {},
+var made = {},
   making = {},
   workers = [],
   next = 0,
@@ -26,12 +26,6 @@ var context = null,
 
 function status(text) {
   document.getElementById("status").innerHTML = text;
-}
-
-function audio() {
-  if (context === null) context = new AudioContext();
-
-  return context;
 }
 
 //a worker to make it, round the three of them
@@ -224,6 +218,10 @@ document.getElementById("play").onclick = function () {
   on = !on;
   this.textContent = on ? "stop" : "play";
   this.className = on ? "on" : "";
+
+  //woken now, in the click: a phone plays nothing from a context woken once
+  //the music is made
+  if (on) wake();
 
   if (on) start();
   else {
