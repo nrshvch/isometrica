@@ -6,11 +6,16 @@
  * For the while, a picture of the city is laid over the game, the game
  * going on under it unseen: the side the camera is on, and the next side it
  * turns to, each drawn once - OVER more of it than the screen shows, without
- * the rain or the lightning - and kept. Each is turned as the ground would
- * be, seen from where the camera is - a map lying on a table turned about
- * the spot in the middle of it, which keeps its place - the one going over
- * into the other halfway, blurred the more the further from either side, so
- * that what turning a flat picture cannot get right goes unseen. Over it, a
+ * the rain or the lightning - and kept, with the picture of how high each
+ * pixel of it stands. Each is laid over a mesh, every point of it lifted as
+ * high as what is there stands, and turned about the up axis through the
+ * ground in the middle of the screen, as the world would be, and drawn from
+ * where the camera looks - its own WebGL canvas: what stands up stays
+ * upright and swings round where it stands, further the taller, the ground
+ * under the middle of the screen keeps its place. The one goes over into
+ * the other halfway, blurred the more the further from either side, so that
+ * what the pictures do not show - what was behind something, drawn out over
+ * the mesh - goes unseen. Over it, a
  * ring on the ground round the middle of the screen with north marked on
  * it, and the square of ground in the middle, turning with it all - for the
  * eye to keep track of where it was looking and which way it went.
@@ -19,8 +24,9 @@
  * showing the game drawn from there.
  *
  * Nothing else of the game knows about it but that it is told when a frame
- * has been drawn and can have the weather held calm for a frame
- * (client/lighting onFrame, calm), and that the camera control drives it
+ * has been drawn, can have the weather held calm for a frame, and hands it
+ * the picture of how high things stand (client/lighting onFrame, calm,
+ * client/glview readHeights), and that the camera control drives it
  * (client/cameracontrol).
  */
 import View from "./view";
@@ -51,6 +57,94 @@ var BLUR = 3;
 var RING = 0.16,
   SQUARE = 0.025;
 
+//how many pixels of a picture apart the points of the mesh it is laid over
+//are
+var GRID = 2;
+
+//every point of the mesh: where it is on its picture, from the top left,
+//lifted as high as what is there stands - from the ground under it, turned
+//about the up axis through the ground in the middle of the picture, back
+//up and onto the screen - as near the eye as it is from there
+var MESH_VS = `#version 300 es
+precision highp float;
+
+layout(location = 0) in vec2 at;
+
+//how high each pixel stands, its rows from the bottom up (GLView
+//readHeights)
+uniform sampler2D heights;
+uniform vec2 picture;
+//the cosine and sine of how far it is turned
+uniform vec2 turn;
+//the screen, page pixels; how many of them a pixel of the world takes up;
+//and how much bigger it is shown, about where
+uniform vec2 screen;
+uniform float zoom;
+uniform float grow;
+uniform vec2 pivot;
+
+out vec2 vUv;
+
+void main() {
+  ivec2 t = clamp(ivec2(int(at.x), int(picture.y - 1.0 - at.y)), ivec2(0),
+    ivec2(picture) - 1);
+  vec4 hv = texelFetch(heights, t, 0);
+  float h = hv.a > 0.5 ? hv.r * 255.0 : 0.0;
+
+  //the ground under it, from the middle: along the world's x and y -
+  //across the screen x - y, down it (x + y) / 2
+  vec2 d = vec2(at.x, at.y + h) - picture * 0.5;
+  vec2 g = vec2(d.y + d.x * 0.5, d.y - d.x * 0.5);
+
+  g = vec2(g.x * turn.x - g.y * turn.y, g.x * turn.y + g.y * turn.x);
+
+  vec2 q = vec2(g.x - g.y, (g.x + g.y) * 0.5 - h);
+  vec2 s = pivot + (screen * 0.5 + q * zoom - pivot) * grow;
+  float depth = clamp(0.5 - (2.0 * q.y + 3.0 * h) / 16384.0, 0.0, 1.0);
+
+  gl_Position = vec4(s.x / screen.x * 2.0 - 1.0, 1.0 - s.y / screen.y * 2.0,
+    depth * 2.0 - 1.0, 1.0);
+  vUv = (at + 0.5) / picture;
+}
+`;
+
+var MESH_FS = `#version 300 es
+precision highp float;
+
+uniform sampler2D colours;
+uniform float alpha;
+
+in vec2 vUv;
+out vec4 color;
+
+void main() {
+  color = vec4(texture(colours, vUv).rgb, alpha);
+}
+`;
+
+function compile(gl, type, source) {
+  var shader = gl.createShader(type);
+
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(shader));
+
+  return shader;
+}
+
+function texture(gl) {
+  var t = gl.createTexture();
+
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  return t;
+}
+
 //where a way along the ground is on the screen - across x - y, down
 //(x + y) / 2 - and back
 function project(x, y) {
@@ -77,26 +171,6 @@ function move(x, y) {
 
 function scale(k) {
   return [k, 0, 0, k, 0, 0];
-}
-
-/**
- * The ground turned deg degrees, as it is seen: from the screen to the
- * ground (the inverse of project), turned, and back - a quarter turn the
- * way the camera turns by View +1.
- */
-function turned(deg) {
-  var a = (deg * Math.PI) / 180,
-    c = Math.cos(a),
-    s = Math.sin(a),
-    toGround = [0.5, -0.5, 1, 1, 0, 0],
-    turn = [c, s, -s, c, 0, 0],
-    toScreen = [1, 0.5, -1, 0.5, 0, 0];
-
-  return mul(toScreen, mul(turn, toGround));
-}
-
-function css(m) {
-  return "matrix(" + m.join(",") + ")";
 }
 
 function smooth(k) {
@@ -163,7 +237,7 @@ Turner.prototype.begin = function () {
 //place of the game's own canvas; over them, the ring and the square
 Turner.prototype.build = function (canvas) {
   var box = document.createElement("div"),
-    blurred = document.createElement("div"),
+    blurred = this.glCanvas || document.createElement("canvas"),
     marks = document.createElement("canvas"),
     w = canvas.offsetWidth,
     h = canvas.offsetHeight,
@@ -185,6 +259,8 @@ Turner.prototype.build = function (canvas) {
     "ms linear";
   blurred.style.cssText =
     "position:absolute;left:0;top:0;width:100%;height:100%";
+  blurred.width = w;
+  blurred.height = h;
   marks.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%";
   marks.width = Math.round(w * ratio);
   marks.height = Math.round(h * ratio);
@@ -204,9 +280,80 @@ Turner.prototype.build = function (canvas) {
 
   this.box = box;
   this.blurred = blurred;
+  if (!this.gl) this.setup(blurred);
   this.marks = marks;
   this.size = [w, h];
   this.ratio = ratio;
+};
+
+//the turner's own WebGL, on canvas: the program that draws a picture over
+//its mesh, and the meshes by the size of the picture
+Turner.prototype.setup = function (canvas) {
+  var gl = canvas.getContext("webgl2", {
+      alpha: false,
+      antialias: false,
+      depth: true,
+      premultipliedAlpha: false,
+    }),
+    p = gl.createProgram();
+
+  gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, MESH_VS));
+  gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, MESH_FS));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(p));
+
+  this.glCanvas = canvas;
+  this.gl = gl;
+  this.program = p;
+  this.meshes = {};
+};
+
+//the mesh for a picture w by h: a point every GRID pixels, two triangles
+//between every four
+Turner.prototype.mesh = function (w, h) {
+  var key = w + "x" + h,
+    m = this.meshes[key];
+
+  if (m) return m;
+
+  var gl = this.gl,
+    cols = Math.ceil((w - 1) / GRID) + 1,
+    rows = Math.ceil((h - 1) / GRID) + 1,
+    at = new Float32Array(cols * rows * 2),
+    index = new Uint32Array((cols - 1) * (rows - 1) * 6),
+    r,
+    c,
+    n = 0;
+
+  for (r = 0; r < rows; r++)
+    for (c = 0; c < cols; c++) {
+      at[(r * cols + c) * 2] = Math.min(c * GRID, w - 1);
+      at[(r * cols + c) * 2 + 1] = Math.min(r * GRID, h - 1);
+    }
+
+  for (r = 0; r + 1 < rows; r++)
+    for (c = 0; c + 1 < cols; c++) {
+      var i = r * cols + c;
+
+      index.set([i, i + 1, i + cols, i + 1, i + cols + 1, i + cols], n);
+      n += 6;
+    }
+
+  var vao = gl.createVertexArray();
+
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, at, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, index, gl.STATIC_DRAW);
+  gl.bindVertexArray(null);
+
+  m = this.meshes[key] = { vao: vao, count: n };
+
+  return m;
 };
 
 /**
@@ -264,40 +411,49 @@ Turner.prototype.turnTo = function (side) {
   this.at = side;
 };
 
-//a picture of the side the camera is on, from the frame just drawn - the
-//first, quick, of what is on the screen, for the turn to start from
+//a picture of the side the camera is on, from the frame just drawn - its
+//colours and how high each pixel of it stands - the first, quick, of what
+//is on the screen, for the turn to start from
 Turner.prototype.take = function (side) {
-  var viewport = this.viewport(),
-    source = viewport.canvas,
+  var gl = this.gl,
+    source = this.viewport().canvas,
+    heights = this.root.lighting.view.readHeights(),
     old = this.pictures[side],
-    picture = document.createElement("canvas"),
-    zoom = this.camera().zoom();
+    colours = texture(gl),
+    high = texture(gl);
 
-  picture.width = source.width;
-  picture.height = source.height;
-  picture.getContext("2d").drawImage(source, 0, 0);
-  picture.style.cssText =
-    "position:absolute;left:0;top:0;transform-origin:0 0;" +
-    (zoom > 1 ? "image-rendering:pixelated;" : "") +
-    "width:" +
-    source.width * zoom +
-    "px;height:" +
-    source.height * zoom +
-    "px";
+  gl.bindTexture(gl.TEXTURE_2D, colours);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  gl.bindTexture(gl.TEXTURE_2D, high);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    heights.w,
+    heights.h,
+    0,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    heights.data,
+  );
 
-  if (old) this.blurred.removeChild(old.el);
-  this.blurred.appendChild(picture);
+  if (old) forget(gl, old);
   this.pictures[side] = {
-    el: picture,
-    zoom: zoom,
-    w: source.width * zoom,
-    h: source.height * zoom,
+    colours: colours,
+    heights: high,
+    w: heights.w,
+    h: heights.h,
     quick: this.job !== null && this.job.quick === true,
   };
 
   this.box.style.visibility = "visible";
   this.show();
 };
+
+function forget(gl, picture) {
+  gl.deleteTexture(picture.colours);
+  gl.deleteTexture(picture.heights);
+}
 
 /**
  * How it is shown: turned deg degrees from the side it started on - +90
@@ -328,8 +484,6 @@ Turner.prototype.want = function (side) {
 Turner.prototype.show = function () {
   var w = this.size[0],
     h = this.size[1],
-    cx = w / 2,
-    cy = h / 2,
     deg = this.deg,
     k = Math.floor(deg / 90),
     t = deg / 90 - k,
@@ -341,38 +495,35 @@ Turner.prototype.show = function () {
     ),
     shown = 0;
 
-  for (var key in this.pictures) {
-    var side = +key,
-      p = this.pictures[key],
-      alpha =
-        side === k
-          ? this.pictures[k + 1]
-            ? 1 - mixed
-            : 1
-          : side === k + 1
-            ? this.pictures[k]
-              ? mixed
-              : 1
-            : 0;
+  var gl = this.gl,
+    p = this.program,
+    first = this.pictures[k] || this.pictures[k + 1],
+    second = this.pictures[k] ? this.pictures[k + 1] : null;
 
-    p.el.style.opacity = alpha;
-    if (alpha <= 0) continue;
+  gl.viewport(0, 0, w, h);
+  gl.clearColor(0.106, 0.122, 0.141, 1);
+  gl.clearDepth(1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(p);
+  gl.uniform2f(gl.getUniformLocation(p, "screen"), w, h);
+  gl.uniform1f(gl.getUniformLocation(p, "zoom"), this.zoom);
+  gl.uniform1f(gl.getUniformLocation(p, "grow"), this.grow);
+  gl.uniform2f(gl.getUniformLocation(p, "pivot"), this.pivot[0], this.pivot[1]);
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LESS);
 
+  //this side's picture, and the next side's coming in over it
+  if (first) {
+    this.draw(first, first === this.pictures[k] ? k : k + 1, 1);
     shown++;
-    //its middle on the middle of the screen, as big as the zoom it started
-    //at, turned from the side it is of
-    var m = mul(
-      pinch,
-      mul(
-        move(cx, cy),
-        mul(
-          turned(deg - side * 90),
-          mul(scale(this.zoom / p.zoom), move(-p.w / 2, -p.h / 2)),
-        ),
-      ),
-    );
+  }
 
-    p.el.style.transform = css(m);
+  if (second && mixed > 0) {
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    this.draw(second, k + 1, mixed);
+    gl.disable(gl.BLEND);
   }
 
   //blurred the more the further from either side
@@ -384,6 +535,28 @@ Turner.prototype.show = function () {
   this.mark(pinch, Math.min(1, off * 3));
 
   if (shown === 0) this.box.style.visibility = "hidden";
+};
+
+//a picture of side, over its mesh, turned from that side to where the
+//turn is
+Turner.prototype.draw = function (picture, side, alpha) {
+  var gl = this.gl,
+    p = this.program,
+    a = ((this.deg - side * 90) * Math.PI) / 180,
+    m = this.mesh(picture.w, picture.h);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, picture.heights);
+  gl.uniform1i(gl.getUniformLocation(p, "heights"), 0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, picture.colours);
+  gl.uniform1i(gl.getUniformLocation(p, "colours"), 1);
+  gl.uniform2f(gl.getUniformLocation(p, "picture"), picture.w, picture.h);
+  gl.uniform2f(gl.getUniformLocation(p, "turn"), Math.cos(a), Math.sin(a));
+  gl.uniform1f(gl.getUniformLocation(p, "alpha"), alpha);
+  gl.bindVertexArray(m.vao);
+  gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_INT, 0);
+  gl.bindVertexArray(null);
 };
 
 /**
@@ -552,6 +725,7 @@ Turner.prototype.close = function () {
     self.active = false;
   }, FADE_MS);
   this.ending = null;
+  for (var side in this.pictures) forget(this.gl, this.pictures[side]);
   this.pictures = {};
 };
 
