@@ -506,8 +506,18 @@ Lighting.prototype.light = function () {
 };
 
 //the frame is on the screen already: the canvas it is drawn on is the one
-//shown (engine Viewport)
-Lighting.prototype.end = function () {};
+//shown (engine Viewport) - and whoever waits on it told (onFrame)
+Lighting.prototype.end = function () {
+  if (this.onFrame !== null) this.onFrame();
+};
+
+//called once a frame has been drawn, while it is still there to be copied
+//(client/turner) - or null
+Lighting.prototype.onFrame = null;
+
+//whether the weather is held still - no rain falling, no lightning - for a
+//picture of the city to be taken (client/turner)
+Lighting.prototype.calm = false;
 
 /* --- Lamps ------------------------------------------------------------- */
 
@@ -1139,11 +1149,11 @@ function weatherSky(self, sky, w, viewport) {
     haze: Math.max(w.fog, w.rain * 0.7) * (1 - 0.8 * day) + 0.08 * (1 - day),
     glowSky: (1 - day) * (0.3 + 0.5 * w.cloud + 0.4 * w.fog),
     wet: w.wet,
-    rain: w.rain,
+    rain: self.calm ? 0 : w.rain,
     slant: Math.max(-0.7, Math.min(0.7, across * 0.06)),
-    flash: flash === null ? 0 : flash.bright,
+    flash: flash === null || self.calm ? 0 : flash.bright,
     bolt:
-      flash !== null && flash.bolt >= 0
+      flash !== null && flash.bolt >= 0 && !self.calm
         ? Weather.bolt(flash.bolt, viewport.width, viewport.height, GLView.BOLT)
         : null,
     time: wall / 1000,
