@@ -243,6 +243,11 @@ dev`) plays them the way a game would - all three weathers together, the
   each kind of car its own horn - a bus or a lorry honks, a van meep-meeps,
   a taxi beep-beeps - each car a little higher or lower, to the left or
   right of where it is on screen and quieter further off.
+- sirens - every police car on screen, the nearest two of them, its siren
+  going from where it is: to the left or the right, quieter further from
+  the middle and further out.
+- For now only the music and the sirens are heard: the places, the thunder
+  and the horns are kept quiet (`QUIET` in soundman.js).
 - Nothing plays until the page is touched, clicked or typed at - a browser
   plays nothing before (`audio/wake.js` wakes it in the touch, the way
   iPhones want it, and plays through the silent switch). M or the ♫ in the
@@ -572,23 +577,29 @@ dev`) plays them the way a game would - all three weathers together, the
   same size and sharp, when within 7% of one, as it is while they move
   (snapZoom) - and eases back to the nearest side. The engine finds the fingers where the canvas stands meanwhile, not
   where it is shown (`Viewport#restRect`).
-- A turn of the camera - two fingers twisted, or Q and E over 0.45 s - is
-  shown as one smooth turn about the ground in the middle of the screen,
-  though the city is only drawn from four sides (`client/turner.js`, on its
-  own): a picture of the side the camera is on and one of the next side,
-  each taken once - zoomed out to take in half as much again as the screen
-  shows, the rain and the lightning held - are laid over the game, each over
-  a mesh lifted as high as every pixel of it stands (`GLView#readHeights`)
-  and turned about the up axis, in its own WebGL canvas: what stands up
-  stays upright and swings round where it stands, the taller the further.
-  The one fades into the other halfway, blurred the more the further from
-  either side, so what the pictures cannot show - what was behind
-  something - goes unseen; a ring on the ground round the middle, north
-  marked on it, turns with it all. There is no waiting for what the game
-  has still to paint: the side the camera is on is taken again every few
-  frames, for it to come in. Let go, it settles on the nearest side and
-  fades into the game drawn from there. The game only tells it when a frame
-  is drawn and holds the weather calm for it (`Lighting#onFrame`, `calm`).
+- A turn of the camera - two fingers twisted, or Q and E - is shown as one
+  smooth turn about a spot on the ground: between the fingers, or the
+  middle of the screen for a key (`client/turner.js`, on its own). Pictures
+  of the side the camera is on and of the sides it turns to, each taken
+  zoomed out to take in half as much again as the screen shows and bare -
+  no rain, no lightning, nothing drawn over the city: the grid, the
+  borders, the names, the signs - are laid over the game, each over a mesh
+  lifted as high as every pixel of it stands (`GLView#readHeights`) and
+  turned about the up axis through that spot, in a WebGL canvas of its
+  own: what stands up stays upright and swings round where it stands, the
+  taller the further. Each side is drawn into a target of its own and the
+  two mixed, the one going over into the other halfway: where one has
+  nothing the other shows, and past the edges of both their edges are
+  drawn out. Blurred the more the further from either side, what the
+  pictures cannot show - what was behind something - goes unseen. There is
+  no waiting for what the game has still to paint: the side the camera is
+  on is taken again every few frames, for it to come in. Done, the camera
+  is put on the side it ended on and moved so that the spot it turned
+  about is where it was on the screen, and the picture fades into the game
+  drawn from there. Q and E add up: each a quarter turn more on top of
+  the one going, the turn going on till it gets there. The game only tells
+  it when a frame is drawn and draws the city bare for it
+  (`Lighting#onFrame`, `calm`, `GLView#bare`).
 - The city a new player starts on (`isometrica/src/data/initialcity.js`) is built
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the

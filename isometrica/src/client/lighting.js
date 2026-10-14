@@ -243,6 +243,7 @@ Lighting.prototype.begin = function (viewport, M) {
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
   this.lamps.length = 0;
+  this.view.bare = this.calm;
   //for the dither of what is drawn see-through to stay put with the lamps'
   this.view.origin = [Math.round(M[12]), Math.round(M[13])];
   this.view.begin(
@@ -515,8 +516,9 @@ Lighting.prototype.end = function () {
 //(client/turner) - or null
 Lighting.prototype.onFrame = null;
 
-//whether the weather is held still - no rain falling, no lightning - for a
-//picture of the city to be taken (client/turner)
+//whether the city is drawn bare - no rain falling, no lightning, nothing
+//drawn over it, the grid, the borders, the names, the signs (GLView bare) -
+//for a picture of it to be taken (client/turner)
 Lighting.prototype.calm = false;
 
 /* --- Lamps ------------------------------------------------------------- */

@@ -14,6 +14,12 @@
  *   often two cars give each other a toot going by - to the left or the
  *   right of where they are on screen, quieter further off.
  *
+ * - a police car's siren, from the car - to the left or the right of where
+ *   it is on screen, quieter further off - the nearest two of them.
+ *
+ * For now only the music and the sirens are heard (QUIET): the places, the
+ * thunder and the horns are kept quiet.
+ *
  * Nothing plays until the page is first touched, clicked or typed at - a
  * browser plays nothing before - and nothing plays with the sound off: M,
  * the speaker in the top bar (Soundman#toggle), or ?sound=off; kept in the
@@ -29,6 +35,14 @@ import Terrain from "../../core/terrain";
 import Maker from "./maker";
 import MusicPlayer from "./music";
 import { wake } from "./wake";
+
+//what is kept quiet for now
+var QUIET = { places: true, thunder: true, horns: true };
+
+//the sirens: how many are heard at once, the nearest, and how loud one is
+//in the middle of the screen
+var SIRENS_MOST = 2,
+  SIREN_LOUD = 0.3;
 
 //how loud each of them is, under everything
 var LOUD = { music: 0.42, places: 0.6, events: 0.75 };
@@ -131,6 +145,8 @@ export default function Soundman(root) {
   this.kinds = new WeakMap();
   this.kindsAt = -Infinity;
   this.land = { sea: 0, shore: 0, forest: 0, city: 0 };
+  //the sirens heard, by the driver of the police car
+  this.sirens = new Map();
   this.listeners = [];
 }
 
@@ -255,18 +271,114 @@ Soundman.prototype.frame = function () {
   if (wall - this.surveyed >= SURVEY_EVERY) {
     this.surveyed = wall;
     this.survey();
-    this.places(weather);
+    if (!QUIET.places) this.places(weather);
     this.music.update(this.place(), this.time(), weather);
   }
 
-  this.thunder(wall, weather);
+  if (!QUIET.thunder) this.thunder(wall, weather);
 
   if (wall - this.heard >= HORNS_EVERY) {
     var dt = wall - this.heard;
 
     this.heard = wall;
-    if (dt < 1000) this.horns(wall, dt);
+    if (dt < 1000 && !QUIET.horns) this.horns(wall, dt);
+    this.siren();
   }
+};
+
+/* ------------------------------------------------------------------------
+ * Sirens
+ * --------------------------------------------------------------------- */
+
+/**
+ * The police cars on screen, the nearest SIRENS_MOST of them, each with its
+ * siren going, from where it is - louder the nearer the middle of the
+ * screen and the closer in the camera is; the others' fading away.
+ */
+Soundman.prototype.siren = function () {
+  var carman = this.root.carman;
+
+  if (!carman || !carman.cars) return;
+
+  var toViewport = this.root.camera.camera.getWorldToViewport(),
+    ctx = this.context,
+    v = this.view(),
+    near = 0.5 + 0.5 * clamp((v.zoom - 0.5) / 1.5),
+    found = [],
+    self = this;
+
+  carman.cars.forEach(function (go) {
+    var car = go.car,
+      d = car && car.driver;
+
+    if (!d || car.type.name !== "police" || !d.alive || d.parked) return;
+
+    var p = self.where(d, toViewport);
+
+    if (p !== null)
+      found.push({ d: d, p: p, off: Math.sqrt(p.x * p.x + p.y * p.y) });
+  });
+
+  found.sort(function (a, b) {
+    return a.off - b.off;
+  });
+  found.length = Math.min(found.length, SIRENS_MOST);
+
+  //the ones no longer heard fade away, and stop
+  this.sirens.forEach(function (l, d) {
+    if (
+      found.some(function (f) {
+        return f.d === d;
+      })
+    )
+      return;
+
+    l.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
+    l.source.stop(ctx.currentTime + 1.5);
+    self.sirens.delete(d);
+  });
+
+  found.forEach(function (f, i) {
+    var l = self.sirens.get(f.d);
+
+    if (l === undefined) {
+      var name = "siren/" + (i % 3),
+        buf = self.maker.ready("sound", name);
+
+      if (buf === null) {
+        self.maker.get("sound", name);
+        return;
+      }
+
+      l = {
+        source: ctx.createBufferSource(),
+        gain: ctx.createGain(),
+        pan: ctx.createStereoPanner ? ctx.createStereoPanner() : null,
+      };
+      l.source.buffer = buf;
+      l.source.loop = true;
+      l.gain.gain.value = 0;
+      l.source.connect(l.gain);
+      if (l.pan) {
+        l.gain.connect(l.pan);
+        l.pan.connect(self.buses.events);
+      } else l.gain.connect(self.buses.events);
+      l.source.start(0, Math.random() * buf.duration);
+      self.sirens.set(f.d, l);
+    }
+
+    l.gain.gain.setTargetAtTime(
+      SIREN_LOUD * near * (1 - 0.6 * clamp(f.off)),
+      ctx.currentTime,
+      0.2,
+    );
+    if (l.pan)
+      l.pan.pan.setTargetAtTime(
+        Math.max(-1, Math.min(1, f.p.x * 0.8)),
+        ctx.currentTime,
+        0.1,
+      );
+  });
 };
 
 /* ------------------------------------------------------------------------

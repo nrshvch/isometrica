@@ -93,7 +93,7 @@ function onPinch(sender, e, me) {
     Math.abs(e.rotation) > TWIST_START &&
     !me.turner.active
   )
-    me.turner.begin();
+    me.turner.begin(x, y);
 
   if (me.turner.active) {
     pinch.x = x;
