@@ -584,8 +584,9 @@ engine in `engine/`.
   - under a heavy sky the sun is lost in the cloud and its light spread
     over the whole sky, grey: no shadows, colours duller; under a lighter
     one the clouds' shadows drift over the city with the wind;
-  - a fog is thin where the eye is - the middle of the screen - and thicker
-    away from it, over the ground more than up a tall building, dithered
+  - a fog leaves where the eye is clear - the middle of the screen, out to
+    almost half of the way to its edges - so what is looked at is never lost
+    in it, and comes in little by little from there, thick by the corners, over the ground more than up a tall building, dithered
     in steps; pale by day, all but black at night - and the lamps glow in
     it, their light blurred out into the air round them (the lamps' light
     is mipmapped every frame for the blur), for a noir night. Rain far off

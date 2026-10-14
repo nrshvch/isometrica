@@ -497,6 +497,12 @@ const float DAY_DIM = 0.88;
 const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
   3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 
+//how far out from the middle of the screen to its edges the fog begins -
+//clear inside that - and where it is as thick as it gets, past the edges
+//towards the corners
+const float FOG_CLEAR = 0.45;
+const float FOG_THICK = 1.4;
+
 //how many steps towards the sun a pixel looks for what stands in its way,
 //and how much higher than the way to the sun that has to be
 const int SHADOW_STEPS = 32;
@@ -665,15 +671,17 @@ void main() {
   //an overcast day is a grey one
   c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))), grey);
 
-  //the fog: thinnest where the eye is - the middle of the screen - and
-  //thicker away from it, over the ground more than up a tall building, in
-  //steps, dithered; lit by the lamps in it
+  //the fog: none at all round where the eye is - the middle of the screen,
+  //the shape of it - for what is looked at to be seen clearly, coming in
+  //little by little from FOG_CLEAR of the way out to the edges, and thick
+  //by the corners; over the ground more than up a tall building, in steps,
+  //dithered; lit by the lamps in it
   if (fog > 0.0) {
-    vec2 off = (gl_FragCoord.xy - size * 0.5) / (0.5 * min(size.x, size.y));
-    float f = fog * (0.3 + 0.7 * smoothstep(0.15, 1.3, length(off))) *
+    vec2 off = (gl_FragCoord.xy - size * 0.5) / (0.5 * size);
+    float f = fog * smoothstep(FOG_CLEAR, FOG_THICK, length(off)) *
       (1.0 - 0.45 * clamp(h / 120.0, 0.0, 1.0));
     f = min(floor(f * 12.0 + b) / 12.0, 0.92);
-    c = mix(c, fogColor + near * haze, f);
+    if (f > 0.0) c = mix(c, fogColor + near * haze, f);
   }
 
   //and in the air round a lamp, a glow, whatever the fog - in the rain
