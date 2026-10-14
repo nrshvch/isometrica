@@ -43,6 +43,9 @@ other games start on is built here, and handed over from the city screen.
   everything there is: nothing is drawn by hand. While a building is being
   placed, the dice next to turning it round picks another of the same kind
   for every footprint of the selection, the selection staying as it is.
+- The weather changes over the days - clear, overcast, fog, rain, storms -
+  shown after the time in the top bar; W goes round the kinds of it to see
+  each, and back to the game's own (`isometrica/src/client/weather.js`).
 - The city screen (a click on the money) has the city's budget, its people
   and its services - and at the bottom of it, "Download as the initial
   city": the city as it stands, as `initialcity.js`, the city every new

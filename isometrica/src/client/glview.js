@@ -435,8 +435,12 @@ void main() {
 }
 `;
 
+//how many points a bolt of lightning has (client/weather bolt)
+var BOLT = 12;
+
 var LIT_FS = `#version 300 es
 precision highp float;
+#define BOLT ${BOLT}
 
 uniform sampler2D albedo;
 uniform sampler2D normals;
@@ -460,6 +464,28 @@ uniform sampler2D heights;
 uniform sampler2D ground;
 uniform float margin;
 uniform vec3 sunStep;
+
+//the weather (client/weather): how much of the sky is cloud - its shadows
+//drifting over the city, how far they have drifted, and how grey the day
+//is for it; the fog - how thick, and its colour; how much the lamps' light
+//glows in the air, and how much the city's lights light the sky over it at
+//night; how wet the ground is, and how hard it rains, the rain slanting by
+//the wind; a flash of lightning, and the bolt of it; and the time, s, for
+//the rain to fall by
+uniform float cloud;
+uniform vec2 cloudAt;
+uniform float grey;
+uniform float fog;
+uniform vec3 fogColor;
+uniform float haze;
+uniform float glowSky;
+uniform float wet;
+uniform float rain;
+uniform float slant;
+uniform float flash;
+uniform vec2 bolt[BOLT];
+uniform bool bolted;
+uniform float time;
 
 out vec4 color;
 ${NORMAL_OF}
@@ -509,6 +535,47 @@ float shadowed(ivec2 px, vec3 n, float b) {
   return 0.0;
 }
 
+//a number 0..1 for a point, always the same for it
+float hash(vec2 p) {
+  vec3 q = fract(vec3(p.xyx) * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+
+//smooth noise 0..1 over p, a whole number apart a cell
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+//a streak of rain over the pixel at p (from the world's origin, down the
+//screen), in a layer of drops cell across and down, len long, falling
+//speed pixels a second: whether there is one
+float drop(vec2 p, vec2 cell, float len, float speed, float seed) {
+  p.y -= time * speed;
+  p.x -= time * speed * slant;
+  //slanting with the wind, a pixel across every so many down
+  p.x -= floor(p.y * slant);
+  vec2 k = floor(p / cell), f = p - k * cell;
+  if (hash(k + seed) > rain * 0.75) return 0.0;
+  float x = floor(hash(k + seed + 7.0) * cell.x),
+    y = floor(hash(k + seed + 13.0) * (cell.y - len));
+  return floor(f.x) == x && f.y >= y && f.y < y + len ? 1.0 : 0.0;
+}
+
+//how far p is from the bolt of lightning, in pixels
+float fromBolt(vec2 p) {
+  float best = 1e6;
+  for (int i = 0; i + 1 < BOLT; i++) {
+    vec2 a = bolt[i], ab = bolt[i + 1] - a;
+    float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 0.001), 0.0, 1.0);
+    best = min(best, length(p - a - ab * t));
+  }
+  return best;
+}
+
 void main() {
   ivec2 px = ivec2(gl_FragCoord.xy);
   vec3 a = texelFetch(albedo, px, 0).rgb;
@@ -517,8 +584,34 @@ void main() {
   vec2 from = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - origin;
   ivec2 g4 = ivec2(floor(from)) & 3;
   float b = (BAYER[g4.y * 4 + g4.x] + 0.5) / 16.0;
+  vec2 uv = gl_FragCoord.xy / size;
+  float h = texelFetch(heights, px, 0).r * 255.0;
+  //the ground under the pixel, from the world's origin, down the screen
+  vec2 spot = from + vec2(0.0, h);
+  //flat on the ground, and of stone, tarmac or concrete - grey - for the
+  //rain to stand on in puddles
+  bool level = n.z > 0.9 && h < 1.5;
+  float sat = max(a.r, max(a.g, a.b)) - min(a.r, min(a.g, a.b));
+  bool paved = level && sat < 0.1 && dot(a, vec3(0.3333)) < 0.7;
+  float puddle = 0.0;
+
+  //wet, everything is darker - the ground most, a road most of all - and
+  //on a road, where the rain lies in puddles, darker again
+  if (wet > 0.0) {
+    if (paved)
+      puddle = step(0.78 - 0.22 * wet + (b - 0.5) * 0.04,
+        noise(spot / vec2(26.0, 13.0)) * 0.7 + noise(spot / vec2(9.0, 4.5)) * 0.3);
+    a *= 1.0 - wet * (paved ? 0.3 + 0.2 * puddle : level ? 0.18 : 0.1);
+  }
 
   if (shadows && sun > 0.0) sun *= 1.0 - shadowed(px, n, b);
+
+  //the shadows of the clouds going over, so much of the sky as is cloud
+  if (cloud > 0.0 && sun > 0.0) {
+    float c = noise((spot + cloudAt) / vec2(260.0, 130.0)) * 0.75 +
+      noise((spot + cloudAt) / vec2(70.0, 35.0)) * 0.25;
+    sun *= 1.0 - 0.8 * step(1.0 - cloud + (b - 0.5) * 0.06, c);
+  }
 
   vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
   //what glows is as bright as its own colours, whatever the light
@@ -544,6 +637,70 @@ void main() {
 
   //and what shines of a building, at night
   if (night) c += texelFetch(shine, px, 0).rgb;
+
+  //the lamps' light round about, blurred: near, for the glow of it in the
+  //air, and wide, for how much of the city round is lit
+  vec3 near = vec3(0.0), wide = vec3(0.0);
+
+  if (haze > 0.0 || glowSky > 0.0 || wet > 0.0) {
+    near = (textureLod(light, uv, 3.0).rgb + textureLod(light, uv, 4.5).rgb) * 1.6;
+    wide = (textureLod(light, uv, 6.0).rgb + textureLod(light, uv, 8.0).rgb) * 1.6;
+  }
+
+  //at night, the city's lights light the sky over it, and the sky what is
+  //under it: lighter in the city than out in the woods, more so under cloud
+  c += a * wide * glowSky;
+
+  //a wet road shines with the lamps over it, a puddle most - their light
+  //drawn out up it, as a wet street's is
+  if (paved && wet > 0.0) {
+    vec3 r = textureLod(light, uv + vec2(0.0, 4.0 / size.y), 1.0).rgb +
+      textureLod(light, uv + vec2(0.0, 10.0 / size.y), 2.0).rgb +
+      textureLod(light, uv + vec2(0.0, 18.0 / size.y), 3.0).rgb;
+    c += r * wet * (0.35 + 0.9 * puddle);
+    //and a puddle has the grey of the sky in it - by night, all but black
+    c = mix(c, fogColor * 1.1 + r * 0.3, puddle * wet * 0.5);
+  }
+
+  //an overcast day is a grey one
+  c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))), grey);
+
+  //the fog: thinnest where the eye is - the middle of the screen - and
+  //thicker away from it, over the ground more than up a tall building, in
+  //steps, dithered; lit by the lamps in it
+  if (fog > 0.0) {
+    vec2 off = (gl_FragCoord.xy - size * 0.5) / (0.5 * min(size.x, size.y));
+    float f = fog * (0.3 + 0.7 * smoothstep(0.15, 1.3, length(off))) *
+      (1.0 - 0.45 * clamp(h / 120.0, 0.0, 1.0));
+    f = min(floor(f * 12.0 + b) / 12.0, 0.92);
+    c = mix(c, fogColor + near * haze, f);
+  }
+
+  //and in the air round a lamp, a glow, whatever the fog - in the rain
+  c += near * haze * 0.25;
+
+  //the rain: streaks of it falling, slanting in the wind - a near layer
+  //and a further one - grey by day, lit by the lamps at night; and where
+  //it hits the road, a drop splashing up
+  if (rain > 0.0) {
+    float s = drop(from, vec2(9.0, 26.0), 4.0, 210.0, 0.0) +
+      0.6 * drop(from + vec2(4.0, 11.0), vec2(6.0, 17.0), 3.0, 150.0, 31.0);
+    //by night, seen only where a lamp lights it
+    vec3 rc = fogColor * 1.15 + near * 1.8 + 0.05;
+    c = mix(c, rc, clamp(s, 0.0, 1.0) * 0.45);
+
+    if (paved && hash(floor(from) + floor(time * 9.0) * 17.0) > 1.0 - 0.006 * rain)
+      c = mix(c, rc, 0.6);
+  }
+
+  //lightning: everything lit up for a moment, and the bolt
+  if (flash > 0.0) {
+    c += flash * (a * vec3(0.45, 0.5, 0.65) + vec3(0.06, 0.07, 0.1));
+    if (bolted) {
+      float d = fromBolt(vec2(gl_FragCoord.x, size.y - gl_FragCoord.y));
+      c = mix(c, vec3(0.92, 0.94, 1.0), d < 1.0 ? 1.0 : d < 3.0 ? 0.35 * flash : 0.0);
+    }
+  }
 
   color = vec4(min(c, vec3(1.0)), 1.0);
 }
@@ -637,6 +794,14 @@ GLView.prototype.setup = function () {
     return texture2d(gl);
   });
   this.lightTex = texture2d(gl);
+  //blurred by its smaller copies (light)
+  gl.bindTexture(gl.TEXTURE_2D, this.lightTex);
+  gl.texParameteri(
+    gl.TEXTURE_2D,
+    gl.TEXTURE_MIN_FILTER,
+    gl.LINEAR_MIPMAP_LINEAR,
+  );
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   //the most that stands over every bit of the ground on the screen, and
   //round it (stamp)
   this.groundTex = texture2d(gl);
@@ -1224,6 +1389,11 @@ GLView.prototype.light = function (lamps, sky, origin) {
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, lamps.length);
       gl.disable(gl.BLEND);
     }
+
+    //smaller and smaller copies of it, for it blurred: the glow of the
+    //lamps in the fog, how lit the city is round about
+    gl.bindTexture(gl.TEXTURE_2D, this.lightTex);
+    gl.generateMipmap(gl.TEXTURE_2D);
   }
 
   var p = this.litProgram;
@@ -1245,6 +1415,7 @@ GLView.prototype.light = function (lamps, sky, origin) {
   gl.uniform3fv(gl.getUniformLocation(p, "sunLight"), sky.sun);
   gl.uniform3fv(gl.getUniformLocation(p, "sunDir"), sky.dir);
   gl.uniform1i(gl.getUniformLocation(p, "night"), this.night ? 1 : 0);
+  weather(gl, p, sky.weather || NO_WEATHER, h);
   gl.bindVertexArray(this.fullVao);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -1256,6 +1427,58 @@ GLView.prototype.light = function (lamps, sky, origin) {
     gl.ONE_MINUS_SRC_ALPHA,
   );
 };
+
+//no weather at all: a clear day, dry
+var NO_WEATHER = {
+  cloud: 0,
+  cloudAt: [0, 0],
+  grey: 0,
+  fog: 0,
+  fogColor: [0.7, 0.72, 0.75],
+  haze: 0,
+  glowSky: 0,
+  wet: 0,
+  rain: 0,
+  slant: 0,
+  flash: 0,
+  bolt: null,
+  time: 0,
+};
+
+var boltData = new Float32Array(BOLT * 2);
+
+//the weather into the lighting's uniforms (LIT_FS)
+function weather(gl, p, w) {
+  function f(name, v) {
+    gl.uniform1f(gl.getUniformLocation(p, name), v);
+  }
+
+  f("cloud", w.cloud);
+  gl.uniform2fv(gl.getUniformLocation(p, "cloudAt"), w.cloudAt);
+  f("grey", w.grey);
+  f("fog", w.fog);
+  gl.uniform3fv(gl.getUniformLocation(p, "fogColor"), w.fogColor);
+  f("haze", w.haze);
+  f("glowSky", w.glowSky);
+  f("wet", w.wet);
+  f("rain", w.rain);
+  f("slant", w.slant);
+  f("flash", w.flash);
+  f("time", w.time);
+  gl.uniform1i(gl.getUniformLocation(p, "bolted"), w.bolt ? 1 : 0);
+
+  if (w.bolt) {
+    for (var i = 0; i < BOLT; i++) {
+      var q = w.bolt[Math.min(i, w.bolt.length - 1)];
+
+      boltData[i * 2] = q[0];
+      boltData[i * 2 + 1] = q[1];
+    }
+    gl.uniform2fv(gl.getUniformLocation(p, "bolt"), boltData);
+  }
+}
+
+GLView.BOLT = BOLT;
 
 //the lamps into their buffer, LAMP_FLOATS a lamp
 GLView.prototype.uploadLamps = function (lamps) {
