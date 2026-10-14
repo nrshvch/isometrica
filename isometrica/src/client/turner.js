@@ -75,10 +75,11 @@ layout(location = 0) in vec2 at;
 //readHeights)
 uniform sampler2D heights;
 uniform vec2 picture;
-//the cosine and sine of how far it is turned; and about what, on the screen
-//as it is when it starts, page pixels
+//the cosine and sine of how far it is turned; and about what: where that is
+//on the screen as it is when it starts, page pixels, and on this picture
 uniform vec2 turn;
 uniform vec2 spot;
+uniform vec2 under;
 //the screen, page pixels; how many of them a pixel of the world takes up;
 //and how much bigger it is shown, about where
 uniform vec2 screen;
@@ -101,7 +102,6 @@ void main() {
 
   //the ground under it, from the ground under the spot: along the world's
   //x and y - across the screen x - y, down it (x + y) / 2
-  vec2 under = picture * 0.5 + (spot - screen * 0.5) / zoom;
   vec2 d = vec2(at.x, at.y + h) - under;
   vec2 g = vec2(d.y + d.x * 0.5, d.y - d.x * 0.5);
 
@@ -673,7 +673,16 @@ Turner.prototype.render = function (target, picture, side) {
   if (!picture) return;
 
   var r = ((this.deg - side * 90) * Math.PI) / 180,
-    m = this.mesh(picture.w, picture.h);
+    m = this.mesh(picture.w, picture.h),
+    //where the ground the turn is about is on this side's picture: each is
+    //taken with the camera turned about the middle of the screen (Vkaria
+    //turnView), which puts that ground elsewhere but where it is on the
+    //side it starts from
+    under = turned(
+      side * 90,
+      this.spot[0] - this.size[0] / 2,
+      this.spot[1] - this.size[1] / 2,
+    );
 
   gl.useProgram(p);
   gl.enable(gl.DEPTH_TEST);
@@ -687,6 +696,11 @@ Turner.prototype.render = function (target, picture, side) {
   gl.uniform2f(gl.getUniformLocation(p, "picture"), picture.w, picture.h);
   gl.uniform2f(gl.getUniformLocation(p, "turn"), Math.cos(r), Math.sin(r));
   gl.uniform2f(gl.getUniformLocation(p, "spot"), this.spot[0], this.spot[1]);
+  gl.uniform2f(
+    gl.getUniformLocation(p, "under"),
+    Math.floor(picture.w / 2) + under[0] / this.zoom,
+    Math.floor(picture.h / 2) + under[1] / this.zoom,
+  );
   gl.uniform2f(gl.getUniformLocation(p, "screen"), this.size[0], this.size[1]);
   gl.uniform1f(gl.getUniformLocation(p, "zoom"), this.zoom);
   gl.uniform1f(gl.getUniformLocation(p, "grow"), this.grow);
