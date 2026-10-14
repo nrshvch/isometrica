@@ -164,8 +164,8 @@ engine in `engine/`.
   wash fizzing back down the beach, duller as it goes - over the surf
   further out.
 - `city` - day and night: a town from a little way off - the roar of its
-  traffic coming and going, cars whooshing by, a hum, now and then a horn,
-  and at night a siren far off.
+  traffic coming and going, cars whooshing by, a hum, now and then a horn -
+  quieter at night.
 - `gulls` - crying, and laughing: the shore - a breeze off the sea, and
   gulls near and far, their cry falling, raspy, and the herring gull's
   long call: one high cry, then ha-ha-ha quicker and lower.
