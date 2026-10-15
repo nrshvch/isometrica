@@ -815,9 +815,10 @@ dev`) plays them the way a game would - all three weathers together, the
   holds it at one kind, and W goes round them and back to the clock's.
 - It is drawn in the one pass that lights the city (`client/glview.js`
   LIT_FS), from what client/lighting makes of it (weatherSky):
-  - the clouds' shadows drift over the city with the wind - as dark as
-    the shadow of anything else, the sun all kept off, so the shadows of
-    what stands under one go into it. The clouds are up in the sky, in two
+  - the clouds' shadows drift over the city with the wind - half as dark
+    as the shadow of anything else (`CLOUD_SHADE` in `client/glview.js`),
+    white clouds on a sunny day, so the shadows of what stands under one
+    still show in it. The clouds are up in the sky, in two
     layers not far apart (`CLOUDS` in `client/lighting.js`), the higher a
     little slower: each's shadow is as far from under it, towards the sun,
     as its height and the sun's make it - going round with the sun through

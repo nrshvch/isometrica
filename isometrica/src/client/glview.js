@@ -521,6 +521,9 @@ const vec3 CLOUD_CHANGE = vec3(90.0, 40.0, 18.0);
 const float CLOUD_EDGE = 0.83;
 //how big the clouds are, as a share of the noise they are made of
 const float CLOUD_SIZE = 1.2;
+//how much of the sun a cloud keeps off: white clouds on a sunny day, the
+//shadows of what stands under one still showing in its
+const float CLOUD_SHADE = 0.5;
 
 //how many steps towards the sun a pixel looks for what stands in its way,
 //and how much higher than the way to the sun that has to be
@@ -668,11 +671,11 @@ void main() {
 
   //the shadows of the clouds going over, so much of the sky as is cloud,
   //in two layers: big ones, ragged at the edges, growing and closing up as
-  //more of it is, till all of it is - as dark as the shadow of anything
-  //else, the sun all kept off, so that the shadows of what stands under
-  //one go into it
+  //more of it is, till all of it is - half as dark as the shadow of
+  //anything else (CLOUD_SHADE), so that the shadows of what stands under
+  //one still show in it
   if (cloud > 0.0 && sun > 0.0)
-    sun *= 1.0 - max(clouded(spot + clouds.xy, CLOUD_SIZE, 0.0, b, 0.0),
+    sun *= 1.0 - CLOUD_SHADE * max(clouded(spot + clouds.xy, CLOUD_SIZE, 0.0, b, 0.0),
       clouded(spot + clouds.zw + vec2(7919.0, 3571.0), CLOUD_SIZE * 1.15, 0.03,
         b, 5000.0));
 
