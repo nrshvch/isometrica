@@ -303,6 +303,8 @@ dev`) plays them the way a game would - all three weathers together, the
   iPhones want it, and plays through the silent switch). M or the ♫ in the
   top bar turns it off and on, kept in the browser; `?sound=off` too. It
   goes quiet while the page is out of sight.
+- Next to the ♫, the top bar shows the zoom the camera is at - ×0.5 to ×2
+  (each game's `ui/modules/topbar`), kept as it was while the world turns.
 
 ### Sprites
 
@@ -643,29 +645,35 @@ dev`) plays them the way a game would - all three weathers together, the
   it stands and however high the land it stands on is over the sea, so that
   it keeps its place, not the ground there as if the world were flat
   (`client/turner.js`, on its own). The camera itself turns about the sea's
-  level under the middle of the screen, and is moved after for that. Pictures
-  of the side the camera is on and of the sides it turns to, each taken
-  zoomed out to take in half as much again as the screen shows and bare -
+  level under the middle of the screen, and is moved for that on every
+  side - each side's picture is of what is round the spot where the turn
+  lands. Pictures of the side the camera is on and of the sides it turns
+  to, each taken zoomed out to take in half as much again as the screen
+  shows and bare - no cars (they would be elsewhere by the time it lands),
   no rain, no lightning, nothing drawn over the city: the grid, the
   borders, the names, the signs - are laid over the game, each over a mesh
   lifted as high as every pixel of it stands (`GLView#readHeights`), and
   the land under it over the sea (as cars have it, `Carman.groundHeight`),
-  turned about the up axis through that spot - found on each side's picture
-  where the camera, turned about the middle of the screen, put it - in a
-  WebGL canvas of its own: what stands up stays upright and swings round where it stands, the
+  turned about the up axis through that spot, in a WebGL canvas of its
+  own: what stands up stays upright and swings round where it stands, the
   taller the further. Each side is drawn into a target of its own and the
-  two mixed, the one going over into the other halfway: where one has
-  nothing the other shows, and past the edges of both their edges are
-  drawn out. Blurred the more the further from either side, what the
-  pictures cannot show - what was behind something - goes unseen. There is
-  no waiting for what the game has still to paint: the side the camera is
-  on is taken again every few frames, for it to come in. Done, the camera
-  is put on the side it ended on and moved so that the spot it turned
-  about is where it was on the screen, and the picture fades into the game
-  drawn from there. Q and E add up: each a quarter turn more on top of
-  the one going, the turn going on till it gets there. The game only tells
-  it when a frame is drawn and draws the city bare for it
-  (`Lighting#onFrame`, `calm`, `GLView#bare`).
+  two mixed, the one going over into the other halfway: what stands up
+  outweighs the ground, and the ground outweighs the edge of a picture
+  drawn out past it, all blurred, so that where one side's picture has
+  nothing - past its edge, or behind something, where the mesh is drawn
+  out from the top of it to the ground behind - the other's shows. Blurred
+  the more the further from either side, the rest goes unseen. Each side
+  is taken once, as it is - and once more if some of it was still to be
+  painted, once it all is. The world's chunks are held as they are while
+  it turns, none loaded nor let go of (`Tilesman#hold`), and caught up
+  with once it is over. Done, the camera is on the side it ended on, the
+  spot it turned about where it was on the screen, and the picture fades
+  into the game drawn from there. Q and E turn it quickly at first,
+  easing out as it comes round, and add up: each a quarter turn more from
+  wherever it is. The picture is laid under the buttons and the bar at the
+  top, the first of what is over the canvas. The game only tells it when a
+  frame is drawn and draws the city bare for it (`Lighting#onFrame`,
+  `calm`, `GLView#bare`).
 - The city a new player starts on (`isometrica/src/data/initialcity.js`) is built
   entirely of generated buildings - houses, blocks of flats with their
   yards, office blocks, shops and superstores - each turned to face the

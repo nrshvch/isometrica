@@ -73,10 +73,19 @@ var View = Backbone.View.extend({
         self.renderSound();
       });
 
-    //however it was switched - here, or by its key
+    //from above or from the side, however it was switched - here, or by its
+    //key
     var viewTkn = Events.on(WorldView, WorldView.events.change, function () {
       self.renderView();
     });
+
+    //the zoom the camera is at, whenever it moves or zooms
+    var camera = options.app.client.camera && options.app.client.camera.camera,
+      onCamera = function () {
+        self.renderZoom();
+      };
+
+    if (camera) camera.addEventListener(camera.events.update, onCamera);
 
     this.onDispose().once(function (s, a, self) {
       Events.off(WorldView, WorldView.events.change, viewTkn);
@@ -84,6 +93,7 @@ var View = Backbone.View.extend({
       self.city.rename().off(rnmTkn);
       self.city.update().off(updTkn);
       if (unwatch !== null) unwatch();
+      if (camera) camera.removeEventListener(camera.events.update, onCamera);
     }, this);
 
     //render all
@@ -127,6 +137,23 @@ var View = Backbone.View.extend({
 
     if (client.setTopView) client.setTopView(!WorldView.top());
   },
+  renderZoom: function () {
+    var client = this.options.app.client,
+      camera = client.camera && client.camera.camera,
+      turner = client.cameraControl && client.cameraControl.turner;
+
+    if (!camera) return;
+
+    //while the world turns, the zoom it turns at - the camera is zoomed out
+    //meanwhile for pictures of it (isometrica client/turner)
+    var zoom = turner && turner.active ? turner.zoom : camera.zoom,
+      text = "\u00d7" + +zoom.toFixed(2);
+
+    if (text !== this.zoomText) {
+      this.zoomText = text;
+      $(".zoom", this.$el).text(text);
+    }
+  },
   toggleSound: function () {
     var sound = this.options.app.client.sound;
 
@@ -145,6 +172,7 @@ var View = Backbone.View.extend({
     this.renderMoney();
     this.renderSound();
     this.renderView();
+    this.renderZoom();
   },
   dispose: function () {
     this.onDispose(this, null);

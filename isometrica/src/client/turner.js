@@ -37,31 +37,39 @@ import Config from "./config";
 //shows, across and down
 var OVER = 1.5;
 
-//how fast a turn from Q or E goes, degrees a second, at most and at the
-//end of it - and how quickly it gets up to speed, s; how long a turn takes
-//to settle on the nearest side once the fingers let go, and how long the
-//picture takes to fade into the game, ms
-var SPEED = 360,
-  SPEED_LEAST = 70,
-  SPEED_UP = 0.12,
-  SETTLE_MS = 220,
+//how long a turn from Q or E takes, ms - quick at first, easing out as it
+//comes round (a key pressed meanwhile turning it on from wherever it is,
+//as long again); how long a turn takes to settle on the nearest side once
+//the fingers let go, and how long the picture takes to fade into the game
+var TURN_MS = 600,
+  SETTLE_MS = 300,
   FADE_MS = 120;
 
 //how many frames the game is let draw after it turns, or zooms out, before
 //a picture is taken - no time to wait for whatever it has still to paint:
-//the picture of the side the camera is on is taken again every REFRESH
-//frames while the turn lasts, for what comes in late to be in it
-var WAIT = 2,
-  REFRESH = 4;
+//each side's picture is taken once, as it is then
+var WAIT = 2;
 
 //how blurred the picture is halfway between two sides, page pixels
-var BLUR = 3;
+var BLUR = 6;
 
 //how many pixels of a picture apart the points of the mesh it is laid over
 //are; and how far past its edges the flat ground drawn out from them goes,
 //as a share of it
 var GRID = 2,
   SKIRT = 0.5;
+
+//how sure a side's picture is of what it shows, for the two to be mixed by
+//(MIX_FS weight): of anything standing; of the ground; of its edge drawn
+//out past it, only where neither has anything else. How few pixels of the
+//picture to a pixel of the screen, across and down - two unturned - the
+//mesh is taken to be drawn out between something and what is behind it -
+//and how blurred the edge drawn out is, as a level of its mipmaps
+var THING = "1.0",
+  GROUND = "0.7",
+  EDGE = "0.3",
+  STRETCH = "1.0",
+  EDGE_BLUR = 5;
 
 //how many pixels of a picture apart how high the ground is under it is
 //looked up (elevations) - in between, it goes from one to the next
@@ -137,25 +145,41 @@ void main() {
 }
 `;
 
-//its colours, where there is anything: whole where there is, faint where
-//the skirt draws the edges out, nothing where there is not
+//its colours, and how sure of them it is in the alpha (MIX_FS weight): sure
+//of anything standing (THING), less of the ground (GROUND) - and nothing
+//where the mesh is drawn out between the top of something and the ground
+//behind it, steeper than STRETCH, which the other side's picture may have.
+//Past its edges, the skirt: the edge drawn out, all blurred (EDGE)
 var MESH_FS = `#version 300 es
 precision highp float;
 
 uniform sampler2D colours;
 uniform sampler2D heights;
 uniform bool skirt;
+uniform vec2 picture;
+uniform float zoom;
+uniform float grow;
 
 in vec2 vUv;
 out vec4 color;
 
 void main() {
   vec2 uv = clamp(vUv, 0.0, 1.0);
+
+  if (skirt) {
+    color = vec4(textureLod(colours, uv, ${EDGE_BLUR}.0).rgb, ${EDGE});
+    return;
+  }
+
+  //drawn out: much more of the screen than of the picture to the pixel -
+  //from the top of something to the ground behind it, turned
+  vec2 step = fwidth(vUv * picture) * zoom * grow;
+
+  if (step.x + step.y < ${STRETCH}) discard;
+
   float there = texture(heights, vec2(uv.x, 1.0 - uv.y)).a;
 
-  if (!skirt && there < 0.5) discard;
-
-  color = vec4(texture(colours, uv).rgb, skirt ? 0.5 : 1.0);
+  color = vec4(textureLod(colours, uv, 0.0).rgb, there > 0.5 ? ${THING} : ${GROUND});
 }
 `;
 
@@ -185,7 +209,7 @@ in vec2 vUv;
 out vec4 color;
 
 float weight(float alpha) {
-  return alpha > 0.75 ? 1.0 : alpha > 0.25 ? 0.01 : 0.0;
+  return alpha > 0.9 ? 1.0 : alpha > 0.5 ? 0.6 : alpha > 0.1 ? 0.01 : 0.0;
 }
 
 void main() {
@@ -317,6 +341,8 @@ Turner.prototype.begin = function (x, y) {
   this.ending = null;
   this.chase = null;
   lighting.calm = true;
+  //and the chunks of the world kept as they are till the turn is over
+  if (this.root.tilesman) this.root.tilesman.hold(true);
 
   this.build(canvas);
   lighting.onFrame = function () {
@@ -351,16 +377,10 @@ Turner.prototype.build = function (canvas) {
   view.height = h;
 
   box.appendChild(view);
-  canvas.parentNode.insertBefore(box, canvas.nextSibling);
-
-  //what stands over the canvas - the buttons, the bar at the top - kept
-  //over the picture too
-  this.raised = [].filter.call(canvas.parentNode.children, function (el) {
-    return el !== canvas && el !== box && el.style.zIndex === "";
-  });
-  this.raised.forEach(function (el) {
-    el.style.zIndex = "1";
-  });
+  //over the canvas, and under whatever stands over it - the buttons, the
+  //bar at the top: before them, the first of all that is laid out over it
+  //(which the canvas itself is not)
+  canvas.parentNode.insertBefore(box, canvas.parentNode.firstChild);
 
   this.box = box;
   this.shown = view;
@@ -532,13 +552,23 @@ Turner.prototype.frame = function () {
     this.job = { side: side, wait: WAIT };
   }
 
-  if (this.job !== null) return;
+  //all there is taken: the side the camera is on taken once more, if it was
+  //taken with some of it still to be painted, once it all is - and nothing
+  //more to do then till more is wanted, or it ends
+  var here = this.pictures[this.at];
 
-  //all there is taken: the side the camera is on again, in a while
-  if (this.ending === null && this.zoomedOut) {
-    this.job = { side: this.at, wait: REFRESH };
-    return;
+  if (
+    this.job === null &&
+    this.ending === null &&
+    here &&
+    here.missing &&
+    this.root.sprites.generator.idle()
+  ) {
+    here.missing = false;
+    this.job = { side: this.at, wait: 0, again: true };
   }
+
+  if (this.job !== null || this.ending === null) return;
 
   if (this.zoomedOut) {
     this.camera().zoom(this.zoom);
@@ -548,10 +578,35 @@ Turner.prototype.frame = function () {
   if (this.ending !== null && this.ending.settled) this.close();
 };
 
-//the camera turned to side, a quarter turn at a time from where it started
+/**
+ * The camera turned to side, a quarter turn at a time from where it started
+ * - and moved for the spot it is turned about to be where it was on the
+ * screen: it turns about the middle of the screen (Vkaria turnView), which
+ * would put that elsewhere. So each side's picture is of what is round the
+ * spot once the turn lands there, and the game is where the turn lands.
+ */
 Turner.prototype.turnTo = function (side) {
-  if (side !== this.at) this.root.turnView(side - this.at);
+  if (side === this.at) return;
+
+  var cam = this.camera(),
+    was = this.shift(this.at),
+    to = this.shift(side);
+
+  cam.pan(-was[0], -was[1]);
+  this.root.turnView(side - this.at);
+  cam.pan(to[0], to[1]);
   this.at = side;
+};
+
+//how far the camera is moved on side for the spot to be where it was,
+//pixels of the world (CameraScript pan): as much as turning about the
+//middle of the screen rather than about the spot puts it elsewhere
+Turner.prototype.shift = function (side) {
+  var dx = this.spot[0] - this.size[0] / 2,
+    dy = this.spot[1] - this.size[1] / 2,
+    seen = turned(side * 90, dx, dy);
+
+  return [(dx - seen[0]) / this.zoom, (dy - seen[1]) / this.zoom];
 };
 
 //a picture of the side the camera is on, from the frame just drawn - its
@@ -566,6 +621,13 @@ Turner.prototype.take = function (side) {
 
   gl.bindTexture(gl.TEXTURE_2D, colours);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+  //blurred too, for the edges drawn out past it (MESH_FS)
+  gl.texParameteri(
+    gl.TEXTURE_2D,
+    gl.TEXTURE_MIN_FILTER,
+    gl.LINEAR_MIPMAP_LINEAR,
+  );
+  gl.generateMipmap(gl.TEXTURE_2D);
   gl.bindTexture(gl.TEXTURE_2D, high);
   gl.texImage2D(
     gl.TEXTURE_2D,
@@ -602,6 +664,10 @@ Turner.prototype.take = function (side) {
     w: heights.w,
     h: heights.h,
     quick: this.job !== null && this.job.quick === true,
+    //with some of what is there still to be painted (frame) - once only
+    missing:
+      !(this.job !== null && this.job.again === true) &&
+      !this.root.sprites.generator.idle(),
   };
 
   this.box.style.visibility = "visible";
@@ -786,15 +852,9 @@ Turner.prototype.render = function (target, picture, side) {
 
   var r = ((this.deg - side * 90) * Math.PI) / 180,
     m = this.mesh(picture.w, picture.h),
-    //where the ground the turn is about is on this side's picture: each is
-    //taken with the camera turned about the middle of the screen (Vkaria
-    //turnView), which puts that ground elsewhere but where it is on the
-    //side it starts from
-    under = turned(
-      side * 90,
-      this.spot[0] - this.size[0] / 2,
-      this.spot[1] - this.size[1] / 2,
-    );
+    //where the ground the turn is about is on this side's picture: where it
+    //is on the screen, the camera moved for it to be (turnTo)
+    under = [this.spot[0] - this.size[0] / 2, this.spot[1] - this.size[1] / 2];
 
   gl.useProgram(p);
   gl.enable(gl.DEPTH_TEST);
@@ -857,7 +917,7 @@ Turner.prototype.end = function (zoom, x, y) {
     if (self.ending === null) return;
 
     var t = Math.min(1, (performance.now() - start) / SETTLE_MS),
-      e = 1 - (1 - t) * (1 - t);
+      e = 1 - Math.pow(1 - t, 3);
 
     self.deg = from + (to - from) * e;
     self.grow = grow + (goal - grow) * e;
@@ -883,16 +943,6 @@ Turner.prototype.close = function () {
   if (e.placed === undefined) {
     this.turnTo(e.side);
 
-    //the camera turns about the middle of the screen: moved by as much as
-    //turning about the spot instead puts everything elsewhere
-    var dx = this.spot[0] - this.size[0] / 2,
-      dy = this.spot[1] - this.size[1] / 2,
-      seen = turned(e.side * 90, dx, dy),
-      gx = dx - seen[0],
-      gy = dy - seen[1];
-
-    if (Math.abs(gx) + Math.abs(gy) > 0.5)
-      cam.pan(gx / this.zoom, gy / this.zoom);
     if (e.zoom !== undefined && e.zoom !== cam.zoom())
       cam.zoom(e.zoom, e.x / this.zoom, e.y / this.zoom);
 
@@ -907,9 +957,7 @@ Turner.prototype.close = function () {
   this.box.style.opacity = "0";
   setTimeout(function () {
     if (self.box.parentNode) self.box.parentNode.removeChild(self.box);
-    self.raised.forEach(function (el) {
-      el.style.zIndex = "";
-    });
+    if (self.root.tilesman) self.root.tilesman.hold(false);
     self.active = false;
 
     //a key pressed while it was ending: on to that
@@ -947,12 +995,16 @@ Turner.prototype.turn = function (by) {
     }
   }
 
-  if (this.chase === null) {
-    this.chase = { goal: 0, start: performance.now(), last: 0 };
-    this.run();
-  }
+  var fresh = this.chase === null;
 
+  if (fresh) this.chase = { goal: 0 };
+
+  //on from wherever it is now, to the side past the one it was going to
   this.chase.goal += by * 90;
+  this.chase.from = this.deg;
+  this.chase.start = performance.now();
+  if (fresh) this.run();
+
   //the side it turns to first, needed by halfway
   var side = Math.round(this.chase.goal / 90);
 
@@ -960,7 +1012,8 @@ Turner.prototype.turn = function (by) {
     this.queue.unshift(side);
 };
 
-//the turn from the keys going on, a frame at a time, towards its goal
+//the turn from the keys going on, a frame at a time, towards its goal: in
+//TURN_MS, quick at first and easing out as it comes round
 Turner.prototype.run = function () {
   var self = this;
 
@@ -969,17 +1022,12 @@ Turner.prototype.run = function () {
 
     if (c === null || !self.active) return;
 
-    var dt = c.last === 0 ? 1 / 60 : Math.min(0.05, (now - c.last) / 1000),
-      left = c.goal - self.deg,
-      speed =
-        Math.max(SPEED_LEAST, Math.min(SPEED, Math.abs(left) * 6)) *
-        Math.min(1, (now - c.start) / 1000 / SPEED_UP + 0.15),
-      move = Math.min(Math.abs(left), speed * dt) * Math.sign(left);
+    var t = Math.min(1, (now - c.start) / TURN_MS),
+      e = 1 - Math.pow(1 - t, 3);
 
-    c.last = now;
-    self.view(self.deg + move);
+    self.view(c.from + (c.goal - c.from) * e);
 
-    if (Math.abs(c.goal - self.deg) < 0.05) {
+    if (t >= 1) {
       self.deg = c.goal;
       self.end();
     } else requestAnimationFrame(step);
