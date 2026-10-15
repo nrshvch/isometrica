@@ -514,6 +514,12 @@ const float FOG_LOW = 12.0;
 const float FOG_HIGH = 60.0;
 const float FOG_DENSE = 0.045;
 
+//how long the clouds take to change, s - the big of them, what is on them,
+//and their edges - about as long as it takes for one to be another shape;
+//and where in the noise they make the sky clears, with no cloud at all
+const vec3 CLOUD_CHANGE = vec3(90.0, 40.0, 18.0);
+const float CLOUD_EDGE = 0.83;
+
 //how many steps towards the sun a pixel looks for what stands in its way,
 //and how much higher than the way to the sun that has to be
 const int SHADOW_STEPS = 32;
@@ -559,6 +565,26 @@ float hash(vec2 p) {
   return fract((q.x + q.y) * q.z);
 }
 
+//a number 0..1 for a point in three, always the same for it
+float hash3(vec3 p) {
+  vec3 q = fract(p * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
+}
+
+//smooth noise 0..1 over p, a whole number apart a cell - and the same
+//going on through a third (noise3), for something to change as it goes
+float noise3(vec3 p) {
+  vec3 i = floor(p), f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  vec2 e = vec2(1.0, 0.0);
+  return mix(
+    mix(mix(hash3(i), hash3(i + e.xyy), u.x),
+      mix(hash3(i + e.yxy), hash3(i + e.xxy), u.x), u.y),
+    mix(mix(hash3(i + e.yyx), hash3(i + e.xyx), u.x),
+      mix(hash3(i + e.yxx), hash3(i + e.xxx), u.x), u.y), u.z);
+}
+
 //smooth noise 0..1 over p, a whole number apart a cell
 float noise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
@@ -594,14 +620,18 @@ float fromBolt(vec2 p) {
 }
 
 //whether a cloud is over at, on a layer of them its own size and that
-//much sparser: 1 or 0, its edges dithered by b
-float clouded(vec2 at, float size, float sparser, float b) {
+//much sparser: 1 or 0, its edges dithered by b. The clouds change as they
+//go, slowly - the big of them slowest, their edges quicker - so that over a
+//while one is another shape, and some thin away to nothing while others
+//come up out of a clear sky (CLOUD_CHANGE)
+float clouded(vec2 at, float size, float sparser, float b, float seed) {
   vec2 p = at / size;
-  float c = noise(p / vec2(560.0, 280.0)) * 0.7 +
-    noise(p / vec2(150.0, 75.0)) * 0.22 +
-    noise(p / vec2(40.0, 20.0)) * 0.08;
+  float t = time + seed;
+  float c = noise3(vec3(p / vec2(560.0, 280.0), t / CLOUD_CHANGE.x)) * 0.7 +
+    noise3(vec3(p / vec2(150.0, 75.0), t / CLOUD_CHANGE.y)) * 0.22 +
+    noise3(vec3(p / vec2(40.0, 20.0), t / CLOUD_CHANGE.z)) * 0.08;
 
-  return step(0.86 - cloud * 0.95 + sparser + (b - 0.5) * 0.06, c);
+  return step(CLOUD_EDGE - cloud * 0.95 + sparser + (b - 0.5) * 0.06, c);
 }
 
 void main() {
@@ -640,8 +670,8 @@ void main() {
   //else, the sun all kept off, so that the shadows of what stands under
   //one go into it
   if (cloud > 0.0 && sun > 0.0)
-    sun *= 1.0 - max(clouded(spot + clouds.xy, 1.0, 0.0, b),
-      clouded(spot + clouds.zw + vec2(7919.0, 3571.0), 1.15, 0.03, b));
+    sun *= 1.0 - max(clouded(spot + clouds.xy, 1.0, 0.0, b, 0.0),
+      clouded(spot + clouds.zw + vec2(7919.0, 3571.0), 1.15, 0.03, b, 5000.0));
 
   vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
   //what glows is as bright as its own colours, whatever the light
