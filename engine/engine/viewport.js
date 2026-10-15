@@ -377,9 +377,13 @@ define(function (require) {
         this.canvas.width = width;
         this.canvas.height = height;
 
-        //update viewport matrix
-        this.viewportMatrix[0] = (width/2)|0;
-        this.viewportMatrix[5] = -(height/2)|0;
+        //update viewport matrix: a pixel of the world to a pixel of the
+        //screen, exactly - not a hair less across an odd number of them,
+        //which far from the world's origin puts it hundreds of pixels off
+        //where it is drawn (the lighting's dither and clouds go by it); the
+        //middle on a whole pixel all the same
+        this.viewportMatrix[0] = width / 2;
+        this.viewportMatrix[5] = -height / 2;
         this.viewportMatrix[12] = (width/2)|0;
         this.viewportMatrix[13] = (height/2)|0;
 
