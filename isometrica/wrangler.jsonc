@@ -1,0 +1,32 @@
+// isometrica's lab - every sprite, sound and piece of music the generators make, painted and
+// played in the page - a static site on Cloudflare Workers: `npm run build:lab` here → lab/dist/,
+// served as static assets (no Worker script). Deployed by .github/workflows/isometrica.yml.
+// No domain of its own: it is on the account's workers.dev subdomain.
+//
+// Top level is the "isometrica-lab-dev" Worker:
+//   push to main         → `wrangler deploy --env=`
+//   push to other branch → `wrangler preview --env= --name <branch>` → https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev
+// env.production is the "isometrica-lab" Worker:
+//   tag lab/vX.Y.Z       → `wrangler deploy --env production`
+//
+// workers_dev / preview_urls are set explicitly so a deploy never flips what's set in the dashboard.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "isometrica-lab-dev",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./lab/dist",
+  },
+  "workers_dev": true,
+  // `wrangler preview` URLs live on workers.dev and need this on.
+  "preview_urls": true,
+  // `wrangler preview` refuses to run without this block; empty means Previews reuse the settings above.
+  "previews": {},
+  "env": {
+    "production": {
+      "name": "isometrica-lab",
+      "workers_dev": true,
+      "preview_urls": false,
+    },
+  },
+}

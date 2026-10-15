@@ -6,31 +6,94 @@ Keeping it alive for historical reference only.
 
 ![Isoville](public/miniville.gif)
 
+Games played in one isometric world, in one repository. Each top folder is a
+package of its own, with its own `package.json` and build:
+
+- [`engine/`](engine) - the engine everything is drawn with, and the small
+  packages it and the games use (`events`, `namespace`,
+  `reactive-property`). `npm run build` there builds them.
+- [`isometrica/`](isometrica) - the world: terrain, buildings, roads,
+  traffic, lighting, and the generators that paint it. No game of its own.
+- [`city-sim/`](city-sim) - the city builder, at https://peeps.land.
+- [`food-rider/`](food-rider) - the delivery game.
+
+A game depends on isometrica and the engine by path
+(`"isometrica": "file:../isometrica"`) and owns everything else: its start
+up, its screens, its saves, its clock, its deploy. The root `package.json`
+only ties them together as npm workspaces, so one `npm install` installs
+them all.
+
 ### Live demo
 
-https://peeps.land
+https://peeps.land (city-sim)
+
+isometrica's lab - every sprite, sound and piece of music the generators
+make, painted and played in the page: the `isometrica-lab` Worker on the
+account's workers.dev subdomain, and a Preview of it for every branch
+(`https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev`).
 
 ### Features
 
 - Procedurally generated, endless world
-- Minimalistic hand-rolled canvas2d game engine
+- Minimalistic hand-rolled game engine, drawn in WebGL
 
 ### How to run
 
-- Install dependencies
+- Install dependencies, at the root
 
 > npm install
 
-- Start a local dev server and open the game
+- Start a game's dev server - each builds the engine and isometrica first
 
-> npm start
+> npm run dev:city-sim
 
-This runs Vite, rooted at `app/`, with the game served at `/`.
+> npm run dev:food-rider
 
-- Build an optimized bundle into `/dist`
+- Look at the world without a game - isometrica's lab pages
+
+> npm run dev:isometrica
+
+- Build the lab, to put up somewhere (into `isometrica/lab/dist`)
+
+> npm run build:lab
+
+- Build both games, each into its own `dist/`
 
 > npm run build
 
-- Preview the production build locally
+- Or one alone
 
-> npm run preview
+> npm run build:city-sim
+
+> npm run build:food-rider
+
+### Deploying
+
+Each game, and isometrica's lab, deploys on its own to Cloudflare Workers,
+from its own workflow (`.github/workflows/city-sim.yml`, `food-rider.yml`,
+`isometrica.yml`, all through `_deploy.yml`), and only when it, isometrica
+or the engine changes.
+
+main is the only long-lived branch. What runs where:
+
+| When                     | city-sim                | food-rider              | lab                     |
+| ------------------------ | ----------------------- | ----------------------- | ----------------------- |
+| push to any other branch | a preview of the branch | a preview of the branch | a preview of the branch |
+| push to main             | https://dev.peeps.land  | `food-rider-dev`        | `isometrica-lab-dev`    |
+| tag `<app>/vX.Y.Z`       | https://peeps.land      | `food-rider`            | `isometrica-lab`        |
+
+Previews are at `https://<branch>-<worker>.isometrica.workers.dev`, food-rider
+and the lab at `https://<worker>.isometrica.workers.dev`.
+
+To release one app, tag main with its name and version - Actions →
+**release** → Run workflow, or from a laptop:
+
+> git tag city-sim/v0.3.0 origin/main && git push origin city-sim/v0.3.0
+
+Only that app goes to production; the others stay on their last release.
+To roll back, run the app's workflow (Actions → city-sim → Run workflow) on
+its previous tag. To fix a release while main has moved on, branch from its
+tag, fix, tag the fix, and bring the fix back to main.
+
+The game as it was before the monorepo, v0.2.1, is on the `legacy` branch,
+at https://legacy.peeps.land.

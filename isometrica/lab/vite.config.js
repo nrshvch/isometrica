@@ -1,0 +1,34 @@
+/**
+ * The lab, built to be put up somewhere (npm run build:lab here): every page
+ * of it, into lab/dist - nothing but the pages and what they import, all of
+ * it painted and played in the page. Deployed by
+ * .github/workflows/isometrica.yml (wrangler.jsonc).
+ */
+import { defineConfig } from "vite";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+var here = path.dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig({
+  //relative, so the pages work wherever they are put up
+  base: "./",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        index: path.join(here, "index.html"),
+        sprites: path.join(here, "sprites.html"),
+        sounds: path.join(here, "sounds.html"),
+        music: path.join(here, "music.html"),
+        lighting: path.join(here, "lighting.html"),
+        traffic: path.join(here, "traffic.html"),
+      },
+    },
+  },
+  //the workers import the generators as modules
+  worker: {
+    format: "es",
+  },
+});

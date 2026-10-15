@@ -1,0 +1,44 @@
+# Build and deploy city-sim, the city builder, to Cloudflare Workers (static assets), through
+# _deploy.yml. Its Workers are defined in city-sim/wrangler.jsonc.
+#
+# - push a tag city-sim/vX.Y.Z → production, Worker "prod" (peeps.land)
+#                                (or Actions → "release" → city-sim, which tags main and runs this)
+# - push to main               → dev, Worker "dev" (dev.peeps.land)
+# - push to any other branch   → Preview on the "dev" Worker (https://<branch>-dev.isometrica.workers.dev)
+# - manual run                 → Actions → "city-sim" → Run workflow; on a city-sim/v* tag it
+#                                deploys that release to production again (a rollback)
+#
+# Branch pushes run only when city-sim, or what it is built on - isometrica, the engine - changes.
+# Tag pushes always run: GitHub does not look at `paths` for tags.
+name: city-sim
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["city-sim/v*"]
+    paths:
+      - "city-sim/**"
+      - "isometrica/**"
+      - "engine/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".nvmrc"
+      - ".github/workflows/city-sim.yml"
+      - ".github/workflows/_deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy.yml
+    secrets: inherit
+    with:
+      app: city-sim
+      directory: city-sim
+      build: npm run build -w city-sim
+      target: ${{ startsWith(github.ref, 'refs/tags/city-sim/v') && 'production' || github.ref == 'refs/heads/main' && 'dev' || 'preview' }}
+      production-site: https://peeps.land/
+      dev-site: https://dev.peeps.land/
