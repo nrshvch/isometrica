@@ -46,6 +46,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Traffic testbed
+        run: npm run test:traffic -w isometrica
+
       - name: Build
         run: npm run build:lab -w isometrica
 

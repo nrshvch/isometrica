@@ -9,6 +9,7 @@ import engine from "engine";
 import RenderLayer from "./renderlayer";
 import Config from "./config";
 import Core from "../core/main";
+import * as RoadRules from "../core/roadrules";
 import View from "./view";
 import Lighting from "./lighting";
 import WorkLights from "./worklights";
@@ -179,7 +180,7 @@ function setPiece(renderer, name) {
 
 //added to a road's piece number for the paved one (see Road.profile) - and
 //twice and three times over for gravel and for cobbles: what it is laid in
-var Road_PAVED = 100000,
+var Road_PAVED = RoadRules.PAVED,
   KINDS = ["plain", "paved", "gravel", "cobble", "stop", "dug", "bed"];
 
 //and for a one-way road, this more for each of the way it goes + 1 (client/
