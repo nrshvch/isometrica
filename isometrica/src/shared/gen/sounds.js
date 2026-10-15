@@ -34,9 +34,11 @@
  *     the rougher one gulls;
  *   - city: a town heard from a little way off - the low roar of its
  *     traffic coming and going, cars whooshing past, a hum under it all,
- *     now and then a horn.
+ *     now and then a horn;
+ *   - skyline: a real city heard from high above it, not a cartoon of one
+ *     - its own models, in skyline.js.
  *
- * The last three loop, seamlessly: what goes on in them all the time is made
+ * The last four loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
  * happens now and then - a bird, a wave, a car - is laid in round the loop,
  * so whatever runs over the end of it comes in again at the start.
@@ -69,6 +71,7 @@ import {
   peak,
   level,
 } from "./dsp.js";
+import { SKYLINE } from "./skyline.js";
 
 //how many samples a second, unless asked for another rate
 export var RATE = 44100;
@@ -1067,6 +1070,7 @@ export var SOUNDS = {
   sea: { loop: true, make: sea, ways: ["calm", "rough, gulls"] },
   gulls: { loop: true, make: gulls, ways: ["crying", "laughing"] },
   city: { loop: true, make: city, ways: ["day", "night"] },
+  skyline: SKYLINE,
 };
 
 /**
