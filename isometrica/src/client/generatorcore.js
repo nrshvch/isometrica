@@ -38,9 +38,10 @@ GeneratorCore.prototype.init = function (message) {
 };
 
 /**
- * Answers with {type: "picture", name, image, sides} - an ImageBitmap,
- * handed over, and for a picture of pictures side by side which of them have
- * anything in them but black (see sides) - or {type: "failed", name, error}.
+ * Answers with {type: "picture", name, width, height, data, sides, lights} -
+ * its pixels, RGBA, handed over, and for a picture of pictures side by side
+ * which of them have anything in them but black (see sides) - or {type:
+ * "failed", name, error}.
  *
  * @param message {{name: string, gen: string, key: string, look: string}}
  *        the sprite, how its generator knows it, and how it is painted if not
@@ -58,27 +59,24 @@ GeneratorCore.prototype.paint = function (message) {
       if (message.look) sides = sidesOf(painted, SECTIONS[message.look] || 1);
       if (message.look === "night") lights = lightsOf(painted);
 
-      return createImageBitmap(
-        new ImageData(
-          new Uint8ClampedArray(painted.data),
-          painted.width,
-          painted.height,
-        ),
+      //a copy of its own, handed over: the generator may keep what it painted
+      var data = new Uint8ClampedArray(painted.data);
+
+      self.post(
+        {
+          type: "picture",
+          name: name,
+          width: painted.width,
+          height: painted.height,
+          data: data,
+          sides: sides,
+          lights: lights,
+        },
+        [data.buffer],
       );
     })
     .then(
-      function (image) {
-        self.post(
-          {
-            type: "picture",
-            name: name,
-            image: image,
-            sides: sides,
-            lights: lights,
-          },
-          [image],
-        );
-      },
+      function () {},
       function (e) {
         self.post({ type: "failed", name: name, error: String(e) }, []);
       },
