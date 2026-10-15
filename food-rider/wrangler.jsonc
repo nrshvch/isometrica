@@ -2,10 +2,10 @@
 // Deployed by .github/workflows/food-rider.yml. No domain of its own yet: it is on the account's workers.dev subdomain.
 //
 // Top level is the "food-rider-dev" Worker:
-//   push to develop      → `wrangler deploy --env=`
-//   push to other branch → `wrangler preview --env= --name <branch>` → https://<branch>-food-rider-dev.<subdomain>.workers.dev
+//   push to main           → `wrangler deploy --env=`
+//   push to other branch   → `wrangler preview --env= --name <branch>` → https://<branch>-food-rider-dev.<subdomain>.workers.dev
 // env.production is the "food-rider" Worker:
-//   push to main         → `wrangler deploy --env production`
+//   tag food-rider/vX.Y.Z  → `wrangler deploy --env production`
 //
 // workers_dev / preview_urls are set explicitly so a deploy never flips what's set in the dashboard.
 {

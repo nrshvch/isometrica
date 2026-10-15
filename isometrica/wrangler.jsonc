@@ -4,10 +4,10 @@
 // No domain of its own: it is on the account's workers.dev subdomain.
 //
 // Top level is the "isometrica-lab-dev" Worker:
-//   push to develop      → `wrangler deploy --env=`
+//   push to main         → `wrangler deploy --env=`
 //   push to other branch → `wrangler preview --env= --name <branch>` → https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev
 // env.production is the "isometrica-lab" Worker:
-//   push to main         → `wrangler deploy --env production`
+//   tag lab/vX.Y.Z       → `wrangler deploy --env production`
 //
 // workers_dev / preview_urls are set explicitly so a deploy never flips what's set in the dashboard.
 {

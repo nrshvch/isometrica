@@ -66,5 +66,6 @@ shaping to the world, `src/client` is those, `src/ui` its screens - the
 catalogue, the city screen, the building tools. The world is isometrica's.
 
 Deployed by `.github/workflows/city-sim.yml` to the Workers in
-`wrangler.jsonc`: `prod` (https://peeps.land) from main, `dev`
-(https://dev.peeps.land) from develop, previews from any other branch.
+`wrangler.jsonc`: `prod` (https://peeps.land) from a `city-sim/vX.Y.Z`
+tag, `dev` (https://dev.peeps.land) from main, previews from any other
+branch. See [Deploying](../README.md#deploying).

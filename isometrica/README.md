@@ -28,8 +28,8 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   Everything is painted and played in the page, nothing made beforehand.
   `npm run build:lab` builds them into `lab/dist`, and
   `.github/workflows/isometrica.yml` puts that up on Cloudflare Workers
-  (`wrangler.jsonc`): main → the `isometrica-lab` Worker, develop →
-  `isometrica-lab-dev`, any other branch → a Preview of it,
+  (`wrangler.jsonc`): a `lab/vX.Y.Z` tag → the `isometrica-lab` Worker,
+  main → `isometrica-lab-dev`, any other branch → a Preview of it,
   `https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev`.
 
 A game depends on it by path (`"isometrica": "file:../isometrica"`) and

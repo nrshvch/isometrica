@@ -79,5 +79,7 @@ screens - the courier's panel in `src/ui/modules/delivery`. The world is
 isometrica's.
 
 Deployed by `.github/workflows/food-rider.yml` to the Workers in
-`wrangler.jsonc` - `food-rider` from main, `food-rider-dev` from develop,
-previews from any other branch - on workers.dev, no domain of its own yet.
+`wrangler.jsonc` - `food-rider` from a `food-rider/vX.Y.Z` tag,
+`food-rider-dev` from main, previews from any other branch - on
+workers.dev, no domain of its own yet. See
+[Deploying](../README.md#deploying).

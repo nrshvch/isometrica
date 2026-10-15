@@ -67,6 +67,33 @@ account's workers.dev subdomain, and a Preview of it for every branch
 
 > npm run build:food-rider
 
-Each game deploys on its own, from its own workflow
-(`.github/workflows/city-sim.yml`, `food-rider.yml`), whenever it, isometrica
+### Deploying
+
+Each game, and isometrica's lab, deploys on its own to Cloudflare Workers,
+from its own workflow (`.github/workflows/city-sim.yml`, `food-rider.yml`,
+`isometrica.yml`, all through `_deploy.yml`), and only when it, isometrica
 or the engine changes.
+
+main is the only long-lived branch. What runs where:
+
+| When                     | city-sim                | food-rider              | lab                     |
+| ------------------------ | ----------------------- | ----------------------- | ----------------------- |
+| push to any other branch | a preview of the branch | a preview of the branch | a preview of the branch |
+| push to main             | https://dev.peeps.land  | `food-rider-dev`        | `isometrica-lab-dev`    |
+| tag `<app>/vX.Y.Z`       | https://peeps.land      | `food-rider`            | `isometrica-lab`        |
+
+Previews are at `https://<branch>-<worker>.isometrica.workers.dev`, food-rider
+and the lab at `https://<worker>.isometrica.workers.dev`.
+
+To release one app, tag main with its name and version - Actions →
+**release** → Run workflow, or from a laptop:
+
+> git tag city-sim/v0.3.0 origin/main && git push origin city-sim/v0.3.0
+
+Only that app goes to production; the others stay on their last release.
+To roll back, run the app's workflow (Actions → city-sim → Run workflow) on
+its previous tag. To fix a release while main has moved on, branch from its
+tag, fix, tag the fix, and bring the fix back to main.
+
+The game as it was before the monorepo, v0.2.1, is on the `legacy` branch,
+at https://legacy.peeps.land.
