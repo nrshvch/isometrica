@@ -80,12 +80,13 @@ var View = Backbone.View.extend({
     this.render();
   },
   renderTime: function () {
-    //and the weather, after the time (client/weather)
+    //and the weather, after the time, when it says what it is (client/
+    //weather)
     var lighting = window.vkaria && window.vkaria.lighting,
       weather = lighting && lighting.weather;
 
     $(".time", this.$el).text(
-      this.time.toHM() + (weather ? "  " + weather.name : ""),
+      this.time.toHM() + (weather && weather.name ? "  " + weather.name : ""),
     );
     return this;
   },
