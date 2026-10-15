@@ -998,6 +998,10 @@ function Driver(traffic, length, width, owner) {
   this.nearFor = null;
   //how long it has followed something slow, ms
   this.trailed = 0;
+  //how fast the road it was last on is driven, and which tile that was
+  //(pace)
+  this.paceAt = -1;
+  this.paceOf = 1;
   this.alive = true;
   //since when it has waited for the junction ahead of it, or -1
   this.asked = -1;
@@ -1869,8 +1873,10 @@ Driver.prototype.step = function (dt) {
     ahead(this, look + 3.5);
   }
 
-  //going round something, a good deal quicker, to be past it soon
-  var v0 = this.overtaking !== null ? this.v0 * PASS_BOOST : this.v0,
+  //going round something, a good deal quicker, to be past it soon - and
+  //slower over cobbles or gravel than on asphalt
+  var v0 =
+      (this.overtaking !== null ? this.v0 * PASS_BOOST : this.v0) * this.pace(),
     vt = Math.max(0, Math.min(v0, (gap - MIN_GAP) / HEADWAY));
 
   //on the brakes: slowing down, or standing in the traffic - kept on a
@@ -1899,6 +1905,23 @@ Driver.prototype.step = function (dt) {
     this.overtake(lead);
 
   this.move(step);
+};
+
+/**
+ * How fast the road under it is driven, a share of asphalt's
+ * (RoadRules.paceOf) - looked up again only once it is on another tile.
+ */
+Driver.prototype.pace = function () {
+  var here = this.here();
+
+  if (here !== this.paceAt) {
+    var road = this.traffic.roadman.getRoad(here);
+
+    this.paceAt = here;
+    this.paceOf = road === null ? 1 : RoadRules.paceOf(road.data);
+  }
+
+  return this.paceOf;
 };
 
 /**

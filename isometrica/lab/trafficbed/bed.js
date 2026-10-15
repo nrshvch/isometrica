@@ -63,10 +63,11 @@ function seeded(seed) {
 var ARROWS = { "<": 0, "^": 1, ">": 2, v: 3 };
 
 /**
- * Roads to drive: [x, y, way, height, ramp, stop] each - way -1 for both
- * ways, else 0..3 for -x, -y, +x, +y; height a number for a flat road, or
- * the four heights of its corners; ramp 1..4 for a ramp, 0 for none
- * (client/road profile); stop 1 for a bus stop on it.
+ * Roads to drive: [x, y, way, height, ramp, stop, material] each - way -1
+ * for both ways, else 0..3 for -x, -y, +x, +y; height a number for a flat
+ * road, or the four heights of its corners; ramp 1..4 for a ramp, 0 for
+ * none (client/road profile); stop 1 for a bus stop on it; material
+ * "cobble" or "gravel", asphalt unless said (core/roadrules paceOf).
  */
 export function World(roads) {
   var map = new Map();
@@ -83,7 +84,14 @@ export function World(roads) {
       way: r[2],
       stop: !!r[5],
       typeCode: r[4] ? r[4] : 91111,
-      data: { tile: tile, look: r[2] >= 0 ? { way: r[2] } : {} },
+      material: r[6] || "asphalt",
+      data: {
+        tile: tile,
+        look: Object.assign(
+          r[2] >= 0 ? { way: r[2] } : {},
+          r[6] ? { material: r[6] } : {},
+        ),
+      },
       surface: function () {
         return surface;
       },
@@ -116,7 +124,8 @@ export function World(roads) {
 
 /**
  * A world from a map drawn as text, a row a line: # a road both ways, S
- * one with a bus stop, < ^ > v a one-way road going -x, -y, +x, +y - the
+ * one with a bus stop, c one of cobbles, g one of gravel, < ^ > v a one-way
+ * road going -x, -y, +x, +y - the
  * first line the lowest y, the first column the lowest x - anything else
  * nothing. Its tiles start at (x0, y0).
  */
@@ -132,6 +141,8 @@ World.fromText = function (rows, x0, y0) {
 
       if (c === "#") roads.push([x0 + i, y0 + j, -1, 0, 0, 0]);
       else if (c === "S") roads.push([x0 + i, y0 + j, -1, 0, 0, 1]);
+      else if (c === "c") roads.push([x0 + i, y0 + j, -1, 0, 0, 0, "cobble"]);
+      else if (c === "g") roads.push([x0 + i, y0 + j, -1, 0, 0, 0, "gravel"]);
       else if (ARROWS[c] !== undefined)
         roads.push([x0 + i, y0 + j, ARROWS[c], 0, 0, 0]);
     }
@@ -432,6 +443,7 @@ Bed.prototype.nearEnd = function (car) {
  * while too; or there.
  */
 Bed.prototype.end = function (car) {
+  car.arrivedAt = this.now;
   car.legs++;
   this.counts.arrived++;
 

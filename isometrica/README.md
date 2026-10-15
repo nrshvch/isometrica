@@ -106,6 +106,10 @@ engine in `engine/`.
   to its top - so nothing is left with nowhere to go but back. Turning
   round costs a route eight tiles, so a car would sooner go round the block
   than turn round at a junction in everybody's way.
+- How fast a car goes is how fast the road under it is driven: asphalt at
+  its own speed, cobbles a tenth slower, gravel a tenth slower again
+  (`core/roadrules.js` paceOf, Driver#pace) - a courier's way down the old
+  town's cobbled lanes or a gravel track takes that much longer.
 - A roundabout - any small loop of one-way road, twelve tiles round at most
   - locks solid once it is full: everything on it waits for what is in
     front of it, all the way round. So what comes onto it gives way to what
@@ -162,7 +166,8 @@ engine in `engine/`.
   goes wrong: a car turning round where the road just goes on, standing in
   the traffic too long, a ring of them each waiting on the next, two on top
   of each other, one with no way to where it is going.
-- `lab/trafficbed/scenarios.js` - a street round a corner, a one-way street
+- `lab/trafficbed/scenarios.js` - a street round a corner, streets of
+  asphalt, cobbles and gravel side by side, a one-way street
   coming into the end of one both ways, a roundabout, a one-way street of
   two lanes into a junction, a bus at its stop, cars parking at the kerb, a
   grid of streets thick with traffic, and the city the games start on with

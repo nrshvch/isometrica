@@ -2,8 +2,8 @@
  * The rules the roads are driven by, and nothing else - no pictures, no
  * world - so the traffic (client/traffic) can be run on its own, in the
  * traffic testbed (lab/traffic.html, tools/traffictest.js) as much as in
- * the game: where two roads join, which way a one-way road goes, and the
- * number a paved piece of road adds to its picture's.
+ * the game: where two roads join, which way a one-way road goes, how fast it
+ * is driven, and the number a paved piece of road adds to its picture's.
  */
 
 //how much more a paved road's piece number is than the plain one's, and
@@ -63,4 +63,18 @@ export function goes(road, side) {
   var way = wayOf(road.data);
 
   return way < 0 || way === side || way % 2 !== side % 2;
+}
+
+//how fast a road of each kind is driven, a share of asphalt's: cobbles a
+//tenth slower, gravel a tenth slower again
+var PACE = { cobble: 0.9, gravel: 0.81 };
+
+/**
+ * How fast a road is driven, from its core model: 1 for asphalt, less for
+ * cobbles and gravel (PACE).
+ */
+export function paceOf(data) {
+  var material = data && data.look ? data.look.material : undefined;
+
+  return PACE[material] || 1;
 }
