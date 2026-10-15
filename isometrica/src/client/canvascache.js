@@ -2,8 +2,15 @@
 //canvas of its own. A page lives on the GPU - a layer of the texture the
 //city is drawn from in WebGL (client/glview) - so the pages are the game's
 //picture memory, and there is only so much of it: at most maxPages of
-//pageSize by pageSize. A picture is painted on a canvas of its own the size
-//of its slot, and handed over into its slot on its page (upload).
+//pageSize by pageSize. A picture is painted as pixels the size of its slot -
+//never on a canvas, which would have to be read back off the GPU - and handed
+//over into its slot on its page (upload).
+//
+//Painting and handing over takes so long a frame at most (budget - or, where
+//frames take long anyway, a share of how long the last one took): whatever
+//is first drawn after that waits for the next frame, so that a lot coming in
+//at once - the city at the start, or after a turn - does not hold one frame
+//up for all of it.
 //
 //Only what is being drawn is on the pages. Whatever draws a picture acquires
 //it first (see CachedSprite): the picture is painted onto a free piece of a
@@ -14,8 +21,9 @@
 //whoever is painted there next, not before.
 //
 //The cache knows nothing of what it holds. Whatever it holds - an entry - has
-//a width, a height and paint(ctx, x, y), which puts its picture on a canvas
-//at x, y - and maybe finish(pixels, w, h), which works on the pixels painted
+//a width, a height and paint(pixels, w, x, y), which puts its picture at x, y
+//of pixels w wide (client/pixels) - and maybe finish(pixels, w, h), which
+//works on the pixels painted
 //before they are handed over; the cache writes where it put it back onto it (slot, sourceImage -
 //the page - offsetX, offsetY), and sets slot to -1 when it takes the slot
 //away again.
@@ -26,6 +34,10 @@
 //A page is cut into shelves, rows of one height across the page, and a shelf
 //into slots along it. Everything about them is kept in typed arrays, indexed
 //by shelf and by slot, so that nothing is allocated on the way to a frame.
+
+//of a frame that took long anyway, as much as this share of it may go on
+//painting
+var SHARE = 0.25;
 
 //nothing between two slots would let the edge of one bleed into the next
 var GAP = 1;
@@ -41,14 +53,20 @@ var FREE = 0,
 
 /**
  * @param clock {{frame: number}} counts the frames drawn - engine Time
- * @param options {Object} canvas(w, h), makes the canvas a picture is painted
- *        on; pageSize, 1024 unless given; maxPages, 4 unless given
+ * @param options {Object} pageSize, 1024 unless given; maxPages, 4 unless
+ *        given; budget, how long painting may take a frame, ms, 4 unless given
  */
 function CanvasCache(clock, options) {
   this.clock = clock;
-  this.makeCanvas = options.canvas;
   this.pageSize = options.pageSize || 1024;
   this.maxPages = options.maxPages || 4;
+  this.budget = options.budget || 4;
+  //the frame painted in last, when it started, how long the one before it
+  //took and how long painting took in it so far
+  this.budgetFrame = -1;
+  this.frameStarted = 0;
+  this.frameTook = 0;
+  this.spent = 0;
 
   //the pages there are, by number; and where a picture painted goes,
   //upload(page, x, y, w, h, pixels) - its slot on its page (client/glview)
@@ -56,9 +74,8 @@ function CanvasCache(clock, options) {
   this.upload = null;
   //and how see-through a pixel on a page is, alphaAt(page, x, y)
   this.alphaAt = null;
-  //the canvas a picture is painted on, as big as the biggest so far
+  //the pixels a picture is painted on, as many as the biggest's so far
   this.scratch = null;
-  this.scratchCtx = null;
   //where the next shelf of each page starts
   this.pageTop = new Uint16Array(this.maxPages);
 
@@ -122,6 +139,17 @@ CanvasCache.prototype.acquire = function (entry) {
     return true;
   }
 
+  //no more painting this frame: next frame
+  if (this.budgetFrame !== frame) {
+    var t = performance.now();
+
+    this.frameTook = this.budgetFrame === frame - 1 ? t - this.frameStarted : 0;
+    this.frameStarted = t;
+    this.budgetFrame = frame;
+    this.spent = 0;
+  } else if (this.spent >= Math.max(this.budget, this.frameTook * SHARE))
+    return false;
+
   var steal = entry.direct === false ? 1 : 0;
 
   if (
@@ -142,26 +170,23 @@ CanvasCache.prototype.acquire = function (entry) {
 
   this.failed[steal] = false;
 
-  var shelf = this.slotShelf[slot],
+  var started = performance.now(),
+    shelf = this.slotShelf[slot],
     page = this.shelfPage[shelf],
     x = this.slotX[slot],
     y = this.shelfY[shelf],
     w = this.slotW[slot],
     h = this.shelfH[shelf],
-    ctx = scratch(this, w, h);
+    pixels = scratch(this, w, h);
 
-  //painted on a clear canvas the size of the slot, and handed over whole -
+  //painted on clear pixels the size of the slot, and handed over whole -
   //which clears whatever was in the slot before
-  ctx.clearRect(0, 0, w, h);
-  entry.paint(ctx, 0, 0);
-  if (this.upload !== null) {
-    var pixels = ctx.getImageData(0, 0, w, h).data;
-
-    //and whatever is worked out from the pixels painted, put in among them
-    if (entry.finish !== undefined) entry.finish(pixels, w, h);
-    this.upload(page, x, y, w, h, pixels);
-  }
+  entry.paint(pixels, w, 0, 0);
+  //and whatever is worked out from the pixels painted, put in among them
+  if (entry.finish !== undefined) entry.finish(pixels, w, h);
+  if (this.upload !== null) this.upload(page, x, y, w, h, pixels);
   this.painted++;
+  this.spent += performance.now() - started;
 
   this.slotState[slot] = TAKEN;
   this.slotDirty[slot] = 1;
@@ -369,19 +394,18 @@ function addPage(self) {
   return self.pages.length - 1;
 }
 
-//the canvas a picture is painted on, at least w by h
+//clear pixels for a picture w by h to be painted on
 function scratch(self, w, h) {
-  var c = self.scratch;
+  var n = w * h * 4;
 
-  if (c === null || c.width < w || c.height < h) {
-    c = self.scratch = self.makeCanvas(
-      Math.max(w, c ? c.width : 0, 256),
-      Math.max(h, c ? c.height : 0, 256),
-    );
-    self.scratchCtx = c.getContext("2d", { willReadFrequently: true });
-  }
+  if (self.scratch === null || self.scratch.length < n)
+    self.scratch = new Uint8ClampedArray(Math.max(n, 256 * 256 * 4));
 
-  return self.scratchCtx;
+  var pixels = self.scratch.subarray(0, n);
+
+  pixels.fill(0);
+
+  return pixels;
 }
 
 function addShelf(self, page, h) {
