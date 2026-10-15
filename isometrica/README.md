@@ -303,6 +303,8 @@ dev`) plays them the way a game would - all three weathers together, the
   iPhones want it, and plays through the silent switch). M or the ♫ in the
   top bar turns it off and on, kept in the browser; `?sound=off` too. It
   goes quiet while the page is out of sight.
+- Next to the ♫, the top bar shows the zoom the camera is at - ×0.5 to ×2
+  (each game's `ui/modules/topbar`), kept as it was while the world turns.
 
 ### Sprites
 
