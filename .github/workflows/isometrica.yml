@@ -1,118 +1,47 @@
 # Build and deploy isometrica's lab - the pages to look at and listen to what its generators
-# make: sprites, sounds, music, lighting - to Cloudflare Workers (static assets).
-# Its Workers are defined in isometrica/wrangler.jsonc. Runs when isometrica changes. No domain
-# of its own: workers.dev.
+# make: sprites, sounds, music, lighting, traffic - to Cloudflare Workers (static assets), through
+# _deploy.yml. Its Workers are defined in isometrica/wrangler.jsonc. No domain of its own:
+# workers.dev. The traffic testbed runs before every build.
 #
-# - push to main        → production, Worker "isometrica-lab", `wrangler deploy --env production`
-# - push to develop     → dev, Worker "isometrica-lab-dev", `wrangler deploy`
-# - push to any branch  → Preview on the "isometrica-lab-dev" Worker, `wrangler preview --name <branch>`
-# - manual run          → Actions → "isometrica" → Run workflow
+# - push a tag lab/vX.Y.Z      → production, Worker "isometrica-lab"
+#                                (or Actions → "release" → lab, which tags main and runs this)
+# - push to main               → dev, Worker "isometrica-lab-dev"
+# - push to any other branch   → Preview on the "isometrica-lab-dev" Worker
+#                                (https://<branch>-isometrica-lab-dev.isometrica.workers.dev)
+# - manual run                 → Actions → "isometrica" → Run workflow; on a lab/v* tag it
+#                                deploys that release to production again (a rollback)
+#
+# Branch pushes run only when isometrica, or the engine it is built on, changes.
+# Tag pushes always run: GitHub does not look at `paths` for tags.
 name: isometrica
 
 on:
   push:
     branches: ["**"]
+    tags: ["lab/v*"]
     paths:
       - "isometrica/**"
+      - "engine/**"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"
       - ".github/workflows/isometrica.yml"
+      - ".github/workflows/_deploy.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
   deployments: write
 
-concurrency:
-  group: isometrica-${{ github.ref }}
-  # Never cancel a production deployment half-way; superseded dev/preview runs can go.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 jobs:
-  build-deploy:
-    name: Build and deploy the isometrica lab
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      CLOUDFLARE_CONFIGURED: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - run: npm ci
-
-      - name: Traffic testbed
-        run: npm run test:traffic -w isometrica
-
-      - name: Build
-        run: npm run build:lab -w isometrica
-
-      - name: Choose deploy command
-        id: target
-        if: env.CLOUDFLARE_CONFIGURED == 'true'
-        env:
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          if [ "$REF_NAME" = "main" ]; then
-            echo "command=deploy --env production" >> "$GITHUB_OUTPUT"
-          elif [ "$REF_NAME" = "develop" ]; then
-            # `--env=` targets the top-level (dev) Worker explicitly.
-            echo "command=deploy --env=" >> "$GITHUB_OUTPUT"
-          else
-            # The Preview name becomes part of a hostname: lowercase letters, digits, hyphens.
-            name=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]' \
-              | sed -E 's/[^a-z0-9]+/-/g; s/^-+//' | cut -c1-40 | sed -E 's/-+$//')
-            echo "command=preview --env= --name ${name}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Deploy to Cloudflare Workers
-        id: deploy
-        if: env.CLOUDFLARE_CONFIGURED == 'true'
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          workingDirectory: isometrica
-          command: ${{ steps.target.outputs.command }}
-
-      - name: Summary
-        if: always()
-        env:
-          PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
-          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
-          EVENT_NAME: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          if [ "$CLOUDFLARE_CONFIGURED" != "true" ]; then
-            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets are not set, so nothing was deployed."
-            echo "Build passed; deployment skipped (Cloudflare secrets not configured)." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$DEPLOY_OUTCOME" != "success" ]; then
-            {
-              echo "### Deployment failed"
-              echo "See the \"Deploy to Cloudflare Workers\" step. \"No access to the specified resource\" means the API token lacks **Workers Scripts: Edit**."
-            } >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$REF_NAME" = "main" ]; then
-            {
-              echo "### Deployed to production"
-              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
-              echo "- Worker: isometrica-lab (workers.dev)"
-            } >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$REF_NAME" = "develop" ]; then
-            {
-              echo "### Deployed to dev"
-              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
-              echo "- Worker: isometrica-lab-dev (workers.dev)"
-            } >> "$GITHUB_STEP_SUMMARY"
-          else
-            {
-              echo "### Preview deployed"
-              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
-              echo "- Preview: ${PREVIEW_URL:-see the deploy step log}"
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+  deploy:
+    uses: ./.github/workflows/_deploy.yml
+    secrets: inherit
+    with:
+      app: lab
+      directory: isometrica
+      test: npm run test:traffic -w isometrica
+      build: npm run build:lab -w isometrica
+      target: ${{ startsWith(github.ref, 'refs/tags/lab/v') && 'production' || github.ref == 'refs/heads/main' && 'dev' || 'preview' }}
+      production-site: https://isometrica-lab.isometrica.workers.dev/
+      dev-site: https://isometrica-lab-dev.isometrica.workers.dev/

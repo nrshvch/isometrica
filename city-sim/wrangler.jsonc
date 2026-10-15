@@ -2,10 +2,10 @@
 // Deployed by .github/workflows/city-sim.yml.
 //
 // Top level is the "dev" Worker (dev.peeps.land):
-//   push to develop      → `wrangler deploy --env=`
+//   push to main         → `wrangler deploy --env=`
 //   push to other branch → `wrangler preview --env= --name <branch>` → https://<branch>-dev.isometrica.workers.dev
 // env.production is the "prod" Worker (peeps.land):
-//   push to main         → `wrangler deploy --env production`
+//   tag city-sim/vX.Y.Z  → `wrangler deploy --env production`
 //
 // workers_dev / preview_urls / routes are set explicitly so a deploy never flips what's set in the dashboard.
 {
