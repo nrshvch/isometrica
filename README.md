@@ -8,7 +8,8 @@ Keeping it alive for historical reference only.
 
 ### Live demo
 
-https://peeps.land
+https://legacy.peeps.land - this branch, `legacy`, frozen at v0.2.1. The game goes on in
+`main`, at https://peeps.land.
 
 ### Features
 
