@@ -1,5 +1,6 @@
 import Lighting from "./lighting";
 import GLView from "./glview";
+import Pixels from "./pixels";
 
 //A picture as the renderers draw it: one or more parts, each a sprite on some
 //sheet, laid over one another - a tile, or the tile with its shore on it, or
@@ -71,24 +72,35 @@ CachedSprite.prototype.keep = function () {
 };
 
 /**
- * Whether every part's sheet has loaded - asking for the ones that have not.
+ * Whether every part's sheet has loaded - asking for the ones that have not,
+ * and holding on to the ones that have till the rest are in too (SpriteCache
+ * want): asked every frame it is to be drawn, so what is drawn now is
+ * painted first.
  */
 CachedSprite.prototype.ready = function () {
-  var ready = true;
-
-  for (var i = 0; i < this.parts.length; i++)
-    if (this.parts[i].sheet.image === null) {
-      this.sprites.loadSheet(this.parts[i].sheet);
-      ready = false;
-    }
-
-  return ready;
+  return wantAll(this.sprites, this.parts, null);
 };
 
+//whether the sheets of all the parts, in a look (or as they are, null), are
+//in - every one of them wanted this frame
+function wantAll(sprites, parts, look) {
+  var ready = true;
+
+  for (var i = 0; i < parts.length; i++) {
+    var sheet = parts[i].sheet;
+
+    if (look !== null) sheet = sprites.lookSheet(sheet, look) || sheet;
+    if (!sprites.want(sheet)) ready = false;
+  }
+
+  return ready;
+}
+
 /**
- * Puts the parts together at x, y of ctx - a page of the canvas cache.
+ * Puts the parts together at x, y of pixels w wide - a slot of the canvas
+ * cache.
  */
-CachedSprite.prototype.paint = function (ctx, x, y) {
+CachedSprite.prototype.paint = function (pixels, w, x, y) {
   for (var i = 0; i < this.parts.length; i++) {
     var part = this.parts[i],
       f = part.frame;
@@ -96,7 +108,9 @@ CachedSprite.prototype.paint = function (ctx, x, y) {
     //a painted picture used just now is the last to be let go of
     if (part.sheet.generated !== null) this.sprites.generator.use(part.sheet);
 
-    ctx.drawImage(
+    Pixels.over(
+      pixels,
+      w,
       part.sheet.image,
       f.x,
       f.y,
@@ -104,8 +118,6 @@ CachedSprite.prototype.paint = function (ctx, x, y) {
       f.h,
       x + part.x,
       y + part.y,
-      f.w,
-      f.h,
     );
   }
 };
@@ -166,9 +178,20 @@ CachedSprite.prototype.night = undefined;
  */
 CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
   var layers = lit ? layersOf(this, "deferred") : null,
-    W = this.width;
+    W = this.width,
+    //what it is drawn from in black, where its pictures for the night are not
+    //in: the colours it is drawn from
+    shape = this,
+    at = 0;
 
-  if (layers !== null && layers.acquire()) {
+  //drawn lit, from its pictures to be lit only - nothing until they are in,
+  //rather than its picture as it is painted in the meantime, painted only
+  //to be put away again
+  if (layers !== null) {
+    if (!layers.acquire()) return false;
+
+    shape = layers;
+    at = ALBEDO * W;
     put(d, o, layers, ALBEDO * W, FROM);
     if (flat && (layers.sides & (1 << NORMAL)) === 0) skip(d, o + 4);
     else put(d, o + 4, layers, NORMAL * W, FROM);
@@ -199,7 +222,7 @@ CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
       way = (renderer.variant === 1 ? 2 : 0) + on - 1;
 
     put(d, o + 12, layers, (on === 0 ? DARK : way) * W, FROM);
-  } else put(d, o + 12, this, 0, DARK_);
+  } else put(d, o + 12, shape, at, DARK_);
 
   return true;
 };
@@ -293,23 +316,10 @@ Layers.prototype.acquire = function () {
 };
 
 Layers.prototype.ready = function () {
-  var sprites = this.sprite.sprites,
-    parts = this.sprite.parts,
-    ready = true;
-
-  for (var i = 0; i < parts.length; i++) {
-    var sheet = sprites.lookSheet(parts[i].sheet, this.look) || parts[i].sheet;
-
-    if (sheet.image === null) {
-      sprites.loadSheet(sheet);
-      ready = false;
-    }
-  }
-
-  return ready;
+  return wantAll(this.sprite.sprites, this.sprite.parts, this.look);
 };
 
-Layers.prototype.paint = function (ctx, x, y) {
+Layers.prototype.paint = function (pixels, w, x, y) {
   var sprites = this.sprite.sprites,
     parts = this.sprite.parts,
     W = this.sprite.width,
@@ -343,7 +353,9 @@ Layers.prototype.paint = function (ctx, x, y) {
       var swap = night && swapped(part, i) ? 2 : 0;
 
       for (k = 0; k < n; k++)
-        ctx.drawImage(
+        Pixels.over(
+          pixels,
+          w,
           own.image,
           (k < DARK ? k ^ swap : k) * f.w,
           0,
@@ -351,17 +363,24 @@ Layers.prototype.paint = function (ctx, x, y) {
           f.h,
           x + k * W + part.x,
           y + part.y,
-          f.w,
-          f.h,
         );
 
       var up = ground - (part.y + (f.pivotY || 0));
 
       if (night) {
-        lift(ctx, own.image, f, x + TALL * W + part.x, y + part.y, up);
+        lift(pixels, w, own.image, f, x + TALL * W + part.x, y + part.y, up);
         if (own.lights) this.addLights(own.lights, part, up, swap);
       } else
-        lift(ctx, own.image, f, x + HIGH * W + part.x, y + part.y, up, true);
+        lift(
+          pixels,
+          w,
+          own.image,
+          f,
+          x + HIGH * W + part.x,
+          y + part.y,
+          up,
+          true,
+        );
 
       continue;
     }
@@ -375,9 +394,23 @@ Layers.prototype.paint = function (ctx, x, y) {
         dy = y + part.y;
 
       if (!night && k === ALBEDO) {
-        ctx.drawImage(part.sheet.image, f.x, f.y, f.w, f.h, dx, dy, f.w, f.h);
+        Pixels.over(pixels, w, part.sheet.image, f.x, f.y, f.w, f.h, dx, dy);
         this.sides |= 1 << ALBEDO;
-      } else ctx.drawImage(black(part), 0, 0, f.w, f.h, dx, dy, f.w, f.h);
+      } else
+        Pixels.silhouette(
+          pixels,
+          w,
+          part.sheet.image,
+          f.x,
+          f.y,
+          f.w,
+          f.h,
+          dx,
+          dy,
+          0,
+          0,
+          0,
+        );
     }
   }
 };
@@ -417,16 +450,21 @@ Layers.prototype.addLights = function (packed, part, up, swap) {
  * on, a pixel a unit, wherever the part is (its picture in white, by
  * up / 255: the night's own, or its colours in white, deferred).
  */
-function lift(ctx, image, f, x, y, up, deferred) {
+function lift(pixels, w, image, f, x, y, up, deferred) {
   if (!(up > 0)) return;
 
-  var from = deferred ? silhouette(image, 0, 0, f.w, f.h, "#fff") : image;
-
-  ctx.globalCompositeOperation = "lighter";
-  ctx.globalAlpha = Math.min(1, up / 255);
-  ctx.drawImage(from, deferred ? 0 : WHOLE * f.w, 0, f.w, f.h, x, y, f.w, f.h);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = "source-over";
+  Pixels.lighten(
+    pixels,
+    w,
+    image,
+    deferred ? 0 : WHOLE * f.w,
+    0,
+    f.w,
+    f.h,
+    x,
+    y,
+    Math.min(1, up / 255),
+  );
 }
 
 /**
@@ -527,37 +565,6 @@ function topOf(pixels, w, x0, W, H) {
     }
 
   return { h: best, x: at[0], y: at[1], spike: best - rest };
-}
-
-//a part in black, on a scratch canvas - painted there rather than blacked
-//out where it lands, which would black out what is under it too
-var scratch = null;
-
-function black(part) {
-  var f = part.frame;
-
-  return silhouette(part.sheet.image, f.x, f.y, f.w, f.h, "#000");
-}
-
-//w by h of image from x, y, all in one colour, at the top left of the
-//scratch canvas
-function silhouette(image, x, y, w, h, colour) {
-  if (scratch === null || scratch.width < w || scratch.height < h) {
-    scratch = document.createElement("canvas");
-    scratch.width = Math.max(w, scratch ? scratch.width : 0, 256);
-    scratch.height = Math.max(h, scratch ? scratch.height : 0, 256);
-    scratch.ctx = scratch.getContext("2d");
-  }
-
-  var ctx = scratch.ctx;
-
-  ctx.globalCompositeOperation = "copy";
-  ctx.drawImage(image, x, y, w, h, 0, 0, w, h);
-  ctx.globalCompositeOperation = "source-atop";
-  ctx.fillStyle = colour;
-  ctx.fillRect(0, 0, w, h);
-
-  return scratch;
 }
 
 export default CachedSprite;

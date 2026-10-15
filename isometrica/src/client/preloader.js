@@ -7,7 +7,7 @@
  * finds them there rather than having them all painted then.
  *
  * Only ever after what is wanted now: one is asked for only while nothing
- * wanted is being waited for, and no more than AHEAD of them at a time, for
+ * wanted is being waited for, and no more than one a worker at a time, for
  * anything wanted to be painted next. The two sides next to the one the
  * camera is on come first, the far side after them, and the cars - which go
  * every way anyway - last; and those for what is no longer on screen are let
@@ -20,11 +20,10 @@
  * are those names turned - those there are.
  */
 
-//how many are painted ahead at a time, at most; how often it looks whether
-//it can ask for more, ms; how often it looks over what is on screen, ms, and
-//over how many frames back something drawn is taken to be on it
-var AHEAD = 2,
-  EVERY = 40,
+//how often it looks whether it can ask for more, ms; how often it looks over
+//what is on screen, ms, and over how many frames back something drawn is
+//taken to be on it
+var EVERY = 40,
   SURVEY_EVERY = 1000,
   RECENT = 30;
 
@@ -178,7 +177,7 @@ Preloader.prototype.pump = function () {
     this.survey();
   }
 
-  while (g.idle() && g.roomy() && g.comingCount < AHEAD) {
+  while (g.idle() && g.roomy() && g.comingCount < g.aheadLimit()) {
     var o =
       this.queues[0].shift() ||
       this.queues[1].shift() ||

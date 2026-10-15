@@ -30,6 +30,7 @@ import {
 } from "../shared/gen/stacking";
 import BuildingClassCode from "../data/classcode";
 import Core from "../core/main";
+import Pixels from "./pixels";
 
 var Terrain = Core.Terrain;
 
@@ -842,11 +843,12 @@ function drawPreview(sprites, compound, tries) {
     }
 
     var canvas = document.createElement("canvas"),
-      ctx;
+      width = maxX - minX,
+      height = maxY - minY,
+      pixels = new Uint8ClampedArray(width * height * 4);
 
-    canvas.width = maxX - minX;
-    canvas.height = maxY - minY;
-    ctx = canvas.getContext("2d");
+    canvas.width = width;
+    canvas.height = height;
 
     //the tiles at the back first, the way the game sorts them
     list
@@ -858,7 +860,9 @@ function drawPreview(sprites, compound, tries) {
         piece.sprite.parts.forEach(function (part) {
           var f = part.frame;
 
-          ctx.drawImage(
+          Pixels.over(
+            pixels,
+            width,
             part.sheet.image,
             f.x,
             f.y,
@@ -866,8 +870,6 @@ function drawPreview(sprites, compound, tries) {
             f.h,
             piece.left - minX + part.x,
             piece.top - minY + part.y,
-            f.w,
-            f.h,
           );
         });
 
@@ -876,7 +878,9 @@ function drawPreview(sprites, compound, tries) {
           var part = look.sprite.parts[0],
             f = part.frame;
 
-          ctx.drawImage(
+          Pixels.over(
+            pixels,
+            width,
             part.sheet.image,
             f.x,
             f.y,
@@ -884,11 +888,14 @@ function drawPreview(sprites, compound, tries) {
             f.h,
             piece.left + piece.pivotX - look.pivotX - minX,
             piece.top + piece.pivotY - look.pivotY - minY,
-            f.w,
-            f.h,
           );
         });
       });
+
+    if (width > 0 && height > 0)
+      canvas
+        .getContext("2d")
+        .putImageData(new ImageData(pixels, width, height), 0, 0);
 
     return new Promise(function (resolve, reject) {
       canvas.toBlob(function (blob) {
