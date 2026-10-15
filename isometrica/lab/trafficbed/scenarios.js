@@ -200,6 +200,51 @@ export var SCENARIOS = [
     expect: {},
   },
   {
+    name: "surfaces",
+    about:
+      "Three streets side by side, of asphalt, cobbles and gravel, a car down each: cobbles a tenth slower than asphalt, gravel a tenth slower again.",
+    map: [
+      "####################",
+      "cccccccccccccccccccc",
+      "gggggggggggggggggggg",
+    ],
+    seconds: 30,
+    setup: function (bed) {
+      ["asphalt", "cobble", "gravel"].forEach(function (kind, row) {
+        var car = bed.add({
+          type: "car",
+          at: at(0, row),
+          to: [at(19, row)],
+          then: "stop",
+        });
+
+        car.kind = kind;
+      });
+    },
+    //how long each takes to get down its street, as a share of the
+    //asphalt one's
+    check: function (bed) {
+      var took = {};
+
+      bed.cars.forEach(function (c) {
+        took[c.kind] = c.arrivedAt;
+      });
+
+      var cobble = took.cobble / took.asphalt,
+        gravel = took.gravel / took.asphalt;
+
+      return Math.abs(cobble - 1 / 0.9) < 0.04 &&
+        Math.abs(gravel - 1 / 0.81) < 0.05
+        ? null
+        : "took " +
+            cobble.toFixed(2) +
+            " and " +
+            gravel.toFixed(2) +
+            " times as long on cobbles and gravel";
+    },
+    expect: { arrived: 3 },
+  },
+  {
     name: "parked",
     about:
       "Cars pulling in at the kerb along a street both ways, a while, and out again, the traffic going by them - and round them, never through them.",
@@ -314,6 +359,11 @@ export function check(scenario, seed) {
     failed.push(report.overlaps.length + " drove into each other");
   if (report.noRoute.length > expect.noRoute)
     failed.push(report.noRoute.length + " with no way to go");
+  if (scenario.check) {
+    var wrong = scenario.check(bed);
+
+    if (wrong) failed.push(wrong);
+  }
   if (expect.arrived !== undefined && report.arrived < expect.arrived)
     failed.push(
       "only " + report.arrived + " of " + expect.arrived + " got there",

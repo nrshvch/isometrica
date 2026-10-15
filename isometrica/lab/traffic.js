@@ -75,7 +75,17 @@ function toText(world) {
     for (var x = b[0]; x <= b[2]; x++) {
       var r = world.map.get(world.tileAt(x, y));
 
-      row += !r ? " " : r.stop ? "S" : r.way >= 0 ? ARROW[r.way] : "#";
+      row += !r
+        ? " "
+        : r.stop
+          ? "S"
+          : r.way >= 0
+            ? ARROW[r.way]
+            : r.material === "cobble"
+              ? "c"
+              : r.material === "gravel"
+                ? "g"
+                : "#";
     }
 
     rows.push(row.replace(/\s+$/, ""));
