@@ -1091,6 +1091,20 @@ function smooth(k) {
   return k * k * (3 - 2 * k);
 }
 
+//the clouds, in two layers not far apart, each its own way up in the sky -
+//its shadow on the ground as far from under it, towards the sun, as that
+//and how high the sun is make it, so that it goes round with the sun as the
+//shadow of anything does - and drifting with the wind, the higher a little
+//slower: how high, pixels up the screen, and how fast
+var CLOUDS = [
+  { high: 600, speed: 1 },
+  { high: 760, speed: 0.8 },
+];
+
+//how much further from under a cloud than it is high its shadow is at the
+//most - the sun low, it would be ever further, and fly along
+var CLOUD_SLANT = 3;
+
 //how far the clouds' shadows have drifted with the wind, on the screen
 var cloudAt = [0, 0],
   lastWall = -1,
@@ -1109,6 +1123,10 @@ var cloudAt = [0, 0],
  * lightning.
  */
 function weatherSky(self, sky, w, viewport) {
+  //(the way to the sun, before it is gone for the weather - the clouds'
+  //shadows go by it, whatever is left of the sun)
+  var sunStep = sky.step;
+
   var wall = performance.now(),
     dt = lastWall < 0 ? 0 : Math.min(0.1, (wall - lastWall) / 1000),
     //how light the day is, 0 at night
@@ -1149,6 +1167,30 @@ function weatherSky(self, sky, w, viewport) {
   cloudAt[0] -= across * dt * 2.5;
   cloudAt[1] -= down * dt * 2.5;
 
+  //and where each layer's shadow is, as the wind took it and the sun puts
+  //it (CLOUDS)
+  var clouds = [],
+    step = sunStep;
+
+  CLOUDS.forEach(function (layer) {
+    var x = cloudAt[0] * layer.speed,
+      y = cloudAt[1] * layer.speed;
+
+    if (step) {
+      var k =
+        layer.high /
+        Math.max(
+          step[2],
+          Math.sqrt(step[0] * step[0] + step[1] * step[1]) / CLOUD_SLANT,
+        );
+
+      x += step[0] * k;
+      y += step[1] * k;
+    }
+
+    clouds.push(x, y);
+  });
+
   var flash = Weather.flash(wall, w.storm),
     fog = [0.05, 0.055, 0.07].map(function (c, i) {
       return (c + ([0.7, 0.72, 0.75][i] - c) * day) * (1 - 0.35 * w.storm);
@@ -1157,6 +1199,7 @@ function weatherSky(self, sky, w, viewport) {
   sky.weather = {
     cloud: cover,
     cloudAt: cloudAt,
+    clouds: clouds,
     grey: 0.4 * smooth((w.cloud - 0.3) / 0.7) + 0.12 * w.fog,
     fog: Math.min(1, w.fog * 0.95 + w.rain * 0.35),
     fogColor: fog,
