@@ -34,10 +34,9 @@
  *     the rougher one gulls;
  *   - city: a town heard from a little way off - the low roar of its
  *     traffic coming and going, cars whooshing past, a hum under it all,
- *     now and then a horn. And downtown the way a mid-90s DOS game's city
- *     map hummed (Pizza Tycoon's, as remembered): busier, people talking
- *     all round, horns nearer, and all of it as grainy as an 8-bit sample
- *     played at 11 kHz.
+ *     now and then a horn;
+ *   - skyline: a real city heard from high above it, not a cartoon of one
+ *     - its own models, in skyline.js.
  *
  * The last three loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
@@ -72,6 +71,7 @@ import {
   peak,
   level,
 } from "./dsp.js";
+import { SKYLINE } from "./skyline.js";
 
 //how many samples a second, unless asked for another rate
 export var RATE = 44100;
@@ -908,179 +908,12 @@ function gulls(rnd, variant, rate) {
  * --------------------------------------------------------------------- */
 
 //how many cars whoosh by in a loop of each, how many horns go, whether a
-//siren is heard far off, and how loud the roar of the traffic is - and for
-//downtown, how many people talk round about and how loud they are next to
-//the traffic, the horns a street nearer, and the whole of it as a sound
-//card of the mid-90s played it
+//siren is heard far off, and how loud the roar of the traffic is
 var CITIES = [
   { seconds: 30, cars: 14, horns: 3, siren: false, roar: 1 },
   //(no siren far off at night any more: it got on the nerves, looping)
   { seconds: 30, cars: 5, horns: 1, siren: false, roar: 0.6 },
-  {
-    seconds: 30,
-    cars: 24,
-    horns: 8,
-    siren: false,
-    roar: 1.2,
-    talkers: 12,
-    crowd: 0.55,
-    near: true,
-    dos: true,
-  },
 ];
-
-//the vowels people talk in: the two lowest resonances of the mouth for
-//each, ah, eh, ee, aw, oo, a and uh (Peterson and Barney's, roughly)
-var VOWELS = [
-  [730, 1090],
-  [530, 1840],
-  [270, 2290],
-  [570, 840],
-  [300, 870],
-  [660, 1720],
-  [520, 1190],
-];
-
-/**
- * One person talking, a little way off, mono: syllables in a voice's own
- * pitch, each a vowel - the buzz of the throat through the two lowest
- * resonances of the mouth - in phrases of a few, quiet between them.
- */
-function talker(rnd, rate, n) {
-  var out = new Float32Array(n),
-    high = rnd() < 0.5,
-    pitch = high ? between(rnd, 180, 240) : between(rnd, 95, 140),
-    mouth = high ? 1.15 : 1,
-    f1 = new Biquad(rate, "bandpass", 500, 4),
-    f2 = new Biquad(rate, "bandpass", 1500, 6),
-    //the mouth moving from one vowel to the next, not jumping
-    g1 = new OnePole(rate / 32, 25),
-    g2 = new OnePole(rate / 32, 25),
-    breath = white(rnd),
-    phase = 0,
-    left = Math.round(between(rnd, 0, 2) * rate),
-    long = left,
-    talking = false,
-    words = 0,
-    bend = 1,
-    vowel = VOWELS[0];
-
-  g1.y = vowel[0];
-  g2.y = vowel[1];
-
-  for (var i = 0; i < n; i++) {
-    if (left <= 0) {
-      if (words > 0) {
-        //the next syllable
-        long = left = Math.round(between(rnd, 0.1, 0.26) * rate);
-        vowel = VOWELS[Math.floor(rnd() * VOWELS.length)];
-        bend = between(rnd, 0.9, 1.12);
-        talking = true;
-        words--;
-      } else {
-        //a breath between phrases, and how many syllables the next one has
-        long = left = Math.round(between(rnd, 0.3, 2.2) * rate);
-        talking = false;
-        words = 3 + Math.floor(rnd() * 12);
-      }
-    }
-
-    if (i % 32 === 0) {
-      f1.set("bandpass", g1.run(vowel[0] * mouth), 4);
-      f2.set("bandpass", g2.run(vowel[1] * mouth), 6);
-    }
-
-    left--;
-
-    //(quiet between phrases: nothing to work out)
-    if (!talking) continue;
-
-    var u = 1 - (left + 1) / long,
-      f = pitch * (1 + (bend - 1) * u),
-      dt = f / rate,
-      //a syllable's rise and fall, rounded - about syllable's, cheaper
-      e = Math.sin(Math.PI * u);
-
-    phase = (phase + dt) % 1;
-
-    var x = saw(phase, dt) + breath() * 0.25;
-
-    out[i] = (f1.run(x) + f2.run(x) * 0.6) * e * (1.6 - 0.6 * e);
-  }
-
-  return out;
-}
-
-/**
- * People talking all round, both ears: each its own voice, near and far,
- * here and there, too far off and too dull to make out a word - a murmur.
- * Made longer than the loop by `over`, for seamless.
- */
-function murmur(rnd, rate, n, count) {
-  var out = [new Float32Array(n), new Float32Array(n)];
-
-  for (var k = 0; k < count; k++) {
-    var voice = talker(rnd, rate, n),
-      far = rnd(),
-      dull = new OnePole(rate, 2400 - 1400 * far);
-
-    for (var i = 0; i < n; i++) voice[i] = dull.run(voice[i]);
-
-    lay(out, voice, 0, between(rnd, -0.9, 0.9), 1 - 0.7 * far, false);
-  }
-
-  return out;
-}
-
-//how loud on the whole, both ears together
-function rms(ch) {
-  var sum = 0,
-    n = 0;
-
-  for (var c = 0; c < ch.length; c++)
-    for (var i = 0; i < ch[c].length; i++) {
-      sum += ch[c][i] * ch[c][i];
-      n++;
-    }
-
-  return n > 0 ? Math.sqrt(sum / n) : 0;
-}
-
-/**
- * As a sound card of the mid-90s played a sound: nearly mono, everything
- * above ~4.5 kHz gone, held at 11025 samples a second and rounded to 8
- * bits - the grain of it. For a loop, the filters go round twice and the
- * second time is kept, so the seam stays shut.
- */
-function dos(ch, rate) {
-  var n = ch[0].length,
-    hold = rate / 11025,
-    i,
-    c;
-
-  for (i = 0; i < n; i++) {
-    var mid = (ch[0][i] + ch[1][i]) / 2,
-      side = ((ch[0][i] - ch[1][i]) / 2) * 0.35;
-
-    ch[0][i] = mid + side;
-    ch[1][i] = mid - side;
-  }
-
-  for (c = 0; c < 2; c++) {
-    var a = new Biquad(rate, "lowpass", 4500, 0.7),
-      b = new Biquad(rate, "lowpass", 4500, 0.7),
-      x = ch[c],
-      y = new Float32Array(n);
-
-    for (var pass = 0; pass < 2; pass++)
-      for (i = 0; i < n; i++) y[i] = b.run(a.run(x[i]));
-
-    for (i = 0; i < n; i++)
-      x[i] = Math.round(y[Math.floor(Math.floor(i / hold) * hold)] * 127) / 127;
-  }
-
-  return ch;
-}
 
 /**
  * A car whooshing past, in both ears: the rush of its tyres and the air
@@ -1155,18 +988,6 @@ function city(rnd, variant, rate) {
     ch.push(seamless(buf, n, over));
   }
 
-  //people talking all round, as loud next to the traffic as asked
-  if (ci.talkers) {
-    var talk = murmur(rnd, rate, n + over, ci.talkers),
-      k = (ci.crowd * rms(ch)) / (rms(talk) || 1);
-
-    for (side = 0; side < 2; side++) {
-      var said = seamless(talk[side], n, over);
-
-      for (i = 0; i < n; i++) ch[side][i] += said[i] * k;
-    }
-  }
-
   //cars whooshing by
   for (i = 0; i < ci.cars; i++) {
     var w = whoosh(rnd, rate, between(rnd, 2.5, 5)),
@@ -1182,7 +1003,7 @@ function city(rnd, variant, rate) {
 
   for (i = 0; i < ci.horns; i++) {
     var h = hornNotes(HORNS[Math.floor(rnd() * HORNS.length)], rate),
-      dull = new OnePole(rate, ci.near ? 2200 : 1200);
+      dull = new OnePole(rate, 1200);
 
     for (var j = 0; j < h.length; j++) h[j] = dull.run(h[j]);
 
@@ -1191,7 +1012,7 @@ function city(rnd, variant, rate) {
       h,
       Math.floor(rnd() * n),
       between(rnd, -0.8, 0.8),
-      ci.near ? between(rnd, 0.1, 0.2) : between(rnd, 0.06, 0.12),
+      between(rnd, 0.06, 0.12),
       true,
     );
   }
@@ -1222,9 +1043,7 @@ function city(rnd, variant, rate) {
     ch[1][i] += far[1][i];
   }
 
-  ch = level(spacedStereo(ch, rate, 1.5, 0.5, 0.2, true), 0.12);
-
-  return ci.dos ? dos(ch, rate) : ch;
+  return level(spacedStereo(ch, rate, 1.5, 0.5, 0.2, true), 0.12);
 }
 
 /* ------------------------------------------------------------------------
@@ -1250,7 +1069,8 @@ export var SOUNDS = {
   forest: { loop: true, make: forest, ways: ["birdsong", "breezy"] },
   sea: { loop: true, make: sea, ways: ["calm", "rough, gulls"] },
   gulls: { loop: true, make: gulls, ways: ["crying", "laughing"] },
-  city: { loop: true, make: city, ways: ["day", "night", "downtown '94"] },
+  city: { loop: true, make: city, ways: ["day", "night"] },
+  skyline: SKYLINE,
 };
 
 /**
