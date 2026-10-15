@@ -1,6 +1,7 @@
 import WorldCamera from "./components/camerascript";
 import Events from "events";
 import Turner from "./turner";
+import View from "./view";
 
 //The zooms the camera is drawn at while fingers pinch - what is shown is
 //scaled the rest of the way on the page. Let go, it stays at whatever zoom
@@ -312,6 +313,8 @@ CameraControl.prototype.init = function () {
     if (target === "INPUT" || target === "TEXTAREA" || e.repeat) return;
     if (e.key === "q" || e.key === "Q") turner.turn(-1);
     else if (e.key === "e" || e.key === "E") turner.turn(1);
+    //and T looks at it from straight above, as a map, and back
+    else if (e.key === "t" || e.key === "T") root.setTopView(!View.top());
   });
   var cam = (this._cam = root.camera.cameraScript);
 

@@ -600,7 +600,84 @@ function round(v) {
 
 //where a point in the world lands on the screen, the origin at 0, 0
 function project(x, y, z) {
+  if (view === "top") return [x * TOP, -y * TOP];
+
   return [x - y, -(x + y) / 2 - z];
+}
+
+//how the vehicles are seen: as the game sees them, "iso", or from straight
+//above, "top", for the map - two pixels a unit, +x to the right and +y up,
+//every picture the same square round the vehicle's middle (topFrame)
+var view = "iso",
+  TOP = 2,
+  topSquare = null;
+
+function setView(v) {
+  view = v === "top" ? "top" : "iso";
+}
+
+/**
+ * How big every picture of a vehicle from straight above is - a square, big
+ * enough for the longest of them whichever way it drives - and where its
+ * middle is in it.
+ */
+export function topFrame() {
+  if (topSquare !== null) return topSquare;
+
+  var far = 0;
+
+  Object.keys(TYPES).forEach(function (type) {
+    var t = TYPES[type],
+      color = (t.colors || Object.keys(COLORS))[0],
+      boxes = t
+        .build(colorOf(color), color)
+        .concat(t.lamps !== undefined ? [].concat.apply([], t.lamps()) : []);
+
+    place(boxes, t.length, t.width, DIRECTIONS["x+"]).forEach(function (b) {
+      [b.x0, b.x1].forEach(function (x) {
+        [b.y0, b.y1].forEach(function (y) {
+          far = Math.max(far, Math.sqrt(x * x + y * y));
+        });
+      });
+    });
+  });
+
+  var half = (Math.ceil(far) + 1) * TOP;
+
+  return (topSquare = { w: 2 * half, h: 2 * half, pivotX: half, pivotY: half });
+}
+
+/**
+ * cast from straight above: the highest box at that point of the picture -
+ * of two as high, the first.
+ */
+function castDown(boxes, sx, sy) {
+  var x = sx / TOP,
+    y = -sy / TOP,
+    turned = boxes.rot !== undefined,
+    c = turned ? Math.cos(boxes.rot) : 1,
+    s = turned ? Math.sin(boxes.rot) : 0,
+    //the point in the vehicle's own frame (see castTurned)
+    f = turned ? x * c + y * s : x,
+    w = turned ? -x * s + y * c : y,
+    hit = null,
+    top = -Infinity;
+
+  for (var i = 0; i < boxes.length; i++) {
+    var b = boxes[i];
+
+    if (f < b.x0 || f > b.x1 || w < b.y0 || w > b.y1 || b.z1 <= top) continue;
+
+    hit = b;
+    top = b.z1;
+  }
+
+  hitColor = hit === null ? null : hit.color;
+  hitFace = 2;
+  hitNormal = [0, 0, 1];
+  hitZ = hit === null ? 0 : top;
+
+  return hit === null ? null : shade(hit.color, 2);
 }
 
 //a face looking up is lit the most, one looking down and to the left (-x)
@@ -617,6 +694,7 @@ function shade(color, face) {
  * (1, 1, -1), which is what every point that lands on the same pixel lies on.
  */
 function cast(boxes, sx, sy) {
+  if (view === "top") return castDown(boxes, sx, sy);
   if (boxes.rot !== undefined) return castTurned(boxes, sx, sy);
 
   //a point on the ray, well in front of everything
@@ -789,6 +867,12 @@ function shadeNormal(color, n) {
  * top left corner off the origin, and its size - without painting it.
  */
 function measure(boxes) {
+  if (view === "top") {
+    var f = topFrame();
+
+    return { x: -f.pivotX, y: -f.pivotY, w: f.w, h: f.h };
+  }
+
   var minX = Infinity,
     maxX = -Infinity,
     minY = Infinity,
@@ -1062,7 +1146,16 @@ function walk(see) {
  *
  * @returns {{width, height, data}}
  */
-export function paint(name, look) {
+export function paint(name, look, v) {
+  setView(v);
+  try {
+    return paintSeen(name, look);
+  } finally {
+    setView("iso");
+  }
+}
+
+function paintSeen(name, look) {
   var parts = name.split("/"),
     t = TYPES[parts[2]],
     dir = DIRECTIONS[parts[4]],

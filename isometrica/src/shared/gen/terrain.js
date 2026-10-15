@@ -50,6 +50,21 @@ import SimplexNoise from "simplex-noise";
 
 var WIDTH = 64;
 var HEIGHT = 47;
+//a tile seen from straight above (setView "top"), for the map: a square 64 a
+//side, +x to the right and +y up - its height nowhere to be seen
+var ISO_HEIGHT = HEIGHT,
+  TOP_SIZE = 64;
+var view = "iso";
+
+/**
+ * Paints from straight above from now on ("top"), or the way the game sees
+ * the ground ("iso") - which every picture is as big as.
+ */
+function setView(v) {
+  view = v === "top" ? "top" : "iso";
+  WIDTH = 64;
+  HEIGHT = view === "top" ? TOP_SIZE : ISO_HEIGHT;
+}
 //how far up a corner is drawn for every step of height
 var HEIGHT_STEP = 8;
 var FLAT = "2222";
@@ -1111,6 +1126,58 @@ function surface(slope) {
   return { slope: slope, fold: fold(z), pixels: pixels, index: index };
 }
 
+/**
+ * surface, from straight above: every pixel of the square is ground - u to
+ * the right, v up - its height and the quarter it is in worked out from the
+ * same two faces the slope folds into, and the outline the square's edge.
+ */
+function surfaceTop(slope) {
+  var z = heights(slope),
+    f = fold(z) || "ns",
+    S = TOP_SIZE,
+    index = new Int32Array(S * S).fill(-1),
+    pixels = [],
+    x,
+    y;
+
+  for (y = 0; y < S; y++) {
+    for (x = 0; x < S; x++) {
+      var u = (x + 0.5) / S,
+        v = 1 - (y + 0.5) / S,
+        north = u + v > 1,
+        west = u < v,
+        tri =
+          f === "we"
+            ? north
+              ? ["w", "n", "e"]
+              : ["w", "e", "s"]
+            : west
+              ? ["w", "n", "s"]
+              : ["n", "e", "s"],
+        l = barycentric(
+          [u, v],
+          CORNERS[tri[0]],
+          CORNERS[tri[1]],
+          CORNERS[tri[2]],
+        );
+
+      index[y * S + x] = pixels.length;
+      pixels.push({
+        i: y * S + x,
+        x: x,
+        y: y,
+        u: u,
+        v: v,
+        h: l[0] * z[tri[0]] + l[1] * z[tri[1]] + l[2] * z[tri[2]],
+        quad: (north ? "n" : "s") + (west ? "w" : "e"),
+        rim: x === 0 || y === 0 || x === S - 1 || y === S - 1,
+      });
+    }
+  }
+
+  return { slope: slope, fold: fold(z), pixels: pixels, index: index };
+}
+
 /* --- Light ------------------------------------------------------------ */
 
 //the sun the buildings are lit by (shared/gen/isobox SUN), in the tile's own
@@ -1735,7 +1802,12 @@ export function createPainter(sources, o) {
     bases = {};
 
   function surfaceOf(slope) {
-    return surfaces[slope] || (surfaces[slope] = surface(slope));
+    var key = view + "/" + slope;
+
+    return (
+      surfaces[key] ||
+      (surfaces[key] = view === "top" ? surfaceTop(slope) : surface(slope))
+    );
   }
 
   function lightOf() {
@@ -1752,7 +1824,7 @@ export function createPainter(sources, o) {
    * has it (see Out), lit unless it says otherwise.
    */
   function base(id, slope, v, f, look) {
-    var key = id + "/" + slope + "/" + v + "/" + f + "/" + look;
+    var key = view + "/" + id + "/" + slope + "/" + v + "/" + f + "/" + look;
 
     if (bases[key] === undefined)
       bases[key] = paintBase(
@@ -1815,47 +1887,57 @@ export function createPainter(sources, o) {
      * "grass/diffuse/2222_ne_1.png" or "water_deep/shore/2101.png" - and for
      * water and its shore, a frame of its ripples after it:
      * "water_deep/base/2222_1.png@t2", "water_shallow/shore/2101.png@t1"
-     * - painted as look has it (see Out): "deferred", "night", or lit.
+     * - painted as look has it (see Out): "deferred", "night", or lit - and
+     * seen from straight above for view "top".
      */
-    paint: function (rel, look) {
-      var frame = /@t(\d+)$/.exec(rel);
-
-      if (frame !== null) rel = rel.slice(0, frame.index);
-
-      var g = /^grid\/(\d{4})\.png$/.exec(rel);
-
-      if (g !== null) return paintGrid(surfaceOf(g[1]), look);
-
-      var m =
-        /^([a-z_]+)\/(base|diffuse|shore)\/(\d{4})(?:_([a-z]+))?(?:_(\d+))?\.png$/.exec(
-          rel,
-        );
-
-      if (m === null || TILESETS[m[1]] === undefined)
-        throw new Error("no such tile: " + rel);
-
-      if (m[2] === "base")
-        return base(
-          m[1],
-          m[3],
-          +m[5],
-          frame === null ? undefined : +frame[1],
-          look,
-        );
-      if (m[2] === "diffuse") return diffuse(m[1], m[3], m[4], +m[5], look);
-
-      var picture = shore(
-        m[1],
-        m[3],
-        look,
-        frame === null ? undefined : +frame[1],
-      );
-
-      if (picture === null) throw new Error("no such tile: " + rel);
-
-      return picture;
+    paint: function (rel, look, v) {
+      setView(v);
+      try {
+        return paintTile(rel, look);
+      } finally {
+        setView("iso");
+      }
     },
   };
+
+  function paintTile(rel, look) {
+    var frame = /@t(\d+)$/.exec(rel);
+
+    if (frame !== null) rel = rel.slice(0, frame.index);
+
+    var g = /^grid\/(\d{4})\.png$/.exec(rel);
+
+    if (g !== null) return paintGrid(surfaceOf(g[1]), look);
+
+    var m =
+      /^([a-z_]+)\/(base|diffuse|shore)\/(\d{4})(?:_([a-z]+))?(?:_(\d+))?\.png$/.exec(
+        rel,
+      );
+
+    if (m === null || TILESETS[m[1]] === undefined)
+      throw new Error("no such tile: " + rel);
+
+    if (m[2] === "base")
+      return base(
+        m[1],
+        m[3],
+        +m[5],
+        frame === null ? undefined : +frame[1],
+        look,
+      );
+    if (m[2] === "diffuse") return diffuse(m[1], m[3], m[4], +m[5], look);
+
+    var picture = shore(
+      m[1],
+      m[3],
+      look,
+      frame === null ? undefined : +frame[1],
+    );
+
+    if (picture === null) throw new Error("no such tile: " + rel);
+
+    return picture;
+  }
 }
 
 /**

@@ -21,6 +21,11 @@
  * them each way. Heights are in pixels. +x runs up and to the right on the
  * screen, +y up and to the left; only faces looking up, towards -x (down and
  * to the left) and towards -y (down and to the right) are ever seen.
+ *
+ * Or seen from straight above (setView "top"), for the map: +x to the right,
+ * +y up, two pixels a unit - a tile 64 by 64 - and only what looks up seen.
+ * A picture from above is always whole tiles, so that a part of something
+ * standing on a tile is the tile's square whatever is on it (see render).
  */
 
 var TILE = 32,
@@ -249,9 +254,26 @@ function snapAll(boxes) {
   });
 }
 
-//where a point in the world lands on the screen, the origin at 0, 0
+//where a point in the world lands on the screen, the origin at 0, 0 - from
+//above, wherever it is up
 function project(x, y, z) {
+  if (view === "top") return [x * TOP, -y * TOP];
+
   return [x - y, -(x + y) / 2 - z];
+}
+
+//how the boxes are seen (setView): from the side the game sees them from,
+//"iso", or from straight above, "top" - and from above, how many pixels a
+//unit is
+var view = "iso",
+  TOP = 2;
+
+function setView(v) {
+  view = v || "iso";
+}
+
+function getView() {
+  return view;
 }
 
 //a face looking up is lit the most, one looking down and to the left (-x)
@@ -294,6 +316,14 @@ function lit(color, nx, ny, nz) {
 }
 
 function screenBounds(b) {
+  if (view === "top")
+    return {
+      minX: b.x0 * TOP,
+      maxX: b.x1 * TOP,
+      minY: -b.y1 * TOP,
+      maxY: -b.y0 * TOP,
+    };
+
   var corners = [
       [b.x0, b.y0, b.z0],
       [b.x1, b.y0, b.z0],
@@ -324,6 +354,8 @@ function screenBounds(b) {
  * spot the one listed later wins, so details go after what they sit on.
  */
 function cast(boxes, sx, sy) {
+  if (view === "top") return castDown(boxes, sx, sy);
+
   var y = -1000,
     x = y + sx,
     z = -(x + y) / 2 - sy,
@@ -383,6 +415,72 @@ function cast(boxes, sx, sy) {
 
   if (hit === null) return null;
 
+  return shadeHit(boxes, hit, face, x + best, y + best, z - best);
+}
+
+/**
+ * The first box a ray straight down through that point of a picture from
+ * above hits, shaded - the highest there; of two as high, the one listed
+ * later.
+ */
+function castDown(boxes, sx, sy) {
+  var x = sx / TOP,
+    y = -sy / TOP,
+    z = 100000,
+    best = Infinity,
+    hit = null,
+    face = -1,
+    i,
+    b,
+    tin,
+    tout,
+    f,
+    t;
+
+  for (i = 0; i < boxes.length; i++) {
+    b = boxes[i];
+    if (sx < b.sMinX || sx > b.sMaxX || sy < b.sMinY || sy > b.sMaxY) continue;
+    if (x < b.x0 || x > b.x1 || y < b.y0 || y > b.y1) continue;
+
+    tin = z - b.z1;
+    f = 2;
+    tout = z - b.z0;
+
+    //the planes it is cut by: the ray goes along (0, 0, -1)
+    if (b.cuts !== undefined) {
+      for (var k = 0; k < b.cuts.length && tin < tout; k++) {
+        var n = b.cuts[k].n,
+          nr = -n[2],
+          no = n[0] * x + n[1] * y + n[2] * z;
+
+        if (nr < 0) {
+          t = (b.cuts[k].d - no) / nr;
+          if (t > tin) {
+            tin = t;
+            f = 3 + k;
+          }
+        } else if (nr > 0) tout = Math.min(tout, (b.cuts[k].d - no) / nr);
+        else if (no > b.cuts[k].d) tout = -Infinity;
+      }
+    }
+
+    if (tin < tout && tin <= best) {
+      best = tin;
+      hit = b;
+      face = f;
+    }
+  }
+
+  if (hit === null) return null;
+
+  return shadeHit(boxes, hit, face, x, y, z - best);
+}
+
+/**
+ * The colour of box `hit` where a ray meets it, at x, y, z on its face - as
+ * mode has it.
+ */
+function shadeHit(boxes, hit, face, px, py, pz) {
   var normal = face >= 3 ? hit.cuts[face - 3].n : null,
     color;
 
@@ -394,10 +492,7 @@ function cast(boxes, sx, sy) {
   //of it black, to hide whatever shines behind it - what shines lighting
   //what is round it as the city is drawn (client/generatorcore lightsOf)
   if (mode === "night") {
-    var px = x + best,
-      py = y + best,
-      pz = z - best,
-      glows = shine(hit, face, normal, px, py, pz);
+    var glows = shine(hit, face, normal, px, py, pz);
 
     //and how high the point is over the ground the picture stands on, a
     //pixel a unit, for the light of a lamp near it to be worked out as it
@@ -412,15 +507,7 @@ function cast(boxes, sx, sy) {
     color =
       hit.finish.material === undefined
         ? hit.color
-        : finish(
-            hit.color,
-            face,
-            null,
-            hit.finish,
-            x + best,
-            y + best,
-            z - best,
-          );
+        : finish(hit.color, face, null, hit.finish, px, py, pz);
   else {
     //unlit, every face is the colour a top is in the sun - the light it is
     //drawn in takes the walls down from there
@@ -434,21 +521,13 @@ function cast(boxes, sx, sy) {
     if (
       hit.finish !== undefined &&
       hit.finish.shadow &&
-      shadowed(boxes, hit, x + best, y + best, z - best)
+      shadowed(boxes, hit, px, py, pz)
     )
       color = darker(color, SHADOW);
 
     //a sign of no material is only a colour that shines at night (shine)
     if (hit.finish !== undefined && !(hit.finish.sign && !hit.finish.material))
-      color = finish(
-        color,
-        face,
-        normal,
-        hit.finish,
-        x + best,
-        y + best,
-        z - best,
-      );
+      color = finish(color, face, normal, hit.finish, px, py, pz);
   }
 
   //its colour with no light on it, which way it looks (normalOf) and how
@@ -468,7 +547,7 @@ function cast(boxes, sx, sy) {
                   ? [0, -1, 0]
                   : [0, 0, 1],
           ),
-      heightOf(z - best),
+      heightOf(pz),
     ];
 
   //of each face's picture, as much of the colour as looks that way - black
@@ -1051,6 +1130,15 @@ function measure(boxes) {
     maxY = Math.max(maxY, r.maxY);
   });
 
+  if (view === "top") {
+    var whole = tiles(minX, maxX, minY, maxY);
+
+    minX = whole.minX;
+    maxX = whole.maxX;
+    minY = whole.minY;
+    maxY = whole.maxY;
+  }
+
   minX = Math.floor(minX);
   minY = Math.floor(minY);
 
@@ -1063,8 +1151,26 @@ function measure(boxes) {
 }
 
 /**
+ * From above, the whole tiles a picture's bounds are on - what sticks out a
+ * hair past a tile's edge, a box snapped a skin over, not counted.
+ */
+function tiles(minX, maxX, minY, maxY) {
+  var T = TILE * TOP,
+    e = 1;
+
+  return {
+    minX: Math.floor((minX + e) / T) * T,
+    maxX:
+      Math.max(Math.ceil((maxX - e) / T), Math.floor((minX + e) / T) + 1) * T,
+    minY: Math.floor((minY + e) / T) * T,
+    maxY:
+      Math.max(Math.ceil((maxY - e) / T), Math.floor((minY + e) / T) + 1) * T,
+  };
+}
+
+/**
  * The picture of the boxes, with pivotX/pivotY where the world's origin lands
- * in it.
+ * in it - from above, the whole tiles it is on.
  */
 function render(boxes) {
   var minX = Infinity,
@@ -1101,6 +1207,15 @@ function render(boxes) {
       sMaxY: r.maxY,
     };
   });
+
+  if (view === "top") {
+    var whole = tiles(minX, maxX, minY, maxY);
+
+    minX = whole.minX;
+    maxX = whole.maxX;
+    minY = whole.minY;
+    maxY = whole.maxY;
+  }
 
   minX = Math.floor(minX);
   minY = Math.floor(minY);
@@ -1319,6 +1434,8 @@ export {
   render,
   setMode,
   getMode,
+  setView,
+  getView,
   sections,
   heightOf,
   normalOf,

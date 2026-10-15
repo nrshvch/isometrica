@@ -4,6 +4,7 @@ import Handlebars from "handlebars";
 import Events from "events";
 import Numeral from "numeral";
 import $ from "jquery";
+import WorldView from "isometrica/client/view";
 
 var template = Handlebars.compile(__templateSource);
 
@@ -26,6 +27,9 @@ var View = Backbone.View.extend({
     "click .money": "toggleCity",
     //the sound on and off (isometrica client/audio/soundman)
     "click .sound": "toggleSound",
+    //the world from straight above, as a map, and back (isometrica client/
+    //vkaria setTopView)
+    "click .view": "toggleView",
   },
   initialize: function (options) {
     this.onDispose = Events.event("dispose");
@@ -69,7 +73,13 @@ var View = Backbone.View.extend({
         self.renderSound();
       });
 
+    //however it was switched - here, or by its key
+    var viewTkn = Events.on(WorldView, WorldView.events.change, function () {
+      self.renderView();
+    });
+
     this.onDispose().once(function (s, a, self) {
+      Events.off(WorldView, WorldView.events.change, viewTkn);
       Events.off(self.time, self.time.constructor.events.advance, tmTkn);
       self.city.rename().off(rnmTkn);
       self.city.update().off(updTkn);
@@ -107,6 +117,16 @@ var View = Backbone.View.extend({
       .text(sound && sound.on ? "\u266b on" : "\u266b off")
       .toggleClass("off", !(sound && sound.on));
   },
+  renderView: function () {
+    var top = WorldView.top();
+
+    $(".view", this.$el).text("\u25a6 top").toggleClass("off", !top);
+  },
+  toggleView: function () {
+    var client = this.options.app.client;
+
+    if (client.setTopView) client.setTopView(!WorldView.top());
+  },
   toggleSound: function () {
     var sound = this.options.app.client.sound;
 
@@ -124,6 +144,7 @@ var View = Backbone.View.extend({
     this.renderTime();
     this.renderMoney();
     this.renderSound();
+    this.renderView();
   },
   dispose: function () {
     this.onDispose(this, null);
