@@ -745,6 +745,10 @@ dev`) plays them the way a game would - all three weathers together, the
   the world's origin, so it stays put as the city scrolls by - and a wall is
   dithered as finely as the ground, not a column at a time: pixel art, lit
   as the world would be.
+- For now the weather is always clear (`WEATHER` in
+  `isometrica/src/client/weather.js`): a clear sky, its few clouds' shadows
+  drifting over with the wind, and nothing shown of it in the top bar - no
+  overcast, fog, rain or storms, and neither `?weather=` nor W. With it on:
 - The weather (`isometrica/src/client/weather.js`) goes by the game's
   clock, the same whenever the game is opened at that time: the days go by
   in spells of eight hours - clear, overcast, fog, rain or a storm, picked

@@ -17,6 +17,10 @@
  *
  * ?weather=clear|cloudy|fog|rain|storm holds it at one kind; W goes round
  * them, and back to the clock's.
+ *
+ * For now there is none of it but a clear sky, its few clouds drifting over
+ * with the wind (WEATHER): no overcast, fog, rain or storms, nor the keys to
+ * have them.
  */
 
 var HOUR = 3600000;
@@ -46,6 +50,10 @@ var KINDS = {
     wind: 2.3,
   },
 };
+
+//whether the weather changes at all - for now it does not: it is always
+//clear (Weather.at)
+var WEATHER = false;
 
 var ORDER = ["clear", "cloudy", "fog", "rain", "storm"],
   //how likely each is, for a spell
@@ -164,6 +172,15 @@ Weather.at = function (now) {
   var h = now / HOUR,
     out;
 
+  //always clear, and nothing said of it
+  if (!WEATHER) {
+    out = held("clear");
+    out.wet = 0;
+    out.name = "";
+
+    return out;
+  }
+
   if (Weather.override !== null) {
     out = held(Weather.override);
     out.wet = out.rain > 0 ? 0.6 + 0.4 * out.rain : 0;
@@ -272,7 +289,7 @@ Weather.bolt = function (slot, w, h, n) {
  * back to the clock's.
  */
 Weather.install = function () {
-  if (typeof window === "undefined") return;
+  if (!WEATHER || typeof window === "undefined") return;
 
   window.addEventListener("keydown", function (e) {
     var target = e.target && e.target.tagName;
