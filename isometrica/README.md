@@ -594,13 +594,16 @@ dev`) plays them the way a game would - all three weathers together, the
 - A turn of the camera - two fingers twisted, or Q and E - is shown as one
   smooth turn about what is at a spot on the screen: between the fingers,
   or the middle of it for a key - about the ground under that, however high
-  it stands, so that it keeps its place, not the ground there as if the
-  world were flat (`client/turner.js`, on its own). Pictures
+  it stands and however high the land it stands on is over the sea, so that
+  it keeps its place, not the ground there as if the world were flat
+  (`client/turner.js`, on its own). The camera itself turns about the sea's
+  level under the middle of the screen, and is moved after for that. Pictures
   of the side the camera is on and of the sides it turns to, each taken
   zoomed out to take in half as much again as the screen shows and bare -
   no rain, no lightning, nothing drawn over the city: the grid, the
   borders, the names, the signs - are laid over the game, each over a mesh
-  lifted as high as every pixel of it stands (`GLView#readHeights`) and
+  lifted as high as every pixel of it stands (`GLView#readHeights`), and
+  the land under it over the sea (as cars have it, `Carman.groundHeight`),
   turned about the up axis through that spot - found on each side's picture
   where the camera, turned about the middle of the screen, put it - in a
   WebGL canvas of its own: what stands up stays upright and swings round where it stands, the

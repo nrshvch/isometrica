@@ -30,6 +30,8 @@
  * (client/cameracontrol).
  */
 import View from "./view";
+import Carman from "./carman";
+import Config from "./config";
 
 //how much more of the city each picture of it takes in than the screen
 //shows, across and down
@@ -61,19 +63,26 @@ var BLUR = 3;
 var GRID = 2,
   SKIRT = 0.5;
 
+//how many pixels of a picture apart how high the ground is under it is
+//looked up (elevations) - in between, it goes from one to the next
+var ELEV_STEP = 16;
+
 //every point of the mesh: where it is on its picture, from the top left,
-//lifted as high as what is there stands - from the ground under it, turned
-//about the up axis through the ground under the spot it turns about, back
-//up and onto the screen - as near the eye as it is from there. The skirt,
-//flat, past the edges
+//lifted as high as what is there stands, and the ground it stands on over
+//the sea - from the ground as low as the sea under it, turned about the up
+//axis through that under the spot it turns about, back up and onto the
+//screen - as near the eye as it is from there. The skirt, flat, past the
+//edges
 var MESH_VS = `#version 300 es
 precision highp float;
 
 layout(location = 0) in vec2 at;
 
-//how high each pixel stands, its rows from the bottom up (GLView
-//readHeights)
+//how high each pixel stands over what it stands on, its rows from the
+//bottom up (GLView readHeights); how high the ground is over the sea where
+//the ground as low as the sea is seen, every ELEV_STEP pixels (elevations)
 uniform sampler2D heights;
+uniform sampler2D elevs;
 uniform vec2 picture;
 //the cosine and sine of how far it is turned; and about what: where that is
 //on the screen as it is when it starts, page pixels, and on this picture
@@ -90,6 +99,10 @@ uniform bool skirt;
 
 out vec2 vUv;
 
+float elevAt(vec2 p) {
+  return texture(elevs, (p / ${ELEV_STEP}.0 + 0.5) / vec2(textureSize(elevs, 0))).r;
+}
+
 void main() {
   float h = 0.0;
 
@@ -99,6 +112,13 @@ void main() {
     vec4 hv = texelFetch(heights, t, 0);
     h = hv.a > 0.5 ? hv.r * 255.0 : 0.0;
   }
+
+  //and the ground it stands on, over the sea: where that is depends on how
+  //high it is - a few goes round settle it
+  float e = 0.0;
+
+  for (int k = 0; k < 3; k++) e = elevAt(vec2(at.x, at.y + h + e));
+  h += e;
 
   //the ground under it, from the ground under the spot: along the world's
   //x and y - across the screen x - y, down it (x + y) / 2
@@ -558,26 +578,26 @@ Turner.prototype.take = function (side) {
     heights.data,
   );
 
-  if (old) forget(gl, old);
+  //how high the ground is, by the camera that drew it: the same for every
+  //picture of a side, at a zoom
+  var quick = this.job !== null && this.job.quick === true,
+    elevs =
+      old && old.quick === quick && old.w === heights.w && old.h === heights.h
+        ? old.elevs
+        : elevations(gl, this.root, heights.w, heights.h);
+
+  if (old) forget(gl, old, elevs);
 
   //the first picture: what is at the spot the turn is about, and how high
   //it stands - the turn is about the ground under it, for that to keep its
   //place, whatever it stands on, not the ground under it as if it were flat
-  if (this.job !== null && this.job.quick === true) {
-    var x = Math.floor(this.spot[0] / this.zoom),
-      y = Math.floor(this.spot[1] / this.zoom);
-
-    if (x >= 0 && y >= 0 && x < heights.w && y < heights.h) {
-      var i = ((heights.h - 1 - y) * heights.w + x) * 4;
-
-      if (heights.data[i + 3] > 127)
-        this.spot[1] += heights.data[i] * this.zoom;
-    }
-  }
+  if (this.job !== null && this.job.quick === true)
+    this.spot[1] += lift(this.root, heights, this.spot, this.zoom);
 
   this.pictures[side] = {
     colours: colours,
     heights: high,
+    elevs: elevs,
     w: heights.w,
     h: heights.h,
     quick: this.job !== null && this.job.quick === true,
@@ -587,9 +607,100 @@ Turner.prototype.take = function (side) {
   this.show();
 };
 
-function forget(gl, picture) {
+/**
+ * How far down the screen, page pixels, the ground as low as the sea is,
+ * under what is at spot (page pixels, at zoom): as high as that stands over
+ * what it stands on - its picture of how high it stands says (GLView
+ * readHeights) - and as high as the ground there is, or the road, over the
+ * sea (client/carman groundHeight). The camera turns about that, flat, the
+ * middle of the screen (client/components/camerascript turn).
+ */
+function lift(root, heights, spot, zoom) {
+  var x = Math.floor(spot[0] / zoom),
+    y = Math.floor(spot[1] / zoom),
+    own = 0;
+
+  if (x >= 0 && y >= 0 && x < heights.w && y < heights.h) {
+    var i = ((heights.h - 1 - y) * heights.w + x) * 4;
+
+    if (heights.data[i + 3] > 127) own = heights.data[i];
+  }
+
+  //the world onto the canvas, pixels - and where on the ground, as low as
+  //the sea, a pixel of it is
+  var M = root.camera.camera.getWorldToScreen(),
+    det = M[0] * M[9] - M[8] * M[1],
+    up = -M[5] * Config.tileZStep,
+    down = own;
+
+  //how high the ground is where the spot is depends on where that is, which
+  //depends on how high it is: a few goes round settle it
+  for (var k = 0; k < 4; k++) {
+    var sx = spot[0] / zoom - M[12],
+      sy = spot[1] / zoom + down - M[13],
+      X = (sx * M[9] - M[8] * sy) / det,
+      Z = (M[0] * sy - M[1] * sx) / det,
+      ground = Math.max(
+        0,
+        Carman.groundHeight(root, X / Config.tileSize, Z / Config.tileSize),
+      );
+
+    down = own + ground * up;
+  }
+
+  return down * zoom;
+}
+
+/**
+ * How high the ground is over the sea - or the road, as cars have it (client/
+ * carman groundHeight) - where the ground as low as the sea is seen on a
+ * picture w by h the camera draws now, every ELEV_STEP pixels of it, pixels:
+ * a texture of it.
+ */
+function elevations(gl, root, w, h) {
+  var M = root.camera.camera.getWorldToScreen(),
+    det = M[0] * M[9] - M[8] * M[1],
+    up = -M[5] * Config.tileZStep,
+    cols = Math.ceil(w / ELEV_STEP) + 1,
+    rows = Math.ceil(h / ELEV_STEP) + 1,
+    data = new Float32Array(cols * rows),
+    t = texture(gl, gl.LINEAR);
+
+  for (var j = 0; j < rows; j++)
+    for (var i = 0; i < cols; i++) {
+      var sx = i * ELEV_STEP - M[12],
+        sy = j * ELEV_STEP - M[13],
+        X = (sx * M[9] - M[8] * sy) / det,
+        Z = (M[0] * sy - M[1] * sx) / det;
+
+      data[j * cols + i] =
+        Math.max(
+          0,
+          Carman.groundHeight(root, X / Config.tileSize, Z / Config.tileSize),
+        ) * up;
+    }
+
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.R16F,
+    cols,
+    rows,
+    0,
+    gl.RED,
+    gl.FLOAT,
+    data,
+  );
+
+  return t;
+}
+
+//a picture let go of - but for its elevations, if they are kept
+function forget(gl, picture, keep) {
   gl.deleteTexture(picture.colours);
   gl.deleteTexture(picture.heights);
+  if (picture.elevs !== keep) gl.deleteTexture(picture.elevs);
 }
 
 /**
@@ -693,6 +804,9 @@ Turner.prototype.render = function (target, picture, side) {
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, picture.colours);
   gl.uniform1i(gl.getUniformLocation(p, "colours"), 1);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, picture.elevs);
+  gl.uniform1i(gl.getUniformLocation(p, "elevs"), 2);
   gl.uniform2f(gl.getUniformLocation(p, "picture"), picture.w, picture.h);
   gl.uniform2f(gl.getUniformLocation(p, "turn"), Math.cos(r), Math.sin(r));
   gl.uniform2f(gl.getUniformLocation(p, "spot"), this.spot[0], this.spot[1]);
