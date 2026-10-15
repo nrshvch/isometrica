@@ -69,11 +69,20 @@ var View = Backbone.View.extend({
         self.renderSound();
       });
 
+    //the zoom the camera is at, whenever it moves or zooms
+    var camera = options.app.client.camera && options.app.client.camera.camera,
+      onCamera = function () {
+        self.renderZoom();
+      };
+
+    if (camera) camera.addEventListener(camera.events.update, onCamera);
+
     this.onDispose().once(function (s, a, self) {
       Events.off(self.time, self.time.constructor.events.advance, tmTkn);
       self.city.rename().off(rnmTkn);
       self.city.update().off(updTkn);
       if (unwatch !== null) unwatch();
+      if (camera) camera.removeEventListener(camera.events.update, onCamera);
     }, this);
 
     //render all
@@ -107,6 +116,23 @@ var View = Backbone.View.extend({
       .text(sound && sound.on ? "\u266b on" : "\u266b off")
       .toggleClass("off", !(sound && sound.on));
   },
+  renderZoom: function () {
+    var client = this.options.app.client,
+      camera = client.camera && client.camera.camera,
+      turner = client.cameraControl && client.cameraControl.turner;
+
+    if (!camera) return;
+
+    //while the world turns, the zoom it turns at - the camera is zoomed out
+    //meanwhile for pictures of it (isometrica client/turner)
+    var zoom = turner && turner.active ? turner.zoom : camera.zoom,
+      text = "\u00d7" + +zoom.toFixed(2);
+
+    if (text !== this.zoomText) {
+      this.zoomText = text;
+      $(".zoom", this.$el).text(text);
+    }
+  },
   toggleSound: function () {
     var sound = this.options.app.client.sound;
 
@@ -124,6 +150,7 @@ var View = Backbone.View.extend({
     this.renderTime();
     this.renderMoney();
     this.renderSound();
+    this.renderZoom();
   },
   dispose: function () {
     this.onDispose(this, null);
