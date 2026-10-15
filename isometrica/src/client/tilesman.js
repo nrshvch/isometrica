@@ -20,8 +20,14 @@ function Tilesman(root) {
 
   var self = this;
 
-  //the camera moved, or zoomed and sees more or less of the ground
+  //the camera moved, or zoomed and sees more or less of the ground - or,
+  //held, it is only noted that it did (hold)
   this.onCameraMove = function (camera) {
+    if (self.held) {
+      self.moved = camera;
+      return;
+    }
+
     var position = camera.gameObject.transform.getPosition(vec3Buffer1),
       radius = chunkRadius(self, camera),
       shrunk = radius < self.radius;
@@ -70,6 +76,27 @@ Tilesman.prototype.currentChunkX = 0;
 Tilesman.prototype.currentChunkY = 0;
 //how many rings of chunks around the current one are kept loaded
 Tilesman.prototype.radius = 1;
+
+/**
+ * Holds the chunks as they are while on - none loaded nor let go of however
+ * the camera moves meanwhile, while the camera is turned round the world,
+ * say (client/turner), not to load and let go of them over and over for
+ * pictures of it - and once off, loads what there is to load for where the
+ * camera is then.
+ */
+Tilesman.prototype.held = false;
+Tilesman.prototype.moved = null;
+
+Tilesman.prototype.hold = function (on) {
+  this.held = on;
+
+  if (!on && this.moved !== null) {
+    var camera = this.moved;
+
+    this.moved = null;
+    this.onCameraMove(camera);
+  }
+};
 
 Tilesman.prototype.start = function () {
   var cam = vkaria.game.logic.world.findByName("mainCamera");
