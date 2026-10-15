@@ -38,7 +38,7 @@
  *   - skyline: a real city heard from high above it, not a cartoon of one
  *     - its own models, in skyline.js.
  *
- * The last three loop, seamlessly: what goes on in them all the time is made
+ * The last four loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
  * happens now and then - a bird, a wave, a car - is laid in round the loop,
  * so whatever runs over the end of it comes in again at the start.
