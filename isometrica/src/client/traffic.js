@@ -39,11 +39,8 @@
  * Positions are in tiles, as in client/carman: the middle of tile (x, y) is
  * at (x, y).
  */
-import Core from "../core/main";
-import Road from "./road";
-import RoadView from "./roadview";
-
-var Terrain = Core.Terrain;
+import Terrain from "../core/terrain";
+import * as RoadRules from "../core/roadrules";
 
 //how far off the middle of the road a lane is, and something pulled in to
 //the kerb, in tiles - the asphalt is 0.31 either side of the middle, and
@@ -125,7 +122,7 @@ var SIDE_OF = { "-1,0": 0, "0,-1": 1, "1,0": 2, "0,1": 3 };
  */
 function roadAxes(roadman, tile) {
   var road = roadman.getRoad(tile),
-    shape = road !== null ? road.typeCode % RoadView.PAVED : 90000;
+    shape = road !== null ? road.typeCode % RoadRules.PAVED : 90000;
 
   if (shape === 1 || shape === 3)
     return 2; //along y
@@ -147,10 +144,10 @@ function canDrive(roadman, from, dir) {
     (roadAxes(roadman, to) & axis) !== 0 &&
     //only where the two roads meet level - never over a step, nor off the
     //side of a ramp (client/road)
-    Road.meets(a.surface(), SIDE_OF[dir[0] + "," + dir[1]], b.surface()) &&
+    RoadRules.meets(a.surface(), SIDE_OF[dir[0] + "," + dir[1]], b.surface()) &&
     //and never against the way a one-way road goes
-    Road.goes(a, SIDE_OF[dir[0] + "," + dir[1]]) &&
-    Road.goes(b, SIDE_OF[dir[0] + "," + dir[1]])
+    RoadRules.goes(a, SIDE_OF[dir[0] + "," + dir[1]]) &&
+    RoadRules.goes(b, SIDE_OF[dir[0] + "," + dir[1]])
   );
 }
 
@@ -160,6 +157,26 @@ function neighbours(roadman, tile, out) {
       out.push(tile + DIRECTIONS[i][2]);
 
   return out;
+}
+
+/**
+ * How many roads a tile is joined up with, whichever way they are driven: 1
+ * the end of a road, 2 a road going on, 3 or 4 a junction.
+ */
+function joins(roadman, tile) {
+  var n = 0;
+
+  for (var i = 0; i < DIRECTIONS.length; i++) {
+    var d = DIRECTIONS[i];
+
+    if (
+      canDrive(roadman, tile, d) ||
+      canDrive(roadman, tile + d[2], [-d[0], -d[1], -d[2]])
+    )
+      n++;
+  }
+
+  return n;
 }
 
 function direction(from, to) {
@@ -349,7 +366,7 @@ function heading(d) {
 function oneWayAt(tile) {
   var road = laneTraffic.roadman.getRoad(tile);
 
-  return road !== null && Road.wayOf(road.data) >= 0;
+  return road !== null && RoadRules.wayOf(road.data) >= 0;
 }
 
 /**
@@ -482,7 +499,7 @@ function laneCount(route, din, i, lane) {
 
 //what turning round costs a route, on top of the tile it takes: a way that
 //goes round the block is taken over one that turns back, if it is no longer
-var TURN_ROUND = 2,
+var TURN_ROUND = 8,
   //the most a search for a route looks at before it gives up
   ROUTE_LIMIT = 40000;
 
@@ -494,10 +511,16 @@ var TURN_ROUND = 2,
  * street or round a bend: a car turning round there swings across the lane
  * coming the other way, and what is coming waits for it while what is
  * behind it waits too - in a small town that is how the streets lock up.
- * It only turns round at a junction, where it takes its turn like anything
- * else going through, or at the end of a road, where there is nobody coming.
- * So the way it finds can go on past where it is going to turn round at
- * the next junction and come back - the same tiles twice.
+ * It only turns round at a junction - three or four roads joined - where it
+ * takes its turn like anything else going through, or at the end of a road,
+ * where there is nobody coming. Not where a road both ways ends in a
+ * one-way one coming into it: there is no going on there, but it is no dead
+ * end - what comes off the one-way road would wait for it. So the way it
+ * finds can go on past where it is going to turn round at the next junction
+ * and come back - the same tiles twice.
+ *
+ * And it gets to `end` going a way it can go on from - not up the end of a
+ * road like that, with nowhere to go on to but back - if it can at all.
  *
  * @param start {number}
  * @param from {number[]|null} the way it is going on start - it turns back
@@ -527,17 +550,59 @@ function route(start, from, end, next) {
   }
 
   //whether a car can turn round on tile: anywhere but where the road just
-  //goes on, two ways out of it
+  //goes on, two roads joined to it - whichever ways they are driven
   function turnable(tile) {
     var known = turns.get(tile);
 
     if (known === undefined) {
-      out.length = 0;
-      known = next(tile, out).length !== 2;
+      if (laneTraffic !== null) known = joins(laneTraffic.roadman, tile) !== 2;
+      else {
+        out.length = 0;
+        known = next(tile, out).length !== 2;
+      }
       turns.set(tile, known);
     }
 
     return known;
+  }
+
+  //whether a car on tile, come into it going din, can go on from there
+  //without turning round where it may not: on along the road from there to
+  //a junction or the end of a road - somewhere it can turn round, or go
+  //another way - not up a road it can only come back down
+  function onFrom(tile, din) {
+    var seen = new Set(),
+      steps = [];
+
+    for (var n = 0; n < ROUTE_LIMIT; n++) {
+      if (din === null || turnable(tile)) return true;
+
+      var key = tile * 5 + dirIndex(din);
+
+      //round and round a loop: it can keep going
+      if (seen.has(key)) return true;
+      seen.add(key);
+
+      steps.length = 0;
+      next(tile, steps);
+
+      var on = null;
+
+      for (var i = 0; i < steps.length; i++) {
+        var d = direction(tile, steps[i]);
+
+        if (d[0] !== -din[0] || d[1] !== -din[1]) {
+          on = steps[i];
+          din = d;
+          break;
+        }
+      }
+
+      if (on === null) return false;
+      tile = on;
+    }
+
+    return true;
   }
 
   function push(f, key) {
@@ -591,7 +656,10 @@ function route(start, from, end, next) {
   }
 
   var first = keyOf(start, from),
-    ways = [];
+    ways = [],
+    //the way there, got to going a way it cannot go on from - if there is
+    //no other
+    stuck = null;
 
   g.set(first, 0);
   push(h(start), first);
@@ -609,12 +677,15 @@ function route(start, from, end, next) {
     if (tile === end) {
       var tiles = [tile];
 
-      while (parent.has(key)) {
-        key = parent.get(key);
-        tiles.push(Math.floor(key / 5));
+      for (var k = key; parent.has(k);) {
+        k = parent.get(k);
+        tiles.push(Math.floor(k / 5));
       }
 
-      return tiles.reverse();
+      tiles.reverse();
+
+      if (onFrom(tile, din)) return tiles;
+      if (stuck === null) stuck = tiles;
     }
 
     ways.length = 0;
@@ -638,7 +709,7 @@ function route(start, from, end, next) {
     }
   }
 
-  return [];
+  return stuck || [];
 }
 
 /**
@@ -911,7 +982,9 @@ function Driver(traffic, length, width, owner) {
   this.held = "";
   //the change of lane on a one-way road just ahead of it, if any - over
   //into the other lane, and whether it waits for room there (crossingAhead)
+  //- and how long it has waited for room, ms
   this.merging = null;
+  this.mergeWaited = 0;
   //the junction tiles it has been given, and those of them it has been on
   //- once it is off one of those again, it is through it
   this.grants = [];
@@ -1276,7 +1349,10 @@ function inFront(self, other) {
 
 //how far short of where it comes over a car about to change lanes is let in
 //by those coming up the lane it goes into, tiles
-var MERGE_LOOK = 1.2;
+var MERGE_LOOK = 1.2,
+  //how long it waits for room in the other lane before it gives up
+  //changing lanes, ms (keepLane)
+  MERGE_WAIT = 2500;
 
 /**
  * The change of lane just ahead of it along its way, as far as far, if any:
@@ -1377,6 +1453,67 @@ Driver.prototype.putOffMerge = function () {
     next.shift();
 
   this.redirect(next);
+
+  return true;
+};
+
+/**
+ * Gives up changing lanes: on in the lane it is in up to the next junction
+ * on its way, and through that from this lane - turning from the lane it
+ * was to have changed out of, which the junction's turns allow for. For a
+ * car that has waited long enough for room in the other lane (MERGE_WAIT):
+ * where the traffic stands in both, round a roundabout most of all, it
+ * would otherwise wait for good, and all behind it. Whether it did.
+ */
+Driver.prototype.keepLane = function () {
+  var wps = this.wps,
+    here = this.here(),
+    tiles = [here],
+    heading = [Math.round(this.hx), Math.round(this.hy)],
+    lane = this.lane(),
+    traffic = this.traffic,
+    next = [],
+    i;
+
+  for (i = this.target; i < wps.length; i++)
+    if (wps[i].tile !== tiles[tiles.length - 1]) {
+      if (tiles.indexOf(wps[i].tile) !== -1) return false;
+      tiles.push(wps[i].tile);
+    }
+
+  if (tiles.length < 2 || !same(direction(tiles[0], tiles[1]), heading))
+    return false;
+
+  //up to the junction, in its lane
+  for (i = 0; i < tiles.length - 1 && !traffic.isJunction(tiles[i]); i++)
+    tileWaypoints(
+      next,
+      tiles[i],
+      i === 0 ? heading : direction(tiles[i - 1], tiles[i]),
+      direction(tiles[i], tiles[i + 1]),
+      false,
+      lane,
+      lane,
+    );
+
+  next = next.concat(
+    routeWaypoints(
+      tiles.slice(i),
+      i === 0 ? heading : direction(tiles[i - 1], tiles[i]),
+      false,
+      true,
+      lane,
+    ),
+  );
+
+  while (
+    next.length > 1 &&
+    (next[0].x - this.x) * heading[0] + (next[0].y - this.y) * heading[1] < 0.05
+  )
+    next.shift();
+
+  this.redirect(next);
+  this.mergeWaited = 0;
 
   return true;
 };
@@ -1712,6 +1849,13 @@ Driver.prototype.step = function (dt) {
       //has room
       if (blocker !== null && swapsWith(this, blocker, m) && this.putOffMerge())
         blocker = null;
+      //waited long enough for room: it stays in its lane instead
+      else if (
+        blocker !== null &&
+        this.mergeWaited > MERGE_WAIT &&
+        this.keepLane()
+      )
+        blocker = null;
       else if (blocker !== null) {
         m.waiting = true;
 
@@ -1742,6 +1886,7 @@ Driver.prototype.step = function (dt) {
 
   this.v = this.v < vt ? Math.min(vt, this.v + ACCEL * s) : vt;
   this.held = this.v < 0.05 ? held : "";
+  this.mergeWaited = held === "merge" ? this.mergeWaited + dt : 0;
 
   var step = Math.min(this.v * s, Math.max(0, gap - HARD_GAP));
 
@@ -1879,7 +2024,138 @@ Driver.prototype.ask = function (junction, front) {
           ),
     ready = exit === null || (going === 0 && drivingAway(this, exit.driver));
 
+  //onto a roundabout: only with room enough on it, and after what is going
+  //round already
+  if (ready) ready = mayEnter(this, junction);
+
   return traffic.request(this, junction, ready);
+};
+
+/*
+ * A roundabout - any small loop of one-way road, round which the traffic
+ * keeps going - locks solid once it is full: everything on it waits for
+ * what is in front of it to move, all the way round. So what comes onto it
+ * from outside gives way to what is going round it already, waiting at the
+ * same junction, and comes on only while less than LOOP_FILL of it is
+ * taken up - there is always room to go round.
+ */
+
+//how much of a roundabout may be taken up, a share of how many tiles round
+//it is, for anything more to come onto it; and how many tiles round one is
+//at most - longer, it is just one-way streets
+var LOOP_FILL = 0.5,
+  LOOP_MOST = 12;
+
+//the tile one step on from tile going d
+function stepTile(tile, d) {
+  return tile + d[0] * Terrain.dx + d[1] * Terrain.dy;
+}
+
+//whether self may come through junction - ready otherwise - onto the
+//roundabout it leads onto, if it does
+function mayEnter(self, junction) {
+  var traffic = self.traffic,
+    first = junction.tiles[0],
+    last = junction.tiles[junction.tiles.length - 1],
+    din = DIRS[junction.moves[0].i],
+    dout = DIRS[junction.moves[junction.moves.length - 1].o],
+    loop = traffic.loopOf(stepTile(last, dout));
+
+  //not onto one, or going round it already
+  if (loop === null || loop.has(stepTile(first, [-din[0], -din[1]])))
+    return true;
+
+  var taken = 0,
+    seen = new Set();
+
+  loop.forEach(function (t) {
+    var here = traffic.index.get(t);
+
+    if (here !== undefined)
+      here.forEach(function (d) {
+        if (d !== self && !seen.has(d)) {
+          seen.add(d);
+          taken += d.length + MIN_GAP * 2;
+        }
+      });
+  });
+
+  if (taken + self.length > loop.size * LOOP_FILL) return false;
+
+  var j = traffic.junctions.get(first);
+
+  return (
+    j === undefined ||
+    !j.waiting.some(function (w) {
+      return w.d !== self && loop.has(w.d.here());
+    })
+  );
+}
+
+//whether a road is one-way
+function oneWayRoad(roadman, tile) {
+  var road = roadman.getRoad(tile);
+
+  return road !== null && RoadRules.wayOf(road.data) >= 0;
+}
+
+//how many steps along one-way roads every tile is from `from`, as far as
+//LOOP_MOST - driving them forward, or back
+function reach(roadman, from, forward) {
+  var dist = new Map([[from, 0]]),
+    queue = [from];
+
+  while (queue.length > 0) {
+    var t = queue.shift(),
+      n = dist.get(t);
+
+    if (n >= LOOP_MOST) continue;
+
+    for (var i = 0; i < DIRECTIONS.length; i++) {
+      var d = DIRECTIONS[i],
+        to = t + d[2],
+        ok = forward
+          ? canDrive(roadman, t, d)
+          : canDrive(roadman, to, [-d[0], -d[1], -d[2]]);
+
+      if (ok && !dist.has(to) && oneWayRoad(roadman, to)) {
+        dist.set(to, n + 1);
+        queue.push(to);
+      }
+    }
+  }
+
+  return dist;
+}
+
+/**
+ * The roundabout a tile is on - the small loop of one-way road through it,
+ * as the set of its tiles - or null for none.
+ */
+Traffic.prototype.loopOf = function (tile) {
+  var known = this._loops.get(tile);
+
+  if (known !== undefined) return known;
+
+  known = null;
+
+  if (oneWayRoad(this.roadman, tile)) {
+    var on = reach(this.roadman, tile, true),
+      back = reach(this.roadman, tile, false),
+      loop = new Set();
+
+    on.forEach(function (n, t) {
+      var m = back.get(t);
+
+      if (m !== undefined && n + m <= LOOP_MOST) loop.add(t);
+    });
+
+    if (loop.size >= 3) known = loop;
+  }
+
+  this._loops.set(tile, known);
+
+  return known;
 };
 
 //how many others let into the junctions ahead go out of the last of them
@@ -2386,6 +2662,7 @@ function Traffic(roadman) {
   //ready}]}
   this.junctions = new Map();
   this._isJunction = new Map();
+  this._loops = new Map();
   this._junctionAt = 0;
   this.seen = new Set();
   this._tiles = [];
@@ -2454,6 +2731,7 @@ Traffic.prototype.frame = function (now) {
 
   if (now - this._junctionAt > JUNCTION_TTL) {
     this._isJunction.clear();
+    this._loops.clear();
     this._junctionAt = now;
   }
 
@@ -2864,6 +3142,7 @@ Traffic.Driver = Driver;
 Traffic.route = route;
 Traffic.routeWaypoints = routeWaypoints;
 Traffic.neighbours = neighbours;
+Traffic.joins = joins;
 Traffic.canDrive = canDrive;
 Traffic.direction = direction;
 Traffic.rightOf = rightOf;

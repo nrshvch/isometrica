@@ -59,7 +59,11 @@ engine in `engine/`.
   still stop lets it in, zip-fashion (crossingAhead, Traffic#mergeBlocker).
   Two level with each other that each want the other's lane go one at a
   time: the one behind puts its change off a tile, or with the junction
-  next, turns from the lane it is in (Driver#putOffMerge).
+  next, turns from the lane it is in (Driver#putOffMerge). And one that has
+  waited two and a half seconds for room gives up changing lanes: it keeps
+  to the lane it is in into the next junction and turns from there
+  (Driver#keepLane) - where both lanes stand, round a roundabout most of
+  all, it would otherwise wait for good, and everything behind it.
   The next stretch of its way is joined on a few tiles before the end of
   the one it is on, so it is in the lane for a turn at the start of it.
   Where two side by side do not cross each other's way through a junction,
@@ -92,9 +96,21 @@ engine in `engine/`.
   jammedAt). A bus keeps to its round.
 - Nothing turns round in the middle of a street, across the lane coming
   the other way - that is what locked a small town's streets solid. A route
-  only turns back at a junction, taking its turn there like anything else
-  going through, or at the end of a road (`Traffic.route`); to get to a
-  place behind it a car drives on to the next junction and comes back.
+  only turns back at a junction - three or four roads joined - taking its
+  turn there like anything else going through, or at the end of a road
+  (`Traffic.route`). Not where a street both ways ends in a one-way street
+  coming into it: there is no going on there, but it is no dead end, and
+  turning round there across what comes off the one-way street is what
+  piled the traffic up. A route also gets to where it is going facing a way
+  it can drive on from - down that one-way street rather than up the other
+  to its top - so nothing is left with nowhere to go but back. Turning
+  round costs a route eight tiles, so a car would sooner go round the block
+  than turn round at a junction in everybody's way.
+- A roundabout - any small loop of one-way road, twelve tiles round at most
+  - locks solid once it is full: everything on it waits for what is in
+    front of it, all the way round. So what comes onto it gives way to what
+    is going round it already, and comes on only while less than half of it
+    is taken up (`traffic.js` mayEnter, Traffic#loopOf).
 - There is a car for every four road tiles loaded through the day, and more
   in the rush hours - about one for every two and a half at eight in the
   morning and five in the evening (`isometrica/src/client/carman.js`). In the
@@ -135,6 +151,36 @@ engine in `engine/`.
   which is how they cut the corner turning at a junction, swing round to
   turn back at a junction, pull over to the kerb and out again, and pull out
   round a bus at its stop.
+
+### Traffic testbed
+
+- The traffic is tried out on its own, away from any city, in a testbed
+  (`lab/trafficbed`): the game's own `traffic.js` - the same drivers,
+  junctions, lanes and routes - on roads drawn as text, with the cars put
+  where we say, of the kinds we say (a car, a van, a lorry, a truck, a
+  bus), going where we say, a step at a time. As it goes it counts what
+  goes wrong: a car turning round where the road just goes on, standing in
+  the traffic too long, a ring of them each waiting on the next, two on top
+  of each other, one with no way to where it is going.
+- `lab/trafficbed/scenarios.js` - a street round a corner, a one-way street
+  coming into the end of one both ways, a roundabout, a one-way street of
+  two lanes into a junction, a bus at its stop, cars parking at the kerb, a
+  grid of streets thick with traffic, and the city the games start on with
+  sixty cars and two buses (`city.json`, its roads taken from the game) -
+  each with what has to hold by the end of it.
+- `npm run test:traffic` (`tools/traffictest.mjs`) runs them all headless,
+  in a second or two, and says which hold - `--seeds=4` to run each four
+  ways, a name to run just that one, `--verbose` for where things went
+  wrong. The isometrica workflow runs it on every push.
+- `lab/traffic.html` (`npm run dev` here, or the lab deployed) shows any of
+  them from above, going: pick where a car starts and where it goes on the
+  map, its kind, and put it on; follow one to see its way, what it keeps
+  its distance from, why it stands; draw roads of your own; and "check"
+  runs it through as the headless runner does. `trafficbed.bed` in the
+  console is the bed itself.
+- So `traffic.js` loads with nothing of the game around it, the rules of the
+  roads it goes by - where two roads join, which way a one-way road goes -
+  are in `core/roadrules.js`, which `client/road` and `core/surface` use too.
 
 ### Sounds
 
