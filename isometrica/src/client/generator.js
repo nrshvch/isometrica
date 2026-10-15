@@ -330,6 +330,7 @@ function send(self, worker, sheet, ahead) {
     gen: g.gen,
     key: g.key,
     look: g.look,
+    view: g.view,
   });
 }
 

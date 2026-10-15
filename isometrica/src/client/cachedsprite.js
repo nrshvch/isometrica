@@ -148,6 +148,9 @@ var NIGHT = 7,
   TALL = 5,
   WHOLE = 6;
 
+//painted from straight above (SpriteCache#getTop)
+CachedSprite.prototype.fromAbove = false;
+
 //what it is painted as for the light to be worked out as it is drawn - its
 //colours and the ways it looks side by side, and its pictures for the
 //night - each put together when it is first wanted (see Layers), or null
@@ -365,7 +368,10 @@ Layers.prototype.paint = function (pixels, w, x, y) {
           y + part.y,
         );
 
-      var up = ground - (part.y + (f.pivotY || 0));
+      //laid up on others as the parts say from above, where it is laid
+      //no higher on the picture for it
+      var up =
+        part.up !== undefined ? part.up : ground - (part.y + (f.pivotY || 0));
 
       if (night) {
         lift(pixels, w, own.image, f, x + TALL * W + part.x, y + part.y, up);
@@ -493,8 +499,9 @@ Layers.prototype.finish = function (pixels, w) {
       o = (j * w + x0 + i) * 4;
       if (pixels[o + 3] === 0) continue;
 
+      //seen from above, it stands over the ground right under it
       var h = pixels[o],
-        at = j + h;
+        at = this.sprite.fromAbove ? j : j + h;
 
       if (at < H && h > over[at * W + i]) over[at * W + i] = h;
     }

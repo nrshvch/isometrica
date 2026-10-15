@@ -368,6 +368,8 @@ CarScript.prototype.baseSpeed = SPEED;
 //its pictures, one for each way it drives: {"x+": sprite, ...}
 CarScript.prototype.looks = null;
 CarScript.prototype.heading = null;
+//whether its picture is the one from straight above
+CarScript.prototype.fromAbove = false;
 //which way it is about to turn: -1 left, 1 right, 0 neither (client/traffic
 //Driver signal)
 CarScript.prototype.signal = 0;
@@ -1212,9 +1214,13 @@ CarScript.prototype.place = function () {
   this.signal = this.lost ? Lighting.HAZARD : driver.signal();
   this.braking = driver.braking;
 
-  if (heading !== this.heading && this.looks[heading] !== undefined) {
+  if (
+    (heading !== this.heading || View.top() !== this.fromAbove) &&
+    this.looks[heading] !== undefined
+  ) {
     this.heading = heading;
-    frame = this.looks[heading];
+    this.fromAbove = View.top();
+    frame = seenAs(root.sprites, this.looks[heading]);
     renderer = this.gameObject.spriteRenderer;
     renderer.setSprite(frame.sprite);
     renderer.pivotX = frame.pivotX;
@@ -1242,11 +1248,32 @@ CarScript.prototype.showLamp = function () {
     return;
   }
 
+  var sprites = this.man.root.sprites;
+
   this.gameObject.spriteRenderer.setLit(
-    lamps[this.lamp][heading],
-    this.type.flashes[heading],
+    seenAs(sprites, lamps[this.lamp][heading]),
+    this.type.flashes[heading].map(function (f) {
+      return seenAs(sprites, f);
+    }),
   );
 };
+
+/**
+ * A look of a vehicle - {sprite, pivotX, pivotY} - as it is drawn now: as
+ * it is, or seen from straight above (client/view top), made the first time
+ * it is wanted.
+ */
+function seenAs(sprites, look) {
+  if (!View.top() || look.name === undefined) return look;
+
+  if (look.fromAbove === undefined) {
+    var top = sprites.topOf(look.name);
+
+    look.fromAbove = { sprite: top, pivotX: top.pivotX, pivotY: top.pivotY };
+  }
+
+  return look.fromAbove;
+}
 
 /**
  * Blue, then red, and round again - for as long as there is more than one
@@ -2261,6 +2288,8 @@ function loadTypes(self) {
       sprite: sprites.getSprite(f.sprite),
       pivotX: f.pivotX,
       pivotY: f.pivotY,
+      //for its picture from straight above (seenAs)
+      name: f.sprite,
     };
   }
 
@@ -2351,6 +2380,7 @@ Carman.prototype.looksOf = function (name, color) {
 Carman.routeWaypoints = Traffic.routeWaypoints;
 Carman.groundHeight = groundHeight;
 Carman.VehicleRenderer = VehicleRenderer;
+Carman.seenAs = seenAs;
 Carman.LANE = Traffic.LANE;
 Carman.routeTo = routeTo;
 Carman.ensureStops = ensureStops;

@@ -4,6 +4,7 @@ import Handlebars from "handlebars";
 import Events from "events";
 import Numeral from "numeral";
 import $ from "jquery";
+import WorldView from "isometrica/client/view";
 
 var template = Handlebars.compile(__templateSource);
 
@@ -28,6 +29,9 @@ var View = Backbone.View.extend({
     //soundman)
     "click .music": "toggleMusic",
     "click .sounds": "toggleSounds",
+    //the world from straight above, as a map, and back (isometrica client/
+    //vkaria setTopView)
+    "click .view": "toggleView",
   },
   initialize: function (options) {
     this.onDispose = Events.event("dispose");
@@ -71,6 +75,12 @@ var View = Backbone.View.extend({
         self.renderSound();
       });
 
+    //from above or from the side, however it was switched - here, or by its
+    //key
+    var viewTkn = Events.on(WorldView, WorldView.events.change, function () {
+      self.renderView();
+    });
+
     //the zoom the camera is at, whenever it moves or zooms
     var camera = options.app.client.camera && options.app.client.camera.camera,
       onCamera = function () {
@@ -80,6 +90,7 @@ var View = Backbone.View.extend({
     if (camera) camera.addEventListener(camera.events.update, onCamera);
 
     this.onDispose().once(function (s, a, self) {
+      Events.off(WorldView, WorldView.events.change, viewTkn);
       Events.off(self.time, self.time.constructor.events.advance, tmTkn);
       self.city.rename().off(rnmTkn);
       self.city.update().off(updTkn);
@@ -123,6 +134,16 @@ var View = Backbone.View.extend({
       .text(sounds ? "fx on" : "fx off")
       .toggleClass("off", !sounds);
   },
+  renderView: function () {
+    var top = WorldView.top();
+
+    $(".view", this.$el).text("\u25a6 top").toggleClass("off", !top);
+  },
+  toggleView: function () {
+    var client = this.options.app.client;
+
+    if (client.setTopView) client.setTopView(!WorldView.top());
+  },
   renderZoom: function () {
     var client = this.options.app.client,
       camera = client.camera && client.camera.camera,
@@ -162,6 +183,7 @@ var View = Backbone.View.extend({
     this.renderTime();
     this.renderMoney();
     this.renderSound();
+    this.renderView();
     this.renderZoom();
   },
   dispose: function () {

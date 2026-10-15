@@ -37,6 +37,13 @@ function SpriteCache(clock, options) {
   //what else the generators worked out, by generator: see
   //shared/gen/catalog describe
   this.generated = {};
+  //how big each generator's pictures from straight above are, and where
+  //they are drawn from: {w, h, pivotX, pivotY}, or null for none (catalog
+  //describe top)
+  this.tops = {};
+  //whether the world is drawn from above (client/view top) - for whoever
+  //asks which pictures to draw it with (getTop)
+  this.top = false;
   //paints the generated sprites, once the manifest is in
   this.generator = null;
 
@@ -140,6 +147,7 @@ function addGenerated(self, meta) {
   });
 
   self.generated[meta.generator] = meta.data;
+  self.tops[meta.generator] = meta.top === undefined ? null : meta.top;
 }
 
 function json(url, options) {
@@ -172,8 +180,135 @@ SpriteCache.prototype.lookSheet = function (sheet, look) {
       key: g.key,
       look: look,
       faced: true,
+      view: g.view,
     }))
   );
+};
+
+/**
+ * The sheet a generated picture is painted on seen from straight above
+ * (shared/gen/catalog describe top) - lit, or in a look of its own as any
+ * other (lookSheet) - or null for one that is not seen from above.
+ */
+SpriteCache.prototype.topSheet = function (sheet) {
+  var g = sheet.generated;
+
+  if (g === null || g.view === "top" || !this.tops[g.gen]) return null;
+
+  var name = g.name + "@top";
+
+  return (
+    this.sheets[name] ||
+    (this.sheets[name] = new Sheet(null, {
+      name: name,
+      gen: g.gen,
+      key: g.key,
+      faced: g.faced,
+      view: "top",
+    }))
+  );
+};
+
+/**
+ * How big a sprite's picture from straight above is and where it is drawn
+ * from - {w, h, pivotX, pivotY} - or null for one that has none.
+ */
+SpriteCache.prototype.topFrame = function (name) {
+  var frame = this.frames[name],
+    g = frame && this.sheets[frame.sheet].generated;
+
+  return g ? this.tops[g.gen] || null : null;
+};
+
+/**
+ * One sprite seen from straight above (getTop) - nothing, for one not seen
+ * from above at all.
+ */
+SpriteCache.prototype.topOf = function (name) {
+  return this.getTop([name]);
+};
+
+/**
+ * One picture of several sprites seen from straight above, laid over one
+ * another bottom first, each where its point it is drawn from is (topFrame) -
+ * for what stands on a tile, all of them the tile's square - shared by all
+ * that ask for the same. A part laid up on others (a storey on a storey)
+ * says how much higher it is, up, for how high its pixels stand. Its pivotX,
+ * pivotY say where the point they are all drawn from is in it.
+ *
+ * @param parts {Array<string|{name: string, up: number}>} bottom first
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.getTop = function (parts) {
+  var key =
+      "top:" +
+      parts
+        .map(function (part) {
+          return typeof part === "string" || !part.up
+            ? part.name || part
+            : part.name + "^" + part.up;
+        })
+        .join("+"),
+    sprite = this.sprites[key];
+
+  if (sprite !== undefined) return sprite;
+
+  var laid = [],
+    minX = 0,
+    minY = 0,
+    width = 0,
+    height = 0;
+
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i],
+      name = typeof part === "string" ? part : part.name,
+      frame = this.frames[name],
+      top = this.topFrame(name),
+      sheet = frame && this.topSheet(this.sheets[frame.sheet]);
+
+    //drawn without what is not seen from above - the stones, the smoke
+    if (!top || !sheet) continue;
+
+    laid.push({ sheet: sheet, top: top, up: part.up || 0 });
+    minX = Math.min(minX, -top.pivotX);
+    minY = Math.min(minY, -top.pivotY);
+  }
+
+  var resolved = laid.map(function (p) {
+    var x = -p.top.pivotX - minX,
+      y = -p.top.pivotY - minY;
+
+    width = Math.max(width, x + p.top.w);
+    height = Math.max(height, y + p.top.h);
+
+    return {
+      sheet: p.sheet,
+      frame: {
+        sheet: p.sheet.generated.name,
+        x: 0,
+        y: 0,
+        w: p.top.w,
+        h: p.top.h,
+      },
+      x: x,
+      y: y,
+      up: p.up,
+    };
+  });
+
+  sprite = this.sprites[key] = new CachedSprite(
+    this,
+    key,
+    resolved,
+    width,
+    height,
+  );
+  //seen from above: what stands high stands over its own pixel
+  sprite.fromAbove = true;
+  sprite.pivotX = -minX;
+  sprite.pivotY = -minY;
+
+  return sprite;
 };
 
 /**
