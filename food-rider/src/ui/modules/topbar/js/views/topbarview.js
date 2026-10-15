@@ -5,6 +5,7 @@ import Events from "events";
 import Numeral from "numeral";
 import $ from "jquery";
 import WorldView from "isometrica/client/view";
+import CameraControl from "isometrica/client/cameracontrol";
 
 var template = Handlebars.compile(__templateSource);
 
@@ -25,10 +26,12 @@ var View = Backbone.View.extend({
     //the treasury is what the city screen is mostly about - clicked
     //again, it puts it away
     "click .money": "toggleCity",
-    //the music and the sounds, each on and off (isometrica client/audio/
-    //soundman)
-    "click .music": "toggleMusic",
+    //the sounds on and off - the music is kept quiet (isometrica client/
+    //audio/soundman)
     "click .sounds": "toggleSounds",
+    //the day and the night going by, or the middle of the day all the while
+    //(isometrica client/lighting setDayNight)
+    "click .daynight": "toggleDayNight",
     //the world from straight above, as a map, and back (isometrica client/
     //vkaria setTopView)
     "click .view": "toggleView",
@@ -63,6 +66,7 @@ var View = Backbone.View.extend({
 
     var self = this,
       sound = options.app.client.sound,
+      lighting = options.app.client.lighting,
       unwatch =
         this.purse === null
           ? null
@@ -73,6 +77,11 @@ var View = Backbone.View.extend({
     if (sound)
       sound.onChange(function () {
         self.renderSound();
+      });
+
+    if (lighting)
+      lighting.onDayNight(function () {
+        self.renderDayNight();
       });
 
     //from above or from the side, however it was switched - here, or by its
@@ -124,15 +133,22 @@ var View = Backbone.View.extend({
   },
   renderSound: function () {
     var sound = this.options.app.client.sound,
-      music = !!(sound && sound.wants.music),
       sounds = !!(sound && sound.wants.sounds);
 
-    $(".music", this.$el)
-      .text(music ? "\u266b on" : "\u266b off")
-      .toggleClass("off", !music);
     $(".sounds", this.$el)
-      .text(sounds ? "fx on" : "fx off")
+      .text(sounds ? "\u266b on" : "\u266b off")
       .toggleClass("off", !sounds);
+  },
+  renderDayNight: function () {
+    var lighting = this.options.app.client.lighting,
+      on = !!(lighting && lighting.dayNight);
+
+    $(".daynight", this.$el).text("\u263e night").toggleClass("off", !on);
+  },
+  toggleDayNight: function () {
+    var lighting = this.options.app.client.lighting;
+
+    if (lighting) lighting.setDayNight();
   },
   renderView: function () {
     var top = WorldView.top();
@@ -152,21 +168,18 @@ var View = Backbone.View.extend({
     if (!camera) return;
 
     //while the world turns, the zoom it turns at - the camera is zoomed out
-    //meanwhile for pictures of it (isometrica client/turner)
+    //meanwhile for pictures of it (isometrica client/turner) - as its step,
+    //1x the furthest out to 5x the closest in (isometrica client/
+    //cameracontrol ZOOMS)
     var zoom = turner && turner.active ? turner.zoom : camera.zoom,
-      text = "\u00d7" + +zoom.toFixed(2);
+      text = CameraControl.zoomStep(zoom) + "x";
 
     if (text !== this.zoomText) {
       this.zoomText = text;
       $(".zoom", this.$el).text(text);
     }
   },
-  //from the click itself, so that a phone lets it play
-  toggleMusic: function () {
-    var sound = this.options.app.client.sound;
-
-    if (sound) sound.toggle("music");
-  },
+  //from the click itself, so that a phone lets them play
   toggleSounds: function () {
     var sound = this.options.app.client.sound;
 
@@ -183,6 +196,7 @@ var View = Backbone.View.extend({
     this.renderTime();
     this.renderMoney();
     this.renderSound();
+    this.renderDayNight();
     this.renderView();
     this.renderZoom();
   },

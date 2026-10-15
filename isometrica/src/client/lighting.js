@@ -26,6 +26,11 @@
  * car puts its lamps on and off a while after them, each in its own time
  * (lampsOn).
  *
+ * The day and the night go by only if asked for (setDayNight: N, its button
+ * in the top bar, ?daynight=on; kept in the browser for next time) - else
+ * the city is drawn in the middle of the day whatever the clock says, the
+ * clock and all that goes by it going on as ever.
+ *
  * With ?light=0 everything is drawn as it is painted, lit by the one sun of
  * old.
  */
@@ -38,7 +43,7 @@ import GLView from "./glview";
 import Weather from "./weather";
 import Wind from "./wind";
 
-//the hour now, worked out once a frame (see begin)
+//the hour the city is drawn at now, worked out once a frame (see begin)
 var hourNow = 12;
 
 //how gloomy the day is for the weather, 0..1: dark enough under a heavy
@@ -49,6 +54,30 @@ var gloom = 0;
 //when the sun comes up, and when it goes down: a long day and a short night
 var SUNRISE = 5,
   SUNSET = 21.5;
+
+//the hour the city is drawn at with no day and night going by: the middle
+//of the day, the sun at its highest
+var MIDDAY = (SUNRISE + SUNSET) / 2;
+
+//where the day and the night going by is kept on or off in the browser
+var DAY_NIGHT_STORE = "isometrica.daynight";
+
+//whether the day and the night go by: as asked in the address, or as kept,
+//or not
+function dayNightWanted() {
+  var asked = /[?&]daynight=(on|off)/.exec(location.search),
+    kept = null;
+
+  if (asked) return asked[1] === "on";
+
+  try {
+    kept = localStorage.getItem(DAY_NIGHT_STORE);
+  } catch (e) {
+    //not kept: not wanted, then
+  }
+
+  return kept === "on";
+}
 
 //when the street lights go on of an evening, half an hour before the sun is
 //down, and off the next morning, half an hour after it is up (29.5, half
@@ -183,6 +212,11 @@ function Lighting(root, cache) {
   //between (see hour)
   this.clockAt = -1;
   this.clockSince = 0;
+
+  //whether the day and the night go by, or it is the middle of the day all
+  //the while (setDayNight) - and who is told when it changes
+  this.dayNight = dayNightWanted();
+  this.dayNightListeners = [];
 }
 
 /**
@@ -206,6 +240,32 @@ Lighting.prototype.install = function () {
   Weather.install();
   //what is just off the screen casts its shadow on it too
   engine.Config.cullMargin = this.plain ? 0 : SHADOW_MARGIN;
+};
+
+/**
+ * Has the day and the night go by with the clock, or the city drawn in the
+ * middle of the day all the while - the clock going on either way - and
+ * keeps it so for next time.
+ *
+ * @param [on] {boolean} the other way round from now, unless given
+ */
+Lighting.prototype.setDayNight = function (on) {
+  this.dayNight = on === undefined ? !this.dayNight : on === true;
+
+  try {
+    localStorage.setItem(DAY_NIGHT_STORE, this.dayNight ? "on" : "off");
+  } catch (e) {
+    //not kept: as it is now, then
+  }
+
+  this.dayNightListeners.forEach(function (fn) {
+    fn();
+  });
+};
+
+//told whenever the day and the night are set going by or stopped
+Lighting.prototype.onDayNight = function (fn) {
+  this.dayNightListeners.push(fn);
 };
 
 /**
@@ -245,7 +305,8 @@ Lighting.prototype.begin = function (viewport, M) {
   //from the side, or from straight above (client/view top)
   this.top = View.top();
   this.view.projection = GLView.PROJECTIONS[this.top ? "top" : "side"];
-  hourNow = this.hour();
+  //the hour the city is drawn at - the clock's, or the middle of the day
+  hourNow = this.dayNight ? this.hour() : MIDDAY;
   this.weather = Weather.at(this.clock());
   Wind.factor = this.weather.wind;
   this.sky = sun(hourNow);

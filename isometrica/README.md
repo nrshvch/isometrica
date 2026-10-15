@@ -318,18 +318,20 @@ dev`) plays them the way a game would - all three weathers together, the
   each kind of car its own horn - a bus or a lorry honks, a van meep-meeps,
   a taxi beep-beeps - each car a little higher or lower, to the left or
   right of where it is on screen and quieter further off.
-- For now only the music and the hum of the town are heard: the places,
-  the thunder and the horns are kept quiet (`QUIET` in soundman.js), and
+- For now only the hum of the town is heard: the music, the places, the
+  thunder and the horns are kept quiet - the music with no button or key to
+  turn it on (`QUIET` in soundman.js), and
   police cars make no sound.
 - Nothing plays until the page is touched, clicked or typed at - a browser
   plays nothing before (`audio/wake.js` wakes it in the touch, the way
-  iPhones want it, and plays through the silent switch). The music and the
-  sounds go off and on on their own: M or the ♫ in the top bar for the
-  music, S or its fx for the sounds - each kept in the browser;
-  `?music=off`, `?sounds=off`, and `?sound=off` for both. It goes quiet
-  while the page is out of sight.
-- Next to the ♫, the top bar shows the zoom the camera is at - ×0.5 to ×2
-  (each game's `ui/modules/topbar`), kept as it was while the world turns.
+  iPhones want it, and plays through the silent switch). The sounds go off
+  and on with S or the ♫ in the top bar - kept in the browser;
+  `?sounds=off` (or `?sound=off`). It goes quiet while the page is out of
+  sight.
+- Next to the ♫, ☾ night in the top bar (or N) has the day and the night
+  go by (see the lighting), and next to that the top bar shows the zoom the
+  camera is at - its step, 1x (0.5) to 5x (2) (each game's `ui/modules/topbar`), kept as it
+  was while the world turns.
 
 ### Sprites
 
@@ -659,10 +661,11 @@ dev`) plays them the way a game would - all three weathers together, the
 - A pinch follows the fingers all the way (`client/cameracontrol.js`): the
   camera zooms by steps while they move, and in between what is shown is
   scaled up on the page the rest of the way, about the spot between the
-  fingers; twisted, the world turns with them (below). Let go, it stays at the zoom they left it at, anywhere from 0.5 to
-  2 - pulled onto 0.5, 1 or 2, where every pixel of the pixel art is the
-  same size and sharp, when within 7% of one, as it is while they move
-  (snapZoom) - and eases back to the nearest side. The engine finds the fingers where the canvas stands meanwhile, not
+  fingers; twisted, the world turns with them (below). While they move, it is pulled onto 0.5, 1 or 2, where every pixel of
+  the pixel art is the same size and sharp, when within 7% of one
+  (snapZoom). Let go, it settles on the nearest of its five steps - 0.5,
+  0.667, 1, 1.5, 2 (`ZOOMS`), shown in the top bar as 1x to 5x - and eases
+  back to the nearest side. The engine finds the fingers where the canvas stands meanwhile, not
   where it is shown (`Viewport#restRect`).
 - A turn of the camera - two fingers twisted, or Q and E - is shown as one
   smooth turn about what is at a spot on the screen: between the fingers,
@@ -715,7 +718,11 @@ dev`) plays them the way a game would - all three weathers together, the
   way, goes over and down at half past nine in the evening behind the walls
   looking the other - a long day and a short night - lower and redder
   towards either end of the day, and the shade goes from sky blue to the
-  dark blue of night. The canvas only paints the pictures: every picture is
+  dark blue of night. That is only once asked for - N, or ☾ night in the
+  top bar, or `?daynight=on`, kept in the browser: else the city is drawn
+  in the middle of the day whatever the hour (`lighting.js` setDayNight),
+  the clock and all that goes by it (the traffic, the weather, the sounds)
+  going on as ever. The canvas only paints the pictures: every picture is
   painted once on a canvas of its own and handed over into its slot on a
   page of the canvas cache - the pages being the layers of one texture on
   the GPU (`isometrica/src/client/canvascache.js`). Every picture painted out of

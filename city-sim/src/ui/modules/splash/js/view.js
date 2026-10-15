@@ -10,7 +10,8 @@ var View = Backbone.View.extend({
     this.setElement(document.createDocumentFragment());
   },
   render: function () {
-    this.$el.append(template());
+    //the release's version, or "dev" and the commit (vite.config.js)
+    this.$el.append(template({ version: __VERSION__ }));
     return this;
   },
 });

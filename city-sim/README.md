@@ -68,4 +68,6 @@ catalogue, the city screen, the building tools. The world is isometrica's.
 Deployed by `.github/workflows/city-sim.yml` to the Workers in
 `wrangler.jsonc`: `prod` (https://peeps.land) from a `city-sim/vX.Y.Z`
 tag, `dev` (https://dev.peeps.land) from main, previews from any other
-branch. See [Deploying](../README.md#deploying).
+branch. The splash says which: a release its version, from the tag; dev,
+a preview or a build of your own `dev` and the commit (`vite.config.js`).
+See [Deploying](../README.md#deploying).

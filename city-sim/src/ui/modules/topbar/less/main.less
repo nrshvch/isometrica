@@ -38,11 +38,13 @@
 
   .money,
   .sound,
+  .daynight,
   .view {
     cursor: pointer;
   }
 
   .sound.off,
+  .daynight.off,
   .view.off {
     opacity: 0.5;
   }
@@ -75,9 +77,10 @@
 
         padding-left: 1%;
 
-        //the music and the sounds apart from what is next to them, even on
-        //a phone
-        &.sound {
+        //the sounds and the day and night apart from what is next to them,
+        //even on a phone
+        &.sound,
+        &.daynight {
           padding-left: 0.8em;
         }
 

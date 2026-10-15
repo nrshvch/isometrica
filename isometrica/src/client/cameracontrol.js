@@ -4,16 +4,29 @@ import Turner from "./turner";
 import View from "./view";
 
 //The zooms the camera is drawn at while fingers pinch - what is shown is
-//scaled the rest of the way on the page. Let go, it stays at whatever zoom
-//they left it at, between the smallest and the biggest of these.
+//scaled the rest of the way on the page. Let go, it settles on whichever of
+//these is nearest (nearestZoom): the only zooms it is ever left at, shown as
+//steps 1x to 5x in the top bar (zoomStep).
 var ZOOMS = [0.5, 0.667, 1, 1.5, 2];
 
 //The zooms every pixel of the pixel art is the same size at, a whole number
 //of the screen's or a half: sharp. A pinch that comes within SNAP of one -
-//as a share of it - is pulled onto it, while the fingers move and when they
-//let go; at any zoom in between, the pixels come out of uneven sizes.
+//as a share of it - is pulled onto it while the fingers move; at any zoom in
+//between, the pixels come out of uneven sizes.
 var SHARP = [0.5, 1, 2],
   SNAP = 0.07;
+
+//the one of ZOOMS nearest zoom, as a share of it - so from 1 to 1.5 the
+//halfway is 1.22, not 1.25
+function nearestZoom(zoom) {
+  var best = ZOOMS[0];
+
+  for (var i = 1; i < ZOOMS.length; i++)
+    if (Math.abs(Math.log(zoom / ZOOMS[i])) < Math.abs(Math.log(zoom / best)))
+      best = ZOOMS[i];
+
+  return best;
+}
 
 //zoom, or the sharp zoom it is within SNAP of
 function snapZoom(zoom) {
@@ -177,10 +190,9 @@ function show(me, x, y, scale) {
 }
 
 /**
- * Lets go: the camera takes the zoom the pinch left it at - no further than
- * the smallest and the biggest of ZOOMS, and pulled onto a sharp one near it
- * - and what is shown eases back to that, and to the side of the world the
- * camera is at, and then is shown as it is.
+ * Lets go: the camera takes the one of ZOOMS nearest the zoom the pinch left
+ * it at, and what is shown eases back to that, and to the side of the world
+ * the camera is at, and then is shown as it is.
  */
 function onPinchEnd(sender, e, me) {
   var viewport = me._cam.gameObject.camera.viewport,
@@ -198,16 +210,7 @@ function onPinchEnd(sender, e, me) {
   if (me.turner.active) {
     settle(me);
     if (pinch !== null)
-      me.turner.end(
-        snapZoom(
-          Math.max(
-            ZOOMS[0],
-            Math.min(ZOOMS[ZOOMS.length - 1], pinch.want || pinch.zoom),
-          ),
-        ),
-        pinch.x,
-        pinch.y,
-      );
+      me.turner.end(nearestZoom(pinch.want || pinch.zoom), pinch.x, pinch.y);
     return;
   }
 
@@ -218,9 +221,7 @@ function onPinchEnd(sender, e, me) {
 
   //where it was pinched to, shown from where it is
   if (pinch !== null && pinch.want !== undefined) {
-    var to = snapZoom(
-        Math.max(ZOOMS[0], Math.min(ZOOMS[ZOOMS.length - 1], pinch.want)),
-      ),
+    var to = nearestZoom(pinch.want),
       at = cam.zoom();
 
     if (to !== at) {
@@ -315,6 +316,8 @@ CameraControl.prototype.init = function () {
     else if (e.key === "e" || e.key === "E") turner.turn(1);
     //and T looks at it from straight above, as a map, and back
     else if (e.key === "t" || e.key === "T") root.setTopView(!View.top());
+    //and N has the day and the night go by, or not (client/lighting)
+    else if (e.key === "n" || e.key === "N") root.lighting.setDayNight();
   });
   var cam = (this._cam = root.camera.cameraScript);
 
@@ -354,6 +357,14 @@ CameraControl.prototype.init = function () {
     WorldCamera.events.inputDoubleTap,
     dt,
   ]);
+};
+
+/**
+ * The step of ZOOMS a zoom is at, or nearest: 1 for the furthest out (0.5)
+ * to 5 for the closest in (2) - what the top bar shows.
+ */
+CameraControl.zoomStep = function (zoom) {
+  return ZOOMS.indexOf(nearestZoom(zoom)) + 1;
 };
 
 export default CameraControl;

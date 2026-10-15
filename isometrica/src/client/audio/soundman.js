@@ -19,15 +19,15 @@
  *   often two cars give each other a toot going by - to the left or the
  *   right of where they are on screen, quieter further off.
  *
- * For now only the music and the hum of the town are heard (QUIET): the
- * places, the thunder and the horns are kept quiet.
+ * For now only the hum of the town is heard (QUIET): the music, the
+ * places, the thunder and the horns are kept quiet - the music with no way
+ * to turn it on.
  *
  * Nothing plays until the page is first touched, clicked or typed at - a
- * browser plays nothing before. The music and the sounds (the places, the
- * hum of the town, thunder, horns) are each turned on and off on their own:
- * M and S, their buttons in the top bar (Soundman#toggle), or ?music=off and
- * ?sounds=off - ?sound=off for both; kept in the browser for next time. It
- * all stops while the page is out of sight.
+ * browser plays nothing before. The sounds (the places, the hum of the
+ * town, thunder, horns) are turned on and off with S, their button in the
+ * top bar (Soundman#toggle), or ?sounds=off (?sound=off too); kept in the
+ * browser for next time. It all stops while the page is out of sight.
  */
 import engine from "engine";
 import * as glMatrix from "gl-matrix";
@@ -41,7 +41,13 @@ import MusicPlayer from "./music";
 import { wake } from "./wake";
 
 //what is kept quiet for now
-var QUIET = { places: true, skyline: false, thunder: true, horns: true };
+var QUIET = {
+  music: true,
+  places: true,
+  skyline: false,
+  thunder: true,
+  horns: true,
+};
 
 //how loud each of them is, under everything
 var LOUD = { music: 0.42, places: 0.6, events: 0.75 };
@@ -158,7 +164,11 @@ function wanted(which) {
 export default function Soundman(root) {
   this.root = root;
   //the music and the sounds, each on or off - and on, if either is
-  this.wants = { music: wanted("music"), sounds: wanted("sounds") };
+  //(the music never, while it is kept quiet)
+  this.wants = {
+    music: !QUIET.music && wanted("music"),
+    sounds: wanted("sounds"),
+  };
   this.on = this.wants.music || this.wants.sounds;
   this.context = null;
   this.out = null;
@@ -217,8 +227,7 @@ Soundman.prototype.init = function () {
     var target = e.target && e.target.tagName;
 
     if (target === "INPUT" || target === "TEXTAREA" || e.repeat) return;
-    if (e.key === "m" || e.key === "M") self.toggle("music");
-    else if (e.key === "s" || e.key === "S") self.toggle("sounds");
+    if (e.key === "s" || e.key === "S") self.toggle("sounds");
   });
 
   document.addEventListener("visibilitychange", function () {

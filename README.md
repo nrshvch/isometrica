@@ -1,9 +1,5 @@
 # Isometrica
 
-This is JavaScript city building game prototype I've built around 2012.
-In 2026 I've added more features and vehicles.
-Keeping it alive for historical reference only.
-
 ![Isoville](public/miniville.gif)
 
 Games played in one isometric world, in one repository. Each top folder is a
@@ -27,10 +23,20 @@ them all.
 
 https://peeps.land (city-sim)
 
-isometrica's lab - every sprite, sound and piece of music the generators
-make, painted and played in the page: the `isometrica-lab` Worker on the
-account's workers.dev subdomain, and a Preview of it for every branch
-(`https://<branch>-isometrica-lab-dev.<subdomain>.workers.dev`).
+### Legacy
+
+Isometrica started as JavaScript city building game prototype I've built around 2012.
+In 2026 I've added more features and vehicles.
+Keeping it alive for historical reference only.
+
+https://legacy.peeps.land.
+
+### Lab
+
+Every sprite, sound and piece of music the generators
+make, painted and played in the page: 
+
+https://isometrica-lab-dev.isometrica.workers.dev/
 
 ### Features
 
@@ -89,11 +95,3 @@ To release one app, tag main with its name and version - Actions →
 **release** → Run workflow, or from a laptop:
 
 > git tag city-sim/v0.3.0 origin/main && git push origin city-sim/v0.3.0
-
-Only that app goes to production; the others stay on their last release.
-To roll back, run the app's workflow (Actions → city-sim → Run workflow) on
-its previous tag. To fix a release while main has moved on, branch from its
-tag, fix, tag the fix, and bring the fix back to main.
-
-The game as it was before the monorepo, v0.2.1, is on the `legacy` branch,
-at https://legacy.peeps.land.
