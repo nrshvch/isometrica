@@ -15,10 +15,14 @@
  */
 import Events from "events";
 
-var turns = 0;
+var turns = 0,
+  //looked at from straight above, as a map - north up, the camera unturned
+  //all the while (Vkaria#setTopView)
+  top = false;
 
 var events = {
-  //the camera turned: {turns, from}
+  //the camera turned, or went over to looking from above or back: {turns,
+  //from, top}
   change: 0,
 };
 
@@ -39,7 +43,28 @@ View.setTurns = function (t) {
   if (t === turns) return;
 
   turns = t;
-  Events.fire(View, events.change, { turns: t, from: from });
+  Events.fire(View, events.change, { turns: t, from: from, top: top });
+};
+
+/**
+ * Whether the world is looked at from straight above, as a map: every
+ * picture of it painted from above too, a tile a square 64 a side, north up.
+ */
+View.top = function () {
+  return top;
+};
+
+/**
+ * Goes over to looking from above, or back - and tells whoever listens, as
+ * a turn does. The camera's to call, once it looks that way
+ * (Vkaria#setTopView), unturned.
+ */
+View.setTop = function (t) {
+  t = t === true;
+  if (t === top) return;
+
+  top = t;
+  Events.fire(View, events.change, { turns: turns, from: turns, top: top });
 };
 
 /**

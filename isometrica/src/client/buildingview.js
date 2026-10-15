@@ -89,6 +89,9 @@ function addFoundations(
   opacity,
   layer,
 ) {
+  //from above, the base is under what stands on it
+  if (View.top()) return;
+
   var classCode = staticData.classCode;
 
   if (
@@ -403,14 +406,22 @@ function addSprites(
   for (var i = 0; i < len; i++) {
     var spriteData = spritesData[i];
 
-    var spriteRenderer = new engine.SpriteRenderer();
+    var spriteRenderer = new engine.SpriteRenderer(),
+      name = Trees.turned(spriteData.path, rotation);
     spriteRenderer.layer = layer !== undefined ? layer : spriteData.layer;
-    spriteRenderer.pivotX = spriteData.pivotX;
-    spriteRenderer.pivotY = spriteData.pivotY;
-    //a tree from the side it is seen from (data/trees turned)
-    spriteRenderer.setSprite(
-      vkaria.sprites.getSprite(Trees.turned(spriteData.path, rotation)),
-    );
+    //a tree from the side it is seen from (data/trees turned) - or from
+    //straight above
+    if (View.top()) {
+      var top = vkaria.sprites.topOf(name);
+
+      spriteRenderer.pivotX = top.pivotX;
+      spriteRenderer.pivotY = top.pivotY;
+      spriteRenderer.setSprite(top);
+    } else {
+      spriteRenderer.pivotX = spriteData.pivotX;
+      spriteRenderer.pivotY = spriteData.pivotY;
+      spriteRenderer.setSprite(vkaria.sprites.getSprite(name));
+    }
 
     var spriteGO = new engine.GameObject();
     spriteGO.addComponent(spriteRenderer);

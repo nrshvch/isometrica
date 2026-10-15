@@ -24,6 +24,7 @@ import Roadworks from "./roadworks";
 import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
 import Soundman from "./audio/soundman";
+import View from "./view";
 
 /**
  * @param core {Logic} the world (core/logic)
@@ -139,8 +140,51 @@ Vkaria.prototype.prepare = function (callback) {
  * @param by {number}
  */
 Vkaria.prototype.turnView = function (by) {
+  if (View.top()) return;
+
   this.camera.cameraScript.turn(by);
 };
+
+/**
+ * Looks at the world from straight above, as a map - north up, at the zoom
+ * it is at, over the same spot - or back from the side it was seen from
+ * before. Everything is drawn again the way it is seen from there (client/
+ * view events), from above with pictures painted from above.
+ *
+ * @param top {boolean}
+ */
+Vkaria.prototype.setTopView = function (top) {
+  var cam = this.camera.cameraScript;
+
+  top = top === true;
+  //not halfway through a turn: once it is done
+  if (
+    top === View.top() ||
+    (this.cameraControl && this.cameraControl.turner.active)
+  )
+    return;
+
+  if (top) {
+    //north up: unturned first, and turned back again after
+    this.turnsBeforeTop = View.turns();
+    if (this.turnsBeforeTop !== 0) cam.turn(-this.turnsBeforeTop);
+    this.sprites.top = true;
+    cam.setTop(true);
+    View.setTop(true);
+  } else {
+    this.sprites.top = false;
+    cam.setTop(false);
+    View.setTop(false);
+    if (this.turnsBeforeTop) cam.turn(this.turnsBeforeTop);
+    this.turnsBeforeTop = 0;
+  }
+};
+
+Vkaria.prototype.topView = function () {
+  return View.top();
+};
+
+Vkaria.prototype.turnsBeforeTop = 0;
 
 Vkaria.prototype.start = function () {
   this.camera = new engine.Camera("mainCamera");

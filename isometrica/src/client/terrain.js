@@ -114,8 +114,22 @@ function tileSprite(x, y, type, slope) {
   )
     return waves(parts, terrain.waves, 1);
 
-  return vkaria.sprites.getComposite(parts);
+  return composite(parts);
 }
+
+//a tile's parts put together, as it is seen - or from straight above
+function composite(parts) {
+  return View.top()
+    ? vkaria.sprites.getTop(parts)
+    : vkaria.sprites.getComposite(parts);
+}
+
+//where a tile's picture is drawn from: where the tile's middle is in it -
+//from the side, the W corner's height the tile is put at; from above, the
+//middle of its square
+var PIVOT_X = 32,
+  PIVOT_Y = 24,
+  TOP_PIVOT = 32;
 
 //the water's tiles as they move, by what they are put together out of -
 //one for every tile that looks the same
@@ -127,14 +141,15 @@ var moving = {};
  * (client/animatedsprite), the rest as they are.
  */
 function waves(parts, w, index) {
-  var key = parts.join("+");
+  var top = View.top(),
+    key = (top ? "top:" : "") + parts.join("+");
 
   if (moving[key] === undefined) {
     var frames = [];
 
     for (var f = 0; f < w.frames; f++)
       frames.push(
-        vkaria.sprites.getComposite(
+        composite(
           parts.map(function (part, i) {
             return i === index ? vkaria.sprites.frameName(part, f) : part;
           }),
@@ -299,6 +314,8 @@ function shapeTile(self, t, index) {
   sprite = tileSprite(x, y, type, slope);
 
   t.renderer.setSprite(sprite);
+  if (View.top()) t.renderer.setPivot(TOP_PIVOT, TOP_PIVOT);
+  else t.renderer.setPivot(PIVOT_X, PIVOT_Y);
 }
 
 function drawTile(self, index) {
