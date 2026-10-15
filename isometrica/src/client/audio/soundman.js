@@ -23,9 +23,11 @@
  * places, the thunder and the horns are kept quiet.
  *
  * Nothing plays until the page is first touched, clicked or typed at - a
- * browser plays nothing before - and nothing plays with the sound off: M,
- * the speaker in the top bar (Soundman#toggle), or ?sound=off; kept in the
- * browser for next time. It all stops while the page is out of sight.
+ * browser plays nothing before. The music and the sounds (the places, the
+ * hum of the town, thunder, horns) are each turned on and off on their own:
+ * M and S, their buttons in the top bar (Soundman#toggle), or ?music=off and
+ * ?sounds=off - ?sound=off for both; kept in the browser for next time. It
+ * all stops while the page is out of sight.
  */
 import engine from "engine";
 import * as glMatrix from "gl-matrix";
@@ -104,7 +106,10 @@ var HORNS = {
   bus: 3,
 };
 
-var STORE = "isometrica.sound",
+//where each is kept on or off in the browser - and where both were, before
+//they were turned on and off on their own
+var STORE = { music: "isometrica.music", sounds: "isometrica.sounds" },
+  STORE_BOTH = "isometrica.sound",
   vec3 = glMatrix.vec3,
   at = new Float32Array(3),
   onScreen = new Float32Array(3);
@@ -119,27 +124,42 @@ function smooth(k) {
   return k * k * (3 - 2 * k);
 }
 
-function stored() {
+function stored(key) {
   try {
-    return localStorage.getItem(STORE);
+    return localStorage.getItem(key);
   } catch (e) {
     return null;
   }
 }
 
-function store(v) {
+function store(key, v) {
   try {
-    localStorage.setItem(STORE, v);
+    localStorage.setItem(key, v);
   } catch (e) {
     //not kept: as it is now, then
   }
 }
 
+//whether the music or the sounds are wanted: as asked in the address, or
+//as kept, or as both were kept, or on
+function wanted(which) {
+  var q = location.search,
+    asked = new RegExp("[?&]" + which + "=(on|off)").exec(q),
+    both = /[?&]sound=(on|off)/.exec(q),
+    kept = stored(STORE[which]);
+
+  if (asked) return asked[1] === "on";
+  if (both) return both[1] === "on";
+  if (kept !== null) return kept !== "off";
+
+  return stored(STORE_BOTH) !== "off";
+}
+
 export default function Soundman(root) {
   this.root = root;
-  this.on =
-    !/[?&]sound=off/.test(location.search) &&
-    (stored() !== "off" || /[?&]sound=on/.test(location.search));
+  //the music and the sounds, each on or off - and on, if either is
+  this.wants = { music: wanted("music"), sounds: wanted("sounds") };
+  this.on = this.wants.music || this.wants.sounds;
   this.context = null;
   this.out = null;
   this.buses = null;
@@ -197,7 +217,8 @@ Soundman.prototype.init = function () {
     var target = e.target && e.target.tagName;
 
     if (target === "INPUT" || target === "TEXTAREA" || e.repeat) return;
-    if (e.key === "m" || e.key === "M") self.toggle();
+    if (e.key === "m" || e.key === "M") self.toggle("music");
+    else if (e.key === "s" || e.key === "S") self.toggle("sounds");
   });
 
   document.addEventListener("visibilitychange", function () {
@@ -209,26 +230,40 @@ Soundman.prototype.init = function () {
 };
 
 /**
- * Turns the sound on or off, and keeps it so for next time. Call it from a
- * tap or a click, so that a phone lets it play.
+ * Turns the music or the sounds on or off, and keeps it so for next time.
+ * Call it from a tap or a click, so that a phone lets it play.
+ *
+ * @param which {"music"|"sounds"}
+ * @param [on] {boolean} on or off; the other way round from now, unless
+ *        given
  */
-Soundman.prototype.toggle = function (on) {
-  this.on = on === undefined ? !this.on : on;
-  store(this.on ? "on" : "off");
+Soundman.prototype.toggle = function (which, on) {
+  this.wants[which] = on === undefined ? !this.wants[which] : on;
+  this.on = this.wants.music || this.wants.sounds;
+  store(STORE[which], this.wants[which] ? "on" : "off");
 
   if (this.on) this.start();
-  else if (this.context !== null) {
-    var now = this.context.currentTime;
-
-    this.out.gain.setTargetAtTime(0, now, 0.05);
-  }
+  else if (this.context !== null)
+    this.out.gain.setTargetAtTime(0, this.context.currentTime, 0.05);
 
   this.listeners.forEach(function (fn) {
     fn();
   });
 };
 
-//told whenever the sound is turned on or off
+//the music and the sounds turned up or down to what is wanted of each
+Soundman.prototype.level = function () {
+  var now = this.context.currentTime;
+
+  for (var k in LOUD)
+    this.buses[k].gain.setTargetAtTime(
+      LOUD[k] * (this.wants[k === "music" ? "music" : "sounds"] ? 1 : 0),
+      now,
+      0.05,
+    );
+};
+
+//told whenever the music or the sounds are turned on or off
 Soundman.prototype.onChange = function (fn) {
   this.listeners.push(fn);
 };
@@ -253,7 +288,7 @@ Soundman.prototype.start = function () {
     this.buses = {};
     for (var k in LOUD) {
       this.buses[k] = ctx.createGain();
-      this.buses[k].gain.value = LOUD[k];
+      this.buses[k].gain.value = 0;
       this.buses[k].connect(this.out);
     }
 
@@ -261,6 +296,7 @@ Soundman.prototype.start = function () {
     this.music = new MusicPlayer(ctx, this.maker, this.buses.music);
   }
 
+  this.level();
   this.out.gain.setTargetAtTime(1, ctx.currentTime, 0.3);
 };
 
@@ -282,25 +318,27 @@ Soundman.prototype.frame = function () {
 
   var wall = performance.now(),
     lighting = this.root.lighting,
-    weather = lighting && lighting.weather;
+    weather = lighting && lighting.weather,
+    sounds = this.wants.sounds;
 
   if (!weather || !this.root.camera) return;
 
   if (wall - this.surveyed >= SURVEY_EVERY) {
     this.surveyed = wall;
     this.survey();
-    if (!QUIET.places) this.places(weather);
-    if (!QUIET.skyline) this.skyline();
-    this.music.update(this.place(), this.time(), weather);
+    if (sounds && !QUIET.places) this.places(weather);
+    if (sounds && !QUIET.skyline) this.skyline();
+    //(nothing new made for what is turned off)
+    if (this.wants.music) this.music.update(this.place(), this.time(), weather);
   }
 
-  if (!QUIET.thunder) this.thunder(wall, weather);
+  if (sounds && !QUIET.thunder) this.thunder(wall, weather);
 
   if (wall - this.heard >= HORNS_EVERY) {
     var dt = wall - this.heard;
 
     this.heard = wall;
-    if (dt < 1000 && !QUIET.horns) this.horns(wall, dt);
+    if (sounds && dt < 1000 && !QUIET.horns) this.horns(wall, dt);
   }
 };
 
