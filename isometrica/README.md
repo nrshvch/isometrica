@@ -769,7 +769,11 @@ dev`) plays them the way a game would - all three weathers together, the
     as its height and the sun's make it - going round with the sun through
     the day as the shadow of a tree does, and the two layers apart the
     lower the sun is (no more than three times their height, or with the
-    sun low they would fly along): a few big ones on a clear day, and as the sky clouds over more and bigger, closing up
+    sun low they would fly along). They change as they go, too, slowly
+    (`CLOUD_CHANGE` in `client/glview.js`, noise through time as well as
+    over the ground): the big of them over a minute and a half or so, their
+    edges quicker - so that over a while one is another shape, and some
+    thin away to nothing while others come up out of a clear sky: a few big ones on a clear day, and as the sky clouds over more and bigger, closing up
     little by little till the whole city is under them - the sun lost in
     the cloud, its light spread over the whole sky, grey, shadows faint,
     colours duller;
