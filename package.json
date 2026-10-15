@@ -19,6 +19,7 @@
     "build:city-sim": "npm run build -w city-sim",
     "build:food-rider": "npm run build -w food-rider",
     "build:lab": "npm run build:lab -w isometrica",
+    "test:traffic": "npm run test:traffic -w isometrica",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
