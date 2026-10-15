@@ -242,6 +242,9 @@ Lighting.prototype.clock = function () {
  *        are
  */
 Lighting.prototype.begin = function (viewport, M) {
+  //from the side, or from straight above (client/view top)
+  this.top = View.top();
+  this.view.projection = GLView.PROJECTIONS[this.top ? "top" : "side"];
   hourNow = this.hour();
   this.weather = Weather.at(this.clock());
   Wind.factor = this.weather.wind;
@@ -308,7 +311,16 @@ function elevation(M, renderer) {
 
   if (!go) return 0;
 
-  return -M[5] * go.transform.getPosition(where)[1];
+  return upOf(M) * go.transform.getPosition(where)[1];
+}
+
+//how many units high - pixels up the screen, from the side - a unit up the
+//world is: from straight above, as many as from the side, though none of
+//them up the screen
+var UP = Math.cos(Math.PI / 6);
+
+function upOf(M) {
+  return View.top() ? UP : -M[5];
 }
 
 /**
@@ -330,7 +342,9 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
       renderer.dither === true,
       //something up in the air with no heights of its own - a puff of
       //smoke - lit where it is, not as the ground it is drawn over
-      this.lit && renderer.over !== undefined ? -this.M[5] * renderer.over : 0,
+      this.lit && renderer.over !== undefined
+        ? upOf(this.M) * renderer.over
+        : 0,
     ),
     from = view.offset - 8;
 
@@ -621,7 +635,7 @@ function windowLights(out, renderer, sprite, x0, y0) {
     if (isLamp(l.color)) {
       out.push({
         x: x0 + l.x,
-        y: y0 + l.y + l.z,
+        y: y0 + l.y + (View.top() ? 0 : l.z),
         z: l.z,
         reach: OWN_LAMP_REACH,
         color: l.color,
@@ -636,7 +650,7 @@ function windowLights(out, renderer, sprite, x0, y0) {
     out.push({
       x: x0 + l.x,
       //the spot under it, on the ground
-      y: y0 + l.y + l.z,
+      y: y0 + l.y + (View.top() ? 0 : l.z),
       z: l.z,
       reach: WINDOW_REACH,
       color: l.color,
@@ -752,7 +766,7 @@ function headlights(out, M, w, h, carman) {
 
     //how far ahead of its middle the front is: across the screen its
     //picture is as long as it is and as wide, about 6 (shared/gen/vehicles)
-    var ahead = Math.max(4, (sprite.width - 6) / 2);
+    var ahead = aheadOf(car, sprite);
 
     for (var side = -1; side <= 1; side += 2) {
       //along the ground as it is seen, then onto the screen (x - y across,
@@ -762,8 +776,8 @@ function headlights(out, M, w, h, carman) {
 
       if (lamps)
         out.push({
-          x: spot[0] + gx - gy,
-          y: spot[1] - (gx + gy) / 2,
+          x: spot[0] + (View.top() ? 2 * gx : gx - gy),
+          y: spot[1] - (View.top() ? 2 * gy : (gx + gy) / 2),
           z: HEAD_HIGH,
           reach: HEAD_REACH,
           color: HEAD_LIGHT,
@@ -779,8 +793,8 @@ function headlights(out, M, w, h, carman) {
       gy = -aim[1] * ahead + aim[0] * side * HEAD_APART;
 
       out.push({
-        x: spot[0] + gx - gy,
-        y: spot[1] - (gx + gy) / 2,
+        x: spot[0] + (View.top() ? 2 * gx : gx - gy),
+        y: spot[1] - (View.top() ? 2 * gy : (gx + gy) / 2),
         z: HEAD_HIGH,
         reach: car.braking ? BRAKE_REACH : TAIL_REACH,
         color: TAIL_LIGHT,
@@ -867,7 +881,7 @@ Lighting.blinkers = function (go, x, y, up) {
   //as far ahead as its headlights, and out to its side - on the right
   //of the way it goes as it is seen, the side as it turns; both sides for
   //its hazard lights
-  var ahead = Math.max(4, (sprite.width - 6) / 2),
+  var ahead = aheadOf(car, sprite),
     sides = car.signal === Lighting.HAZARD ? [-1, 1] : [car.signal],
     out = [];
 
@@ -878,12 +892,33 @@ Lighting.blinkers = function (go, x, y, up) {
       var gx = aim[0] * ahead * end + aim[1] * side,
         gy = aim[1] * ahead * end - aim[0] * side;
 
-      out.push(x + gx - gy, y - (gx + gy) / 2 - (up ? HEAD_HIGH : 0));
+      lampOnScreen(out, x, y, gx, gy, up);
     }
   }
 
   return out;
 };
+
+/**
+ * How far ahead of a car's middle its lamps are, along the ground: from the
+ * side, by how wide its picture is; from straight above, where every
+ * picture of it is the same square, by how long it is.
+ */
+function aheadOf(car, sprite) {
+  if (!View.top()) return Math.max(4, (sprite.width - 6) / 2);
+
+  var type = car.type;
+
+  return type && type.length ? Math.max(4, type.length * 16 - 1) : 6;
+}
+
+//a lamp gx, gy off a car's middle at x, y on the screen, along the ground -
+//up as high as its lamps are, if up - onto the screen: from the side, or
+//from straight above, two pixels a unit and nothing up
+function lampOnScreen(out, x, y, gx, gy, up) {
+  if (View.top()) out.push(x + 2 * gx, y - 2 * gy);
+  else out.push(x + gx - gy, y - (gx + gy) / 2 - (up ? HEAD_HIGH : 0));
+}
 
 /**
  * Where a car's brake lights are on the screen while it is on the brakes
@@ -902,14 +937,14 @@ Lighting.brakeLights = function (go, x, y, up) {
 
   if (aim === undefined || !sprite) return null;
 
-  var ahead = Math.max(4, (sprite.width - 6) / 2),
+  var ahead = aheadOf(car, sprite),
     out = [];
 
   for (var side = -1; side <= 1; side += 2) {
     var gx = -aim[0] * ahead - aim[1] * side * (HEAD_APART - 0.5),
       gy = -aim[1] * ahead + aim[0] * side * (HEAD_APART - 0.5);
 
-    out.push(x + gx - gy, y - (gx + gy) / 2 - (up ? HEAD_HIGH : 0));
+    lampOnScreen(out, x, y, gx, gy, up);
   }
 
   return out;
@@ -1076,7 +1111,7 @@ function sun(h) {
     ambient: amb,
     sun: [color[0] * strength, color[1] * strength, color[2] * strength],
     dir: [seen[0], seen[1], up],
-    step: strength > 0.01 ? stepTo([seen[0], seen[1], up]) : null,
+    step: strength > 0.01 ? stepTo([seen[0], seen[1], up], View.top()) : null,
   };
 }
 
@@ -1239,9 +1274,10 @@ function weatherSky(self, sky, w, viewport) {
  * a unit - and as much higher as that takes it (client/glview LIT_FS
  * shadowed).
  */
-function stepTo(dir) {
-  var across = dir[0] - dir[1],
-    down = -(dir[0] + dir[1]) / 2,
+function stepTo(dir, top) {
+  //from straight above, two pixels a unit across and up
+  var across = top ? 2 * dir[0] : dir[0] - dir[1],
+    down = top ? -2 * dir[1] : -(dir[0] + dir[1]) / 2,
     along = Math.sqrt(across * across + down * down);
 
   //straight overhead, nothing casts a shadow but under itself

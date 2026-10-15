@@ -31,6 +31,7 @@ import {
 import BuildingClassCode from "../data/classcode";
 import Core from "../core/main";
 import Pixels from "./pixels";
+import View from "./view";
 
 var Terrain = Core.Terrain;
 
@@ -340,6 +341,7 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed) {
             empty: frame.w === 0,
             left: -frame.pivotX,
             top: -frame.pivotY - up[i],
+            up: up[i],
           };
         })
         //a stretch of a site's fence with nothing of it on this side
@@ -355,6 +357,26 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed) {
     });
 
     var at = turn(tile.x, tile.y, sizeX, sizeY, turns);
+
+    //from straight above: the parts' squares laid over one another, each
+    //as high as it is laid - nothing drawn over them as they are seen from
+    //the side
+    if (View.top()) {
+      var top = sprites.getTop(
+        laid.map(function (p) {
+          return { name: p.name, up: p.up };
+        }),
+      );
+
+      return {
+        x: at[0],
+        z: at[1],
+        pivotX: top.pivotX,
+        pivotY: top.pivotY,
+        overlays: [],
+        sprite: top,
+      };
+    }
 
     return {
       x: at[0],

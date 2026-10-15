@@ -68,11 +68,20 @@ function place(self, go, tile, spriteData) {
  */
 function dress(self, go, spriteData, tile) {
   var renderer = go.renderer,
-    turns = (tileTurns(tile) + View.turns()) & 3;
+    turns = (tileTurns(tile) + View.turns()) & 3,
+    name = Trees.turned(spriteData.path, turns);
 
-  renderer.setSprite(
-    self.root.sprites.getSprite(Trees.turned(spriteData.path, turns)),
-  );
+  //from straight above, its foot in the middle of it
+  if (View.top()) {
+    var top = self.root.sprites.topOf(name);
+
+    renderer.setSprite(top);
+    renderer.pivotX = top.pivotX;
+    renderer.pivotY = top.pivotY;
+    return;
+  }
+
+  renderer.setSprite(self.root.sprites.getSprite(name));
   renderer.pivotX = spriteData.pivotX;
   renderer.pivotY = spriteData.pivotY;
 }

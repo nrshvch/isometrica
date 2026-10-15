@@ -239,6 +239,40 @@ CameraScript.prototype.awake = function () {
   this.gameObject.transform.rotate(30, 45, 0, "self");
 };
 
+//how many pixels across the screen a unit of the world is, looked at from
+//straight above: a tile 64 a side, as wide as it is seen from the side
+var TOP_SCALE = Math.SQRT2;
+
+/**
+ * Looks at the world from straight above, north up - x to the right and the
+ * world's z up the screen, a tile 64 by 64 - or back the way it is seen from
+ * the side, unturned; over the same spot of the ground. Turning it is for
+ * the side view only: it is to be unturned either way.
+ */
+CameraScript.prototype.setTop = function (top) {
+  var transform = this.gameObject.transform,
+    camera = this.gameObject.camera,
+    pos = transform.getPosition(),
+    local = transform.local,
+    mat4 = glMatrix.mat4;
+
+  mat4.identity(local);
+  if (top) {
+    mat4.rotateX(local, local, Math.PI / 2);
+    mat4.scale(local, local, [1 / TOP_SCALE, 1 / TOP_SCALE, 1 / TOP_SCALE]);
+  } else {
+    mat4.rotateY(local, local, Math.PI / 4);
+    mat4.rotateX(local, local, Math.PI / 6);
+  }
+
+  this.top = top;
+  //higher drawn later; from the side, further away first too
+  camera.depthAxes = top ? [0, -1, 0] : [1, -1, 1];
+  transform.setPosition(pos[0], pos[1], pos[2]);
+};
+
+CameraScript.prototype.top = false;
+
 CameraScript.prototype.setGameObject = function (gameObject) {
   engine.Component.prototype.setGameObject.call(this, gameObject);
   gameObject.cameraScript = this;
@@ -286,6 +320,17 @@ CameraScript.prototype.moveTo = function (transform) {
 
 CameraScript.prototype.pan = function (x, y) {
   if (this._lock || this.follow) return;
+
+  //from above, x is across the screen and z up it
+  if (this.top) {
+    this.gameObject.transform.translate(
+      -x / TOP_SCALE / this.panSens,
+      0,
+      y / TOP_SCALE / this.panSens,
+      "world",
+    );
+    return;
+  }
 
   //the way along the ground that goes that way on screen as it is seen,
   //and in the world, the camera turned (see client/view)

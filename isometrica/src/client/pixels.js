@@ -44,6 +44,16 @@ function put(dst, dw, src, sx, sy, w, h, dx, dy, how, r, g, b, amount) {
     i,
     j;
 
+  //to the nearest whole pixel - a picture put half a pixel over, as a
+  //parked car may be, lands on the pixel its middle is nearest, never
+  //between rows of the pixels
+  dx = Math.floor(dx + 0.5);
+  dy = Math.floor(dy + 0.5);
+  sx = Math.floor(sx + 0.5);
+  sy = Math.floor(sy + 0.5);
+  w = Math.floor(w + 0.5);
+  h = Math.floor(h + 0.5);
+
   //what falls outside either picture left out
   if (dx < 0) {
     sx -= dx;

@@ -170,8 +170,17 @@ function stopOf(id) {
   ];
 }
 
-//a sprite of the generator's, its pivot where its tile's middle is
+//a sprite of the generator's, its pivot where its tile's middle is - seen
+//from the side, or from straight above
 function setPiece(renderer, name) {
+  if (View.top()) {
+    var top = vkaria.sprites.topOf(name);
+
+    renderer.setSprite(top);
+    renderer.setPivot(top.pivotX, top.pivotY);
+    return;
+  }
+
   var frame = vkaria.sprites.frame(name);
 
   renderer.setSprite(vkaria.sprites.getSprite(name));
@@ -292,6 +301,9 @@ var STEP_PX = 8;
  * @param [sink] {number} steps it hangs under the road, see SINK
  */
 function addBase(parent, tile, surface, opacity, layer, sink) {
+  //from above, under the road on it
+  if (View.top()) return;
+
   var terrain = vkaria.core.world.terrain,
     x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
@@ -483,7 +495,11 @@ function standAt(part, sprite, pole) {
     w = View.unvector((dx / 32) * Config.tileSize, (dy / 32) * Config.tileSize);
 
   part.transform.setLocalPosition(w[0], 0, w[1]);
-  sprite.setPivot(sprite.pivotX + (dx - dy), sprite.pivotY - (dx + dy) / 2);
+  //seen from above, two pixels a unit across and up
+  if (View.top())
+    sprite.setPivot(sprite.pivotX + 2 * dx, sprite.pivotY - 2 * dy);
+  else
+    sprite.setPivot(sprite.pivotX + (dx - dy), sprite.pivotY - (dx + dy) / 2);
 }
 
 /**
@@ -532,7 +548,9 @@ function addSprite(parent, id, opacity, layer, sink) {
   sprite.layer = layer;
   setPiece(sprite, spriteOf(id));
   if (sink) {
-    sprite.setPivot(sprite.pivotX, sprite.pivotY + sink * STEP_PX);
+    //lower down is no further down the screen from above
+    if (!View.top())
+      sprite.setPivot(sprite.pivotX, sprite.pivotY + sink * STEP_PX);
     part.transform.setLocalPosition(0, -sink * Config.tileZStep, 0);
   }
   part.addComponent(sprite);

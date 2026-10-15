@@ -130,9 +130,41 @@ export var INPUTS = {
  *          body type as shared/gen/vehicles describes it; for blocks -
  *          flats, offices - what parts there are to put a block together
  *          out of, and how high a storey is - and each of their sprites has
- *          pivotX/pivotY too, where the middle of its tile is in it
+ *          pivotX/pivotY too, where the middle of its tile is in it; top,
+ *          how big each of its pictures seen from straight above is - every
+ *          one alike - and where in it the point it is drawn from is: {w, h,
+ *          pivotX, pivotY}, or null where nothing of it is seen from above
  */
 export function describe(gen, pixels) {
+  var out = describeSide(gen, pixels);
+
+  out.top = TOP[gen] !== undefined ? TOP[gen]() : TILE_TOP;
+
+  return out;
+}
+
+//a part of something standing on a tile, the ground, a road, seen from
+//straight above: the tile's square, drawn from the tile's middle
+var TILE_TOP = { w: 64, h: 64, pivotX: 32, pivotY: 32 };
+
+//those seen from above some other way - or not at all: the stones and the
+//smoke are drawn as they are seen from the side
+var TOP = {
+  trees: function () {
+    return Trees.TOP_FRAME;
+  },
+  vehicles: function () {
+    return Vehicles.topFrame();
+  },
+  stones: function () {
+    return null;
+  },
+  smoke: function () {
+    return null;
+  },
+};
+
+function describeSide(gen, pixels) {
   var sprites = {},
     data = null;
 
@@ -271,22 +303,28 @@ export function createPainter(loadPixels) {
 
   return {
     /**
-     * @param spec {{gen: string, key: string, look: string}} the generator,
-     *        and what it calls the picture - the key describe gives - and
-     *        for one of the FACED, how it is to be painted, if not lit: as
-     *        isobox setMode has it, "deferred" or "night"
+     * @param spec {{gen: string, key: string, look: string, view: string}}
+     *        the generator, and what it calls the picture - the key describe
+     *        gives - and for one of the FACED, how it is to be painted, if
+     *        not lit: as isobox setMode has it, "deferred" or "night"; and
+     *        "top" for it seen from straight above (describe top), as the
+     *        game sees it otherwise
      * @returns {Promise<{width, height, data}>}
      */
     paint: function (spec) {
       return painter(spec.gen).then(function (p) {
-        if (!spec.look || FACED[spec.gen] !== true) return p.paint(spec.key);
-        if (OWN_LOOKS[spec.gen]) return p.paint(spec.key, spec.look);
+        var look = spec.look && FACED[spec.gen] === true ? spec.look : null;
 
-        iso.setMode(spec.look);
+        if (OWN_LOOKS[spec.gen] || spec.gen === "terrain")
+          return p.paint(spec.key, look || undefined, spec.view);
+
+        iso.setView(spec.view);
+        if (look !== null) iso.setMode(look);
         try {
           return p.paint(spec.key);
         } finally {
           iso.setMode("lit");
+          iso.setView("iso");
         }
       });
     },

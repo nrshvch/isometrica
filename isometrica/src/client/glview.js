@@ -79,12 +79,61 @@ vec4 whole(vec4 c) {
 //down the same way at everything, so a pixel y down the screen (from its
 //top) and z high in the world (a pixel a unit) is as near as 2y + 3z -
 //down the screen and up nearer, along the way the eye looks (from screen
-//down = -(x + y) / 2 - z). 0 nearest, 1 furthest
+//down = -(x + y) / 2 - z) - or from straight above, as near as it is high
+//(depthWeights, PROJECTIONS). 0 nearest, 1 furthest
 var DEPTH_OF = `
+uniform vec2 depthWeights;
 float depthOf(float y, float z) {
-  return clamp(0.5 - (2.0 * y + 3.0 * z) / 16384.0, 0.0, 1.0);
+  return clamp(0.5 - (depthWeights.x * y + depthWeights.y * z) / 16384.0, 0.0, 1.0);
 }
 `;
+
+//where things are on the screen for the shaders, from the way the world is
+//looked at (client/view top): from the side, a unit along x is a pixel
+//across and half of one up, along y a pixel back and half of one up, and a
+//unit up a pixel up - from straight above, x two pixels across, y two up and
+//up nothing. In GLSL's order, column by column: the ground onto the screen
+//(ground, the shaders' onScreen) and back (unground); how far up the screen a unit up goes (rise);
+//depthOf's weights; the screen from above onto the screen from the side
+//(toSide), for what is laid out over the ground as it is seen from the side
+//- the clouds, the fog, the puddles - to look the same; and how far across
+//and up the screen a circle on the ground a unit round reaches (reach)
+var PROJECTIONS = {
+  side: {
+    ground: [1, -0.5, -1, -0.5],
+    unground: [0.5, -0.5, -1, -1],
+    rise: [0, -1],
+    depthWeights: [2, 3],
+    toSide: [1, 0, 0, 1],
+    reach: [1.4143, 0.70715],
+  },
+  top: {
+    ground: [2, 0, 0, -2],
+    unground: [0.5, 0, 0, -0.5],
+    rise: [0, 0],
+    depthWeights: [0, 3],
+    toSide: [0.5, -0.25, 0.5, 0.25],
+    reach: [2, 2],
+  },
+};
+
+//the projection's uniforms into program p - those of them it has
+function project(gl, p, proj) {
+  var u;
+
+  if ((u = gl.getUniformLocation(p, "onScreen")) !== null)
+    gl.uniformMatrix2fv(u, false, proj.ground);
+  if ((u = gl.getUniformLocation(p, "unground")) !== null)
+    gl.uniformMatrix2fv(u, false, proj.unground);
+  if ((u = gl.getUniformLocation(p, "toSide")) !== null)
+    gl.uniformMatrix2fv(u, false, proj.toSide);
+  if ((u = gl.getUniformLocation(p, "rise")) !== null)
+    gl.uniform2fv(u, proj.rise);
+  if ((u = gl.getUniformLocation(p, "depthWeights")) !== null)
+    gl.uniform2fv(u, proj.depthWeights);
+  if ((u = gl.getUniformLocation(p, "reach")) !== null)
+    gl.uniform2fv(u, proj.reach);
+}
 
 var SPRITE_VS = `#version 300 es
 precision highp float;
@@ -342,6 +391,10 @@ in vec4 aim;
 in vec4 shape;
 
 uniform vec2 size;
+//how far across and up the screen a circle on the ground reaches, and how
+//far up it a unit up goes (PROJECTIONS)
+uniform vec2 reach;
+uniform vec2 rise;
 
 flat out vec4 vLamp;
 flat out vec4 vTint;
@@ -351,10 +404,11 @@ flat out vec4 vShape;
 void main() {
   //how far the light can reach across the screen and up it: a circle on
   //the ground is twice as wide as it is high, and what stands in it reaches
-  //up the screen as high as it stands
-  float r = lamp.w * 1.4143;
-  vec2 lo = lamp.xy - vec2(r, r * 0.5 + aim.w);
-  vec2 hi = lamp.xy + vec2(r, r * 0.5);
+  //up the screen as high as it stands - from above, as wide as it is high,
+  //and what stands in it no further
+  vec2 r = lamp.w * reach;
+  vec2 lo = lamp.xy - vec2(r.x, r.y - aim.w * rise.y);
+  vec2 hi = lamp.xy + r;
   vec2 at = mix(lo, hi, corner);
 
   vLamp = lamp;
@@ -379,6 +433,9 @@ precision highp float;
 uniform sampler2D normals;
 uniform sampler2D heights;
 uniform vec2 size;
+//the screen back onto the ground, and how far up it a unit up goes
+uniform mat2 unground;
+uniform vec2 rise;
 
 flat in vec4 vLamp;
 flat in vec4 vTint;
@@ -393,9 +450,10 @@ void main() {
   vec3 n = normalOf(texelFetch(normals, px, 0));
 
   //from the lamp to the pixel in the world, as it is seen: across the
-  //screen x - y, up it -(x + y) / 2 - z, a pixel a unit
-  vec2 d = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y + h) - vLamp.xy;
-  vec3 p = vec3((d.x - 2.0 * d.y) * 0.5, (-d.x - 2.0 * d.y) * 0.5, h - vLamp.z);
+  //screen x - y, up it -(x + y) / 2 - z, a pixel a unit - or from above
+  //as it is from there (PROJECTIONS)
+  vec2 d = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - rise * h - vLamp.xy;
+  vec3 p = vec3(unground * d, h - vLamp.z);
   float far = length(p);
   float reach = vLamp.w;
 
@@ -464,6 +522,11 @@ uniform sampler2D heights;
 uniform sampler2D ground;
 uniform float margin;
 uniform vec3 sunStep;
+//the way the world is looked at (PROJECTIONS): the ground onto the screen,
+//how far up it a unit up goes, and the screen as it is seen from the side
+uniform mat2 onScreen;
+uniform vec2 rise;
+uniform mat2 toSide;
 
 //the weather (client/weather): how much of the sky is cloud - its shadows
 //drifting over the city, how far they have drifted, and how grey the day
@@ -539,10 +602,10 @@ const float SHADOW_OUT = 2.5;
 //is, so the end of a long shadow frays rather than stepping
 float shadowed(ivec2 px, vec3 n, float b) {
   float h = texelFetch(heights, px, 0).r * 255.0;
-  vec2 under = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y + h) + margin;
+  vec2 under = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - rise * h + margin;
   //from a little way out from a wall or the side of anything, the way it
   //looks - not from the ground at its foot, which it stands over itself
-  vec2 side = vec2(n.x - n.y, -(n.x + n.y) * 0.5);
+  vec2 side = onScreen * n.xy;
 
   if (dot(side, side) > 0.01) under += normalize(side) * SHADOW_OUT;
 
@@ -649,8 +712,10 @@ void main() {
   float b = (BAYER[g4.y * 4 + g4.x] + 0.5) / 16.0;
   vec2 uv = gl_FragCoord.xy / size;
   float h = texelFetch(heights, px, 0).r * 255.0;
-  //the ground under the pixel, from the world's origin, down the screen
-  vec2 spot = from + vec2(0.0, h);
+  //the ground under the pixel, from the world's origin, down the screen -
+  //where it would be seen from the side, from above too, for what is laid
+  //out over the ground to look the same either way
+  vec2 spot = toSide * (from - rise * h);
   //flat on the ground, and of stone, tarmac or concrete - grey - for the
   //rain to stand on in puddles
   bool level = n.z > 0.9 && h < 1.5;
@@ -1148,6 +1213,10 @@ GLView.prototype.alphaAt = function (page, x, y) {
  * the shadows the sun casts (shadows), from whatever is drawn as far as
  * margin off the screen.
  */
+//the way the world is looked at, for the shaders: from the side, or from
+//straight above (PROJECTIONS) - client/lighting sets it every frame
+GLView.prototype.projection = PROJECTIONS.side;
+
 GLView.prototype.begin = function (w, h, night, shadows, margin) {
   var gl = this.gl;
 
@@ -1379,6 +1448,7 @@ GLView.prototype.xray = function (sight) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, this.first);
   drawBuffers(gl, 3);
   gl.useProgram(p);
+  project(gl, p, this.projection);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
   gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
@@ -1405,6 +1475,7 @@ GLView.prototype.stamp = function (n) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, this.groundFrame);
   gl.viewport(0, 0, this.width + 2 * m, this.height + 2 * m);
   gl.useProgram(p);
+  project(gl, p, this.projection);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
   gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
@@ -1435,6 +1506,7 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, frame);
   if (frame !== null) drawBuffers(gl, outputs);
   gl.useProgram(p);
+  project(gl, p, this.projection);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
   gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
@@ -1492,6 +1564,7 @@ GLView.prototype.light = function (lamps, sky, origin) {
     if (lamps.length > 0) {
       this.uploadLamps(lamps);
       gl.useProgram(this.lampProgram);
+      project(gl, this.lampProgram, this.projection);
       bind(gl, this.lampProgram, "normals", t[NORMAL], 0);
       bind(gl, this.lampProgram, "heights", t[HEIGHT], 1);
       gl.uniform2f(gl.getUniformLocation(this.lampProgram, "size"), w, h);
@@ -1512,6 +1585,7 @@ GLView.prototype.light = function (lamps, sky, origin) {
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.useProgram(p);
+  project(gl, p, this.projection);
   bind(gl, p, "albedo", t[ALBEDO], 0);
   bind(gl, p, "normals", t[NORMAL], 1);
   bind(gl, p, "shine", t[SHINE], 3);
@@ -1593,6 +1667,7 @@ function weather(gl, p, w) {
 }
 
 GLView.BOLT = BOLT;
+GLView.PROJECTIONS = PROJECTIONS;
 
 //the lamps into their buffer, LAMP_FLOATS a lamp
 GLView.prototype.uploadLamps = function (lamps) {

@@ -71,6 +71,10 @@ function generated(written) {
           faced: catalog.FACED[gen] === true,
           sprites: described.sprites,
           data: described.data,
+          //how big every picture of it seen from straight above is, and
+          //where on the ground it is drawn from - for the map (catalog
+          //describe top); none for what is not seen from above
+          top: described.top,
         }) + "\n",
       );
 

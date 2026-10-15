@@ -40,6 +40,24 @@ var W = 80,
   PIVOT_X = 38,
   PIVOT_Y = 60;
 
+//seen from straight above, for the map: a square round its foot, two pixels
+//a unit, +x to the right and +y up - as the boxes are (isobox setView)
+var TOP_FRAME = { w: 96, h: 96, pivotX: 48, pivotY: 48 },
+  TOP = 2,
+  SIDE = { w: W, h: H, pivotX: PIVOT_X, pivotY: PIVOT_Y },
+  view = "iso";
+
+//paints from straight above from now on ("top"), or as the game sees it
+function setView(v) {
+  var f = v === "top" ? TOP_FRAME : SIDE;
+
+  view = v === "top" ? "top" : "iso";
+  W = f.w;
+  H = f.h;
+  PIVOT_X = f.pivotX;
+  PIVOT_Y = f.pivotY;
+}
+
 //the boxes' sun (isobox SUN), x and y along the tile, z up
 var SUN = normalize([-0.45, 0.35, 1]);
 
@@ -51,8 +69,9 @@ var SHADOW_SUN = normalize([-0.22, 0.18, 1]);
 var SHADOW_ALPHA = 0.12;
 
 //the way every ray goes into the picture: where isobox project() has a
-//point stay put
-var VIEW = normalize([1, 1, -1]);
+//point stay put - or from above, straight down
+var VIEW = normalize([1, 1, -1]),
+  DOWN = [0, 0, -1];
 
 function normalize(v) {
   var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
@@ -537,24 +556,29 @@ function paintTree(tree, look) {
   for (py = 0; py < H; py++) {
     for (px = 0; px < W; px++) {
       //the point on the ground that is drawn at this pixel (isobox project:
-      //x - y across, -(x + y) / 2 - z down)
+      //x - y across, -(x + y) / 2 - z down - or from above, x across and y
+      //up, two pixels a unit)
       var sx = px + 0.5 - PIVOT_X,
         sy = py + 0.5 - PIVOT_Y,
-        g = [(sx - 2 * sy) / 2, (-sx - 2 * sy) / 2, 0],
+        ray = view === "top" ? DOWN : VIEW,
+        g =
+          view === "top"
+            ? [sx / TOP, -sy / TOP, 0]
+            : [(sx - 2 * sy) / 2, (-sx - 2 * sy) / 2, 0],
         origin = [
-          g[0] - VIEW[0] * back,
-          g[1] - VIEW[1] * back,
-          g[2] - VIEW[2] * back,
+          g[0] - ray[0] * back,
+          g[1] - ray[1] * back,
+          g[2] - ray[2] * back,
         ],
-        t = march(tree, origin, VIEW, back);
+        t = march(tree, origin, ray, back);
 
       i = py * W + px;
 
       if (t >= 0) {
         var p = [
-          origin[0] + VIEW[0] * t,
-          origin[1] + VIEW[1] * t,
-          origin[2] + VIEW[2] * t,
+          origin[0] + ray[0] * t,
+          origin[1] + ray[1] * t,
+          origin[2] + ray[2] * t,
         ];
 
         tree.shape(p);
@@ -709,16 +733,21 @@ export function describe() {
  *
  * @returns {{width, height, data}}
  */
-export function paint(name, look) {
+export function paint(name, look, v) {
   var m = /^gen\/trees\/([a-z]+)-(\d+)(?:\/r([123]))?$/.exec(name);
 
   if (m === null || KINDS[m[1]] === undefined)
     throw new Error("no such tree: " + name);
 
-  return paintTree(
-    grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0)),
-    look,
-  );
+  setView(v);
+  try {
+    return paintTree(
+      grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0)),
+      look,
+    );
+  } finally {
+    setView("iso");
+  }
 }
 
 /**
@@ -797,4 +826,4 @@ function hashSeed(s) {
   return Math.abs(h) % 10000;
 }
 
-export { W, H, PIVOT_X, PIVOT_Y };
+export { W, H, PIVOT_X, PIVOT_Y, TOP_FRAME };

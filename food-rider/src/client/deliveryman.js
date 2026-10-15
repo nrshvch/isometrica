@@ -556,12 +556,15 @@ function draw(self, heading) {
   heading = heading || self.heading || View.heading("x+");
 
   if (
-    heading !== self.heading &&
+    (heading !== self.heading || View.top() !== self.fromAbove) &&
     self.looks !== null &&
     self.looks[heading] !== undefined
   ) {
-    var frame = self.looks[heading],
+    //as it is seen, or from straight above (isometrica client/view top)
+    var frame = Carman.seenAs(self.root.sprites, self.looks[heading]),
       renderer = car.spriteRenderer;
+
+    self.fromAbove = View.top();
 
     renderer.setSprite(frame.sprite);
     renderer.pivotX = frame.pivotX;

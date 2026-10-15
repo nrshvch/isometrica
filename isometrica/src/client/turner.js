@@ -310,7 +310,8 @@ Turner.prototype.begin = function (x, y) {
   var viewport = this.viewport(),
     lighting = this.root.lighting;
 
-  if (this.active || !viewport || !lighting) return;
+  //from above, the map stays north up
+  if (this.active || !viewport || !lighting || View.top()) return;
 
   var self = this,
     canvas = viewport.canvas,
@@ -978,6 +979,8 @@ Turner.prototype.close = function () {
  * gets there, quickly, slowing as it does.
  */
 Turner.prototype.turn = function (by) {
+  if (View.top()) return;
+
   if (this.active && (this.ending !== null || this.chase === null)) {
     this.next += by;
     return;
