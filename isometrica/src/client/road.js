@@ -4,6 +4,7 @@ import Building from "./building";
 import RoadNode from "./pathfinding/roadnode";
 import RoadView from "./roadview";
 import BuildingState from "../core/buildingstate";
+import * as RoadRules from "../core/roadrules";
 
 var buildingData = Core.BuildingData,
   BuildingData = buildingData;
@@ -489,28 +490,11 @@ Road.profile = function (tile, net, kind, way) {
 //Road.profile)
 Road.ONE_WAY = 1000000;
 
-/**
- * The way a one-way road's traffic goes, from its core model - 0..3 for -x,
- * -y, +x, +y - or -1 for a road driven both ways.
- */
-Road.wayOf = function (data) {
-  var way = data && data.look ? data.look.way : undefined;
-
-  return way === 0 || way === 1 || way === 2 || way === 3 ? way : -1;
-};
-
-/**
- * Whether a car can go out of a road, or into it, going towards side - 0..3
- * for -x, -y, +x, +y: always on a road driven both ways, and on a one-way
- * road anything but against the way it goes.
- *
- * @param road {Road}
- */
-Road.goes = function (road, side) {
-  var way = Road.wayOf(road.data);
-
-  return way < 0 || way === side || way % 2 !== side % 2;
-};
+//the way a one-way road's traffic goes, 0..3 for -x, -y, +x, +y, or -1;
+//and whether a car can go out of a road, or into it, towards a side
+//(core/roadrules)
+Road.wayOf = RoadRules.wayOf;
+Road.goes = RoadRules.goes;
 
 /**
  * What a road is laid in (see Road.profile): gravel or cobbles, as it was

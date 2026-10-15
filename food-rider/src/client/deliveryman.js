@@ -399,6 +399,13 @@ function setOff(self, to) {
     return roads.neighbours(tile, out);
   });
 
+  //facing up a road it can only come back down - a one-way street coming
+  //into the end of it - it turns round from the kerb, the other way out
+  if (route.length < 2)
+    route = Traffic.route(here, null, to, function (tile, out) {
+      return roads.neighbours(tile, out);
+    });
+
   //no way there any more: it is there as near as it can get
   if (route.length < 2) {
     self.courier.arrived(Date.now());

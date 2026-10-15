@@ -2,6 +2,7 @@ import CanvasCache from "./canvascache";
 import CachedSprite from "./cachedsprite";
 import Generator from "./generator";
 import Preloader from "./preloader";
+import Pixels from "./pixels";
 
 //Sits between the pictures the game has and the renderers that draw them.
 //
@@ -39,10 +40,7 @@ function SpriteCache(clock, options) {
   //paints the generated sprites, once the manifest is in
   this.generator = null;
 
-  this.cache = new CanvasCache(
-    clock,
-    Object.assign({ canvas: canvas }, options),
-  );
+  this.cache = new CanvasCache(clock, options || {});
 }
 
 /**
@@ -289,9 +287,27 @@ SpriteCache.prototype.getComposite = function (parts) {
 };
 
 /**
- * Starts loading a sheet, unless it is loading or loaded already.
+ * Whether a sheet's picture is in - asking for it if it is not. Asked every
+ * frame something on it is to be drawn: a generated picture wanted lately is
+ * painted before one wanted a while ago, and one no longer wanted is not
+ * painted at all (client/generator).
  *
- * @returns {Promise} its picture
+ * @returns {boolean}
+ */
+SpriteCache.prototype.want = function (sheet) {
+  if (sheet.generated !== null)
+    return this.generator.want(sheet, this.cache.clock.frame);
+
+  if (sheet.image === null) this.loadSheet(sheet);
+
+  return sheet.image !== null;
+};
+
+/**
+ * Starts loading a sheet, unless it is loading or loaded already - for
+ * whoever waits for it rather than asking every frame (see want).
+ *
+ * @returns {Promise} its picture, as pixels (client/pixels)
  */
 SpriteCache.prototype.loadSheet = function (sheet) {
   if (sheet.generated !== null) return this.generator.load(sheet);
@@ -307,7 +323,12 @@ SpriteCache.prototype.loadSheet = function (sheet) {
         return createImageBitmap(blob);
       })
       .then(
-        function (image) {
+        function (bitmap) {
+          //put together on the CPU, as pixels, as everything else
+          var image = Pixels.fromImage(bitmap);
+
+          bitmap.close();
+
           return (sheet.image = image);
         },
         function (e) {
@@ -322,13 +343,5 @@ SpriteCache.prototype.loadSheet = function (sheet) {
 
   return sheet.loading;
 };
-
-function canvas(w, h) {
-  return typeof OffscreenCanvas !== "undefined"
-    ? new OffscreenCanvas(w, h)
-    : Object.assign(document.createElement("canvas"), { width: w, height: h });
-}
-
-SpriteCache.canvas = canvas;
 
 export default SpriteCache;
