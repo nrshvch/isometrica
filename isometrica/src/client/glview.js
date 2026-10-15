@@ -622,13 +622,13 @@ void main() {
 
   //the shadows of the clouds going over, so much of the sky as is cloud:
   //big ones, ragged at the edges, growing and closing up as more of it is,
-  //till all of it is - and darker the more there is
+  //till all of it is - as dark as the shadow of anything else, the sun
+  //all kept off, so that the shadows of what stands under one go into it
   if (cloud > 0.0 && sun > 0.0) {
     float c = noise((spot + cloudAt) / vec2(560.0, 280.0)) * 0.7 +
       noise((spot + cloudAt) / vec2(150.0, 75.0)) * 0.22 +
       noise((spot + cloudAt) / vec2(40.0, 20.0)) * 0.08;
-    sun *= 1.0 - (0.7 + 0.2 * cloud) *
-      step(0.86 - cloud * 0.95 + (b - 0.5) * 0.06, c);
+    sun *= 1.0 - step(0.86 - cloud * 0.95 + (b - 0.5) * 0.06, c);
   }
 
   vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
