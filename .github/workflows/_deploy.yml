@@ -1,0 +1,149 @@
+# Build one app of the monorepo and deploy it to Cloudflare Workers (static assets). Called by
+# city-sim.yml, food-rider.yml and isometrica.yml, which say when to run and which target to use;
+# each app's Workers are defined in its own wrangler.jsonc.
+#
+# target:
+# - production → `wrangler deploy --env production`        (a release tag, `<app>/vX.Y.Z`)
+# - dev        → `wrangler deploy --env=`                   (main)
+# - preview    → `wrangler preview --env= --name <branch>`  (any other branch)
+name: deploy
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: The app's name, for the job and the summary - city-sim, food-rider, lab
+        type: string
+        required: true
+      directory:
+        description: Where its wrangler.jsonc is
+        type: string
+        required: true
+      build:
+        description: The command that builds it
+        type: string
+        required: true
+      test:
+        description: A command to run before the build, if any
+        type: string
+        default: ""
+      target:
+        description: production, dev or preview
+        type: string
+        required: true
+      production-site:
+        description: Where production is, for the summary
+        type: string
+        required: true
+      dev-site:
+        description: Where dev is, for the summary
+        type: string
+        required: true
+
+jobs:
+  build-deploy:
+    name: Build and deploy ${{ inputs.app }} (${{ inputs.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      # One production deploy of an app at a time, whichever tag it is for; never cancel one half-way.
+      # Superseded dev and preview runs can go.
+      group: deploy-${{ inputs.app }}-${{ inputs.target == 'production' && 'production' || github.ref }}
+      cancel-in-progress: ${{ inputs.target != 'production' }}
+    env:
+      CLOUDFLARE_CONFIGURED: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - name: Check the target
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          case "$TARGET" in
+            production | dev | preview) ;;
+            *) echo "::error::Unknown target \"$TARGET\": production, dev or preview."; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Test
+        if: inputs.test != ''
+        run: ${{ inputs.test }}
+
+      - name: Build
+        run: ${{ inputs.build }}
+
+      - name: Choose deploy command
+        id: command
+        if: env.CLOUDFLARE_CONFIGURED == 'true'
+        env:
+          TARGET: ${{ inputs.target }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$TARGET" = "production" ]; then
+            echo "command=deploy --env production" >> "$GITHUB_OUTPUT"
+          elif [ "$TARGET" = "dev" ]; then
+            # `--env=` targets the top-level (dev) Worker explicitly.
+            echo "command=deploy --env=" >> "$GITHUB_OUTPUT"
+          else
+            # The Preview name becomes part of a hostname: lowercase letters, digits, hyphens.
+            name=$(printf '%s' "$REF_NAME" | tr '[:upper:]' '[:lower:]' \
+              | sed -E 's/[^a-z0-9]+/-/g; s/^-+//' | cut -c1-40 | sed -E 's/-+$//')
+            echo "command=preview --env= --name ${name}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        if: env.CLOUDFLARE_CONFIGURED == 'true'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          workingDirectory: ${{ inputs.directory }}
+          command: ${{ steps.command.outputs.command }}
+
+      - name: Summary
+        if: always()
+        env:
+          APP: ${{ inputs.app }}
+          TARGET: ${{ inputs.target }}
+          PRODUCTION_SITE: ${{ inputs.production-site }}
+          DEV_SITE: ${{ inputs.dev-site }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$CLOUDFLARE_CONFIGURED" != "true" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets are not set, so nothing was deployed."
+            echo "Build passed; deployment skipped (Cloudflare secrets not configured)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$DEPLOY_OUTCOME" != "success" ]; then
+            {
+              echo "### Deployment of ${APP} failed"
+              echo "See the \"Deploy to Cloudflare Workers\" step. \"No access to the specified resource\" means the API token lacks **Workers Scripts: Edit**."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$TARGET" = "production" ]; then
+            {
+              echo "### Released ${APP} to production"
+              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
+              echo "- Site: ${PRODUCTION_SITE}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$TARGET" = "dev" ]; then
+            {
+              echo "### Deployed ${APP} to dev"
+              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
+              echo "- Site: ${DEV_SITE}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### Preview of ${APP} deployed"
+              echo "- Trigger: ${EVENT_NAME} on \`${REF_NAME}\`"
+              echo "- Preview: ${PREVIEW_URL:-see the deploy step log}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Music lab</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #1d1f22;
+        color: #ddd;
+        font: 13px monospace;
+      }
+      main {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      p {
+        color: #9aa;
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .row span {
+        width: 70px;
+        color: #7f8a8f;
+      }
+      button {
+        font: inherit;
+        color: #eee;
+        background: #2f6f6f;
+        border: 1px solid #4a9a9a;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+      button.on {
+        background: #b5532f;
+        border-color: #e07a50;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      #status {
+        color: #9aa;
+        margin-top: 14px;
+        min-height: 3em;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Music lab</h1>
+      <p>
+        Every piece src/shared/gen/music.js makes, played the way a game would:
+        all three weathers of a place and time at once, from the same moment,
+        the weather picking which is heard - change it while it plays and the
+        music fades over without losing the beat. A new place or time fades over
+        to its own piece.
+      </p>
+      <div class="row" id="places"><span>place</span></div>
+      <div class="row" id="times"><span>time</span></div>
+      <div class="row" id="weathers"><span>weather</span></div>
+      <div class="row"><span></span><button id="play">play</button></div>
+      <div id="status"></div>
+    </main>
+    <script type="module" src="./music.js"></script>
+  </body>
+</html>

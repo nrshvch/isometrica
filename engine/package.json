@@ -1,0 +1,12 @@
+{
+  "name": "engine-packages",
+  "description": "Builds the engine and its helpers - every directory here is a package of its own",
+  "private": true,
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "almond": "^0.3.3",
+    "requirejs": "2.3.7"
+  }
+}

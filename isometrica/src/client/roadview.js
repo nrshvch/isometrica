@@ -1,0 +1,588 @@
+/**
+ * Created with JetBrains WebStorm.
+ * User: User
+ * Date: 09.02.14
+ * Time: 15:09
+ * To change this template use File | Settings | File Templates.
+ */
+import engine from "engine";
+import RenderLayer from "./renderlayer";
+import Config from "./config";
+import Core from "../core/main";
+import * as RoadRules from "../core/roadrules";
+import View from "./view";
+import Lighting from "./lighting";
+import WorkLights from "./worklights";
+
+var Terrain = Core.Terrain;
+
+//what a road's piece number (see Road.profile) is drawn with: the roads
+//generator's pieces (shared/gen/roads) - plain or paved asphalt, gravel or
+//cobbles, by how the road joins up with its neighbours, or a ramp - as it is
+//seen, the camera turned (see client/view). A one-way road's straight piece
+//has an arrow down it the way its traffic goes, as that is seen, and its
+//ramp no dashes up it
+function spriteOf(id) {
+  var shape = id % Road_PAVED,
+    kind = KINDS[Math.floor(id / Road_PAVED) % 10] || "plain",
+    way = Math.floor(id / ONE_WAY) - 1;
+
+  //a bus stop is laid as a street is; its shelter and sign stand on it
+  if (kind === "stop") kind = "paved";
+
+  if (shape < 10)
+    return (
+      "gen/roads/" +
+      kind +
+      (way >= 0 && (kind === "plain" || kind === "paved") ? "/oneway" : "") +
+      "/ramp" +
+      View.ramp(shape)
+    );
+
+  var j = seenJoins(shape),
+    alongX = j[0] || j[2],
+    alongY = j[1] || j[3],
+    //no arrow on a road still being laid (client/roadworks): it has none
+    //painted till it is finished
+    to = way >= 0 && kind !== "dug" && kind !== "bed" ? seenSide(way) : -1;
+
+  //an arrow only down a straight piece, the way it runs
+  if (to >= 0 && alongX !== alongY && (to % 2 === 0) === !!alongX)
+    return "gen/roads/" + kind + "/oneway" + to + "/" + j.join("");
+
+  return "gen/roads/" + kind + "/" + j.join("");
+}
+
+//a side of a tile, -x, -y, +x, +y as 0..3, in the world - as it is seen
+function seenSide(side) {
+  var d = View.vector([-1, 0, 1, 0][side], [0, -1, 0, 1][side]);
+
+  return d[0] < 0 ? 0 : d[1] < 0 ? 1 : d[0] > 0 ? 2 : 3;
+}
+
+//which sides a flat piece of road joins on as it is seen: -x, -y, +x, +y
+function seenJoins(shape) {
+  return View.joins([
+    Math.floor(shape / 1000) % 10,
+    Math.floor(shape / 100) % 10,
+    Math.floor(shape / 10) % 10,
+    shape % 10,
+  ]);
+}
+
+//where a paved street has its street light, if it has one there - every
+//other tile along a street, and never on a ramp. Where it stands is the
+//road's in the world, so it stays on its side of the street as the camera
+//turns round: beside a road along x on its -y pavement, along y on its -x
+//one; at a corner or a junction in the corner of the tile between the ways
+//it goes - the first of them with a way on both sides of it, else on one -
+//its arm reaching in over the way beside it. Then which of the roads
+//generator's lights that is as it is seen (shared/gen/roads lightPlace)
+function lightOf(id, tile) {
+  var shape = id % Road_PAVED;
+
+  if (Math.floor(id / Road_PAVED) % 10 !== 1 || shape < 10) return null;
+  if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
+
+  //the ways it goes, in the world: -x, -y, +x, +y
+  var j = [
+      Math.floor(shape / 1000) % 10,
+      Math.floor(shape / 100) % 10,
+      Math.floor(shape / 10) % 10,
+      shape % 10,
+    ],
+    alongX = j[0] || j[2],
+    alongY = j[1] || j[3];
+
+  if (alongX && !alongY) return "gen/roads/light/side" + seenSide(1);
+  if (alongY && !alongX) return "gen/roads/light/side" + seenSide(0);
+
+  var best = null,
+    most = 0;
+
+  LIGHT_CORNERS.forEach(function (c) {
+    var byX = j[c[0] < 0 ? 0 : 2],
+      byY = j[c[1] < 0 ? 1 : 3];
+
+    if (byX + byY > most) {
+      most = byX + byY;
+      //over the way along y beside it, if there is one - across the tile
+      //towards the middle - else over the one along x
+      best = { c: c, d: byY ? [-c[0], 0] : [0, -c[1]] };
+    }
+  });
+
+  if (best === null) return null;
+
+  var c = View.vector(best.c[0], best.c[1]),
+    d = View.vector(best.d[0], best.d[1]);
+
+  return (
+    "gen/roads/light/corner" +
+    ((c[0] > 0 ? 1 : 0) + (c[1] > 0 ? 2 : 0)) +
+    "-" +
+    SIDE_OF[d[0] + "," + d[1]]
+  );
+}
+
+//the corners of a tile, -x -y, +x -y, -x +y, +x +y (shared/gen/roads
+//LIGHT_CORNERS)
+var LIGHT_CORNERS = [
+  [-1, -1],
+  [1, -1],
+  [-1, 1],
+  [1, 1],
+];
+
+//which side of a tile, -x, -y, +x, +y, a way along the ground goes through
+var SIDE_OF = { "-1,0": 0, "0,-1": 1, "1,0": 2, "0,1": 3 };
+
+/**
+ * Where a bus stop has its shelters, if piece id is one: on the pavements
+ * either side of the road - as the sides they are seen on, the camera
+ * turned. Null for anything else, or a stop that is not a straight piece of
+ * road.
+ */
+function stopOf(id) {
+  var shape = id % Road_PAVED;
+
+  if (KINDS[Math.floor(id / Road_PAVED) % 10] !== "stop" || shape < 10)
+    return null;
+
+  var j = [
+      Math.floor(shape / 1000) % 10,
+      Math.floor(shape / 100) % 10,
+      Math.floor(shape / 10) % 10,
+      shape % 10,
+    ],
+    alongX = (j[0] || j[2]) && !j[1] && !j[3],
+    alongY = (j[1] || j[3]) && !j[0] && !j[2];
+
+  if (!alongX && !alongY) return null;
+
+  var side = alongX ? [0, -1] : [-1, 0],
+    seen = View.vector(side[0], side[1]),
+    k = SIDE_OF[seen[0] + "," + seen[1]];
+
+  return [
+    "gen/roads/stop/shelter" + k,
+    "gen/roads/stop/shelter" + ((k + 2) % 4),
+  ];
+}
+
+//a sprite of the generator's, its pivot where its tile's middle is - seen
+//from the side, or from straight above
+function setPiece(renderer, name) {
+  if (View.top()) {
+    var top = vkaria.sprites.topOf(name);
+
+    renderer.setSprite(top);
+    renderer.setPivot(top.pivotX, top.pivotY);
+    return;
+  }
+
+  var frame = vkaria.sprites.frame(name);
+
+  renderer.setSprite(vkaria.sprites.getSprite(name));
+  renderer.setPivot(frame.pivotX, frame.pivotY);
+}
+
+//added to a road's piece number for the paved one (see Road.profile) - and
+//twice and three times over for gravel and for cobbles: what it is laid in
+var Road_PAVED = RoadRules.PAVED,
+  KINDS = ["plain", "paved", "gravel", "cobble", "stop", "dug", "bed"];
+
+//and for a one-way road, this more for each of the way it goes + 1 (client/
+//road ONE_WAY)
+var ONE_WAY = 1000000;
+
+function BuildingView() {
+  this.gameObject = new engine.GameObject("building");
+}
+
+BuildingView.prototype.gameObject = null;
+BuildingView.prototype.building = null;
+
+BuildingView.prototype.setRoad = function (road) {
+  this.road = road;
+};
+
+BuildingView.prototype.update = function () {
+  var b = this.road;
+
+  if (b !== null && b.staticData !== null)
+    draw(this, this.road.typeCode, this.road.surface());
+};
+
+//draws piece id of the road from scratch, on surface (client/road): the
+//piece, then the street light if it has one, and the concrete under it if
+//there is any - each lets go of the view as it is destroyed, so off a copy
+//of the list
+function draw(view, id, surface) {
+  var go = view.gameObject,
+    tile = view.road.data.tile,
+    children = go.transform.children.slice();
+
+  for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
+
+  //a road up on concrete stands up over the ground, and over the edge of
+  //whatever stands behind it lower down: drawn among the buildings, not
+  //under all of them (see SINK)
+  var raised = raisedOn(tile, surface),
+    layer = raised ? RenderLayer.buildingsLayer : RenderLayer.roadLayer,
+    sink = raised ? SINK : 0;
+
+  addSprite(go, id, 1, layer, sink);
+
+  //the street light, among the buildings and the cars it stands with
+  var light = lightOf(id, tile),
+    pool = light !== null ? addLight(go, light, tile) : null;
+
+  addBase(go, tile, surface, 1, layer, sink);
+
+  //a bus stop's shelters, among the buildings and the cars
+  var stop = stopOf(id);
+
+  if (stop !== null)
+    stop.forEach(function (name) {
+      addStand(go, name);
+    });
+
+  //and a road being laid, its barriers where it ends
+  barriersOf(view.road).forEach(function (side) {
+    addBarrier(go, "gen/roads/works/barrier" + seenSide(side));
+  });
+
+  place(go, tile, surface);
+
+  //where its lamp is, to light the city round it at night - once it is in
+  //place
+  if (pool) Lighting.addLamp(go, tile, pool[0], pool[1]);
+}
+
+//whether a road's surface is over the ground anywhere on tile - on concrete
+function raisedOn(tile, surface) {
+  var ground = Core.Surface.ground(vkaria.core.world.terrain, tile);
+
+  return surface.some(function (h, k) {
+    return h > ground[k];
+  });
+}
+
+/**
+ * How many steps a raised road's pictures hang under it, their pivots lifted
+ * by as much so that they show right where they did. Each step down puts
+ * them further back in the order things are drawn in
+ * (CameraComponent#depthAxes) - this many, most of a tile back from the
+ * middle of their tile: still after a building behind it, so that its edge
+ * is drawn over that one's, and before a car on it anywhere but right in its
+ * back corner.
+ */
+var SINK = 3.5;
+
+//how high a road's surface is in the middle of its tile
+function middle(surface) {
+  return (surface[0] + surface[1] + surface[2] + surface[3]) / 4;
+}
+
+//how many pixels up a step of the ground is (shared/gen/foundations STEP)
+var STEP_PX = 8;
+
+/**
+ * Hangs under parent - a road's, at its surface (place) - the concrete under
+ * a road's surface on tile: down to the ground at every corner the surface
+ * is over it, a step at most (shared/gen/foundations) - under a flat road a
+ * level top, on the shore going down into the water the way a building's
+ * does; under a ramp, a ramp's. Picked as the tile is seen; nothing where
+ * the road is on the ground all round.
+ *
+ * @param surface {number[]} the road's corners' heights, A (x, y),
+ *        B (x + 1, y), C (x, y + 1), D (x + 1, y + 1) (client/road)
+ * @param [sink] {number} steps it hangs under the road, see SINK
+ */
+function addBase(parent, tile, surface, opacity, layer, sink) {
+  //from above, under the road on it
+  if (View.top()) return;
+
+  var terrain = vkaria.core.world.terrain,
+    x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    top = Math.max.apply(null, surface),
+    ramp = Math.min.apply(null, surface) !== top,
+    any = false,
+    drops = [],
+    tops = [];
+
+  for (var k = 0; k < 4; k++) {
+    var c = View.corner(k),
+      at = surface[c[0] + 2 * c[1]],
+      drop = Math.max(0, Math.min(1, at - View.cornerHeight(terrain, x, y, k)));
+
+    drops.push(drop);
+    tops.push(at === top ? 1 : 0);
+    if (drop > 0) any = true;
+  }
+
+  if (!any) return;
+
+  var name =
+      "gen/foundations/" +
+      (ramp
+        ? "ramp/" + tops.join("") + "/"
+        : terrain.getTerrainType(tile) === Core.TerrainType.shore
+          ? "shore/"
+          : "") +
+      drops.join(""),
+    frame = vkaria.sprites.frame(name);
+
+  if (!frame) return;
+
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer();
+
+  sprite.layer = layer;
+  sprite.setSprite(vkaria.sprites.getSprite(name));
+  //its pivot is at the top of the tile, the road's half a step under it on
+  //a ramp: its picture lifted by as much
+  sprite.setPivot(
+    frame.pivotX,
+    frame.pivotY + (top - middle(surface) + (sink || 0)) * STEP_PX,
+  );
+  part.addComponent(sprite);
+  //the renderer resets its opacity once it is attached
+  sprite.opacity = opacity;
+  parent.transform.addChild(part.transform);
+  //a hair under the road on it, so it is drawn first
+  //(CameraComponent#depthAxes)
+  part.transform.setLocalPosition(0, -0.01 - (sink || 0) * Config.tileZStep, 0);
+}
+
+//hangs a street light under parent - and hands back where the spot under
+//its lamp is from the middle of the tile, in the world
+function addLight(parent, name, tile) {
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer();
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  //its lamp lit with every other street light of its block (client/lighting
+  //shines)
+  sprite.city = true;
+  sprite.cityTile = tile;
+  part.addComponent(sprite);
+  setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+  standPole(part, sprite, name.split("/").pop());
+
+  return lampAt(name.split("/").pop());
+}
+
+//hangs something standing on a road's pavement under parent - a bus stop's
+//shelter - where it stands (standPole)
+function addStand(parent, name) {
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer(),
+    roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    key = name.split("/").pop(),
+    at = roads && roads.stops ? roads.stops[key] : null;
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  part.addComponent(sprite);
+  setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+
+  if (at) standAt(part, sprite, at);
+}
+
+//from a tile to the next one at each side, -x, -y, +x, +y
+var STEP = [-1, -Terrain.dy, 1, Terrain.dy];
+
+/**
+ * Which sides of a road being laid have a barrier across them, in the world
+ * - -x, -y, +x, +y as 0..3: where it joins a road that is finished, to keep
+ * the traffic off it; and at each end of the stretch being laid, across the
+ * way it goes - one tile on its own across both ends of whichever way it
+ * goes, along x if it goes nowhere yet. None for a road finished.
+ */
+function barriersOf(road) {
+  if (road === null || road.isReady()) return [];
+
+  var roadman = road.root.roadman,
+    tile = road.data.tile,
+    surface = road.surface(),
+    out = [],
+    works = [],
+    s;
+
+  for (s = 0; s < 4; s++) {
+    var next = roadman.anyRoad(tile + STEP[s]);
+
+    if (next === null || !Core.Surface.meets(surface, s, next.surface()))
+      continue;
+
+    if (next.isReady()) out.push(s);
+    else works.push(s);
+  }
+
+  //the end of the stretch: across the way it comes in
+  if (works.length === 1 && out.indexOf((works[0] + 2) % 4) === -1)
+    out.push((works[0] + 2) % 4);
+
+  //on its own, with nothing to close off: across either end
+  if (works.length === 0 && out.length === 0) {
+    var shape = Core.Surface.shapeOf(surface),
+      alongY = shape === 1 || shape === 3;
+
+    out.push(alongY ? 1 : 0, alongY ? 3 : 2);
+  }
+
+  return out;
+}
+
+/**
+ * Hangs a road works barrier under parent, standing where it does on its
+ * tile, its lamps blinking amber (client/worklights).
+ */
+function addBarrier(parent, name) {
+  var part = new engine.GameObject(),
+    sprite = new WorkLights.Renderer(),
+    roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    key = name.split("/").pop(),
+    at = roads && roads.barriers ? roads.barriers[key] : null;
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  part.addComponent(sprite);
+  setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+
+  if (!at) return;
+
+  standAt(part, sprite, at.at);
+  sprite.lights = at.lamps.map(function (lamp, k) {
+    var o = WorkLights.offset(lamp[0], lamp[1], lamp[2], at.at[0], at.at[1]);
+
+    o.color = WorkLights.AMBER;
+    o.blink = WorkLights.BLINK;
+    //one lamp and then the other
+    o.phase = k * WorkLights.BLINK;
+    o.reach = 9;
+    o.peak = 0.55;
+
+    return o;
+  });
+}
+
+/**
+ * Puts a street light where its pole stands on the tile, the roads'
+ * generator says (shared/gen/roads poleAt) - its picture kept where it was
+ * painted - so that it is sorted among the cars by that: a car on the far
+ * side of the road goes behind it, one on the near side in front.
+ */
+function standPole(part, sprite, at) {
+  var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    pole = roads && roads.poles ? roads.poles[at] : null;
+
+  if (pole) standAt(part, sprite, pole);
+}
+
+/**
+ * Puts part where pole - x, y on its tile as it is painted - is, its picture
+ * kept where it was painted: it is sorted among the cars by where it stands.
+ */
+function standAt(part, sprite, pole) {
+  //how far from the middle of the tile, as it is seen, a pixel a unit
+  var dx = pole[0] - 16,
+    dy = pole[1] - 16,
+    w = View.unvector((dx / 32) * Config.tileSize, (dy / 32) * Config.tileSize);
+
+  part.transform.setLocalPosition(w[0], 0, w[1]);
+  //seen from above, two pixels a unit across and up
+  if (View.top())
+    sprite.setPivot(sprite.pivotX + 2 * dx, sprite.pivotY - 2 * dy);
+  else
+    sprite.setPivot(sprite.pivotX + (dx - dy), sprite.pivotY - (dx + dy) / 2);
+}
+
+/**
+ * Where the spot under a street light's lamp is from the middle of its tile,
+ * in the world, the camera turned the way it is: where that is on the tile,
+ * the roads' generator says (shared/gen/roads lampAt) - for the lamp to light
+ * everything round it at night (client/lighting).
+ */
+function lampAt(at) {
+  var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    lamp = roads && roads.lamps ? roads.lamps[at] : null;
+
+  if (!lamp) return null;
+
+  return View.unvector(
+    ((lamp[0] - 16) / 32) * Config.tileSize,
+    ((lamp[1] - 16) / 32) * Config.tileSize,
+  );
+}
+
+/**
+ * Draws piece id in place of the road's own - what it would turn into once
+ * the roads being laid next to it join up with it. Its own comes back with
+ * the next update.
+ *
+ * @param id {number} which piece (see Road.profile)
+ */
+BuildingView.prototype.showPiece = function (id) {
+  if (this.road !== null && this.road.staticData !== null)
+    draw(this, id, this.road.surface());
+};
+
+/**
+ * Hangs piece id of road under parent - shared with the see-through preview
+ * shown while roads are being laid.
+ *
+ * @param id {number} which piece (see Road.profile)
+ * @param opacity {number} 1 for the real thing
+ * @param layer {number}
+ * @param [sink] {number} steps it hangs under the road, see SINK
+ */
+function addSprite(parent, id, opacity, layer, sink) {
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer();
+
+  sprite.layer = layer;
+  setPiece(sprite, spriteOf(id));
+  if (sink) {
+    //lower down is no further down the screen from above
+    if (!View.top())
+      sprite.setPivot(sprite.pivotX, sprite.pivotY + sink * STEP_PX);
+    part.transform.setLocalPosition(0, -sink * Config.tileZStep, 0);
+  }
+  part.addComponent(sprite);
+  //the renderer resets its opacity once it is attached
+  sprite.opacity = opacity;
+  parent.transform.addChild(part.transform);
+}
+
+/**
+ * Puts go where a road on tile with surface stands: in the middle of its
+ * tile, as high as its surface is there.
+ */
+function place(go, tile, surface) {
+  var x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile);
+
+  go.transform.setPosition(
+    x * Config.tileSize,
+    middle(surface) * Config.tileZStep,
+    y * Config.tileSize,
+  );
+}
+
+BuildingView.addSprite = addSprite;
+BuildingView.PAVED = Road_PAVED;
+BuildingView.KINDS = KINDS;
+BuildingView.place = place;
+BuildingView.addBase = addBase;
+
+BuildingView.prototype.render = function () {
+  if (this.gameObject.world === null)
+    vkaria.game.logic.world.addGameObject(this.gameObject);
+};
+
+export default BuildingView;

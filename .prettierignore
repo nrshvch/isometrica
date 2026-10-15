@@ -1,6 +1,5 @@
 dist/
-vendor/
+engine/
 .wrangler/
 package-lock.json
-src/public/gfx/
-assets/
+isometrica/assets/
