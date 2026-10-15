@@ -767,9 +767,12 @@ dev`) plays them the way a game would - all three weathers together, the
     layers not far apart (`CLOUDS` in `client/lighting.js`), the higher a
     little slower: each's shadow is as far from under it, towards the sun,
     as its height and the sun's make it - going round with the sun through
-    the day as the shadow of a tree does, and the two layers apart the
-    lower the sun is (no more than three times their height, or with the
-    sun low they would fly along). They change as they go, too, slowly
+    the day as the shadow of a tree does - coming up softly to no more
+    than a little over twice their height as the sun gets low
+    (`CLOUD_SLANT`), so they never rush along. They go with how the wind
+    blows over a while, not with every gust (`CLOUD_STEADY`), and are a
+    little bigger than the noise they are made of (`CLOUD_SIZE` in
+    `client/glview.js`). They change as they go, too, slowly
     (`CLOUD_CHANGE` in `client/glview.js`, noise through time as well as
     over the ground): the big of them over a minute and a half or so, their
     edges quicker - so that over a while one is another shape, and some

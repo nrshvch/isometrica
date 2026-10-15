@@ -519,6 +519,8 @@ const float FOG_DENSE = 0.045;
 //and where in the noise they make the sky clears, with no cloud at all
 const vec3 CLOUD_CHANGE = vec3(90.0, 40.0, 18.0);
 const float CLOUD_EDGE = 0.83;
+//how big the clouds are, as a share of the noise they are made of
+const float CLOUD_SIZE = 1.2;
 
 //how many steps towards the sun a pixel looks for what stands in its way,
 //and how much higher than the way to the sun that has to be
@@ -670,8 +672,9 @@ void main() {
   //else, the sun all kept off, so that the shadows of what stands under
   //one go into it
   if (cloud > 0.0 && sun > 0.0)
-    sun *= 1.0 - max(clouded(spot + clouds.xy, 1.0, 0.0, b, 0.0),
-      clouded(spot + clouds.zw + vec2(7919.0, 3571.0), 1.15, 0.03, b, 5000.0));
+    sun *= 1.0 - max(clouded(spot + clouds.xy, CLOUD_SIZE, 0.0, b, 0.0),
+      clouded(spot + clouds.zw + vec2(7919.0, 3571.0), CLOUD_SIZE * 1.15, 0.03,
+        b, 5000.0));
 
   vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
   //what glows is as bright as its own colours, whatever the light

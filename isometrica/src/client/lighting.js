@@ -1097,16 +1097,23 @@ function smooth(k) {
 //shadow of anything does - and drifting with the wind, the higher a little
 //slower: how high, pixels up the screen, and how fast
 var CLOUDS = [
-  { high: 600, speed: 1 },
-  { high: 760, speed: 0.8 },
+  { high: 450, speed: 1 },
+  { high: 520, speed: 0.85 },
 ];
 
 //how much further from under a cloud than it is high its shadow is at the
-//most - the sun low, it would be ever further, and fly along
-var CLOUD_SLANT = 3;
+//most - the sun low, it would be ever further, and fly along: it comes up
+//to that softly, never in a rush, the sun going down
+var CLOUD_SLANT = 2.2;
 
-//how far the clouds' shadows have drifted with the wind, on the screen
+//how long the clouds take to come round to the wind as it changes, s: they
+//go with how it blows over a while, not with every gust down in the streets
+var CLOUD_STEADY = 20;
+
+//how far the clouds' shadows have drifted with the wind, on the screen, and
+//how fast they are going
 var cloudAt = [0, 0],
+  cloudGoing = [0, 0],
   lastWall = -1,
   blowing = [0, 0];
 
@@ -1123,9 +1130,10 @@ var cloudAt = [0, 0],
  * lightning.
  */
 function weatherSky(self, sky, w, viewport) {
-  //(the way to the sun, before it is gone for the weather - the clouds'
-  //shadows go by it, whatever is left of the sun)
-  var sunStep = sky.step;
+  //(the way to the sun, whether or not there is any of it left to light
+  //anything - the clouds' shadows go by it, and do not jump back under them
+  //as the sun goes, nor out again as it comes up)
+  var sunStep = stepTo(sky.dir);
 
   var wall = performance.now(),
     dt = lastWall < 0 ? 0 : Math.min(0.1, (wall - lastWall) / 1000),
@@ -1164,8 +1172,12 @@ function weatherSky(self, sky, w, viewport) {
     across = seen[0] - seen[1],
     down = -(seen[0] + seen[1]) / 2;
 
-  cloudAt[0] -= across * dt * 2.5;
-  cloudAt[1] -= down * dt * 2.5;
+  var steady = 1 - Math.exp(-dt / CLOUD_STEADY);
+
+  cloudGoing[0] += (across * 2.5 - cloudGoing[0]) * steady;
+  cloudGoing[1] += (down * 2.5 - cloudGoing[1]) * steady;
+  cloudAt[0] -= cloudGoing[0] * dt;
+  cloudAt[1] -= cloudGoing[1] * dt;
 
   //and where each layer's shadow is, as the wind took it and the sun puts
   //it (CLOUDS)
@@ -1177,12 +1189,15 @@ function weatherSky(self, sky, w, viewport) {
       y = cloudAt[1] * layer.speed;
 
     if (step) {
-      var k =
-        layer.high /
-        Math.max(
-          step[2],
-          Math.sqrt(step[0] * step[0] + step[1] * step[1]) / CLOUD_SLANT,
-        );
+      var along = Math.sqrt(step[0] * step[0] + step[1] * step[1]),
+        //how much further from under it than it is high: as the sun has
+        //it, but coming up to CLOUD_SLANT softly
+        far =
+          along > 0
+            ? CLOUD_SLANT *
+              Math.tanh(along / Math.max(step[2], 1e-6) / CLOUD_SLANT)
+            : 0,
+        k = along > 0 ? (layer.high * far) / along : 0;
 
       x += step[0] * k;
       y += step[1] * k;
