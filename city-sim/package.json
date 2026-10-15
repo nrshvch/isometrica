@@ -17,7 +17,7 @@
     "reactive-property": "file:../engine/reactive-property",
     "backbone": "1.1.2",
     "gl-matrix": "2.2.0",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.10",
     "jquery": "2.1.4",
     "numeral": "1.5.6"
   },
