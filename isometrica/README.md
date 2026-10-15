@@ -763,7 +763,13 @@ dev`) plays them the way a game would - all three weathers together, the
   LIT_FS), from what client/lighting makes of it (weatherSky):
   - the clouds' shadows drift over the city with the wind - as dark as
     the shadow of anything else, the sun all kept off, so the shadows of
-    what stands under one go into it: a few big ones on a clear day, and as the sky clouds over more and bigger, closing up
+    what stands under one go into it. The clouds are up in the sky, in two
+    layers not far apart (`CLOUDS` in `client/lighting.js`), the higher a
+    little slower: each's shadow is as far from under it, towards the sun,
+    as its height and the sun's make it - going round with the sun through
+    the day as the shadow of a tree does, and the two layers apart the
+    lower the sun is (no more than three times their height, or with the
+    sun low they would fly along): a few big ones on a clear day, and as the sky clouds over more and bigger, closing up
     little by little till the whole city is under them - the sun lost in
     the cloud, its light spread over the whole sky, grey, shadows faint,
     colours duller;

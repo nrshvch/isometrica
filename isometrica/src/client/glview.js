@@ -474,6 +474,9 @@ uniform vec3 sunStep;
 //the rain to fall by
 uniform float cloud;
 uniform vec2 cloudAt;
+//where the shadows of the two layers of cloud are: as they have drifted,
+//and as the sun puts them (client/lighting CLOUDS)
+uniform vec4 clouds;
 uniform float grey;
 uniform float fog;
 uniform vec3 fogColor;
@@ -590,6 +593,17 @@ float fromBolt(vec2 p) {
   return best;
 }
 
+//whether a cloud is over at, on a layer of them its own size and that
+//much sparser: 1 or 0, its edges dithered by b
+float clouded(vec2 at, float size, float sparser, float b) {
+  vec2 p = at / size;
+  float c = noise(p / vec2(560.0, 280.0)) * 0.7 +
+    noise(p / vec2(150.0, 75.0)) * 0.22 +
+    noise(p / vec2(40.0, 20.0)) * 0.08;
+
+  return step(0.86 - cloud * 0.95 + sparser + (b - 0.5) * 0.06, c);
+}
+
 void main() {
   ivec2 px = ivec2(gl_FragCoord.xy);
   vec3 a = texelFetch(albedo, px, 0).rgb;
@@ -620,16 +634,14 @@ void main() {
 
   if (shadows && sun > 0.0) sun *= 1.0 - shadowed(px, n, b);
 
-  //the shadows of the clouds going over, so much of the sky as is cloud:
-  //big ones, ragged at the edges, growing and closing up as more of it is,
-  //till all of it is - as dark as the shadow of anything else, the sun
-  //all kept off, so that the shadows of what stands under one go into it
-  if (cloud > 0.0 && sun > 0.0) {
-    float c = noise((spot + cloudAt) / vec2(560.0, 280.0)) * 0.7 +
-      noise((spot + cloudAt) / vec2(150.0, 75.0)) * 0.22 +
-      noise((spot + cloudAt) / vec2(40.0, 20.0)) * 0.08;
-    sun *= 1.0 - step(0.86 - cloud * 0.95 + (b - 0.5) * 0.06, c);
-  }
+  //the shadows of the clouds going over, so much of the sky as is cloud,
+  //in two layers: big ones, ragged at the edges, growing and closing up as
+  //more of it is, till all of it is - as dark as the shadow of anything
+  //else, the sun all kept off, so that the shadows of what stands under
+  //one go into it
+  if (cloud > 0.0 && sun > 0.0)
+    sun *= 1.0 - max(clouded(spot + clouds.xy, 1.0, 0.0, b),
+      clouded(spot + clouds.zw + vec2(7919.0, 3571.0), 1.15, 0.03, b));
 
   vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
   //what glows is as bright as its own colours, whatever the light
@@ -1496,6 +1508,7 @@ GLView.prototype.light = function (lamps, sky, origin) {
 var NO_WEATHER = {
   cloud: 0,
   cloudAt: [0, 0],
+  clouds: [0, 0, 0, 0],
   grey: 0,
   fog: 0,
   fogColor: [0.7, 0.72, 0.75],
@@ -1519,6 +1532,7 @@ function weather(gl, p, w) {
 
   f("cloud", w.cloud);
   gl.uniform2fv(gl.getUniformLocation(p, "cloudAt"), w.cloudAt);
+  gl.uniform4fv(gl.getUniformLocation(p, "clouds"), w.clouds);
   f("grey", w.grey);
   f("fog", w.fog);
   gl.uniform3fv(gl.getUniformLocation(p, "fogColor"), w.fogColor);
