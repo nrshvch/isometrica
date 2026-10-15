@@ -507,7 +507,8 @@ Lighting.prototype.light = function () {
   //beacons shine by day too (client/glview, lost in the sun mostly)
   if (!this.plain) {
     streetLights(this.lamps, M, w, h);
-    headlights(this.lamps, M, w, h, this.root.carman);
+    //(and no cars drawn bare, client/carman VehicleRenderer)
+    if (!this.calm) headlights(this.lamps, M, w, h, this.root.carman);
   }
 
   this.view.light(this.lamps, this.sky, [Math.round(M[12]), Math.round(M[13])]);
@@ -523,9 +524,9 @@ Lighting.prototype.end = function () {
 //(client/turner) - or null
 Lighting.prototype.onFrame = null;
 
-//whether the city is drawn bare - no rain falling, no lightning, nothing
-//drawn over it, the grid, the borders, the names, the signs (GLView bare) -
-//for a picture of it to be taken (client/turner)
+//whether the city is drawn bare - no cars, no rain falling, no lightning,
+//nothing drawn over it, the grid, the borders, the names, the signs (GLView
+//bare) - for a picture of it to be taken (client/turner)
 Lighting.prototype.calm = false;
 
 /* --- Lamps ------------------------------------------------------------- */

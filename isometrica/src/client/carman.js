@@ -1407,6 +1407,10 @@ VehicleRenderer.prototype.render = function (
   viewport,
   self,
 ) {
+  //not at all while the city is drawn bare for a picture of it (client/
+  //turner): it would be somewhere else by the time the picture is gone
+  if (engine.Config.gl && engine.Config.gl.calm) return;
+
   engine.SpriteRenderer.prototype.render.call(
     self,
     layer,
