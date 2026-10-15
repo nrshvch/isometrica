@@ -25,6 +25,6 @@
   "devDependencies": {
     "less": "^4.2.0",
     "vite": "^6.4.3",
-    "wrangler": "^4.142.0"
+    "wrangler": "^4.151.0"
   }
 }
