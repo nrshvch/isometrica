@@ -650,6 +650,19 @@ CarScript.prototype.findWay = function (dt) {
     }
   }
 
+  //the road under it, or the one it is heading onto, still there but its
+  //chunk unloaded - the camera gone elsewhere: it has driven out of sight,
+  //and is taken off the roads; another is put on where they are loaded
+  //(reconcile). Not driven off the road looking for one, as for a road
+  //that is gone.
+  var ahead =
+    driver.target < driver.wps.length ? driver.wps[driver.target].tile : here;
+
+  if (unloaded(this.man.root, here) || unloaded(this.man.root, ahead)) {
+    this.man.remove(this);
+    return false;
+  }
+
   if (roadman.getRoad(here) === null) {
     if (driver.parked || this.stalled > 0) {
       this.man.remove(this);
@@ -661,8 +674,7 @@ CarScript.prototype.findWay = function (dt) {
 
   if (this.offRoad) return true;
 
-  var wps = driver.wps,
-    ahead = driver.target < wps.length ? wps[driver.target].tile : here;
+  var wps = driver.wps;
 
   //what it is heading for gone: another way now; and every so often, the
   //next few tiles of its way looked over - or, lost and standing with
@@ -696,6 +708,16 @@ CarScript.prototype.findWay = function (dt) {
 
   return true;
 };
+
+//whether a road is there, in the city, but not loaded: its chunk is out of
+//the camera's way
+function unloaded(root, tile) {
+  if (root.roadman.anyRoad(tile) !== null) return false;
+
+  var b = root.core.buildingService.get(tile);
+
+  return b !== null && !!b.data && b.data.classCode === BuildingClassCode.road;
+}
 
 //whether the next few tiles of its way are still there and can still be
 //driven the way it goes - not made one way against it
