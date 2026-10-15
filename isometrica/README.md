@@ -215,7 +215,18 @@ engine in `engine/`.
 - `gulls` - crying, and laughing: the shore - a breeze off the sea, and
   gulls near and far, their cry falling, raspy, and the herring gull's
   long call: one high cry, then ha-ha-ha quicker and lower.
-- `forest`, `sea`, `city`, `gulls` and `siren` loop without a seam - what goes on all
+- `skyline` - day, rush hour and night: a real city heard from high above
+  it, not a cartoon of one - the way Pizza Tycoon's city map hummed - its
+  own models (`src/shared/gen/skyline.js`). The roar of the whole town an
+  octave at a time, each wandering on its own, falling off above 250 Hz as
+  a city's noise does; cars, lorries and buses rising out of it over
+  seconds and sinking back - tyres, cylinders firing, a bus up through its
+  gears, its brakes hissing; real horns, a diaphragm buzzing through a
+  trumpet, tapped, leaned on and answering each other in jams, each coming
+  back off the buildings; the wind up there; all of it in the long ring of
+  the streets, an eight-line feedback delay network. 36-second loops, two
+  to six seconds each to make.
+- `forest`, `sea`, `city`, `gulls`, `skyline` and `siren` loop without a seam - what goes on all
   the time is made longer than the loop and its end faded into its start;
   what happens now and then is laid in round the loop - the rest play
   once. `generate("thunder/2", rate)` makes one, the same every time - two
@@ -285,9 +296,15 @@ dev`) plays them the way a game would - all three weathers together, the
   six seconds before its piece fades in over the old.
 - the place - what is on screen looked over twice a second, a grid of
   points over it sorted into sea, shore, woods and town: the forest's birds
-  by day and its breeze at night, the city by day and by night, the sea
-  calm or rough by the wind, gulls over the shore by day - each as loud as
-  there is of it, louder zoomed in; rain drowns the birds a little.
+  by day and its breeze at night, the sea calm or rough by the wind, gulls
+  over the shore by day - each as loud as there is of it, louder zoomed
+  in; rain drowns the birds a little.
+- the hum of the town, from above (`skyline`) - full over the busy middle
+  of a town: the shops, offices and works on screen, and the cars going
+  about it. Faint and dull, far off, over the outskirts and the quieter
+  streets of houses, or with the town just off the screen (looked for two
+  and a half screens round); hushed in the woods. The day's, the rush
+  hour's and the night's by the clock, one into the next.
 - thunder - each flash of lightning to come is known ahead of time
   (`Weather.flashesAhead`, the same sums as `Weather.flash`), so its
   thunder starts a moment before the sky lights up.
@@ -296,13 +313,16 @@ dev`) plays them the way a game would - all three weathers together, the
   each kind of car its own horn - a bus or a lorry honks, a van meep-meeps,
   a taxi beep-beeps - each car a little higher or lower, to the left or
   right of where it is on screen and quieter further off.
-- For now only the music is heard: the places, the thunder and the horns
-  are kept quiet (`QUIET` in soundman.js), and police cars make no sound.
+- For now only the music and the hum of the town are heard: the places,
+  the thunder and the horns are kept quiet (`QUIET` in soundman.js), and
+  police cars make no sound.
 - Nothing plays until the page is touched, clicked or typed at - a browser
   plays nothing before (`audio/wake.js` wakes it in the touch, the way
-  iPhones want it, and plays through the silent switch). M or the ♫ in the
-  top bar turns it off and on, kept in the browser; `?sound=off` too. It
-  goes quiet while the page is out of sight.
+  iPhones want it, and plays through the silent switch). The music and the
+  sounds go off and on on their own: M or the ♫ in the top bar for the
+  music, S or its fx for the sounds - each kept in the browser;
+  `?music=off`, `?sounds=off`, and `?sound=off` for both. It goes quiet
+  while the page is out of sight.
 - Next to the ♫, the top bar shows the zoom the camera is at - ×0.5 to ×2
   (each game's `ui/modules/topbar`), kept as it was while the world turns.
 
