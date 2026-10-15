@@ -263,12 +263,13 @@ var TYPES = {
       return [[box(5.4, 7.6, 1.6, 4.4, 7.0, 8.0, SIGN)]];
     },
   },
-  //a police car: white with black doors and a lamp on the roof
+  //a police car: white with black doors and a lamp on the roof - half as
+  //many as anything else this rare
   police: {
     length: 13,
     width: 6,
     speed: 1.1,
-    weight: 1,
+    weight: 0.5,
     engine: [1.8, 3, 3.8],
     tailpipe: [13.2, 4.8, 1.0],
     colors: ["white"],
