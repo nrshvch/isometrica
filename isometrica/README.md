@@ -647,8 +647,9 @@ dev`) plays them the way a game would - all three weathers together, the
   lights what is round it (`lighting.js` workLight).
 - Any building can be turned four ways (`isometrica/src/core/rotation.js`). Blocks are
   painted from all four sides.
-- The camera turns round the city a quarter turn at a time: two fingers
-  twisted on a touch screen or trackpad, or Q and E. Nothing in the world
+- The camera turns round the city a quarter turn at a time: a finger
+  dragged in from the left or the right edge of the screen, or Q and E.
+  Nothing in the world
   moves - the engine's camera turns about the up axis, and draws things in
   the order it sees them in (`CameraComponent#depthAxes`). What changes is
   which picture each thing shows: `isometrica/src/client/view.js` says how the
@@ -661,15 +662,27 @@ dev`) plays them the way a game would - all three weathers together, the
 - A pinch follows the fingers all the way (`client/cameracontrol.js`): the
   camera zooms by steps while they move, and in between what is shown is
   scaled up on the page the rest of the way, about the spot between the
-  fingers; twisted, the world turns with them (below). While they move, it is pulled onto 0.5, 1 or 2, where every pixel of
-  the pixel art is the same size and sharp, when within 7% of one
-  (snapZoom). Let go, it settles on the nearest of its five steps - 0.5,
-  0.667, 1, 1.5, 2 (`ZOOMS`), shown in the top bar as 1x to 5x - and eases
-  back to the nearest side. The engine finds the fingers where the canvas stands meanwhile, not
+  fingers - zooming only: they do not turn it. While they move, it is
+  pulled onto 0.5, 1 or 2, where every pixel of the pixel art is the same
+  size and sharp, when within 7% of one (snapZoom). Let go, it settles on
+  the nearest of its five steps - 0.5, 0.667, 1, 1.5, 2 (`ZOOMS`), shown in
+  the top bar as 1x to 5x. The engine finds the fingers where the canvas stands meanwhile, not
   where it is shown (`Viewport#restRect`).
-- A turn of the camera - two fingers twisted, or Q and E - is shown as one
-  smooth turn about what is at a spot on the screen: between the fingers,
-  or the middle of it for a key - about the ground under that, however high
+- A finger dragged in from the left or the right edge of the screen -
+  starting within 32 page pixels of it - turns the world rather than moving
+  over it (`client/cameracontrol.js` onDragStart): the ground nearest the
+  eye goes with the finger, a quarter turn for half the screen's width
+  across, and back again as the finger goes back towards the edge, before
+  it lets go - so a turn begun by mistake is undone by going back. Let go,
+  it lands on the next side if it went 30° or more round, and back on the
+  one it set off from if not (`COMMIT` in `client/turner.js`); a second
+  finger meanwhile does nothing. It leaves the other hand free, and does
+  not fight the pinch's zoom. (In Safari, outside a page added to the home
+  screen, a swipe from the very edge may go back or forward a page
+  instead.)
+- A turn of the camera - from the edge, or Q and E - is shown as one
+  smooth turn about what is in the middle of the screen - about the ground
+  under that, however high
   it stands and however high the land it stands on is over the sea, so that
   it keeps its place, not the ground there as if the world were flat
   (`client/turner.js`, on its own). The camera itself turns about the sea's

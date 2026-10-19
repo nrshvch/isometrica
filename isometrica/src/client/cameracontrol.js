@@ -37,16 +37,68 @@ function snapZoom(zoom) {
   return zoom;
 }
 
+/**
+ * A drag that starts at the left or the right edge of the screen - within
+ * EDGE of it - turns the world rather than moving over it: as far as the
+ * finger goes across from there, the ground nearest the eye going with it,
+ * a quarter turn for every TURN_ACROSS of the screen's width; back towards
+ * the edge, back round again. Let go, it settles on the side of the world
+ * nearest, the one it set off from unless it went COMMIT degrees or more
+ * (client/turner end).
+ */
+function onDragStart(sender, e, me) {
+  me._edge = null;
+
+  var viewport = me._cam.gameObject.camera.viewport;
+
+  if (!viewport || me.turner.active || me._pinch !== null) return;
+
+  var zoom = me._cam.zoom(),
+    x = e.gameViewportX * zoom,
+    w = viewport.width * zoom;
+
+  if (x > EDGE && x < w - EDGE) return;
+
+  me.turner.begin();
+  if (me.turner.active) me._edge = { x: x, width: w };
+}
+
 function onDrag(sender, param, me) {
-  var dragX = param.dx,
-    dragY = param.dy;
+  var edge = me._edge;
+
+  if (edge !== null) {
+    //in page pixels - the camera is zoomed out meanwhile, for pictures of
+    //the world as it turns (client/turner)
+    var across = param.e.gameViewportX * me._cam.zoom() - edge.x,
+      deg = (-across / (TURN_ACROSS * edge.width)) * 90;
+
+    me.turner.view(Math.max(-TURN_MOST, Math.min(TURN_MOST, deg)));
+    return;
+  }
 
   //held where it is while the world turns (client/turner)
   if (me.turner.active) return;
-  me._cam.pan(dragX, dragY);
+  me._cam.pan(param.dx, param.dy);
 }
 
+function onDragEnd(sender, e, me) {
+  if (me._edge === null) return;
+
+  me._edge = null;
+  me.turner.end();
+}
+
+//how near the left or the right edge of the screen a drag has to start to
+//turn the world, page pixels; how much of the screen's width the finger
+//goes across for a quarter turn, and how far round it can go at most
+var EDGE = 32,
+  TURN_ACROSS = 0.5,
+  TURN_MOST = 180;
+
 function onPinchStart(sender, e, me) {
+  //a second finger while the world turns from the edge: it turns on
+  if (me._edge !== null) return;
+
   var zoom = me._cam.zoom(),
     viewport = me._cam.gameObject.camera.viewport;
 
@@ -67,20 +119,15 @@ function onPinchStart(sender, e, me) {
 
 /**
  * The fingers carry the map along as they go, the way a single one drags it,
- * and zoom and turn it with them, every bit of the way:
+ * and zoom it with them, every bit of the way: the camera takes the biggest
+ * of ZOOMS under what the pinch would make of the zoom it started at -
+ * fingers twice as far apart, twice as close; pulled onto a sharp zoom near
+ * it (snapZoom) - and what is shown is scaled on the page by the rest of the
+ * way there, about the spot between the fingers, so it grows and shrinks
+ * smoothly as they move. (They do not turn it: a drag from the edge of the
+ * screen does, onDragStart.)
  *
- * - the camera takes the biggest of ZOOMS under what the pinch would make
- *   of the zoom it started at - fingers twice as far apart, twice as close;
- *   pulled onto a sharp zoom near it (snapZoom) - and what is shown is
- *   scaled on the page by the rest of the way there, about the spot between
- *   the fingers, so it grows and shrinks smoothly as they move;
- * - twisted, the world turns with them, about the ground in the middle of
- *   the screen, a quarter turn for every quarter turn of theirs (client/
- *   turner) - held where it is meanwhile, the zoom too, all of it shown by
- *   the turner till they let go.
- *
- * Let go, it eases back to the zoom and the side of the world the camera is
- * at (onPinchEnd).
+ * Let go, it eases back to the zoom the camera is at (onPinchEnd).
  */
 function onPinch(sender, e, me) {
   var pinch = me._pinch,
@@ -100,21 +147,8 @@ function onPinch(sender, e, me) {
 
   pinch.want = want;
 
-  //twisted: the turner shows the world turning with them, and the rest of
-  //it, from there on
-  if (
-    e.rotation !== undefined &&
-    Math.abs(e.rotation) > TWIST_START &&
-    !me.turner.active
-  )
-    me.turner.begin(x, y);
-
-  if (me.turner.active) {
-    pinch.x = x;
-    pinch.y = y;
-    me.turner.view(e.rotation || 0, want / me.turner.zoom, x, y);
-    return;
-  }
+  //held where it is while the world turns (client/turner)
+  if (me.turner.active) return;
 
   //as far as the fingers moved on what is shown, scaled as it is
   cam.pan(
@@ -145,10 +179,6 @@ function zoomUnder(zoom) {
 
 //what shows round what is shown, where it does not cover the screen
 var BACKDROP = "#1b1f24";
-
-//how far the fingers have to turn before the world turns with them, in
-//degrees
-var TWIST_START = 3;
 
 //how far past the smallest and the biggest zoom a pinch can go before it
 //goes no further, as a share of them
@@ -205,12 +235,9 @@ function onPinchEnd(sender, e, me) {
 
   var style = viewport.canvas.style;
 
-  //turned: the turner settles it on the nearest side, at the zoom they let
-  //go at, and shows the game from there once it is
+  //the world turning meanwhile: nothing to ease back
   if (me.turner.active) {
     settle(me);
-    if (pinch !== null)
-      me.turner.end(nearestZoom(pinch.want || pinch.zoom), pinch.x, pinch.y);
     return;
   }
 
@@ -293,6 +320,8 @@ var events = {
 function CameraControl(root) {
   this.root = root;
   this._pinch = null;
+  //a drag from the edge of the screen turning the world (onDragStart)
+  this._edge = null;
   //easing back from a pinch, the timer that says when it is done - and what
   //the backdrop round what is shown was before a pinch darkened it
   this._settling = 0;
@@ -302,6 +331,21 @@ function CameraControl(root) {
   //what shows the world turning, between one side of it and the next
   this.turner = new Turner(root);
 }
+
+/**
+ * Whether a drag from x, viewport pixels, would turn the world: it starts at
+ * the left or the right edge of the screen (onDragStart) - for whatever else
+ * takes drags to leave it be (client/areaselector).
+ */
+CameraControl.prototype.atEdge = function (x) {
+  var viewport = this._cam && this._cam.gameObject.camera.viewport;
+
+  if (!viewport) return false;
+
+  var zoom = this._cam.zoom();
+
+  return x * zoom <= EDGE || x * zoom >= viewport.width * zoom - EDGE;
+};
 
 CameraControl.prototype.init = function () {
   var root = this.root,
@@ -322,6 +366,8 @@ CameraControl.prototype.init = function () {
   var cam = (this._cam = root.camera.cameraScript);
 
   var a = Events.on(cam, WorldCamera.events.inputDrag, onDrag, this);
+  var ds = Events.on(cam, WorldCamera.events.inputDragStart, onDragStart, this);
+  var de = Events.on(cam, WorldCamera.events.inputDragEnd, onDragEnd, this);
   var ps = Events.on(
     cam,
     WorldCamera.events.inputPinchStart,
@@ -336,6 +382,16 @@ CameraControl.prototype.init = function () {
     cam,
     WorldCamera.events.inputDrag,
     a,
+  ]);
+  Events.once(this, events.dispose, onDispose, [
+    cam,
+    WorldCamera.events.inputDragStart,
+    ds,
+  ]);
+  Events.once(this, events.dispose, onDispose, [
+    cam,
+    WorldCamera.events.inputDragEnd,
+    de,
   ]);
   Events.once(this, events.dispose, onDispose, [
     cam,

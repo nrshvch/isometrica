@@ -407,6 +407,12 @@ function select(me, ox, oy, cells, force) {
 }
 
 function onDragStart(sender, e, me) {
+  //from the edge of the screen it turns the world instead (client/
+  //cameracontrol)
+  var control = me.root.cameraControl;
+
+  if (control && control.atEdge(e.gameViewportX)) return;
+
   var hit = pick(me, e.gameViewportX, e.gameViewportY),
     x,
     y,

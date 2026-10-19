@@ -1,8 +1,8 @@
 /**
  * Turning the camera round the city, between one side of the world and the
  * next, shown as one smooth turn about a spot on the ground - the middle of
- * the screen, or between the fingers twisting - though the city is only
- * ever drawn from its four sides.
+ * the screen, for a key or a finger dragged in from the edge of it (client/
+ * cameracontrol) - though the city is only ever drawn from its four sides.
  *
  * For the while, a picture of the city is laid over the game, the game
  * going on under it unseen: the side the camera is on, and the sides it
@@ -40,8 +40,12 @@ var OVER = 1.5;
 //how long a turn from Q or E takes, ms - quick at first, easing out as it
 //comes round (a key pressed meanwhile turning it on from wherever it is,
 //as long again); how long a turn takes to settle on the nearest side once
-//the fingers let go, and how long the picture takes to fade into the game
+//the finger lets go, and how long the picture takes to fade into the game
 var TURN_MS = 600,
+  //how far round a turn dragged has to go, degrees, to land on the next
+  //side once the finger lets go - short of that, back on the one it set
+  //off from
+  COMMIT = 30,
   SETTLE_MS = 300,
   FADE_MS = 120;
 
@@ -901,7 +905,8 @@ Turner.prototype.end = function (zoom, x, y) {
 
   var self = this,
     from = this.deg,
-    to = Math.round(from / 90) * 90,
+    //the side it set off from, unless it went COMMIT or more round
+    to = Math.sign(from) * Math.floor((Math.abs(from) + 90 - COMMIT) / 90) * 90,
     grow = this.grow,
     goal = zoom === undefined ? 1 : zoom / this.zoom,
     start = performance.now();
