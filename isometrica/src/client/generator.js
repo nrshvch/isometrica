@@ -155,7 +155,12 @@ Generator.prototype.load = function (sheet) {
 /**
  * Paints a sheet's picture ahead of its being wanted - kept apart, till it
  * is (want) - unless it is there or on its way already, or there is no room
- * left for it (STASH) or no worker free. Whether it asked.
+ * left for it (STASH) or no worker with nothing in hand. Whether it asked.
+ *
+ * Only ever to a worker with nothing to do, one at a time: the other place
+ * in its hands is kept for what is wanted next, so that what comes on the
+ * screen - the camera panned on - waits at most for the one picture being
+ * painted ahead just then, never behind a row of them.
  */
 Generator.prototype.ahead = function (sheet) {
   var name = sheet.generated.name;
@@ -171,17 +176,12 @@ Generator.prototype.ahead = function (sheet) {
 
   var worker = freeWorker(this);
 
-  if (worker === null) return false;
+  if (worker === null || worker.busy > 0) return false;
 
   this.comingCount++;
   send(this, worker, sheet, true);
 
   return true;
-};
-
-//how many may be painted ahead at a time: one a worker
-Generator.prototype.aheadLimit = function () {
-  return this.size;
 };
 
 //whether nothing wanted is being waited for
