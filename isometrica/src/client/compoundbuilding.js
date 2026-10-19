@@ -305,14 +305,17 @@ function spriteOf(part, turns) {
  * @param turns {number} quarter turns, 0..3
  * @param [seed] {number} the same for the same building every time - where it
  *        stands: which cars are parked in its car park
+ * @param [side] {boolean} as it is seen from the side even while the world is
+ *        looked at from above (client/view top) - for the catalogue's
+ *        pictures
  * @returns {{x: number, z: number, pivotX: number, pivotY: number,
  *            sprite: CachedSprite, overlays: Object[]}[]} x, z the tile in
  *          the block; overlays, what is drawn over it (overlaysOf)
  */
-function pieces(sprites, look, compound, turns, seed) {
+function pieces(sprites, look, compound, turns, seed, side) {
   var size = footprint(compound);
 
-  return tilePieces(sprites, look.tiles, size[0], size[1], turns, seed);
+  return tilePieces(sprites, look.tiles, size[0], size[1], turns, seed, side);
 }
 
 /**
@@ -330,7 +333,7 @@ function footprint(compound) {
  * tiles, {x, y, parts}, on a footprint sizeX by sizeY, turned - its parts
  * of whichever generator.
  */
-function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed) {
+function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed, side) {
   return tiles.map(function (tile) {
     var storey = sprites.generated[tile.parts[0].split("/")[0]].storey;
     var up = lifts(tile.parts.map(kindOf), storey),
@@ -364,7 +367,7 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed) {
     //from straight above: the parts' squares laid over one another, each
     //as high as it is laid - nothing drawn over them as they are seen from
     //the side
-    if (View.top()) {
+    if (View.top() && side !== true) {
       var top = sprites.getTop(
         laid.map(function (p) {
           return { name: p.name, up: p.up };
@@ -819,7 +822,9 @@ function drawPreview(sprites, compound, tries) {
 
   if (look === null) return Promise.reject(new Error("no parts to draw"));
 
-  var list = pieces(sprites, look, compound, 0, 1),
+  //always as it is seen from the side, whichever way the world is looked
+  //at just now
+  var list = pieces(sprites, look, compound, 0, 1, true),
     loads = [];
 
   //what stands still over a tile is in the picture too - the cars parked,
