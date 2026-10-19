@@ -50,13 +50,16 @@ GameScreen.prototype.init = function (callback) {
         core.start();
 
         //the saved city goes into the world before the client puts
-        //anything on screen, so that what is drawn is drawn once
-        self.ui.showCityInUrl(core.persistence.open(self.ui.cityId()));
+        //anything on screen, so that what is drawn is drawn once - the
+        //server's save of it, if that is newer than the one here
+        core.persistence.prepare(self.ui.cityId()).then(function () {
+          self.ui.showCityInUrl(core.persistence.open(self.ui.cityId()));
 
-        client.start();
-        callback(self);
-        client.startServices();
-        self.onReady(this, null);
+          client.start();
+          callback(self);
+          client.startServices();
+          self.onReady(this, null);
+        });
       });
     });
   }

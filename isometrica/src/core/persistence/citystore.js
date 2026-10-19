@@ -11,8 +11,14 @@
  * builder under "isometrica.v3" - where they always were - the delivery game
  * under its own, so that playing one never opens nor writes over the other's.
  *
- * Ids are six characters out of [0-9A-Za-z], short enough to carry around in
- * the address bar (/#/pA4b1c).
+ * Ids are twelve characters out of [0-9A-Za-z], short enough to carry around
+ * in the address bar (/#/pA4b1cX9q2Rz) and too many to be guessed - the id is
+ * all it takes to open a city off the server (CitySync). Cities from before
+ * have six, and keep them.
+ *
+ * Where the game saves to a server too (CitySync), the index also says, for
+ * every city, which of the server's revisions the save here was made on top
+ * of, and whether it has changed since - what is still to go up.
  */
 import namespace from "namespace";
 
@@ -24,12 +30,13 @@ Core.CityStore = CityStore;
 //house and the shop), so they are left behind rather than read. Bump it again
 //whenever old saves stop making sense
 var SAVES = "isometrica.v3";
-var ID_LENGTH = 6;
+var ID_LENGTH = 12;
 var ID_ALPHABET =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 var VERSION = 1;
 
-var ID_PATTERN = new RegExp("^[0-9A-Za-z]{" + ID_LENGTH + "}$");
+//the six character ids of before still open
+var ID_PATTERN = /^[0-9A-Za-z]{6}(?:[0-9A-Za-z]{6})?$/;
 
 /**
  * localStorage throws on its own whenever it feels like it - a private window
@@ -193,27 +200,105 @@ CityStore.prototype.read = function (id) {
 };
 
 /**
- * Stores a city and records it in the index.
+ * Stores a city and records it in the index - as changed since it was last
+ * on the server, unless it is the server's own copy.
  *
  * @param id {string}
  * @param data {Object}
  * @param [name] {string} shown by the saves listing, so it need not open them
+ * @param [rev] {number} the server's revision this is a copy of, as it came
+ *        down - it has nothing new to go up
  * @returns {boolean}
  */
-CityStore.prototype.write = function (id, data, name) {
+CityStore.prototype.write = function (id, data, name, rev) {
   if (this.storage === null || !CityStore.isValidId(id)) return false;
 
   var key = this.key(id);
 
   if (!write(this, key, data)) return false;
 
-  var index = this.index();
+  var index = this.index(),
+    was = index.cities[id] || {},
+    //every write is counted, so that an upload knows whether what it took
+    //up is still all there is (#synced)
+    writes = (was.writes || 0) + 1;
 
   index.cities[id] = {
     key: key,
     name: name || "",
     updatedAt: Date.now(),
+    rev: rev !== undefined ? rev : was.rev === undefined ? null : was.rev,
+    writes: writes,
+    syncedWrites: rev !== undefined ? writes : was.syncedWrites || 0,
   };
+
+  return writeIndex(this, index);
+};
+
+/**
+ * Where a city's save stands with the server.
+ *
+ * @param id {string}
+ * @returns {{rev: number|null, writes: number, dirty: boolean}|null} rev -
+ *          the server's revision the save here was made on top of, null for
+ *          one never on it; dirty - whether it has changed since; null when
+ *          there is no save here at all
+ */
+CityStore.prototype.syncState = function (id) {
+  if (!this.has(id)) return null;
+
+  var city = this.index().cities[id],
+    rev = city.rev === undefined ? null : city.rev,
+    writes = city.writes || 0;
+
+  return {
+    rev: rev,
+    writes: writes,
+    dirty: rev === null || writes !== (city.syncedWrites || 0),
+  };
+};
+
+/**
+ * Records that the save went up and became the server's revision rev. Only
+ * what was there when it went up is on the server - writes is the count it
+ * was taken at, and anything written since is still to go.
+ *
+ * @param id {string}
+ * @param rev {number}
+ * @param writes {number} syncState().writes when the save was read to go up
+ * @returns {boolean}
+ */
+CityStore.prototype.synced = function (id, rev, writes) {
+  var index = this.index(),
+    city = index.cities[id];
+
+  if (city === undefined) return false;
+
+  city.rev = rev;
+  city.syncedWrites = writes;
+
+  return writeIndex(this, index);
+};
+
+/**
+ * Makes the save here as if it had been made on top of the server's revision
+ * rev - so that it goes up over that one, for the player who chose it over
+ * what was saved from elsewhere. Null for a server that has none: it goes up
+ * as a new city.
+ *
+ * @param id {string}
+ * @param rev {number|null}
+ * @returns {boolean}
+ */
+CityStore.prototype.rebase = function (id, rev) {
+  var index = this.index(),
+    city = index.cities[id];
+
+  if (city === undefined) return false;
+
+  city.rev = rev;
+  //changed, whatever it was: it has to go up
+  city.syncedWrites = -1;
 
   return writeIndex(this, index);
 };

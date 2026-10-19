@@ -17,6 +17,7 @@ import "./city";
 import "./citysrv";
 import "./persistence/citystore";
 import "./persistence/citypersistence";
+import "./persistence/citysync";
 import "./config";
 import "./construction";
 import "./errorcode";

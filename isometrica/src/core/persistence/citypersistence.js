@@ -1,5 +1,6 @@
 /**
- * Keeps the player's city in localStorage.
+ * Keeps the player's city in localStorage - and on the server too, for a game
+ * that has one (CitySync).
  *
  * Which city is opened is decided once, on start up, by CityPersistence#open:
  *
@@ -12,12 +13,17 @@
  *  - nothing anywhere                           -> the hardcoded initial city
  *    (data/initialcity), opened under a fresh id of its own
  *
+ * With a server, #prepare goes first: it settles whether the save here or the
+ * server's is the one to open, and puts the server's here if it is - so that
+ * #open opens whatever is here, server or not.
+ *
  * From there it saves on its own, every few ticks and once more on the way
  * out. A city that was never founded is never written, so an untouched game
  * leaves no rows behind.
  */
 import Events from "events";
 import CityStore from "./citystore";
+import CitySync from "./citysync";
 import CityService from "../citysrv";
 import InitialCity from "../../data/initialcity";
 import namespace from "namespace";
@@ -47,16 +53,19 @@ function onTick(sender, args, self) {
 /**
  * @param world {Logic}
  * @param [store] {CityStore}
+ * @param [sync] {CitySync} the server the city is kept on as well, if any
  * @constructor
  */
-function CityPersistence(world, store) {
+function CityPersistence(world, store, sync) {
   this.world = world;
   this._store = store || new CityStore();
+  this._sync = sync || null;
   this._id = null;
   this._city = null;
   this._ticks = 0;
   this._subscriptions = null;
   this._onUnload = null;
+  this._onHide = null;
 }
 
 CityPersistence.VERSION = VERSION;
@@ -75,6 +84,25 @@ CityPersistence.prototype.cityId = function () {
  */
 CityPersistence.prototype.store = function () {
   return this._store;
+};
+
+/**
+ * Gets the city the url asks for - or, asking for none, the one played last -
+ * from the server, when it has a newer save of it than there is here. Before
+ * #open, which opens what is here.
+ *
+ * @param [requestedId] {string} the city id out of the url, if there was one
+ * @returns {Promise} resolved when the city can be opened, whatever the
+ *          server said - or failed to
+ */
+CityPersistence.prototype.prepare = function (requestedId) {
+  var id = CityStore.isValidId(requestedId)
+    ? requestedId
+    : this._store.activeCityId();
+
+  if (this._sync === null || id === null) return Promise.resolve();
+
+  return this._sync.reconcile(id);
 };
 
 /**
@@ -120,6 +148,8 @@ CityPersistence.prototype.open = function (requestedId) {
 
   if (data !== null) restore(this, data);
 
+  if (this._sync !== null) this._sync.start(this._id);
+
   return this._id;
 };
 
@@ -138,6 +168,8 @@ CityPersistence.prototype.save = function () {
   //a city is only really the player's once it has been written, so this is
   //where it becomes the one they come back to
   this._store.setActiveCityId(this._id);
+
+  if (this._sync !== null) this._sync.changed();
 
   return true;
 };
@@ -183,8 +215,28 @@ CityPersistence.prototype.watch = function () {
     self.save();
   };
 
-  if (typeof window !== "undefined")
+  //and a page put away may never come back - phones close them unasked - so
+  //the save goes up as it goes out of sight
+  this._onHide = function () {
+    if (document.visibilityState !== "hidden") return;
+
+    self.save();
+    if (self._sync !== null) self._sync.flush(true);
+  };
+
+  if (this._sync !== null) {
+    //the server's save was put here in place of the one played: the page
+    //starts over on it, with nothing of the old one written over it
+    this._sync.onReplaced = function () {
+      self.halt();
+      window.location.reload();
+    };
+  }
+
+  if (typeof window !== "undefined") {
     window.addEventListener("beforeunload", this._onUnload);
+    document.addEventListener("visibilitychange", this._onHide);
+  }
 };
 
 /**
@@ -192,8 +244,18 @@ CityPersistence.prototype.watch = function () {
  */
 CityPersistence.prototype.close = function () {
   this.save();
+  if (this._sync !== null) this._sync.flush(true);
 
+  this.halt();
+};
+
+/**
+ * Lets go of the city without saving it.
+ */
+CityPersistence.prototype.halt = function () {
   var world = this.world;
+
+  if (this._sync !== null) this._sync.stop();
 
   if (this._subscriptions !== null) {
     Events.off(
@@ -207,7 +269,9 @@ CityPersistence.prototype.close = function () {
 
   if (this._onUnload !== null && typeof window !== "undefined") {
     window.removeEventListener("beforeunload", this._onUnload);
+    document.removeEventListener("visibilitychange", this._onHide);
     this._onUnload = null;
+    this._onHide = null;
   }
 
   this._city = null;

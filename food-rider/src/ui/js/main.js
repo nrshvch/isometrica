@@ -104,7 +104,7 @@ UIManager.prototype.game = function (callback) {
 };
 
 /**
- * The city the game is playing, by its six character id. Read off the url on
+ * The city the game is playing, by its id. Read off the url on
  * start up, and set to whatever the game actually opened once it knows.
  *
  * @param [value] {string|null}

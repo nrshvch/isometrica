@@ -1,7 +1,8 @@
 import Backbone from "backbone";
 
-//a city id in the address bar, as in /#/pA4b1c
-var CITY_ID = /^\/?([0-9A-Za-z]{6})\/?$/;
+//a city id in the address bar, as in /#/pA4b1cX9q2Rz - or one of the six
+//character ones of before, /#/pA4b1c (core/persistence/citystore)
+var CITY_ID = /^\/?([0-9A-Za-z]{6}(?:[0-9A-Za-z]{6})?)\/?$/;
 
 function cityId(path) {
   var match = CITY_ID.exec(path || "");

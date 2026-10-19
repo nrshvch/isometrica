@@ -27,6 +27,8 @@ var events = {
  *   tick       - how much game time a tick of the clock is, ms (core/vtime)
  *   saves      - what its cities are saved under in localStorage
  *                (core/persistence/citystore)
+ *   api        - where its server keeps them as well, if it has one
+ *                (core/persistence/citysync)
  *   client     - () => import of its own part of the client, loaded with the
  *                world: {create, init, start} (client/vkaria)
  *   screens    - {name: Module} its screens besides the world, each
@@ -93,6 +95,7 @@ UIManager.prototype.game = function (callback) {
     var core = (self._core = new Core.Logic({
       tick: game.tick,
       saves: game.saves,
+      api: game.api,
     }));
     var client = (self._client = new Vkaria(
       core,
@@ -104,7 +107,7 @@ UIManager.prototype.game = function (callback) {
 };
 
 /**
- * The city the game is playing, by its six character id. Read off the url on
+ * The city the game is playing, by its id. Read off the url on
  * start up, and set to whatever the game actually opened once it knows.
  *
  * @param [value] {string|null}

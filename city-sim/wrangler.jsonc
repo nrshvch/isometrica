@@ -1,4 +1,5 @@
-// The city builder, a static site on Cloudflare Workers: `npm run build` here → dist/, served as static assets (no Worker script).
+// The city builder on Cloudflare Workers: `npm run build` here → dist/, served as static assets,
+// and the saves behind /api/* - the Worker in worker/, with a Durable Object for each city.
 // Deployed by .github/workflows/city-sim.yml.
 //
 // Top level is the "dev" Worker (dev.peeps.land):
@@ -7,19 +8,52 @@
 // env.production is the "prod" Worker (peeps.land):
 //   tag city-sim/vX.Y.Z  → `wrangler deploy --env production`
 //
+// Each has saves of its own: dev's, production's, and every Preview's apart from both.
+// Bindings are not passed down - durable_objects and ratelimits are said again for production,
+// and for the Previews in "previews".
+//
 // workers_dev / preview_urls / routes are set explicitly so a deploy never flips what's set in the dashboard.
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "dev",
+  "main": "./worker/index.js",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    // everything else is the game's files, served as they are without waking the Worker
+    "run_worker_first": ["/api/*"],
   },
+  "durable_objects": {
+    "bindings": [{ "name": "CITY_SAVES", "class_name": "CitySaves" }],
+  },
+  // a Durable Object class is created once, by a migration; never edit one that has been deployed,
+  // add the next
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CitySaves"] }],
+  // requests to /api a minute, per address; namespace_id is any number, unique in the account
+  "ratelimits": [
+    {
+      "name": "SAVES_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 120, "period": 60 },
+    },
+  ],
   "workers_dev": true,
   // `wrangler preview` URLs live on workers.dev and need this on.
   "preview_urls": true,
-  // `wrangler preview` refuses to run without this block; empty means Previews reuse the settings above.
-  "previews": {},
+  // `wrangler preview` refuses to run without this block. A Preview has only the bindings said here.
+  "previews": {
+    "durable_objects": {
+      "bindings": [{ "name": "CITY_SAVES", "class_name": "CitySaves" }],
+    },
+    "ratelimits": [
+      {
+        "name": "SAVES_LIMIT",
+        "namespace_id": "1001",
+        "simple": { "limit": 120, "period": 60 },
+      },
+    ],
+  },
   "routes": [{ "pattern": "dev.peeps.land", "custom_domain": true }],
   "env": {
     "production": {
@@ -27,6 +61,16 @@
       "workers_dev": true,
       "preview_urls": false,
       "routes": [{ "pattern": "peeps.land", "custom_domain": true }],
+      "durable_objects": {
+        "bindings": [{ "name": "CITY_SAVES", "class_name": "CitySaves" }],
+      },
+      "ratelimits": [
+        {
+          "name": "SAVES_LIMIT",
+          "namespace_id": "1002",
+          "simple": { "limit": 120, "period": 60 },
+        },
+      ],
     },
   },
 }

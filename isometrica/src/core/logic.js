@@ -11,15 +11,17 @@ import MessagingService from "./msgsrv";
 import CityService from "./citysrv";
 import CityPersistence from "./persistence/citypersistence";
 import CityStore from "./persistence/citystore";
+import CitySync from "./persistence/citysync";
 import namespace from "namespace";
 
 namespace("Isometrica.Core").Logic = Logic;
 
 /**
- * @param [options] {{tick: number, saves: string}} what the game played in
- *        the world wants of it: how much game time a tick of it is worth, ms
- *        (VTime.setTickLength), and what its cities are saved under in
- *        localStorage (CityStore)
+ * @param [options] {{tick: number, saves: string, api: string}} what the game
+ *        played in the world wants of it: how much game time a tick of it is
+ *        worth, ms (VTime.setTickLength), what its cities are saved under in
+ *        localStorage (CityStore), and where on its server they are kept as
+ *        well, if it has one (CitySync)
  */
 function Logic(options) {
   options = options || {};
@@ -41,11 +43,14 @@ function Logic(options) {
   this.landRegistry = this.areaService = new CityLand(this);
   this.cities = new CityService(this);
 
-  //the player's city goes to localStorage through here - nothing starts
-  //until whoever knows the url asks it to open a city
+  //the player's city goes to localStorage through here, and up to the
+  //server - nothing starts until whoever knows the url asks it to open a city
+  var store = new CityStore(undefined, options.saves);
+
   this.persistence = new CityPersistence(
     this,
-    new CityStore(undefined, options.saves),
+    store,
+    options.api ? new CitySync(options.api, store) : null,
   );
 }
 

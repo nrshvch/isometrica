@@ -16,6 +16,9 @@ export default {
   //what its cities are saved under in localStorage - a new generation drops
   //the saves of before
   saves: "city-sim.v1",
+  //and where they are kept on the server, the game's own Worker
+  //(worker/saves) - for the city to open anywhere by its address
+  api: "/api",
 
   //land, and shaping the ground (games/builder/play)
   client: function () {

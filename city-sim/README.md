@@ -55,19 +55,41 @@ other games start on is built here, and handed over from the city screen.
 ### Running it
 
 ```
-npm run dev        # in city-sim/ - or npm run dev:city-sim at the root
-npm run build      # into city-sim/dist, isometrica built first
+npm run dev          # in city-sim/ - or npm run dev:city-sim at the root
+npm run build        # into city-sim/dist, isometrica built first
+npm run dev:worker   # built, and served by the Worker with its saves, http://localhost:8787
 ```
+
+### Saves
+
+A city is saved in the browser (localStorage) as it is played, offline or
+not, and from there kept on the server too - half a minute after it changes,
+when the page is put away, and when the browser is back online - so that its
+address, `/#/<id>`, opens it anywhere. The id is twelve characters, made up
+by the browser: anyone with the address can open the city and save over it.
+
+The server is the game's own Worker, `worker/`: the game's files are served
+as they are, and `/api/cities/<id>` is the saves (`worker/saves.js`) - a
+Durable Object for every city, keeping its last ten saves, gzipped, and
+taking a new one only on top of the latest. A save made on top of anything
+else means the city was saved from somewhere else meanwhile, and the player
+chooses which to keep (`isometrica/src/core/persistence/citysync.js`); the
+same when it is opened. `npm run dev` has no Worker behind it, and saves in
+the browser only.
+
+The page is kept by a Service Worker (`public/sw.js`), so that it opens
+without a connection too, from whatever was fetched while there was one.
 
 Its own: `src/main.js` starts it, `src/game.js` says what it is (five
 minutes a tick of the clock, its saves under `city-sim.v1.*` in
-localStorage, its screens and routes), `src/play.js` adds land and ground
-shaping to the world, `src/client` is those, `src/ui` its screens - the
-catalogue, the city screen, the building tools. The world is isometrica's.
+localStorage and on the server at `/api`, its screens and routes),
+`src/play.js` adds land and ground shaping to the world, `src/client` is
+those, `src/ui` its screens - the catalogue, the city screen, the building
+tools; `worker/` is its Worker, the saves. The world is isometrica's.
 
 Deployed by `.github/workflows/city-sim.yml` to the Workers in
 `wrangler.jsonc`: `prod` (https://peeps.land) from a `city-sim/vX.Y.Z`
 tag, `dev` (https://dev.peeps.land) from main, previews from any other
-branch. The splash says which: a release its version, from the tag; dev,
+branch - each with saves of its own. The splash says which: a release its version, from the tag; dev,
 a preview or a build of your own `dev` and the commit (`vite.config.js`).
 See [Deploying](../README.md#deploying).

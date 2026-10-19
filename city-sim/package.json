@@ -8,7 +8,8 @@
     "dev": "vite",
     "prebuild": "npm run build --prefix ../isometrica",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:worker": "npm run build && wrangler dev --env="
   },
   "dependencies": {
     "isometrica": "file:../isometrica",
