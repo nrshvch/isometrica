@@ -865,7 +865,10 @@ dev`) plays them the way a game would - all three weathers together, the
     white clouds on a sunny day, so the shadows of what stands under one
     still show in it. The clouds are up in the sky, in two
     layers not far apart (`CLOUDS` in `client/lighting.js`), the higher a
-    little slower: each's shadow is as far from under it, towards the sun,
+    little slower, and they go by the world, not the screen: turn the
+    camera and each is over the same ground it was (`unturned` in
+    `client/lighting.js`; the fog's banks and the puddles too). Each one's
+    shadow is as far from under it, towards the sun,
     as its height and the sun's make it - going round with the sun through
     the day as the shadow of a tree does - coming up softly to no more
     than a little over twice their height as the sun gets low

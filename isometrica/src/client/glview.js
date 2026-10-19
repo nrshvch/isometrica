@@ -540,6 +540,10 @@ uniform vec2 cloudAt;
 //where the shadows of the two layers of cloud are: as they have drifted,
 //and as the sun puts them (client/lighting CLOUDS)
 uniform vec4 clouds;
+//the ground on the screen as it would be with the camera unturned, for what
+//goes by the ground - the clouds, the fog, puddles - to stay on the same
+//ground whichever way round it looks (client/lighting unturned)
+uniform mat2 unturn;
 uniform float grey;
 uniform float fog;
 uniform vec3 fogColor;
@@ -716,6 +720,8 @@ void main() {
   //where it would be seen from the side, from above too, for what is laid
   //out over the ground to look the same either way
   vec2 spot = toSide * (from - rise * h);
+  //and where that is as it would be seen unturned
+  vec2 ground = unturn * spot;
   //flat on the ground, and of stone, tarmac or concrete - grey - for the
   //rain to stand on in puddles
   bool level = n.z > 0.9 && h < 1.5;
@@ -728,7 +734,7 @@ void main() {
   if (wet > 0.0) {
     if (paved)
       puddle = step(0.78 - 0.22 * wet + (b - 0.5) * 0.04,
-        noise(spot / vec2(26.0, 13.0)) * 0.7 + noise(spot / vec2(9.0, 4.5)) * 0.3);
+        noise(ground / vec2(26.0, 13.0)) * 0.7 + noise(ground / vec2(9.0, 4.5)) * 0.3);
     a *= 1.0 - wet * (paved ? 0.3 + 0.2 * puddle : level ? 0.18 : 0.1);
   }
 
@@ -740,8 +746,8 @@ void main() {
   //anything else (CLOUD_SHADE), so that the shadows of what stands under
   //one still show in it
   if (cloud > 0.0 && sun > 0.0)
-    sun *= 1.0 - CLOUD_SHADE * max(clouded(spot + clouds.xy, CLOUD_SIZE, 0.0, b, 0.0),
-      clouded(spot + clouds.zw + vec2(7919.0, 3571.0), CLOUD_SIZE * 1.15, 0.03,
+    sun *= 1.0 - CLOUD_SHADE * max(clouded(ground + clouds.xy, CLOUD_SIZE, 0.0, b, 0.0),
+      clouded(ground + clouds.zw + vec2(7919.0, 3571.0), CLOUD_SIZE * 1.15, 0.03,
         b, 5000.0));
 
   vec3 lit = clamp(ambient + sun * sunLight, 0.0, 1.0);
@@ -807,7 +813,7 @@ void main() {
   //where the eye is, for what is looked at not to be lost in it, coming in
   //from FOG_CLEAR of the way out to the edges of the screen
   if (fog > 0.0) {
-    vec2 at = spot + cloudAt * 0.3;
+    vec2 at = ground + cloudAt * 0.3;
     float bank = noise(at / vec2(200.0, 100.0)) * 0.65 + noise(at / vec2(64.0, 32.0)) * 0.35;
     float top = fog * (FOG_LOW + FOG_HIGH * bank);
     float deep = max(top - h, 0.0);
@@ -1619,6 +1625,7 @@ var NO_WEATHER = {
   cloud: 0,
   cloudAt: [0, 0],
   clouds: [0, 0, 0, 0],
+  unturn: [1, 0, 0, 1],
   grey: 0,
   fog: 0,
   fogColor: [0.7, 0.72, 0.75],
@@ -1643,6 +1650,7 @@ function weather(gl, p, w) {
   f("cloud", w.cloud);
   gl.uniform2fv(gl.getUniformLocation(p, "cloudAt"), w.cloudAt);
   gl.uniform4fv(gl.getUniformLocation(p, "clouds"), w.clouds);
+  gl.uniformMatrix2fv(gl.getUniformLocation(p, "unturn"), false, w.unturn);
   f("grey", w.grey);
   f("fog", w.fog);
   gl.uniform3fv(gl.getUniformLocation(p, "fogColor"), w.fogColor);

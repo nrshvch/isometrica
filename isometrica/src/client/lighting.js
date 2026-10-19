@@ -1229,8 +1229,11 @@ var cloudAt = [0, 0],
 function weatherSky(self, sky, w, viewport) {
   //(the way to the sun, whether or not there is any of it left to light
   //anything - the clouds' shadows go by it, and do not jump back under them
-  //as the sun goes, nor out again as it comes up)
-  var sunStep = stepTo(sky.dir);
+  //as the sun goes, nor out again as it comes up - as it would be seen
+  //unturned: the clouds go by the world, not by the screen, over the same
+  //ground whichever way round the camera looks, see unturned)
+  var toSun = View.unvector(sky.dir[0], sky.dir[1]),
+    sunStep = stepTo([toSun[0], toSun[1], sky.dir[2]]);
 
   var wall = performance.now(),
     dt = lastWall < 0 ? 0 : Math.min(0.1, (wall - lastWall) / 1000),
@@ -1260,19 +1263,22 @@ function weatherSky(self, sky, w, viewport) {
 
   gloom = day * Math.max(heavy * 0.75 + w.storm * 0.3, w.fog * 0.85);
 
-  //the wind, on the screen: across it and down it
+  //the wind, on the screen: across it and down it - as it is seen, for the
+  //rain to slant by, and as it would be seen unturned, for the clouds
   var now =
       viewport.camera && viewport.camera.world
         ? viewport.camera.world.logic.time.time
         : wall,
-    seen = View.vector.apply(null, Wind(now, blowing)),
+    blown = Wind(now, blowing),
+    seen = View.vector(blown[0], blown[1]),
     across = seen[0] - seen[1],
-    down = -(seen[0] + seen[1]) / 2;
+    acrossWorld = blown[0] - blown[1],
+    downWorld = -(blown[0] + blown[1]) / 2;
 
   var steady = 1 - Math.exp(-dt / CLOUD_STEADY);
 
-  cloudGoing[0] += (across * 2.5 - cloudGoing[0]) * steady;
-  cloudGoing[1] += (down * 2.5 - cloudGoing[1]) * steady;
+  cloudGoing[0] += (acrossWorld * 2.5 - cloudGoing[0]) * steady;
+  cloudGoing[1] += (downWorld * 2.5 - cloudGoing[1]) * steady;
   cloudAt[0] -= cloudGoing[0] * dt;
   cloudAt[1] -= cloudGoing[1] * dt;
 
@@ -1312,6 +1318,7 @@ function weatherSky(self, sky, w, viewport) {
     cloud: cover,
     cloudAt: cloudAt,
     clouds: clouds,
+    unturn: unturned(),
     grey: 0.4 * smooth((w.cloud - 0.3) / 0.7) + 0.12 * w.fog,
     fog: Math.min(1, w.fog * 0.95 + w.rain * 0.35),
     fogColor: fog,
@@ -1327,6 +1334,24 @@ function weatherSky(self, sky, w, viewport) {
         : null,
     time: wall / 1000,
   };
+}
+
+/**
+ * The ground on the screen - pixels across it and down it, from the world's
+ * origin - as it would be on the screen with the camera unturned: column by
+ * column, for a mat2 (client/glview LIT_FS unturn). What goes by the ground
+ * rather than the screen - the clouds' shadows, the fog's banks, puddles -
+ * stays on the same ground whichever way round the camera looks.
+ */
+function unturned() {
+  function f(sx, sy) {
+    //as seen along the ground, then in the world
+    var w = View.unvector(sx / 2 - sy, -sx / 2 - sy);
+
+    return [w[0] - w[1], -(w[0] + w[1]) / 2];
+  }
+
+  return f(1, 0).concat(f(0, 1));
 }
 
 /**
