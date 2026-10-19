@@ -258,9 +258,12 @@ function smallSite(staticData) {
  *
  * @param seed {number} the same for the same building every time
  * @param [small] {boolean} a small building's site (smallSite)
+ * @param [turns] {number} how the footprint, sizeX by sizeY as it lies in
+ *        the world, is turned as it is seen (client/view turns) - the site
+ *        laid out on the ground, so the same from every side
  * @returns {Object[]|null} null while the sites are not described yet
  */
-function lotPieces(sprites, sizeX, sizeY, seed, small) {
+function lotPieces(sprites, sizeX, sizeY, seed, small, turns) {
   if (!sprites.generated.sites) return null;
 
   return tilePieces(
@@ -268,7 +271,7 @@ function lotPieces(sprites, sizeX, sizeY, seed, small) {
     lotTiles(sizeX, sizeY, seed, small),
     sizeX,
     sizeY,
-    0,
+    turns || 0,
     seed,
   );
 }
@@ -437,24 +440,33 @@ function overlaysOf(sprites, parts, up, turns, seed) {
       }
 
       if (o.bays !== undefined) {
-        //those at the back first, the ones in front drawn over them
+        //the cars dealt out to the bays in the bays' own order - the same
+        //from every side, so the same car stands in the same bay whichever
+        //way the camera is turned - and then those at the back drawn first,
+        //the ones in front over them
         o.bays
-          .slice()
-          .sort(function (a, b) {
-            return a.y - b.y;
+          .map(function (bay) {
+            var car = parkedCar(vehicles, random),
+              way =
+                car === null ? 0 : Math.floor(random() * bay.headings.length);
+
+            return {
+              bay: bay,
+              car: car,
+              look: car && car.looks[bay.headings[way]],
+            };
           })
-          .forEach(function (bay) {
-            var car = parkedCar(vehicles, random);
+          .sort(function (a, b) {
+            return a.bay.y - b.bay.y;
+          })
+          .forEach(function (dealt) {
+            var bay = dealt.bay,
+              look = dealt.look;
 
-            if (car === null) return;
-
-            var look =
-              car.looks[
-                bay.headings[Math.floor(random() * bay.headings.length)]
-              ];
+            if (dealt.car === null || !look) return;
 
             out.push({
-              vehicle: car.type,
+              vehicle: dealt.car.type,
               looks: [
                 {
                   sprite: sprites.getSprite(look.sprite),

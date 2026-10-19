@@ -214,6 +214,45 @@ Terrain.prototype.showGrid = function (shown) {
     if (this.tiles[index]) shapeTile(this, this.tiles[index], +index);
 };
 
+/**
+ * The pictures of the tiles there are for which near(x, y) holds - as they
+ * are seen now, with View peek from another side - into out, without
+ * drawing anything (client/preloader).
+ *
+ * @param near {function(number, number): boolean} by where a tile's middle
+ *        is in the world
+ * @param [keys] {string[]} only these of the tiles (tileKeys)
+ */
+Terrain.prototype.seenSprites = function (out, near, keys) {
+  var terrain = vkaria.core.world.terrain;
+
+  keys = keys || this.tileKeys();
+
+  for (var k = 0; k < keys.length; k++) {
+    if (!this.tiles[keys[k]]) continue;
+
+    var index = +keys[k],
+      x = Core.Terrain.extractX(index),
+      y = Core.Terrain.extractY(index);
+
+    if (!near(x * Config.tileSize, y * Config.tileSize)) continue;
+
+    out.push(
+      tileSprite(
+        x,
+        y,
+        terrain.getTerrainType(x, y),
+        calcSpriteCode(this, x, y),
+      ),
+    );
+  }
+};
+
+//the tiles there are, by index, for going through a few at a time
+Terrain.prototype.tileKeys = function () {
+  return Object.keys(this.tiles);
+};
+
 Terrain.prototype.clear = function (x0, y0, w, l) {
   var tile0 = CoreTerrain.convertToIndex(x0, y0);
   var tile1 = CoreTerrain.convertToIndex(x0 + w - 1, y0 + l - 1);

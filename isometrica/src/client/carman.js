@@ -2375,6 +2375,36 @@ Carman.prototype.looksOf = function (name, color) {
   return null;
 };
 
+/**
+ * The pictures of the cars there are for which near(x, z) holds, the way
+ * each is going as it is seen now - with View peek, from another side - and
+ * what is lit on it, into out (client/preloader).
+ */
+Carman.prototype.seenSprites = function (out, near) {
+  var cars = this.cars || [],
+    at = [0, 0, 0];
+
+  for (var i = 0; i < cars.length; i++) {
+    var car = cars[i].car;
+
+    if (!car || !car.driver || !car.looks) continue;
+
+    cars[i].transform.getPosition(at);
+    if (!near(at[0], at[2])) continue;
+
+    var heading = View.heading(
+        View.headingOf(car.driver.hx, car.driver.hy) || "x+",
+      ),
+      look = car.looks[heading];
+
+    if (look !== undefined) out.push(look.sprite);
+    if (car.type && car.type.lamps)
+      car.type.lamps.forEach(function (phase) {
+        if (phase[heading]) out.push(phase[heading].sprite);
+      });
+  }
+};
+
 //for anything else that drives the roads the way the traffic does - the
 //courier's car (games/delivery)
 Carman.routeWaypoints = Traffic.routeWaypoints;

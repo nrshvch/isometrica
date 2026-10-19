@@ -47,6 +47,22 @@ View.setTurns = function (t) {
 };
 
 /**
+ * Whatever fn works out, as it would be seen from t quarter turns round -
+ * without turning, and without telling anyone: for what is to be ready
+ * before the camera turns there (client/preloader).
+ */
+View.peek = function (t, fn) {
+  var was = turns;
+
+  turns = ((t % 4) + 4) % 4;
+  try {
+    return fn();
+  } finally {
+    turns = was;
+  }
+};
+
+/**
  * Whether the world is looked at from straight above, as a map: every
  * picture of it painted from above too, a tile a square 64 a side, north up.
  */

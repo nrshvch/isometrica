@@ -27,14 +27,21 @@ var getSmoke = function () {
  * few minutes, in its own time. While it is lit, a puff comes out a little
  * under every second, never quite in step with the last - one thin wisp.
  *
+ * Whether its fire is going is a toss of the house's own for every while
+ * (RETHINK) - the same for the same chimney whenever it is asked, so that a
+ * chimney put up anew, as every one is when the camera turns, smokes or not
+ * just as it did.
+ *
  * @param building {Building} optional - the house the chimney is on. A house
  *                            nobody has moved into, for want of a street or of
  *                            water, has no fire going; with no building given
  *                            it smokes regardless.
+ * @param [k] {number} which of the house's chimneys it is
  */
-function SmokeSourceScript(building) {
+function SmokeSourceScript(building, k) {
   engine.Component.call(this);
   this.building = building || null;
+  this.k = k || 0;
 }
 
 var vec3Buffer = new Float32Array(3);
@@ -69,8 +76,17 @@ SmokeSourceScript.prototype.tick = function (time) {
   var now = time.now;
 
   if (now >= this.rethinkAt) {
-    this.burning = Math.random() < lit(hourNow());
-    this.rethinkAt = now + RETHINK * (0.5 + Math.random());
+    //its own while, from where it is and which chimney it is - its fire
+    //tossed for that while
+    var seed =
+        this.building && this.building.tile !== undefined
+          ? this.building.tile
+          : 0,
+      shift = toss(seed, this.k, 0) * RETHINK,
+      slot = Math.floor((now + shift) / RETHINK);
+
+    this.burning = toss(seed, this.k, slot + 1) < lit(hourNow());
+    this.rethinkAt = (slot + 1) * RETHINK - shift;
   }
 
   if (now < this.next) return;
@@ -78,6 +94,19 @@ SmokeSourceScript.prototype.tick = function (time) {
   this.next = now + PUFF_EVERY * (1 + (Math.random() * 2 - 1) * JITTER);
   if (this.burning && isLit(this.building)) this.spawnSmoke();
 };
+
+//a number 0..1 for a chimney and a while, the same every time
+function toss(seed, k, slot) {
+  var h =
+    Math.imul(seed | 0, 0x9e3779b1) ^
+    Math.imul((k | 0) + 7, 0x85ebca6b) ^
+    Math.imul(slot | 0, 0xc2b2ae35);
+
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
+
+  return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
+}
 
 //the hour of the game's day
 function hourNow() {

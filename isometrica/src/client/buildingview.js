@@ -15,6 +15,7 @@ import CompoundBuilding from "./compoundbuilding";
 import Rotation from "../core/rotation";
 import { stageOf, STAGES } from "../shared/gen/stacking";
 import SiteRenderer from "./siterenderer";
+import WorkLights from "./worklights";
 import View from "./view";
 import BuildingClassCode from "../data/classcode";
 import Trees from "../data/trees";
@@ -134,11 +135,17 @@ function addFoundations(
             ? "shore/"
             : "") +
           drops.join(""),
-        frame = vkaria.sprites.frame(name),
-        renderer = new engine.SpriteRenderer(),
-        go = new engine.GameObject();
+        frame = vkaria.sprites.frame(name);
 
       if (!frame) continue;
+
+      if (collecting !== null) {
+        collect(vkaria.sprites.getSprite(name));
+        continue;
+      }
+
+      var renderer = new engine.SpriteRenderer(),
+        go = new engine.GameObject();
 
       renderer.layer = layer;
       renderer.setSprite(vkaria.sprites.getSprite(name));
@@ -172,6 +179,29 @@ function setSeenPosition(go, x, y, z) {
 function BuildingView() {
   this.gameObject = new engine.GameObject("building");
 }
+
+//while only the pictures a building would be drawn with are wanted - as it
+//would be seen from another side, to have them ready (seenSprites) - where
+//they go; null while it is drawn
+var collecting = null;
+
+function collect(sprite) {
+  collecting.push(sprite);
+}
+
+/**
+ * The pictures it would be drawn with as it is seen now - with View peek,
+ * from another side - into out, without drawing anything (client/
+ * preloader).
+ */
+BuildingView.prototype.seenSprites = function (out) {
+  collecting = out;
+  try {
+    this.update();
+  } finally {
+    collecting = null;
+  }
+};
 
 BuildingView.prototype.gameObject = null;
 BuildingView.prototype.building = null;
@@ -216,25 +246,33 @@ BuildingView.prototype.update = function () {
       ? CompoundBuilding.lookOf(vkaria.sprites, b.data, staticData.compound)
       : null;
 
-    clearTimeout(this.stageTimer);
-    this.stageTimer = null;
+    if (collecting === null) {
+      clearTimeout(this.stageTimer);
+      this.stageTimer = null;
+    }
 
     //as it is seen, the camera turned the way it is (see drawnAt)
     var at = drawnAt(staticData, b.data.tile, b.data.rotation, b.data.surface);
 
     //clear old GOs - each one lets go of the view as it is destroyed, so
     //off a copy of the list
-    var children = this.gameObject.transform.children.slice();
-    for (var i = 0; i < children.length; i++) children[i].gameObject.destroy();
+    if (collecting === null) {
+      var children = this.gameObject.transform.children.slice();
+      for (var i = 0; i < children.length; i++)
+        children[i].gameObject.destroy();
+    }
 
+    //a site laid out on the ground the building takes up in the world, and
+    //turned as it is seen - the crane on the same tile from every side
     var lots =
       b.data.getState() === BuildingState.underConstruction && !look
         ? CompoundBuilding.lotPieces(
             vkaria.sprites,
-            at.sizeX,
-            at.sizeY,
+            Rotation.sizeX(staticData, b.data.rotation),
+            Rotation.sizeY(staticData, b.data.rotation),
             b.data.tile,
             CompoundBuilding.smallSite(staticData),
+            View.turns(),
           )
         : null;
 
@@ -243,7 +281,7 @@ BuildingView.prototype.update = function () {
     } else if (lots !== null) {
       //any other building goes up on a building site like the blocks' -
       //the same all the while
-      addPieces(this.gameObject, lots, this.opacity);
+      addPieces(this.gameObject, lots, this.opacity, undefined, b.data.tile);
     } else if (b.data.getState() === BuildingState.ready) {
       //drawn the way it was painted, see addSprites
       addSprites(
@@ -267,13 +305,13 @@ BuildingView.prototype.update = function () {
       );
 
       //smoke out of the chimneys of a house put together out of parts
-      if (look)
+      if (look && collecting === null)
         CompoundBuilding.chimneys(
           vkaria.sprites,
           look,
           staticData.compound,
           at.rotation,
-        ).forEach(function (top) {
+        ).forEach(function (top, k) {
           var source = new engine.GameObject();
 
           setSeenPosition(
@@ -282,9 +320,22 @@ BuildingView.prototype.update = function () {
             top[1] * tileZStep,
             top[2] * tileSize,
           );
-          source.addComponent(new SmokeSource(b.data));
+          source.addComponent(new SmokeSource(b.data, k));
           this.gameObject.transform.addChild(source.transform);
         }, this);
+    }
+
+    if (collecting !== null) {
+      addFoundations(
+        null,
+        staticData,
+        b.data.tile,
+        b.data.rotation,
+        at,
+        this.opacity,
+        RenderLayer.roadLayer,
+      );
+      return;
     }
 
     //level on a concrete base where the ground under it is not
@@ -331,7 +382,7 @@ function drawSite(self, staticData, look, turns) {
     data.tile,
   );
 
-  if (stage < STAGES.length)
+  if (stage < STAGES.length && collecting === null)
     self.stageTimer = setTimeout(
       function () {
         self.stageTimer = null;
@@ -404,10 +455,19 @@ function addSprites(
     len = spritesData.length;
 
   for (var i = 0; i < len; i++) {
-    var spriteData = spritesData[i];
-
-    var spriteRenderer = new engine.SpriteRenderer(),
+    var spriteData = spritesData[i],
       name = Trees.turned(spriteData.path, rotation);
+
+    if (collecting !== null) {
+      collect(
+        View.top()
+          ? vkaria.sprites.topOf(name)
+          : vkaria.sprites.getSprite(name),
+      );
+      continue;
+    }
+
+    var spriteRenderer = new engine.SpriteRenderer();
     spriteRenderer.layer = layer !== undefined ? layer : spriteData.layer;
     //a tree from the side it is seen from (data/trees turned) - or from
     //straight above
@@ -509,6 +569,19 @@ function lightsOf(staticData) {
  * site, or a building being placed, has no lights on at all.
  */
 function addPieces(parent, pieces, opacity, layer, seed, lights) {
+  //only the pictures wanted: each tile's, and what goes over it
+  if (collecting !== null) {
+    pieces.forEach(function (piece) {
+      collect(piece.sprite);
+      piece.overlays.forEach(function (o) {
+        (o.looks || o.frames || []).forEach(function (look) {
+          collect(look.sprite);
+        });
+      });
+    });
+    return;
+  }
+
   var windows =
     seed === undefined || lights === undefined ? undefined : windowsSeed(seed);
 
@@ -520,7 +593,13 @@ function addPieces(parent, pieces, opacity, layer, seed, lights) {
           : new engine.SpriteRenderer(),
       go = new engine.GameObject();
 
-    if (piece.overlays.length > 0) renderer.overlays = piece.overlays;
+    if (piece.overlays.length > 0) {
+      renderer.overlays = piece.overlays;
+      //its jib, its digger as far round as they were, drawn anew when the
+      //camera turns
+      if (seed !== undefined)
+        renderer.phase = WorkLights.phaseOf(seed, i, SiteRenderer.ROUND);
+    }
 
     renderer.layer = layer !== undefined ? layer : RenderLayer.buildingsLayer;
     renderer.pivotX = piece.pivotX;

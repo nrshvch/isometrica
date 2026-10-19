@@ -31,9 +31,15 @@ function SiteRenderer() {
 
   this.overlays = [];
   //how far into its round each one is to start with, so that the sites
-  //about the town do not all move as one
-  this.phase = Math.random() * 60000;
+  //about the town do not all move as one - set from where it is, so that
+  //it is the same when it is drawn anew (client/buildingview addPieces)
+  this.phase = Math.random() * ROUND;
 }
+
+//how long the rounds it starts some way into are, ms, at most
+var ROUND = 60000;
+
+SiteRenderer.ROUND = ROUND;
 
 SiteRenderer.prototype = Object.create(engine.SpriteRenderer.prototype);
 

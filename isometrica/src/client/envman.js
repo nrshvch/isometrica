@@ -86,6 +86,43 @@ function dress(self, go, spriteData, tile) {
   renderer.pivotY = spriteData.pivotY;
 }
 
+/**
+ * The pictures of the trees and stones there are for which near(x, z)
+ * holds - as they are seen now, with View peek from another side - into
+ * out, without drawing anything (client/preloader).
+ */
+EnvMan.prototype.seenSprites = function (out, near, keys) {
+  keys = keys || this.sceneryKeys();
+
+  for (var k = 0; k < keys.length; k++) {
+    if (this._scenery[keys[k]] === undefined) continue;
+
+    var tile = +keys[k],
+      x = CoreTerrain.extractX(tile),
+      y = CoreTerrain.extractY(tile),
+      spriteData;
+
+    if (!near(x * Config.tileSize, y * Config.tileSize)) continue;
+    if ((spriteData = sceneryOf(this, tile)) === null) continue;
+
+    var name = Trees.turned(
+      spriteData.path,
+      (tileTurns(tile) + View.turns()) & 3,
+    );
+
+    out.push(
+      View.top()
+        ? this.root.sprites.topOf(name)
+        : this.root.sprites.getSprite(name),
+    );
+  }
+};
+
+//the tiles with a tree or stones on, for going through a few at a time
+EnvMan.prototype.sceneryKeys = function () {
+  return Object.keys(this._scenery);
+};
+
 function plant(self, tile, spriteData) {
   var go = Pool.borrowObject(self.pool);
 

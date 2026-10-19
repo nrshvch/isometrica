@@ -97,6 +97,33 @@ function wantAll(sprites, parts, look) {
 }
 
 /**
+ * What of it is put on a page to be drawn (glQuad): drawn lit, its pictures
+ * to be lit - and at night, its night's - where it has them; otherwise
+ * itself. For having it ready ahead (client/preloader).
+ */
+CachedSprite.prototype.entries = function (lit, night) {
+  if (!lit) return [this];
+
+  var deferred = layersOf(this, "deferred"),
+    out = [deferred !== null ? deferred : this];
+
+  if (night) {
+    var dark = layersOf(this, "night");
+
+    if (dark !== null) out.push(dark);
+  }
+
+  return out;
+};
+
+//the sheets it is put together from
+CachedSprite.prototype.sheets = function () {
+  return this.parts.map(function (part) {
+    return part.sheet;
+  });
+};
+
+/**
  * Puts the parts together at x, y of pixels w wide - a slot of the canvas
  * cache.
  */
@@ -266,9 +293,14 @@ function skip(d, o) {
 //way the sprite is (see Layers paint) - by a toss of its own, the same every
 //time for the same part in the same place
 function swapped(part, i) {
-  var h = (part.y * 73856093) ^ (part.x * 19349663) ^ (i * 83492791);
+  var h = i * 83492791;
 
-  var name = String(part.frame.sheet);
+  //by the part as it is, whichever side it is seen from - not where its
+  //picture from this side lies in the whole, nor which side that is - so a
+  //storey's windows are lit the same from every side
+  var name = String(part.frame.sheet)
+    .replace(/@top$/, "")
+    .replace(/\/r[0-3]$/, "");
 
   for (var c = 0; c < name.length; c++)
     h = (Math.imul(h, 31) + name.charCodeAt(c)) | 0;
@@ -316,6 +348,17 @@ Layers.prototype.acquire = function () {
   }
 
   return this.ready() && cache.acquire(this);
+};
+
+//the sheets it is put together from: each part's own in its look, or the
+//part as it is
+Layers.prototype.sheets = function () {
+  var sprites = this.sprite.sprites,
+    look = this.look;
+
+  return this.sprite.parts.map(function (part) {
+    return sprites.lookSheet(part.sheet, look) || part.sheet;
+  });
 };
 
 Layers.prototype.ready = function () {

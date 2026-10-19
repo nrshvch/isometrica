@@ -262,4 +262,19 @@ WorkLightRenderer.prototype.render = function (
 
 WorkLights.Renderer = WorkLightRenderer;
 
+/**
+ * How far into its round something that comes round and round is - a lamp
+ * blinking, a crane's jib, a digger - for a seed and a number of its own:
+ * the same for the same thing every time it is drawn anew, as it is when
+ * the camera turns, and different from its neighbours'. 0..span, ms.
+ */
+WorkLights.phaseOf = function (seed, k, span) {
+  var h = Math.imul(seed | 0, 0x9e3779b1) ^ Math.imul((k | 0) + 1, 0x85ebca6b);
+
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 12), 0x297a2d39);
+
+  return (((h ^ (h >>> 15)) >>> 0) / 4294967296) * span;
+};
+
 export default WorkLights;

@@ -593,6 +593,12 @@ Lighting.prototype.light = function () {
 //shown (engine Viewport) - and whoever waits on it told (onFrame)
 Lighting.prototype.end = function () {
   if (this.onFrame !== null) this.onFrame();
+
+  //and in what time is left, the world got ready to be seen from the other
+  //sides (client/preloader)
+  var preloader = this.root.sprites && this.root.sprites.preloader;
+
+  if (preloader) preloader.step(this.root);
 };
 
 //called once a frame has been drawn, while it is still there to be copied

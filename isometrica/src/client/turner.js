@@ -1041,4 +1041,8 @@ Turner.prototype.run = function () {
   requestAnimationFrame(step);
 };
 
+//how much more of the city than the screen shows its pictures take in -
+//for what is got ready ahead of a turn to take in as much (client/preloader)
+Turner.prototype.over = OVER;
+
 export default Turner;

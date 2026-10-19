@@ -170,36 +170,103 @@ CanvasCache.prototype.acquire = function (entry) {
 
   this.failed[steal] = false;
 
+  place(this, entry, slot, frame);
+
+  return true;
+};
+
+/**
+ * Puts an entry on a page ahead of its being drawn - a picture of the
+ * world as it will be seen once the camera turns (client/preloader) - in
+ * whatever time this frame has left for painting, and only where there is
+ * room: in a slot free, or one whose picture has gone undrawn for `age`
+ * frames - never one drawn lately, nor another put there ahead and kept
+ * (keepWarm). Marked as drawn a little while ago, so that what is drawn
+ * takes its slot before anything that is.
+ *
+ * @returns {boolean} whether it is on a page
+ */
+CanvasCache.prototype.warm = function (entry, age) {
+  var frame = this.clock.frame;
+
+  if (entry.slot >= 0) {
+    this.keepWarm(entry);
+    return true;
+  }
+
+  if (this.budgetFrame !== frame) {
+    var t = performance.now();
+
+    this.frameTook = this.budgetFrame === frame - 1 ? t - this.frameStarted : 0;
+    this.frameStarted = t;
+    this.budgetFrame = frame;
+    this.spent = 0;
+  } else if (this.spent >= Math.max(this.budget, this.frameTook * SHARE))
+    return false;
+
+  var slot = allocate(
+    this,
+    entry.width,
+    entry.height,
+    frame,
+    false,
+    frame - age,
+  );
+
+  if (slot < 0) return false;
+
+  place(this, entry, slot, frame);
+  this.slotUsed[slot] = frame - WARM;
+
+  return true;
+};
+
+/**
+ * Keeps an entry put on a page ahead (warm) there a while more - unless it
+ * is being drawn, which keeps it anyway.
+ */
+CanvasCache.prototype.keepWarm = function (entry) {
+  var slot = entry.slot,
+    frame = this.clock.frame;
+
+  if (slot >= 0 && this.slotUsed[slot] < frame - WARM)
+    this.slotUsed[slot] = frame - WARM;
+};
+
+//how long ago what is put on a page ahead is taken to have been drawn: not
+//this frame nor the one before, for anything drawn to take its slot first
+var WARM = 2;
+
+//paints entry into slot, hands it over to its page and tells it where it is
+function place(self, entry, slot, frame) {
   var started = performance.now(),
-    shelf = this.slotShelf[slot],
-    page = this.shelfPage[shelf],
-    x = this.slotX[slot],
-    y = this.shelfY[shelf],
-    w = this.slotW[slot],
-    h = this.shelfH[shelf],
-    pixels = scratch(this, w, h);
+    shelf = self.slotShelf[slot],
+    page = self.shelfPage[shelf],
+    x = self.slotX[slot],
+    y = self.shelfY[shelf],
+    w = self.slotW[slot],
+    h = self.shelfH[shelf],
+    pixels = scratch(self, w, h);
 
   //painted on clear pixels the size of the slot, and handed over whole -
   //which clears whatever was in the slot before
   entry.paint(pixels, w, 0, 0);
   //and whatever is worked out from the pixels painted, put in among them
   if (entry.finish !== undefined) entry.finish(pixels, w, h);
-  if (this.upload !== null) this.upload(page, x, y, w, h, pixels);
-  this.painted++;
-  this.spent += performance.now() - started;
+  if (self.upload !== null) self.upload(page, x, y, w, h, pixels);
+  self.painted++;
+  self.spent += performance.now() - started;
 
-  this.slotState[slot] = TAKEN;
-  this.slotDirty[slot] = 1;
-  this.slotUsed[slot] = frame;
-  this.owners[slot] = entry;
+  self.slotState[slot] = TAKEN;
+  self.slotDirty[slot] = 1;
+  self.slotUsed[slot] = frame;
+  self.owners[slot] = entry;
 
   entry.slot = slot;
   entry.sourceImage = page;
   entry.offsetX = x;
   entry.offsetY = y;
-
-  return true;
-};
+}
 
 /**
  * Marks an entry that is on a page as drawn this frame, without drawing it -
@@ -286,13 +353,15 @@ function evictable(self, i, stale, steal) {
  * without a slot (steal), the last two again, with pictures that can be
  * drawn without theirs counted as such too.
  */
-function allocate(self, w, h, frame, steal) {
+function allocate(self, w, h, frame, steal, staleBefore) {
   var needW = w + GAP,
     needH = Math.ceil((h + GAP) / STEP) * STEP,
     size = self.pageSize,
     //a shelf taller than this wastes too much of itself on the picture
     maxH = needH + (needH >> 2) + STEP,
-    stale = frame - 1,
+    //what may be evicted: what was not drawn this frame or the one before -
+    //or, for what is put on a page ahead, not for longer still
+    stale = staleBefore !== undefined ? staleBefore : frame - 1,
     best = -1,
     bestCost = Infinity,
     i,

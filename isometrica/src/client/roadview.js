@@ -207,6 +207,51 @@ BuildingView.prototype.setRoad = function (road) {
   this.road = road;
 };
 
+//while only the pictures a road would be drawn with are wanted (seenSprites)
+//- where they go; null while it is drawn
+var collecting = null;
+
+//a piece of the road's by its sprite name, as it is drawn now
+function pieceOf(name) {
+  return View.top()
+    ? vkaria.sprites.topOf(name)
+    : vkaria.sprites.getSprite(name);
+}
+
+/**
+ * The pictures it would be drawn with as it is seen now - with View peek,
+ * from another side - into out, without drawing anything (client/
+ * preloader): its piece, its street light, a stop's shelters, the barriers
+ * of road works, and the concrete under it.
+ */
+BuildingView.prototype.seenSprites = function (out) {
+  var road = this.road;
+
+  if (!road || road.staticData === null) return;
+
+  var id = road.typeCode,
+    tile = road.data.tile,
+    light = lightOf(id, tile),
+    stop = stopOf(id);
+
+  out.push(pieceOf(spriteOf(id)));
+  if (light !== null) out.push(pieceOf(light));
+  if (stop !== null)
+    stop.forEach(function (name) {
+      out.push(pieceOf(name));
+    });
+  barriersOf(road).forEach(function (side) {
+    out.push(pieceOf("gen/roads/works/barrier" + seenSide(side)));
+  });
+
+  collecting = out;
+  try {
+    addBase(null, tile, road.surface(), 1, RenderLayer.roadLayer, 0);
+  } finally {
+    collecting = null;
+  }
+};
+
 BuildingView.prototype.update = function () {
   var b = this.road;
 
@@ -250,7 +295,7 @@ function draw(view, id, surface) {
 
   //and a road being laid, its barriers where it ends
   barriersOf(view.road).forEach(function (side) {
-    addBarrier(go, "gen/roads/works/barrier" + seenSide(side));
+    addBarrier(go, "gen/roads/works/barrier" + seenSide(side), tile, side);
   });
 
   place(go, tile, surface);
@@ -336,6 +381,11 @@ function addBase(parent, tile, surface, opacity, layer, sink) {
     frame = vkaria.sprites.frame(name);
 
   if (!frame) return;
+
+  if (collecting !== null) {
+    collecting.push(vkaria.sprites.getSprite(name));
+    return;
+  }
 
   var part = new engine.GameObject(),
     sprite = new engine.SpriteRenderer();
@@ -442,7 +492,7 @@ function barriersOf(road) {
  * Hangs a road works barrier under parent, standing where it does on its
  * tile, its lamps blinking amber (client/worklights).
  */
-function addBarrier(parent, name) {
+function addBarrier(parent, name, tile, side) {
   var part = new engine.GameObject(),
     sprite = new WorkLights.Renderer(),
     roads = vkaria.generated !== null ? vkaria.generated.roads : null,
@@ -450,6 +500,8 @@ function addBarrier(parent, name) {
     at = roads && roads.barriers ? roads.barriers[key] : null;
 
   sprite.layer = RenderLayer.buildingsLayer;
+  //blinking on in its own time, the same when the road is drawn anew
+  sprite.phase = WorkLights.phaseOf(tile, side, 10000);
   part.addComponent(sprite);
   setPiece(sprite, name);
   parent.transform.addChild(part.transform);
