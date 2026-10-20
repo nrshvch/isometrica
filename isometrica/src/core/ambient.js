@@ -66,7 +66,8 @@ function hasTree(self, tile) {
 //one kind is, about
 var TREE_KINDS = Trees.codesByKind(),
   KIND_NAMES = Object.keys(TREE_KINDS),
-  STAND = 9;
+  STAND = 9,
+  SPREAD = 1.35;
 
 /**
  * Which tree grows on tile, the same one every time it is asked: the kind by
@@ -77,10 +78,14 @@ function treeAt(tile) {
   var x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
     //a stand's edge is not a straight line: now and then one of the next
-    //kind stands among them
+    //kind stands among them. The noise is seldom near either end, so it is
+    //spread out over them, for the first kind and the last to grow about as
+    //much as the ones between
     n =
-      (simplex.noise2D(x / STAND + 31.7, y / STAND - 12.3) + 1) / 2 +
-      (hash(x, y, 11) - 0.5) * 0.25,
+      0.5 +
+      (simplex.noise2D(x / STAND + 31.7, y / STAND - 12.3) / 2 +
+        (hash(x, y, 11) - 0.5) * 0.25) *
+        SPREAD,
     kind =
       KIND_NAMES[
         Math.max(

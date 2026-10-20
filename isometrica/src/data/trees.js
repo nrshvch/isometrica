@@ -1,8 +1,8 @@
 /**
- * The trees of the grassland, painted by shared/gen/trees: oak, beech, ash
- * and alder, two of each - every one a building of its own, of the tree class,
- * the variants of the tree type (data/buildings). The world grows them on its
- * own (core/ambient), each kind in stands of its own.
+ * The trees of the grassland, painted by shared/gen/trees: oak, beech, ash,
+ * alder, birch, pine and spruce, two of each - every one a building of its
+ * own, of the tree class, the variants of the tree type (data/buildings). The
+ * world grows them on its own (core/ambient), each kind in stands of its own.
  *
  * The first oak and the first beech keep the codes the two trees drawn by hand
  * had, so a city that has those has these instead.
@@ -17,7 +17,8 @@ var BASE = 6000;
 var PIVOT_X = 38,
   PIVOT_Y = 60;
 
-var KINDS = ["oak", "beech", "ash", "alder"];
+//a new kind goes on the end, so the codes of the ones before it stay
+var KINDS = ["oak", "beech", "ash", "alder", "birch", "pine", "spruce"];
 var EACH = 2;
 
 var TREES = [];

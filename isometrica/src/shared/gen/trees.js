@@ -1,5 +1,5 @@
 /**
- * Paints the broadleaf trees of the grassland - the ones the world grows on
+ * Paints the trees of the grassland - the ones the world grows on
  * its own, and the ones a city has planted - as pixel art in the manner of
  * the buildings: a tree's own shape, the way that kind grows, filled in with
  * three flat greens - in shade, in the light, and where the sun catches it
@@ -12,7 +12,13 @@
  *     a fresher green;
  *   - ash: a tall open crown of small clumps on branches that show between
  *     them; grey-green, light;
- *   - alder: slim, a narrow crown tapering to a point; dark green.
+ *   - alder: slim, a narrow crown tapering to a point; dark green;
+ *   - birch: a slender white trunk, leaning, under a light open crown of
+ *     small clumps; a fresh yellow-green;
+ *   - pine: a tall bare trunk, red-brown, under a flat, ragged crown on
+ *     branches; dark blue-green;
+ *   - spruce: a cone of tiers down to the ground, narrowing to a spike;
+ *     the darkest green.
  *
  * Each comes in two, grown from different seeds, and each of those is
  * painted from its four sides - "gen/trees/oak-1", "gen/trees/oak-1/r1" - so
@@ -323,6 +329,132 @@ var KINDS = {
 
       return {
         trunk: { height: 34, foot: 1.6, top: 0.8, lean: [0, 0] },
+        branches: [],
+        lobes: lobes,
+      };
+    },
+  },
+
+  birch: {
+    leaves: [
+      [40, 72, 24],
+      [66, 106, 34],
+      [98, 140, 46],
+      [138, 176, 66],
+      [180, 206, 100],
+    ],
+    //the trunk only ever shows the first two: grey in the shade, white in
+    //the light
+    bark: [
+      [128, 124, 118],
+      [218, 214, 202],
+      [236, 234, 226],
+    ],
+    clump: 0.44,
+    bumps: 1.5,
+    grow: function (r) {
+      var lobes = [[0, 0, 41, 3.5, 3.5, 4.5]],
+        n = 7;
+
+      for (var i = 0; i < n; i++) {
+        var a = (2 * Math.PI * (i + 0.5 * r())) / n,
+          d = 3.5 + 3 * r();
+
+        lobes.push([
+          Math.cos(a) * d,
+          Math.sin(a) * d,
+          19 + 18 * r(),
+          3.5 + 1.5 * r(),
+          3.5 + 1.5 * r(),
+          5 + 2 * r(),
+        ]);
+      }
+
+      return {
+        trunk: { height: 38, foot: 1.3, top: 0.6, lean: [0.8, 0.4] },
+        branches: branchesTo(lobes, 20, 0.6, 0.3),
+        lobes: lobes,
+      };
+    },
+  },
+
+  pine: {
+    leaves: [
+      [16, 40, 32],
+      [26, 58, 42],
+      [40, 80, 54],
+      [62, 104, 68],
+      [92, 132, 90],
+    ],
+    bark: [
+      [84, 54, 40],
+      [156, 96, 60],
+      [190, 124, 80],
+    ],
+    clump: 0.46,
+    bumps: 1.4,
+    grow: function (r) {
+      var lobes = [[0, 0, 47, 6, 6, 3.5]],
+        n = 5;
+
+      for (var i = 0; i < n; i++) {
+        var a = (2 * Math.PI * (i + 0.5 * r())) / n,
+          d = 5 + 4 * r();
+
+        lobes.push([
+          Math.cos(a) * d,
+          Math.sin(a) * d,
+          36 + 9 * r(),
+          5 + 2 * r(),
+          5 + 2 * r(),
+          2.8 + r(),
+        ]);
+      }
+
+      return {
+        trunk: { height: 44, foot: 1.8, top: 1, lean: [-0.8, 0.6] },
+        branches: branchesTo(lobes, 32, 0.8, 0.4),
+        lobes: lobes,
+      };
+    },
+  },
+
+  spruce: {
+    leaves: [
+      [12, 36, 28],
+      [22, 58, 40],
+      [34, 80, 54],
+      [54, 106, 70],
+      [80, 130, 92],
+    ],
+    bark: [
+      [50, 40, 34],
+      [82, 66, 54],
+      [108, 90, 74],
+    ],
+    clump: 0.34,
+    bumps: 0.8,
+    grow: function (r) {
+      //a cone of tiers, each a little lopsided, narrowing to a spike
+      var lobes = [[0, 0, 50, 2.2, 2.2, 4.5]],
+        n = 8;
+
+      for (var i = 0; i < n; i++) {
+        var w = 11.5 * (1 - i / n) + 1.8,
+          a = 2 * Math.PI * r();
+
+        lobes.push([
+          Math.cos(a) * w * 0.12,
+          Math.sin(a) * w * 0.12,
+          7 + i * 5.6,
+          w * (0.92 + 0.12 * r()),
+          w * (0.92 + 0.12 * r()),
+          2.6,
+        ]);
+      }
+
+      return {
+        trunk: { height: 44, foot: 1.6, top: 0.4, lean: [0, 0] },
         branches: [],
         lobes: lobes,
       };
