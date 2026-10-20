@@ -327,25 +327,29 @@ CameraScript.prototype.pan = function (x, y) {
   //dragged off a glide, it is let go of there
   this._glide = null;
 
+  var d = this.panShift(x, y);
+
+  this.gameObject.transform.translate(d[0], 0, d[1], "world");
+};
+
+/**
+ * How far along the ground a pan by x, y moves the camera, in the world - its
+ * x and z - without moving it: for where it is to end up, say, before it
+ * glides there (glideTo).
+ *
+ * @returns {number[]}
+ */
+CameraScript.prototype.panShift = function (x, y) {
   //from above, x is across the screen and z up it
-  if (this.top) {
-    this.gameObject.transform.translate(
-      -x / TOP_SCALE / this.panSens,
-      0,
-      y / TOP_SCALE / this.panSens,
-      "world",
-    );
-    return;
-  }
+  if (this.top)
+    return [-x / TOP_SCALE / this.panSens, y / TOP_SCALE / this.panSens];
 
   //the way along the ground that goes that way on screen as it is seen,
   //and in the world, the camera turned (see client/view)
-  var d = View.unvector(
+  return View.unvector(
     (-x * COS45 + y / COS45) / this.panSens,
     (x * COS45 + y / COS45) / this.panSens,
   );
-
-  this.gameObject.transform.translate(d[0], 0, d[1], "world");
 };
 
 //how long the camera takes to glide somewhere, ms; and how far off it starts

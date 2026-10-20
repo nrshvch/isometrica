@@ -251,11 +251,11 @@ var siteBuffer = new Float32Array(3),
   groundBuffer = new Float32Array(3);
 
 /**
- * Puts the camera over the middle of a city hall sizeX by sizeY on tile, up
- * on the ground there - so it is in the middle of the screen, however high
- * the ground.
+ * Glides the camera over the middle of a city hall sizeX by sizeY on tile, up
+ * on the ground there - so it ends up in the middle of the screen, however
+ * high the ground (WorldCamera#glideTo).
  */
-function lookAtSite(root, tile, sizeX, sizeY) {
+function glideToSite(root, tile, sizeX, sizeY) {
   var cam = root.camera.cameraScript,
     ts = Config.tileSize,
     x = (CoreTerrain.extractX(tile) + (sizeX - 1) / 2) * ts,
@@ -271,14 +271,18 @@ function lookAtSite(root, tile, sizeX, sizeY) {
   glMatrix.vec3.transformMat4(siteBuffer, siteBuffer, m);
   glMatrix.vec3.transformMat4(groundBuffer, groundBuffer, m);
 
-  cam.lookAt(x, z);
-  cam.pan(groundBuffer[0] - siteBuffer[0], groundBuffer[1] - siteBuffer[1]);
+  var shift = cam.panShift(
+    groundBuffer[0] - siteBuffer[0],
+    groundBuffer[1] - siteBuffer[1],
+  );
+
+  cam.glideTo(x + shift[0], z + shift[1]);
 }
 
 /**
  * Picks where to found a city: a city hall's footprint, in the middle of the
  * screen to start with, dragged about or tapped elsewhere - and the dice
- * takes the camera, and it, off to somewhere else a city could go.
+ * takes it off to somewhere else a city could go, the camera gliding after.
  */
 Cityman.prototype.establish = function () {
   var self = this;
@@ -396,7 +400,7 @@ Cityman.prototype.establish = function () {
   controls.onShuffle = function () {
     var tile = randomSite(root, fromX, fromY);
 
-    lookAtSite(root, tile, hall.sizeX, hall.sizeY);
+    glideToSite(root, tile, hall.sizeX, hall.sizeY);
     ts.selectTiles([tile]);
   };
 
