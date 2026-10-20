@@ -853,24 +853,48 @@ Buildman.prototype.unfade = function () {
   unfade(this);
 };
 
+//the toggles a road is laid with, by what it is laid in (city-sim's icons):
+//as it is while another is on, and when on, driven both ways or one way only
+var ROAD_TOOLS = [
+  {
+    material: "gravel",
+    off: "gravel-road-icon",
+    two: "gravel-two-way-icon",
+    one: "gravel-one-way-icon",
+  },
+  {
+    material: "cobble",
+    off: "cobble-road-icon",
+    two: "cobble-two-way-icon",
+    one: "cobble-one-way-icon",
+  },
+  {
+    material: "asphalt",
+    off: "road-icon",
+    two: "two-way-road-icon",
+    one: "one-way-road-icon",
+  },
+];
+
 /**
  * Puts the player to placing code: a selection to drag about and resize,
  * the buildings it would put down shown on it, until they confirm or leave.
  *
+ * A road is laid in what is toggled on below the selection meanwhile (see
+ * ROAD_TOOLS) - toggled on again, it goes one way only, and again, both ways.
+ *
  * @param [options] {{material: string, way: string}} for a road, what it is
- *        laid in - "gravel", the default, "cobble" or "asphalt" (see
- *        Road.materialAt) - and "one" for a one-way road, "two", the
- *        default, for one driven both ways
+ *        laid in to start with - "gravel", the default, "cobble" or
+ *        "asphalt" (see Road.materialAt) - and "one" for a one-way road,
+ *        "two", the default, for one driven both ways
  */
 Buildman.prototype.build = function (code, options) {
   var self = this;
   var root = this.root;
   var data = BuildingData[code];
+  var isRoad = data.classCode === BuildingClassCode.road;
   var material = (options && options.material) || "gravel";
-  var oneWay =
-    data.classCode === BuildingClassCode.road &&
-    !!options &&
-    options.way === "one";
+  var oneWay = isRoad && !!options && options.way === "one";
 
   //a one-way road goes the way it is dragged: from the end it was started
   //at - the tile the selection was on while it was a single one - on to the
@@ -1049,15 +1073,20 @@ Buildman.prototype.build = function (code, options) {
     return looks[slot];
   }
 
-  //show hint
-  root.ui
-    .gameScreen()
-    .worldScreen()
-    .showHint(
-      oneWay
-        ? "Drag the way the traffic goes, turn to flip it!"
-        : "Drag to place, pull arrows to resize!",
-    );
+  //show hint - for a one-way road, the way it goes. Turned round, it is
+  //only where there is a turn button for it (see controls.tools below)
+  function showHint(turnable) {
+    root.ui
+      .gameScreen()
+      .worldScreen()
+      .showHint(
+        !oneWay
+          ? "Drag to place, pull arrows to resize!"
+          : turnable
+            ? "Drag the way the traffic goes, turn to flip it!"
+            : "One way only: drag the way the traffic goes!",
+      );
+  }
 
   //the selection covers whole footprints, one building each
   var tokens = [];
@@ -1315,9 +1344,47 @@ Buildman.prototype.build = function (code, options) {
 
   //bind ui
   var controls = root.ui.gameScreen().showActionControls();
+  //a road is picked as it is laid, with toggles of its own where the screen
+  //has room for them - and none for turning it round
+  var roadTools = isRoad && !!controls.tools;
+
+  //what a road is laid in, toggled on: another the same way, both ways to
+  //start with - and the one that is on, the other way round from how it is
+  //driven. The preview changes with it, the whole selection
+  function pickRoad(m) {
+    if (m === material) oneWay = !oneWay;
+    else {
+      material = m;
+      oneWay = false;
+    }
+
+    showRoadTools();
+    showHint(false);
+    updateHilite();
+  }
+
+  function showRoadTools() {
+    controls.tools(
+      ROAD_TOOLS.map(function (tool) {
+        var on = tool.material === material;
+
+        return {
+          icon: !on ? tool.off : oneWay ? tool.one : tool.two,
+          on: on,
+          action: function () {
+            pickRoad(tool.material);
+          },
+        };
+      }),
+    );
+  }
+
+  if (roadTools) showRoadTools();
+  showHint(!roadTools);
+
   //anything can be turned round - what was never painted that way is drawn
   //flipped over (see BuildingView) - unless it says otherwise
-  controls.canRotate(data.canRotate !== false || oneWay);
+  controls.canRotate(!roadTools && (data.canRotate !== false || oneWay));
   controls.onRotate = function () {
     //a one-way road turns round the way it goes
     if (oneWay) {

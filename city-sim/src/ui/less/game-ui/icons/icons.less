@@ -52,13 +52,24 @@
   background-image: url(@chevron-down-image);
 }
 
-//what a road is laid in, picked before it is laid: gravel, cobbles - and
-//asphalt, which is the road icon
+//what a road is laid in, toggled while it is being laid: gravel, cobbles -
+//and asphalt, which is the road icon. The one being laid shows the way it is
+//driven, both ways or one way only, the arrows drawn the way they are on
+//the road itself: darker stones on gravel, pale ones among cobbles - and
+//asphalt's are the two-way and one-way icons below
 @gravel-road-image: "../icons/gravel-road.png";
 @cobble-road-image: "../icons/cobble-road.png";
+@gravel-two-way-image: "../icons/gravel-two-way.png";
+@gravel-one-way-image: "../icons/gravel-one-way.png";
+@cobble-two-way-image: "../icons/cobble-two-way.png";
+@cobble-one-way-image: "../icons/cobble-one-way.png";
 
 .gravel-road-icon,
-.cobble-road-icon {
+.cobble-road-icon,
+.gravel-two-way-icon,
+.gravel-one-way-icon,
+.cobble-two-way-icon,
+.cobble-one-way-icon {
   background-repeat: no-repeat;
   image-rendering: pixelated;
   .cover;
@@ -72,6 +83,22 @@
   background-image: url(@cobble-road-image);
 }
 
+.gravel-two-way-icon {
+  background-image: url(@gravel-two-way-image);
+}
+
+.gravel-one-way-icon {
+  background-image: url(@gravel-one-way-image);
+}
+
+.cobble-two-way-icon {
+  background-image: url(@cobble-two-way-image);
+}
+
+.cobble-one-way-icon {
+  background-image: url(@cobble-one-way-image);
+}
+
 //another building picked at random while one is being placed
 @dice-image: "../icons/dice.png";
 
@@ -82,8 +109,7 @@
   .cover;
 }
 
-//which ways a road goes, picked after what it is laid in: both ways, or
-//one way only
+//an asphalt road being laid, driven both ways or one way only
 @two-way-road-image: "../icons/two-way-road.png";
 @one-way-road-image: "../icons/one-way-road.png";
 

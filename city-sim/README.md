@@ -11,12 +11,14 @@ other games start on is built here, and handed over from the city screen.
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.
-- A road is laid in what the player picks before laying it, the way the
-  ground is shaped by picking what to do to it first: gravel - a village's
-  lanes, and the default - cobbles, or asphalt. Gravel laid next to the old
+- A road is laid in whichever of gravel - a village's lanes, and the
+  default - cobbles or asphalt is toggled on along the bottom while it is
+  being laid: the selection is up to be dragged out from the start, and the
+  preview of all of it changes with the toggle. Gravel laid next to the old
   town comes out cobbled (`isometrica/src/client/road.js` materialAt). What a road
   is laid in is kept with it, in the save.
-- Then whether it goes both ways or one way only. A one-way road looks like
+- Toggled on again, it goes one way only, and again both ways - the one
+  that is on shows which, with the arrows a road of it has. A one-way road looks like
   any other, but both its lanes go its way: a car keeps to the right one
   whenever it can, and takes the left to turn left, when the right is busy
   - out of a queue, if the left is clear and emptier - or to overtake, and
@@ -28,8 +30,9 @@ other games start on is built here, and handed over from the city screen.
     goes against it: no car drives along it the other way, into it or out of it,
     though one can come into it from a side road and go the way it goes, and
     leave it at a junction. It goes the way it is dragged, from the end it
-    was started at on to the finger and on round every corner on the way;
-    the turn button turns it round (`isometrica/src/client/buildman.js` flowOf). Each
+    was started at on to the finger and on round every corner on the way -
+    dragged out from the other end, it goes the other way
+    (`isometrica/src/client/buildman.js` flowOf). Each
     tile of it keeps the way it goes in the save (`isometrica/src/client/road.js`
     wayOf, goes). Its straight pieces have no line down the middle but an
     arrow the way it goes - white on asphalt, darker stones on gravel, pale

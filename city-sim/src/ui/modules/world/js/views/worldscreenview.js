@@ -5,11 +5,13 @@ import $ from "jquery";
 
 var template = Handlebars.compile(__templateSource);
 
-function setBtn(self, index, icon, f) {
+//on for a toggle that is switched on - outlined
+function setBtn(self, index, icon, f, on) {
   var state = self._state;
   var btn = state[index] || (state[index] = {});
   btn.icon = icon;
   btn.action = f;
+  btn.on = on === true;
 }
 
 function unsetBtn(self, index) {
@@ -36,6 +38,7 @@ function renderBtns(self) {
     if (btn !== undefined) {
       var $btn = $btns.eq(parseInt(key, 10));
       $btn.addClass(btn.icon);
+      $btn.toggleClass("on", btn.on);
       $btn.on("click", btn.action);
     }
   }
@@ -81,18 +84,30 @@ WorldScreenView.prototype.showActionButtons = function (controls) {
   var view = this;
 
   function render() {
+    var tools = controls.tools ? controls.tools() : null;
+
     unsetBtns(view);
 
     //an action that is only ever left, never confirmed - picking which block
-    //of land to buy, say - has nothing for a tick to do
+    //of land to buy, say - has nothing for a tick to do. With buttons of its
+    //own, they go in between, and it to the far end
     if (controls.canSubmit()) {
-      setBtn(view, 2, "tick-icon", function () {
+      setBtn(view, tools ? 4 : 2, "tick-icon", function () {
         controls.submit();
       });
     }
     setBtn(view, 0, "cross-icon", function () {
       controls.discard();
     });
+
+    if (tools) {
+      tools.forEach(function (tool, i) {
+        setBtn(view, i + 1, tool.icon, tool.action, tool.on);
+      });
+
+      renderBtns(view);
+      return;
+    }
 
     // canRotate may be set by the caller only after this view was
     // handed the controls, so keep the button in sync with it instead
@@ -115,6 +130,7 @@ WorldScreenView.prototype.showActionButtons = function (controls) {
 
   controls.canRotate.onChange(render, false, this);
   if (controls.canShuffle) controls.canShuffle.onChange(render, false, this);
+  if (controls.tools) controls.tools.onChange(render, false, this);
   controls.canSubmit.onChange(render, false, this);
   render();
 };

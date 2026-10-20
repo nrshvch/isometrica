@@ -6,6 +6,10 @@ function WorldAction() {
   //whether what goes up can be picked again, at random - another building
   //of the same kind on the same selection (the dice)
   this.canShuffle = ReactiveProperty(false);
+  //the action's own buttons, between leaving it and confirming it - which
+  //goes to the far end for them: {icon, on, action} each, on for one that is
+  //switched on (WorldScreenView#showActionButtons) - or null for none
+  this.tools = ReactiveProperty(null);
   this.canSubmit = ReactiveProperty(true);
   this.canDiscard = ReactiveProperty(true);
 }

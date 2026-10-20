@@ -1,8 +1,9 @@
 /**
  * The city builder's buttons over the world: the ones it starts on - to found
  * a city where there is none - and the building tools once there is: start
- * afresh, the catalogue, a road, shaping the ground and buying land. And the
- * steps a road is picked in before it is laid.
+ * afresh, the catalogue, a road, shaping the ground and buying land. A road
+ * is picked - what it is laid in, which ways it goes - as it is laid
+ * (isometrica client/buildman build).
  */
 import BuildingCode from "isometrica/data/buildingcode";
 
@@ -45,7 +46,7 @@ export function showWorld(world, name) {
     {
       icon: "road-icon",
       action: function () {
-        pickRoad(world);
+        world.ui.navigate("build", [BuildingCode.road]);
       },
     },
     {
@@ -85,59 +86,4 @@ export function startFresh(world) {
   };
 
   return controls;
-}
-
-/**
- * Asks what a road is to be laid in before it is laid - gravel, the lanes of
- * a village and the default; cobbles; or asphalt - the way the ground is
- * shaped by picking what to do to it first, and then which ways it goes
- * (pickWay). Gravel laid by the old town comes out cobbled (client/road
- * materialAt).
- */
-export function pickRoad(world) {
-  function lay(material) {
-    return function () {
-      pickWay(world, material);
-    };
-  }
-
-  world.showHint("Lay the road in gravel, cobbles or asphalt");
-  world.showTools([
-    {
-      icon: "cross-icon",
-      action: function () {
-        world.hideHint();
-        world.show();
-      },
-    },
-    { icon: "gravel-road-icon", action: lay("gravel") },
-    { icon: "cobble-road-icon", action: lay("cobble") },
-    { icon: "road-icon", action: lay("asphalt") },
-  ]);
-}
-
-/**
- * Asks, a road's material picked, whether it is driven both ways or one way
- * only - a one-way road going the way it is dragged (client/buildman) - or
- * back to the materials.
- */
-export function pickWay(world, material) {
-  function lay(way) {
-    return function () {
-      world.hideHint();
-      world.ui.navigate("build", [BuildingCode.road, material, way]);
-    };
-  }
-
-  world.showHint("Both ways, or one way only?");
-  world.showTools([
-    {
-      icon: "back-icon",
-      action: function () {
-        pickRoad(world);
-      },
-    },
-    { icon: "two-way-road-icon", action: lay("two") },
-    { icon: "one-way-road-icon", action: lay("one") },
-  ]);
 }

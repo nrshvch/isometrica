@@ -35,8 +35,8 @@ export default {
         break;
       case "build":
         gs.show("world");
-        //and for a road, what it is laid in and which ways it goes
-        //(ui/world pickRoad, pickWay)
+        //and for a road, what it is laid in and which ways it goes to start
+        //with - gravel both ways unless said (isometrica client/buildman)
         gs.client.buildman.build(
           args[0],
           args[1] ? { material: args[1], way: args[2] } : undefined,

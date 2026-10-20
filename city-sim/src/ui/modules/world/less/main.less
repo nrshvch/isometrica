@@ -60,6 +60,13 @@
         height: 80%;
         cursor: pointer;
         pointer-events: all;
+
+        //a toggle switched on - the road being laid, say - outlined a
+        //pixel art pixel wide, in the yellow of the arrows
+        &.on {
+          filter: drop-shadow(2px 0 0 #ffd83d) drop-shadow(-2px 0 0 #ffd83d)
+            drop-shadow(0 2px 0 #ffd83d) drop-shadow(0 -2px 0 #ffd83d);
+        }
       }
     }
   }
