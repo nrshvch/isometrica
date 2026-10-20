@@ -6,11 +6,13 @@
  *   the city, a small town, the country - by day or by night, going with the
  *   weather;
  * - the place itself, by what there is of it on screen, one into the next
- *   as the camera goes from the town out over the country and the sea: the
- *   woods and the fields - a breath of air and birds by day, a breeze and
- *   crickets at night; the beach - small waves on it, rough ones in a gale,
- *   and gulls over it by day; the open sea, far out - mostly the wind.
- *   Louder the closer the camera is;
+ *   as the camera goes from the town out over the country and the sea - as
+ *   real as the hum of the town (shared/gen/country): the woods and the
+ *   fields - a breath of air in the trees and the birds of a wood singing
+ *   by day, crickets and an owl at night; the beach - small waves breaking
+ *   along it, big ones in a gale, and gulls over it by day; the open sea,
+ *   far out - mostly the wind, and the crests breaking white. Louder the
+ *   closer the camera is;
  * - the hum of the town heard from above (shared/gen/skyline): full over
  *   the busy middle of a town - its shops, offices and works, and the cars
  *   going about it - and faint and dull, far off, over the outskirts and
@@ -76,15 +78,17 @@ var JAM_AFTER = 3500,
   HORN_GAP = 1200,
   HORNS_EVERY = 250;
 
-//the loops of the places: which sound, and by what share of the screen it
-//plays (Soundman#survey) - the town has its own, the skyline
+//the loops of the places: which sound, by what share of the screen it
+//plays (Soundman#survey) and when - the town has its own, the skyline -
+//and whether the rain drowns it out a bit (the birds, the gulls)
 var PLACES = [
-  { name: "forest/0", by: "wild", when: "day" },
-  { name: "forest/1", by: "wild", when: "night" },
-  { name: "sea/0", by: "shore", when: "calm" },
-  { name: "sea/1", by: "shore", when: "rough" },
-  { name: "gulls/0", by: "shore", when: "day" },
-  { name: "sea/2", by: "open", when: "always" },
+  { name: "woods/0", by: "wild", when: "day", wet: true },
+  { name: "woods/1", by: "wild", when: "night", wet: true },
+  { name: "beach/0", by: "shore", when: "calm day", wet: true },
+  { name: "beach/1", by: "shore", when: "calm night" },
+  { name: "beach/2", by: "shore", when: "rough" },
+  { name: "offshore/0", by: "open", when: "calm" },
+  { name: "offshore/1", by: "open", when: "rough" },
 ];
 
 //how much of the woods' sound the open fields have - the air and the birds,
@@ -550,18 +554,18 @@ Soundman.prototype.places = function (weather) {
       night: 1 - day,
       calm: 1 - rough,
       rough: rough,
-      always: 1,
+      "calm day": (1 - rough) * day,
+      "calm night": (1 - rough) * (1 - day),
     },
     self = this;
 
   PLACES.forEach(function (p) {
+    //one into the next by power, so it does not dip in between
     var share = Math.sqrt(land[p.by]),
-      gain = share * when[p.when] * near;
+      gain = share * Math.sqrt(clamp(when[p.when])) * near;
 
     if (p.by === "wild") gain *= hush;
-    if (p.name.indexOf("forest") === 0 || p.name.indexOf("gulls") === 0)
-      gain *= wet;
-    if (p.name.indexOf("gulls") === 0) gain *= 1 - rough * 0.7;
+    if (p.wet) gain *= wet;
 
     self.loop(p.name, gain);
   });

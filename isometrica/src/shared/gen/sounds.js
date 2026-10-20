@@ -26,19 +26,20 @@
  *   - siren: a police car's, through a loudspeaker's horn - the wail, the
  *     yelp and the two-tone nee-naw. It loops: its pitch is worked out so a
  *     whole number of cycles goes into every turn of it;
- *   - forest: a breath of air through the trees, the leaves rustling when
- *     it blows hardest, and birds - chirps, trills, a two-note whistle and
- *     a warble, near and far, here and there; at night a breezier one, the
- *     birds gone quiet but for one or two, and crickets;
+ *   - forest: wind in gusts through the trees, the leaves rustling when it
+ *     blows hardest, and birds - chirps, trills, a two-note whistle and a
+ *     warble, near and far, here and there;
  *   - sea: waves - each a swell rising, breaking, and washing back up the
- *     beach fizzing - over the low roar of the surf further out, small ones
- *     on a calm day, and in the rougher one gulls; and out on the open sea,
- *     far from any beach, mostly the wind over the water;
+ *     beach fizzing - over the low roar of the surf further out, and in
+ *     the rougher one gulls;
  *   - city: a town heard from a little way off - the low roar of its
  *     traffic coming and going, cars whooshing past, a hum under it all,
  *     now and then a horn;
  *   - skyline: a real city heard from high above it, not a cartoon of one
- *     - its own models, in skyline.js.
+ *     - its own models, in skyline.js;
+ *   - woods, beach and offshore: the country heard from above it - the
+ *     woods by day and night, the beach, the open sea - as real as the
+ *     skyline, not cartoons of it: their own models, in country.js.
  *
  * The last four loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
@@ -74,6 +75,7 @@ import {
   level,
 } from "./dsp.js";
 import { SKYLINE } from "./skyline.js";
+import { WOODS_SOUND, BEACH_SOUND, OFFSHORE_SOUND } from "./country.js";
 
 //how many samples a second, unless asked for another rate
 export var RATE = 44100;
@@ -517,72 +519,11 @@ var BIRDS = ["chirp", "trill", "whistle", "warble"];
  * The forest
  * --------------------------------------------------------------------- */
 
-//how many birds call in a loop of each, how hard the wind blows, how many
-//crickets chirp, and how loud it all is
+//how many birds call in a loop of each, and how hard the wind blows
 var FORESTS = [
-  //the day: quiet, a breath of air and some birds
-  { seconds: 24, birds: 16, wind: 0.45, crickets: 0, loud: 0.07 },
-  //the night: breezier, a bird or two, and crickets
-  { seconds: 24, birds: 2, wind: 0.8, crickets: 6, loud: 0.08 },
+  { seconds: 24, birds: 26, wind: 0.6 },
+  { seconds: 24, birds: 12, wind: 1 },
 ];
-
-/**
- * A cricket's chirp, mono: its wings rubbing, a few short pulses of one
- * high note close together.
- */
-function chirp(rate, f, pulses) {
-  var pulse = 0.018,
-    gap = 0.016,
-    out = new Float32Array(Math.round(pulses * (pulse + gap) * rate)),
-    len = Math.round(pulse * rate);
-
-  for (var p = 0; p < pulses; p++) {
-    var from = Math.round(p * (pulse + gap) * rate);
-
-    for (var i = 0; i < len && from + i < out.length; i++)
-      out[from + i] = Math.sin((TAU * f * i) / rate) * syllable(i / len);
-  }
-
-  return out;
-}
-
-/**
- * Crickets in the grass, both ears: each chirping on its own beat, steady
- * the way crickets are - a whole number of chirps to a loop, so the beat
- * goes on over the seam - near or far, coming up and dying down on its own.
- */
-function crickets(rnd, rate, seconds, count) {
-  var n = Math.round(seconds * rate),
-    ch = [new Float32Array(n), new Float32Array(n)];
-
-  for (var c = 0; c < count; c++) {
-    var times = Math.round(seconds / between(rnd, 0.45, 0.8)),
-      every = seconds / times,
-      call = chirp(rate, between(rnd, 4200, 5200), 3 + Math.floor(rnd() * 2)),
-      far = rnd(),
-      pan = between(rnd, -0.9, 0.9),
-      swells = wander(rnd, seconds, between(rnd, 3, 6)),
-      start = rnd() * every,
-      dull = new OnePole(rate, 8000 - far * 4000);
-
-    for (var j = 0; j < call.length; j++) call[j] = dull.run(call[j]);
-
-    for (var k = 0; k < times; k++) {
-      var t = start + k * every;
-
-      lay(
-        ch,
-        call,
-        Math.round(t * rate),
-        pan,
-        (0.05 + 0.1 * (1 - far)) * (0.15 + 0.85 * swells(t)),
-        true,
-      );
-    }
-  }
-
-  return ch;
-}
 
 function forest(rnd, variant, rate) {
   var fo = FORESTS[variant],
@@ -641,16 +582,6 @@ function forest(rnd, variant, rate) {
     );
   }
 
-  //and the crickets, in among them
-  if (fo.crickets > 0) {
-    var chirps = crickets(rnd, rate, fo.seconds, fo.crickets);
-
-    for (i = 0; i < n; i++) {
-      birds[0][i] += chirps[0][i];
-      birds[1][i] += chirps[1][i];
-    }
-  }
-
   birds = spacedStereo(birds, rate, 1.1, 0.3, 0.25, true);
 
   for (i = 0; i < n; i++) {
@@ -658,21 +589,18 @@ function forest(rnd, variant, rate) {
     ch[1][i] += birds[1][i];
   }
 
-  return level(ch, fo.loud);
+  return level(ch, 0.11);
 }
 
 /* ------------------------------------------------------------------------
  * The sea
  * --------------------------------------------------------------------- */
 
-//how many waves break in a loop of each, how big they are, how many gulls
-//call, how hard the wind blows over the water, and how loud it all is
+//how many waves break in a loop of each, how big they are, and how many
+//gulls call
 var SEAS = [
-  //small waves on the beach of a calm day
-  { seconds: 24, waves: 4, size: 0.7, gulls: 0, wind: 0, loud: 0.09 },
-  { seconds: 24, waves: 3, size: 1, gulls: 4, wind: 0, loud: 0.13 },
-  //the open sea: no beach to break on, the swell far under the wind
-  { seconds: 24, waves: 0, size: 0.25, gulls: 0, wind: 1, loud: 0.09 },
+  { seconds: 24, waves: 4, size: 0.7, gulls: 0 },
+  { seconds: 24, waves: 3, size: 1, gulls: 4 },
 ];
 
 /**
@@ -816,37 +744,8 @@ function sea(rnd, variant, rate) {
     ch.push(seamless(buf, n, over));
   }
 
-  //the wind over the water, in gusts - a low rush all the while, and higher
-  //and brighter when it blows hardest - a little different in each ear
-  if (se.wind > 0) {
-    var gusts = wander(rnd, se.seconds, 2.8);
-
-    for (side = 0; side < 2; side++) {
-      var air = pink(seeded(seedOf("sea wind" + variant + side))),
-        low = new Biquad(rate, "lowpass", 500, 0.7),
-        band = new Biquad(rate, "bandpass", 700, 0.9),
-        blow = new Float32Array(n + over);
-
-      for (i = 0; i < n + over; i++) {
-        var hard = gusts(i / rate + side * 0.5);
-
-        if (i % 64 === 0) band.set("bandpass", 400 + 1000 * hard * hard, 0.9);
-
-        var a = air();
-
-        blow[i] =
-          se.wind *
-          (low.run(a) * (0.35 + 0.45 * hard) +
-            band.run(a) * (0.3 + 1.4 * hard * hard));
-      }
-
-      blow = seamless(blow, n, over);
-      for (i = 0; i < n; i++) ch[side][i] += blow[i];
-    }
-  }
-
   //the waves breaking, one after another round the loop
-  var gap = se.seconds / Math.max(1, se.waves);
+  var gap = se.seconds / se.waves;
 
   for (i = 0; i < se.waves; i++) {
     var long = between(rnd, 5.5, 8),
@@ -887,7 +786,7 @@ function sea(rnd, variant, rate) {
     }
   }
 
-  return level(ch, se.loud);
+  return level(ch, 0.13);
 }
 
 /* ------------------------------------------------------------------------
@@ -1171,11 +1070,14 @@ export var SOUNDS = {
     ways: ["beep", "beep-beep", "meep-meep", "honk"],
   },
   siren: { loop: true, make: siren, ways: ["wail", "yelp", "nee-naw"] },
-  forest: { loop: true, make: forest, ways: ["day", "night"] },
-  sea: { loop: true, make: sea, ways: ["calm", "rough, gulls", "open, wind"] },
+  forest: { loop: true, make: forest, ways: ["birdsong", "breezy"] },
+  sea: { loop: true, make: sea, ways: ["calm", "rough, gulls"] },
   gulls: { loop: true, make: gulls, ways: ["crying", "laughing"] },
   city: { loop: true, make: city, ways: ["day", "night"] },
   skyline: SKYLINE,
+  woods: WOODS_SOUND,
+  beach: BEACH_SOUND,
+  offshore: OFFSHORE_SOUND,
 };
 
 /**

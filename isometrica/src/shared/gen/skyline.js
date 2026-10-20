@@ -15,13 +15,13 @@
  * buzzing through a trumpet, often two a third apart, tapped, leaned on, or
  * answering each other in a jam - each coming back off the buildings. All of
  * it in the long echo of streets between tall walls: a feedback delay
- * network (Jot's), denser and longer than the little reverb of the cartoon
- * sounds.
+ * network (Jot's, dsp.js ring), denser and longer than the little reverb of
+ * the cartoon sounds.
  *
  * Nothing here is laid in from the other sounds - the cars and horns are
  * their own models - only the plain pieces (noise, filters, laying sounds
- * into the ears, seamless loops) come from dsp.js. It loops, seamlessly,
- * the way the forest and the sea do.
+ * into the ears, seamless loops, the ring of the streets) come from dsp.js.
+ * It loops, seamlessly, the way the forest and the sea do.
  */
 
 import {
@@ -39,6 +39,9 @@ import {
   seamless,
   peak,
   level,
+  rms,
+  scale,
+  ring,
 } from "./dsp.js";
 
 //how fast sound goes, metres a second - for the pitch of what goes by
@@ -126,27 +129,6 @@ function fade(u, edge) {
   var s = clamp(Math.min(u, 1 - u) / edge, 0, 1);
 
   return s * s * (3 - 2 * s);
-}
-
-//how loud on the whole, both ears together
-function rms(ch) {
-  var sum = 0,
-    n = 0;
-
-  for (var c = 0; c < ch.length; c++)
-    for (var i = 0; i < ch[c].length; i++) {
-      sum += ch[c][i] * ch[c][i];
-      n++;
-    }
-
-  return n > 0 ? Math.sqrt(sum / n) : 0;
-}
-
-function scale(ch, k) {
-  for (var c = 0; c < ch.length; c++)
-    for (var i = 0; i < ch[c].length; i++) ch[c][i] *= k;
-
-  return ch;
 }
 
 /* ------------------------------------------------------------------------
@@ -469,77 +451,6 @@ function echoing(ch, rnd, rate, sound, at, pan, far, loud) {
 }
 
 /* ------------------------------------------------------------------------
- * The streets ringing on
- * --------------------------------------------------------------------- */
-
-//how long each of the eight lines is, in samples at 44.1 kHz: none a
-//multiple of another, so they never ring together
-var LINES = [1433, 1601, 1867, 2053, 2251, 2399, 2617, 2797];
-
-/**
- * What comes back off the streets of a city: eight delay lines of different
- * lengths fed back into each other through a mixing matrix (Jot's feedback
- * delay network, Householder's matrix), each a little duller every time
- * round, so what goes in rings on for `ring` seconds as a dense, even wash.
- * The left ear feeds and hears half the lines, the right the other half.
- * Only what comes back; it goes round twice and the second time is kept, so
- * what rings on past the end of the loop comes in at its start.
- */
-function streets(ch, rate, ring) {
-  var n = ch[0].length,
-    m = LINES.length,
-    lines = LINES.map(function (len) {
-      var size = Math.round(len * 1.6 * (rate / 44100));
-
-      return {
-        buf: new Float32Array(size),
-        i: 0,
-        //down by 60 dB after `ring` seconds
-        keep: Math.pow(10, (-3 * size) / rate / ring),
-        dull: 0,
-      };
-    }),
-    damp = 1 - Math.exp((-2 * Math.PI * 3500) / rate),
-    taken = new Float64Array(m),
-    out = [new Float32Array(n), new Float32Array(n)];
-
-  for (var pass = 0; pass < 2; pass++)
-    for (var i = 0; i < n; i++) {
-      var sum = 0,
-        l = 0,
-        r = 0,
-        j,
-        line;
-
-      for (j = 0; j < m; j++) {
-        line = lines[j];
-
-        var y = line.buf[line.i];
-
-        if (j % 2 === 0) l += y;
-        else r += y;
-
-        line.dull += damp * (y - line.dull);
-        taken[j] = line.dull * line.keep;
-        sum += taken[j];
-      }
-
-      sum *= 2 / m;
-
-      for (j = 0; j < m; j++) {
-        line = lines[j];
-        line.buf[line.i] = taken[j] - sum + ch[j % 2][i] * 0.5;
-        line.i = (line.i + 1) % line.buf.length;
-      }
-
-      out[0][i] = l * 0.5;
-      out[1][i] = r * 0.5;
-    }
-
-  return out;
-}
-
-/* ------------------------------------------------------------------------
  * The skyline
  * --------------------------------------------------------------------- */
 
@@ -627,7 +538,7 @@ function skyline(rnd, variant, rate) {
     for (i = 0; i < n; i++)
       send[c][i] = bed[c][i] * 0.15 + traffic[c][i] * 0.4 + loud[c][i];
 
-  var back = streets(send, rate, sk.ring);
+  var back = ring(send, rate, sk.ring, 3500, 1.6);
 
   scale(back, (0.6 * rms(send)) / (rms(back) || 1));
 

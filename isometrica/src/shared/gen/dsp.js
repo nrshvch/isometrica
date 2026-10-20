@@ -4,9 +4,10 @@
  * comes out the same for the same seed; white, pink and brown noise; one-
  * and two-pole filters (Robert Bristow-Johnson's cookbook); band-limited saw
  * and square waves (polyBLEP); soft clipping; a little Schroeder reverb for
- * the space round a sound; and the ways of laying sounds into two ears, of
- * making what loops go round without a seam, and of setting how loud it all
- * is.
+ * the space round a sound, and a longer, denser ring - Jot's feedback delay
+ * network - for the streets of a city or the trees of a wood; and the ways
+ * of laying sounds into two ears, of making what loops go round without a
+ * seam, and of setting how loud it all is.
  */
 
 export var TAU = Math.PI * 2;
@@ -450,6 +451,100 @@ export function wet(ch, rate, size, damp, loop) {
 
     for (i = 0; i < n; i++) out[side][i] = room(src[i]);
   }
+
+  return out;
+}
+
+//how loud on the whole, both ears together
+export function rms(ch) {
+  var sum = 0,
+    n = 0;
+
+  for (var c = 0; c < ch.length; c++)
+    for (var i = 0; i < ch[c].length; i++) {
+      sum += ch[c][i] * ch[c][i];
+      n++;
+    }
+
+  return n > 0 ? Math.sqrt(sum / n) : 0;
+}
+
+export function scale(ch, k) {
+  for (var c = 0; c < ch.length; c++)
+    for (var i = 0; i < ch[c].length; i++) ch[c][i] *= k;
+
+  return ch;
+}
+
+//how long each of the eight lines of ring is, in samples at 44.1 kHz: none
+//a multiple of another, so they never ring together
+var LINES = [1433, 1601, 1867, 2053, 2251, 2399, 2617, 2797];
+
+/**
+ * What comes back off what is round a sound - the streets of a city, the
+ * trees of a wood: eight delay lines of different lengths fed back into
+ * each other through a mixing matrix (Jot's feedback delay network,
+ * Householder's matrix), each a little duller every time round, so what
+ * goes in rings on for `seconds` as a dense, even wash - denser and longer
+ * than space's. The left ear feeds and hears half the lines, the right the
+ * other half. Only what comes back; it goes round twice and the second time
+ * is kept, so what rings on past the end of a loop comes in at its start.
+ *
+ * @param seconds {number} how long until it is down by 60 dB
+ * @param bright {number} Hz, how much of the top is kept every time round
+ * @param size {number} how far apart what it comes back off is - 1.6 for
+ *        the streets of a city
+ */
+export function ring(ch, rate, seconds, bright, size) {
+  var n = ch[0].length,
+    m = LINES.length,
+    lines = LINES.map(function (len) {
+      var long = Math.round(len * size * (rate / 44100));
+
+      return {
+        buf: new Float32Array(long),
+        i: 0,
+        //down by 60 dB after `seconds`
+        keep: Math.pow(10, (-3 * long) / rate / seconds),
+        dull: 0,
+      };
+    }),
+    damp = 1 - Math.exp((-2 * Math.PI * bright) / rate),
+    taken = new Float64Array(m),
+    out = [new Float32Array(n), new Float32Array(n)];
+
+  for (var pass = 0; pass < 2; pass++)
+    for (var i = 0; i < n; i++) {
+      var sum = 0,
+        l = 0,
+        r = 0,
+        j,
+        line;
+
+      for (j = 0; j < m; j++) {
+        line = lines[j];
+
+        var y = line.buf[line.i];
+
+        if (j % 2 === 0) l += y;
+        else r += y;
+
+        line.dull += damp * (y - line.dull);
+        taken[j] = line.dull * line.keep;
+        sum += taken[j];
+      }
+
+      sum *= 2 / m;
+
+      for (j = 0; j < m; j++) {
+        line = lines[j];
+        line.buf[line.i] = taken[j] - sum + ch[j % 2][i] * 0.5;
+        line.i = (line.i + 1) % line.buf.length;
+      }
+
+      out[0][i] = l * 0.5;
+      out[1][i] = r * 0.5;
+    }
 
   return out;
 }
