@@ -39,7 +39,10 @@
  *     - its own models, in skyline.js;
  *   - woods and offshore: the country heard from above it - the woods by
  *     day and night, a slight wind over the sea - as real as the skyline,
- *     not cartoons of it: their own models, in country.js.
+ *     not cartoons of it: their own models, in country.js;
+ *   - square and bells: the old town heard from above it - its market
+ *     square's people talking, and now and then its church's bells - their
+ *     own models, in square.js.
  *
  * The last four loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
@@ -76,6 +79,7 @@ import {
 } from "./dsp.js";
 import { SKYLINE } from "./skyline.js";
 import { WOODS_SOUND, OFFSHORE_SOUND } from "./country.js";
+import { SQUARE_SOUND, BELLS_SOUND } from "./square.js";
 
 //how many samples a second, unless asked for another rate
 export var RATE = 44100;
@@ -1077,6 +1081,8 @@ export var SOUNDS = {
   skyline: SKYLINE,
   woods: WOODS_SOUND,
   offshore: OFFSHORE_SOUND,
+  square: SQUARE_SOUND,
+  bells: BELLS_SOUND,
 };
 
 /**

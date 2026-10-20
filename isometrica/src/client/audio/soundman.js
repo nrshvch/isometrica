@@ -12,6 +12,11 @@
  *   by day, crickets and an owl at night; the sea - only a slight wind
  *   over it, stronger in a gale, no waves. Louder the closer the camera
  *   is;
+ * - the old town (shared/gen/square): over its blocks the murmur of its
+ *   market square by day, people talking, a laugh, a stallholder calling
+ *   out - a few passing through at night - and now and then by day its
+ *   church's bells, from where the church is: one tolling, or the tower's
+ *   rung in rounds;
  * - the hum of the town heard from above (shared/gen/skyline): full over
  *   the busy middle of a town - its shops, offices and works, and the cars
  *   going about it - and faint and dull, far off, over the outskirts and
@@ -38,6 +43,7 @@ import * as glMatrix from "gl-matrix";
 import Config from "../config";
 import Weather from "../weather";
 import BuildingClassCode from "../../data/classcode";
+import BuildingState from "../../core/buildingstate";
 import TerrainType from "../../core/terraintype";
 import Terrain from "../../core/terrain";
 import Maker from "./maker";
@@ -49,6 +55,7 @@ var QUIET = {
   music: true,
   places: false,
   skyline: false,
+  bells: false,
   thunder: true,
   horns: true,
 };
@@ -85,7 +92,21 @@ var PLACES = [
   { name: "woods/1", by: "wild", when: "night", wet: true },
   { name: "offshore/0", by: "sea", when: "calm" },
   { name: "offshore/1", by: "sea", when: "rough" },
+  { name: "square/0", by: "oldtown", when: "day", full: 0.06 },
+  { name: "square/1", by: "oldtown", when: "night", full: 0.06 },
 ];
+
+//the old town's church bells: how long between one ringing and the next
+//while a church is on screen, ms, from .. to - and before the first, once
+//one comes on screen; how likely they are rung in rounds rather than one
+//tolling; and how loud
+var BELLS_EVERY = [50000, 140000],
+  BELLS_FIRST = [15000, 45000],
+  ROUNDS_ODDS = 0.3,
+  BELLS_LOUD = 0.55;
+
+//the designs of the old town with a church in them (shared/gen/oldtown)
+var CHURCHES = /^oldtown\/(church22|square23|town33)\//;
 
 //how much of the woods' sound the open fields have - the air and the birds,
 //only fewer of them; and how much of it the town on screen hushes
@@ -203,7 +224,12 @@ export default function Soundman(root) {
     busy: 0,
     cars: 0,
     around: 0,
+    oldtown: 0,
+    church: 0,
+    churchPan: 0,
   };
+  this.churches = new WeakMap();
+  this.bellAt = null;
   this.dull = null;
   this.listeners = [];
 }
@@ -365,6 +391,7 @@ Soundman.prototype.frame = function () {
     this.survey();
     if (sounds && !QUIET.places) this.places(weather);
     if (sounds && !QUIET.skyline) this.skyline();
+    if (sounds && !QUIET.bells) this.bells(wall);
     //(nothing new made for what is turned off)
     if (this.wants.music) this.music.update(this.place(), this.time(), weather);
   }
@@ -450,11 +477,13 @@ Soundman.prototype.survey = function () {
 
       if (town(cls, tile, roads)) {
         count.city++;
-        //the busy middle of a town: its shops, offices and works
+        //the busy middle of a town: its shops, offices and works - not the
+        //old town, with no cars in its lanes (see below)
         if (
-          cls === BuildingClassCode.commerce ||
-          cls === BuildingClassCode.industry ||
-          cls === BuildingClassCode.municipal
+          !oldtown(b) &&
+          (cls === BuildingClassCode.commerce ||
+            cls === BuildingClassCode.industry ||
+            cls === BuildingClassCode.municipal)
         )
           count.busy++;
       } else if (b === null && env.hasTree(tile)) count.forest++;
@@ -494,6 +523,36 @@ Soundman.prototype.survey = function () {
         cars++;
     }
 
+  //the old town on screen, and its church if it has one: looked for block
+  //by block - one is small enough for the grid to miss - by where each is
+  //on screen, as many tiles of it as there are
+  var toViewport = this.root.camera.camera.getWorldToViewport(),
+    old = 0,
+    church = 0,
+    churchX = 0;
+
+  for (var id in buildings.buildings) {
+    b = buildings.buildings[id];
+    if (!oldtown(b)) continue;
+
+    var size = b.data.sizeX * b.data.sizeY,
+      at = this.where(
+        {
+          x: Terrain.extractX(b.tile) + b.data.sizeX / 2,
+          y: Terrain.extractY(b.tile) + b.data.sizeY / 2,
+        },
+        toViewport,
+      );
+
+    if (at === null) continue;
+
+    old += size;
+    if (this.church(b)) {
+      church += size;
+      churchX += at.x * size;
+    }
+  }
+
   //the shore is a thin line: where there is sea and land both, it is there
   var shore = Math.min(
     1,
@@ -511,7 +570,39 @@ Soundman.prototype.survey = function () {
     busy: count.busy / n,
     cars: cars / (4 * r * r),
     around: count.around / m,
+    oldtown: old / (4 * r * r),
+    church: church / (4 * r * r),
+    //where the church is, across the screen, -1..1
+    churchPan: church > 0 ? churchX / church : 0,
   };
+};
+
+//whether a building is a block of the old town, standing finished
+function oldtown(b) {
+  return (
+    b !== null &&
+    !!b.data &&
+    !!b.data.compound &&
+    b.data.compound.gen === "oldtown" &&
+    b.getState() === BuildingState.ready
+  );
+}
+
+//whether a block of the old town has a church in it, by its look - known
+//once it has been drawn (client/compoundbuilding lookOf)
+Soundman.prototype.church = function (b) {
+  if (this.churches.has(b)) return this.churches.get(b);
+  if (!b.look || !Array.isArray(b.look.tiles)) return false;
+
+  var has = b.look.tiles.some(function (tile) {
+    return (tile.parts || []).some(function (part) {
+      return CHURCHES.test(part);
+    });
+  });
+
+  this.churches.set(b, has);
+
+  return has;
 };
 
 //whether a tile is the town's: a building of it, or a paved road
@@ -570,7 +661,7 @@ Soundman.prototype.places = function (weather) {
 
   PLACES.forEach(function (p) {
     //one into the next by power, so it does not dip in between
-    var share = Math.sqrt(land[p.by]),
+    var share = Math.sqrt(clamp(land[p.by] / (p.full || 1))),
       gain = share * Math.sqrt(clamp(when[p.when])) * near;
 
     if (p.by === "wild") gain *= hush;
@@ -630,6 +721,53 @@ Soundman.prototype.skyline = function () {
     self.loop(w[0], gain * Math.sqrt(clamp(w[1])), self.dull);
   });
 };
+
+/**
+ * The old town's church bells, now and then while a church is on screen -
+ * by day only: a while after one first comes on screen, and a while again
+ * after each ringing (BELLS_FIRST, BELLS_EVERY) - one tolling or the tower's
+ * rung in rounds, from where the church is across the screen, louder
+ * closer in. Made ready when a church is first seen.
+ */
+Soundman.prototype.bells = function (wall) {
+  var land = this.land;
+
+  if (land.church === 0 || this.daylight() < 0.5) {
+    this.bellAt = null;
+    return;
+  }
+
+  if (this.bellAt === null) {
+    this.maker.get("sound", "bells/0");
+    this.maker.get("sound", "bells/1");
+    this.bellAt = wall + between(BELLS_FIRST);
+    return;
+  }
+
+  if (wall < this.bellAt) return;
+
+  var buf = this.maker.ready(
+    "sound",
+    Math.random() < ROUNDS_ODDS ? "bells/1" : "bells/0",
+  );
+
+  //(not made yet: the next time it is looked)
+  if (buf === null) return;
+
+  var v = this.view(),
+    near = 0.6 + 0.4 * clamp((v.zoom - 0.5) / 1.5);
+
+  this.bellAt = wall + between(BELLS_EVERY);
+  this.play(buf, {
+    gain: BELLS_LOUD * near * (0.6 + 0.4 * smooth(land.oldtown / 0.06)),
+    pan: land.churchPan * 0.8,
+  });
+};
+
+//a number between from and to
+function between(range) {
+  return range[0] + Math.random() * (range[1] - range[0]);
+}
 
 //how much of the rush hour it is: 0..1, most from 7:30 to 9 in the morning
 //and from 16:30 to 18:30 of an evening

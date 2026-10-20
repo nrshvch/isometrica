@@ -548,3 +548,107 @@ export function ring(ch, rate, seconds, bright, size) {
 
   return out;
 }
+
+/* ------------------------------------------------------------------------
+ * Somewhere off - for what stands out of a loop that goes on all the time
+ * --------------------------------------------------------------------- */
+
+function clamp(x, a, b) {
+  return x < a ? a : x > b ? b : x;
+}
+
+//a curve through evenly spaced points, u 0..1, smooth all the way through
+//them (Catmull-Rom's)
+export function through(p, u) {
+  var n = p.length;
+
+  if (n === 1) return p[0];
+
+  var x = clamp(u, 0, 1) * (n - 1),
+    i = Math.min(n - 2, Math.floor(x)),
+    t = x - i,
+    p0 = p[Math.max(0, i - 1)],
+    p1 = p[i],
+    p2 = p[i + 1],
+    p3 = p[Math.min(n - 1, i + 2)];
+
+  return (
+    0.5 *
+    (2 * p1 +
+      (p2 - p0) * t +
+      (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t +
+      (3 * p1 - p0 - 3 * p2 + p3) * t * t * t)
+  );
+}
+
+/**
+ * A sound as it is heard from r metres off, mono: duller the further - the
+ * air, and the leaves in a wood, taking the top off it - as loud at its
+ * loudest as `loud` (before how far off it is).
+ *
+ * @param clear {number} how far the top carries: Hz at 1 m
+ */
+export function heard(rate, sound, r, loud, clear) {
+  var air = new OnePole(rate, clamp(clear / r, 1200, 18000)),
+    out = new Float32Array(sound.length),
+    top = 0,
+    i;
+
+  for (i = 0; i < sound.length; i++) top = Math.max(top, Math.abs(sound[i]));
+
+  var k = top > 0 ? loud / top : 0;
+
+  for (i = 0; i < sound.length; i++) out[i] = air.run(sound[i]) * k;
+
+  return out;
+}
+
+/**
+ * Lays what is heard (heard) into the loop round pan: quieter the further
+ * off, and as much of it sent on to ring round about wherever it is - so
+ * what is far off is mostly its ring.
+ */
+export function put(dry, send, sound, at, pan, r) {
+  lay(dry, sound, at, pan, 20 / r, true);
+  if (send) lay(send, sound, at, pan, 0.3, true);
+}
+
+/**
+ * One after another round the loop, from somewhere into it: what `make`
+ * makes - a bird's song, a wave - then a while, then the next (a while
+ * less than nothing: the next comes in over the last). As many as go into
+ * the loop, each while stretched or shrunk a little alike so they go
+ * round it evenly, the last as far from the first coming round again as
+ * any from the next.
+ *
+ * @param gap {number[]} how long between, s, from .. to
+ * @param each {function(Float32Array|Float32Array[], number)} lays it at
+ *        the second it starts
+ */
+export function again(rnd, rate, seconds, gap, make, each) {
+  var all = [],
+    total = 0;
+
+  do {
+    var s = make(),
+      long = (s.length === 2 ? s[0].length : s.length) / rate,
+      next = long + between(rnd, gap[0], gap[1]);
+
+    all.push({ s: s, next: next });
+    total += next;
+  } while (total < seconds);
+
+  //one too many, if the loop is nearer round without it
+  if (all.length > 1 && total - seconds > seconds - (total - next)) {
+    all.pop();
+    total -= next;
+  }
+
+  var k = seconds / total,
+    t = rnd() * seconds;
+
+  all.forEach(function (a) {
+    each(a.s, t);
+    t += a.next * k;
+  });
+}
