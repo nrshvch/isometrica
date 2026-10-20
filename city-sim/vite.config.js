@@ -1,5 +1,7 @@
 import { execSync } from "node:child_process";
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import isometrica from "isometrica/vite";
 
 //the commit built, short: the one GitHub Actions builds, or the one checked
@@ -27,8 +29,9 @@ function version() {
   return tag ? tag[1] : "dev" + (sha ? " " + sha : "");
 }
 
-//the game's page is index.html, its sources in src/ and what is served as it
-//is in public/ - and isometrica's pictures, served and copied in by its plugin
+//the game's page is index.html, its sources in src/ - its screens in React,
+//styled with Tailwind - and what is served as it is in public/ - and
+//isometrica's pictures, served and copied in by its plugin
 export default defineConfig({
   build: {
     outDir: "dist",
@@ -37,5 +40,5 @@ export default defineConfig({
   define: {
     __VERSION__: JSON.stringify(version()),
   },
-  plugins: [isometrica()],
+  plugins: [react(), tailwindcss(), isometrica()],
 });

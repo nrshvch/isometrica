@@ -1,18 +1,18 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=0, maximum-scale=1"
     />
     <title>Isometrica</title>
-    <link rel="stylesheet" href="src/ui/less/main.less" />
-    <link rel="stylesheet" href="src/city-sim.less" />
-    <script>
-      var SHOW_SPLASH = true;
-    </script>
-    <script type="module" src="src/main.js"></script>
+    <!-- what the page fetches by a relative address - isometrica's gfx/ -
+         is fetched from the top, whatever city or screen the address is on -->
+    <base href="/" />
   </head>
-  <body class="game-ui"></body>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

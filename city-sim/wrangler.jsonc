@@ -23,6 +23,9 @@
     "binding": "ASSETS",
     // everything else is the game's files, served as they are without waking the Worker
     "run_worker_first": ["/api/*"],
+    //the game's own addresses - a city, a screen of it: /<id>/catalogue -
+    //are all the page, which finds what they say (src/ui/router.jsx)
+    "not_found_handling": "single-page-application",
   },
   "durable_objects": {
     "bindings": [{ "name": "CITY_SAVES", "class_name": "CitySaves" }],

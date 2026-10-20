@@ -1,0 +1,91 @@
+/*
+ * The city builder's look: Tailwind, in the colours and the pixel-art blocks
+ * the game has always had - teal blocks lit from the top left, a box shadow,
+ * white Courier with a black outline over the world.
+ */
+@import "tailwindcss" source("..");
+
+@theme {
+  --font-game: "Courier New", Courier, monospace;
+
+  --color-block: #4ebaba;
+  --color-block-light: #73c8c8;
+  --color-block-dark: #3c9999;
+  --color-button: #2e9c9c;
+  --color-button-light: #3ac3c3;
+  --color-button-dark: #227575;
+  --color-income: #1f7a1f;
+  --color-expense: #b02020;
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-black font-game text-[10pt] text-white;
+  }
+}
+
+@layer components {
+  /* a raised block, the light on its top and left edges */
+  .ui-block {
+    @apply border border-block-light border-r-block-dark border-b-block-dark bg-block;
+  }
+
+  /* and one sunk in, the light the other way */
+  .ui-block-inset {
+    @apply border border-block-dark border-r-block-light border-b-block-light bg-block;
+  }
+
+  .ui-button {
+    @apply cursor-pointer border border-button-light border-r-button-dark border-b-button-dark bg-button text-white;
+  }
+
+  .ui-button-on {
+    @apply border-button-dark border-r-button-light border-b-button-light;
+  }
+
+  .ui-shadow {
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  /* the patterned ground the screens are on */
+  .ui-ground {
+    background-image: url("./img/ui-bg.png");
+  }
+}
+
+@utility pixelated {
+  image-rendering: pixelated;
+}
+
+/* white words over the world, outlined in black to read on anything */
+@utility outlined {
+  text-shadow:
+    -1px 0 0 #000,
+    0 -1px 0 #000,
+    0 1px 0 #000,
+    1px 0 0 #000,
+    -1px -1px 1px #000,
+    1px -1px 1px #000,
+    -1px 1px 1px #000,
+    1px 1px 1px #000;
+}
+
+@utility outlined-thick {
+  text-shadow:
+    -2px 0 0 #000,
+    0 -2px 0 #000,
+    0 2px 0 #000,
+    2px 0 0 #000,
+    -2px -2px 1px #000,
+    2px -2px 1px #000,
+    -2px 2px 1px #000,
+    2px 2px 1px #000;
+}
+
+/* a toggle switched on - the road being laid, say - outlined a pixel art
+   pixel wide, in white */
+@utility toggled {
+  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff);
+}

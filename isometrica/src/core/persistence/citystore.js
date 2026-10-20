@@ -12,7 +12,7 @@
  * under its own, so that playing one never opens nor writes over the other's.
  *
  * Ids are twelve characters out of [0-9A-Za-z], short enough to carry around
- * in the address bar (/#/pA4b1cX9q2Rz) and too many to be guessed - the id is
+ * in the address bar (/pA4b1cX9q2Rz) and too many to be guessed - the id is
  * all it takes to open a city off the server (CitySync). Cities from before
  * have six, and keep them.
  *

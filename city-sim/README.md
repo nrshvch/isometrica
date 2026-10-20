@@ -60,7 +60,7 @@ other games start on is built here, and handed over from the city screen.
   and its services - and at the bottom of it, "Download as the initial
   city": the city as it stands, as `initialcity.js`, the city every new
   player of either game starts on - to be saved over
-  `isometrica/src/data/initialcity.js` (`src/ui/modules/city/js/export.js`).
+  `isometrica/src/data/initialcity.js` (`src/ui/city/export.js`).
 
 ### Running it
 
@@ -75,7 +75,8 @@ npm run dev:worker   # built, and served by the Worker with its saves, http://lo
 A city is saved in the browser (localStorage) as it is played, offline or
 not, and from there kept on the server too - half a minute after it changes,
 when the page is put away, and when the browser is back online - so that its
-address, `/#/<id>`, opens it anywhere. The id is twelve characters, made up
+address, `/<id>`, opens it anywhere (an address of before, `/#/<id>`, is
+taken as `/<id>`). The id is twelve characters, made up
 by the browser: anyone with the address can open the city and save over it.
 
 The server is the game's own Worker, `worker/`: the game's files are served
@@ -90,12 +91,37 @@ the browser only.
 The page is kept by a Service Worker (`public/sw.js`), so that it opens
 without a connection too, from whatever was fetched while there was one.
 
-Its own: `src/main.js` starts it, `src/game.js` says what it is (five
+Its own: `src/main.jsx` starts it, `src/game.js` says what it is (five
 minutes a tick of the clock, its saves under `city-sim.v1.*` in
-localStorage and on the server at `/api`, its screens and routes),
-`src/play.js` adds land and ground shaping to the world, `src/client` is
-those, `src/ui` its screens - the catalogue, the city screen, the building
-tools; `worker/` is its Worker, the saves. The world is isometrica's.
+localStorage and on the server at `/api`), `src/play.js` adds land and
+ground shaping to the world, `src/client` is those, `src/ui` its screens;
+`worker/` is its Worker, the saves. The world is isometrica's.
+
+### Its screens
+
+React, styled with Tailwind (`src/ui/app.css`, the game's teal blocks and
+outlined Courier), found by the address (`src/ui/router.jsx`): `/<id>` the
+world, `/<id>/catalogue` (`/<id>/catalogue/<code>` one building of it),
+`/<id>/city` the city screen (`/<id>/city/map` a tab of it). Every address is
+the page - the Worker serves `index.html` for any it has no file for
+(`wrangler.jsonc` `not_found_handling`), and `<base href="/">` has
+isometrica's `gfx/` fetched from the top whatever the address.
+
+The world is drawn under everything else, the two laid one over the other
+(`src/ui/kit.jsx` LayeredLayout): the world kept in sight as the page
+scrolls, and over it the top bar, the world's buttons, or a screen - a
+screen taller than the window scrolls the page as any page does. Over the
+world nothing takes a click unless it says so: the layer over it is
+`pointer-events-none`, so a tap, a drag or a pinch goes through to the
+world's canvas, and anything to be clicked - a button, a screen covering
+the world - is `pointer-events-auto` itself.
+
+isometrica's client tells the screens what to show through the `ui` every
+game hands it - `ui.gameScreen().worldScreen()`: a hint, the buttons of what
+it is doing, a word asked for, the world given back - and here that goes
+into a zustand store (`src/ui/bridge.js`, `src/ui/store.js`) the screens
+read. `src/ui/session.js` puts the world together, once, and starts the
+city in the address on it.
 
 Deployed by `.github/workflows/city-sim.yml` to the Workers in
 `wrangler.jsonc`: `prod` (https://peeps.land) from a `city-sim/vX.Y.Z`
