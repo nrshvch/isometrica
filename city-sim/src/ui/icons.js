@@ -1,8 +1,8 @@
 /**
  * The names the game's buttons are given their icons by - here, and by
  * isometrica's client for the toggles of what it lays (client/buildman, a
- * road's surface and ways) - and the icon of the kit (iconkit, drawn by
- * tools/genicons.js) each is.
+ * road's surface and ways) - and the icon of isometrica's kit (shared/icons)
+ * each is.
  */
 export default {
   "back-icon": "back",

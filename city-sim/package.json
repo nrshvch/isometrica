@@ -10,8 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "dev:worker": "npm run build && wrangler dev --env=",
-    "generate:logo": "node tools/genlogo.js",
-    "generate:icons": "node tools/genicons.js"
+    "generate:logo": "node tools/genlogo.js"
   },
   "dependencies": {
     "engine": "file:../engine/engine",

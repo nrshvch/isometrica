@@ -129,28 +129,27 @@ into a zustand store (`src/ui/bridge.js`, `src/ui/store.js`) the screens
 read. `src/ui/session.js` puts the world together, once, and starts the
 city in the address on it.
 
-### Its logo and its icons
+### Its logo
 
-Both drawn by scripts, to be changed there and drawn again - what they draw
-is checked in and goes into the build as it is:
+Painted by a script, to be changed there and painted again - what it
+paints is checked in and goes into the build as it is:
 
 ```
 npm run generate:logo    # tools/genlogo.js → public/logo.png
-npm run generate:icons   # tools/genicons.js → src/ui/iconkit/
 ```
 
-The logo is a little town out of the game's own pieces - a house, a pine,
-a water tower on a slab of ground, painted by isometrica's generators - in
-a ring, the tower too tall for it and breaking out through the top: 128
-pixels square, shown at 64 (and as the page's icon).
+A little town out of the game's own pieces - a house, a pine, a water tower
+on a slab of ground, painted by isometrica's generators - in a ring, the
+tower too tall for it and breaking out through the top: 128 pixels square,
+shown at 64 (and as the page's icon).
 
-The icons are a kit of the game's own, pixel art on a 16 by 16 grid in two
-tones - solid, and a shade of it - written out as SVG of one colour,
-`currentColor`: used like any icon set, at any size and in any colour
-(`<Icon name="road" className="size-6" />`, `src/ui/kit.jsx`). An icon is
-drawn as rows of text, or worked out (circles, the roads and their
-arrows); `src/ui/icons.js` says which of them each of the game's buttons
-is, isometrica's road toggles among them.
+### Its icons
+
+isometrica's icon kit (`isometrica/src/shared/icons`, see the isometrica
+README): pixel art on a 16 by 16 grid, one colour, `currentColor`, shown
+by `<Icon name="road" className="size-6" />` (`src/ui/kit.jsx`).
+`src/ui/icons.js` says which of them each of the game's buttons is,
+isometrica's road toggles among them.
 
 Deployed by `.github/workflows/city-sim.yml` to the Workers in
 `wrangler.jsonc`: `prod` (https://peeps.land) from a `city-sim/vX.Y.Z`

@@ -1,10 +1,9 @@
 /**
- * Draws the game's icon kit, src/ui/iconkit: every icon the game shows -
- * its buttons over the world, what a road is laid in and which ways it goes
- * (isometrica client/buildman), the menu, the screens' buttons - as pixel
- * art on a 16 by 16 grid, the way the game's pictures are, written out as
- * SVG to be used like any icon set: one colour, currentColor, any size,
- * every pixel a crisp square.
+ * The game's icon kit: every icon the games show - their buttons over the
+ * world, what a road is laid in and which ways it goes (client/buildman),
+ * a menu's, the screens' - as pixel art on a 16 by 16 grid, the way the
+ * world's pictures are, to be used like any icon set: one colour,
+ * currentColor, any size, every pixel a crisp square.
  *
  * An icon is two tones: solid, and a shade of the same colour (SHADE) for
  * what is behind or between - the walls under a roof, the gravel of a road.
@@ -12,22 +11,13 @@
  * what is easier worked out than drawn (circles, the roads and their
  * arrows), by a function given the grid (see Grid).
  *
- * Writes src/ui/iconkit/<name>.svg, one to an icon, and
- * src/ui/iconkit/index.js, every icon's paths for the game's Icon
- * (ui/kit.jsx). Run again after changing an icon; what it writes is
- * checked in, and goes into the build as it is.
- *
- * Usage:
- *   npm run generate:icons       (in city-sim/)
+ * Drawn here, in the page or not: the lab shows them as they are drawn
+ * (lab/icons), and tools/genicons.mjs writes them out - an SVG to an icon,
+ * and index.js, every icon's paths, for a game to show them by without
+ * drawing them (city-sim ui/kit Icon).
  */
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-var here = path.dirname(fileURLToPath(import.meta.url)),
-  OUT = path.join(here, "../src/ui/iconkit");
-
-var N = 16,
+export var N = 16,
   //how strong the shade is
   SHADE = 0.45;
 
@@ -558,7 +548,8 @@ function pathOf(grid, tone) {
   return d;
 }
 
-function svg(icon) {
+//the icon written out as SVG, its solid and its shaded paths in it
+export function svg(icon) {
   return (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' +
     N +
@@ -573,44 +564,21 @@ function svg(icon) {
   );
 }
 
-function main() {
-  var all = {};
+//every icon there is, by name
+export var NAMES = Object.keys(ICONS).sort();
 
-  fs.mkdirSync(OUT, { recursive: true });
-  fs.readdirSync(OUT).forEach(function (f) {
-    if (f.endsWith(".svg")) fs.unlinkSync(path.join(OUT, f));
-  });
+/**
+ * An icon drawn: its grid, 2 solid, 1 shade, 0 nothing, a row at a time -
+ * px[y * N + x] - and as SVG paths, { solid, shade }.
+ */
+export function draw(name) {
+  var grid = new Grid(),
+    icon = ICONS[name];
 
-  Object.keys(ICONS)
-    .sort()
-    .forEach(function (name) {
-      var grid = new Grid(),
-        icon = ICONS[name];
+  if (icon === undefined) throw new Error("no such icon: " + name);
 
-      if (typeof icon === "function") icon(grid);
-      else grid.draw(icon);
+  if (typeof icon === "function") icon(grid);
+  else grid.draw(icon);
 
-      all[name] = { solid: pathOf(grid, 2), shade: pathOf(grid, 1) };
-      fs.writeFileSync(path.join(OUT, name + ".svg"), svg(all[name]));
-    });
-
-  fs.writeFileSync(
-    path.join(OUT, "index.js"),
-    "//written by tools/genicons.js - run it again rather than changing this\n" +
-      "//every icon of the kit: its size, and its solid and its shaded pixels\n" +
-      "//as SVG paths (ui/kit.jsx Icon)\n" +
-      "export var SIZE = " +
-      N +
-      ";\n\nexport var SHADE = " +
-      SHADE +
-      ";\n\nexport default " +
-      JSON.stringify(all, null, 2) +
-      ";\n",
-  );
-
-  console.log(
-    Object.keys(all).length + " icons -> " + path.relative(process.cwd(), OUT),
-  );
+  return { px: grid.px, solid: pathOf(grid, 2), shade: pathOf(grid, 1) };
 }
-
-main();

@@ -9,7 +9,7 @@
  * whatever is to be clicked says so itself, pointer-events-auto: a button,
  * a screen that covers the world.
  */
-import kit, { SHADE, SIZE } from "./iconkit";
+import kit, { SHADE, SIZE } from "isometrica/shared/icons/index";
 import names from "./icons";
 
 export function cx(...classes) {
@@ -56,7 +56,7 @@ export function Container({ className, children }) {
 }
 
 /**
- * One of the kit's icons (iconkit, tools/genicons.js) - by its own name,
+ * One of the kit's icons (isometrica shared/icons) - by its own name,
  * "road", or by the one a button is given, "road-icon" (icons.js). One
  * colour, the text's, and as big as it is made.
  */

@@ -1,6 +1,6 @@
-//written by tools/genicons.js - run it again rather than changing this
-//every icon of the kit: its size, and its solid and its shaded pixels
-//as SVG paths (ui/kit.jsx Icon)
+//written by tools/genicons.mjs out of kit.js - change that, and run it
+//again: every icon of the kit, its solid and its shaded pixels as SVG
+//paths, and how big the grid and how strong the shade
 export var SIZE = 16;
 
 export var SHADE = 0.45;

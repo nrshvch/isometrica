@@ -22,7 +22,8 @@
     "generate:music": "node tools/genmusic.js",
     "generate:stones": "node tools/genstones.js",
     "generate:buildings": "node tools/genbuildings.js",
-    "generate:trees": "node tools/gentrees.js"
+    "generate:trees": "node tools/gentrees.js",
+    "generate:icons": "node tools/genicons.mjs"
   },
   "dependencies": {
     "engine": "file:../engine/engine",

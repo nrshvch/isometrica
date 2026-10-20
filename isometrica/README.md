@@ -25,7 +25,8 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   opens them all from `/` - every sprite the generators paint, lit or at
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
   music at `/music.html`, the woods map at `/woods.html`, the traffic
-  testbed at `/traffic.html` and the lighting bench at `/lighting.html`.
+  testbed at `/traffic.html`, the icon kit at `/icons.html` and the
+  lighting bench at `/lighting.html`.
   Everything is painted and played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
@@ -366,6 +367,29 @@ dev`) plays them the way a game would - all three weathers together, the
   go by (see the lighting), and next to that the top bar shows the zoom the
   camera is at - its step, 1x (0.5) to 5x (2) (each game's `ui/modules/topbar`), kept as it
   was while the world turns.
+
+### Icons
+
+The games' icon kit, `src/shared/icons/kit.js`: every icon they show - their
+buttons over the world, what a road is laid in and which ways it goes (the
+toggles `client/buildman` asks for by name), a menu's, the screens' - as
+pixel art on a 16 by 16 grid, the way the world's pictures are, to be used
+like any icon set: one colour, `currentColor`, any size, every pixel a
+crisp square.
+
+- An icon is two tones: solid, and a shade of it (45%) for what is behind
+  or between - the walls under a roof, the gravel of a road. It is drawn as
+  rows of text - `#` solid, `+` shade, `.` nothing - or worked out, for
+  circles and the roads with their arrows.
+- `npm run generate:icons` (`tools/genicons.mjs`) writes them out:
+  `src/shared/icons/svg/<name>.svg`, the set, and `src/shared/icons/index.js`,
+  every icon's paths for a game to show them by without drawing them
+  (city-sim's `Icon`). What it writes is checked in, and goes into a game's
+  build as it is.
+- `lab/icons.html` shows the kit as `kit.js` draws it now - on the grounds
+  the games put it on, at the sizes they show it at, each with its pixels
+  and its SVG - and marks any icon drawn otherwise than written out, for
+  `generate:icons`.
 
 ### Sprites
 

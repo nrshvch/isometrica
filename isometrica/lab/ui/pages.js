@@ -42,6 +42,14 @@ export var PAGES = [
       "standing too long, locking up.",
   },
   {
+    id: "icons",
+    name: "Icons",
+    about:
+      "The games' icon kit as it is drawn - pixel art on a 16 by 16 grid, " +
+      "one colour, any size - on the grounds they show it on, each with its " +
+      "pixels and its SVG.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:
