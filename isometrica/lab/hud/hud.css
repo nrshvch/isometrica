@@ -1,43 +1,46 @@
 /*
  * The HUD study's look (Hud.jsx), after a city game's HUD found on the web:
- * every part of it on a card of its own, cream by day - or dusk, a dark
- * green, for the night - with a lip along its bottom and a soft shadow
+ * every part of it on a card of its own - sky white by day, or a night
+ * blue for the night (dark) - with a lip along its bottom and a soft shadow
  * under it; small tracked capitals to say what a thing is and big black
  * figures for how much; colour kept for what it means - green for money,
  * gold for what is on, red for what wants seeing to.
  */
 .hud {
-  --panel: #fbf0d6;
-  --inset: #f1e2bf;
-  --lip: rgba(150, 112, 40, 0.22);
-  --shine: rgba(255, 255, 255, 0.6);
-  --ink: #1f2a22;
-  --muted: #69705f;
-  --green: #3e7a55;
-  --gold: #e2ae3e;
-  --red: #c2482f;
-  --home: #1f3b2e;
-  --on-home: #e2ae3e;
-  --selected: #1f3b2e;
-  --on-selected: #fbf0d6;
-  --shadow: 0 6px 16px rgba(25, 20, 5, 0.28), 0 1px 2px rgba(25, 20, 5, 0.2);
+  --panel: #f3f8fc;
+  --inset: #dfeaf5;
+  --lip: rgba(60, 100, 150, 0.22);
+  --shine: rgba(255, 255, 255, 0.8);
+  --ink: #1b2340;
+  --muted: #66728e;
+  --paper: #f7fbff;
+  --green: #2f8a68;
+  --good: #2f8a68;
+  --gold: #f0b23a;
+  --red: #de5a46;
+  --home: #24305e;
+  --on-home: #f0b23a;
+  --selected: #24305e;
+  --on-selected: #f7fbff;
+  --shadow: 0 6px 16px rgba(10, 20, 45, 0.28), 0 1px 2px rgba(10, 20, 45, 0.2);
 
   font-family: "Nunito Variable", system-ui, sans-serif;
   color: var(--ink);
 }
 
-.hud.dusk {
-  --panel: #22312a;
-  --inset: #2f4239;
+.hud.dark {
+  --panel: #292c55;
+  --inset: #363b6c;
   --lip: rgba(0, 0, 0, 0.4);
   --shine: rgba(255, 255, 255, 0.08);
-  --ink: #f3e7cb;
-  --muted: #a4b09c;
-  --home: #e2ae3e;
-  --on-home: #1f2a22;
-  --selected: #e2ae3e;
-  --on-selected: #1f2a22;
-  --shadow: 0 6px 16px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --ink: #eef0ff;
+  --muted: #a9aed6;
+  --good: #8fe0bd;
+  --home: #f0b23a;
+  --on-home: #1b2340;
+  --selected: #f0b23a;
+  --on-selected: #1b2340;
+  --shadow: 0 6px 16px rgba(0, 0, 10, 0.5), 0 1px 2px rgba(0, 0, 10, 0.4);
 }
 
 .hud-card {
@@ -92,7 +95,7 @@
 
 .hud-tile.green {
   background: var(--green);
-  color: #fbf0d6;
+  color: var(--paper);
 }
 
 .hud-tile.home {
@@ -102,12 +105,12 @@
 
 .hud-tile.gold {
   background: var(--gold);
-  color: #1f2a22;
+  color: #1b2340;
 }
 
 .hud-tile.red {
   background: var(--red);
-  color: #fbf0d6;
+  color: var(--paper);
 }
 
 /* a word or a figure set into a card */
@@ -125,11 +128,7 @@
 }
 
 .hud-pill.good {
-  color: #3e7a55;
-}
-
-.dusk .hud-pill.good {
-  color: #8fcf9f;
+  color: var(--good);
 }
 
 /* a button on its own, over the world */
@@ -143,7 +142,7 @@
 
 .hud-button.on {
   background: var(--gold);
-  color: #1f2a22;
+  color: #1b2340;
 }
 
 /* the bar along the bottom: an icon over a word each */
@@ -181,7 +180,7 @@
 
 .hud-tab.go .well {
   background: var(--green);
-  color: #fbf0d6;
+  color: var(--paper);
 }
 
 .hud-badge {
@@ -242,5 +241,5 @@
 
 .hud-switch.on::after {
   left: 19px;
-  background: #fbf0d6;
+  background: var(--paper);
 }

@@ -10,13 +10,11 @@ import "@fontsource-variable/nunito";
 import {
   ArrowDownToLine,
   ArrowUpToLine,
-  BrickWall,
   Check,
   ChevronRight,
   Clock,
   Dice5,
   DollarSign,
-  Grip,
   House,
   HousePlus,
   LandPlot,
@@ -35,7 +33,7 @@ import {
   X,
 } from "lucide-react";
 import { Header } from "../ui/kit.jsx";
-import { Bulldozer, LandSale, Road } from "./icons.js";
+import { Asphalt, Bulldozer, Cobbles, Gravel, LandSale } from "./icons.js";
 import dayShot from "../directions/world.jpg";
 import dayPhone from "../directions/world-phone.jpg";
 import nightShot from "../directions/night.jpg";
@@ -54,7 +52,7 @@ function Funds({ wide }) {
   return (
     <div className="hud-card flex min-w-0 items-center gap-2.5 p-2">
       <span className="hud-tile green">
-        <DollarSign size={24} strokeWidth={2.5} />
+        <DollarSign size={24} strokeWidth={2} />
       </span>
       <div className="flex min-w-0 flex-col gap-0.5 pr-1">
         <span className="hud-label">Funds</span>
@@ -63,17 +61,17 @@ function Funds({ wide }) {
       {wide && (
         <>
           <span className="hud-pill good">
-            <TrendingUp size={15} strokeWidth={2.5} />
+            <TrendingUp size={15} strokeWidth={2} />
             +$1,240
           </span>
           <span className="hud-pill">
-            <Users size={15} strokeWidth={2.5} />
+            <Users size={15} strokeWidth={2} />
             2,898
           </span>
         </>
       )}
       <span className="hud-tile home ml-auto">
-        <House size={22} strokeWidth={2.25} />
+        <House size={22} strokeWidth={1.75} />
       </span>
     </div>
   );
@@ -88,7 +86,7 @@ function Time({ night }) {
         <span className="hud-label">Time</span>
         <span className="hud-value">{night ? "23:10" : "14:20"}</span>
       </div>
-      <Now size={24} strokeWidth={2.25} color="#e2ae3e" />
+      <Now size={24} strokeWidth={1.75} color="var(--gold)" />
     </div>
   );
 }
@@ -97,7 +95,7 @@ function Time({ night }) {
 function City() {
   return (
     <div className="hud-card hud-pill rounded-full! px-3.5 py-2">
-      <Users size={16} strokeWidth={2.5} />
+      <Users size={16} strokeWidth={2} />
       Miniville
       <span className="font-semibold text-[var(--muted)]">· 2,898</span>
     </div>
@@ -107,7 +105,7 @@ function City() {
 function Button({ icon: I, on }) {
   return (
     <span className={"hud-card hud-button" + (on ? " on" : "")}>
-      <I size={22} strokeWidth={2.25} />
+      <I size={22} strokeWidth={1.75} />
     </span>
   );
 }
@@ -116,11 +114,11 @@ function Zoom() {
   return (
     <div className="hud-card flex w-12 flex-col items-center">
       <span className="hud-button h-11">
-        <Plus size={22} strokeWidth={2.5} />
+        <Plus size={22} strokeWidth={2} />
       </span>
       <span className="text-[12px] font-black tabular-nums">3x</span>
       <span className="hud-button h-11">
-        <Minus size={22} strokeWidth={2.5} />
+        <Minus size={22} strokeWidth={2} />
       </span>
     </div>
   );
@@ -131,25 +129,25 @@ function MenuCard({ night }) {
   return (
     <div className="hud-card w-[240px] py-1">
       <div className="hud-row">
-        <Volume2 size={20} strokeWidth={2.25} />
+        <Volume2 size={20} strokeWidth={1.75} />
         Sounds
         <span className="hud-switch on" />
       </div>
       <div className="hud-row">
         {night ? (
-          <Moon size={20} strokeWidth={2.25} />
+          <Moon size={20} strokeWidth={1.75} />
         ) : (
-          <Sun size={20} strokeWidth={2.25} />
+          <Sun size={20} strokeWidth={1.75} />
         )}
         Day and night
         <span className="hud-switch on" />
       </div>
       <div className="hud-row">
-        <LandPlot size={20} strokeWidth={2.25} />
+        <LandPlot size={20} strokeWidth={1.75} />
         Start a new city
         <ChevronRight
           size={18}
-          strokeWidth={2.5}
+          strokeWidth={2}
           className="ml-auto text-[var(--muted)]"
         />
       </div>
@@ -162,7 +160,7 @@ function Hint({ tone, icon: I, label, title, text }) {
   return (
     <div className="hud-card flex items-center gap-3 p-3">
       <span className={"hud-tile " + tone}>
-        <I size={24} strokeWidth={2.25} />
+        <I size={24} strokeWidth={1.75} />
       </span>
       <div className="flex min-w-0 flex-col gap-0.5">
         <span className="hud-label">{label}</span>
@@ -177,7 +175,7 @@ function RoadHint() {
   return (
     <Hint
       tone="gold"
-      icon={Road}
+      icon={Asphalt}
       label="Road · Asphalt"
       title="Drag to place, pull arrows to resize"
       text="12 tiles · $480"
@@ -189,16 +187,16 @@ function RoadHint() {
 var IDLE = [
   [Landmark, "City"],
   [HousePlus, "Build"],
-  [Road, "Road"],
+  [Asphalt, "Road"],
   [Bulldozer, "Terrain"],
   [LandSale, "Land"],
 ];
 
 var ROAD = [
   [X, "Cancel"],
-  [Road, "Asphalt", "on"],
-  [Grip, "Gravel"],
-  [BrickWall, "Cobbles"],
+  [Asphalt, "Asphalt", "on"],
+  [Gravel, "Gravel"],
+  [Cobbles, "Cobbles"],
   [Check, "Done", "go"],
 ];
 
@@ -211,7 +209,7 @@ function Bar({ items }) {
         return (
           <div key={t[1]} className={"hud-tab " + (t[2] || "")}>
             <span className="well">
-              <I size={22} strokeWidth={2} />
+              <I size={22} strokeWidth={1.5} />
             </span>
             {t[1]}
             {t[3] && <span className="hud-badge">{t[3]}</span>}
@@ -228,16 +226,16 @@ function Bar({ items }) {
  * The HUD over the world on a phone, 390 by 844 as the game would draw it.
  *
  * @param time {string} "day" or "night", the world under it
- * @param dusk {boolean} on the night's dark cards
+ * @param dark {boolean} on the night's dark cards
  * @param road {boolean} a road being laid - or else nothing going on
  * @param menu {boolean} the menu open
  */
-function Phone({ time, dusk, road, menu }) {
+function Phone({ time, dark, road, menu }) {
   return (
     <div
       className={
         "hud relative h-[844px] w-[390px] shrink-0 overflow-hidden rounded-[28px] border border-line" +
-        (dusk ? " dusk" : "")
+        (dark ? " dark" : "")
       }
       style={{ backgroundImage: "url(" + SHOTS[time].phone + ")" }}
     >
@@ -268,12 +266,12 @@ function Phone({ time, dusk, road, menu }) {
 }
 
 //the HUD over the world on a desktop, 1280 by 800, kept to a container
-function Desktop({ time, dusk, road }) {
+function Desktop({ time, dark, road }) {
   return (
     <div
       className={
         "hud relative h-[800px] w-[1280px] shrink-0 overflow-hidden border border-line" +
-        (dusk ? " dusk" : "")
+        (dark ? " dark" : "")
       }
       style={{ backgroundImage: "url(" + SHOTS[time].wide + ")" }}
     >
@@ -308,22 +306,23 @@ function Caption({ children }) {
 /* --- the parts, and the icons ------------------------------------------- */
 
 var PALETTE = [
-  ["#fbf0d6", "cream", "the cards by day"],
-  ["#f1e2bf", "cream, set in", "pills, wells, switches off"],
-  ["#22312a", "dusk", "the cards by night"],
-  ["#1f2a22", "ink", "words and icons"],
-  ["#69705f", "muted", "what a thing is"],
-  ["#3e7a55", "green", "money, go"],
-  ["#1f3b2e", "deep green", "what is picked"],
-  ["#e2ae3e", "gold", "what is on, the time of day"],
-  ["#c2482f", "red", "what wants seeing to"],
+  ["#f3f8fc", "sky white", "the cards by day"],
+  ["#dfeaf5", "sky, set in", "pills, wells, switches off"],
+  ["#292c55", "night blue", "the cards by night"],
+  ["#363b6c", "night, set in", "pills, wells, switches off"],
+  ["#1b2340", "ink", "words and icons"],
+  ["#66728e", "muted", "what a thing is"],
+  ["#24305e", "navy", "what is picked by day"],
+  ["#2f8a68", "green", "money, go"],
+  ["#f0b23a", "gold", "what is on, the time of day"],
+  ["#de5a46", "red", "what wants seeing to"],
 ];
 
-function Parts({ dusk, time }) {
+function Parts({ dark, time }) {
   return (
     <div
       className={
-        "hud flex flex-col gap-3 border border-line p-4" + (dusk ? " dusk" : "")
+        "hud flex flex-col gap-3 border border-line p-4" + (dark ? " dark" : "")
       }
       style={{
         backgroundImage: "url(" + SHOTS[time].wide + ")",
@@ -332,26 +331,26 @@ function Parts({ dusk, time }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="hud-tile green">
-          <DollarSign size={24} strokeWidth={2.5} />
+          <DollarSign size={24} strokeWidth={2} />
         </span>
         <span className="hud-tile home">
-          <House size={22} strokeWidth={2.25} />
+          <House size={22} strokeWidth={1.75} />
         </span>
         <span className="hud-tile gold">
-          <Road size={24} strokeWidth={2.25} />
+          <Asphalt size={24} strokeWidth={1.75} />
         </span>
         <span className="hud-tile red">
-          <TriangleAlert size={22} strokeWidth={2.25} />
+          <TriangleAlert size={22} strokeWidth={1.75} />
         </span>
         <Button icon={Map} />
         <Button icon={Map} on />
         <div className="hud-card flex gap-2 p-2">
           <span className="hud-pill good">
-            <TrendingUp size={15} strokeWidth={2.5} />
+            <TrendingUp size={15} strokeWidth={2} />
             +$1,240
           </span>
           <span className="hud-pill">
-            <Clock size={15} strokeWidth={2.5} />
+            <Clock size={15} strokeWidth={2} />
             12 days
           </span>
         </div>
@@ -360,7 +359,7 @@ function Parts({ dusk, time }) {
         items={[
           [Landmark, "City", "", "!"],
           [HousePlus, "Build", "on"],
-          [Road, "Road"],
+          [Asphalt, "Road"],
           [Bulldozer, "Terrain"],
           [LandSale, "Land", "", "3"],
         ]}
@@ -389,14 +388,14 @@ function Parts({ dusk, time }) {
 var ICONS = [
   ["City", Landmark, "lucide landmark"],
   ["Build", HousePlus, "lucide house-plus"],
-  ["Road", Road, "ours"],
+  ["Road, asphalt", Asphalt, "ours"],
   ["Terrain, clear", Bulldozer, "ours"],
   ["Buy land", LandSale, "ours, after land-plot"],
   ["Found a city", LandPlot, "lucide land-plot"],
   ["Raise", ArrowUpToLine, "lucide arrow-up-to-line"],
   ["Lower", ArrowDownToLine, "lucide arrow-down-to-line"],
-  ["Gravel", Grip, "lucide grip"],
-  ["Cobbles", BrickWall, "lucide brick-wall"],
+  ["Gravel", Gravel, "ours"],
+  ["Cobbles", Cobbles, "ours"],
   ["Cancel", X, "lucide x"],
   ["Done", Check, "lucide check"],
   ["Turn", RotateCw, "lucide rotate-cw"],
@@ -416,11 +415,11 @@ var ICONS = [
 function IconCard({ name, icon: I, from }) {
   return (
     <div className="flex items-center gap-3 border border-line bg-panel p-2">
-      <span className="hud grid size-14 shrink-0 place-items-center bg-[#fbf0d6] text-[#1f2a22]">
-        <I size={32} strokeWidth={2} />
+      <span className="hud grid size-14 shrink-0 place-items-center bg-[var(--panel)] text-[var(--ink)]">
+        <I size={32} strokeWidth={1.5} />
       </span>
-      <span className="hud dusk grid size-10 shrink-0 place-items-center bg-[#22312a] text-[#f3e7cb]">
-        <I size={22} strokeWidth={2} />
+      <span className="hud dark grid size-10 shrink-0 place-items-center bg-[var(--panel)] text-[var(--ink)]">
+        <I size={22} strokeWidth={1.5} />
       </span>
       <span className="flex min-w-0 flex-col">
         <b>{name}</b>
@@ -494,11 +493,11 @@ export default function Hud() {
             </div>
             <div>
               <Phone time="night" menu />
-              <Caption>By night, cream - the menu open</Caption>
+              <Caption>By night, sky white - the menu open</Caption>
             </div>
             <div>
-              <Phone time="night" dusk road />
-              <Caption>By night, dusk - laying a road</Caption>
+              <Phone time="night" dark road />
+              <Caption>By night, night blue - laying a road</Caption>
             </div>
           </div>
         </section>
@@ -516,8 +515,8 @@ export default function Hud() {
               <Caption>By day, nothing going on</Caption>
             </div>
             <div>
-              <Desktop time="night" dusk road />
-              <Caption>By night, dusk - laying a road</Caption>
+              <Desktop time="night" dark road />
+              <Caption>By night, night blue - laying a road</Caption>
             </div>
           </div>
         </section>
@@ -546,7 +545,7 @@ export default function Hud() {
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <Parts time="day" />
-            <Parts time="night" dusk />
+            <Parts time="night" dark />
           </div>
         </section>
 
@@ -554,8 +553,8 @@ export default function Hud() {
           <h3 className="mb-2 font-bold text-accent">
             The icons it takes
             <span className="ml-2 font-normal text-muted">
-              lines 2 wide on a 24 grid - Lucide&apos;s, and ours drawn as
-              Lucide draws
+              lines 1.5 wide on a 24 grid - Lucide&apos;s, and ours drawn as
+              Lucide draws; the roads finer, flat tiles as the world has them
             </span>
           </h3>
           <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">
