@@ -1,6 +1,6 @@
 /**
- * A word asked of the player - the name of the city being founded - on
- * glass over the world, with leaving it and taking it.
+ * A word asked of the player - the name of the city being founded - on a
+ * card over the world, with leaving it and taking it.
  */
 import { useState } from "react";
 import { Container, Icon } from "../kit";
@@ -15,17 +15,22 @@ export default function Prompt({ prompt }) {
   return (
     <Container className="flex flex-1 items-center justify-center pb-24">
       <form
-        className="glass pointer-events-auto w-full max-w-md p-6"
+        className="card pointer-events-auto w-full max-w-md p-4 sm:p-5"
         onSubmit={function (e) {
           e.preventDefault();
           submit();
         }}
       >
         <div className="mb-4 flex items-center gap-3">
-          <Icon name="house" className="size-10 text-gold" />
-          <label htmlFor="prompt" className="text-xl font-semibold">
-            {prompt.message}
-          </label>
+          <span className="tile tile-gold">
+            <Icon name="found" size={24} />
+          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="label">A new city</span>
+            <label htmlFor="prompt" className="text-lg leading-snug font-black">
+              {prompt.message}
+            </label>
+          </div>
         </div>
         <input
           id="prompt"
@@ -36,14 +41,14 @@ export default function Prompt({ prompt }) {
           onChange={function (e) {
             setValue(e.target.value);
           }}
-          className="w-full rounded-lg bg-white/8 px-4 py-3 text-lg ring-1 ring-line outline-none placeholder:text-white/35 focus:ring-2 focus:ring-gold"
+          className="w-full rounded-[3px] bg-inset px-4 py-3 text-lg font-extrabold outline-none placeholder:text-muted focus:ring-2 focus:ring-gold"
         />
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="btn" onClick={prompt.discard}>
             Cancel
           </button>
           <button type="submit" className="btn btn-primary">
-            <Icon name="check" className="size-5" />
+            <Icon name="check" size={20} strokeWidth={2} />
             Found it
           </button>
         </div>

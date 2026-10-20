@@ -42,30 +42,6 @@ export var PAGES = [
       "standing too long, locking up.",
   },
   {
-    id: "icons",
-    name: "Icons",
-    about:
-      "The games' icon kit as it is drawn - one colour, on a 24 by 24 grid, " +
-      "any size - on the grounds they show it on, each with its grid and its " +
-      "SVG.",
-  },
-  {
-    id: "directions",
-    name: "Icon directions",
-    about:
-      "A few icons drawn by hand in colour and rendered in one colour too, " +
-      "and the HUD made up over the world each way - to be decided on before " +
-      "the whole set is drawn.",
-  },
-  {
-    id: "hud",
-    name: "HUD study",
-    about:
-      "The games' HUD made up in the look of a city game's found on the web - " +
-      "every part on a card, line icons in one colour - on a phone and a " +
-      "desktop, by day and by night.",
-  },
-  {
     id: "lighting",
     name: "Lighting bench",
     about:

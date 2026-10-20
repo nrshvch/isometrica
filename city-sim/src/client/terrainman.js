@@ -116,12 +116,12 @@ function hiliteData(tiles) {
 }
 
 //the toggles, one to each thing to do to the ground (the city builder's
-//icons), the order they stand in between cancel and the tick
-//TODO a clearing icon of its own - this is the one that got us here
+//icons, by name - ui/icons), the order they stand in between cancel and
+//the tick
 var TOOLS = [
-  { mode: "clear", icon: "bulldozer-icon" },
-  { mode: "raise", icon: "chevron-up-icon" },
-  { mode: "lower", icon: "chevron-down-icon" },
+  { mode: "clear", icon: "clear" },
+  { mode: "raise", icon: "raise" },
+  { mode: "lower", icon: "lower" },
 ];
 
 function Terrainman(root) {

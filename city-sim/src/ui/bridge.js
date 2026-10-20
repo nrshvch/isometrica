@@ -13,7 +13,7 @@ import WorldAction from "./world/worldaction";
 var set = store.setState;
 
 /**
- * @param go {{client(), world(), catalogue(), build(code), startFresh()}} the
+ * @param go {{client(), world(), catalogue(), city(), build(code)}} the
  *        client, and how to get to the game's screens and do what its
  *        buttons do (session.js)
  */
@@ -59,8 +59,8 @@ export function createBridge(go) {
     /**
      * Puts up the buttons, nothing holding them.
      *
-     * @param buttons {Object[]} per slot, {icon, action, on} - a slot left
-     *        undefined stays empty
+     * @param buttons {Object[]} per slot, {icon, label, action, on, go} - a
+     *        slot left undefined has none
      */
     showButtons: function (buttons) {
       release();
@@ -157,15 +157,15 @@ export function createBridge(go) {
 
 /**
  * The buttons of an action: leaving it at one end, confirming it at the
- * other - in the middle, or at the far end once it has toggles of its own,
- * which go in between - and turning round and the dice on either side.
+ * other, and between them its toggles of its own - or turning round and the
+ * dice.
  */
 function actionButtons(controls) {
   var tools = controls.tools ? controls.tools() : null,
     buttons = [];
 
   buttons[0] = {
-    icon: "cross-icon",
+    icon: "close",
     label: "Cancel",
     action: function () {
       controls.discard();
@@ -175,9 +175,10 @@ function actionButtons(controls) {
   //an action that is only ever left, never confirmed - picking which block
   //of land to buy, say - has nothing for a tick to do
   if (controls.canSubmit())
-    buttons[tools ? 4 : 2] = {
-      icon: "tick-icon",
+    buttons[4] = {
+      icon: "check",
       label: "Done",
+      go: true,
       action: function () {
         controls.submit();
       },
@@ -193,7 +194,7 @@ function actionButtons(controls) {
 
   if (controls.canRotate())
     buttons[1] = {
-      icon: "rotation-icon",
+      icon: "rotate",
       label: "Turn",
       action: function () {
         controls.rotate();
@@ -203,7 +204,7 @@ function actionButtons(controls) {
   //and another of the same, picked at random, on the same selection
   if (controls.canShuffle && controls.canShuffle())
     buttons[3] = {
-      icon: "dice-icon",
+      icon: "dice",
       label: "Another",
       action: function () {
         controls.shuffle();
@@ -216,20 +217,20 @@ function actionButtons(controls) {
 /**
  * The city builder's buttons when nothing else is going on: the one it
  * starts on - to found a city where there is none - and the building tools
- * once there is: start afresh, the catalogue, a road, shaping the ground and
- * buying land. A road is picked - what it is laid in, which ways it goes -
- * as it is laid (isometrica client/buildman build).
+ * once there is: the city screen, the catalogue, a road, shaping the ground
+ * and buying land. A road is picked - what it is laid in, which ways it goes
+ * - as it is laid (isometrica client/buildman build). Starting afresh, which
+ * leaves the city, is in the menu (world/Hud).
  */
 function idle(go, name) {
   var client = go.client();
 
   if (name !== "build" && !client.core.cities.getCity(0))
     return [
-      undefined,
-      undefined,
       {
-        icon: "house-icon",
+        icon: "found",
         label: "Found a city",
+        go: true,
         action: function () {
           client.cityman.establish();
         },
@@ -237,17 +238,17 @@ function idle(go, name) {
     ];
 
   return [
-    { icon: "cross-icon", label: "New city", action: go.startFresh },
-    { icon: "house-icon", label: "Build", action: go.catalogue },
+    { icon: "city", label: "City", action: go.city },
+    { icon: "build", label: "Build", action: go.catalogue },
     {
-      icon: "road-icon",
+      icon: "asphalt",
       label: "Road",
       action: function () {
         go.build(BuildingCode.road);
       },
     },
     {
-      icon: "bulldozer-icon",
+      icon: "clear",
       label: "Terrain",
       action: function () {
         go.world();
@@ -255,7 +256,7 @@ function idle(go, name) {
       },
     },
     {
-      icon: "tile-dollar-icon",
+      icon: "land",
       label: "Land",
       action: function () {
         go.world();

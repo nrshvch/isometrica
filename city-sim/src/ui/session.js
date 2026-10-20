@@ -33,8 +33,10 @@ var bridge = createBridge({
   catalogue: function () {
     go("/catalogue");
   },
+  city: function () {
+    go("/city");
+  },
   build: build,
-  startFresh: startFresh,
 });
 
 export function getCore() {
@@ -259,10 +261,12 @@ function startFreshCity() {
  * a new blank one under a new id if they do. The city they are on is kept -
  * it stays in storage under its own address.
  */
-function startFresh() {
+export function startFresh() {
   var world = worldScreen(),
     controls;
 
+  //asked over the world, from whatever screen the menu was opened on
+  go("");
   world.showHint("Do you really want to start fresh?");
 
   controls = world.showControls();

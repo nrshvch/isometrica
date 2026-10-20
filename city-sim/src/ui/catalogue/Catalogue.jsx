@@ -5,18 +5,18 @@
  * up to be dragged out.
  */
 import { useMemo } from "react";
-import { Icon, Screen } from "../kit";
+import { Screen } from "../kit";
 import { build, goWorld } from "../session";
 import { buildings } from "./buildings";
 import Preview from "./Preview";
 
 //a figure of a card, or nothing for a building with nothing to say
 function Figure({ label, value }) {
-  if (value === "—") return null;
+  if (value === "\u2014") return null;
 
   return (
-    <span className="rounded-md bg-white/8 px-2 py-0.5 text-xs">
-      <span className="text-muted">{label} </span>
+    <span className="pill bg-card px-2 py-1 text-xs">
+      <span className="font-semibold text-muted">{label}</span>
       {value}
     </span>
   );
@@ -31,32 +31,28 @@ function Card({ building }) {
       onClick={function () {
         build(building.code);
       }}
-      className="group flex cursor-pointer flex-col gap-3 rounded-2xl bg-white/4 p-2.5 text-left ring-1 ring-line transition hover:-translate-y-0.5 hover:bg-white/8 hover:ring-gold/70 focus-visible:ring-2 focus-visible:ring-gold focus-visible:outline-none"
+      className="flex cursor-pointer flex-col gap-2.5 rounded-[3px] bg-inset/60 p-2 text-left transition hover:-translate-y-0.5 hover:bg-inset focus-visible:ring-2 focus-visible:ring-gold focus-visible:outline-none"
     >
       <Preview code={building.code} />
       <div className="flex flex-col gap-2 px-1 pb-1">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="leading-tight font-semibold">
-            {building.displayName}
-          </h3>
-        </div>
-        <div className="flex items-center gap-1.5 font-semibold text-gold tabular-nums">
-          <Icon name="coin" className="size-5" />
-          <span className="truncate" title={s.cost}>
-            {s.cost}
-          </span>
+        <h3 className="leading-tight font-extrabold">{building.displayName}</h3>
+        <div
+          className="truncate font-black text-good tabular-nums"
+          title={s.cost}
+        >
+          {s.cost}
         </div>
         <div className="flex flex-wrap gap-1.5">
           <Figure label="Homes" value={s.citizens} />
           <Figure label="Jobs" value={s.jobs} />
         </div>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-xs">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-xs font-semibold">
           <dt className="text-muted">Needs</dt>
           <dd className="truncate" title={s.needs}>
             {s.needs}
           </dd>
           <dt className="text-muted">Gives</dt>
-          <dd className="truncate text-income" title={s.benefits}>
+          <dd className="truncate text-good" title={s.benefits}>
             {s.benefits}
           </dd>
         </dl>

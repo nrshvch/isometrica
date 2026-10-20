@@ -1,35 +1,51 @@
 /**
- * What goes over the world when no screen is up: a line of what to do, in
- * the upper half, and the buttons along the bottom - five slots, a fifth of
- * the width each - whatever holds them (bridge.js): the building tools, or
- * the action going on.
+ * What goes over the world when no screen is up, along the bottom where a
+ * thumb is: the bar of buttons - whatever holds them (bridge.js): the
+ * building tools, or the action going on - and over it, on a card, a line
+ * of what to do.
  */
-import names from "../icons";
-import { Container, FloatButton } from "../kit";
+import { BarButton, Container, Icon, cx } from "../kit";
 import { useGame } from "../store";
 
 //what a button says under it, when what puts it up does not say - the
 //toggles of what is being done (isometrica client/buildman, terrainman),
-//by the kit's name of their icon
+//by the name of their icon, whichever way a road goes
 var LABELS = {
-  close: "Cancel",
-  check: "Done",
-  rotate: "Turn",
-  dice: "Another",
-  road: "Asphalt",
+  asphalt: "Asphalt",
   gravel: "Gravel",
   cobble: "Cobbles",
-  bulldozer: "Clear",
+  clear: "Clear",
   raise: "Raise",
   lower: "Lower",
 };
 
 function labelOf(b) {
-  if (b.label) return b.label;
+  return b.label || LABELS[b.icon.split("-")[0]] || "";
+}
 
-  var name = names[b.icon] || b.icon;
+//how wide a button of the bar gets at most
+var BUTTON_PX = 104;
 
-  return LABELS[name] || LABELS[name.split("-")[0]] || "";
+/**
+ * The line of what to do: by the icon of the toggle that is on, if one is -
+ * what a road is laid in, say - or the sign for a hint.
+ */
+function Hint({ text, on }) {
+  return (
+    <div className="card flex items-center gap-3 p-2.5 pr-4">
+      <span className={cx("tile", on ? "tile-gold" : "tile-home")}>
+        <Icon
+          name={on ? on.icon : "info"}
+          size={22}
+          strokeWidth={on ? undefined : 1.75}
+        />
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="label">{on ? labelOf(on) : "What to do"}</span>
+        <span className="leading-snug font-extrabold text-balance">{text}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function WorldHud() {
@@ -39,35 +55,34 @@ export default function WorldHud() {
     buttons = useGame(function (s) {
       return s.buttons;
     }),
-    slots = [0, 1, 2, 3, 4];
+    shown = buttons.filter(Boolean),
+    on = shown.find(function (b) {
+      return b.on;
+    });
 
   return (
-    <Container className="flex flex-1 flex-col pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="flex flex-1 items-center justify-center px-6 text-center">
-        {hint && (
-          <div className="text-float max-w-xl text-lg leading-snug font-semibold text-balance">
-            {hint}
+    <Container className="flex flex-1 flex-col justify-end pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
+        {hint && <Hint text={hint} on={on} />}
+        {shown.length > 0 && (
+          <div
+            className="card mx-auto flex w-full px-1 pt-2 pb-2.5"
+            style={{ maxWidth: shown.length * BUTTON_PX }}
+          >
+            {shown.map(function (b) {
+              return (
+                <BarButton
+                  key={b.icon + labelOf(b)}
+                  icon={b.icon}
+                  label={labelOf(b)}
+                  on={b.on}
+                  go={b.go}
+                  onClick={b.action}
+                />
+              );
+            })}
           </div>
         )}
-      </div>
-      <div className="flex-1" />
-      <div className="mx-auto grid w-full max-w-2xl grid-cols-5 place-items-center">
-        {slots.map(function (i) {
-          var b = buttons[i];
-
-          return b ? (
-            <FloatButton
-              key={i}
-              icon={b.icon}
-              on={b.on}
-              label={labelOf(b)}
-              aria-pressed={b.on}
-              onClick={b.action}
-            />
-          ) : (
-            <div key={i} />
-          );
-        })}
       </div>
     </Container>
   );

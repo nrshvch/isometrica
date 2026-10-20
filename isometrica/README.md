@@ -25,9 +25,7 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   opens them all from `/` - every sprite the generators paint, lit or at
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
   music at `/music.html`, the woods map at `/woods.html`, the traffic
-  testbed at `/traffic.html`, the icon kit at `/icons.html`, the icon
-  directions being decided on at `/directions.html` and the lighting bench
-  at `/lighting.html`.
+  testbed at `/traffic.html` and the lighting bench at `/lighting.html`.
   Everything is painted and played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
@@ -368,33 +366,6 @@ dev`) plays them the way a game would - all three weathers together, the
   go by (see the lighting), and next to that the top bar shows the zoom the
   camera is at - its step, 1x (0.5) to 5x (2) (each game's `ui/modules/topbar`), kept as it
   was while the world turns.
-
-### Icons
-
-The games' icon kit, `src/shared/icons/kit.js`: every icon they show - their
-buttons over the world, what a road is laid in and which ways it goes (the
-toggles `client/buildman` asks for by name), a menu's, the screens' - on a
-24 by 24 grid in one colour, `currentColor`, to be used like any icon set
-and coloured, outlined and lit by the page showing it.
-
-- What stands in the world - a house, a road, a plot, a die, coins - is
-  built out of boxes and faces in the game's own projection and fitted to
-  the grid (`draw.js`): faces apart by a gap, what stands in front cutting
-  round itself out of what is behind, details cut out of the faces. Signs -
-  close, done, the menu, the sound - are drawn flat on the grid.
-- An interim set: a new one is being drawn by hand. `lab/directions.html`
-  has its first samples (`lab/directions/art.js`), each drawn once and shown
-  in colour and in one colour (`render.js`), and the HUD made up over the
-  world each way - to decide on before the whole set is drawn.
-- `npm run generate:icons` (`tools/genicons.mjs`) writes them out:
-  `src/shared/icons/svg/<name>.svg`, the set, and `src/shared/icons/index.js`,
-  every icon's path for a game to show them by without drawing them
-  (city-sim's `Icon`). What it writes is checked in, and goes into a game's
-  build as it is.
-- `lab/icons.html` shows the kit as `kit.js` draws it now - on the grounds
-  the games put it on, at the sizes they show it at, each on its grid and
-  with its SVG - and marks any icon drawn otherwise than written out, for
-  `generate:icons`.
 
 ### Sprites
 

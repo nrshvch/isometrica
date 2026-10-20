@@ -3,5 +3,5 @@ engine/
 .wrangler/
 package-lock.json
 isometrica/assets/
-# written by isometrica/tools/genicons.mjs
-isometrica/src/shared/icons/index.js
+# written by city-sim/tools/genicons.js
+city-sim/src/ui/icons/

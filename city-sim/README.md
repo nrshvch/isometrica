@@ -99,8 +99,10 @@ ground shaping to the world, `src/client` is those, `src/ui` its screens;
 
 ### Its screens
 
-React, styled with Tailwind (`src/ui/app.css`: floating icons and words
-outlined over the world, dark glass for screens), found by the address (`src/ui/router.jsx`): `/<id>` the
+React, styled with Tailwind (`src/ui/app.css`: everything over the world on
+cards of its own - sky white by day, night blue once the world is drawn at
+night - corners all but square, colour kept for what it means), found by the
+address (`src/ui/router.jsx`): `/<id>` the
 world, `/<id>/catalogue` (`/<id>/catalogue/<code>` one building of it),
 `/<id>/city` the city screen (`/<id>/city/map` a tab of it). Every address is
 the page - the Worker serves `index.html` for any it has no file for
@@ -109,14 +111,18 @@ isometrica's `gfx/` fetched from the top whatever the address.
 
 The world is drawn under everything else, the two laid one over the other
 (`src/ui/kit.jsx` LayeredLayout): the world kept in sight as the page
-scrolls, and floating over it - kept to the middle of a wide screen
-(Container) - the logo in the top left, the time and the city's money in
-the top right with the menu next to them (the sounds, the day and the
-night going by, the view from above, back to the city), the world's
-buttons along the bottom, and how close the camera is while it zooms
-(`src/ui/world/Hud.jsx`, `WorldHud.jsx`). A screen - the catalogue, the
-city screen - is a window over the world dimmed behind it; one taller than
-the window scrolls the page as any page does. Over the
+scrolls, and over it - kept to the middle of a wide screen (Container) -
+along the top the logo, the city's money (opening the city screen), what
+comes in a tick, how many live there and back to the city, the time and
+the weather, the view from above and the menu (the sounds, the day and the
+night going by, a new city), with zooming in and out under them; along the
+bottom, where a thumb is, the bar of the world's buttons - the city, the
+catalogue, a road, the ground, land, or those of the action going on - and
+over it a line of what to do (`src/ui/world/Hud.jsx`, `WorldHud.jsx`). On
+a phone the money and the time take the top, the city's name and the
+buttons the line under it. A screen - the catalogue, the city screen - is a
+card over the world dimmed behind it; one taller than the window scrolls
+the page as any page does. Over the
 world nothing takes a click unless it says so: the layer over it is
 `pointer-events-none`, so a tap, a drag or a pinch goes through to the
 world's canvas, and anything to be clicked - a button, a screen covering
@@ -145,11 +151,23 @@ shown at 64 (and as the page's icon).
 
 ### Its icons
 
-isometrica's icon kit (`isometrica/src/shared/icons`, see the isometrica
-README): on a 24 by 24 grid, one colour, `currentColor`, shown
-by `<Icon name="road" className="size-6" />` (`src/ui/kit.jsx`).
-`src/ui/icons.js` says which of them each of the game's buttons is,
-isometrica's road toggles among them.
+Drawn by a script, to be changed there and written out again - what it
+writes is checked in and goes into the build as it is:
+
+```
+npm run generate:icons   # tools/icons.js, by tools/genicons.js →
+                         # src/ui/icons/svg/<name>.svg, src/ui/icons/index.js
+```
+
+Lines in one colour, `currentColor`, on a 24 by 24 grid: 1.5 wide, square
+at their ends and mitred at their joins, to go with the world's pixels.
+What is of the world - a plot of land to found a city on, buy, raise or
+lower, a road - is a flat tile of it, twice as wide as it is high; a road
+is drawn on a grid 18 high, shown a third wider than the others and in
+finer lines, laid in asphalt, gravel or cobbles and going both ways, one
+way or the other (`-two`, `-one`, `-back`). Shown by
+`<Icon name="asphalt" size={22} />` (`src/ui/kit.jsx`); isometrica's
+client asks for its road toggles by these names too (`client/buildman`).
 
 Deployed by `.github/workflows/city-sim.yml` to the Workers in
 `wrangler.jsonc`: `prod` (https://peeps.land) from a `city-sim/vX.Y.Z`

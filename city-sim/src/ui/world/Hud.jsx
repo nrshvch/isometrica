@@ -1,9 +1,12 @@
 /**
- * What floats over the top of the world: the game's logo on the left; on
- * the right the time - and the weather - over the city's money, which opens
- * the city screen and puts it away again, and the menu: the sounds, the day
- * and the night going by, the view from above, back to the city. And, for
- * a moment while the camera zooms, how close it is.
+ * What goes over the top of the world, on cards: the game's logo, the
+ * city's money - which opens the city screen and puts it away again - how
+ * it is doing and back to it; the time, and the weather; the view from
+ * above, and the menu: the sounds, the day and the night going by, a new
+ * city. Under them, zooming in and out, and how close the camera is.
+ *
+ * On a phone the money and the time take the top, the city's name and the
+ * buttons the line under it; on a desktop all of it goes along the top.
  */
 import { useEffect, useRef, useState } from "react";
 import { useMatch } from "react-router";
@@ -12,12 +15,19 @@ import Numeral from "numeral";
 import WorldView from "isometrica/client/view";
 import CameraControl from "isometrica/client/cameracontrol";
 import ResourceCode from "isometrica/core/resourcecode";
-import { Container, Icon, cx } from "../kit";
-import { useGame } from "../store";
-import { getClient, goCity, goWorld, worldScreen } from "../session";
+import { Container, HudButton, Icon, cx } from "../kit";
+import { store, useGame } from "../store";
+import {
+  getClient,
+  goCity,
+  goWorld,
+  startFresh,
+  worldScreen,
+} from "../session";
 
-//how long how close the camera is stays up once it stops zooming
-var ZOOM_SHOWN_MS = 900;
+function money(amount) {
+  return "$" + Numeral(amount).format("0,0");
+}
 
 //what the HUD shows, as it reads now
 function read(client) {
@@ -33,22 +43,32 @@ function read(client) {
       ? turner && turner.active
         ? turner.zoom
         : camera.zoom
-      : null;
+      : null,
+    funds = city ? city.resources.getResources()[ResourceCode.money] || 0 : 0,
+    net = city ? Math.round(city.getBudget().net) : 0;
 
   return {
     time: client.core.time.toHM(),
     //the weather when it says what it is (client/weather)
     weather: weather && weather.name ? weather.name : "",
-    money: city
-      ? "$" +
-        Numeral(city.resources.getResources()[ResourceCode.money]).format("0,0")
+    //whether the city is drawn at night, lit by its lamps (client/lighting)
+    night: !!(lighting && lighting.night),
+    money: city ? money(funds) : null,
+    //and as short as a phone has room for: $134.1M
+    shortMoney: city
+      ? "$" + Numeral(funds).format("0.[0]a").toUpperCase()
       : null,
+    //what comes in a tick, less what goes out
+    net: (net < 0 ? "-" : "+") + money(Math.abs(net)),
+    losing: net < 0,
+    name: city ? city.name() : "",
+    population: city
+      ? Numeral(city.population.getPopulation()).format("0,0")
+      : "",
     sounds: !!(client.sound && client.sound.wants.sounds),
     dayNight: !!(lighting && lighting.dayNight),
     top: WorldView.top(),
     zoom: zoom === null ? "" : CameraControl.zoomStep(zoom) + "x",
-    //and how close it is exactly, to tell it is zooming
-    zoomedTo: zoom,
   };
 }
 
@@ -124,131 +144,160 @@ function useWorld(client, hasCity) {
 }
 
 /**
- * How close the camera is, while it zooms and a moment after: up as fingers
- * pinch (or ctrl and the wheel, the way a trackpad pinches) and whenever it
- * zooms otherwise - a double tap - and gone once it has stayed where it is
- * a while.
+ * The city's money - a click on it opens the city screen - and, given the
+ * room, what comes in a tick and how many live there; and back to the city,
+ * wherever the camera has got to.
  */
-function Zoom({ client, zoom, at }) {
-  var [pinching, setPinching] = useState(false),
-    [moved, setMoved] = useState(false),
-    was = useRef(at);
-
-  //the pinches, on the canvas the world is drawn on (engine Viewport)
-  useEffect(
-    function () {
-      var viewport = client.camera && client.camera.camera.viewport;
-
-      if (!viewport) return;
-
-      var e = viewport.events,
-        on = [
-          Events.on(viewport, e.pinchstart, function () {
-            setPinching(true);
-          }),
-          Events.on(viewport, e.pinchend, function () {
-            setPinching(false);
-            setMoved(true);
-          }),
-        ];
-
-      return function () {
-        Events.off(viewport, e.pinchstart, on[0]);
-        Events.off(viewport, e.pinchend, on[1]);
-      };
-    },
-    [client],
-  );
-
-  useEffect(
-    function () {
-      if (at !== was.current) {
-        was.current = at;
-        setMoved(true);
-      }
-    },
-    [at],
-  );
-
-  //gone a while after the last of it
-  useEffect(
-    function () {
-      if (!moved || pinching) return;
-
-      var gone = setTimeout(function () {
-        setMoved(false);
-      }, ZOOM_SHOWN_MS);
-
-      return function () {
-        clearTimeout(gone);
-      };
-    },
-    [moved, pinching, at],
-  );
-
+function Funds({ world, onMoney, onHome }) {
   return (
-    <div
-      aria-live="polite"
-      className={cx(
-        "text-float fixed top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 text-4xl font-bold tabular-nums transition-all duration-300",
-        pinching || moved ? "scale-100 opacity-100" : "scale-90 opacity-0",
-      )}
-    >
-      <Icon name="zoom" className="icon-float size-9" />
-      {zoom}
+    <div className="card pointer-events-auto flex min-w-0 items-center gap-2.5 p-2">
+      <button
+        type="button"
+        title="The city"
+        onClick={onMoney}
+        className="flex min-w-0 cursor-pointer items-center gap-2.5 text-left"
+      >
+        <span className="tile tile-green">
+          <Icon name="dollar" size={24} strokeWidth={2} />
+        </span>
+        <span className="flex min-w-0 flex-col gap-1 pr-1">
+          <span className="label">Funds</span>
+          <span className="figure truncate">
+            <span className="sm:hidden">{world.shortMoney}</span>
+            <span className="max-sm:hidden">{world.money}</span>
+          </span>
+        </span>
+      </button>
+      <span
+        title="A tick"
+        className={cx(
+          "pill max-sm:hidden",
+          world.losing ? "text-bad" : "text-good",
+        )}
+      >
+        <Icon
+          name={world.losing ? "trend-down" : "trend-up"}
+          size={16}
+          strokeWidth={2}
+        />
+        {world.net}
+      </span>
+      <span title="People" className="pill max-sm:hidden">
+        <Icon name="people" size={16} strokeWidth={2} />
+        {world.population}
+      </span>
+      <button
+        type="button"
+        title="Back to the city"
+        aria-label="Back to the city"
+        onClick={onHome}
+        className="tile tile-home ml-auto cursor-pointer"
+      >
+        <Icon name="home" size={22} strokeWidth={1.75} />
+      </button>
     </div>
   );
 }
 
-//a switch, on or off
-function Switch({ on }) {
+//the time, the weather it is in, and whether it is day or night
+function Time({ world }) {
   return (
-    <span
-      className={cx(
-        "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-        on ? "bg-gold" : "bg-white/20",
-      )}
-    >
-      <span
-        className={cx(
-          "absolute top-0.5 size-4 rounded-full bg-white shadow transition-all",
-          on ? "left-[18px]" : "left-0.5",
-        )}
+    <div className="card flex items-center gap-2 py-2 pr-3 pl-3.5">
+      <div className="flex flex-col gap-1">
+        <span className="label">{world.weather || "Time"}</span>
+        <span className="figure">{world.time}</span>
+      </div>
+      <Icon
+        name={world.night ? "moon" : "sun"}
+        size={24}
+        strokeWidth={1.75}
+        className="text-gold"
       />
-    </span>
+    </div>
+  );
+}
+
+//the city's name, and how many live there - where the money has no room
+function City({ world, className }) {
+  return (
+    <div className={cx("card pill bg-card px-3 py-2", className)}>
+      <Icon name="people" size={16} strokeWidth={2} />
+      <span className="truncate">{world.name}</span>
+      <span className="font-semibold text-muted">· {world.population}</span>
+    </div>
+  );
+}
+
+//zooming in and out a step, and how close the camera is
+function Zoom({ client, zoom }) {
+  function step(dir) {
+    if (client.cameraControl) client.cameraControl.zoomStep(dir);
+  }
+
+  return (
+    <div className="card pointer-events-auto flex w-12 flex-col items-center">
+      <button
+        type="button"
+        title="Closer"
+        aria-label="Zoom in"
+        onClick={function () {
+          step(1);
+        }}
+        className="grid h-11 w-12 cursor-pointer place-items-center"
+      >
+        <Icon name="plus" size={22} strokeWidth={2} />
+      </button>
+      <span aria-live="polite" className="text-xs font-black tabular-nums">
+        {zoom}
+      </span>
+      <button
+        type="button"
+        title="Further"
+        aria-label="Zoom out"
+        onClick={function () {
+          step(-1);
+        }}
+        className="grid h-11 w-12 cursor-pointer place-items-center"
+      >
+        <Icon name="minus" size={22} strokeWidth={2} />
+      </button>
+    </div>
   );
 }
 
 //a line of the menu: what it does, its key, and whether it is on
-function Item({ icon, label, on, shortcut, onClick }) {
+function Row({ icon, label, on, shortcut, disabled, onClick }) {
   return (
     <button
       type="button"
       role={on === undefined ? "menuitem" : "menuitemcheckbox"}
       aria-checked={on}
+      disabled={disabled}
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none"
+      className="row disabled:cursor-default disabled:opacity-45"
     >
-      <Icon
-        name={icon}
-        className={cx("size-6", on ? "text-gold" : "text-white/85")}
-      />
-      <span className="flex-1 whitespace-nowrap">{label}</span>
+      <Icon name={icon} size={20} />
+      <span className="whitespace-nowrap">{label}</span>
       {shortcut && (
-        <kbd className="rounded bg-white/8 px-1.5 font-sans text-xs text-muted">
+        <kbd className="rounded-[2px] bg-inset px-1.5 font-sans text-[11px] text-muted">
           {shortcut}
         </kbd>
       )}
-      {on !== undefined && <Switch on={on} />}
+      {on === undefined ? (
+        <Icon name="chevron-right" size={16} className="ml-auto text-muted" />
+      ) : (
+        <span className={cx("switch", on && "on")} />
+      )}
     </button>
   );
 }
 
 /**
  * The menu behind the button in the top right corner: what is switched on
- * and off for the whole game. Put away by a click anywhere else, or Escape.
+ * and off for the whole game, and a new city. Put away by a click anywhere
+ * else, or Escape.
  */
-function Menu({ client, world, hasCity }) {
+function Menu({ client, world, busy }) {
   var [open, setOpen] = useState(false),
     box = useRef(null);
 
@@ -277,31 +326,22 @@ function Menu({ client, world, hasCity }) {
 
   return (
     <div ref={box} className="pointer-events-auto relative">
-      <button
-        type="button"
-        title="Menu"
-        aria-label="Menu"
+      <HudButton
+        icon={open ? "close" : "menu"}
+        label="Menu"
+        on={open}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={function () {
           setOpen(!open);
         }}
-        className="group cursor-pointer p-1 focus-visible:outline-none"
-      >
-        <Icon
-          name="menu"
-          className={cx(
-            "size-9 transition-transform group-hover:scale-110",
-            open ? "icon-glow text-gold" : "icon-float text-white",
-          )}
-        />
-      </button>
+      />
       {open && (
         <div
           role="menu"
-          className="glass absolute top-full right-0 z-30 mt-2 w-72 p-1.5"
+          className="card absolute top-full right-0 z-30 mt-2 w-64 overflow-hidden"
         >
-          <Item
+          <Row
             icon={world.sounds ? "sound-on" : "sound-off"}
             label="Sounds"
             on={world.sounds}
@@ -311,8 +351,8 @@ function Menu({ client, world, hasCity }) {
               if (client.sound) client.sound.toggle("sounds");
             }}
           />
-          <Item
-            icon="day-night"
+          <Row
+            icon={world.night ? "moon" : "sun"}
             label="Day and night"
             on={world.dayNight}
             shortcut="N"
@@ -320,30 +360,16 @@ function Menu({ client, world, hasCity }) {
               if (client.lighting) client.lighting.setDayNight();
             }}
           />
-          <Item
-            icon="top-view"
-            label="View from above"
-            on={world.top}
-            shortcut="T"
+          <Row
+            icon="found"
+            label="Start a new city"
+            //an action owns the world while it runs
+            disabled={busy}
             onClick={function () {
-              if (client.setTopView) client.setTopView(!WorldView.top());
+              setOpen(false);
+              startFresh();
             }}
           />
-          {hasCity && (
-            <>
-              <div className="mx-3 my-1 h-px bg-line" />
-              <Item
-                icon="locate"
-                label="Back to the city"
-                onClick={function () {
-                  setOpen(false);
-                  //gliding there, rather than jumping
-                  if (client.cityman)
-                    client.cityman.locate(client.player.city(), true);
-                }}
-              />
-            </>
-          )}
         </div>
       )}
     </div>
@@ -355,10 +381,27 @@ export default function Hud() {
     hasCity = useGame(function (s) {
       return s.hasCity;
     }),
+    busy = useGame(function (s) {
+      return s.busy;
+    }),
+    prompt = useGame(function (s) {
+      return s.prompt;
+    }),
     world = useWorld(client, hasCity),
-    onCity = useMatch("/:city/city/*") !== null;
+    onCity = useMatch("/:city/city/*") !== null,
+    //the world itself, no screen up over it - the camera's to be zoomed
+    onWorld = useMatch("/:city?") !== null && prompt === null,
+    funds = hasCity && world.money !== null;
 
-  function money() {
+  //the game's screens, dark at night with the world (GameScreen)
+  useEffect(
+    function () {
+      store.setState({ night: world.night });
+    },
+    [world.night],
+  );
+
+  function openCity() {
     //the money is what the city screen is mostly about - clicked again, it
     //puts it away
     if (onCity) goWorld();
@@ -367,41 +410,48 @@ export default function Hud() {
     else if (!worldScreen().busy()) goCity();
   }
 
+  function home() {
+    //gliding there, rather than jumping
+    if (client.cityman) client.cityman.locate(client.player.city(), true);
+  }
+
   return (
-    <>
-      <Container className="flex items-start justify-between gap-3 pt-3">
-        <img
-          src="/logo.png"
-          alt="Peepsland"
-          className="pixelated size-16 shrink-0 drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)]"
-        />
-        <div className="flex items-start gap-3">
-          <div className="text-float flex flex-col items-end pt-0.5 leading-tight font-semibold tabular-nums">
-            <div className="flex items-center gap-1.5 text-[15px] whitespace-nowrap">
-              {world.weather && (
-                <span className="font-normal text-white/80 capitalize max-[400px]:hidden">
-                  {world.weather}
-                </span>
-              )}
-              <Icon name="clock" className="icon-float size-[18px]" />
-              {world.time}
-            </div>
-            {hasCity && world.money !== null && (
-              <button
-                type="button"
-                title="The city"
-                onClick={money}
-                className="pointer-events-auto mt-1 flex cursor-pointer items-center gap-1.5 text-lg whitespace-nowrap text-gold transition-transform hover:scale-105"
-              >
-                <Icon name="coin" className="icon-float size-6" />
-                {world.money}
-              </button>
-            )}
-          </div>
-          <Menu client={client} world={world} hasCity={hasCity} />
+    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-2.5 [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_auto_1fr_auto_auto] sm:gap-3 sm:pt-4 sm:[grid-template-areas:'logo_funds_._time_tools'_'._._._._zoom']">
+      <img
+        src="/logo.png"
+        alt="Peepsland"
+        className="pixelated size-16 self-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)] [grid-area:logo] max-sm:hidden"
+      />
+      {funds && (
+        <div className="min-w-0 [grid-area:funds]">
+          <Funds world={world} onMoney={openCity} onHome={home} />
         </div>
-      </Container>
-      <Zoom client={client} zoom={world.zoom} at={world.zoomedTo} />
-    </>
+      )}
+      <div className="[grid-area:time]">
+        <Time world={world} />
+      </div>
+      {funds && (
+        <City
+          world={world}
+          className="justify-self-start [grid-area:city] sm:hidden"
+        />
+      )}
+      <div className="flex gap-2 [grid-area:tools]">
+        <HudButton
+          icon="map"
+          label="View from above (T)"
+          on={world.top}
+          onClick={function () {
+            if (client.setTopView) client.setTopView(!WorldView.top());
+          }}
+        />
+        <Menu client={client} world={world} busy={busy} />
+      </div>
+      {onWorld && (
+        <div className="justify-self-end [grid-area:zoom]">
+          <Zoom client={client} zoom={world.zoom} />
+        </div>
+      )}
+    </Container>
   );
 }

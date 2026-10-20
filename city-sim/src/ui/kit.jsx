@@ -1,16 +1,15 @@
 /**
  * What the game's screens are built of: the world and what goes over it as
  * layers (LayeredLayout), the width they keep to (Container), its icons,
- * the buttons floating over the world, and the screens - glass over the
- * world, dimmed behind them.
+ * the HUD's buttons and the bar's, and the screens - a card over the world,
+ * dimmed behind it.
  *
  * Over the world nothing takes a click by default - the layer over it is
  * pointer-events-none, so a tap goes through to the world's canvas - and
  * whatever is to be clicked says so itself, pointer-events-auto: a button,
  * a screen that covers the world.
  */
-import kit, { SIZE } from "isometrica/shared/icons/index";
-import names from "./icons";
+import ICONS from "./icons/index";
 
 export function cx(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -49,95 +48,95 @@ export function LayeredLayout({
  */
 export function Container({ className, children }) {
   return (
-    <div className={cx("mx-auto w-full max-w-5xl px-3 sm:px-4", className)}>
+    <div className={cx("mx-auto w-full max-w-5xl px-2.5 sm:px-4", className)}>
       {children}
     </div>
   );
 }
 
 /**
- * One of isometrica's icons (shared/icons) - by its own name, "road", or by
- * the one a button is given, "road-icon" (icons.js): one colour, the
- * text's, as big as it is made.
+ * One of the game's icons (ui/icons, by tools/genicons.js), by name: one
+ * colour, the text's, size high - and as much wider as it is drawn, a road
+ * a third. Its lines as wide as it is drawn with, or strokeWidth on a grid
+ * 24 high, as the others' are - bolder on a tile, say.
  */
-export function Icon({ name, className, ...props }) {
-  var path = kit[names[name] || name];
+export function Icon({ name, size = 24, strokeWidth, className, ...props }) {
+  var icon = ICONS[name];
 
-  if (path === undefined) return null;
+  if (icon === undefined) return null;
 
   return (
     <svg
-      viewBox={"0 0 " + SIZE + " " + SIZE}
-      fill="currentColor"
+      viewBox={"0 0 " + icon.w + " " + icon.h}
+      width={(size * icon.w) / icon.h}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={
+        strokeWidth === undefined ? icon.stroke : (strokeWidth * icon.h) / 24
+      }
+      strokeLinecap="square"
+      strokeLinejoin="miter"
       aria-hidden="true"
       className={cx("shrink-0", className)}
+      dangerouslySetInnerHTML={{ __html: icon.body }}
       {...props}
-    >
-      <path d={path} />
-    </svg>
+    />
   );
 }
 
-//leaving is red, confirming green; the rest white
-var TONES = {
-  close: "text-bad",
-  "cross-icon": "text-bad",
-  check: "text-good",
-  "tick-icon": "text-good",
-};
-
 /**
- * An icon floating over the world, to be clicked: outlined and shadowed to
- * read on anything, bigger under the pointer, and lit gold while it is on -
- * what a road is laid in, say. Its label under it, where there is room.
+ * A button of the HUD's own, on a card of its own: an icon, gold while it
+ * is on - the view from above, the menu open.
  */
-export function FloatButton({ icon, label, on, className, ...props }) {
+export function HudButton({ icon, label, on, className, ...props }) {
   return (
     <button
       type="button"
-      aria-label={label}
       title={label}
-      className={cx(
-        "group pointer-events-auto flex cursor-pointer flex-col items-center gap-1 focus-visible:outline-none",
-        className,
-      )}
+      aria-label={label}
+      aria-pressed={on}
+      className={cx("card hud-button", on && "on", className)}
       {...props}
     >
-      <Icon
-        name={icon}
-        className={cx(
-          "size-12 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110 group-active:scale-95 sm:size-14",
-          on
-            ? "icon-glow text-gold"
-            : cx("icon-float", TONES[icon] || "text-white"),
-        )}
-      />
-      {label && (
-        <span
-          className={cx(
-            "text-float text-[11px] leading-none font-semibold tracking-wide whitespace-nowrap uppercase max-sm:hidden",
-            on ? "text-gold" : "text-white/90",
-          )}
-        >
-          {label}
-        </span>
-      )}
+      <Icon name={icon} size={22} />
     </button>
   );
 }
 
 /**
- * A screen over the world: glass in the middle of the page, its title, a
- * way out in its corner, and what it holds - the page scrolling as it
- * does when that is taller than the window. The world behind it is dimmed
- * by the game screen (GameScreen).
+ * A button of the bar along the bottom: its icon over its word - picked
+ * (on), or the one that goes ahead (go).
+ */
+export function BarButton({ icon, label, on, go, className, ...props }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={on}
+      className={cx("bar-button", on && "on", go && "go", className)}
+      {...props}
+    >
+      <span className="well">
+        <Icon name={icon} size={22} />
+      </span>
+      {label}
+    </button>
+  );
+}
+
+/**
+ * A screen over the world: a card in the middle of the page, its title, a
+ * way out in its corner, and what it holds - the page scrolling as it does
+ * when that is taller than the window. The world behind it is dimmed by
+ * the game screen (GameScreen).
  */
 export function Screen({ title, aside, onClose, className, children }) {
   return (
     <Container className="flex flex-1 flex-col pt-2 pb-6">
-      <section className="glass flex flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-line px-5 py-4">
-          <h2 className="text-xl font-semibold">{title}</h2>
+      <section className="card flex flex-1 flex-col">
+        <header className="flex flex-wrap items-center gap-3 border-b-[1.5px] border-inset px-4 py-3 sm:px-5">
+          <h2 className="text-xl font-black">{title}</h2>
           {aside && <div className="text-sm text-muted">{aside}</div>}
           {onClose && (
             <button
@@ -145,9 +144,9 @@ export function Screen({ title, aside, onClose, className, children }) {
               aria-label="Close"
               title="Close"
               onClick={onClose}
-              className="ml-auto -mr-2 cursor-pointer rounded-lg p-2 text-white/80 hover:bg-white/10 hover:text-white"
+              className="-mr-1.5 ml-auto grid size-10 cursor-pointer place-items-center rounded-[3px] hover:bg-inset"
             >
-              <Icon name="close" className="size-6" />
+              <Icon name="close" size={22} />
             </button>
           )}
         </header>

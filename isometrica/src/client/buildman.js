@@ -857,30 +857,30 @@ Buildman.prototype.unfade = function () {
   unfade(this);
 };
 
-//the toggles a road is laid with, by what it is laid in (city-sim's icons):
-//as it is while another is on, and when on, driven both ways, one way only -
-//the way it is dragged - or one way the other way round
+//the toggles a road is laid with, by what it is laid in (city-sim's icons,
+//by name): as it is while another is on, and when on, driven both ways, one
+//way only - the way it is dragged - or one way the other way round
 var ROAD_TOOLS = [
   {
     material: "gravel",
-    off: "gravel-road-icon",
-    two: "gravel-two-way-icon",
-    one: "gravel-one-way-icon",
-    back: "gravel-one-way-back-icon",
+    off: "gravel",
+    two: "gravel-two",
+    one: "gravel-one",
+    back: "gravel-back",
   },
   {
     material: "cobble",
-    off: "cobble-road-icon",
-    two: "cobble-two-way-icon",
-    one: "cobble-one-way-icon",
-    back: "cobble-one-way-back-icon",
+    off: "cobble",
+    two: "cobble-two",
+    one: "cobble-one",
+    back: "cobble-back",
   },
   {
     material: "asphalt",
-    off: "road-icon",
-    two: "two-way-road-icon",
-    one: "one-way-road-icon",
-    back: "one-way-road-back-icon",
+    off: "asphalt",
+    two: "asphalt-two",
+    one: "asphalt-one",
+    back: "asphalt-back",
   },
 ];
 

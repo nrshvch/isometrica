@@ -416,6 +416,22 @@ CameraControl.prototype.init = function () {
 };
 
 /**
+ * Zooms a step of ZOOMS in, or out, about the middle of the screen - for
+ * buttons to zoom by, where there are no fingers to pinch or wheel to turn.
+ *
+ * @param dir {number} 1 in, -1 out
+ */
+CameraControl.prototype.zoomStep = function (dir) {
+  var cam = this._cam;
+
+  if (!cam) return;
+
+  var i = ZOOMS.indexOf(nearestZoom(cam.zoom())) + dir;
+
+  if (i >= 0 && i < ZOOMS.length) cam.zoom(ZOOMS[i]);
+};
+
+/**
  * The step of ZOOMS a zoom is at, or nearest: 1 for the furthest out (0.5)
  * to 5 for the closest in (2) - what the top bar shows.
  */

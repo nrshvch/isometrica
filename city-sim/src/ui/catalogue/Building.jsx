@@ -25,12 +25,12 @@ export default function Building() {
             <Preview code={code} />
           </div>
           <div className="flex min-w-60 flex-1 flex-col gap-4">
-            <p className="text-muted">
+            <p className="font-semibold text-muted">
               {"This is a " + data.name + "! Deal with that!"}
             </p>
             <div className="mt-auto flex gap-2">
               <button type="button" className="btn" onClick={goCatalogue}>
-                <Icon name="back" className="size-5" />
+                <Icon name="back" size={20} strokeWidth={2} />
                 Back
               </button>
               <button
@@ -40,7 +40,7 @@ export default function Building() {
                   build(code);
                 }}
               >
-                <Icon name="house" className="size-5" />
+                <Icon name="build" size={20} strokeWidth={2} />
                 Build it
               </button>
             </div>

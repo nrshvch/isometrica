@@ -22,8 +22,7 @@
     "generate:music": "node tools/genmusic.js",
     "generate:stones": "node tools/genstones.js",
     "generate:buildings": "node tools/genbuildings.js",
-    "generate:trees": "node tools/gentrees.js",
-    "generate:icons": "node tools/genicons.mjs"
+    "generate:trees": "node tools/gentrees.js"
   },
   "dependencies": {
     "engine": "file:../engine/engine",
@@ -37,10 +36,8 @@
     "yabh": "1.2.0"
   },
   "devDependencies": {
-    "@fontsource-variable/nunito": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^5.2.0",
-    "lucide-react": "^1.60.0",
     "pngjs": "^7.0.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

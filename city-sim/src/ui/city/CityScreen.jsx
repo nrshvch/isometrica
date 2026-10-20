@@ -46,12 +46,8 @@ function exportCity() {
 
 function Section({ heading, className, children }) {
   return (
-    <section
-      className={cx("rounded-xl bg-white/4 p-4 ring-1 ring-line", className)}
-    >
-      <h3 className="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
-        {heading}
-      </h3>
+    <section className={cx("rounded-[3px] bg-inset/60 p-4", className)}>
+      <h3 className="label mb-2">{heading}</h3>
       {children}
     </section>
   );
@@ -63,16 +59,16 @@ function Stat({ label, sub, tone, children }) {
     <div
       className={cx(
         "flex justify-between gap-4 py-0.5",
-        sub && "pl-4 text-sm text-muted",
+        sub ? "pl-4 text-sm font-semibold text-muted" : "font-bold",
       )}
     >
-      <span className={sub ? "" : "text-white/80"}>{label}</span>
+      <span>{label}</span>
       <span
         className={cx(
           "text-right tabular-nums",
-          !sub && "font-medium",
-          tone === "income" && "text-income",
-          tone === "expense" && "text-expense",
+          !sub && "font-extrabold",
+          tone === "income" && "text-good",
+          tone === "expense" && "text-bad",
         )}
       >
         {children}
@@ -84,16 +80,13 @@ function Stat({ label, sub, tone, children }) {
 //one of the figures the city is told by at a glance
 function Tile({ label, tone, children }) {
   return (
-    <div className="rounded-xl bg-white/4 p-4 ring-1 ring-line">
-      <div className="text-xs font-semibold tracking-wider text-muted uppercase">
-        {label}
-      </div>
+    <div className="rounded-[3px] bg-inset/60 p-4">
+      <div className="label">{label}</div>
       <div
         className={cx(
-          "mt-1 truncate text-2xl font-semibold tabular-nums",
-          tone === "gold" && "text-gold",
-          tone === "income" && "text-income",
-          tone === "expense" && "text-expense",
+          "figure mt-1.5 truncate",
+          tone === "income" && "text-good",
+          tone === "expense" && "text-bad",
         )}
       >
         {children}
@@ -108,9 +101,7 @@ function Info({ city }) {
   return (
     <div className="flex flex-col gap-3 p-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile label="Balance" tone="gold">
-          {s.balance}
-        </Tile>
+        <Tile label="Balance">{s.balance}</Tile>
         <Tile label="Net a tick" tone={s.netClass}>
           {s.net}
         </Tile>
@@ -170,13 +161,13 @@ function Info({ city }) {
 
       <Section heading="Hand over">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-lg text-sm text-muted">
+          <p className="max-w-lg text-sm font-semibold text-muted">
             {s.name +
               " as the city every new player starts on, the delivery game's" +
               " too - to be saved over isometrica/src/data/initialcity.js"}
           </p>
           <button type="button" onClick={exportCity} className="btn">
-            <Icon name="download" className="size-5" />
+            <Icon name="download" size={20} strokeWidth={2} />
             Download as the initial city
           </button>
         </div>
@@ -191,7 +182,7 @@ function MapTab() {
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      <div className="grid aspect-[2/1] place-items-center rounded-xl bg-white/4 text-muted ring-1 ring-line">
+      <div className="grid aspect-[2/1] place-items-center rounded-[3px] bg-inset/60 font-bold text-muted">
         The map is still being drawn
       </div>
       <div className="flex flex-wrap gap-2">
@@ -226,7 +217,7 @@ export default function CityScreen() {
     <Screen
       title={city ? city.name() : "The city"}
       aside={
-        <nav className="flex rounded-lg bg-white/6 p-1 ring-1 ring-line">
+        <nav className="flex rounded-[3px] bg-inset p-1">
           {TABS.map(function (t) {
             return (
               <NavLink
@@ -234,10 +225,10 @@ export default function CityScreen() {
                 to={"/" + params.city + "/city/" + t}
                 replace
                 className={cx(
-                  "rounded-md px-3 py-1 font-medium capitalize",
+                  "rounded-[2px] px-3 py-1 font-extrabold capitalize",
                   t === tab
-                    ? "bg-white/15 text-white"
-                    : "text-muted hover:text-white",
+                    ? "bg-card text-ink shadow"
+                    : "text-muted hover:text-ink",
                 )}
               >
                 {t}

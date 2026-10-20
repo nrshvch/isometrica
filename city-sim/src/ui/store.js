@@ -18,9 +18,11 @@ export var store = createStore(function () {
     //true while an action (build, shape the ground, buy land...) holds the
     //buttons
     busy: false,
-    //the buttons along the bottom, five slots: {icon, on, action} each, or
-    //undefined for an empty one
+    //the buttons along the bottom, five slots: {icon, label, on, go,
+    //action} each, or undefined for an empty one
     buttons: [],
+    //whether the world is drawn at night - the screens over it dark with it
+    night: false,
     //asking the player for a word: {message, placeholder, submit(value),
     //discard()} - or null
     prompt: null,
