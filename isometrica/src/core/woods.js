@@ -66,9 +66,9 @@ var WOODS = [
 //how many tiles across a wood is, about; over how many its edge is bent
 //out of straight; and how sharply one gives way to the next - the higher,
 //the narrower the stretch where they stand among each other
-var SIZE = 55,
+var SIZE = 110,
   BEND = 8,
-  SHARP = 12;
+  SHARP = 6;
 
 //glades and thickets inside a wood, how many tiles across; and clumps of
 //one kind in it
