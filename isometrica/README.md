@@ -231,13 +231,13 @@ engine in `engine/`.
   back off the buildings; the wind up there; all of it in the long ring of
   the streets, an eight-line feedback delay network. 36-second loops, two
   to six seconds each to make.
-- `woods`, `beach` and `offshore` - the country heard from above it, as
-  real as the skyline (`src/shared/gen/country.js`), not the cartoon
-  `forest`, `sea` and `gulls`. What goes on all the time soft and smooth -
-  the air, the leaves, the sea further off - rising and falling on its
-  own, with no tone or grain in it; what stands out of it far off, duller
-  the further (the air, and the leaves in a wood, taking the top off),
-  ringing on round about (the same feedback delay network as the streets,
+- `woods` and `offshore` - the country heard from above it, as real as the
+  skyline (`src/shared/gen/country.js`), not the cartoon `forest`, `sea`
+  and `gulls`. What goes on all the time soft and smooth - the air, the
+  leaves - rising and falling on its own, with no tone or grain in it;
+  what stands out of it far off, duller the further (the air, and the
+  leaves in a wood, taking the top off), ringing on round about (the same
+  feedback delay network as the streets,
   `dsp.js` `ring`). `woods` by day: the air in the trees, the leaves
   rustling softly, fluttering, louder in a gust - and the birds of a wood,
   each its own song from where it sits, over and over with a while
@@ -246,19 +246,12 @@ engine in `engine/`.
   trills, a wood pigeon cooing, a woodpecker drumming - each a pure whistle
   sweeping fast (the syrinx), never quite steady. By night: crickets near
   and far, each on its own steady beat, and a tawny owl's hoo ... hu,
-  hu-hu-hoooo. `beach` calm by day, calm by night, and rough: calm, a small
-  wave every ten seconds or so, one at a time, hardly breaking - a soft
-  woosh up the sand and back - over the sea further along, and by day
-  herring gulls one at a time, a throat's buzz through its own resonances,
-  rasping: kyow, the long call, kek-kek; rough, big waves breaking along
-  the beach, thumping down, the foam fizzing with bubbles bursting
-  (Minnaert's). `offshore` a breeze and a gale: in a breeze only a light
-  woosh of wind rising and falling, nothing breaking - the sea on screen is
-  calm; in a gale the wind gusting and whirling, the crests of the waves
-  breaking white round about, and spray. 36-second loops, one to four
-  seconds each to make.
-- `forest`, `sea`, `city`, `gulls`, `skyline`, `woods`, `beach`,
-  `offshore` and `siren` loop without a seam - what goes on all
+  hu-hu-hoooo. `offshore` a breeze and a gale: only a slight wind over the
+  sea, a light woosh rising and falling, stronger and gustier in a gale -
+  no waves, nothing breaking: the sea on screen is calm. 36-second loops,
+  one to three seconds each to make.
+- `forest`, `sea`, `city`, `gulls`, `skyline`, `woods`, `offshore` and
+  `siren` loop without a seam - what goes on all
   the time is made longer than the loop and its end faded into its start;
   what happens now and then is laid in round the loop - the rest play
   once. `generate("thunder/2", rate)` makes one, the same every time - two
@@ -319,7 +312,10 @@ dev`) plays them the way a game would - all three weathers together, the
 
 - Both games sound the same way (`src/client/audio/soundman.js`), every
   sound made in two workers (`audio.worker.js`, `maker.js`) the first time
-  it is wanted, and kept:
+  it is wanted, and kept - but only once the pictures on screen are all
+  painted (`Soundman#painted`: the generator has painted some and waits on
+  none): what is seen comes first, and what is to be heard waits for it,
+  the workers not even started before:
 - the music (`audio/music.js`) - `city` when the screen is a good part
   town, `town` when there is a little of one on it, else `outside`; `day`
   or `night` by the hour; all three weathers of it playing together and
@@ -329,12 +325,11 @@ dev`) plays them the way a game would - all three weathers together, the
 - the place - what is on screen looked over twice a second, a grid of
   points over it sorted into sea, shore, woods, fields and town: the woods
   and the fields (a little less of them) `woods` - its birds by day, its
-  crickets and owl at night; the beach `beach` - calm by day with its
-  gulls, calm by night, or rough by the wind; the open sea, out from the
-  beach, `offshore` - a breeze or a gale. Each as loud as there is of it,
+  crickets and owl at night; the sea, `offshore` - a slight wind over it,
+  a breeze or a gale by the weather; the shore nothing of its own. Each as loud as there is of it,
   louder zoomed in, one into the next by power, so panning out of town the
   hum gives way to the country or the sea, never to silence. The town on
-  screen hushes the woods; rain drowns the birds and the gulls a little.
+  screen hushes the woods; rain drowns the birds a little.
 - the hum of the town, from above (`skyline`) - full over the busy middle
   of a town: the shops, offices and works on screen, and the cars going
   about it. Faint and dull, far off, over the outskirts and the quieter

@@ -9,10 +9,9 @@
  *   as the camera goes from the town out over the country and the sea - as
  *   real as the hum of the town (shared/gen/country): the woods and the
  *   fields - a breath of air in the trees and the birds of a wood singing
- *   by day, crickets and an owl at night; the beach - small waves breaking
- *   along it, big ones in a gale, and gulls over it by day; the open sea,
- *   far out - mostly the wind, and the crests breaking white. Louder the
- *   closer the camera is;
+ *   by day, crickets and an owl at night; the sea - only a slight wind
+ *   over it, stronger in a gale, no waves. Louder the closer the camera
+ *   is;
  * - the hum of the town heard from above (shared/gen/skyline): full over
  *   the busy middle of a town - its shops, offices and works, and the cars
  *   going about it - and faint and dull, far off, over the outskirts and
@@ -80,15 +79,12 @@ var JAM_AFTER = 3500,
 
 //the loops of the places: which sound, by what share of the screen it
 //plays (Soundman#survey) and when - the town has its own, the skyline -
-//and whether the rain drowns it out a bit (the birds, the gulls)
+//and whether the rain drowns it out a bit (the birds)
 var PLACES = [
   { name: "woods/0", by: "wild", when: "day", wet: true },
   { name: "woods/1", by: "wild", when: "night", wet: true },
-  { name: "beach/0", by: "shore", when: "calm day", wet: true },
-  { name: "beach/1", by: "shore", when: "calm night" },
-  { name: "beach/2", by: "shore", when: "rough" },
-  { name: "offshore/0", by: "open", when: "calm" },
-  { name: "offshore/1", by: "open", when: "rough" },
+  { name: "offshore/0", by: "sea", when: "calm" },
+  { name: "offshore/1", by: "sea", when: "rough" },
 ];
 
 //how much of the woods' sound the open fields have - the air and the birds,
@@ -201,7 +197,6 @@ export default function Soundman(root) {
   this.land = {
     sea: 0,
     shore: 0,
-    open: 0,
     forest: 0,
     wild: 0,
     city: 0,
@@ -316,12 +311,27 @@ Soundman.prototype.start = function () {
       this.buses[k].connect(this.out);
     }
 
-    this.maker = new Maker(ctx);
+    this.maker = new Maker(ctx, this.painted.bind(this));
     this.music = new MusicPlayer(ctx, this.maker, this.buses.music);
   }
 
   this.level();
   this.out.gain.setTargetAtTime(1, ctx.currentTime, 0.3);
+};
+
+/**
+ * Whether the pictures on screen are all painted - the generated ones, the
+ * ground, the cars, the stones (client/generator) - for the sounds to be
+ * made only then: they come after, never in the way of, what is seen.
+ */
+Soundman.prototype.painted = function () {
+  var sprites = this.root.sprites,
+    generator = sprites && sprites.generator;
+
+  //(nothing painted: nothing to wait for)
+  if (!generator) return true;
+
+  return generator.painted > 0 && generator.idle();
 };
 
 //whether anything is to be heard now
@@ -339,6 +349,9 @@ Soundman.prototype.live = function () {
  */
 Soundman.prototype.frame = function () {
   if (!this.live()) return;
+
+  //what waits to be made, once the pictures are in
+  this.maker.pump();
 
   var wall = performance.now(),
     lighting = this.root.lighting,
@@ -491,8 +504,6 @@ Soundman.prototype.survey = function () {
   this.land = {
     sea: count.sea / n,
     shore: shore,
-    //the sea with no beach to it: out from the shore
-    open: (count.sea / n) * (1 - shore),
     forest: count.forest / n,
     //the woods, and the fields round them
     wild: Math.min(1, (count.forest + count.fields * FIELDS) / n),
@@ -545,7 +556,7 @@ Soundman.prototype.places = function (weather) {
     v = this.view(),
     //closer in, louder
     near = 0.55 + 0.45 * clamp((v.zoom - 0.5) / 1.5),
-    //rain and storm drown the birds and the gulls out a bit
+    //rain and storm drown the birds out a bit
     wet = 1 - 0.6 * clamp(weather.rain),
     //the town on screen has the country quieter under its hum
     hush = 1 - TOWN_HUSH * smooth(land.city / 0.3),
@@ -554,8 +565,6 @@ Soundman.prototype.places = function (weather) {
       night: 1 - day,
       calm: 1 - rough,
       rough: rough,
-      "calm day": (1 - rough) * day,
-      "calm night": (1 - rough) * (1 - day),
     },
     self = this;
 

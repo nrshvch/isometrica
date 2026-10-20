@@ -37,9 +37,9 @@
  *     now and then a horn;
  *   - skyline: a real city heard from high above it, not a cartoon of one
  *     - its own models, in skyline.js;
- *   - woods, beach and offshore: the country heard from above it - the
- *     woods by day and night, the beach, the open sea - as real as the
- *     skyline, not cartoons of it: their own models, in country.js.
+ *   - woods and offshore: the country heard from above it - the woods by
+ *     day and night, a slight wind over the sea - as real as the skyline,
+ *     not cartoons of it: their own models, in country.js.
  *
  * The last four loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
@@ -75,7 +75,7 @@ import {
   level,
 } from "./dsp.js";
 import { SKYLINE } from "./skyline.js";
-import { WOODS_SOUND, BEACH_SOUND, OFFSHORE_SOUND } from "./country.js";
+import { WOODS_SOUND, OFFSHORE_SOUND } from "./country.js";
 
 //how many samples a second, unless asked for another rate
 export var RATE = 44100;
@@ -1076,7 +1076,6 @@ export var SOUNDS = {
   city: { loop: true, make: city, ways: ["day", "night"] },
   skyline: SKYLINE,
   woods: WOODS_SOUND,
-  beach: BEACH_SOUND,
   offshore: OFFSHORE_SOUND,
 };
 
