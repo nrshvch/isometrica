@@ -233,30 +233,30 @@ engine in `engine/`.
   to six seconds each to make.
 - `woods`, `beach` and `offshore` - the country heard from above it, as
   real as the skyline (`src/shared/gen/country.js`), not the cartoon
-  `forest`, `sea` and `gulls`. What goes on all the time an octave at a
-  time, each wandering on its own as the skyline's roar does, going with
-  the gusts - brighter the harder it blows; what stands out of it far off,
-  duller the further (the air, and the leaves in a wood, taking the top
-  off), ringing on round about (the same feedback delay network as the
-  streets, `dsp.js` `ring`). `woods` by day: the air in the trees, the
-  leaves rattling - a great many little clicks, a few dozen a second in a
-  lull, thousands in a gust - and the birds of a wood, each its own song
-  from where it sits, over and over with a while between: a chaffinch's
-  run down and flourish, a great tit's tea-cher, a blackbird fluting and
-  twittering, a robin wandering high, a wren's trills, a wood pigeon
-  cooing, a woodpecker drumming - each a pure whistle sweeping fast (the
-  syrinx), never quite steady. By night: crickets near and far, each on
-  its own steady beat, and a tawny owl's hoo ... hu, hu-hu-hoooo.
-  `beach` calm by day, calm by night, and rough: waves breaking along the
-  beach a stretch after another, from one side over towards the other -
-  the lip thumping down, the white water rushing, the foam running up the
-  sand fizzing with bubbles bursting (Minnaert's) and draining back - over
-  the surf further along the coast; by day herring gulls, a throat's buzz
-  through its own resonances, rasping: kyow, the long call, kek-kek.
-  `offshore` a breeze and a gale: the wind over the open sea in gusts and
-  whirls, the crests of the waves breaking white round about, the swell
-  sloshing under it; in a gale spray. 36-second loops, two to six seconds
-  each to make.
+  `forest`, `sea` and `gulls`. What goes on all the time soft and smooth -
+  the air, the leaves, the sea further off - rising and falling on its
+  own, with no tone or grain in it; what stands out of it far off, duller
+  the further (the air, and the leaves in a wood, taking the top off),
+  ringing on round about (the same feedback delay network as the streets,
+  `dsp.js` `ring`). `woods` by day: the air in the trees, the leaves
+  rustling softly, fluttering, louder in a gust - and the birds of a wood,
+  each its own song from where it sits, over and over with a while
+  between: a chaffinch's run down and flourish, a great tit's tea-cher, a
+  blackbird fluting and twittering, a robin wandering high, a wren's
+  trills, a wood pigeon cooing, a woodpecker drumming - each a pure whistle
+  sweeping fast (the syrinx), never quite steady. By night: crickets near
+  and far, each on its own steady beat, and a tawny owl's hoo ... hu,
+  hu-hu-hoooo. `beach` calm by day, calm by night, and rough: calm, a small
+  wave every ten seconds or so, one at a time, hardly breaking - a soft
+  woosh up the sand and back - over the sea further along, and by day
+  herring gulls one at a time, a throat's buzz through its own resonances,
+  rasping: kyow, the long call, kek-kek; rough, big waves breaking along
+  the beach, thumping down, the foam fizzing with bubbles bursting
+  (Minnaert's). `offshore` a breeze and a gale: in a breeze only a light
+  woosh of wind rising and falling, nothing breaking - the sea on screen is
+  calm; in a gale the wind gusting and whirling, the crests of the waves
+  breaking white round about, and spray. 36-second loops, one to four
+  seconds each to make.
 - `forest`, `sea`, `city`, `gulls`, `skyline`, `woods`, `beach`,
   `offshore` and `siren` loop without a seam - what goes on all
   the time is made longer than the loop and its end faded into its start;

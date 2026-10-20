@@ -4,31 +4,30 @@
  * (sounds.js has the cartoon ones, forest, sea and gulls).
  *
  * What makes it sound real is mostly what makes the city: what goes on all
- * the time is a great many small things too many to tell apart - the
- * leaves, the foam, the crests of the waves far out - each octave of it
- * coming and going on its own; what stands out of it is mostly far off,
- * duller the further, and rings on round about; and nothing in it is ever
- * quite the same twice.
+ * the time is soft and smooth - the air, the leaves, the sea further off -
+ * rising and falling on its own, never a tone or a grain in it; what stands
+ * out of it is mostly far off, duller the further, and rings on round
+ * about; and nothing in it is ever quite the same twice.
  *
  * - woods by day: a breath of wind through the tops of the trees, the
- *   leaves rattling as it goes - a great many little clicks, not a hiss -
- *   and the birds of a wood singing, each its own song from where it sits,
+ *   leaves rustling softly as it goes, and the birds of a wood singing, each its own song from where it sits,
  *   over and over with a while between: chaffinches (a run down and a
  *   flourish), a great tit (tea-cher tea-cher), a blackbird (fluting, a
  *   squeaky twitter after), a robin (thin, wandering), a wren (trill after
  *   trill, far off), a wood pigeon cooing and a woodpecker drumming further
  *   still - all of them in the ring of the trees;
  * - woods by night: stiller; crickets near and far, and a tawny owl;
- * - beach: small waves - each breaking along the beach from one end of it
- *   to the other, the foam running up the sand fizzing with bubbles
- *   bursting, and draining back - over the surf further along the coast,
- *   and herring gulls - kyow, the long call, kek-kek - harsh and nasal, a
- *   throat's buzz through its own resonances; by night without the gulls;
- *   rough, big waves thumping down, and a gull or two;
- * - offshore: the open sea, out of sight of any beach - the wind gusting,
- *   all its octaves coming and going on their own, the crests of the waves
- *   breaking white here and there round about; in a gale more of it all,
- *   and spray.
+ * - beach, calm: a small wave now and then, one at a time, hardly breaking
+ *   - a soft woosh up the sand and back, a breath of foam - over the sea
+ *   further along, and herring gulls one at a time - kyow, the long call,
+ *   kek-kek - harsh and nasal, a throat's buzz through its own resonances;
+ *   by night without the gulls. Rough: big waves breaking along the beach,
+ *   thumping down, the foam fizzing with bubbles bursting, and a gull or
+ *   two;
+ * - offshore: the open sea, out of sight of any beach - in a breeze only a
+ *   light woosh of wind rising and falling, nothing breaking; in a gale the
+ *   wind gusting and whirling, higher air over it, the crests of the waves
+ *   breaking white round about, and spray.
  *
  * Only the plain pieces (noise, filters, laying sounds into the ears,
  * seamless loops, the ring round about) come from dsp.js. Each loops,
@@ -155,37 +154,69 @@ function bed(name, rate, n, over, seconds, octaves, every, gust, loud) {
 }
 
 /**
- * The leaves of the trees as the wind goes through them, both ears: each
- * leaf knocking another a click of noise dying away in a couple of
- * milliseconds, a few dozen a second in a lull, thousands in a gust, so
- * that it rattles and only in the strongest gusts runs into a rush.
+ * The leaves of the trees as the wind goes through them, both ears: a soft
+ * rustle high up, fluttering a dozen times a second as the leaves turn this
+ * way and that - louder and a little brighter the harder it blows, and
+ * smooth all the way: no click in it.
  */
 function leaves(name, rate, n, over, seconds, gust, loud) {
-  var ch = [],
-    eddies = wander(seeded(seedOf(name + " eddies")), seconds, 0.8);
+  var ch = [];
 
   for (var side = 0; side < 2; side++) {
     var rnd = seeded(seedOf(name + " " + side)),
-      hiss = white(rnd),
-      band = new Biquad(rate, "bandpass", 2500, 0.5),
-      top = new OnePole(rate, 6000),
-      dies = Math.exp(-1 / (0.004 * rate)),
-      shot = 0,
-      often = 0,
+      hiss = pink(rnd),
+      flutter = wander(rnd, seconds, 0.08),
+      band = new Biquad(rate, "bandpass", 2500, 0.7),
+      top = new Biquad(rate, "lowpass", 6000, 0.7),
+      g = 0,
+      buf = new Float32Array(n + over);
+
+    for (var i = 0; i < n + over; i++) {
+      var t = i / rate + side * 0.6;
+
+      if (i % 64 === 0) {
+        g = gust(t);
+        band.set("bandpass", 1800 + 1500 * g, 0.7);
+      }
+
+      buf[i] = top.run(band.run(hiss())) * g * g * (0.35 + 0.65 * flutter(t));
+    }
+
+    ch.push(seamless(buf, n, over));
+  }
+
+  return scale(ch, loud / (rms(ch) || 1));
+}
+
+/**
+ * A soft woosh, both ears, each its own: air, or water a long way off,
+ * rising and falling with `swell` - louder and brighter as it rises, from
+ * `low` Hz at the least to `high` at the most - and nothing else in it:
+ * no tone, no grain. Two lowpasses, so its top falls away gently.
+ */
+function woosh(name, rate, n, over, seconds, swell, low, high, loud) {
+  var ch = [];
+
+  for (var side = 0; side < 2; side++) {
+    var rnd = seeded(seedOf(name + " " + side)),
+      air = pink(rnd),
+      a = new Biquad(rate, "lowpass", low, 0.5),
+      b = new Biquad(rate, "lowpass", low * 1.5, 0.5),
+      g = 0,
       buf = new Float32Array(n + over);
 
     for (var i = 0; i < n + over; i++) {
       if (i % 64 === 0) {
-        var t = i / rate + side * 0.6,
-          g = gust(t) * (0.7 + 0.6 * eddies(t + side * 0.3));
+        //(it gets to either side a moment apart)
+        g = swell(i / rate + side * 0.5);
 
-        often = (20 + 3000 * g * g) / rate;
+        var f = low + (high - low) * g;
+
+        a.set("lowpass", f, 0.5);
+        b.set("lowpass", f * 1.5, 0.5);
       }
 
-      if (rnd() < often) shot += -Math.log(1 - rnd() * 0.999);
-      shot *= dies;
-
-      buf[i] = top.run(band.run(hiss())) * shot;
+      buf[i] = b.run(a.run(air())) * (0.35 + 0.65 * g);
     }
 
     ch.push(seamless(buf, n, over));
@@ -938,6 +969,56 @@ function woods(rnd, variant, rate) {
  * --------------------------------------------------------------------- */
 
 /**
+ * A small wave on a calm day, both ears: hardly breaking - the swell
+ * sliding up the sand with a soft woosh, a little brighter at its height,
+ * and running back down quieter, a breath of foam at the end of it. Each
+ * ear its own water, a moment apart, so it is wide and not doubled.
+ */
+function swash(rnd, rate, size) {
+  var long = between(rnd, 4, 6),
+    up = between(rnd, 1.2, 1.8),
+    back = between(rnd, 1, 1.6),
+    n = Math.round(long * rate),
+    ch = [];
+
+  for (var side = 0; side < 2; side++) {
+    var rush = pink(rnd),
+      hiss = white(rnd),
+      a = new Biquad(rate, "lowpass", 300, 0.5),
+      b = new Biquad(rate, "lowpass", 450, 0.5),
+      foam = new Biquad(rate, "bandpass", 2200, 0.6),
+      lag = side * between(rnd, 0.05, 0.15),
+      out = new Float32Array(n);
+
+    for (var i = 0; i < n; i++) {
+      var t = Math.max(0, i / rate - lag),
+        end = smooth((n - i) / (0.6 * rate)),
+        e =
+          (t < up
+            ? Math.pow(smooth(t / up), 1.5)
+            : Math.exp(-(t - up) / back)) * end,
+        w =
+          smooth((t - up * 0.85) / 0.4) *
+          Math.exp(-Math.max(0, t - up) / 1.1) *
+          end;
+
+      if (i % 64 === 0) {
+        var f = 250 + 1100 * e * size;
+
+        a.set("lowpass", f, 0.5);
+        b.set("lowpass", f * 1.5, 0.5);
+      }
+
+      out[i] = b.run(a.run(rush())) * e + foam.run(hiss()) * w * 0.06 * size;
+    }
+
+    ch.push(out);
+  }
+
+  return ch;
+}
+
+/**
  * One stretch of a wave breaking on the beach, mono: the lip of it coming
  * over and hitting the water - a thump, the bigger the wave the more - the
  * white water rushing, the foam running up the sand fizzing with bubbles
@@ -990,13 +1071,13 @@ function stretch(rnd, rate, long, size) {
 }
 
 /**
- * A wave breaking along the beach, both ears: a stretch of it after
- * another, a moment apart, from one side over towards the other - each its
- * own, a little bigger or smaller.
+ * A big wave breaking along the beach in rough weather, both ears: a
+ * stretch of it and another or two, a moment apart, from one side over
+ * towards the other - each its own, a little bigger or smaller.
  */
 function breaker(rnd, rate, size) {
-  var parts = 4 + Math.floor(rnd() * 3),
-    along = between(rnd, 0.6, 1.6) * (1 + size),
+  var parts = 2 + Math.floor(rnd() * 2),
+    along = between(rnd, 0.4, 0.9),
     long = 3.5 + 3 * size,
     from = between(rnd, -0.8, 0.8),
     to = clamp(
@@ -1160,69 +1241,43 @@ function gullCall(rnd, rate) {
   return squawk(rnd, rate, notes);
 }
 
-//the surf further along the coast, an octave at a time
-var SURF = [
-  [63, 0.7],
-  [125, 1],
-  [250, 0.9],
-  [500, 0.7],
-  [1000, 0.5],
-  [2000, 0.35],
-  [4000, 0.2],
-  [8000, 0.08],
-];
-
-//the breeze off the sea, an octave at a time
-var BREEZE = [
-  [63, 0.8],
-  [125, 1],
-  [250, 0.9],
-  [500, 0.6],
-  [1000, 0.35],
-  [2000, 0.18],
-  [4000, 0.08],
-  [8000, 0.03],
-];
-
 /**
- * How long a loop of each is; how long after one wave is done the next
- * comes, s - less than nothing, so they come in over each other - and how
- * big they are; how loud the surf further along and the breeze
- * are; how many gulls call; how long it rings on; and how loud it all is.
+ * How long a loop of each is; whether it is rough - big waves breaking, not
+ * small ones sliding up the sand; how long after one wave is done the next
+ * comes, s; how loud the sea further along is; how long between one gull's
+ * call and the next, s, if any call; how long it rings on; and how loud it
+ * all is.
  */
 var BEACHES = [
   //calm, by day
   {
     seconds: 36,
-    waves: [-2.5, 0.5],
-    size: 0.45,
-    surf: 0.012,
-    breeze: 0.008,
-    gulls: 7,
+    rough: false,
+    waves: [3, 7],
+    sea: 0.02,
+    gulls: [3, 9],
     ring: 0.9,
-    loud: 0.08,
+    loud: 0.06,
   },
   //calm, by night
   {
     seconds: 36,
-    waves: [-2.5, 0.5],
-    size: 0.45,
-    surf: 0.012,
-    breeze: 0.007,
-    gulls: 0,
+    rough: false,
+    waves: [3, 7],
+    sea: 0.02,
+    gulls: null,
     ring: 0.9,
-    loud: 0.075,
+    loud: 0.055,
   },
   //rough
   {
     seconds: 36,
-    waves: [-3.5, -1],
-    size: 1,
-    surf: 0.04,
-    breeze: 0.025,
-    gulls: 2,
+    rough: true,
+    waves: [0.5, 3],
+    sea: 0.04,
+    gulls: [10, 20],
     ring: 0.9,
-    loud: 0.12,
+    loud: 0.1,
   },
 ];
 
@@ -1231,83 +1286,63 @@ function beach(rnd, variant, rate) {
     tag = "beach " + variant,
     n = Math.round(be.seconds * rate),
     over = Math.round(1.5 * rate),
-    swell = wander(seeded(seedOf(tag + " swell")), be.seconds, 4),
-    surf = bed(
-      tag + " surf",
-      rate,
-      n,
-      over,
+    swell = wander(
+      seeded(seedOf(tag + " swell")),
       be.seconds,
-      SURF,
-      [1.5, 4],
-      swell,
-      be.surf,
+      be.rough ? 4 : 6,
     ),
-    blows = wander(seeded(seedOf(tag + " gusts")), be.seconds, 5),
-    breeze = bed(
-      tag + " breeze",
-      rate,
-      n,
-      over,
-      be.seconds,
-      BREEZE,
-      [2, 6],
-      blows,
-      be.breeze,
-    ),
+    //the sea further along the coast, a soft woosh
+    sea = be.rough
+      ? woosh(tag + " sea", rate, n, over, be.seconds, swell, 300, 1400, be.sea)
+      : woosh(tag + " sea", rate, n, over, be.seconds, swell, 200, 600, be.sea),
     waves = [new Float32Array(n), new Float32Array(n)],
     dry = [new Float32Array(n), new Float32Array(n)],
     send = [new Float32Array(n), new Float32Array(n)],
     c,
     i;
 
-  //the waves, one after another - now and then a set of bigger ones closer
-  //together
+  //the waves, one at a time
   again(
     rnd,
     rate,
     be.seconds,
     be.waves,
     function () {
-      return breaker(rnd, rate, be.size * between(rnd, 0.7, 1.15));
+      return be.rough
+        ? breaker(rnd, rate, between(rnd, 0.8, 1.1))
+        : swash(rnd, rate, between(rnd, 0.6, 1));
     },
     function (w, t) {
       var at = Math.round(t * rate);
 
-      lay(waves, w[0], at, -1, Math.SQRT2 * 0.7, true);
-      lay(waves, w[1], at, 1, Math.SQRT2 * 0.7, true);
+      lay(waves, w[0], at, -1, Math.SQRT2 * 0.6, true);
+      lay(waves, w[1], at, 1, Math.SQRT2 * 0.6, true);
     },
   );
 
-  //the gulls, here and there round the loop - one answering another, now
-  //and then
-  for (i = 0; i < be.gulls; i++) {
-    var at = rnd() * be.seconds,
-      r = between(rnd, 25, 150),
-      pan = between(rnd, -0.9, 0.9);
+  //the gulls, one at a time, here and there
+  if (be.gulls)
+    again(
+      rnd,
+      rate,
+      be.seconds,
+      be.gulls,
+      function () {
+        return gullCall(rnd, rate);
+      },
+      function (call, t) {
+        var r = between(rnd, 40, 180);
 
-    put(
-      dry,
-      send,
-      heard(rate, gullCall(rnd, rate), r, 0.5, 600000),
-      Math.round(at * rate),
-      pan,
-      r,
+        put(
+          dry,
+          send,
+          heard(rate, call, r, 0.4, 600000),
+          Math.round(t * rate),
+          between(rnd, -0.9, 0.9),
+          r,
+        );
+      },
     );
-
-    if (rnd() < 0.4) {
-      var r2 = between(rnd, 30, 170);
-
-      put(
-        dry,
-        send,
-        heard(rate, gullCall(rnd, rate), r2, 0.5, 600000),
-        Math.round((at + between(rnd, 0.6, 2)) * rate),
-        between(rnd, -0.9, 0.9),
-        r2,
-      );
-    }
-  }
 
   //the waves ringing a little, off the dunes and the water
   for (c = 0; c < 2; c++)
@@ -1321,8 +1356,7 @@ function beach(rnd, variant, rate) {
 
   for (c = 0; c < 2; c++)
     for (i = 0; i < n; i++)
-      ch[c][i] =
-        surf[c][i] + breeze[c][i] + waves[c][i] + dry[c][i] + back[c][i];
+      ch[c][i] = sea[c][i] + waves[c][i] + dry[c][i] + back[c][i];
 
   return level(ch, be.loud);
 }
@@ -1330,18 +1364,6 @@ function beach(rnd, variant, rate) {
 /* ------------------------------------------------------------------------
  * The open sea
  * --------------------------------------------------------------------- */
-
-//the wind over the open sea, an octave at a time
-var GALE = [
-  [50, 0.8],
-  [100, 1],
-  [200, 0.9],
-  [400, 0.7],
-  [800, 0.45],
-  [1600, 0.25],
-  [3200, 0.12],
-  [6400, 0.05],
-];
 
 /**
  * The crest of a wave breaking white somewhere out on the open sea, mono:
@@ -1374,30 +1396,33 @@ function crest(rnd, rate, big) {
 }
 
 /**
- * How long a loop of each is; how hard the wind blows and how much it
- * gusts; how many crests break white; how much spray it blows off them;
- * how loud the swell sloshing under it all is; and how loud it all is.
+ * How long a loop of each is; the wind's woosh - how low it is at its
+ * least and how high at its most, Hz, and how often it gusts anew, s;
+ * how loud the higher air over it is; how many crests break white; how much
+ * spray it blows off them; and how loud it all is.
  */
 var OFFSHORE = [
-  //a breeze
+  //a breeze: a light woosh, nothing breaking
   {
     seconds: 36,
-    wind: 0.05,
-    gusts: 0.6,
-    crests: 14,
+    low: 150,
+    high: 650,
+    every: 7,
+    air: 0,
+    crests: 0,
     spray: 0,
-    swell: 0.01,
-    loud: 0.08,
+    loud: 0.05,
   },
   //a gale
   {
     seconds: 36,
-    wind: 0.08,
-    gusts: 0.85,
-    crests: 40,
-    spray: 0.025,
-    swell: 0.02,
-    loud: 0.11,
+    low: 300,
+    high: 1600,
+    every: 3.5,
+    air: 0.015,
+    crests: 14,
+    spray: 0.01,
+    loud: 0.1,
   },
 ];
 
@@ -1406,68 +1431,69 @@ function offshore(rnd, variant, rate) {
     tag = "offshore " + variant,
     n = Math.round(of.seconds * rate),
     over = Math.round(1.5 * rate),
-    gusts = wander(seeded(seedOf(tag + " gusts")), of.seconds, 5),
-    whirls = wander(seeded(seedOf(tag + " whirls")), of.seconds, 1.4),
+    gusts = wander(seeded(seedOf(tag + " gusts")), of.seconds, of.every),
+    whirls = wander(seeded(seedOf(tag + " whirls")), of.seconds, 1.6),
     gust = function (t) {
-      return 1 - of.gusts + of.gusts * (0.6 * gusts(t) + 0.4 * whirls(t));
+      return of.air > 0 ? 0.7 * gusts(t) + 0.3 * whirls(t) : gusts(t);
     },
-    wind = bed(
+    ch = woosh(
       tag + " wind",
       rate,
       n,
       over,
       of.seconds,
-      GALE,
-      [1.2, 3.5],
       gust,
-      of.wind,
+      of.low,
+      of.high,
+      0.05,
     ),
-    sea = [new Float32Array(n), new Float32Array(n)],
     c,
     i;
 
-  //the swell sloshing far down under the wind, and the spray blown off the
-  //crests in a gale - each ear its own
-  for (c = 0; c < 2; c++) {
-    var low = brown(seeded(seedOf(tag + " swell " + c))),
-      hiss = white(seeded(seedOf(tag + " spray " + c))),
-      slosh = wander(seeded(seedOf(tag + " slosh " + c)), of.seconds, 3.5),
-      lp = new Biquad(rate, "lowpass", 160, 0.7),
-      hp = new Biquad(rate, "highpass", 2500, 0.7),
-      buf = new Float32Array(n + over);
+  //in a gale, the air higher over it, the spray blown off the crests, and
+  //the crests breaking white, near and far
+  if (of.air > 0) {
+    var air = woosh(
+      tag + " air",
+      rate,
+      n,
+      over,
+      of.seconds,
+      gust,
+      800,
+      3000,
+      of.air,
+    );
 
-    for (i = 0; i < n + over; i++) {
-      var t = i / rate,
-        g = gust(t + c * 0.4);
+    for (c = 0; c < 2; c++) {
+      var hiss = white(seeded(seedOf(tag + " spray " + c))),
+        hp = new Biquad(rate, "highpass", 2500, 0.7),
+        buf = new Float32Array(n + over);
 
-      buf[i] =
-        lp.run(low()) * of.swell * 8 * (0.3 + 0.7 * slosh(t)) +
-        hp.run(hiss()) * of.spray * g * g * g;
+      for (i = 0; i < n + over; i++) {
+        var g = gust(i / rate + c * 0.4);
+
+        buf[i] = hp.run(hiss()) * of.spray * g * g * g;
+      }
+
+      var spray = seamless(buf, n, over);
+
+      for (i = 0; i < n; i++) ch[c][i] += air[c][i] + spray[i];
     }
 
-    var s = seamless(buf, n, over);
+    for (i = 0; i < of.crests; i++) {
+      var r = between(rnd, 60, 300);
 
-    for (i = 0; i < n; i++) sea[c][i] += s[i];
+      lay(
+        ch,
+        heard(rate, crest(rnd, rate, 1), r, 0.4, 1000000),
+        Math.floor(rnd() * n),
+        between(rnd, -1, 1),
+        20 / r,
+        true,
+      );
+    }
   }
-
-  //the crests breaking white, near and far
-  for (i = 0; i < of.crests; i++) {
-    var r = between(rnd, 30, 300);
-
-    lay(
-      sea,
-      heard(rate, crest(rnd, rate, of.gusts), r, 0.5, 1000000),
-      Math.floor(rnd() * n),
-      between(rnd, -1, 1),
-      20 / r,
-      true,
-    );
-  }
-
-  var ch = [new Float32Array(n), new Float32Array(n)];
-
-  for (c = 0; c < 2; c++)
-    for (i = 0; i < n; i++) ch[c][i] = wind[c][i] + sea[c][i];
 
   return level(ch, of.loud);
 }
