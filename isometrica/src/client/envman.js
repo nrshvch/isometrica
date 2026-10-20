@@ -14,11 +14,19 @@ import Tree from "./gameObjects/tree";
 import View from "./view";
 import Trees from "../data/trees";
 
-//which way round a tree on a tile is, of its four: the same every time
+//which way round a tree on a tile is, of its four: the same every time, and
+//any of them as likely as the others, with nothing to tell from the next
+//tile's
 function tileTurns(tile) {
-  var h = Math.imul(tile | 0, 0x9e3779b1);
+  var h =
+    Math.imul(CoreTerrain.extractX(tile), 0x27d4eb2d) ^
+    Math.imul(CoreTerrain.extractY(tile), 0x165667b1) ^
+    0x2545f491;
 
-  return (h ^ (h >>> 15)) & 3;
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+
+  return (h ^ (h >>> 16)) >>> 30;
 }
 
 var BuildingData = Core.BuildingData;
