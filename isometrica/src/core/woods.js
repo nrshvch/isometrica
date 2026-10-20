@@ -17,7 +17,8 @@ import Simplex from "simplex-noise";
 import Trees from "../data/trees";
 
 //the woods: how thickly their trees stand, and which kinds grow in them,
-//how many of each to the others; and how much likelier the wood is high up
+//how many of each to the others - a dead one still standing or a stump
+//among them now and then; and how much likelier the wood is high up
 //(per step of height over UPLAND), down by the water (WET and below), and
 //towards the shore (the most just above the water, less and less up to
 //COAST steps of height)
@@ -25,40 +26,40 @@ var WOODS = [
   {
     name: "meadow",
     density: 0.04,
-    trees: { oak: 6, ash: 1 },
+    trees: { oak: 6, ash: 1, stump: 0.25, snag: 0.1 },
     likely: 0.25,
   },
   {
     name: "spruce forest",
     density: 0.85,
-    trees: { spruce: 14, pine: 1, birch: 1 },
+    trees: { spruce: 14, pine: 1, birch: 1, snag: 0.5, stump: 0.3 },
     likely: 0,
     upland: 0.12,
   },
   {
     name: "pine wood",
     density: 0.5,
-    trees: { pine: 14, birch: 1, spruce: 1 },
+    trees: { pine: 14, birch: 1, spruce: 1, snag: 0.4, stump: 0.4 },
     likely: 0,
     coast: 0.25,
   },
   {
     name: "broadleaf wood",
     density: 0.7,
-    trees: { beech: 4, oak: 3, ash: 2 },
+    trees: { beech: 4, oak: 3, ash: 2, snag: 0.25, stump: 0.2 },
     likely: 0,
   },
   {
     name: "alder by the water",
     density: 0.6,
-    trees: { alder: 6, ash: 1, birch: 1 },
+    trees: { alder: 6, ash: 1, birch: 1, snag: 0.25, stump: 0.1 },
     likely: -0.35,
     wet: 0.3,
   },
   {
     name: "birch grove",
     density: 0.55,
-    trees: { birch: 14, pine: 1, alder: 1 },
+    trees: { birch: 14, pine: 1, alder: 1, snag: 0.4, stump: 0.2 },
     likely: 0,
   },
 ];

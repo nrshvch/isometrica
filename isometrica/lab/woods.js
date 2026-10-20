@@ -21,6 +21,8 @@ var KIND_COLOURS = {
   birch: [255, 255, 255],
   pine: [220, 60, 50],
   spruce: [10, 70, 36],
+  snag: [150, 150, 150],
+  stump: [40, 30, 25],
 };
 
 //the woods, in the order core/woods has them

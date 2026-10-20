@@ -3,7 +3,8 @@
  * alder, birch, pine and spruce, two of each - every one a building of its
  * own, of the tree class, the variants of the tree type (data/buildings). The
  * world grows them on its own (core/ambient), in woods of their own
- * (core/woods).
+ * (core/woods) - and among them now and then a dead tree still standing, or
+ * a stump, which only the world puts down: a tree planted is a live one.
  *
  * The first oak and the first beech keep the codes the two trees drawn by hand
  * had, so a city that has those has these instead.
@@ -19,8 +20,23 @@ var PIVOT_X = 38,
   PIVOT_Y = 60;
 
 //a new kind goes on the end, so the codes of the ones before it stay
-var KINDS = ["oak", "beech", "ash", "alder", "birch", "pine", "spruce"];
+var KINDS = [
+  "oak",
+  "beech",
+  "ash",
+  "alder",
+  "birch",
+  "pine",
+  "spruce",
+  "snag",
+  "stump",
+];
 var EACH = 2;
+
+//the kinds nobody plants, and what they are called where it is not their
+//kind's name
+var WILD = { snag: true, stump: true };
+var NAMES = { snag: "dead tree" };
 
 var TREES = [];
 
@@ -33,7 +49,13 @@ KINDS.forEach(function (kind, k) {
           ? BuildingCode.tree2
           : BASE + k * 10 + v;
 
-    TREES.push({ kind: kind, code: code, name: kind, sprite: kind + "-" + v });
+    TREES.push({
+      kind: kind,
+      code: code,
+      name: NAMES[kind] || kind,
+      sprite: kind + "-" + v,
+      wild: WILD[kind] === true,
+    });
   }
 });
 
@@ -45,6 +67,8 @@ function variants(layer) {
     return {
       buildingCode: tree.code,
       name: tree.name,
+      //never the one planted (data/buildings expandVariants)
+      wild: tree.wild,
       sprites: [
         {
           x: 0,

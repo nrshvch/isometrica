@@ -502,6 +502,105 @@ var KINDS = {
       };
     },
   },
+
+  //a dead tree still standing: a bare grey trunk broken off aslant, with
+  //the stubs of its branches - no leaves
+  snag: {
+    leaves: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    bark: [
+      [88, 82, 74],
+      [146, 138, 126],
+      [146, 138, 126],
+    ],
+    clump: 0.3,
+    bumps: 0,
+    grow: function (r) {
+      var height = 18 + 8 * r(),
+        lean = [0.6 * r() - 0.3, 0.6 * r() - 0.3],
+        branches = [],
+        n = 3 + Math.floor(2 * r());
+
+      for (var i = 0; i < n; i++) {
+        var a = 2 * Math.PI * (i / n + 0.3 * r()),
+          z = 8 + (height - 10) * r(),
+          d = 3 + 4 * r() * (1 - z / height / 2);
+
+        branches.push({
+          from: [(lean[0] * z) / height, (lean[1] * z) / height, z],
+          to: [Math.cos(a) * d, Math.sin(a) * d, z + d * (0.4 + 0.6 * r())],
+          ra: 0.85,
+          rb: 0.45,
+        });
+      }
+
+      return {
+        trunk: {
+          height: height,
+          foot: 2.2,
+          top: 1.5,
+          lean: lean,
+          //broken off aslant
+          cut: [0.5 * r() - 0.25, 0.5 * r() - 0.25],
+        },
+        branches: branches,
+        lobes: [],
+      };
+    },
+  },
+
+  //what is left of a felled one: a short trunk cut off flat, the cut in
+  //the bark's third tone, its roots spread round its foot
+  stump: {
+    leaves: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    bark: [
+      [68, 54, 42],
+      [110, 90, 70],
+      [196, 166, 118],
+    ],
+    face: true,
+    clump: 0.3,
+    bumps: 0,
+    grow: function (r) {
+      var roots = [],
+        n = 4 + Math.floor(2 * r());
+
+      for (var i = 0; i < n; i++) {
+        var a = 2 * Math.PI * (i / n + 0.25 * r()),
+          d = 4 + 1.6 * r();
+
+        roots.push({
+          from: [Math.cos(a) * 1.2, Math.sin(a) * 1.2, 1.4],
+          to: [Math.cos(a) * d, Math.sin(a) * d, -0.6],
+          ra: 1.1,
+          rb: 0.4,
+        });
+      }
+
+      return {
+        trunk: {
+          height: 3 + 1.4 * r(),
+          foot: 3,
+          top: 2.7,
+          lean: [0, 0],
+          cut: [0, 0],
+        },
+        branches: roots,
+        lobes: [],
+      };
+    },
+  },
 };
 
 //a branch from the trunk out to every lobe off the middle
@@ -573,6 +672,7 @@ function turnPlan(plan, turns) {
       foot: plan.trunk.foot,
       top: plan.trunk.top,
       lean: at(plan.trunk.lean[0], plan.trunk.lean[1]),
+      cut: plan.trunk.cut && at(plan.trunk.cut[0], plan.trunk.cut[1]),
     },
     branches: plan.branches.map(function (b) {
       return { from: point(b.from), to: point(b.to), ra: b.ra, rb: b.rb };
@@ -631,9 +731,23 @@ function grow(kind, seed, turns) {
     );
   }
 
+  //how far p is over the cut through the top of the trunk
+  function cutAt(p) {
+    return (
+      p[2] -
+      (trunk.height +
+        trunk.cut[0] * (p[0] - top[0]) +
+        trunk.cut[1] * (p[1] - top[1]))
+    );
+  }
+
   tree.shape = function (q) {
     var p = [q[0] / scale, q[1] / scale, q[2] / scale],
       wood = limb(p, [0, 0, -1], top, trunk.foot, trunk.top);
+
+    //a trunk cut off, or broken: nothing of it over the cut, which goes
+    //through its top, sloping the way cut has it
+    if (trunk.cut) wood = Math.max(wood, cutAt(p));
 
     plan.branches.forEach(function (b) {
       wood = Math.min(wood, limb(p, b.from, b.to, b.ra, b.rb));
@@ -650,10 +764,14 @@ function grow(kind, seed, turns) {
   //across the trunk, in the tree's own way round so that they stay where
   //they are on it whichever side it is seen from
   tree.marked = function (q) {
+    var p = [q[0] / scale, q[1] / scale, q[2] / scale];
+
+    //the cut, for a kind that shows it
+    if (k.face && trunk.cut) return cutAt(p) > -0.3;
+
     if (k.marks === undefined) return false;
 
-    var p = [q[0] / scale, q[1] / scale, q[2] / scale],
-      up = p[2] / trunk.height,
+    var up = p[2] / trunk.height,
       o = back(p[0] - trunk.lean[0] * up, p[1] - trunk.lean[1] * up),
       a = Math.atan2(o[1], o[0]);
 

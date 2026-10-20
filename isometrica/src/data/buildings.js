@@ -165,15 +165,18 @@ buildingData[BuildingCode.waterPump] = {
  * Each variant of a type (see house) made a building of its own: everything
  * the type is by the numbers, with the variant's code, name and drawing, and
  * kept out of the catalogue - that is where the type is picked. The type is
- * left with its variants' codes, for whatever puts one down to pick from.
+ * left with its variants' codes, for whatever puts one down to pick from -
+ * all but the wild ones, which only the world puts down.
  */
 function expandVariants(data) {
-  var type, variant, building, code, key, i;
+  var type, variant, building, code, key, picked, i;
 
   for (code in data) {
     type = data[code];
 
     if (type.variants === undefined) continue;
+
+    picked = [];
 
     for (i = 0; i < type.variants.length; i++) {
       variant = type.variants[i];
@@ -189,8 +192,10 @@ function expandVariants(data) {
       building.variantOf = type.buildingCode;
       data[variant.buildingCode] = building;
 
-      type.variants[i] = variant.buildingCode;
+      if (!variant.wild) picked.push(variant.buildingCode);
     }
+
+    type.variants = picked;
   }
 }
 
