@@ -208,12 +208,16 @@ engine in `engine/`.
 - `siren` - the wail, the yelp and the two-tone nee-naw, through a
   loudspeaker's horn. It loops: the pitch is tuned so a whole number of
   cycles goes into every turn of it.
-- `forest` - birdsong, and a breezier one: wind in gusts, the leaves
-  rustling when it blows hardest, and birds - chirps, trills, a two-note
-  whistle, a warble - near and far, round the listener.
-- `sea` - calm, and rough with gulls: waves - a swell rising, the break, the
-  wash fizzing back down the beach, duller as it goes - over the surf
-  further out.
+- `forest` - day and night: by day quiet, a breath of air through the
+  trees, the leaves rustling when it blows hardest, and birds - chirps,
+  trills, a two-note whistle, a warble - near and far, round the listener;
+  by night breezier, a bird or two, and crickets chirping each on its own
+  beat, a whole number of chirps to the loop.
+- `sea` - calm, rough with gulls, and the open sea: waves - a swell rising,
+  the break, the wash fizzing back down the beach, duller as it goes - over
+  the surf further out, small ones on a calm day; far out, no beach to
+  break on, mostly the wind over the water in gusts, the swell low under
+  it.
 - `city` - day and night: a town from a little way off - the roar of its
   traffic coming and going, cars whooshing by, a hum, now and then a horn -
   quieter at night.
@@ -300,16 +304,22 @@ dev`) plays them the way a game would - all three weathers together, the
   storm, rain or a grey sky the lazy one. A new place or time has to hold
   six seconds before its piece fades in over the old.
 - the place - what is on screen looked over twice a second, a grid of
-  points over it sorted into sea, shore, woods and town: the forest's birds
-  by day and its breeze at night, the sea calm or rough by the wind, gulls
-  over the shore by day - each as loud as there is of it, louder zoomed
-  in; rain drowns the birds a little.
+  points over it sorted into sea, shore, woods, fields and town: the woods
+  and the fields (a little less of them) the forest's - by day its air and
+  birds, at night its breeze and crickets; the beach the waves, calm or
+  rough by the wind, and gulls over it by day; the open sea, out from the
+  beach, its wind - each as loud as there is of it, louder zoomed in, so
+  panning out of town the hum gives way to the country or the sea, never
+  to silence. The town on screen hushes the woods' sound; rain drowns the
+  birds a little.
 - the hum of the town, from above (`skyline`) - full over the busy middle
   of a town: the shops, offices and works on screen, and the cars going
   about it. Faint and dull, far off, over the outskirts and the quieter
   streets of houses, or with the town just off the screen (looked for two
   and a half screens round); hushed in the woods. The day's, the rush
-  hour's and the night's by the clock, one into the next.
+  hour's and the night's by the hour the city is drawn at
+  (`Lighting#shownHour`), one into the next - with the day and the night
+  not going by, the middle of the day's all the while, as are the places'.
 - thunder - each flash of lightning to come is known ahead of time
   (`Weather.flashesAhead`, the same sums as `Weather.flash`), so its
   thunder starts a moment before the sky lights up.
@@ -318,8 +328,8 @@ dev`) plays them the way a game would - all three weathers together, the
   each kind of car its own horn - a bus or a lorry honks, a van meep-meeps,
   a taxi beep-beeps - each car a little higher or lower, to the left or
   right of where it is on screen and quieter further off.
-- For now only the hum of the town is heard: the music, the places, the
-  thunder and the horns are kept quiet - the music with no button or key to
+- For now only the hum of the town and the places are heard: the music,
+  the thunder and the horns are kept quiet - the music with no button or key to
   turn it on (`QUIET` in soundman.js), and
   police cars make no sound.
 - Nothing plays until the page is touched, clicked or typed at - a browser

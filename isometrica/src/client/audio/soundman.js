@@ -5,9 +5,12 @@
  * - the music (client/audio/music): a piece for the kind of place on screen -
  *   the city, a small town, the country - by day or by night, going with the
  *   weather;
- * - the place itself, by what there is of it on screen: birds in the woods,
- *   the sea, gulls over the shore - day ones and night ones, louder the
- *   closer the camera is;
+ * - the place itself, by what there is of it on screen, one into the next
+ *   as the camera goes from the town out over the country and the sea: the
+ *   woods and the fields - a breath of air and birds by day, a breeze and
+ *   crickets at night; the beach - small waves on it, rough ones in a gale,
+ *   and gulls over it by day; the open sea, far out - mostly the wind.
+ *   Louder the closer the camera is;
  * - the hum of the town heard from above (shared/gen/skyline): full over
  *   the busy middle of a town - its shops, offices and works, and the cars
  *   going about it - and faint and dull, far off, over the outskirts and
@@ -19,8 +22,8 @@
  *   often two cars give each other a toot going by - to the left or the
  *   right of where they are on screen, quieter further off.
  *
- * For now only the hum of the town is heard (QUIET): the music, the
- * places, the thunder and the horns are kept quiet - the music with no way
+ * For now only the hum of the town and the places are heard (QUIET): the
+ * music, the thunder and the horns are kept quiet - the music with no way
  * to turn it on.
  *
  * Nothing plays until the page is first touched, clicked or typed at - a
@@ -43,7 +46,7 @@ import { wake } from "./wake";
 //what is kept quiet for now
 var QUIET = {
   music: true,
-  places: true,
+  places: false,
   skyline: false,
   thunder: true,
   horns: true,
@@ -76,12 +79,18 @@ var JAM_AFTER = 3500,
 //the loops of the places: which sound, and by what share of the screen it
 //plays (Soundman#survey) - the town has its own, the skyline
 var PLACES = [
-  { name: "forest/0", by: "forest", when: "day" },
-  { name: "forest/1", by: "forest", when: "night" },
-  { name: "sea/0", by: "sea", when: "calm" },
-  { name: "sea/1", by: "sea", when: "rough" },
+  { name: "forest/0", by: "wild", when: "day" },
+  { name: "forest/1", by: "wild", when: "night" },
+  { name: "sea/0", by: "shore", when: "calm" },
+  { name: "sea/1", by: "shore", when: "rough" },
   { name: "gulls/0", by: "shore", when: "day" },
+  { name: "sea/2", by: "open", when: "always" },
 ];
+
+//how much of the woods' sound the open fields have - the air and the birds,
+//only fewer of them; and how much of it the town on screen hushes
+var FIELDS = 0.6,
+  TOWN_HUSH = 0.6;
 
 //the hum of the town: by day, at rush hour and by night
 var SKYLINE = { day: "skyline/0", rush: "skyline/1", night: "skyline/2" };
@@ -188,7 +197,9 @@ export default function Soundman(root) {
   this.land = {
     sea: 0,
     shore: 0,
+    open: 0,
     forest: 0,
+    wild: 0,
     city: 0,
     busy: 0,
     cars: 0,
@@ -383,7 +394,15 @@ Soundman.prototype.survey = function () {
     roads = this.root.roadman,
     v = this.view(),
     r = v.reach * 0.55,
-    count = { sea: 0, shore: 0, forest: 0, city: 0, busy: 0, around: 0 },
+    count = {
+      sea: 0,
+      shore: 0,
+      forest: 0,
+      fields: 0,
+      city: 0,
+      busy: 0,
+      around: 0,
+    },
     n = 0,
     x,
     y,
@@ -422,6 +441,7 @@ Soundman.prototype.survey = function () {
         )
           count.busy++;
       } else if (b === null && env.hasTree(tile)) count.forest++;
+      else count.fields++;
     }
 
   //the town round about, off the screen too - heard from afar
@@ -467,7 +487,11 @@ Soundman.prototype.survey = function () {
   this.land = {
     sea: count.sea / n,
     shore: shore,
+    //the sea with no beach to it: out from the shore
+    open: (count.sea / n) * (1 - shore),
     forest: count.forest / n,
+    //the woods, and the fields round them
+    wild: Math.min(1, (count.forest + count.fields * FIELDS) / n),
     city: count.city / n,
     busy: count.busy / n,
     cars: cars / (4 * r * r),
@@ -487,9 +511,10 @@ function town(cls, tile, roads) {
 }
 
 //how much of daylight there is: 1 the day, 0 the night, between at dawn and
-//dusk
+//dusk - by the hour the city is drawn at, so all day while the day and the
+//night do not go by
 Soundman.prototype.daylight = function () {
-  var h = this.root.lighting.hour();
+  var h = this.root.lighting.shownHour();
 
   return smooth((h - 5) / 1.5) * smooth((21 - h) / 1.5);
 };
@@ -518,20 +543,22 @@ Soundman.prototype.places = function (weather) {
     near = 0.55 + 0.45 * clamp((v.zoom - 0.5) / 1.5),
     //rain and storm drown the birds and the gulls out a bit
     wet = 1 - 0.6 * clamp(weather.rain),
+    //the town on screen has the country quieter under its hum
+    hush = 1 - TOWN_HUSH * smooth(land.city / 0.3),
+    when = {
+      day: day,
+      night: 1 - day,
+      calm: 1 - rough,
+      rough: rough,
+      always: 1,
+    },
     self = this;
 
   PLACES.forEach(function (p) {
     var share = Math.sqrt(land[p.by]),
-      when =
-        p.when === "day"
-          ? day
-          : p.when === "night"
-            ? 1 - day
-            : p.when === "calm"
-              ? 1 - rough
-              : rough,
-      gain = share * when * near;
+      gain = share * when[p.when] * near;
 
+    if (p.by === "wild") gain *= hush;
     if (p.name.indexOf("forest") === 0 || p.name.indexOf("gulls") === 0)
       gain *= wet;
     if (p.name.indexOf("gulls") === 0) gain *= 1 - rough * 0.7;
@@ -594,7 +621,7 @@ Soundman.prototype.skyline = function () {
 //how much of the rush hour it is: 0..1, most from 7:30 to 9 in the morning
 //and from 16:30 to 18:30 of an evening
 Soundman.prototype.rush = function () {
-  var h = this.root.lighting.hour(),
+  var h = this.root.lighting.shownHour(),
     morning = smooth((h - 6.75) / 0.75) * smooth((9.75 - h) / 0.75),
     evening = smooth((h - 15.75) / 0.75) * smooth((19.25 - h) / 0.75);
 

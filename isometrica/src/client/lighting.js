@@ -278,6 +278,15 @@ Lighting.prototype.hour = function () {
 };
 
 /**
+ * The hour the city is drawn at: the clock's while the day and the night go
+ * by, else the middle of the day all the while - the hour the sounds go by
+ * too, so they are the day's when the city is.
+ */
+Lighting.prototype.shownHour = function () {
+  return this.dayNight ? this.hour() : MIDDAY;
+};
+
+/**
  * The game's time, ms, going on smoothly between the clock's ticks - for
  * the sun and the weather to change little by little, not a tick at a time.
  */
@@ -306,7 +315,7 @@ Lighting.prototype.begin = function (viewport, M) {
   this.top = View.top();
   this.view.projection = GLView.PROJECTIONS[this.top ? "top" : "side"];
   //the hour the city is drawn at - the clock's, or the middle of the day
-  hourNow = this.dayNight ? this.hour() : MIDDAY;
+  hourNow = this.shownHour();
   this.weather = Weather.at(this.clock());
   Wind.factor = this.weather.wind;
   this.sky = sun(hourNow);
