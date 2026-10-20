@@ -1,9 +1,9 @@
 /**
- * A word asked of the player - the name of the city being founded - in the
- * place of the world, with leaving it and taking it along the bottom.
+ * A word asked of the player - the name of the city being founded - on
+ * glass over the world, with leaving it and taking it.
  */
 import { useState } from "react";
-import { Screen } from "../kit";
+import { Container, Icon } from "../kit";
 
 export default function Prompt({ prompt }) {
   var [value, setValue] = useState(prompt.placeholder || "");
@@ -13,34 +13,41 @@ export default function Prompt({ prompt }) {
   }
 
   return (
-    <Screen
-      className="flex items-center justify-center p-4"
-      buttons={[
-        { icon: "back-icon", text: "Cancel", onClick: prompt.discard },
-        { icon: "tick-icon", text: "Build", onClick: submit },
-      ]}
-    >
+    <Container className="flex flex-1 items-center justify-center pb-24">
       <form
-        className="w-4/5 max-w-xl"
+        className="glass pointer-events-auto w-full max-w-md p-6"
         onSubmit={function (e) {
           e.preventDefault();
           submit();
         }}
       >
-        <label className="block text-[14pt]">
-          {prompt.message}
-          <input
-            autoFocus
-            type="text"
-            placeholder={prompt.placeholder}
-            value={value}
-            onChange={function (e) {
-              setValue(e.target.value);
-            }}
-            className="ui-block-inset mt-2 block w-full bg-white px-3 py-3 text-[14pt] text-[#333] outline-none"
-          />
-        </label>
+        <div className="mb-4 flex items-center gap-3">
+          <Icon name="house" className="size-10 text-gold" />
+          <label htmlFor="prompt" className="text-xl font-semibold">
+            {prompt.message}
+          </label>
+        </div>
+        <input
+          id="prompt"
+          autoFocus
+          type="text"
+          placeholder={prompt.placeholder}
+          value={value}
+          onChange={function (e) {
+            setValue(e.target.value);
+          }}
+          className="w-full rounded-lg bg-white/8 px-4 py-3 text-lg ring-1 ring-line outline-none placeholder:text-white/35 focus:ring-2 focus:ring-gold"
+        />
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" className="btn" onClick={prompt.discard}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary">
+            <Icon name="check" className="size-5" />
+            Found it
+          </button>
+        </div>
       </form>
-    </Screen>
+    </Container>
   );
 }

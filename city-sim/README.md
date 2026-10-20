@@ -99,8 +99,8 @@ ground shaping to the world, `src/client` is those, `src/ui` its screens;
 
 ### Its screens
 
-React, styled with Tailwind (`src/ui/app.css`, the game's teal blocks and
-outlined Courier), found by the address (`src/ui/router.jsx`): `/<id>` the
+React, styled with Tailwind (`src/ui/app.css`: floating icons and words
+outlined over the world, dark glass for screens), found by the address (`src/ui/router.jsx`): `/<id>` the
 world, `/<id>/catalogue` (`/<id>/catalogue/<code>` one building of it),
 `/<id>/city` the city screen (`/<id>/city/map` a tab of it). Every address is
 the page - the Worker serves `index.html` for any it has no file for
@@ -146,7 +146,7 @@ shown at 64 (and as the page's icon).
 ### Its icons
 
 isometrica's icon kit (`isometrica/src/shared/icons`, see the isometrica
-README): pixel art on a 16 by 16 grid, one colour, `currentColor`, shown
+README): on a 24 by 24 grid, one colour, `currentColor`, shown
 by `<Icon name="road" className="size-6" />` (`src/ui/kit.jsx`).
 `src/ui/icons.js` says which of them each of the game's buttons is,
 isometrica's road toggles among them.

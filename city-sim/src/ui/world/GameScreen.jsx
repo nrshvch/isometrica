@@ -83,7 +83,7 @@ export default function GameScreen() {
         wrapperProps={{
           className: cx(
             "flex flex-col transition-colors",
-            covered && "pointer-events-auto bg-black/45 backdrop-blur-[2px]",
+            covered && "pointer-events-auto bg-ink/55 backdrop-blur-sm",
           ),
         }}
       >

@@ -1,15 +1,15 @@
 /**
  * What the game's screens are built of: the world and what goes over it as
  * layers (LayeredLayout), the width they keep to (Container), its icons,
- * its buttons, and the screens' windows with their buttons along the
- * bottom.
+ * the buttons floating over the world, and the screens - glass over the
+ * world, dimmed behind them.
  *
  * Over the world nothing takes a click by default - the layer over it is
  * pointer-events-none, so a tap goes through to the world's canvas - and
  * whatever is to be clicked says so itself, pointer-events-auto: a button,
  * a screen that covers the world.
  */
-import kit, { SHADE, SIZE } from "isometrica/shared/icons/index";
+import kit, { SIZE } from "isometrica/shared/icons/index";
 import names from "./icons";
 
 export function cx(...classes) {
@@ -49,106 +49,110 @@ export function LayeredLayout({
  */
 export function Container({ className, children }) {
   return (
-    <div className={cx("mx-auto w-full max-w-5xl px-3", className)}>
+    <div className={cx("mx-auto w-full max-w-5xl px-3 sm:px-4", className)}>
       {children}
     </div>
   );
 }
 
 /**
- * One of the kit's icons (isometrica shared/icons) - by its own name,
- * "road", or by the one a button is given, "road-icon" (icons.js). One
- * colour, the text's, and as big as it is made.
+ * One of isometrica's icons (shared/icons) - by its own name, "road", or by
+ * the one a button is given, "road-icon" (icons.js): one colour, the
+ * text's, as big as it is made.
  */
 export function Icon({ name, className, ...props }) {
-  var icon = kit[names[name] || name];
+  var path = kit[names[name] || name];
 
-  if (icon === undefined) return null;
+  if (path === undefined) return null;
 
   return (
     <svg
       viewBox={"0 0 " + SIZE + " " + SIZE}
       fill="currentColor"
-      shapeRendering="crispEdges"
       aria-hidden="true"
       className={cx("shrink-0", className)}
       {...props}
     >
-      {icon.solid && <path d={icon.solid} />}
-      {icon.shade && <path d={icon.shade} opacity={SHADE} />}
+      <path d={path} />
     </svg>
   );
 }
 
-//leaving is red, confirming green, the rest the game's teal
+//leaving is red, confirming green; the rest white
 var TONES = {
-  close: "ui-button-danger",
-  "cross-icon": "ui-button-danger",
-  check: "ui-button-ok",
-  "tick-icon": "ui-button-ok",
+  close: "text-bad",
+  "cross-icon": "text-bad",
+  check: "text-good",
+  "tick-icon": "text-good",
 };
 
 /**
- * A square button with an icon, over the world: on for a toggle switched
- * on - what a road is laid in, say - sunk in and ringed in white.
+ * An icon floating over the world, to be clicked: outlined and shadowed to
+ * read on anything, bigger under the pointer, and lit gold while it is on -
+ * what a road is laid in, say. Its label under it, where there is room.
  */
-export function IconButton({ icon, on, className, iconClassName, ...props }) {
+export function FloatButton({ icon, label, on, className, ...props }) {
   return (
     <button
       type="button"
+      aria-label={label}
+      title={label}
       className={cx(
-        "ui-button ui-shadow pointer-events-auto grid shrink-0 place-items-center rounded-lg border-2 text-white transition-transform active:translate-y-px",
-        TONES[icon],
-        on && "ui-button-on ring-2 ring-white ring-offset-1 ring-offset-ink",
+        "group pointer-events-auto flex cursor-pointer flex-col items-center gap-1 focus-visible:outline-none",
         className,
       )}
       {...props}
     >
-      <Icon name={icon} className={cx("size-3/5", iconClassName)} />
+      <Icon
+        name={icon}
+        className={cx(
+          "size-12 transition-transform duration-150 group-hover:scale-110 group-focus-visible:scale-110 group-active:scale-95 sm:size-14",
+          on
+            ? "icon-glow text-gold"
+            : cx("icon-float", TONES[icon] || "text-white"),
+        )}
+      />
+      {label && (
+        <span
+          className={cx(
+            "text-float text-[11px] leading-none font-semibold tracking-wide whitespace-nowrap uppercase max-sm:hidden",
+            on ? "text-gold" : "text-white/90",
+          )}
+        >
+          {label}
+        </span>
+      )}
     </button>
   );
 }
 
 /**
- * A screen over the world: a window in the middle of the page, on the game's
- * patterned ground, with its buttons along the bottom, kept in sight as the
- * page scrolls. The world behind it is dimmed by the game screen
- * (GameScreen).
+ * A screen over the world: glass in the middle of the page, its title, a
+ * way out in its corner, and what it holds - the page scrolling as it
+ * does when that is taller than the window. The world behind it is dimmed
+ * by the game screen (GameScreen).
  */
-export function Screen({ className, buttons, children }) {
+export function Screen({ title, aside, onClose, className, children }) {
   return (
-    <Container className="flex flex-1 flex-col pt-2 pb-3">
-      <div className="ui-ground ui-shadow flex flex-1 flex-col overflow-clip rounded-xl border-2 border-block-dark">
+    <Container className="flex flex-1 flex-col pt-2 pb-6">
+      <section className="glass flex flex-1 flex-col">
+        <header className="flex items-center gap-3 border-b border-line px-5 py-4">
+          <h2 className="text-xl font-semibold">{title}</h2>
+          {aside && <div className="text-sm text-muted">{aside}</div>}
+          {onClose && (
+            <button
+              type="button"
+              aria-label="Close"
+              title="Close"
+              onClick={onClose}
+              className="ml-auto -mr-2 cursor-pointer rounded-lg p-2 text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              <Icon name="close" className="size-6" />
+            </button>
+          )}
+        </header>
         <div className={cx("flex-1", className)}>{children}</div>
-        {buttons && <WindowButtons buttons={buttons} />}
-      </div>
+      </section>
     </Container>
-  );
-}
-
-/**
- * The buttons along the bottom of a screen, sharing its width: {icon, text,
- * onClick} each.
- */
-export function WindowButtons({ buttons }) {
-  return (
-    <div className="sticky bottom-0 flex h-14">
-      {buttons.map(function (b) {
-        return (
-          <button
-            key={b.text}
-            type="button"
-            onClick={b.onClick}
-            className={cx(
-              "ui-button flex flex-1 items-center justify-center gap-2 overflow-hidden whitespace-nowrap",
-              TONES[b.icon],
-            )}
-          >
-            <Icon name={b.icon} className="size-6" />
-            <span className="text-[11pt] font-bold">{b.text}</span>
-          </button>
-        );
-      })}
-    </div>
   );
 }

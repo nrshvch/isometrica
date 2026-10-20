@@ -5,30 +5,31 @@
  * the action going on.
  */
 import names from "../icons";
-import { Container, IconButton } from "../kit";
+import { Container, FloatButton } from "../kit";
 import { useGame } from "../store";
 
-//what each button does, said for whoever cannot see the icon - by the
-//kit's name of it
-var TITLES = {
-  close: "Leave",
+//what a button says under it, when what puts it up does not say - the
+//toggles of what is being done (isometrica client/buildman, terrainman),
+//by the kit's name of their icon
+var LABELS = {
+  close: "Cancel",
   check: "Done",
-  house: "Build",
-  road: "Asphalt road",
-  gravel: "Gravel road",
-  cobble: "Cobbled road",
-  bulldozer: "Shape the ground",
-  land: "Buy land",
-  rotate: "Turn round",
-  dice: "Another one",
-  raise: "Raise the ground",
-  lower: "Lower the ground",
+  rotate: "Turn",
+  dice: "Another",
+  road: "Asphalt",
+  gravel: "Gravel",
+  cobble: "Cobbles",
+  bulldozer: "Clear",
+  raise: "Raise",
+  lower: "Lower",
 };
 
-function titleOf(icon) {
-  var name = names[icon] || icon;
+function labelOf(b) {
+  if (b.label) return b.label;
 
-  return TITLES[name] || TITLES[name.split("-")[0]] || name;
+  var name = names[b.icon] || b.icon;
+
+  return LABELS[name] || LABELS[name.split("-")[0]] || "";
 }
 
 export default function WorldHud() {
@@ -42,31 +43,29 @@ export default function WorldHud() {
 
   return (
     <Container className="flex flex-1 flex-col pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="flex flex-1 items-center justify-center text-center">
+      <div className="flex flex-1 items-center justify-center px-6 text-center">
         {hint && (
-          <div className="ui-float outlined px-4 py-2 text-[12pt] font-bold">
+          <div className="text-float max-w-xl text-lg leading-snug font-semibold text-balance">
             {hint}
           </div>
         )}
       </div>
       <div className="flex-1" />
-      <div className="grid grid-cols-5 place-items-center">
+      <div className="mx-auto grid w-full max-w-2xl grid-cols-5 place-items-center">
         {slots.map(function (i) {
           var b = buttons[i];
 
           return b ? (
-            <IconButton
+            <FloatButton
               key={i}
               icon={b.icon}
               on={b.on}
-              title={titleOf(b.icon)}
-              aria-label={titleOf(b.icon)}
+              label={labelOf(b)}
               aria-pressed={b.on}
               onClick={b.action}
-              className="size-14 sm:size-16"
             />
           ) : (
-            <div key={i} className="size-14 sm:size-16" />
+            <div key={i} />
           );
         })}
       </div>

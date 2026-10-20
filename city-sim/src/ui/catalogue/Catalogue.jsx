@@ -5,48 +5,61 @@
  * up to be dragged out.
  */
 import { useMemo } from "react";
-import { Screen } from "../kit";
+import { Icon, Screen } from "../kit";
 import { build, goWorld } from "../session";
 import { buildings } from "./buildings";
 import Preview from "./Preview";
 
-var STATS = [
-  ["cost", "Cost"],
-  ["citizens", "Citizens"],
-  ["jobs", "Jobs"],
-  ["needs", "Needs"],
-  ["benefits", "Gives"],
-];
+//a figure of a card, or nothing for a building with nothing to say
+function Figure({ label, value }) {
+  if (value === "—") return null;
+
+  return (
+    <span className="rounded-md bg-white/8 px-2 py-0.5 text-xs">
+      <span className="text-muted">{label} </span>
+      {value}
+    </span>
+  );
+}
 
 function Card({ building }) {
+  var s = building.stats;
+
   return (
     <button
       type="button"
       onClick={function () {
         build(building.code);
       }}
-      className="group ui-shadow block cursor-pointer overflow-clip rounded-md text-left text-inherit"
+      className="group flex cursor-pointer flex-col gap-3 rounded-2xl bg-white/4 p-2.5 text-left ring-1 ring-line transition hover:-translate-y-0.5 hover:bg-white/8 hover:ring-gold/70 focus-visible:ring-2 focus-visible:ring-gold focus-visible:outline-none"
     >
-      <div className="ui-block truncate px-1 py-2 text-center group-hover:border-button-light group-hover:border-r-button-dark group-hover:border-b-button-dark group-hover:bg-button">
-        {building.displayName}
-      </div>
-      <div className="ui-block p-[4%]">
-        <div className="bg-white p-[4%]">
-          <Preview code={building.code} />
+      <Preview code={building.code} />
+      <div className="flex flex-col gap-2 px-1 pb-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="leading-tight font-semibold">
+            {building.displayName}
+          </h3>
         </div>
-      </div>
-      {/* a fixed number of single lines, clipped rather than wrapped, so no
-          card grows taller than its neighbours whatever the building has to
-          say */}
-      <div className="ui-block px-[4%] py-[3%] text-[9pt] leading-normal">
-        {STATS.map(function (s) {
-          return (
-            <div key={s[0]} className="truncate" title={building.stats[s[0]]}>
-              <span className="inline-block w-[6em] opacity-70">{s[1]}</span>
-              {building.stats[s[0]]}
-            </div>
-          );
-        })}
+        <div className="flex items-center gap-1.5 font-semibold text-gold tabular-nums">
+          <Icon name="coin" className="size-5" />
+          <span className="truncate" title={s.cost}>
+            {s.cost}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Figure label="Homes" value={s.citizens} />
+          <Figure label="Jobs" value={s.jobs} />
+        </div>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-xs">
+          <dt className="text-muted">Needs</dt>
+          <dd className="truncate" title={s.needs}>
+            {s.needs}
+          </dd>
+          <dt className="text-muted">Gives</dt>
+          <dd className="truncate text-income" title={s.benefits}>
+            {s.benefits}
+          </dd>
+        </dl>
       </div>
     </button>
   );
@@ -57,8 +70,10 @@ export default function Catalogue() {
 
   return (
     <Screen
-      className="grid grid-cols-2 content-start gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4"
-      buttons={[{ icon: "cross-icon", text: "Close", onClick: goWorld }]}
+      title="Build"
+      aside={all.length + " to choose from"}
+      onClose={goWorld}
+      className="grid grid-cols-2 content-start gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4"
     >
       {all.map(function (b) {
         return <Card key={b.code} building={b} />;

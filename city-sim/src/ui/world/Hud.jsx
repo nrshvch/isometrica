@@ -12,7 +12,7 @@ import Numeral from "numeral";
 import WorldView from "isometrica/client/view";
 import CameraControl from "isometrica/client/cameracontrol";
 import ResourceCode from "isometrica/core/resourcecode";
-import { Container, Icon, IconButton, cx } from "../kit";
+import { Container, Icon, cx } from "../kit";
 import { useGame } from "../store";
 import { getClient, goCity, goWorld, worldScreen } from "../session";
 
@@ -190,17 +190,36 @@ function Zoom({ client, zoom, at }) {
     <div
       aria-live="polite"
       className={cx(
-        "ui-float outlined fixed top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 px-4 py-2 text-[22px] font-bold transition-opacity duration-300",
-        pinching || moved ? "opacity-100" : "opacity-0",
+        "text-float fixed top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 text-4xl font-bold tabular-nums transition-all duration-300",
+        pinching || moved ? "scale-100 opacity-100" : "scale-90 opacity-0",
       )}
     >
-      <Icon name="zoom" className="outlined-icon size-6" />
+      <Icon name="zoom" className="icon-float size-9" />
       {zoom}
     </div>
   );
 }
 
-//a line of the menu: what it does, whether it is on, and its key
+//a switch, on or off
+function Switch({ on }) {
+  return (
+    <span
+      className={cx(
+        "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+        on ? "bg-gold" : "bg-white/20",
+      )}
+    >
+      <span
+        className={cx(
+          "absolute top-0.5 size-4 rounded-full bg-white shadow transition-all",
+          on ? "left-[18px]" : "left-0.5",
+        )}
+      />
+    </span>
+  );
+}
+
+//a line of the menu: what it does, its key, and whether it is on
 function Item({ icon, label, on, shortcut, onClick }) {
   return (
     <button
@@ -208,25 +227,19 @@ function Item({ icon, label, on, shortcut, onClick }) {
       role={on === undefined ? "menuitem" : "menuitemcheckbox"}
       aria-checked={on}
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
+      className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/8 focus-visible:bg-white/8 focus-visible:outline-none"
     >
-      <Icon name={icon} className="size-5" />
+      <Icon
+        name={icon}
+        className={cx("size-6", on ? "text-gold" : "text-white/85")}
+      />
       <span className="flex-1 whitespace-nowrap">{label}</span>
-      {on !== undefined && (
-        <span
-          className={cx(
-            "rounded px-1.5 text-[9pt] font-bold uppercase",
-            on ? "bg-ok text-white" : "bg-white/15 text-white/70",
-          )}
-        >
-          {on ? "on" : "off"}
-        </span>
-      )}
       {shortcut && (
-        <kbd className="w-4 text-center text-[9pt] text-white/50">
+        <kbd className="rounded bg-white/8 px-1.5 font-sans text-xs text-muted">
           {shortcut}
         </kbd>
       )}
+      {on !== undefined && <Switch on={on} />}
     </button>
   );
 }
@@ -264,21 +277,29 @@ function Menu({ client, world, hasCity }) {
 
   return (
     <div ref={box} className="pointer-events-auto relative">
-      <IconButton
-        icon="menu"
+      <button
+        type="button"
         title="Menu"
+        aria-label="Menu"
         aria-haspopup="menu"
         aria-expanded={open}
-        on={open}
-        className="size-11"
         onClick={function () {
           setOpen(!open);
         }}
-      />
+        className="group cursor-pointer p-1 focus-visible:outline-none"
+      >
+        <Icon
+          name="menu"
+          className={cx(
+            "size-9 transition-transform group-hover:scale-110",
+            open ? "icon-glow text-gold" : "icon-float text-white",
+          )}
+        />
+      </button>
       {open && (
         <div
           role="menu"
-          className="ui-float absolute top-full right-0 z-30 mt-2 w-64 overflow-hidden border border-block-dark py-1 text-[11pt] shadow-xl"
+          className="glass absolute top-full right-0 z-30 mt-2 w-72 p-1.5"
         >
           <Item
             icon={world.sounds ? "sound-on" : "sound-off"}
@@ -309,16 +330,19 @@ function Menu({ client, world, hasCity }) {
             }}
           />
           {hasCity && (
-            <Item
-              icon="locate"
-              label="Back to the city"
-              onClick={function () {
-                setOpen(false);
-                //gliding there, rather than jumping
-                if (client.cityman)
-                  client.cityman.locate(client.player.city(), true);
-              }}
-            />
+            <>
+              <div className="mx-3 my-1 h-px bg-line" />
+              <Item
+                icon="locate"
+                label="Back to the city"
+                onClick={function () {
+                  setOpen(false);
+                  //gliding there, rather than jumping
+                  if (client.cityman)
+                    client.cityman.locate(client.player.city(), true);
+                }}
+              />
+            </>
           )}
         </div>
       )}
@@ -349,17 +373,17 @@ export default function Hud() {
         <img
           src="/logo.png"
           alt="Peepsland"
-          className="pixelated size-16 shrink-0 drop-shadow-[2px_3px_0_rgba(0,0,0,0.35)]"
+          className="pixelated size-16 shrink-0 drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)]"
         />
-        <div className="flex items-start gap-2">
-          <div className="ui-float outlined flex flex-col items-end px-3 py-1.5 text-[14px] leading-snug font-bold">
-            <div className="flex items-center gap-1.5 whitespace-nowrap">
+        <div className="flex items-start gap-3">
+          <div className="text-float flex flex-col items-end pt-0.5 leading-tight font-semibold tabular-nums">
+            <div className="flex items-center gap-1.5 text-[15px] whitespace-nowrap">
               {world.weather && (
-                <span className="font-normal text-white/80 max-[400px]:hidden">
+                <span className="font-normal text-white/80 capitalize max-[400px]:hidden">
                   {world.weather}
                 </span>
               )}
-              <Icon name="clock" className="outlined-icon size-4" />
+              <Icon name="clock" className="icon-float size-[18px]" />
               {world.time}
             </div>
             {hasCity && world.money !== null && (
@@ -367,9 +391,9 @@ export default function Hud() {
                 type="button"
                 title="The city"
                 onClick={money}
-                className="pointer-events-auto flex cursor-pointer items-center gap-1.5 whitespace-nowrap hover:text-block-light"
+                className="pointer-events-auto mt-1 flex cursor-pointer items-center gap-1.5 text-lg whitespace-nowrap text-gold transition-transform hover:scale-105"
               >
-                <Icon name="coin" className="outlined-icon size-4" />
+                <Icon name="coin" className="icon-float size-6" />
                 {world.money}
               </button>
             )}

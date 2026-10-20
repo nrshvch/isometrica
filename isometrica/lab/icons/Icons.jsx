@@ -1,13 +1,13 @@
 /**
  * The icon kit (src/shared/icons/kit.js), drawn in the page as it is now -
  * a change to an icon shows here before it is written out - on the grounds
- * the games put them on, at the sizes they show them at. Click one for its
- * pixels, its SVG and how a game shows it. Any icon drawn otherwise than
+ * the games put them on, at the sizes they show them at. Click one for it
+ * on its grid, its SVG and how a game shows it. Any icon drawn otherwise than
  * the written-out set has it (src/shared/icons/index.js) is marked, for
  * npm run generate:icons.
  */
 import { useMemo, useState } from "react";
-import { N, NAMES, SHADE, draw, svg } from "../../src/shared/icons/kit.js";
+import { NAMES, SIZE, draw, svg } from "../../src/shared/icons/kit.js";
 import written from "../../src/shared/icons/index.js";
 import { Button, Header, Input, Select, Status, cx } from "../ui/kit.jsx";
 
@@ -36,47 +36,51 @@ function groundOf(value) {
 function Glyph({ icon, size, className }) {
   return (
     <svg
-      viewBox={"0 0 " + N + " " + N}
+      viewBox={"0 0 " + SIZE + " " + SIZE}
       width={size}
       height={size}
       fill="currentColor"
-      shapeRendering="crispEdges"
       className={cx("block shrink-0", className)}
     >
-      {icon.solid && <path d={icon.solid} />}
-      {icon.shade && <path d={icon.shade} opacity={SHADE} />}
+      <path d={icon} />
     </svg>
   );
 }
 
-//its pixels, a cell each, as the kit draws them, on the grid they are
-//drawn on
-function Pixels({ icon }) {
-  var cells = [];
+//big, on the grid it is drawn on: a line every unit, and the margin it
+//keeps within
+function Grid({ icon }) {
+  var lines = [];
 
-  for (var i = 0; i < N * N; i++)
-    cells.push(
-      <div
-        key={i}
-        className="aspect-square"
-        style={{
-          background:
-            icon.px[i] === 2
-              ? "#ffffff"
-              : icon.px[i] === 1
-                ? "rgba(255,255,255," + SHADE + ")"
-                : "#1d1f22",
-        }}
+  for (var k = 1; k < SIZE; k++)
+    lines.push(
+      <path
+        key={k}
+        d={"M" + k + " 0V" + SIZE + "M0 " + k + "H" + SIZE}
+        stroke="#ffffff"
+        strokeOpacity="0.08"
+        strokeWidth="0.04"
       />,
     );
 
   return (
-    <div
-      className="grid w-full max-w-[320px] gap-px border border-line bg-line"
-      style={{ gridTemplateColumns: "repeat(" + N + ", minmax(0, 1fr))" }}
+    <svg
+      viewBox={"0 0 " + SIZE + " " + SIZE}
+      className="block w-full max-w-[320px] border border-line bg-ink"
     >
-      {cells}
-    </div>
+      {lines}
+      <rect
+        x="2"
+        y="2"
+        width={SIZE - 4}
+        height={SIZE - 4}
+        fill="none"
+        stroke="#7fc4c4"
+        strokeOpacity="0.5"
+        strokeWidth="0.06"
+      />
+      <path d={icon} fill="#ffffff" />
+    </svg>
   );
 }
 
@@ -111,7 +115,7 @@ function Detail({ name, icon, stale, onClose }) {
           </Button>
         </div>
         <div className="flex flex-wrap gap-4">
-          <Pixels icon={icon} />
+          <Grid icon={icon} />
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-end gap-3">
               {GROUNDS.slice(0, 2).map(function (g) {
@@ -182,7 +186,7 @@ export default function Icons() {
         return {
           name: name,
           icon: icon,
-          stale: !was || was.solid !== icon.solid || was.shade !== icon.shade,
+          stale: was !== icon,
         };
       });
     }, []),
@@ -269,9 +273,9 @@ export default function Icons() {
       <Status className="border-t border-line px-3 py-1.5">
         {icons.length +
           " icons, drawn on a " +
-          N +
+          SIZE +
           " by " +
-          N +
+          SIZE +
           " grid - " +
           (stale.length === 0 && gone.length === 0
             ? "the written-out set is the same"

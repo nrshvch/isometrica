@@ -5,16 +5,16 @@
  */
 export default function Splash() {
   return (
-    <div className="ui-ground fixed inset-0 z-50 flex items-center justify-center text-center text-[16px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(ellipse_at_center,#1d3047_0%,#0b1220_70%)] text-center">
       <div className="flex flex-col items-center">
         <img
           src="/logo.png"
           alt=""
-          className="pixelated mb-4 size-32 drop-shadow-[3px_4px_0_rgba(0,0,0,0.35)]"
+          className="pixelated mb-5 size-32 drop-shadow-[0_8px_16px_rgba(0,0,0,0.5)]"
         />
-        <h1 className="outlined-thick mb-3 text-[32px] font-bold">Peepsland</h1>
-        <div className="outlined mt-1">{__VERSION__}</div>
-        <div className="outlined mt-2">by Denis Narushevich</div>
+        <h1 className="text-5xl font-bold tracking-tight">Peepsland</h1>
+        <div className="mt-3 text-sm text-muted">{__VERSION__}</div>
+        <div className="mt-1 text-sm text-muted">by Denis Narushevich</div>
       </div>
     </div>
   );

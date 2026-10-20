@@ -4,7 +4,7 @@
  */
 import { useParams } from "react-router";
 import Data from "isometrica/data/buildings";
-import { Screen } from "../kit";
+import { Icon, Screen } from "../kit";
 import { build, goCatalogue } from "../session";
 import { displayName } from "./buildings";
 import Preview from "./Preview";
@@ -13,39 +13,40 @@ export default function Building() {
   var code = useParams().code,
     data = Data[code];
 
-  if (!data)
-    return (
-      <Screen
-        buttons={[{ icon: "back-icon", text: "Return", onClick: goCatalogue }]}
-      />
-    );
-
   return (
     <Screen
-      className="p-3"
-      buttons={[
-        { icon: "back-icon", text: "Return", onClick: goCatalogue },
-        {
-          icon: "bulldozer-icon",
-          text: "Build",
-          onClick: function () {
-            build(code);
-          },
-        },
-      ]}
+      title={data ? displayName(data) : "No such building"}
+      onClose={goCatalogue}
+      className="p-5"
     >
-      <div className="ui-block flex flex-wrap gap-[4%] p-[2%]">
-        <div className="w-2/5">
-          <Preview code={code} />
+      {data && (
+        <div className="flex flex-wrap gap-6">
+          <div className="w-full max-w-xs">
+            <Preview code={code} />
+          </div>
+          <div className="flex min-w-60 flex-1 flex-col gap-4">
+            <p className="text-muted">
+              {"This is a " + data.name + "! Deal with that!"}
+            </p>
+            <div className="mt-auto flex gap-2">
+              <button type="button" className="btn" onClick={goCatalogue}>
+                <Icon name="back" className="size-5" />
+                Back
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={function () {
+                  build(code);
+                }}
+              >
+                <Icon name="house" className="size-5" />
+                Build it
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex-1 leading-[1.4]">
-          Name:
-          <div>{displayName(data)}</div>
-        </div>
-        <div className="mt-[2%] w-full">
-          {"This is a " + data.name + "! Deal with that!"}
-        </div>
-      </div>
+      )}
     </Screen>
   );
 }

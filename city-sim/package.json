@@ -13,6 +13,7 @@
     "generate:logo": "node tools/genlogo.js"
   },
   "dependencies": {
+    "@fontsource-variable/rubik": "^5.3.0",
     "engine": "file:../engine/engine",
     "events": "file:../engine/events",
     "gl-matrix": "2.2.0",

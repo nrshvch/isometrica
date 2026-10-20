@@ -44,28 +44,33 @@ function exportCity() {
   if (save !== null) download("initialcity.js", initialCityFile(save));
 }
 
-function Section({ heading, children }) {
+function Section({ heading, className, children }) {
   return (
-    <div className="mb-4">
-      {heading && (
-        <div className="mb-1 border-b border-black/20 font-bold uppercase">
-          {heading}
-        </div>
-      )}
+    <section
+      className={cx("rounded-xl bg-white/4 p-4 ring-1 ring-line", className)}
+    >
+      <h3 className="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
+        {heading}
+      </h3>
       {children}
-    </div>
+    </section>
   );
 }
 
 //a line of it: what, and how much - a sub one what the line above is made of
 function Stat({ label, sub, tone, children }) {
   return (
-    <div className={cx("flex justify-between gap-4", sub && "pl-6 text-[90%]")}>
-      <span className="opacity-80">{label}</span>
+    <div
+      className={cx(
+        "flex justify-between gap-4 py-0.5",
+        sub && "pl-4 text-sm text-muted",
+      )}
+    >
+      <span className={sub ? "" : "text-white/80"}>{label}</span>
       <span
         className={cx(
-          "text-right",
-          !sub && "font-bold",
+          "text-right tabular-nums",
+          !sub && "font-medium",
           tone === "income" && "text-income",
           tone === "expense" && "text-expense",
         )}
@@ -76,78 +81,102 @@ function Stat({ label, sub, tone, children }) {
   );
 }
 
+//one of the figures the city is told by at a glance
+function Tile({ label, tone, children }) {
+  return (
+    <div className="rounded-xl bg-white/4 p-4 ring-1 ring-line">
+      <div className="text-xs font-semibold tracking-wider text-muted uppercase">
+        {label}
+      </div>
+      <div
+        className={cx(
+          "mt-1 truncate text-2xl font-semibold tabular-nums",
+          tone === "gold" && "text-gold",
+          tone === "income" && "text-income",
+          tone === "expense" && "text-expense",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function Info({ city }) {
   var s = useStats(city);
 
   return (
-    <div className="mx-auto max-w-[640px] px-[4%] py-[2%] leading-[1.6]">
-      <Section>
-        <Stat label="Name">{s.name}</Stat>
-        <Stat label="Location">{s.x + ", " + s.y}</Stat>
-      </Section>
+    <div className="flex flex-col gap-3 p-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Tile label="Balance" tone="gold">
+          {s.balance}
+        </Tile>
+        <Tile label="Net a tick" tone={s.netClass}>
+          {s.net}
+        </Tile>
+        <Tile label="Population">{s.population}</Tile>
+        <Tile label="Out of work">{s.unemployment.split(" ")[0]}</Tile>
+      </div>
 
-      <Section heading="Money">
-        <Stat label="Balance">{s.balance}</Stat>
-        <Stat label="Net" tone={s.netClass}>
-          {s.net}/tick
-        </Stat>
-        <Stat label="Income" tone="income">
-          {s.income}/tick
-        </Stat>
-        <Stat label="Houses" sub>
-          {s.taxes}
-        </Stat>
-        <Stat label="Commerce" sub>
-          {s.commerce}
-        </Stat>
-        <Stat label="Upkeep" tone="expense">
-          {s.upkeep}/tick
-        </Stat>
-        <Stat label="Roads" sub>
-          {s.roadsUpkeep}
-        </Stat>
-        <Stat label="Water towers" sub>
-          {s.waterUpkeep}
-        </Stat>
-        <Stat label="Land" sub>
-          {s.landUpkeep}
-        </Stat>
-        <Stat label="Town hall" sub>
-          {s.cityHallUpkeep}
-        </Stat>
-        {s.otherUpkeep && (
-          <Stat label="Other" sub>
-            {s.otherUpkeep}
+      <div className="grid gap-3 md:grid-cols-2">
+        <Section heading="Money">
+          <Stat label="Income" tone="income">
+            {s.income}/tick
           </Stat>
-        )}
-      </Section>
+          <Stat label="Houses" sub>
+            {s.taxes}
+          </Stat>
+          <Stat label="Commerce" sub>
+            {s.commerce}
+          </Stat>
+          <Stat label="Upkeep" tone="expense">
+            {s.upkeep}/tick
+          </Stat>
+          <Stat label="Roads" sub>
+            {s.roadsUpkeep}
+          </Stat>
+          <Stat label="Water towers" sub>
+            {s.waterUpkeep}
+          </Stat>
+          <Stat label="Land" sub>
+            {s.landUpkeep}
+          </Stat>
+          <Stat label="Town hall" sub>
+            {s.cityHallUpkeep}
+          </Stat>
+          {s.otherUpkeep && (
+            <Stat label="Other" sub>
+              {s.otherUpkeep}
+            </Stat>
+          )}
+        </Section>
 
-      <Section heading="People">
-        <Stat label="Population">{s.population} peeps</Stat>
-        <Stat label="Homes">{s.slots} peeps slots</Stat>
-        <Stat label="Jobs">{s.filled + " of " + s.jobs + " filled"}</Stat>
-        <Stat label="Available jobs">{s.available}</Stat>
-        <Stat label="Unemployment">{s.unemployment}</Stat>
-      </Section>
+        <div className="flex flex-col gap-3">
+          <Section heading="People">
+            <Stat label="Population">{s.population} peeps</Stat>
+            <Stat label="Homes">{s.slots} peeps</Stat>
+            <Stat label="Jobs">{s.filled + " of " + s.jobs + " filled"}</Stat>
+            <Stat label="Available jobs">{s.available}</Stat>
+            <Stat label="Unemployment">{s.unemployment}</Stat>
+          </Section>
 
-      <Section heading="Services">
-        <Stat label="Water towers">{s.towers}</Stat>
-        <Stat label="Roads">{s.roads} tiles off the town hall</Stat>
-        <Stat label="Not served">{s.unserved}</Stat>
-      </Section>
+          <Section heading="Services">
+            <Stat label="Water towers">{s.towers}</Stat>
+            <Stat label="Roads">{s.roads} tiles off the town hall</Stat>
+            <Stat label="Not served">{s.unserved}</Stat>
+          </Section>
+        </div>
+      </div>
 
       <Section heading="Hand over">
-        <div className="flex flex-col gap-1.5">
-          <span className="opacity-80">
-            The city every new player starts on, the delivery game's too - to be
-            saved over isometrica/src/data/initialcity.js
-          </span>
-          <button
-            type="button"
-            onClick={exportCity}
-            className="ui-button flex items-center gap-2 self-start rounded-md px-2.5 py-1.5"
-          >
-            <Icon name="download" className="size-4" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-lg text-sm text-muted">
+            {s.name +
+              " as the city every new player starts on, the delivery game's" +
+              " too - to be saved over isometrica/src/data/initialcity.js"}
+          </p>
+          <button type="button" onClick={exportCity} className="btn">
+            <Icon name="download" className="size-5" />
             Download as the initial city
           </button>
         </div>
@@ -161,21 +190,21 @@ function MapTab() {
   var [on, setOn] = useState({ Ecology: true });
 
   return (
-    <div className="p-[2%]">
-      <div className="ui-block-inset aspect-square bg-white" />
-      <div className="mt-[2%] flex flex-wrap gap-[2%]">
+    <div className="flex flex-col gap-3 p-4">
+      <div className="grid aspect-[2/1] place-items-center rounded-xl bg-white/4 text-muted ring-1 ring-line">
+        The map is still being drawn
+      </div>
+      <div className="flex flex-wrap gap-2">
         {["Crime", "Ecology", "Wealth", "Terrain", "Names"].map(function (m) {
           return (
             <button
               key={m}
               type="button"
+              aria-pressed={!!on[m]}
               onClick={function () {
                 setOn(Object.assign({}, on, { [m]: !on[m] }));
               }}
-              className={cx(
-                "ui-button mb-[2%] p-[2%]",
-                on[m] && "ui-button-on",
-              )}
+              className={cx("btn py-1.5", on[m] && "btn-primary")}
             >
               {m}
             </button>
@@ -195,29 +224,31 @@ export default function CityScreen() {
 
   return (
     <Screen
-      className="flex flex-col"
-      buttons={[{ icon: "cross-icon", text: "Close", onClick: goWorld }]}
+      title={city ? city.name() : "The city"}
+      aside={
+        <nav className="flex rounded-lg bg-white/6 p-1 ring-1 ring-line">
+          {TABS.map(function (t) {
+            return (
+              <NavLink
+                key={t}
+                to={"/" + params.city + "/city/" + t}
+                replace
+                className={cx(
+                  "rounded-md px-3 py-1 font-medium capitalize",
+                  t === tab
+                    ? "bg-white/15 text-white"
+                    : "text-muted hover:text-white",
+                )}
+              >
+                {t}
+              </NavLink>
+            );
+          })}
+        </nav>
+      }
+      onClose={goWorld}
     >
-      <div className="flex h-12 items-stretch gap-2 px-1 py-[0.6rem]">
-        {TABS.map(function (t) {
-          return (
-            <NavLink
-              key={t}
-              to={"/" + params.city + "/city/" + t}
-              replace
-              className={cx(
-                "ui-shadow flex items-center px-4 capitalize",
-                t === tab ? "ui-button" : "ui-block",
-              )}
-            >
-              {t}
-            </NavLink>
-          );
-        })}
-      </div>
-      <div className="ui-block flex-1">
-        {city ? tab === "map" ? <MapTab /> : <Info city={city} /> : null}
-      </div>
+      {city ? tab === "map" ? <MapTab /> : <Info city={city} /> : null}
     </Screen>
   );
 }

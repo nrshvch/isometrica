@@ -45,9 +45,9 @@ export var PAGES = [
     id: "icons",
     name: "Icons",
     about:
-      "The games' icon kit as it is drawn - pixel art on a 16 by 16 grid, " +
-      "one colour, any size - on the grounds they show it on, each with its " +
-      "pixels and its SVG.",
+      "The games' icon kit as it is drawn - one colour, on a 24 by 24 grid, " +
+      "any size - on the grounds they show it on, each with its grid and its " +
+      "SVG.",
   },
   {
     id: "lighting",

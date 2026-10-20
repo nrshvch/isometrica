@@ -166,6 +166,7 @@ function actionButtons(controls) {
 
   buttons[0] = {
     icon: "cross-icon",
+    label: "Cancel",
     action: function () {
       controls.discard();
     },
@@ -176,6 +177,7 @@ function actionButtons(controls) {
   if (controls.canSubmit())
     buttons[tools ? 4 : 2] = {
       icon: "tick-icon",
+      label: "Done",
       action: function () {
         controls.submit();
       },
@@ -192,6 +194,7 @@ function actionButtons(controls) {
   if (controls.canRotate())
     buttons[1] = {
       icon: "rotation-icon",
+      label: "Turn",
       action: function () {
         controls.rotate();
       },
@@ -201,6 +204,7 @@ function actionButtons(controls) {
   if (controls.canShuffle && controls.canShuffle())
     buttons[3] = {
       icon: "dice-icon",
+      label: "Another",
       action: function () {
         controls.shuffle();
       },
@@ -225,6 +229,7 @@ function idle(go, name) {
       undefined,
       {
         icon: "house-icon",
+        label: "Found a city",
         action: function () {
           client.cityman.establish();
         },
@@ -232,16 +237,18 @@ function idle(go, name) {
     ];
 
   return [
-    { icon: "cross-icon", action: go.startFresh },
-    { icon: "house-icon", action: go.catalogue },
+    { icon: "cross-icon", label: "New city", action: go.startFresh },
+    { icon: "house-icon", label: "Build", action: go.catalogue },
     {
       icon: "road-icon",
+      label: "Road",
       action: function () {
         go.build(BuildingCode.road);
       },
     },
     {
       icon: "bulldozer-icon",
+      label: "Terrain",
       action: function () {
         go.world();
         client.terrainman.enter();
@@ -249,6 +256,7 @@ function idle(go, name) {
     },
     {
       icon: "tile-dollar-icon",
+      label: "Land",
       action: function () {
         go.world();
         client.landman.enter();

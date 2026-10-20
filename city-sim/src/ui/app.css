@@ -1,118 +1,89 @@
 /*
- * The city builder's look: Tailwind, in the colours and the pixel-art blocks
- * the game has always had - teal blocks lit from the top left, a box shadow,
- * white Courier with a black outline over the world.
+ * The city builder's look: the world first, and over it as little as will
+ * do - icons and words floating over it, outlined and lit so they read on
+ * whatever is under them; screens and menus on dark glass; gold for what is
+ * on, and for money.
  */
 @import "tailwindcss" source("..");
+@import "@fontsource-variable/rubik";
 
 @theme {
-  --font-game: "Courier New", Courier, monospace;
+  --font-sans: "Rubik Variable", ui-sans-serif, system-ui, sans-serif;
 
-  --color-block: #4ebaba;
-  --color-block-light: #73c8c8;
-  --color-block-dark: #3c9999;
-  --color-button: #2e9c9c;
-  --color-button-light: #3ac3c3;
-  --color-button-dark: #227575;
-  --color-danger: #c8553d;
-  --color-danger-light: #de7c66;
-  --color-danger-dark: #923c2b;
-  --color-ok: #3f9a4a;
-  --color-ok-light: #5fbd69;
-  --color-ok-dark: #2b6c33;
-  --color-ink: #16282a;
-  --color-income: #1f7a1f;
-  --color-expense: #b02020;
+  /* the dark everything is outlined in, and the glass of the panels */
+  --color-ink: #0b1220;
+  --color-glass: rgb(13 19 31 / 0.78);
+  --color-line: rgb(255 255 255 / 0.1);
+  --color-muted: rgb(226 232 240 / 0.62);
+
+  /* on, picked, money */
+  --color-gold: #ffc94a;
+  --color-gold-deep: #e8a317;
+  /* done, and leaving */
+  --color-good: #5ee08a;
+  --color-bad: #ff6b5e;
+  --color-income: #5ee08a;
+  --color-expense: #ff8a7e;
 }
 
 @layer base {
   html,
   body {
-    @apply bg-black font-game text-[10pt] text-white;
+    @apply bg-ink font-sans text-[15px] text-white antialiased;
   }
 }
 
 @layer components {
-  /* a raised block, the light on its top and left edges */
-  .ui-block {
-    @apply border border-block-light border-r-block-dark border-b-block-dark bg-block;
+  /* a panel over the world - a screen, the menu */
+  .glass {
+    @apply rounded-2xl bg-glass shadow-2xl ring-1 ring-line backdrop-blur-md;
   }
 
-  /* and one sunk in, the light the other way */
-  .ui-block-inset {
-    @apply border border-block-dark border-r-block-light border-b-block-light bg-block;
+  /* a button on a panel: plain, or the one that does what the panel is for */
+  .btn {
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-white/8 px-4 py-2.5 font-medium text-white ring-1 ring-line transition-colors hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-gold focus-visible:outline-none;
   }
 
-  .ui-button {
-    @apply cursor-pointer border border-button-light border-r-button-dark border-b-button-dark bg-button text-white;
-  }
-
-  .ui-button-on {
-    @apply border-button-dark border-r-button-light border-b-button-light;
-  }
-
-  /* leaving, and confirming - red and green the way the old pictures were */
-  .ui-button-danger {
-    @apply border-danger-light border-r-danger-dark border-b-danger-dark bg-danger;
-  }
-
-  .ui-button-ok {
-    @apply border-ok-light border-r-ok-dark border-b-ok-dark bg-ok;
-  }
-
-  /* what floats over the world: a dark glass to read it on */
-  .ui-float {
-    @apply rounded-lg bg-ink/55 backdrop-blur-sm;
-  }
-
-  .ui-shadow {
-    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
-  }
-
-  /* the patterned ground the screens are on */
-  .ui-ground {
-    background-image: url("./img/ui-bg.png");
+  .btn-primary {
+    @apply bg-gold text-ink ring-gold-deep hover:bg-[#ffd76e];
   }
 }
 
+/* an icon floating over the world: outlined in ink a pixel and a half all
+   round, and a soft shadow under it to lift it off the ground */
+@utility icon-float {
+  filter: drop-shadow(1.25px 0 0 var(--color-ink))
+    drop-shadow(-1.25px 0 0 var(--color-ink))
+    drop-shadow(0 1.25px 0 var(--color-ink))
+    drop-shadow(0 -1.25px 0 var(--color-ink))
+    drop-shadow(0 3px 5px rgb(0 0 0 / 0.55));
+}
+
+/* and lit: the same outline, glowing gold round it - what is on */
+@utility icon-glow {
+  filter: drop-shadow(1.25px 0 0 var(--color-ink))
+    drop-shadow(-1.25px 0 0 var(--color-ink))
+    drop-shadow(0 1.25px 0 var(--color-ink))
+    drop-shadow(0 -1.25px 0 var(--color-ink))
+    drop-shadow(0 0 6px rgb(255 201 74 / 0.9))
+    drop-shadow(0 0 14px rgb(255 201 74 / 0.45));
+}
+
+/* words floating over the world, outlined the same way */
+@utility text-float {
+  text-shadow:
+    1px 0 0 var(--color-ink),
+    -1px 0 0 var(--color-ink),
+    0 1px 0 var(--color-ink),
+    0 -1px 0 var(--color-ink),
+    1px 1px 0 var(--color-ink),
+    -1px -1px 0 var(--color-ink),
+    1px -1px 0 var(--color-ink),
+    -1px 1px 0 var(--color-ink),
+    0 2px 6px rgb(0 0 0 / 0.6);
+}
+
+/* a picture painted a pixel at a time, kept that way */
 @utility pixelated {
   image-rendering: pixelated;
-}
-
-/* white words over the world, outlined in black to read on anything */
-@utility outlined {
-  text-shadow:
-    -1px 0 0 #000,
-    0 -1px 0 #000,
-    0 1px 0 #000,
-    1px 0 0 #000,
-    -1px -1px 1px #000,
-    1px -1px 1px #000,
-    -1px 1px 1px #000,
-    1px 1px 1px #000;
-}
-
-@utility outlined-thick {
-  text-shadow:
-    -2px 0 0 #000,
-    0 -2px 0 #000,
-    0 2px 0 #000,
-    2px 0 0 #000,
-    -2px -2px 1px #000,
-    2px -2px 1px #000,
-    -2px 2px 1px #000,
-    2px 2px 1px #000;
-}
-
-/* an icon over the world, outlined in black like the words */
-@utility outlined-icon {
-  filter: drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
-    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
-}
-
-/* a toggle switched on - the road being laid, say - outlined a pixel art
-   pixel wide, in white */
-@utility toggled {
-  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
-    drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff);
 }
