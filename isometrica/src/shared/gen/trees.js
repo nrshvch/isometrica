@@ -13,10 +13,11 @@
  *   - ash: a tall open crown of small clumps on branches that show between
  *     them; grey-green, light;
  *   - alder: slim, a narrow crown tapering to a point; dark green;
- *   - birch: a slender white trunk, leaning, under a light open crown of
- *     small clumps; a fresh yellow-green;
- *   - pine: a tall bare trunk, red-brown, under a flat, ragged crown on
- *     branches; dark blue-green;
+ *   - birch: a slender white trunk flecked with black, leaning, under a
+ *     light open crown of small clumps; a fresh yellow-green;
+ *   - pine: a tall red-brown trunk with branches up the top of it, a tuft
+ *     of needles at the end of each, and bare stubs under them; dark
+ *     blue-green;
  *   - spruce: a cone of tiers down to the ground, narrowing to a spike;
  *     the darkest green.
  *
@@ -343,17 +344,20 @@ var KINDS = {
       [138, 176, 66],
       [180, 206, 100],
     ],
-    //the trunk only ever shows the first two: grey in the shade, white in
-    //the light
+    //the trunk only ever shows the first two, grey in the shade and white
+    //in the light - and the third where it is marked
     bark: [
       [128, 124, 118],
       [218, 214, 202],
-      [236, 234, 226],
+      [44, 42, 40],
     ],
+    //black flecks across the bark, more of them towards the foot: how much
+    //of it is left white
+    marks: 0.56,
     clump: 0.44,
     bumps: 1.5,
     grow: function (r) {
-      var lobes = [[0, 0, 41, 3.5, 3.5, 4.5]],
+      var lobes = [[0, 0, 43, 3.5, 3.5, 4.5]],
         n = 7;
 
       for (var i = 0; i < n; i++) {
@@ -363,7 +367,7 @@ var KINDS = {
         lobes.push([
           Math.cos(a) * d,
           Math.sin(a) * d,
-          19 + 18 * r(),
+          23 + 16 * r(),
           3.5 + 1.5 * r(),
           3.5 + 1.5 * r(),
           5 + 2 * r(),
@@ -371,8 +375,8 @@ var KINDS = {
       }
 
       return {
-        trunk: { height: 38, foot: 1.3, top: 0.6, lean: [0.8, 0.4] },
-        branches: branchesTo(lobes, 20, 0.6, 0.3),
+        trunk: { height: 40, foot: 1.3, top: 0.6, lean: [0.8, 0.4] },
+        branches: branchesTo(lobes, 23, 0.6, 0.3),
         lobes: lobes,
       };
     },
@@ -394,26 +398,64 @@ var KINDS = {
     clump: 0.46,
     bumps: 1.4,
     grow: function (r) {
-      var lobes = [[0, 0, 47, 6, 6, 3.5]],
-        n = 5;
+      //branches all the way up the top of the trunk, round it in a spiral,
+      //the low ones longest and drooping, each with a tuft of needles at
+      //its end - and a few bare stubs under them
+      var height = 42,
+        lean = [-0.8, 0.6],
+        lobes = [[lean[0], lean[1], 45, 4.5, 4.5, 3.5]],
+        branches = [],
+        n = 9,
+        i,
+        a,
+        z;
 
-      for (var i = 0; i < n; i++) {
-        var a = (2 * Math.PI * (i + 0.5 * r())) / n,
-          d = 5 + 4 * r();
+      function at(z) {
+        return [(lean[0] * z) / height, (lean[1] * z) / height, z];
+      }
 
-        lobes.push([
+      for (i = 0; i < n; i++) {
+        var f = i / (n - 1),
+          d = 14 - 8 * f + 3 * r(),
+          to;
+
+        a = i * 2.4 + 0.6 * r();
+        z = 17 + 21 * f + 2 * r();
+        to = [
           Math.cos(a) * d,
           Math.sin(a) * d,
-          36 + 9 * r(),
-          5 + 2 * r(),
-          5 + 2 * r(),
-          2.8 + r(),
+          z + (f < 0.4 ? -1.5 : 1) + 2 * r(),
+        ];
+
+        branches.push({ from: at(z), to: to, ra: 0.8 - 0.3 * f, rb: 0.35 });
+        lobes.push([
+          to[0],
+          to[1],
+          to[2] + 1,
+          3.6 + 1.6 * r() - f,
+          3.6 + 1.6 * r() - f,
+          2.4 + r(),
         ]);
       }
 
+      for (i = 0; i < 3; i++) {
+        a = 2 * Math.PI * r();
+        z = 11 + 7 * r();
+        branches.push({
+          from: at(z),
+          to: [
+            Math.cos(a) * (4 + 3 * r()),
+            Math.sin(a) * (4 + 3 * r()),
+            z - 1 - r(),
+          ],
+          ra: 0.45,
+          rb: 0.25,
+        });
+      }
+
       return {
-        trunk: { height: 44, foot: 1.8, top: 1, lean: [-0.8, 0.6] },
-        branches: branchesTo(lobes, 32, 0.8, 0.4),
+        trunk: { height: height, foot: 1.9, top: 0.9, lean: lean },
+        branches: branches,
         lobes: lobes,
       };
     },
@@ -604,6 +646,23 @@ function grow(kind, seed, turns) {
     return Math.min(leaves, wood) * scale;
   };
 
+  //whether the bark is marked at q, for a kind that has marks: short dashes
+  //across the trunk, in the tree's own way round so that they stay where
+  //they are on it whichever side it is seen from
+  tree.marked = function (q) {
+    if (k.marks === undefined) return false;
+
+    var p = [q[0] / scale, q[1] / scale, q[2] / scale],
+      up = p[2] / trunk.height,
+      o = back(p[0] - trunk.lean[0] * up, p[1] - trunk.lean[1] * up),
+      a = Math.atan2(o[1], o[0]);
+
+    return (
+      noise(Math.cos(a) * 1.2 + seed, Math.sin(a) * 1.2, p[2] * 1.4) >
+      k.marks - 0.16 * clamp(1 - p[2] / 6, 0, 1)
+    );
+  };
+
   tree.kind = k;
   tree.seed = seed;
 
@@ -724,8 +783,12 @@ function paintTree(tree, look) {
 
         if (ns !== null) ns[i] = n;
 
-        //the trunk is never caught by the sun the way the leaves are
-        tones[i] = part * 3 + Math.min(toneOf(light), part ? 1 : 2);
+        //the trunk is never caught by the sun the way the leaves are: its
+        //third tone is for where it is marked
+        tones[i] =
+          part && tree.marked(p)
+            ? 5
+            : part * 3 + Math.min(toneOf(light), part ? 1 : 2);
       } else if (
         look !== "deferred" &&
         look !== "night" &&
