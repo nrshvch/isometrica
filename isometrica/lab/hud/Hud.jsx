@@ -94,7 +94,7 @@ function Time({ night }) {
 //the city, by name, and how many live in it
 function City() {
   return (
-    <div className="hud-card hud-pill rounded-full! px-3.5 py-2">
+    <div className="hud-card hud-pill px-3 py-2">
       <Users size={16} strokeWidth={2} />
       Miniville
       <span className="font-semibold text-[var(--muted)]">· 2,898</span>

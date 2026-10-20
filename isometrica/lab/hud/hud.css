@@ -2,7 +2,8 @@
  * The HUD study's look (Hud.jsx), after a city game's HUD found on the web:
  * every part of it on a card of its own - sky white by day, or a night
  * blue for the night (dark) - with a lip along its bottom and a soft shadow
- * under it; small tracked capitals to say what a thing is and big black
+ * under it, its corners only just rounded and its icons' lines squared, to
+ * go with the world's pixels; small tracked capitals to say what a thing is and big black
  * figures for how much; colour kept for what it means - green for money,
  * gold for what is on, red for what wants seeing to.
  */
@@ -43,9 +44,15 @@
   --shadow: 0 6px 16px rgba(0, 0, 10, 0.5), 0 1px 2px rgba(0, 0, 10, 0.4);
 }
 
+/* the icons' lines as sharp as the cards' corners: square ends, mitred joins */
+.hud .lucide {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
 .hud-card {
   background: var(--panel);
-  border-radius: 18px;
+  border-radius: 8px;
   box-shadow:
     inset 0 -3px 0 var(--lip),
     inset 0 1px 0 var(--shine),
@@ -89,7 +96,7 @@
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 5px;
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
 }
 
@@ -119,7 +126,7 @@
   align-items: center;
   gap: 5px;
   padding: 6px 10px;
-  border-radius: 999px;
+  border-radius: 5px;
   background: var(--inset);
   font-size: 13px;
   font-weight: 800;
@@ -137,7 +144,7 @@
   place-items: center;
   width: 48px;
   height: 48px;
-  border-radius: 16px;
+  border-radius: 7px;
 }
 
 .hud-button.on {
@@ -151,7 +158,7 @@
   grid-auto-columns: 1fr;
   grid-auto-flow: column;
   padding: 8px 4px 10px;
-  border-radius: 22px;
+  border-radius: 9px;
 }
 
 .hud-tab {
@@ -170,7 +177,7 @@
   place-items: center;
   width: 52px;
   height: 32px;
-  border-radius: 999px;
+  border-radius: 5px;
 }
 
 .hud-tab.on .well {
@@ -192,7 +199,7 @@
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: 4px;
   background: var(--red);
   color: #fff;
   font-size: 10px;
@@ -219,7 +226,7 @@
   width: 40px;
   height: 24px;
   margin-left: auto;
-  border-radius: 12px;
+  border-radius: 4px;
   background: var(--inset);
 }
 
@@ -230,7 +237,7 @@
   left: 3px;
   width: 18px;
   height: 18px;
-  border-radius: 50%;
+  border-radius: 2px;
   background: var(--panel);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
