@@ -24,6 +24,7 @@ export default defineConfig({
         music: path.join(here, "music.html"),
         lighting: path.join(here, "lighting.html"),
         traffic: path.join(here, "traffic.html"),
+        woods: path.join(here, "woods.html"),
       },
     },
   },
