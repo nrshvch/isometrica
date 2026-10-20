@@ -4,7 +4,8 @@ test/temp
 .sass-cache
 .tmp
 .idea
-.claude
+**/.claude/*
+!/.claude/settings.json
 .claudeignore
 isometrica/assets/terrain/terraingen
 isometrica/assets/previews
