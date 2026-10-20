@@ -29,6 +29,9 @@
  *    as well, a square too, that pulls both of the sides meeting there the
  *    same way. Any other shape has no corners to pull, and nor do roads -
  *    they are laid a line at a time
+ *  - dragged - moved or pulled by a handle - up to the edge of the screen,
+ *    the map moves along under it that way, for as long as the finger stays
+ *    there, so it can go on past what was in sight (see edgePan)
  *
  * It turns round along with the buildings on it - see AreaSelector#rotate.
  */
@@ -448,6 +451,11 @@ function onDragStart(sender, e, me) {
     y: y,
     screenX: e.gameViewportX,
     screenY: e.gameViewportY,
+    //where the finger is now, and the frame the map is next moved along
+    //at while that is near the edge of the screen (edgePan)
+    at: [e.gameViewportX, e.gameViewportY],
+    frame: 0,
+    time: null,
     ox: me._ox,
     oy: me._oy,
     cells: me._cells,
@@ -470,8 +478,116 @@ function onDrag(sender, param, me) {
 
   if (drag === null) return;
 
-  var e = param.e,
-    tile = pick(me, e.gameViewportX, e.gameViewportY).tile;
+  drag.at = [param.e.gameViewportX, param.e.gameViewportY];
+  dragTo(me, drag.at[0], drag.at[1]);
+  edgePan(me);
+}
+
+//how near the edge of the screen the finger has to be for the map to move
+//along under what it drags, page pixels; how fast it moves with the finger
+//right at the edge, page pixels a second - slower the further in it is
+var EDGE_PAN = 48,
+  EDGE_PAN_SPEED = 720;
+
+//how far in from the edge of the screen the tile under the finger is picked
+//at the furthest out, viewport pixels - half a tile across
+var PICK_IN = 32;
+
+/**
+ * How fast the map is to move along under the finger at x, y, viewport pixels
+ * a second either way - towards the middle of the screen, from whichever edge
+ * it is near, so that what is past that edge comes into sight - or null when
+ * it is nowhere near any.
+ */
+function edgeSpeed(me, x, y) {
+  var viewport = me._cam.gameObject.camera.viewport;
+
+  if (viewport === null) return null;
+
+  var zoom = me._cam.zoom(),
+    vx = edgeWay(x * zoom, viewport.width * zoom),
+    vy = edgeWay(y * zoom, viewport.height * zoom);
+
+  if (vx === 0 && vy === 0) return null;
+
+  return [(vx * EDGE_PAN_SPEED) / zoom, (vy * EDGE_PAN_SPEED) / zoom];
+}
+
+/**
+ * Which way and how much of the way to full speed the map moves for the
+ * finger at at, page pixels, on a screen size of them across: away from the
+ * edge it is near, the more the nearer.
+ */
+function edgeWay(at, size) {
+  if (at < EDGE_PAN) return Math.min(1, (EDGE_PAN - at) / EDGE_PAN);
+
+  if (at > size - EDGE_PAN)
+    return -Math.min(1, (at - size + EDGE_PAN) / EDGE_PAN);
+
+  return 0;
+}
+
+/**
+ * With the finger dragging the selection near the edge of the screen, moves
+ * the map along under it a frame at a time, and the selection with it -
+ * moved or pulled to wherever the finger is over by then - until the finger
+ * goes back in from the edge or lets go. Not a map the selection was given
+ * held still (WorldCamera#lock).
+ */
+function edgePan(me) {
+  var drag = me._drag;
+
+  if (drag.frame !== 0 || me._camLocked) return;
+
+  if (edgeSpeed(me, drag.at[0], drag.at[1]) === null) {
+    drag.time = null;
+    return;
+  }
+
+  drag.frame = requestAnimationFrame(function step(now) {
+    var cam = me._cam,
+      speed = edgeSpeed(me, drag.at[0], drag.at[1]),
+      //a frame missed - the tab away - is not made up for all at once
+      dt =
+        drag.time === null ? 1 / 60 : Math.min(0.1, (now - drag.time) / 1000);
+
+    drag.frame = 0;
+
+    //let go meanwhile, or back in from the edge
+    if (me._drag !== drag || speed === null) {
+      drag.time = null;
+      return;
+    }
+
+    drag.time = now;
+
+    cam.lock(false);
+    cam.pan(speed[0] * dt, speed[1] * dt);
+    cam.lock(true);
+
+    dragTo(me, drag.at[0], drag.at[1]);
+    drag.frame = requestAnimationFrame(step);
+  });
+}
+
+/**
+ * The selection moved, or pulled by the handle held, to the finger at
+ * screenX, screenY.
+ */
+function dragTo(me, screenX, screenY) {
+  var drag = me._drag,
+    viewport = me._cam.gameObject.camera.viewport,
+    tile =
+      viewport === null
+        ? -1
+        : //a tile no more than half on the screen is not there to
+          //pick (WorldCamera#pickGameObject) - right at its edge, the
+          //one a little way in is taken
+          pick(
+            me,
+            Math.max(PICK_IN, Math.min(viewport.width - PICK_IN, screenX)),
+            Math.max(PICK_IN, Math.min(viewport.height - PICK_IN, screenY)),
+          ).tile;
 
   //off the edge of the drawn map - it stays where it last was
   if (tile === -1) return;
@@ -500,8 +616,8 @@ function onDrag(sender, param, me) {
     handle = drag.handle = choose(
       me,
       drag.options,
-      e.gameViewportX - drag.screenX,
-      e.gameViewportY - drag.screenY,
+      screenX - drag.screenX,
+      screenY - drag.screenY,
     );
 
     if (handle === null) return;
@@ -721,6 +837,7 @@ function pull(lo, hi, way, by) {
 function onDragEnd(sender, e, me) {
   if (me._drag === null) return;
 
+  cancelAnimationFrame(me._drag.frame);
   me._drag = null;
   me._cam.lock(me._camLocked);
 }
