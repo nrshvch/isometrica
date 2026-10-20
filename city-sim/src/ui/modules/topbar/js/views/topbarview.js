@@ -146,7 +146,7 @@ var View = Backbone.View.extend({
     var lighting = this.options.app.client.lighting,
       on = !!(lighting && lighting.dayNight);
 
-    $(".daynight", this.$el).text("\u263e night").toggleClass("off", !on);
+    $(".daynight", this.$el).toggleClass("off", !on);
   },
   toggleDayNight: function () {
     var lighting = this.options.app.client.lighting;
@@ -166,7 +166,8 @@ var View = Backbone.View.extend({
   locateCity: function () {
     var cityman = this.options.app.client.cityman;
 
-    if (cityman) cityman.locate(this.city);
+    //gliding there, rather than jumping
+    if (cityman) cityman.locate(this.city, true);
   },
   renderZoom: function () {
     var client = this.options.app.client,

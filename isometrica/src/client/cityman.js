@@ -170,11 +170,25 @@ Cityman.prototype.pickCity = function (screenX, screenY) {
 /**
  * Puts the camera on the city, over its name - a city not founded yet has
  * none, and it stays where it is.
+ *
+ * @param city {City}
+ * @param [glide] {boolean} on its way there, a moment, rather than right
+ *        there (WorldCamera#glideTo)
  */
-Cityman.prototype.locate = function (city) {
-  var go = this._cityGOs[city.tile()];
+Cityman.prototype.locate = function (city, glide) {
+  var go = this._cityGOs[city.tile()],
+    cam = this.root.camera.cameraScript,
+    pos;
 
-  if (go !== undefined) this.root.camera.cameraScript.moveTo(go.transform);
+  if (go === undefined) return;
+
+  if (!glide) {
+    cam.moveTo(go.transform);
+    return;
+  }
+
+  pos = go.transform.getPosition();
+  cam.glideTo(pos[0], pos[2]);
 };
 
 /**

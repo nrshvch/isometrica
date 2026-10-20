@@ -2,6 +2,7 @@ import engine from "engine";
 import * as glMatrix from "gl-matrix";
 import Events from "events";
 import View from "../view";
+import Config from "../config";
 
 var events = {
   inputMove: 0,
@@ -315,11 +316,16 @@ CameraScript.prototype.unsetTarget = function () {
 
 CameraScript.prototype.moveTo = function (transform) {
   var pos = transform.getPosition();
+
+  this._glide = null;
   this.gameObject.transform.setPosition(pos[0], 0, pos[2]);
 };
 
 CameraScript.prototype.pan = function (x, y) {
   if (this._lock || this.follow) return;
+
+  //dragged off a glide, it is let go of there
+  this._glide = null;
 
   //from above, x is across the screen and z up it
   if (this.top) {
@@ -342,6 +348,57 @@ CameraScript.prototype.pan = function (x, y) {
   this.gameObject.transform.translate(d[0], 0, d[1], "world");
 };
 
+//how long the camera takes to glide somewhere, ms; and how far off it starts
+//at the furthest, in tiles - from further, it jumps that near first, rather
+//than have all the ground on the way painted for a moment each
+var GLIDE_MS = 400,
+  GLIDE_FROM = 40;
+
+//the glide under way, if any - let go of when the camera is put elsewhere
+CameraScript.prototype._glide = null;
+
+/**
+ * Takes the camera to a point of the ground over a moment, easing in - the
+ * way moveTo puts it right there. Dragged meanwhile, it stops where it is.
+ *
+ * @param x {number} in the world
+ * @param z {number}
+ */
+CameraScript.prototype.glideTo = function (x, z) {
+  var self = this,
+    transform = this.gameObject.transform,
+    pos = transform.getPosition(),
+    dx = pos[0] - x,
+    dz = pos[2] - z,
+    far = GLIDE_FROM * Config.tileSize,
+    d = Math.sqrt(dx * dx + dz * dz),
+    glide = (this._glide = {}),
+    start = null;
+
+  if (d > far) {
+    dx *= far / d;
+    dz *= far / d;
+  }
+
+  function step(now) {
+    //put elsewhere, or off on another glide, meanwhile
+    if (self._glide !== glide) return;
+
+    if (start === null) start = now;
+
+    var t = Math.min(1, (now - start) / GLIDE_MS),
+      //fast to start with, and slowing down on the way in
+      left = Math.pow(1 - t, 3);
+
+    transform.setPosition(x + dx * left, 0, z + dz * left);
+
+    if (t < 1) requestAnimationFrame(step);
+    else self._glide = null;
+  }
+
+  requestAnimationFrame(step);
+};
+
 /**
  * Puts the camera on a point of the ground, moved on the screen by so many
  * pixels - for keeping something in sight above a panel over the bottom of
@@ -355,6 +412,7 @@ CameraScript.prototype.pan = function (x, y) {
 CameraScript.prototype.lookAt = function (x, z, up) {
   var follow = this.follow;
 
+  this._glide = null;
   this.gameObject.transform.setPosition(x, 0, z);
 
   if (up) {

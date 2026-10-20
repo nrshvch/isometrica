@@ -85,6 +85,14 @@
           padding-left: 0.8em;
         }
 
+        //the sun and the moon say it on a phone, where the words do not fit
+        //next to the rest
+        @media (max-width: 480px) {
+          &.daynight .label {
+            display: none;
+          }
+        }
+
         //a crosshair, a little bigger than the words, to be hit with a
         //finger
         &.locate {
