@@ -12,11 +12,9 @@
  *   by day, crickets and an owl at night; the sea - only a slight wind
  *   over it, stronger in a gale, no waves. Louder the closer the camera
  *   is;
- * - the old town (shared/gen/square): over its blocks the murmur of its
- *   market square by day, people talking, a laugh, a stallholder calling
- *   out - a few passing through at night - and now and then by day its
- *   church's bells, from where the church is: one tolling, or the tower's
- *   rung in rounds;
+ * - the old town's church (shared/gen/bells): now and then by day, while
+ *   one is on screen, its one small bell, from where the church is - rung
+ *   for a service, or tolled;
  * - the hum of the town heard from above (shared/gen/skyline): full over
  *   the busy middle of a town - its shops, offices and works, and the cars
  *   going about it - and faint and dull, far off, over the outskirts and
@@ -92,17 +90,14 @@ var PLACES = [
   { name: "woods/1", by: "wild", when: "night", wet: true },
   { name: "offshore/0", by: "sea", when: "calm" },
   { name: "offshore/1", by: "sea", when: "rough" },
-  { name: "square/0", by: "oldtown", when: "day", full: 0.06 },
-  { name: "square/1", by: "oldtown", when: "night", full: 0.06 },
 ];
 
-//the old town's church bells: how long between one ringing and the next
-//while a church is on screen, ms, from .. to - and before the first, once
-//one comes on screen; how likely they are rung in rounds rather than one
-//tolling; and how loud
-var BELLS_EVERY = [50000, 140000],
-  BELLS_FIRST = [15000, 45000],
-  ROUNDS_ODDS = 0.3,
+//the old town's church bell: how long between one ringing and the next,
+//ms, from .. to - and before the first, once a church is first seen; how
+//likely it is tolled rather than rung; and how loud
+var BELLS_EVERY = [40000, 90000],
+  BELLS_FIRST = [4000, 12000],
+  TOLL_ODDS = 0.3,
   BELLS_LOUD = 0.55;
 
 //the designs of the old town with a church in them (shared/gen/oldtown)
@@ -661,7 +656,7 @@ Soundman.prototype.places = function (weather) {
 
   PLACES.forEach(function (p) {
     //one into the next by power, so it does not dip in between
-    var share = Math.sqrt(clamp(land[p.by] / (p.full || 1))),
+    var share = Math.sqrt(land[p.by]),
       gain = share * Math.sqrt(clamp(when[p.when])) * near;
 
     if (p.by === "wild") gain *= hush;
@@ -723,19 +718,17 @@ Soundman.prototype.skyline = function () {
 };
 
 /**
- * The old town's church bells, now and then while a church is on screen -
- * by day only: a while after one first comes on screen, and a while again
- * after each ringing (BELLS_FIRST, BELLS_EVERY) - one tolling or the tower's
- * rung in rounds, from where the church is across the screen, louder
- * closer in. Made ready when a church is first seen.
+ * The old town's church bell, now and then by day: a little while after a
+ * church is first seen, then every minute or so (BELLS_FIRST, BELLS_EVERY)
+ * - rung for a service, or tolled - from where the church is across the
+ * screen, louder closer in. Its time goes on with no church on screen: one
+ * due meanwhile rings as soon as a church is on screen again. Made ready
+ * when a church is first seen.
  */
 Soundman.prototype.bells = function (wall) {
   var land = this.land;
 
-  if (land.church === 0 || this.daylight() < 0.5) {
-    this.bellAt = null;
-    return;
-  }
+  if (land.church === 0) return;
 
   if (this.bellAt === null) {
     this.maker.get("sound", "bells/0");
@@ -744,11 +737,11 @@ Soundman.prototype.bells = function (wall) {
     return;
   }
 
-  if (wall < this.bellAt) return;
+  if (wall < this.bellAt || this.daylight() < 0.5) return;
 
   var buf = this.maker.ready(
     "sound",
-    Math.random() < ROUNDS_ODDS ? "bells/1" : "bells/0",
+    Math.random() < TOLL_ODDS ? "bells/1" : "bells/0",
   );
 
   //(not made yet: the next time it is looked)

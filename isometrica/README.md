@@ -256,24 +256,17 @@ engine in `engine/`.
   sea, a light woosh rising and falling, stronger and gustier in a gale -
   no waves, nothing breaking: the sea on screen is calm. 36-second loops,
   one to three seconds each to make.
-- `square` and `bells` - the old town heard from above it
-  (`src/shared/gen/square.js`). `square` by day its market square: knots
-  of people about it, near and far, talking - one at a time in each, turn
-  by turn, now and then one laughing - a stallholder calling out, and
-  further off more of them run together into a murmur, all of it ringing
-  off the stone round the square; by night a few passing through. Nobody
-  is understood: each syllable a vowel - the throat's buzz, a saw with its
-  top falling away, through three formants gliding from one vowel to the
-  next - a soft consonant before it, the pitch falling over what is said
-  (or rising, asking), men's and women's voices. `bells` a bell tolling,
-  and the tower's six rung in rounds down a major scale, the handstroke's
-  gap before every other row: each bell its partials as the founders name
-  them - the hum, the prime, the tierce a minor third up, the quint, the
-  nominal and on up - each two close together beating (its warble), the
-  low ones ringing on longest; heard from the tower some way off and
-  ringing round the old town's streets. Not loops: played now and then.
-- `forest`, `sea`, `city`, `gulls`, `skyline`, `woods`, `offshore`,
-  `square` and `siren` loop without a seam - what goes on all
+- `bells` - the old town's small church heard from above it
+  (`src/shared/gen/bells.js`): its one small bell, rung for a service -
+  swung, a stroke about once a second, coming up as the swing does and
+  dying down as it is let go - or tolled, a few slow strokes. Its partials
+  as the founders name them - the hum (a small bell's, faint), the prime,
+  the tierce a minor third up, the quint, the nominal and on up - each two
+  close together beating (its warble), soon quiet; heard from the tower
+  some way off, a little ringing back off the houses. Not a loop: played
+  now and then.
+- `forest`, `sea`, `city`, `gulls`, `skyline`, `woods`, `offshore` and
+  `siren` loop without a seam - what goes on all
   the time is made longer than the loop and its end faded into its start;
   what happens now and then is laid in round the loop - the rest play
   once. `generate("thunder/2", rate)` makes one, the same every time - two
@@ -352,16 +345,16 @@ dev`) plays them the way a game would - all three weathers together, the
   louder zoomed in, one into the next by power, so panning out of town the
   hum gives way to the country or the sea, never to silence. The town on
   screen hushes the woods; rain drowns the birds a little.
-- the old town (`square`, `bells`) - its blocks on screen looked for one by
-  one (the grid would miss a small one), each as many tiles as it has: its
-  market square by day, a few passing through at night, as loud as there
-  is of it - full with a fifteenth or so of the screen old town. And by
-  day, while one with a church is on screen (a church, a square before
-  one, or an old town centre, by its look), its bells now and then - a
-  while after it first comes on screen, then every minute or two: mostly
-  one tolling, now and then the tower's rung in rounds, from where the
-  church is across the screen. The old town's lanes have no cars: it is
-  not the busy middle of a town for the hum.
+- the old town's church (`bells`) - the old town's blocks on screen looked
+  for one by one (the grid would miss a small one): by day, while one with
+  a church is on screen (a church, a square before one, or an old town
+  centre, by its look), its bell now and then - a few seconds after a
+  church is first seen, then every minute or so, its time going on with
+  the church off screen too (one due meanwhile rings as soon as a church
+  is on screen again): mostly rung for a service, now and then tolled,
+  from where the church is across the screen. The old
+  town's lanes have no cars: it is not the busy middle of a town for the
+  hum.
 - the hum of the town, from above (`skyline`) - full over the busy middle
   of a town: the shops, offices and works on screen, and the cars going
   about it. Faint and dull, far off, over the outskirts and the quieter
