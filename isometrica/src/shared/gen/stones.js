@@ -2,7 +2,10 @@
  * Stones lying about on the ground, a tile's worth of them to a picture -
  * the thick of a rock field ("stone": five grey boulders together) and its
  * thin edges ("stone0": three brownish ones strewn about) - and each the
- * other way round ("-m"), for the same few not to show twice the same.
+ * other way round ("-m"), for the same few not to show twice the same. Each
+ * of those is painted from its four sides as well - "stone/r1" a quarter
+ * turn round, as the camera turning round (client/view) sees it, the way
+ * the trees are (data/trees turned).
  *
  * Every stone is a lump: a rounded, flattish boulder, its top lumpy with
  * noise. A ray goes into the picture for every pixel, along the way the boxes
@@ -239,15 +242,18 @@ function shadowed(stones, x, y) {
 /**
  * One picture: name "stone" or "stone0", "-m" after it for the other way
  * round - its stones laid out the other way across the tile, lit by the
- * same sun.
+ * same sun - and "/r1" to "/r3" after that for it seen from another side,
+ * that many quarter turns round.
  */
 export function paint(name) {
-  var turned = /-m$/.test(name),
-    plan = PLANS[name.replace(/-m$/, "")];
+  var m = /^([a-z0-9]+)(-m)?(?:\/r([123]))?$/.exec(name),
+    plan = m && PLANS[m[1]];
 
-  if (plan === undefined) throw new Error("no such stones: " + name);
+  if (!plan) throw new Error("no such stones: " + name);
 
-  var stones = stonesOf(plan),
+  var turned = m[2] !== undefined,
+    turns = +(m[3] || 0),
+    stones = stonesOf(plan),
     out = { width: W, height: H, data: new Uint8ClampedArray(W * H * 4) },
     hit = new Array(W * H),
     i,
@@ -262,6 +268,20 @@ export function paint(name) {
       s.y = x;
       s.turn = Math.PI / 2 - s.turn;
     });
+
+  //seen from another side: the stones turned round the middle of the tile
+  //a quarter turn at a time, the way client/view turns what is seen -
+  //(x, y) to (y, -x)
+  stones.forEach(function (s) {
+    for (var t = 0; t < turns; t++) {
+      var dx = s.x - TILE / 2,
+        dy = s.y - TILE / 2;
+
+      s.x = TILE / 2 + dy;
+      s.y = TILE / 2 - dx;
+      s.turn -= Math.PI / 2;
+    }
+  });
 
   for (py = 0; py < H; py++)
     for (px = 0; px < W; px++) hit[py * W + px] = cast(stones, px, py);
@@ -313,14 +333,18 @@ export function paint(name) {
 }
 
 /**
- * What paint paints, without painting it: every picture by name, the size of
- * a tile.
+ * What paint paints, without painting it: every picture by name, from every
+ * side, the size of a tile.
  */
 export function describe() {
   var sizes = {};
 
-  Object.keys(PLANS).forEach(function (name) {
-    sizes[name] = sizes[name + "-m"] = { w: W, h: H };
+  Object.keys(PLANS).forEach(function (plan) {
+    [plan, plan + "-m"].forEach(function (name) {
+      ["", "/r1", "/r2", "/r3"].forEach(function (side) {
+        sizes[name + side] = { w: W, h: H };
+      });
+    });
   });
 
   return sizes;

@@ -86,8 +86,9 @@ function variants(layer) {
 
 /**
  * The picture of a tree seen from another of its sides, turns quarter turns
- * round - "gen/trees/oak-1/r2" (shared/gen/trees). Anything else is left as
- * it is.
+ * round - "gen/trees/oak-1/r2" (shared/gen/trees) - or of the stones on a
+ * tile, which are painted from their four sides too (shared/gen/stones).
+ * Anything else is left as it is.
  *
  * @param path {string}
  * @param turns {number}
@@ -95,10 +96,13 @@ function variants(layer) {
 function turned(path, turns) {
   turns = ((turns % 4) + 4) % 4;
 
-  if (turns === 0 || path.indexOf("gen/trees/") !== 0) return path;
+  if (turns === 0 || !TURNING.test(path)) return path;
 
   return path + "/r" + turns;
 }
+
+//the pictures painted from all four sides
+var TURNING = /^gen\/(trees|scenery\/stone)/;
 
 /**
  * The codes of every tree of each kind, by kind.
