@@ -1,94 +1,17 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sound lab</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        background: #1d1f22;
-        color: #ddd;
-        font: 13px monospace;
-      }
-      main {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 16px;
-      }
-      h1 {
-        font-size: 15px;
-        margin: 0 0 4px;
-      }
-      p {
-        color: #9aa;
-        margin: 0 0 16px;
-        line-height: 1.5;
-      }
-      .sound {
-        background: #26292d;
-        border: 1px solid #34383d;
-        padding: 10px 12px;
-        margin-bottom: 10px;
-      }
-      .sound h2 {
-        font-size: 13px;
-        margin: 0 0 8px;
-        display: flex;
-        gap: 8px;
-        align-items: baseline;
-      }
-      .sound h2 small {
-        color: #7f8a8f;
-        font-weight: normal;
-      }
-      .ways {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-      button {
-        font: inherit;
-        color: #eee;
-        background: #2f6f6f;
-        border: 1px solid #4a9a9a;
-        padding: 5px 10px;
-        cursor: pointer;
-      }
-      button.playing {
-        background: #b5532f;
-        border-color: #e07a50;
-      }
-      button:disabled {
-        opacity: 0.5;
-        cursor: wait;
-      }
-      #status {
-        color: #7f8a8f;
-        margin-top: 12px;
-        min-height: 1.5em;
-      }
-      canvas {
-        display: block;
-        width: 100%;
-        height: 48px;
-        margin-top: 8px;
-        background: #191b1e;
-      }
-    </style>
   </head>
   <body>
-    <main>
-      <h1>Sound lab</h1>
-      <p>
-        Every sound src/shared/gen/sounds.js makes, made here in the page the
-        way a game would make it. A sound that loops plays on until it is
-        clicked again.
-      </p>
-      <div id="sounds"></div>
-      <div id="status"></div>
-    </main>
-    <script type="module" src="./sounds.js"></script>
+    <div id="root"></div>
+    <script type="module">
+      import { mount } from "./ui/mount.jsx";
+      import Sounds from "./sounds/Sounds.jsx";
+
+      mount(Sounds);
+    </script>
   </body>
 </html>

@@ -1,0 +1,41 @@
+/*
+ * The lab's look, for every page: Tailwind, and the few colours the pages
+ * share - dark, monospace, teal for what can be clicked and orange for what
+ * is on.
+ */
+@import "tailwindcss" source("..");
+
+@theme {
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-ink: #1d1f22;
+  --color-deep: #16181a;
+  --color-well: #191b1e;
+  --color-panel: #26292d;
+  --color-line: #34383d;
+  --color-edge: #4a5056;
+  --color-text: #dddddd;
+  --color-muted: #99aaaa;
+  --color-dim: #7f8a8f;
+  --color-accent: #7fc4c4;
+  --color-act: #2f6f6f;
+  --color-act-edge: #4a9a9a;
+  --color-on: #b5532f;
+  --color-on-edge: #e07a50;
+  --color-good: #8fd18f;
+  --color-bad: #ff8a6a;
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-ink font-mono text-[13px] text-text;
+  }
+
+  input,
+  select,
+  button,
+  textarea {
+    font: inherit;
+  }
+}

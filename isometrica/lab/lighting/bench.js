@@ -15,10 +15,11 @@
  * drawImage only: every flat colour is a 1x1 swatch stretched over the
  * canvas.
  *
- * Open /lab/lighting.html on the dev server (npm run dev).
+ * Drawn into the page's canvas (Lighting.jsx), a frame at a time, as the
+ * page's panel says.
  */
-import * as iso from "../src/shared/gen/isobox.js";
-import * as Houses from "../src/shared/gen/houses.js";
+import * as iso from "../../src/shared/gen/isobox.js";
+import * as Houses from "../../src/shared/gen/houses.js";
 
 var TILE = iso.TILE,
   GRASS = [112, 158, 84];
@@ -204,8 +205,7 @@ function build(n) {
 
 /* --- Canvases ---------------------------------------------------------- */
 
-var frame = document.getElementById("frame"),
-  fctx = frame.getContext("2d"),
+var fctx = null,
   map = document.createElement("canvas"),
   mctx = map.getContext("2d"),
   //where the ops off the fast path happen, so they demote nothing else
@@ -225,18 +225,20 @@ var frame = document.getElementById("frame"),
   W = 0,
   H = 0;
 
-function resize() {
-  W = window.innerWidth;
-  H = window.innerHeight;
-  [frame, map, lightA, lightB, lightC, faceR, faceU].forEach(function (c) {
+/**
+ * The canvas to draw into, and how big it is - every canvas drawn on the
+ * way made as big.
+ */
+export function resize(canvas, w, h) {
+  fctx = canvas.getContext("2d");
+  W = w;
+  H = h;
+  [canvas, map, lightA, lightB, lightC, faceR, faceU].forEach(function (c) {
     c.width = W;
     c.height = H;
     c.getContext("2d").imageSmoothingEnabled = false;
   });
 }
-
-window.addEventListener("resize", resize);
-resize();
 
 //a 1x1 canvas of one colour, stretched over a canvas to stand for a fill
 function swatch() {
@@ -325,19 +327,6 @@ function sun(h) {
 }
 
 /* --- Frame ------------------------------------------------------------- */
-
-var modeSel = document.getElementById("mode"),
-  showSel = document.getElementById("show"),
-  sizeSel = document.getElementById("size"),
-  timeIn = document.getElementById("time"),
-  animate = document.getElementById("animate"),
-  pan = document.getElementById("pan"),
-  stats = document.getElementById("stats");
-
-sizeSel.onchange = function () {
-  build(+sizeSel.value);
-};
-build(+sizeSel.value);
 
 function draw(ctx, kind, ox, oy) {
   var page = pages[kind];
@@ -497,33 +486,45 @@ function light(L) {
 
 var times = [],
   costs = [],
-  last = 0;
+  last = 0,
+  //what was drawn last, so that what is timed starts again with whatever
+  //changes what is drawn
+  was = null;
 
-//what is timed starts again with whatever changes what is drawn
-modeSel.addEventListener("change", function () {
-  times = [];
-  costs = [];
-});
-sizeSel.addEventListener("change", function () {
-  times = [];
-  costs = [];
-});
+function avg(a) {
+  return (
+    a.reduce(function (s, v) {
+      return s + v;
+    }, 0) / Math.max(1, a.length)
+  );
+}
 
-function tick(now) {
+/**
+ * A frame: the town at the hour asked (s.time), as many tiles across as
+ * asked (s.size), lit the way asked (s.mode) and shown as asked (s.show),
+ * the camera panning or not (s.pan). Says how many sprites it drew, and
+ * how long frames have taken and how long of that was the drawing.
+ */
+export function render(now, s) {
   var dt = now - last;
 
   last = now;
+
+  if (was === null || was.size !== s.size || was.mode !== s.mode) {
+    if (was === null || was.size !== s.size) build(s.size);
+    times = [];
+    costs = [];
+  }
+  was = { size: s.size, mode: s.mode };
+
   if (dt > 0 && dt < 500) times.push(dt);
   if (times.length > 120) times.shift();
 
-  if (animate.checked)
-    timeIn.value = ((+timeIn.value + dt / 1000) % 24).toFixed(2);
-
-  var n = +sizeSel.value,
-    wobble = pan.checked ? Math.sin(now / 1500) * 40 : 0,
+  var n = s.size,
+    wobble = s.pan ? Math.sin(now / 1500) * 40 : 0,
     ox = (W / 2 + wobble) | 0,
     oy = ((H + n * TILE) / 2) | 0,
-    mode = modeSel.value,
+    mode = s.mode,
     t0 = performance.now();
 
   fctx.globalCompositeOperation = "source-over";
@@ -545,8 +546,8 @@ function tick(now) {
       drawFace(uctx, 2, ox, oy);
     } else drawFaces(ox, oy);
 
-    if (showSel.value === "frame") lightFaces(sun(+timeIn.value));
-    else over(fctx, showSel.value === "map" ? faceU : faceR, "copy");
+    if (s.show === "frame") lightFaces(sun(s.time));
+    else over(fctx, s.show === "map" ? faceU : faceR, "copy");
   } else {
     //the map's backdrop looks up, so where nothing stands the light is T
     over(mctx, HALF, "copy");
@@ -557,40 +558,18 @@ function tick(now) {
       draw(mctx, "map", ox, oy);
     } else drawBoth(ox, oy);
 
-    light(sun(+timeIn.value));
+    light(sun(s.time));
 
-    if (showSel.value === "frame") over(fctx, lightA, "multiply");
-    else over(fctx, showSel.value === "map" ? map : lightA, "copy");
+    if (s.show === "frame") over(fctx, lightA, "multiply");
+    else over(fctx, s.show === "map" ? map : lightA, "copy");
   }
 
   costs.push(performance.now() - t0);
   if (costs.length > 120) costs.shift();
 
-  var avg = function (a) {
-    return (
-      a.reduce(function (s, v) {
-        return s + v;
-      }, 0) / Math.max(1, a.length)
-    );
+  return {
+    draws: scene.length * (mode === "lit" ? 1 : /^faces/.test(mode) ? 3 : 2),
+    frame: avg(times),
+    js: avg(costs),
   };
-
-  stats.textContent =
-    "sprites  " +
-    scene.length * (mode === "lit" ? 1 : /^faces/.test(mode) ? 3 : 2) +
-    " draws\n" +
-    "frame    " +
-    avg(times).toFixed(2) +
-    " ms (" +
-    (1000 / Math.max(1, avg(times))).toFixed(0) +
-    " fps)\n" +
-    "js       " +
-    avg(costs).toFixed(2) +
-    " ms\n" +
-    "time     " +
-    (+timeIn.value).toFixed(1) +
-    " h";
-
-  requestAnimationFrame(tick);
 }
-
-requestAnimationFrame(tick);

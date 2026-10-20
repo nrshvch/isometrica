@@ -1,9 +1,9 @@
 /**
- * Paints the generated pictures off the page's thread (lab/sprites.js): what
+ * Paints the generated pictures off the page's thread (lab/sprites): what
  * a generator paints, and one picture of it at a time - the same painting
  * the game does in its generator worker (shared/gen/catalog).
  */
-import * as Catalog from "../src/shared/gen/catalog.js";
+import * as Catalog from "../../src/shared/gen/catalog.js";
 
 //nothing is drawn by hand any more: every generator paints from nothing
 var painter = Catalog.createPainter(function () {

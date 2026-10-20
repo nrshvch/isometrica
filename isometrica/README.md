@@ -24,8 +24,14 @@ starts it up and puts its own over it (see the games' `src/main.js`).
 - `lab/` - pages to look at the world without a game: `npm run dev` here
   opens them all from `/` - every sprite the generators paint, lit or at
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
-  music at `/music.html`, and the lighting bench at `/lighting.html`.
+  music at `/music.html`, the woods map at `/woods.html`, the traffic
+  testbed at `/traffic.html` and the lighting bench at `/lighting.html`.
   Everything is painted and played in the page, nothing made beforehand.
+  Each page is an HTML file that mounts a React component - its folder
+  holds it and whatever the page works with (`sprites/` the gallery and its
+  painting workers, `woods/` the map, `lighting/` the bench...) - styled
+  with Tailwind; what they share is in `lab/ui` (the look in `lab.css`, the
+  buttons and fields in `kit.jsx`, the list of pages in `pages.js`).
   `npm run build:lab` builds them into `lab/dist`, and
   `.github/workflows/isometrica.yml` puts that up on Cloudflare Workers
   (`wrangler.jsonc`): a `lab/vX.Y.Z` tag → the `isometrica-lab` Worker,

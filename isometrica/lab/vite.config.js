@@ -3,8 +3,13 @@
  * of it, into lab/dist - nothing but the pages and what they import, all of
  * it painted and played in the page. Deployed by
  * .github/workflows/isometrica.yml (wrangler.jsonc).
+ *
+ * Each page is an HTML file of its own, its UI in React, styled with
+ * Tailwind (ui/lab.css).
  */
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +18,7 @@ var here = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   //relative, so the pages work wherever they are put up
   base: "./",
+  plugins: [react(), tailwindcss()],
   build: {
     outDir: "dist",
     emptyOutDir: true,
