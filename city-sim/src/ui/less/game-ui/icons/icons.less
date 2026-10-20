@@ -63,13 +63,17 @@
 @gravel-one-way-image: "../icons/gravel-one-way.png";
 @cobble-two-way-image: "../icons/cobble-two-way.png";
 @cobble-one-way-image: "../icons/cobble-one-way.png";
+@gravel-one-way-back-image: "../icons/gravel-one-way-back.png";
+@cobble-one-way-back-image: "../icons/cobble-one-way-back.png";
 
 .gravel-road-icon,
 .cobble-road-icon,
 .gravel-two-way-icon,
 .gravel-one-way-icon,
 .cobble-two-way-icon,
-.cobble-one-way-icon {
+.cobble-one-way-icon,
+.gravel-one-way-back-icon,
+.cobble-one-way-back-icon {
   background-repeat: no-repeat;
   image-rendering: pixelated;
   .cover;
@@ -99,6 +103,14 @@
   background-image: url(@cobble-one-way-image);
 }
 
+.gravel-one-way-back-icon {
+  background-image: url(@gravel-one-way-back-image);
+}
+
+.cobble-one-way-back-icon {
+  background-image: url(@cobble-one-way-back-image);
+}
+
 //another building picked at random while one is being placed
 @dice-image: "../icons/dice.png";
 
@@ -109,12 +121,15 @@
   .cover;
 }
 
-//an asphalt road being laid, driven both ways or one way only
+//an asphalt road being laid, driven both ways, one way only, or one way the
+//other way round
 @two-way-road-image: "../icons/two-way-road.png";
 @one-way-road-image: "../icons/one-way-road.png";
+@one-way-road-back-image: "../icons/one-way-road-back.png";
 
 .two-way-road-icon,
-.one-way-road-icon {
+.one-way-road-icon,
+.one-way-road-back-icon {
   background-repeat: no-repeat;
   image-rendering: pixelated;
   .cover;
@@ -126,6 +141,10 @@
 
 .one-way-road-icon {
   background-image: url(@one-way-road-image);
+}
+
+.one-way-road-back-icon {
+  background-image: url(@one-way-road-back-image);
 }
 
 .back-icon {

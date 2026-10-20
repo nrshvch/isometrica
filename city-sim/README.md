@@ -17,8 +17,11 @@ other games start on is built here, and handed over from the city screen.
   preview of all of it changes with the toggle. Gravel laid next to the old
   town comes out cobbled (`isometrica/src/client/road.js` materialAt). What a road
   is laid in is kept with it, in the save.
-- Toggled on again, it goes one way only, and again both ways - the one
-  that is on shows which, with the arrows a road of it has. A one-way road looks like
+- Toggled on again, it goes one way only, again the other way round - with
+  no need to drag the selection out again the other way - and again both
+  ways; the one that is on shows which, with the arrows a road of it has.
+  The next road starts out the way the last one was laid, till the page is
+  left. A one-way road looks like
   any other, but both its lanes go its way: a car keeps to the right one
   whenever it can, and takes the left to turn left, when the right is busy
   - out of a queue, if the left is clear and emptier - or to overtake, and
@@ -30,8 +33,9 @@ other games start on is built here, and handed over from the city screen.
     goes against it: no car drives along it the other way, into it or out of it,
     though one can come into it from a side road and go the way it goes, and
     leave it at a junction. It goes the way it is dragged, from the end it
-    was started at on to the finger and on round every corner on the way -
-    dragged out from the other end, it goes the other way
+    was started at on to the finger and on round every corner on the way, or
+    the other way round, toggled so; a single tile goes along the road it
+    carries on
     (`isometrica/src/client/buildman.js` flowOf). Each
     tile of it keeps the way it goes in the save (`isometrica/src/client/road.js`
     wayOf, goes). Its straight pieces have no line down the middle but an

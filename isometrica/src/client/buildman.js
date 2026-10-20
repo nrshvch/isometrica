@@ -608,6 +608,10 @@ function Buildman(main) {
   //tiles around the picked ones are from them - null while nothing is
   this.faded = Object.create(null);
   this.fadeRings = null;
+
+  //what the last road was laid in and which ways it went, for the next to
+  //start out the same (build) - till the page is left
+  this.lastRoad = { material: "gravel", way: "two" };
 }
 
 Buildman.events = events;
@@ -854,53 +858,67 @@ Buildman.prototype.unfade = function () {
 };
 
 //the toggles a road is laid with, by what it is laid in (city-sim's icons):
-//as it is while another is on, and when on, driven both ways or one way only
+//as it is while another is on, and when on, driven both ways, one way only -
+//the way it is dragged - or one way the other way round
 var ROAD_TOOLS = [
   {
     material: "gravel",
     off: "gravel-road-icon",
     two: "gravel-two-way-icon",
     one: "gravel-one-way-icon",
+    back: "gravel-one-way-back-icon",
   },
   {
     material: "cobble",
     off: "cobble-road-icon",
     two: "cobble-two-way-icon",
     one: "cobble-one-way-icon",
+    back: "cobble-one-way-back-icon",
   },
   {
     material: "asphalt",
     off: "road-icon",
     two: "two-way-road-icon",
     one: "one-way-road-icon",
+    back: "one-way-road-back-icon",
   },
 ];
+
+//which ways a road toggled on again goes next: both ways, one way, the
+//other way round, and both ways again
+var NEXT_WAY = { two: "one", one: "back", back: "two" };
 
 /**
  * Puts the player to placing code: a selection to drag about and resize,
  * the buildings it would put down shown on it, until they confirm or leave.
  *
  * A road is laid in what is toggled on below the selection meanwhile (see
- * ROAD_TOOLS) - toggled on again, it goes one way only, and again, both ways.
+ * ROAD_TOOLS) - toggled on again, it goes one way only, again the other way
+ * round, without the selection having to be dragged out the other way, and
+ * again both ways. It starts out the way the last road was laid
+ * (lastRoad).
  *
  * @param [options] {{material: string, way: string}} for a road, what it is
- *        laid in to start with - "gravel", the default, "cobble" or
- *        "asphalt" (see Road.materialAt) - and "one" for a one-way road,
- *        "two", the default, for one driven both ways
+ *        laid in to start with - "gravel", "cobble" or "asphalt" (see
+ *        Road.materialAt) - and "one" for a one-way road, "back" for one the
+ *        other way round from how it is dragged, "two" for one driven both
+ *        ways; lastRoad's where left out
  */
 Buildman.prototype.build = function (code, options) {
   var self = this;
   var root = this.root;
   var data = BuildingData[code];
   var isRoad = data.classCode === BuildingClassCode.road;
-  var material = (options && options.material) || "gravel";
-  var oneWay = isRoad && !!options && options.way === "one";
+  var material = (options && options.material) || self.lastRoad.material;
+  var way = !isRoad ? "two" : (options && options.way) || self.lastRoad.way;
+  var oneWay = isRoad && way !== "two";
 
   //a one-way road goes the way it is dragged: from the end it was started
   //at - the tile the selection was on while it was a single one - on to the
   //finger, and round every corner on the way; turned round, the other way
-  //(a single tile turns a quarter at a time). The way of each tile of it,
-  //0..3 for -x, -y, +x, +y (client/road wayOf)
+  //(a single tile turns a quarter at a time) - and toggled the other way
+  //round (way "back"), the other way. The way of each tile of it, 0..3 for
+  //-x, -y, +x, +y (client/road wayOf)
   var start = -1,
     turn = 0,
     ways = Object.create(null);
@@ -921,8 +939,18 @@ Buildman.prototype.build = function (code, options) {
       }).length;
     }
 
+    //a single tile along +x - or along +y where it carries on a road that
+    //runs that way, so that it can be laid, and flipped, along it
     if (tiles.length === 1) {
-      out[tiles[0]] = [2, 3, 0, 1][turn];
+      var tile = tiles[0],
+        roadman = root.roadman,
+        alongY =
+          (roadman.anyRoad(tile + Terrain.dy) !== null ||
+            roadman.anyRoad(tile - Terrain.dy) !== null) &&
+          roadman.anyRoad(tile + 1) === null &&
+          roadman.anyRoad(tile - 1) === null;
+
+      out[tile] = ((alongY ? 3 : 2) + turn + (way === "back" ? 2 : 0)) % 4;
       return out;
     }
 
@@ -964,7 +992,7 @@ Buildman.prototype.build = function (code, options) {
       });
 
     //turned round, every tile the other way
-    if (turn % 2 === 1)
+    if ((turn % 2 === 1) !== (way === "back"))
       Object.keys(out).forEach(function (tile) {
         out[tile] = (out[tile] + 2) % 4;
       });
@@ -1084,7 +1112,9 @@ Buildman.prototype.build = function (code, options) {
           ? "Drag to place, pull arrows to resize!"
           : turnable
             ? "Drag the way the traffic goes, turn to flip it!"
-            : "One way only: drag the way the traffic goes!",
+            : way === "one"
+              ? "One way, as dragged - tap the road again to flip it!"
+              : "One way, flipped - tap the road again for both ways!",
       );
   }
 
@@ -1352,11 +1382,15 @@ Buildman.prototype.build = function (code, options) {
   //start with - and the one that is on, the other way round from how it is
   //driven. The preview changes with it, the whole selection
   function pickRoad(m) {
-    if (m === material) oneWay = !oneWay;
+    if (m === material) way = NEXT_WAY[way];
     else {
       material = m;
-      oneWay = false;
+      way = "two";
     }
+
+    oneWay = way !== "two";
+    //and the next road starts out this way
+    self.lastRoad = { material: material, way: way };
 
     showRoadTools();
     showHint(false);
@@ -1369,7 +1403,7 @@ Buildman.prototype.build = function (code, options) {
         var on = tool.material === material;
 
         return {
-          icon: !on ? tool.off : oneWay ? tool.one : tool.two,
+          icon: on ? tool[way] : tool.off,
           on: on,
           action: function () {
             pickRoad(tool.material);
