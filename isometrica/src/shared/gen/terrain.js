@@ -1195,12 +1195,8 @@ var STEP_HEIGHT = 8 / 32;
 //angle - the ground's steps are gentle, and a hill should still read as one
 var CONTRAST = 1.8;
 //how dark the outline of a tile is, painted into it: not at all - the grid
-//is laid over the tiles on its own (paintGrid)
+//is drawn over the tiles on its own (client/components/terraingridrenderer)
 var RIM = 1;
-//how see-through black the grid is, along every edge of every tile - so
-//where two tiles meet, a line two pixels wide, as the tiles drawn by hand
-//had it
-var GRID_ALPHA = 0.14;
 
 /**
  * How light a face looking along n is, the way isobox lit() has it: as a box's
@@ -1745,21 +1741,6 @@ function paintShore(set, slope, surf, light, seed, look, t) {
   return image;
 }
 
-/**
- * The grid over a tile of that slope: see-through black along its outline,
- * all round - nothing else.
- */
-function paintGrid(surf, look) {
-  var out = new Out(look, surf.slope, null);
-
-  surf.pixels.forEach(function (p) {
-    //black, so the same on every face's picture
-    if (p.rim) out.put(p, [0, 0, 0], Math.round(GRID_ALPHA * 255));
-  });
-
-  return out.image;
-}
-
 /* --- Output ----------------------------------------------------------- */
 
 function hex(c) {
@@ -1878,9 +1859,6 @@ export function createPainter(sources, o) {
     diffuse: diffuse,
     shore: shore,
     hasShore: hasShore,
-    grid: function (slope) {
-      return paintGrid(surfaceOf(slope));
-    },
 
     /**
      * One tile, by where the manifest says it is - "grass/base/2222_0.png",
@@ -1904,10 +1882,6 @@ export function createPainter(sources, o) {
     var frame = /@t(\d+)$/.exec(rel);
 
     if (frame !== null) rel = rel.slice(0, frame.index);
-
-    var g = /^grid\/(\d{4})\.png$/.exec(rel);
-
-    if (g !== null) return paintGrid(surfaceOf(g[1]), look);
 
     var m =
       /^([a-z_]+)\/(base|diffuse|shore)\/(\d{4})(?:_([a-z]+))?(?:_(\d+))?\.png$/.exec(

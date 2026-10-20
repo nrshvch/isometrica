@@ -195,6 +195,9 @@ p.reset = function () {
   //hidden behind whatever stands nearer the eye (client/glview depthOf) -
   //null for over everything; not a canvas's own either
   this.standsAt = null;
+  //drawn even when the city is drawn bare, as part of the ground - the grid
+  //over it (client/glview bare); not a canvas's own either
+  this.ground = false;
   this.saved = [];
   this.beginPath();
 };
@@ -211,6 +214,7 @@ var STATE = [
   "dash",
   "glow",
   "standsAt",
+  "ground",
 ];
 
 p.save = function () {
@@ -598,7 +602,8 @@ p.shape = function (kind, tris, c) {
     last !== undefined &&
     last.kind === "plain" &&
     last.glow === this.glow &&
-    last.z === this.standsAt
+    last.z === this.standsAt &&
+    last.ground === this.ground
   )
     last.tris[1] += data[1];
   else
@@ -607,25 +612,46 @@ p.shape = function (kind, tris, c) {
       tris: data,
       glow: this.glow,
       z: this.standsAt,
+      ground: this.ground,
     });
 };
 
 //the corners of triangles - or the ends of lines - each in colour c, into
 //the data
 p.corners = function (tris, c) {
-  var out = [];
+  var n = tris.length / 2,
+    at = this.room(n * SHAPE_FLOATS, SHAPE_FLOATS),
+    data = this.data,
+    o = at;
 
-  for (var i = 0; i < tris.length; i += 2)
-    out.push(tris[i], tris[i + 1], c[0], c[1], c[2], c[3]);
+  //straight into the data: a line over the whole screen has thousands
+  for (var i = 0; i < tris.length; i += 2) {
+    data[o] = tris[i];
+    data[o + 1] = tris[i + 1];
+    data[o + 2] = c[0];
+    data[o + 3] = c[1];
+    data[o + 4] = c[2];
+    data[o + 5] = c[3];
+    o += SHAPE_FLOATS;
+  }
 
-  return this.put(out, SHAPE_FLOATS);
+  return [at, n];
 };
 
 //floats, so many a corner, into the data: where they start, how many corners
 p.put = function (floats, per) {
+  var at = this.room(floats.length, per);
+
+  this.data.set(floats, at);
+
+  return [at, floats.length / per];
+};
+
+//room for count floats, so many a corner, in the data: where they start
+p.room = function (count, per) {
   //on a whole corner of its own kind, the two kinds sharing the data
   var at = Math.ceil(this.used / per) * per,
-    need = at + floats.length;
+    need = at + count;
 
   if (need > this.data.length) {
     var more = new Float32Array(Math.max(need, this.data.length * 2));
@@ -634,10 +660,9 @@ p.put = function (floats, per) {
     this.data = more;
   }
 
-  this.data.set(floats, at);
   this.used = need;
 
-  return [at, floats.length / per];
+  return at;
 };
 
 //whether there is anything drawn this layer
@@ -647,9 +672,10 @@ p.any = function () {
 
 /**
  * Draws what was drawn this layer into frame - the pictures of the lit city
- * (lit), or the screen - over what is there, and starts over.
+ * (lit), or the screen - over what is there, and starts over. Of a city
+ * drawn bare, only what is drawn as part of the ground (ground).
  */
-p.draw = function (frame, lit) {
+p.draw = function (frame, lit, bare) {
   var gl = this.gl,
     ops = this.ops,
     view = this.view,
@@ -684,6 +710,8 @@ p.draw = function (frame, lit) {
     var op = ops[i],
       first = op.tris[0] / (op.kind === "words" ? WORDS_FLOATS : SHAPE_FLOATS),
       n = op.tris[1];
+
+    if (bare && !op.ground) continue;
 
     if (op.kind === "words") {
       var w = this.words[k];

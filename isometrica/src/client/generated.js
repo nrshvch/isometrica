@@ -1,9 +1,4 @@
-import {
-  tileName,
-  shoreName,
-  gridName,
-  diffuseName,
-} from "../shared/gen/names";
+import { tileName, shoreName, diffuseName } from "../shared/gen/names";
 
 //The ground is painted by the game rather than loaded - lazily, a tile at a
 //time as it is drawn, see client/generator. What the build worked out about
@@ -23,10 +18,8 @@ import {
  * @param [spills] {string[]} for the shallows, the edges and corners deep
  *        water lies beyond, as the tile is seen - "ne", "n" - which it spills
  *        over them from
- * @param [noGrid] {boolean} without the grid over it - the town on its own,
- *        for a picture of it (client/terrain showGrid)
  */
-function tileParts(terrain, kind, slope, x, y, spills, noGrid) {
+function tileParts(terrain, kind, slope, x, y, spills) {
   var set =
       kind === "water"
         ? terrain.water
@@ -37,11 +30,9 @@ function tileParts(terrain, kind, slope, x, y, spills, noGrid) {
     base = tileName(set, slope, n > 1 ? scatter(x, y) % n : 0);
 
   //the land with the water's shore over it - a flat shore has no water
-  //painted on it - and the grid over all of it
+  //painted on it
   if (kind === "shore" && terrain.shores[slope] === true)
-    return noGrid
-      ? [base, shoreName(terrain.water, slope)]
-      : [base, shoreName(terrain.water, slope), gridName(slope)];
+    return [base, shoreName(terrain.water, slope)];
 
   var parts = [base];
 
@@ -58,8 +49,6 @@ function tileParts(terrain, kind, slope, x, y, spills, noGrid) {
         ),
       );
     });
-
-  if (!noGrid) parts.push(gridName(slope));
 
   return parts;
 }

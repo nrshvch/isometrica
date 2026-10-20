@@ -1,6 +1,7 @@
 /**
  * Created by User on 13.07.2014.
  */
+import engine from "engine";
 import Core from "../core/main";
 import Tile from "./gameObjects/tile";
 import Config from "./config";
@@ -8,6 +9,7 @@ import Events from "events";
 import Generated from "./generated";
 import View from "./view";
 import AnimatedSprite from "./animatedsprite";
+import TerrainGridRenderer from "./components/terraingridrenderer";
 
 var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
@@ -100,7 +102,6 @@ function tileSprite(x, y, type, slope) {
     x,
     y,
     kind === "water" ? spillsOf(x, y) : null,
-    !gridShown,
   );
 
   //the water moves: a tile of it, and the water up a shore over the ground
@@ -162,9 +163,6 @@ function waves(parts, w, index) {
   return moving[key];
 }
 
-//whether the grid is drawn over the ground (Terrain#showGrid)
-var gridShown = true;
-
 var events = {};
 
 function CreateTile(self) {
@@ -180,6 +178,8 @@ function Terrain(root) {
   this.gos = [];
   this.pool = [];
   this.root = root;
+  //the grid over the ground (showGrid)
+  this.grid = new TerrainGridRenderer(this);
 }
 
 Terrain.events = events;
@@ -196,22 +196,21 @@ Terrain.prototype.init = function () {
     },
     this,
   );
+
+  var grid = new engine.GameObject("terrain grid");
+
+  grid.addComponent(this.grid);
+  this.root.game.logic.world.addGameObject(grid);
 };
 
 /**
- * Draws the grid over the ground, or leaves it off - every tile drawn again
- * the way it is now, as it is when the camera turns, and every one drawn
- * from then on.
+ * Draws the grid over the ground, or leaves it off - drawn as lines over the
+ * tiles (components/terraingridrenderer), so none of them is drawn again.
  *
  * @param shown {boolean}
  */
 Terrain.prototype.showGrid = function (shown) {
-  if (gridShown === shown) return;
-
-  gridShown = shown;
-
-  for (var index in this.tiles)
-    if (this.tiles[index]) shapeTile(this, this.tiles[index], +index);
+  this.grid.shown = shown;
 };
 
 /**
@@ -271,6 +270,7 @@ Terrain.prototype.clear = function (x0, y0, w, l) {
     if (tile) {
       world.removeGameObject(tile);
       pool.push(tile);
+      this.grid.stale = true;
       delete tiles[index];
       delete gos[tile.instanceId];
     }
@@ -343,6 +343,20 @@ function shapeTile(self, t, index) {
   //left grid point as their pivot. Water is drawn at its surface, whatever
   //lies underneath
   if (type !== TerrainType.water) z = View.cornerHeight(terrain, x, y, 0);
+
+  //how high its corners are drawn, for the grid over it
+  //(components/terraingridrenderer): at x, y, x + 1, y, x, y + 1 and
+  //x + 1, y + 1 - all at the water's surface for a tile of water
+  var h = t.heights || (t.heights = new Int8Array(4));
+
+  if (type === TerrainType.water) h.fill(0);
+  else {
+    h[0] = terrain.getGridPointHeight(x, y);
+    h[1] = terrain.getGridPointHeight(x + 1, y);
+    h[2] = terrain.getGridPointHeight(x, y + 1);
+    h[3] = terrain.getGridPointHeight(x + 1, y + 1);
+  }
+  self.grid.stale = true;
 
   t.transform.setPosition(
     x * Config.tileSize,

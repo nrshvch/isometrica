@@ -23,13 +23,6 @@ export function diffuseName(set, slope, dir, variant) {
 }
 
 /**
- * The grid laid over every tile of that slope, land or water.
- */
-export function gridName(slope) {
-  return "gen/terrain/grid/" + slope;
-}
-
-/**
  * The shore of a water, laid over the land on that slope.
  */
 export function shoreName(water, slope) {

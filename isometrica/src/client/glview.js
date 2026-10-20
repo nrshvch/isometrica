@@ -1270,8 +1270,8 @@ GLView.prototype.begin = function (w, h, night, shadows, margin) {
  * @returns {{data: Uint8Array, w: number, h: number}}
  */
 //whether only the city is drawn - nothing over it, neither the layers
-//over the lit ones nor the lines, shapes and words on any (client/lighting
-//calm)
+//over the lit ones nor the lines, shapes and words on any but the grid over
+//the ground (client/lighting calm)
 GLView.prototype.bare = false;
 
 GLView.prototype.readHeights = function () {
@@ -1429,8 +1429,9 @@ GLView.prototype.flush = function (lit, flat, sight) {
   //what is kept in sight, where anything stands in front of it
   if (lit && sight && sight.count > 0) this.xray(sight);
 
-  if (this.overlay.any() && !this.bare)
-    this.overlay.draw(lit ? this.first : null, lit);
+  //(and of a city drawn bare, only the grid over its ground)
+  if (this.overlay.any() && (!this.bare || lit))
+    this.overlay.draw(lit ? this.first : null, lit, this.bare);
   //every layer starts drawing as a canvas of its own would
   this.overlay.reset();
 };

@@ -26,7 +26,7 @@ import * as Oldtown from "./oldtown.js";
 import * as Roads from "./roads.js";
 import * as Trees from "./trees.js";
 import * as Foundations from "./foundations.js";
-import { tileName, shoreName, gridName, diffuseName } from "./names.js";
+import { tileName, shoreName, diffuseName } from "./names.js";
 import * as iso from "./isobox.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
@@ -228,15 +228,6 @@ function describeSide(gen, pixels) {
           { w: Terrain.WIDTH, h: Terrain.HEIGHT },
           DEEP + "/diffuse/" + Terrain.FLAT + "_" + dir + "_" + v + ".png",
         );
-    });
-
-    //and the grid, over every tile of every slope
-    terrain.manifest.slopes.forEach(function (slope) {
-      add(
-        gridName(slope),
-        { w: Terrain.WIDTH, h: Terrain.HEIGHT },
-        "grid/" + slope + ".png",
-      );
     });
   } else if (gen === "vehicles") {
     var vehicles = Vehicles.describe();
