@@ -1,8 +1,9 @@
 /**
- * The terrain mode: pick tiles, then clear them, raise them or lower them -
- * each confirmed first, with what it would cost over the tiles, and asked
- * again once done - as many times over as the player likes, until they leave
- * with cancel.
+ * The terrain mode: tiles picked straight away, and whichever of clearing
+ * them, raising them or lowering them is toggled on along the bottom done to
+ * them - what it would cost over the tiles all the while, and confirmed with
+ * the tick - as many times over as the player likes, until they leave with
+ * cancel.
  */
 import Core from "isometrica/core/main";
 import Events from "events";
@@ -114,12 +115,26 @@ function hiliteData(tiles) {
   return halo.concat(selected);
 }
 
+//the toggles, one to each thing to do to the ground (the city builder's
+//icons), the order they stand in between cancel and the tick
+//TODO a clearing icon of its own - this is the one that got us here
+var TOOLS = [
+  { mode: "clear", icon: "bulldozer-icon" },
+  { mode: "raise", icon: "chevron-up-icon" },
+  { mode: "lower", icon: "chevron-down-icon" },
+];
+
 function Terrainman(root) {
   this.root = root;
+
+  //what was toggled on when the mode was last left, for it to start out the
+  //same - till the page is left
+  this.lastMode = "clear";
 }
 
 Terrainman.prototype.enter = function () {
-  var root = this.root,
+  var self = this,
+    root = this.root,
     buildman = root.buildman,
     gameScreen = root.ui.gameScreen(),
     worldScreen = gameScreen.worldScreen(),
@@ -130,9 +145,9 @@ Terrainman.prototype.enter = function () {
     //a building tapped picks the ground it stands on
     ts = new AreaSelector(root, { underwater: true, buildings: true }),
     tokens = [],
-    //the action waiting to be confirmed, its controls and the price tag
-    //over the selection - null while one is being picked - and the
-    //buildings in its way, marked
+    //what is toggled on, done to the picked tiles with the tick, the
+    //controls, and the price tag over the selection - and the buildings in
+    //its way, marked
     pending = null,
     controls = null,
     tag = null,
@@ -282,9 +297,16 @@ Terrainman.prototype.enter = function () {
     };
   }
 
+  var actions = {
+    clear: clear,
+    raise: level(1, "Raise this land"),
+    lower: level(-1, "Lower this land"),
+  };
+
   function leave() {
     ts.dispose();
     buildman.unfade();
+    clearTag();
     root.hiliteMan.disable(tokens);
     Events.off(ts, AreaSelector.events.change, sub);
 
@@ -292,48 +314,40 @@ Terrainman.prototype.enter = function () {
     worldScreen.hideHint();
   }
 
-  //comes back to when an action is called off
-  //comes back to after each action, confirmed or not
-  function pick() {
-    pending = null;
-    controls = null;
-    clearTag();
+  //what is done to the ground, toggled on - the one before off - and priced
+  //for the tiles picked, there and then
+  function toggle(mode) {
+    pending = actions[mode];
+    self.lastMode = mode;
 
-    worldScreen.showHint("Drag to place, pull arrows to resize!");
+    controls.tools(
+      TOOLS.map(function (tool) {
+        return {
+          icon: tool.icon,
+          on: tool.mode === mode,
+          action: function () {
+            toggle(tool.mode);
+          },
+        };
+      }),
+    );
 
-    gameScreen.showToolControls([
-      { icon: "cross-icon", action: leave },
-      //TODO a clearing icon of its own - this is the one that got us here
-      { icon: "bulldozer-icon", action: confirm(clear) },
-      { icon: "chevron-up-icon", action: confirm(level(1, "Raise this land")) },
-      {
-        icon: "chevron-down-icon",
-        action: confirm(level(-1, "Lower this land")),
-      },
-    ]);
+    updateQuote();
   }
 
-  //an action asks first, with its price over the selection
-  function confirm(action) {
-    return function () {
-      pending = action;
-      controls = gameScreen.showActionControls();
-      controls.canRotate(false);
+  controls = gameScreen.showActionControls();
+  controls.canRotate(false);
 
-      //done, it leaves what is picked picked and asks the same again,
-      //priced afresh - going up another step is one more tap away. The
-      //ground under it may have moved, so it is drawn over again
-      controls.onSubmit = function () {
-        action.apply(ts.tiles());
-        ts.refresh();
-      };
-      controls.onDiscard = pick;
+  //done, it leaves what is picked picked and asks the same again, priced
+  //afresh - going up another step is one more tap away. The ground under
+  //it may have moved, so it is drawn over again
+  controls.onSubmit = function () {
+    pending.apply(ts.tiles());
+    ts.refresh();
+  };
+  controls.onDiscard = leave;
 
-      updateQuote();
-    };
-  }
-
-  pick();
+  toggle(this.lastMode);
 
   //the selection is up from the start, in the middle of the screen - or on
   //the building that was being looked at, which is looked at no more

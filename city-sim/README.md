@@ -8,6 +8,9 @@ other games start on is built here, and handed over from the city screen.
   road nor water, the houses, the old town, the water tower and the pump
   station first, then the parks - and then everything else: houses, then
   shops, a tier at a time, the cheaper first within one.
+- Shaping the ground picks tiles straight away, and clears, raises or lowers
+  them as toggled on along the bottom - priced over them as they are picked,
+  done with the tick, and started out on what was toggled on last time.
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.
