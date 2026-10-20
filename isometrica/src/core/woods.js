@@ -18,7 +18,9 @@ import Trees from "../data/trees";
 
 //the woods: how thickly their trees stand, and which kinds grow in them,
 //how many of each to the others; and how much likelier the wood is high up
-//(per step of height over UPLAND), and down by the water (WET and below)
+//(per step of height over UPLAND), down by the water (WET and below), and
+//towards the shore (the most just above the water, less and less up to
+//COAST steps of height)
 var WOODS = [
   {
     name: "meadow",
@@ -38,6 +40,7 @@ var WOODS = [
     density: 0.5,
     trees: { pine: 5, birch: 4, spruce: 1 },
     likely: 0,
+    coast: 0.25,
   },
   {
     name: "broadleaf wood",
@@ -67,7 +70,8 @@ var GLADE = 6,
   CLUMP = 4;
 
 var UPLAND = 3,
-  WET = 1;
+  WET = 1,
+  COAST = 3;
 
 var simplex = new Simplex("woods");
 
@@ -123,6 +127,8 @@ function woodAt(x, y, low) {
     if (wood.upland !== undefined)
       field += wood.upland * Math.max(0, low - UPLAND);
     if (wood.wet !== undefined && low <= WET) field += wood.wet;
+    if (wood.coast !== undefined)
+      field += (wood.coast * Math.max(0, COAST + 1 - low)) / COAST;
 
     weights[w] = Math.exp(SHARP * field);
     sum += weights[w];
