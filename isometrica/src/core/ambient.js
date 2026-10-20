@@ -4,7 +4,7 @@
 import Simplex from "simplex-noise";
 import TerrainType from "./terraintype";
 import Rocks from "../data/rocks";
-import Trees from "../data/trees";
+import Woods from "./woods";
 import BuildingService from "./buildings";
 import Terrain from "./terrain";
 import Events from "events";
@@ -55,47 +55,32 @@ Rocks.forEach(function (rock, code) {
   (rock.heap ? HEAPS : STREWN).push(code);
 });
 
-function hasTree(self, tile) {
-  return (
-    self._usedTiles[tile] === undefined &&
-    simplex.noise2D(Terrain.extractX(tile), Terrain.extractY(tile)) > 0
+//the height of the lowest corner of the tile
+function lowest(self, tile) {
+  var terrain = self.root.terrain;
+
+  return Math.min(
+    terrain.getGridPointHeight(tile),
+    terrain.getGridPointHeight(tile + Terrain.dx),
+    terrain.getGridPointHeight(tile + Terrain.dy),
+    terrain.getGridPointHeight(tile + Terrain.dx + Terrain.dy),
   );
 }
 
-//the trees of each kind (data/trees), and how many tiles across a stand of
-//one kind is, about
-var TREE_KINDS = Trees.codesByKind(),
-  KIND_NAMES = Object.keys(TREE_KINDS),
-  STAND = 9,
-  SPREAD = 1.35;
-
 /**
- * Which tree grows on tile, the same one every time it is asked: the kind by
- * where it is, so that each grows in stands of its own, shading into the next
- * - and which of that kind at random.
+ * The tree the woods have on the tile (core/woods), as its building code, or
+ * null - whether anything was built there or not.
  */
-function treeAt(tile) {
-  var x = Terrain.extractX(tile),
-    y = Terrain.extractY(tile),
-    //a stand's edge is not a straight line: now and then one of the next
-    //kind stands among them. The noise is seldom near either end, so it is
-    //spread out over them, for the first kind and the last to grow about as
-    //much as the ones between
-    n =
-      0.5 +
-      (simplex.noise2D(x / STAND + 31.7, y / STAND - 12.3) / 2 +
-        (hash(x, y, 11) - 0.5) * 0.25) *
-        SPREAD,
-    kind =
-      KIND_NAMES[
-        Math.max(
-          0,
-          Math.min(KIND_NAMES.length - 1, Math.floor(n * KIND_NAMES.length)),
-        )
-      ],
-    codes = TREE_KINDS[kind];
+function treeAt(self, tile) {
+  return Woods.treeAt(
+    Terrain.extractX(tile),
+    Terrain.extractY(tile),
+    lowest(self, tile),
+  );
+}
 
-  return codes[Math.floor(hash(x, y, 12) * codes.length)];
+function hasTree(self, tile) {
+  return self._usedTiles[tile] === undefined && treeAt(self, tile) !== null;
 }
 
 function rareDistribution(x, y) {
@@ -252,10 +237,10 @@ Ambient.prototype.getTree = function (tile) {
     terrainType !== TerrainType.water &&
     terrainType !== TerrainType.shore &&
     resource === null &&
-    hasTree(this, tile) &&
+    this._usedTiles[tile] === undefined &&
     rockAt(this, tile) === null
   )
-    return treeAt(tile);
+    return treeAt(this, tile);
 
   return null;
 };

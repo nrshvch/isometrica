@@ -2,7 +2,8 @@
  * The trees of the grassland, painted by shared/gen/trees: oak, beech, ash,
  * alder, birch, pine and spruce, two of each - every one a building of its
  * own, of the tree class, the variants of the tree type (data/buildings). The
- * world grows them on its own (core/ambient), each kind in stands of its own.
+ * world grows them on its own (core/ambient), in woods of their own
+ * (core/woods).
  *
  * The first oak and the first beech keep the codes the two trees drawn by hand
  * had, so a city that has those has these instead.
