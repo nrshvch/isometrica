@@ -58,6 +58,14 @@ export var PAGES = [
       "the whole set is drawn.",
   },
   {
+    id: "hud",
+    name: "HUD study",
+    about:
+      "The games' HUD made up in the look of a city game's found on the web - " +
+      "every part on a card, line icons in one colour - on a phone and a " +
+      "desktop, by day and by night.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

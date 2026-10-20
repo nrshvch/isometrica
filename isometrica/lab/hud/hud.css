@@ -1,0 +1,246 @@
+/*
+ * The HUD study's look (Hud.jsx), after a city game's HUD found on the web:
+ * every part of it on a card of its own, cream by day - or dusk, a dark
+ * green, for the night - with a lip along its bottom and a soft shadow
+ * under it; small tracked capitals to say what a thing is and big black
+ * figures for how much; colour kept for what it means - green for money,
+ * gold for what is on, red for what wants seeing to.
+ */
+.hud {
+  --panel: #fbf0d6;
+  --inset: #f1e2bf;
+  --lip: rgba(150, 112, 40, 0.22);
+  --shine: rgba(255, 255, 255, 0.6);
+  --ink: #1f2a22;
+  --muted: #69705f;
+  --green: #3e7a55;
+  --gold: #e2ae3e;
+  --red: #c2482f;
+  --home: #1f3b2e;
+  --on-home: #e2ae3e;
+  --selected: #1f3b2e;
+  --on-selected: #fbf0d6;
+  --shadow: 0 6px 16px rgba(25, 20, 5, 0.28), 0 1px 2px rgba(25, 20, 5, 0.2);
+
+  font-family: "Nunito Variable", system-ui, sans-serif;
+  color: var(--ink);
+}
+
+.hud.dusk {
+  --panel: #22312a;
+  --inset: #2f4239;
+  --lip: rgba(0, 0, 0, 0.4);
+  --shine: rgba(255, 255, 255, 0.08);
+  --ink: #f3e7cb;
+  --muted: #a4b09c;
+  --home: #e2ae3e;
+  --on-home: #1f2a22;
+  --selected: #e2ae3e;
+  --on-selected: #1f2a22;
+  --shadow: 0 6px 16px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.hud-card {
+  background: var(--panel);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 -3px 0 var(--lip),
+    inset 0 1px 0 var(--shine),
+    var(--shadow);
+}
+
+.hud-label {
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hud-value {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-title {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.hud-text {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+/* a square of colour, an icon on it */
+.hud-tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+}
+
+.hud-tile.green {
+  background: var(--green);
+  color: #fbf0d6;
+}
+
+.hud-tile.home {
+  background: var(--home);
+  color: var(--on-home);
+}
+
+.hud-tile.gold {
+  background: var(--gold);
+  color: #1f2a22;
+}
+
+.hud-tile.red {
+  background: var(--red);
+  color: #fbf0d6;
+}
+
+/* a word or a figure set into a card */
+.hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--inset);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-pill.good {
+  color: #3e7a55;
+}
+
+.dusk .hud-pill.good {
+  color: #8fcf9f;
+}
+
+/* a button on its own, over the world */
+.hud-button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+}
+
+.hud-button.on {
+  background: var(--gold);
+  color: #1f2a22;
+}
+
+/* the bar along the bottom: an icon over a word each */
+.hud-tabs {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  padding: 8px 4px 10px;
+  border-radius: 22px;
+}
+
+.hud-tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.hud-tab .well {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 32px;
+  border-radius: 999px;
+}
+
+.hud-tab.on .well {
+  background: var(--selected);
+  color: var(--on-selected);
+}
+
+.hud-tab.go .well {
+  background: var(--green);
+  color: #fbf0d6;
+}
+
+.hud-badge {
+  position: absolute;
+  top: -3px;
+  left: calc(50% + 10px);
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+
+/* a menu's rows */
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.hud-row + .hud-row {
+  border-top: 1.5px solid var(--inset);
+}
+
+.hud-switch {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  margin-left: auto;
+  border-radius: 12px;
+  background: var(--inset);
+}
+
+.hud-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.hud-switch.on {
+  background: var(--green);
+}
+
+.hud-switch.on::after {
+  left: 19px;
+  background: #fbf0d6;
+}

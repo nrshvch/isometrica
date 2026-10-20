@@ -33,6 +33,7 @@ export default defineConfig({
         woods: path.join(here, "woods.html"),
         icons: path.join(here, "icons.html"),
         directions: path.join(here, "directions.html"),
+        hud: path.join(here, "hud.html"),
       },
     },
   },
