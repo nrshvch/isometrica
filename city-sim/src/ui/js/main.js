@@ -11,8 +11,6 @@ import Backbone from "backbone";
 // branch instead, which leaves Backbone.$ unset, so views can't render.
 Backbone.$ = $;
 
-//a new city starts somewhere in a square this many tiles wide around the old one
-var START_SPREAD_TILES = 10000;
 var START_AT_KEY = "isometrica.startAt";
 
 var events = {
@@ -161,11 +159,11 @@ UIManager.prototype.startFreshCity = function () {
     client = this.client();
 
   //the new city is not dropped right where the player stands, but somewhere
-  //within a 10k by 10k tiles square around it - cityman picks it up after
-  //the reload and opens the camera there
+  //within a square ClientConfig.citySpreadTiles wide around it - cityman
+  //picks it up after the reload and opens the camera there
   if (client !== null) {
     var pos = client.camera.transform.getPosition(),
-      span = START_SPREAD_TILES * ClientConfig.tileSize;
+      span = ClientConfig.citySpreadTiles * ClientConfig.tileSize;
 
     try {
       window.sessionStorage.setItem(

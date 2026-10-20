@@ -15,6 +15,7 @@ import CityComponent from "./components/city";
 import Buildman from "./buildman";
 import ErrorCode from "../core/errorcode";
 import Config from "./config";
+import * as glMatrix from "gl-matrix";
 
 var City = Core.City;
 var CoreTerrain = Core.Terrain;
@@ -208,6 +209,63 @@ function previewCity(self, tile) {
   return [border];
 }
 
+//how many spots a roll of the dice tries for one a city could be founded on,
+//before it settles for the last of them - out at sea, say
+var ROLLS = 100;
+
+/**
+ * Somewhere about tile x, y - within a square Config.citySpreadTiles wide -
+ * a city could be founded: where its city hall would go, its least x and y.
+ * Or the last spot tried, should none of them do.
+ */
+function randomSite(root, x, y) {
+  var tile, i;
+
+  for (i = 0; i < ROLLS; i++) {
+    tile = CoreTerrain.convertToIndex(
+      Math.round(x + (Math.random() - 0.5) * Config.citySpreadTiles),
+      Math.round(y + (Math.random() - 0.5) * Config.citySpreadTiles),
+    );
+
+    if (City.canEstablish(root.core.world, tile)) break;
+  }
+
+  return tile;
+}
+
+var siteBuffer = new Float32Array(3),
+  groundBuffer = new Float32Array(3);
+
+/**
+ * Puts the camera over the middle of a city hall sizeX by sizeY on tile, up
+ * on the ground there - so it is in the middle of the screen, however high
+ * the ground.
+ */
+function lookAtSite(root, tile, sizeX, sizeY) {
+  var cam = root.camera.cameraScript,
+    ts = Config.tileSize,
+    x = (CoreTerrain.extractX(tile) + (sizeX - 1) / 2) * ts,
+    z = (CoreTerrain.extractY(tile) + (sizeY - 1) / 2) * ts,
+    m = cam.gameObject.camera.getWorldToScreen();
+
+  //how far off the ground under it the ground up there is drawn - the same
+  //wherever the camera is
+  siteBuffer[0] = groundBuffer[0] = 0;
+  siteBuffer[2] = groundBuffer[2] = 0;
+  siteBuffer[1] = root.terrain.tileYPos(tile);
+  groundBuffer[1] = 0;
+  glMatrix.vec3.transformMat4(siteBuffer, siteBuffer, m);
+  glMatrix.vec3.transformMat4(groundBuffer, groundBuffer, m);
+
+  cam.lookAt(x, z);
+  cam.pan(groundBuffer[0] - siteBuffer[0], groundBuffer[1] - siteBuffer[1]);
+}
+
+/**
+ * Picks where to found a city: a city hall's footprint, in the middle of the
+ * screen to start with, dragged about or tapped elsewhere - and the dice
+ * takes the camera, and it, off to somewhere else a city could go.
+ */
 Cityman.prototype.establish = function () {
   var self = this;
   var root = this.root;
@@ -215,7 +273,9 @@ Cityman.prototype.establish = function () {
   root.ui
     .gameScreen()
     .worldScreen()
-    .showHint("Drag to where you want your city to be established!");
+    .showHint(
+      "Drag to where you want your city to be established, or roll the dice!",
+    );
 
   //one city hall's footprint, up from the start in the middle of the screen
   //- dragged about or tapped elsewhere, never resized
@@ -310,6 +370,20 @@ Cityman.prototype.establish = function () {
   controls.onDiscard = function () {
     cleanup();
     root.ui.gameScreen().showWorld();
+  };
+
+  //every roll about where the camera was to start with, so that rolling
+  //again and again does not wander off ever further
+  var from = root.camera.transform.getPosition(),
+    fromX = Math.round(from[0] / Config.tileSize),
+    fromY = Math.round(from[2] / Config.tileSize);
+
+  if (controls.canShuffle) controls.canShuffle(true);
+  controls.onShuffle = function () {
+    var tile = randomSite(root, fromX, fromY);
+
+    lookAtSite(root, tile, hall.sizeX, hall.sizeY);
+    ts.selectTiles([tile]);
   };
 
   update();
