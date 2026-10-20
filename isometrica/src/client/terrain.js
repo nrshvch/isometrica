@@ -270,7 +270,10 @@ Terrain.prototype.clear = function (x0, y0, w, l) {
     if (tile) {
       world.removeGameObject(tile);
       pool.push(tile);
-      this.grid.stale = true;
+      this.grid.changed(
+        CoreTerrain.extractX(index),
+        CoreTerrain.extractY(index),
+      );
       delete tiles[index];
       delete gos[tile.instanceId];
     }
@@ -356,7 +359,7 @@ function shapeTile(self, t, index) {
     h[2] = terrain.getGridPointHeight(x, y + 1);
     h[3] = terrain.getGridPointHeight(x + 1, y + 1);
   }
-  self.grid.stale = true;
+  self.grid.changed(x, y);
 
   t.transform.setPosition(
     x * Config.tileSize,

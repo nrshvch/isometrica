@@ -6,30 +6,36 @@
  *
  * It goes where the tiles' outlines are painted: through their corners, at
  * the heights the tiles are drawn at - a tile of water flat at its surface -
- * on the same pixels as the pictures under it. Only the tiles on the screen
- * are gone over, every frame, by how high each tile's corners were when it
- * was last shaped (client/terrain shapeTile), and a run of edges that lines
- * up is drawn as one line.
+ * on the same pixels as the pictures under it, by how high each tile's
+ * corners were when it was last shaped (client/terrain shapeTile). A run of
+ * edges that lines up is one line.
+ *
+ * The lines are worked out for the tiles on the screen and a way past its
+ * edges (MARGIN), and drawn from there for as long as the camera has not
+ * moved further than that, nor turned or zoomed, and none of those tiles has
+ * changed - every frame they are only put where they are on the screen.
  */
 import Engine from "engine";
-import Core from "../../core/main";
 import Config from "../config";
 import RenderLayer from "../renderlayer";
 import View from "../view";
-
-var CoreTerrain = Core.Terrain;
 
 //see-through black along every edge of every tile, a pixel into each tile
 //either side - a line two pixels wide where two tiles meet, as the tiles
 //drawn by hand had it
 var COLOR = "rgba(0,0,0,0.14)",
-  WIDTH = 2;
+  WIDTH = 2,
+  NO_DASH = [];
 
 //how high the ground can stand, in steps (core/terrain calcZ) - and how low,
 //a shore going down under the water - for how far off the screen a tile can
 //be and still show on it
 var HIGHEST = 16,
   LOWEST = -2;
+
+//how far past the edges of the screen the lines are worked out, in pixels:
+//how far the camera can move before they are worked out again
+var MARGIN = 128;
 
 //a tile's corners, as the heights it keeps have them (client/terrain
 //shapeTile): A at x, y, B at x + 1, y, C at x, y + 1, D at x + 1, y + 1.
@@ -38,8 +44,11 @@ var HIGHEST = 16,
 var ALONG_X = [0, 1, 2, 3],
   ALONG_Y = [0, 2, 1, 3];
 
-var range = new Float64Array(4),
-  NO_DASH = [];
+//the corners of what is gone over, as grid points (lines): of the screen and
+//its margin on the ground at the lowest it goes, and at the highest
+var hullX = new Float64Array(8),
+  hullY = new Float64Array(8),
+  span = new Float64Array(2);
 
 /**
  * @param terrain {Terrain} the client's terrain, whose tiles it goes over
@@ -50,22 +59,25 @@ function TerrainGridRenderer(terrain) {
 
   this.layer = RenderLayer.groundLayer;
   this.terrain = terrain;
-  //the lines over the tiles on the screen, as they were last gone over:
-  //x, y, z - a grid point and how many steps high - and whether a line
-  //starts there, point after point; for which grid points, x0, y0, x1, y1
+  //the lines last worked out: x, y, z - a grid point and how many steps
+  //high - and whether a line starts there, point after point
   this.points = [];
-  this.over = [0, 0, -1, -1];
   //the edges of a tile drawn where its neighbour draws them differently,
   //gone over after the rest: [x0, y0, z0, x1, y1, z1, ...]
   this.extra = [];
+  //what they were worked out for: the way the camera looked - M but where
+  //it was - the screen's size, and where the camera was (moved)
+  this.view = new Float64Array(8);
+  this.at = new Float64Array(2);
+  //and the grid points they go over, x0, y0, x1, y1 (changed)
+  this.box = [0, 0, -1, -1];
 }
 
 TerrainGridRenderer.prototype = Object.create(Engine.Renderer.prototype);
 
 //whether it is drawn (client/terrain showGrid)
 TerrainGridRenderer.prototype.shown = true;
-//whether the tiles have changed since they were last gone over - a tile
-//shaped, or put away (client/terrain)
+//whether a tile the lines go over has changed since they were worked out
 TerrainGridRenderer.prototype.stale = true;
 
 //over the whole screen whenever it is drawn at all
@@ -73,20 +85,23 @@ TerrainGridRenderer.prototype.cullingTest = function () {
   return this.shown;
 };
 
+/**
+ * Tile x, y has been shaped, or put away (client/terrain): the lines are
+ * worked out again if they go along it.
+ */
+TerrainGridRenderer.prototype.changed = function (x, y) {
+  var box = this.box;
+
+  if (x >= box[0] - 1 && x <= box[2] && y >= box[1] - 1 && y <= box[3])
+    this.stale = true;
+};
+
 TerrainGridRenderer.prototype.render = function (
   ctx,
   viewportrenderer,
   viewport,
 ) {
-  var M = viewportrenderer.M;
-
-  if (!seen(M, viewport.width, viewport.height)) return;
-
-  var x0 = Math.max(0, Math.floor(range[0])),
-    y0 = Math.max(0, Math.floor(range[1])),
-    x1 = Math.ceil(range[2]),
-    y1 = Math.ceil(range[3]),
-    over = this.over,
+  var M = viewportrenderer.M,
     points = this.points,
     ts = Config.tileSize,
     zStep = Config.tileZStep,
@@ -101,23 +116,12 @@ TerrainGridRenderer.prototype.render = function (
     sy,
     i;
 
-  if (x1 < x0 || y1 < y0) return;
-
-  //gone over again only once other tiles come on the screen, or they change
-  if (
-    this.stale ||
-    x0 !== over[0] ||
-    y0 !== over[1] ||
-    x1 !== over[2] ||
-    y1 !== over[3]
-  ) {
-    over[0] = x0;
-    over[1] = y0;
-    over[2] = x1;
-    over[3] = y1;
+  if (this.stale || moved(this, M, viewport.width, viewport.height)) {
     this.stale = false;
-    lines(this, x0, y0, x1, y1);
+    lines(this, M, viewport.width, viewport.height);
   }
+
+  if (points.length === 0) return;
 
   ctx.beginPath();
 
@@ -146,20 +150,105 @@ TerrainGridRenderer.prototype.render = function (
 };
 
 /**
- * Goes over the tiles from grid point x0, y0 to x1, y1 for the lines over
- * them, into self's points.
+ * Whether the camera has turned or zoomed, the screen changed size, or the
+ * camera moved further than the margin the lines were worked out with, since
+ * they were - and if so, it is remembered as it is now.
  */
-function lines(self, x0, y0, x1, y1) {
+function moved(self, M, w, h) {
+  var view = self.view,
+    at = self.at;
+
+  if (
+    view[0] === M[0] &&
+    view[1] === M[1] &&
+    view[2] === M[4] &&
+    view[3] === M[5] &&
+    view[4] === M[8] &&
+    view[5] === M[9] &&
+    view[6] === w &&
+    view[7] === h &&
+    Math.abs(M[12] - at[0]) <= MARGIN &&
+    Math.abs(M[13] - at[1]) <= MARGIN
+  )
+    return false;
+
+  view[0] = M[0];
+  view[1] = M[1];
+  view[2] = M[4];
+  view[3] = M[5];
+  view[4] = M[8];
+  view[5] = M[9];
+  view[6] = w;
+  view[7] = h;
+  at[0] = M[12];
+  at[1] = M[13];
+
+  return true;
+}
+
+/**
+ * Works the lines out, into self's points: over the tiles that can show on
+ * a screen w by h or within MARGIN of it - each line of the grid only as far
+ * as it goes through that, from where its corners would be on the ground at
+ * the lowest and at the highest it goes.
+ */
+function lines(self, M, w, h) {
   var tiles = self.terrain.tiles,
     points = self.points,
     extra = self.extra,
+    box = self.box,
+    det = M[0] * M[9] - M[8] * M[1],
+    ts = Config.tileSize,
+    zStep = Config.tileZStep,
+    k,
+    up,
+    sx,
+    sy,
     i;
 
   points.length = 0;
   extra.length = 0;
+  box[0] = box[1] = 0;
+  box[2] = box[3] = -1;
 
-  for (i = y0; i <= y1; i++) gridLine(points, tiles, extra, i, x0, x1, true);
-  for (i = x0; i <= x1; i++) gridLine(points, tiles, extra, i, y0, y1, false);
+  if (det === 0) return;
+
+  for (k = 0; k < 8; k++) {
+    up = (k < 4 ? LOWEST : HIGHEST) * zStep;
+    sx = (k & 1 ? w + MARGIN : -MARGIN) - M[4] * up - M[12];
+    sy = (k & 2 ? h + MARGIN : -MARGIN) - M[5] * up - M[13];
+    //the world's x, z there, as grid points
+    hullX[k] = (sx * M[9] - M[8] * sy) / det / ts + 0.5;
+    hullY[k] = (M[0] * sy - M[1] * sx) / det / ts + 0.5;
+  }
+
+  box[0] = Math.max(0, Math.floor(Math.min.apply(null, hullX)));
+  box[1] = Math.max(0, Math.floor(Math.min.apply(null, hullY)));
+  box[2] = Math.ceil(Math.max.apply(null, hullX));
+  box[3] = Math.ceil(Math.max.apply(null, hullY));
+
+  for (i = box[1]; i <= box[3]; i++)
+    if (across(hullY, hullX, i))
+      gridLine(
+        points,
+        tiles,
+        extra,
+        i,
+        Math.max(0, Math.floor(span[0])),
+        Math.ceil(span[1]),
+        true,
+      );
+  for (i = box[0]; i <= box[2]; i++)
+    if (across(hullX, hullY, i))
+      gridLine(
+        points,
+        tiles,
+        extra,
+        i,
+        Math.max(0, Math.floor(span[0])),
+        Math.ceil(span[1]),
+        false,
+      );
 
   for (i = 0; i < extra.length; i += 6)
     points.push(
@@ -175,41 +264,36 @@ function lines(self, x0, y0, x1, y1) {
 }
 
 /**
- * The tiles that can show on a screen w by h, by grid point, into range -
- * [x0, y0, x1, y1] - from where its corners would be on the ground at the
- * lowest and at the highest it goes. false if the ground cannot be seen.
+ * How far along the line where u is c the corners u, v go round, into span
+ * - [from, to] along v - by where the line crosses the lines between every
+ * two of them: the ends of that are where it goes in and out of them all.
+ * false where it misses them.
  */
-function seen(M, w, h) {
-  var det = M[0] * M[9] - M[8] * M[1],
-    ts = Config.tileSize,
-    zStep = Config.tileZStep,
-    k,
-    up,
-    sx,
-    sy,
-    x,
-    y;
+function across(u, v, c) {
+  var lo = Infinity,
+    hi = -Infinity,
+    p,
+    q,
+    t;
 
-  if (det === 0) return false;
+  for (p = 0; p < 8; p++) {
+    if (u[p] === c) {
+      lo = Math.min(lo, v[p]);
+      hi = Math.max(hi, v[p]);
+    }
 
-  range[0] = range[1] = Infinity;
-  range[2] = range[3] = -Infinity;
-
-  for (k = 0; k < 8; k++) {
-    up = (k < 4 ? LOWEST : HIGHEST) * zStep;
-    sx = (k & 1 ? w : 0) - M[4] * up - M[12];
-    sy = (k & 2 ? h : 0) - M[5] * up - M[13];
-    //the world's x, z there, as grid points
-    x = (sx * M[9] - M[8] * sy) / det / ts + 0.5;
-    y = (M[0] * sy - M[1] * sx) / det / ts + 0.5;
-
-    range[0] = Math.min(range[0], x);
-    range[1] = Math.min(range[1], y);
-    range[2] = Math.max(range[2], x);
-    range[3] = Math.max(range[3], y);
+    for (q = p + 1; q < 8; q++)
+      if ((u[p] - c) * (u[q] - c) < 0) {
+        t = (c - u[p]) / (u[q] - u[p]);
+        lo = Math.min(lo, v[p] + t * (v[q] - v[p]));
+        hi = Math.max(hi, v[p] + t * (v[q] - v[p]));
+      }
   }
 
-  return true;
+  span[0] = lo;
+  span[1] = hi;
+
+  return lo <= hi;
 }
 
 /**
@@ -233,15 +317,13 @@ function gridLine(points, tiles, extra, at, from, to, alongX) {
     zb;
 
   for (k = from; k < to; k++) {
-    a = alongX
-      ? tiles[CoreTerrain.convertToIndex(k, at)]
-      : tiles[CoreTerrain.convertToIndex(at, k)];
+    a = alongX ? tiles[(at << 16) ^ k] : tiles[(k << 16) ^ at];
     b =
       at === 0
         ? undefined
         : alongX
-          ? tiles[CoreTerrain.convertToIndex(k, at - 1)]
-          : tiles[CoreTerrain.convertToIndex(at - 1, k)];
+          ? tiles[((at - 1) << 16) ^ k]
+          : tiles[(k << 16) ^ (at - 1)];
 
     if (a === undefined && b === undefined) {
       if (open) end(points, alongX, at, endK, endZ);
