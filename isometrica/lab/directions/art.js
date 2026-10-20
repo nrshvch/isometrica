@@ -22,7 +22,7 @@
 
 export var INK = "#1e2235";
 
-var C = {
+export var C = {
   grass: "#6cc24a",
   grassDark: "#4c9b37",
   grassLight: "#9bdc68",
@@ -115,6 +115,22 @@ function tile(extra) {
 
 /* --- in the world ------------------------------------------------------ */
 
+//a plus in a gold disc, over the bottom right: something new goes up
+export function plusBadge() {
+  return {
+    pieces: [
+      [circle(49, 49, 10), C.gold],
+      ["M47 42.5H51V47H55.5V51H51V55.5H47V51H42.5V47H47Z", C.white],
+    ],
+    shade: [
+      [
+        "M41.4 46.2A8.4 8.4 0 0 1 46 41.1L46.6 43A6.4 6.4 0 0 0 43.2 46.8Z",
+        C.goldLight,
+      ],
+    ],
+  };
+}
+
 var build = [
   {
     pieces: [
@@ -138,18 +154,7 @@ var build = [
     marks: [[circle(25.2, 48.6, 0.9), INK]],
   },
   //and a plus over it: something new goes up
-  {
-    pieces: [
-      [circle(49, 49, 10), C.gold],
-      ["M47 42.5H51V47H55.5V51H51V55.5H47V51H42.5V47H47Z", C.white],
-    ],
-    shade: [
-      [
-        "M41.4 46.2A8.4 8.4 0 0 1 46 41.1L46.6 43A6.4 6.4 0 0 0 43.2 46.8Z",
-        C.goldLight,
-      ],
-    ],
-  },
+  plusBadge(),
 ];
 
 var road = [
