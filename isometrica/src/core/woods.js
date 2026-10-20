@@ -1,8 +1,8 @@
 /**
  * Where the world's trees grow, and which (core/ambient): not every kind
- * everywhere, but woods of their own - spruce forest, groves of pine and
- * birch, broadleaf woods of beech, oak and ash, alder by the water, and open
- * meadow with an oak standing here and there.
+ * everywhere, but woods of their own - spruce forest, pine woods, birch
+ * groves, broadleaf woods of beech, oak and ash, alder by the water, and
+ * open meadow with an oak standing here and there.
  *
  * Every wood has a noise field of its own, and where its field is the
  * highest that wood grows. Where two are about as high they shade into each
@@ -36,9 +36,9 @@ var WOODS = [
     upland: 0.12,
   },
   {
-    name: "pine and birch grove",
+    name: "pine wood",
     density: 0.5,
-    trees: { pine: 5, birch: 4, spruce: 1 },
+    trees: { pine: 14, birch: 1, spruce: 1 },
     likely: 0,
     coast: 0.25,
   },
@@ -54,6 +54,12 @@ var WOODS = [
     trees: { alder: 6, ash: 1, birch: 1 },
     likely: -0.35,
     wet: 0.3,
+  },
+  {
+    name: "birch grove",
+    density: 0.55,
+    trees: { birch: 14, pine: 1, alder: 1 },
+    likely: 0,
   },
 ];
 
