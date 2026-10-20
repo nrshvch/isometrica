@@ -50,6 +50,14 @@ export var PAGES = [
       "SVG.",
   },
   {
+    id: "directions",
+    name: "Icon directions",
+    about:
+      "A few icons drawn by hand in colour and rendered in one colour too, " +
+      "and the HUD made up over the world each way - to be decided on before " +
+      "the whole set is drawn.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

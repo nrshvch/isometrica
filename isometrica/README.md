@@ -25,8 +25,9 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   opens them all from `/` - every sprite the generators paint, lit or at
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
   music at `/music.html`, the woods map at `/woods.html`, the traffic
-  testbed at `/traffic.html`, the icon kit at `/icons.html` and the
-  lighting bench at `/lighting.html`.
+  testbed at `/traffic.html`, the icon kit at `/icons.html`, the icon
+  directions being decided on at `/directions.html` and the lighting bench
+  at `/lighting.html`.
   Everything is painted and played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
@@ -381,7 +382,10 @@ and coloured, outlined and lit by the page showing it.
   the grid (`draw.js`): faces apart by a gap, what stands in front cutting
   round itself out of what is behind, details cut out of the faces. Signs -
   close, done, the menu, the sound - are drawn flat on the grid.
-- An interim set: a new one, drawn by hand in colour, is being planned.
+- An interim set: a new one is being drawn by hand. `lab/directions.html`
+  has its first samples (`lab/directions/art.js`), each drawn once and shown
+  in colour and in one colour (`render.js`), and the HUD made up over the
+  world each way - to decide on before the whole set is drawn.
 - `npm run generate:icons` (`tools/genicons.mjs`) writes them out:
   `src/shared/icons/svg/<name>.svg`, the set, and `src/shared/icons/index.js`,
   every icon's path for a game to show them by without drawing them
