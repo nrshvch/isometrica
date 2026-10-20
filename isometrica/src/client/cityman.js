@@ -166,8 +166,14 @@ Cityman.prototype.pickCity = function (screenX, screenY) {
   return null;
 };
 
+/**
+ * Puts the camera on the city, over its name - a city not founded yet has
+ * none, and it stays where it is.
+ */
 Cityman.prototype.locate = function (city) {
-  this.root.camera.cameraScript.moveTo(this._cityGOs[city.tile()].transform);
+  var go = this._cityGOs[city.tile()];
+
+  if (go !== undefined) this.root.camera.cameraScript.moveTo(go.transform);
 };
 
 /**

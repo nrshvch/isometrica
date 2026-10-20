@@ -35,6 +35,9 @@ var View = Backbone.View.extend({
     //the world from straight above, as a map, and back (isometrica client/
     //vkaria setTopView)
     "click .view": "toggleView",
+    //the camera back on the city, wherever it was panned off to (isometrica
+    //client/cityman locate)
+    "click .locate": "locateCity",
   },
   initialize: function (options) {
     this.onDispose = Events.event("dispose");
@@ -159,6 +162,11 @@ var View = Backbone.View.extend({
     var client = this.options.app.client;
 
     if (client.setTopView) client.setTopView(!WorldView.top());
+  },
+  locateCity: function () {
+    var cityman = this.options.app.client.cityman;
+
+    if (cityman) cityman.locate(this.city);
   },
   renderZoom: function () {
     var client = this.options.app.client,
