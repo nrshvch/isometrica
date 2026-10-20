@@ -4,8 +4,32 @@
  * the width each - whatever holds them (bridge.js): the building tools, or
  * the action going on.
  */
-import { Icon, cx } from "../kit";
+import names from "../icons";
+import { Container, IconButton } from "../kit";
 import { useGame } from "../store";
+
+//what each button does, said for whoever cannot see the icon - by the
+//kit's name of it
+var TITLES = {
+  close: "Leave",
+  check: "Done",
+  house: "Build",
+  road: "Asphalt road",
+  gravel: "Gravel road",
+  cobble: "Cobbled road",
+  bulldozer: "Shape the ground",
+  land: "Buy land",
+  rotate: "Turn round",
+  dice: "Another one",
+  raise: "Raise the ground",
+  lower: "Lower the ground",
+};
+
+function titleOf(icon) {
+  var name = names[icon] || icon;
+
+  return TITLES[name] || TITLES[name.split("-")[0]] || name;
+}
 
 export default function WorldHud() {
   var hint = useGame(function (s) {
@@ -17,33 +41,35 @@ export default function WorldHud() {
     slots = [0, 1, 2, 3, 4];
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 items-center justify-center px-4 text-center">
-        {hint && <div className="outlined-thick text-[12pt]">{hint}</div>}
+    <Container className="flex flex-1 flex-col pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="flex flex-1 items-center justify-center text-center">
+        {hint && (
+          <div className="ui-float outlined px-4 py-2 text-[12pt] font-bold">
+            {hint}
+          </div>
+        )}
       </div>
       <div className="flex-1" />
-      <div className="flex h-[10svh]">
+      <div className="grid grid-cols-5 place-items-center">
         {slots.map(function (i) {
           var b = buttons[i];
 
-          return (
-            <div key={i} className="flex w-1/5 items-center justify-center">
-              {b && (
-                <button
-                  type="button"
-                  onClick={b.action}
-                  className={cx(
-                    "pointer-events-auto aspect-square h-4/5 cursor-pointer",
-                    b.on && "toggled",
-                  )}
-                >
-                  <Icon name={b.icon} className="size-full" />
-                </button>
-              )}
-            </div>
+          return b ? (
+            <IconButton
+              key={i}
+              icon={b.icon}
+              on={b.on}
+              title={titleOf(b.icon)}
+              aria-label={titleOf(b.icon)}
+              aria-pressed={b.on}
+              onClick={b.action}
+              className="size-14 sm:size-16"
+            />
+          ) : (
+            <div key={i} className="size-14 sm:size-16" />
           );
         })}
       </div>
-    </div>
+    </Container>
   );
 }

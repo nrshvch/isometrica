@@ -25,7 +25,7 @@ function Card({ building }) {
       onClick={function () {
         build(building.code);
       }}
-      className="group ui-shadow block cursor-pointer text-left text-inherit"
+      className="group ui-shadow block cursor-pointer overflow-clip rounded-md text-left text-inherit"
     >
       <div className="ui-block truncate px-1 py-2 text-center group-hover:border-button-light group-hover:border-r-button-dark group-hover:border-b-button-dark group-hover:bg-button">
         {building.displayName}
@@ -57,7 +57,7 @@ export default function Catalogue() {
 
   return (
     <Screen
-      className="grid grid-cols-2 content-start gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
+      className="grid grid-cols-2 content-start gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4"
       buttons={[{ icon: "cross-icon", text: "Close", onClick: goWorld }]}
     >
       {all.map(function (b) {

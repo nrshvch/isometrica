@@ -1,17 +1,17 @@
 /**
  * The game: the world, drawn over the whole window and kept there as the
- * page scrolls, and over it the top bar and whatever the address says is up
- * (router.jsx) - the world's own buttons, the catalogue, the city screen -
- * or a word asked for. Starts the game on the city in the address, and
- * opens another if the address changes to it.
+ * page scrolls, and floating over it what is always there (Hud) and
+ * whatever the address says is up (router.jsx) - the world's own buttons,
+ * the catalogue, the city screen - or a word asked for. Starts the game on
+ * the city in the address, and opens another if the address changes to it.
  */
 import { useEffect, useState } from "react";
-import { Outlet, useLocation, useParams } from "react-router";
-import { LayeredLayout } from "../kit";
+import { Outlet, useLocation, useMatch, useParams } from "react-router";
+import { LayeredLayout, cx } from "../kit";
 import { useGame } from "../store";
 import { reopen, start } from "../session";
 import WorldCanvas from "./WorldCanvas";
-import TopBar from "./TopBar";
+import Hud from "./Hud";
 import Prompt from "./Prompt";
 import Splash from "./Splash";
 
@@ -31,13 +31,14 @@ export default function GameScreen() {
     cityId = useGame(function (s) {
       return s.cityId;
     }),
-    hasCity = useGame(function (s) {
-      return s.hasCity;
-    }),
     prompt = useGame(function (s) {
       return s.prompt;
     }),
     path = useLocation().pathname,
+    onWorld = useMatch("/:city?") !== null,
+    //a screen up over the world: the world dimmed behind it, and none of
+    //it to be clicked
+    covered = prompt !== null || !onWorld,
     [splash, setSplash] = useState(true);
 
   useEffect(function () {
@@ -79,9 +80,14 @@ export default function GameScreen() {
             <WorldCanvas />
           </div>
         }
-        wrapperProps={{ className: "flex flex-col" }}
+        wrapperProps={{
+          className: cx(
+            "flex flex-col transition-colors",
+            covered && "pointer-events-auto bg-black/45 backdrop-blur-[2px]",
+          ),
+        }}
       >
-        {hasCity && <TopBar />}
+        {phase === "ready" && <Hud />}
         {/* the screens are of the city, and wait for it to be up */}
         {phase !== "ready" ? null : prompt ? (
           <Prompt prompt={prompt} />

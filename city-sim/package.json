@@ -9,23 +9,26 @@
     "prebuild": "npm run build --prefix ../isometrica",
     "build": "vite build",
     "preview": "vite preview",
-    "dev:worker": "npm run build && wrangler dev --env="
+    "dev:worker": "npm run build && wrangler dev --env=",
+    "generate:logo": "node tools/genlogo.js",
+    "generate:icons": "node tools/genicons.js"
   },
   "dependencies": {
-    "isometrica": "file:../isometrica",
     "engine": "file:../engine/engine",
     "events": "file:../engine/events",
-    "reactive-property": "file:../engine/reactive-property",
     "gl-matrix": "2.2.0",
+    "isometrica": "file:../isometrica",
     "numeral": "1.5.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router": "^7.18.4",
+    "reactive-property": "file:../engine/reactive-property",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^5.2.0",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4.3.3",
     "vite": "^6.4.3",
     "wrangler": "^4.151.0"

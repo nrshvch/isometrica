@@ -199,7 +199,7 @@ export function start(requestedId) {
         worldScreen().show();
         client.startServices();
 
-        //the top bar is the city's: up once there is one - out of a save,
+        //the money over the world is the city's: up once there is one - out of a save,
         //or founded
         store.setState({
           phase: "ready",

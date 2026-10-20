@@ -11,7 +11,7 @@ export var store = createStore(function () {
     phase: "loading",
     //the city the game is playing, once it knows - for the address bar
     cityId: null,
-    //whether there is a city yet: the top bar is the city's
+    //whether there is a city yet: the money over the world is the city's
     hasCity: false,
     //a line of what to do, over the world
     hint: "",

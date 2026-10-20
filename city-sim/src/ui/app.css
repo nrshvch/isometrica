@@ -14,6 +14,13 @@
   --color-button: #2e9c9c;
   --color-button-light: #3ac3c3;
   --color-button-dark: #227575;
+  --color-danger: #c8553d;
+  --color-danger-light: #de7c66;
+  --color-danger-dark: #923c2b;
+  --color-ok: #3f9a4a;
+  --color-ok-light: #5fbd69;
+  --color-ok-dark: #2b6c33;
+  --color-ink: #16282a;
   --color-income: #1f7a1f;
   --color-expense: #b02020;
 }
@@ -42,6 +49,20 @@
 
   .ui-button-on {
     @apply border-button-dark border-r-button-light border-b-button-light;
+  }
+
+  /* leaving, and confirming - red and green the way the old pictures were */
+  .ui-button-danger {
+    @apply border-danger-light border-r-danger-dark border-b-danger-dark bg-danger;
+  }
+
+  .ui-button-ok {
+    @apply border-ok-light border-r-ok-dark border-b-ok-dark bg-ok;
+  }
+
+  /* what floats over the world: a dark glass to read it on */
+  .ui-float {
+    @apply rounded-lg bg-ink/55 backdrop-blur-sm;
   }
 
   .ui-shadow {
@@ -81,6 +102,12 @@
     2px -2px 1px #000,
     -2px 2px 1px #000,
     2px 2px 1px #000;
+}
+
+/* an icon over the world, outlined in black like the words */
+@utility outlined-icon {
+  filter: drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
+    drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000);
 }
 
 /* a toggle switched on - the road being laid, say - outlined a pixel art

@@ -54,7 +54,7 @@ other games start on is built here, and handed over from the city screen.
   placed, the dice next to turning it round picks another of the same kind
   for every footprint of the selection, the selection staying as it is.
 - The weather changes over the days - clear, overcast, fog, rain, storms -
-  shown after the time in the top bar; W goes round the kinds of it to see
+  shown by the time in the top right corner; W goes round the kinds of it to see
   each, and back to the game's own (`isometrica/src/client/weather.js`).
 - The city screen (a click on the money) has the city's budget, its people
   and its services - and at the bottom of it, "Download as the initial
@@ -109,8 +109,14 @@ isometrica's `gfx/` fetched from the top whatever the address.
 
 The world is drawn under everything else, the two laid one over the other
 (`src/ui/kit.jsx` LayeredLayout): the world kept in sight as the page
-scrolls, and over it the top bar, the world's buttons, or a screen - a
-screen taller than the window scrolls the page as any page does. Over the
+scrolls, and floating over it - kept to the middle of a wide screen
+(Container) - the logo in the top left, the time and the city's money in
+the top right with the menu next to them (the sounds, the day and the
+night going by, the view from above, back to the city), the world's
+buttons along the bottom, and how close the camera is while it zooms
+(`src/ui/world/Hud.jsx`, `WorldHud.jsx`). A screen - the catalogue, the
+city screen - is a window over the world dimmed behind it; one taller than
+the window scrolls the page as any page does. Over the
 world nothing takes a click unless it says so: the layer over it is
 `pointer-events-none`, so a tap, a drag or a pinch goes through to the
 world's canvas, and anything to be clicked - a button, a screen covering
@@ -122,6 +128,29 @@ it is doing, a word asked for, the world given back - and here that goes
 into a zustand store (`src/ui/bridge.js`, `src/ui/store.js`) the screens
 read. `src/ui/session.js` puts the world together, once, and starts the
 city in the address on it.
+
+### Its logo and its icons
+
+Both drawn by scripts, to be changed there and drawn again - what they draw
+is checked in and goes into the build as it is:
+
+```
+npm run generate:logo    # tools/genlogo.js → public/logo.png
+npm run generate:icons   # tools/genicons.js → src/ui/iconkit/
+```
+
+The logo is a little town out of the game's own pieces - a house, a pine,
+a water tower on a slab of ground, painted by isometrica's generators - in
+a ring, the tower too tall for it and breaking out through the top: 128
+pixels square, shown at 64 (and as the page's icon).
+
+The icons are a kit of the game's own, pixel art on a 16 by 16 grid in two
+tones - solid, and a shade of it - written out as SVG of one colour,
+`currentColor`: used like any icon set, at any size and in any colour
+(`<Icon name="road" className="size-6" />`, `src/ui/kit.jsx`). An icon is
+drawn as rows of text, or worked out (circles, the roads and their
+arrows); `src/ui/icons.js` says which of them each of the game's buttons
+is, isometrica's road toggles among them.
 
 Deployed by `.github/workflows/city-sim.yml` to the Workers in
 `wrangler.jsonc`: `prod` (https://peeps.land) from a `city-sim/vX.Y.Z`

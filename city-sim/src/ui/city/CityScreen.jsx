@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { NavLink, useParams } from "react-router";
-import { Screen, cx } from "../kit";
+import { Icon, Screen, cx } from "../kit";
 import { getClient, getCore, goWorld } from "../session";
 import { download, initialCityFile } from "./export";
 import { stats } from "./stats";
@@ -145,8 +145,9 @@ function Info({ city }) {
           <button
             type="button"
             onClick={exportCity}
-            className="ui-button self-start px-2.5 py-1.5"
+            className="ui-button flex items-center gap-2 self-start rounded-md px-2.5 py-1.5"
           >
+            <Icon name="download" className="size-4" />
             Download as the initial city
           </button>
         </div>
