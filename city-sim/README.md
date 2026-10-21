@@ -111,10 +111,11 @@ The world is drawn under everything else, the two laid one over the other
 kept to the middle of a wide screen (Container) - along the top the city's
 money (opening the city screen) and what comes in a tick, under
 it the city's name and how many live there (back to the city) and its
-address at https://peeps.land (shared, or copied), the time and
+address at https://peeps.land, the time and
 the weather, the view from above and the menu (the sounds, the day and the
 night going by, the grid over the ground - kept off, if switched off,
-whatever a tap on the world puts away and brings back - a new city), with
+whatever a tap on the world puts away and brings back - the city's address
+shared, or copied, a new city), with
 zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
 catalogue, a road, the ground, land, or those of the action going on, its
