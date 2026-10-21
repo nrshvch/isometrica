@@ -601,7 +601,130 @@ var KINDS = {
       };
     },
   },
+
+  //a dead tree fallen and lying on the ground, broken off at its foot, the
+  //stubs of its branches sticking out of it and moss on its top - in the
+  //bark's third tone
+  log: {
+    leaves: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    bark: [
+      [66, 58, 50],
+      [116, 104, 90],
+      [98, 122, 52],
+    ],
+    moss: 0.56,
+    clump: 0.3,
+    bumps: 0,
+    grow: function (r) {
+      return { trunk: null, branches: fallen(r, 2 * Math.PI * r()), lobes: [] };
+    },
+  },
+
+  //two of them, the one fallen across the other, its foot on the ground and
+  //its top up in the air over it
+  logs: {
+    leaves: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    bark: [
+      [66, 58, 50],
+      [116, 104, 90],
+      [98, 122, 52],
+    ],
+    moss: 0.58,
+    clump: 0.3,
+    bumps: 0,
+    grow: function (r) {
+      var a = 2 * Math.PI * r(),
+        under = fallen(r, a),
+        //the second across the first, a third of the way along it
+        b = a + Math.PI / 3 + (Math.PI / 3) * r(),
+        log = under[0],
+        at = [
+          log.from[0] + (log.to[0] - log.from[0]) * 0.4,
+          log.from[1] + (log.to[1] - log.from[1]) * 0.4,
+        ],
+        thick = 2.1,
+        //resting on the top of the first, where it is that thick
+        over = 2 * (log.ra + (log.rb - log.ra) * 0.4) + thick - 0.3,
+        foot = 11 + 3 * r(),
+        reach = 7 + 3 * r(),
+        rise = over - thick;
+
+      return {
+        trunk: null,
+        branches: under.concat([
+          {
+            from: [
+              at[0] - Math.cos(b) * foot,
+              at[1] - Math.sin(b) * foot,
+              thick,
+            ],
+            to: [
+              at[0] + Math.cos(b) * reach,
+              at[1] + Math.sin(b) * reach,
+              thick + (rise * (foot + reach)) / foot,
+            ],
+            ra: thick,
+            rb: 1.4,
+          },
+        ]),
+        lobes: [],
+      };
+    },
+  },
 };
+
+/**
+ * A fallen trunk lying along a, on the ground across the middle of the
+ * tile: the trunk itself, thick at its foot, and the broken stubs of a few
+ * of its branches - the first of them the trunk.
+ */
+function fallen(r, a) {
+  var long = 22 + 6 * r(),
+    foot = 2.6 + 0.6 * r(),
+    top = 1.7,
+    dir = [Math.cos(a), Math.sin(a)],
+    side = [-dir[1], dir[0]],
+    from = [-dir[0] * long * 0.5, -dir[1] * long * 0.5, foot],
+    to = [dir[0] * long * 0.5, dir[1] * long * 0.5, top],
+    out = [{ from: from, to: to, ra: foot, rb: top }],
+    n = 2 + Math.floor(2 * r());
+
+  for (var i = 0; i < n; i++) {
+    var t = 0.35 + 0.55 * r(),
+      out2 = r() < 0.5 ? 1 : -1,
+      d = 2.5 + 2.5 * r(),
+      on = [
+        from[0] + (to[0] - from[0]) * t,
+        from[1] + (to[1] - from[1]) * t,
+        from[2] + (to[2] - from[2]) * t,
+      ];
+
+    out.push({
+      from: on,
+      to: [
+        on[0] + (side[0] * out2 + dir[0] * 0.5) * d,
+        on[1] + (side[1] * out2 + dir[1] * 0.5) * d,
+        on[2] + d * (0.3 + 0.7 * r()),
+      ],
+      ra: 0.6,
+      rb: 0.3,
+    });
+  }
+
+  return out;
+}
 
 //a branch from the trunk out to every lobe off the middle
 function branchesTo(lobes, from, ra, rb) {
@@ -667,7 +790,8 @@ function turnPlan(plan, turns) {
   }
 
   return {
-    trunk: {
+    //none for one lying on the ground
+    trunk: plan.trunk && {
       height: plan.trunk.height,
       foot: plan.trunk.foot,
       top: plan.trunk.top,
@@ -702,7 +826,7 @@ function grow(kind, seed, turns) {
       return [x, y];
     },
     trunk = plan.trunk,
-    top = [trunk.lean[0], trunk.lean[1], trunk.height],
+    top = trunk && [trunk.lean[0], trunk.lean[1], trunk.height],
     //smaller ones and bigger ones
     scale = 0.88 + 0.16 * hash(seed, 1, 3),
     tree = { part: "leaves" };
@@ -743,11 +867,11 @@ function grow(kind, seed, turns) {
 
   tree.shape = function (q) {
     var p = [q[0] / scale, q[1] / scale, q[2] / scale],
-      wood = limb(p, [0, 0, -1], top, trunk.foot, trunk.top);
+      wood = trunk ? limb(p, [0, 0, -1], top, trunk.foot, trunk.top) : Infinity;
 
     //a trunk cut off, or broken: nothing of it over the cut, which goes
     //through its top, sloping the way cut has it
-    if (trunk.cut) wood = Math.max(wood, cutAt(p));
+    if (trunk && trunk.cut) wood = Math.max(wood, cutAt(p));
 
     plan.branches.forEach(function (b) {
       wood = Math.min(wood, limb(p, b.from, b.to, b.ra, b.rb));
@@ -760,14 +884,24 @@ function grow(kind, seed, turns) {
     return Math.min(leaves, wood) * scale;
   };
 
-  //whether the bark is marked at q, for a kind that has marks: short dashes
-  //across the trunk, in the tree's own way round so that they stay where
-  //they are on it whichever side it is seen from
-  tree.marked = function (q) {
+  //whether the bark is marked at q, which looks the way n does, for a kind
+  //that has marks: short dashes across the trunk, in the tree's own way
+  //round so that they stay where they are on it whichever side it is seen
+  //from - or moss in patches over whatever of it looks up, or its cut
+  tree.marked = function (q, n) {
     var p = [q[0] / scale, q[1] / scale, q[2] / scale];
 
     //the cut, for a kind that shows it
-    if (k.face && trunk.cut) return cutAt(p) > -0.3;
+    if (k.face && trunk && trunk.cut) return cutAt(p) > -0.3;
+
+    if (k.moss !== undefined) {
+      var m = back(p[0], p[1]);
+
+      return (
+        n[2] > 0.45 &&
+        noise(m[0] * 0.45 + seed, m[1] * 0.45, p[2] * 0.45) > k.moss
+      );
+    }
 
     if (k.marks === undefined) return false;
 
@@ -904,7 +1038,7 @@ function paintTree(tree, look) {
         //the trunk is never caught by the sun the way the leaves are: its
         //third tone is for where it is marked
         tones[i] =
-          part && tree.marked(p)
+          part && tree.marked(p, n)
             ? 5
             : part * 3 + Math.min(toneOf(light), part ? 1 : 2);
       } else if (

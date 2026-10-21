@@ -23,6 +23,8 @@ export var KIND_COLOURS = {
   spruce: [10, 70, 36],
   snag: [150, 150, 150],
   stump: [40, 30, 25],
+  log: [230, 110, 200],
+  logs: [255, 170, 235],
 };
 
 //the woods, in the order core/woods has them

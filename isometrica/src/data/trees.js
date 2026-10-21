@@ -3,8 +3,9 @@
  * alder, birch, pine and spruce, two of each - every one a building of its
  * own, of the tree class, the variants of the tree type (data/buildings). The
  * world grows them on its own (core/ambient), in woods of their own
- * (core/woods) - and among them now and then a dead tree still standing, or
- * a stump, which only the world puts down: a tree planted is a live one.
+ * (core/woods) - and among them now and then a dead tree still standing, a
+ * stump or a fallen trunk, which only the world puts down: a tree planted is
+ * a live one.
  *
  * The first oak and the first beech keep the codes the two trees drawn by hand
  * had, so a city that has those has these instead.
@@ -30,13 +31,15 @@ var KINDS = [
   "spruce",
   "snag",
   "stump",
+  "log",
+  "logs",
 ];
 var EACH = 2;
 
 //the kinds nobody plants, and what they are called where it is not their
 //kind's name
-var WILD = { snag: true, stump: true };
-var NAMES = { snag: "dead tree" };
+var WILD = { snag: true, stump: true, log: true, logs: true };
+var NAMES = { snag: "dead tree", log: "fallen tree", logs: "fallen trees" };
 
 var TREES = [];
 
