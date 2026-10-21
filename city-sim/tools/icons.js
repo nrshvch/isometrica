@@ -86,11 +86,16 @@ function edges(at) {
 }
 
 //the plot of land the world's things are done to, along the bottom of the
-//grid: its back corner - where whatever stands on it is put up - at 12, 12
-var PLOT = tile(12, 17, 20);
+//grid: whatever is put up on it stands in its middle, at 12, 17 - its back
+//corner, right behind that, hidden by it a GAP of each of its back edges
+//either side
+var PLOT = tile(12, 17, 20),
+  GAP = 0.34;
 
 function plot() {
-  return [edges(PLOT)];
+  return [
+    line(PLOT(1 - GAP, 0), PLOT(0, 0), PLOT(0, 1), PLOT(1, 1), PLOT(1, GAP)),
+  ];
 }
 
 /* --- signs -------------------------------------------------------------- */
@@ -224,9 +229,9 @@ var SIGNS = {
     line([4, 17], [4, 20], [20, 20], [20, 17]),
   ],
 
-  //turned round, a quarter turn and more
+  //turned round, most of the way, the arrow's head where it has got to
   rotate: [
-    path("M20 12a8 8 0 1 1-2.34-5.66"),
+    path("M20 12a8 8 0 1 1-2.34-5.66L20 8"),
     line([20, 3.5], [20, 8], [15.5, 8]),
   ],
 
@@ -273,7 +278,7 @@ var WORLD = {
 
   //a flag put up on a plot - a city founded
   found: plot().concat([
-    line([12, 12], [12, 3]),
+    line([12, 17], [12, 3]),
     shape([
       [12, 3.5],
       [19.5, 3.5],
@@ -285,7 +290,7 @@ var WORLD = {
 
   //a board put up on a plot - for sale
   land: plot().concat([
-    line([12, 12], [12, 10]),
+    line([12, 17], [12, 10]),
     shape([
       [5, 3.5],
       [19, 3.5],
@@ -297,13 +302,13 @@ var WORLD = {
 
   //the ground of a plot raised, or lowered
   raise: plot().concat([
-    line([12, 12.5], [12, 3]),
+    line([12, 17], [12, 3]),
     line([8, 7], [12, 3], [16, 7]),
   ]),
 
   lower: plot().concat([
-    line([12, 3], [12, 12.5]),
-    line([8, 8.5], [12, 12.5], [16, 8.5]),
+    line([12, 3], [12, 17]),
+    line([10.25, 14.75], [12, 17], [13.75, 14.75]),
   ]),
 
   //a bulldozer from the side, going right: its tracks round two wheels, the
