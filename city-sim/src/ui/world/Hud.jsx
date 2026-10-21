@@ -1,10 +1,10 @@
 /**
- * What goes over the top of the world, on cards: the game's logo, the
- * city's money - which opens the city screen and puts it away again - and
- * how it is doing, and under it the city's name - back to it; the time,
- * and the weather; the view from above, and the menu: the sounds, the day
- * and the night going by, a new city. Under them, zooming in and out, and
- * how close the camera is.
+ * What goes over the top of the world, on cards: the city's money - which
+ * opens the city screen and puts it away again - and how it is doing, and
+ * under it the city's name - back to it; the time, and the weather; the
+ * view from above, and the menu: the sounds, the day and the night going
+ * by, the grid over the ground, a new city. Under them, zooming in and out,
+ * and how close the camera is.
  *
  * On a phone the money and the time take the top, the city's name and the
  * buttons the line under it; on a desktop the rest goes along the top.
@@ -67,6 +67,7 @@ function read(client) {
       ? Numeral(city.population.getPopulation()).format("0,0")
       : "",
     sounds: !!(client.sound && client.sound.wants.sounds),
+    grid: !!(client.terrain && client.terrain.gridOn),
     dayNight: !!(lighting && lighting.dayNight),
     top: WorldView.top(),
     zoom: zoom === null ? "" : CameraControl.zoomStep(zoom) + "x",
@@ -116,6 +117,7 @@ function useWorld(client, hasCity) {
       //told for good - they have no way of being let go of
       if (client.sound) client.sound.onChange(update);
       if (client.lighting) client.lighting.onDayNight(update);
+      if (client.terrain) client.terrain.onGrid(update);
       if (camera) camera.addEventListener(camera.events.update, update);
       //and zoomed, which draws the world at another size (engine
       //CameraComponent setZoom)
@@ -264,8 +266,8 @@ function Zoom({ client, zoom }) {
   );
 }
 
-//a line of the menu: what it does, its key, and whether it is on
-function Row({ icon, label, on, shortcut, disabled, onClick }) {
+//a line of the menu: what it does, and whether it is on
+function Row({ icon, label, on, disabled, onClick }) {
   return (
     <button
       type="button"
@@ -277,11 +279,6 @@ function Row({ icon, label, on, shortcut, disabled, onClick }) {
     >
       <Icon name={icon} size={20} />
       <span className="whitespace-nowrap">{label}</span>
-      {shortcut && (
-        <kbd className="rounded-[2px] bg-inset px-1.5 font-sans text-[11px] text-muted">
-          {shortcut}
-        </kbd>
-      )}
       {on === undefined ? (
         <Icon name="chevron-right" size={16} className="ml-auto text-muted" />
       ) : (
@@ -344,7 +341,6 @@ function Menu({ client, world, busy }) {
             icon={world.sounds ? "sound-on" : "sound-off"}
             label="Sounds"
             on={world.sounds}
-            shortcut="S"
             onClick={function () {
               //from the click itself, so that a phone lets them play
               if (client.sound) client.sound.toggle("sounds");
@@ -354,9 +350,16 @@ function Menu({ client, world, busy }) {
             icon={world.night ? "moon" : "sun"}
             label="Day and night"
             on={world.dayNight}
-            shortcut="N"
             onClick={function () {
               if (client.lighting) client.lighting.setDayNight();
+            }}
+          />
+          <Row
+            icon="grid"
+            label="Grid"
+            on={world.grid}
+            onClick={function () {
+              if (client.terrain) client.terrain.setGrid();
             }}
           />
           <Row
@@ -415,12 +418,7 @@ export default function Hud() {
   }
 
   return (
-    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-2.5 [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_auto_1fr_auto_auto] sm:gap-3 sm:pt-4 sm:[grid-template-areas:'logo_funds_._time_tools'_'._city_._._zoom']">
-      <img
-        src="/logo.png"
-        alt="Peepsland"
-        className="pixelated size-16 self-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)] [grid-area:logo] max-sm:hidden"
-      />
+    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-2.5 [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_1fr_auto_auto] sm:gap-3 sm:pt-4 sm:[grid-template-areas:'funds_._time_tools'_'city_._._zoom']">
       {funds && (
         <div className="flex min-w-0 self-stretch [grid-area:funds] *:flex-1">
           <Funds world={world} onClick={openCity} />

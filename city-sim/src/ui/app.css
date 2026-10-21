@@ -170,9 +170,10 @@
     @apply border-t-[1.5px] border-inset;
   }
 
-  /* a switch, on or off */
+  /* a switch, on or off - in pixels, as its knob is, rems being the page's
+     15 */
   .switch {
-    @apply relative ml-auto h-6 w-10 shrink-0 rounded-[2px] bg-inset transition-colors;
+    @apply relative ml-auto h-[24px] w-[40px] shrink-0 rounded-[2px] bg-inset transition-colors;
   }
 
   .switch::after {

@@ -173,13 +173,30 @@ function CreateTile(self) {
   }
 }
 
+//where the grid over the ground is kept on or off in the browser (setGrid)
+var GRID_STORE = "isometrica.grid";
+
+//whether the grid over the ground is wanted: as kept, or it is
+function gridWanted() {
+  try {
+    return localStorage.getItem(GRID_STORE) !== "off";
+  } catch (e) {
+    return true;
+  }
+}
+
 function Terrain(root) {
   this.tiles = [];
   this.gos = [];
   this.pool = [];
   this.root = root;
-  //the grid over the ground (showGrid)
+  //the grid over the ground: wanted at all (setGrid), and shown with the
+  //words over the world (showGrid) - drawn only when both
   this.grid = new TerrainGridRenderer(this);
+  this.gridOn = gridWanted();
+  this.gridShown = true;
+  this.gridListeners = [];
+  this.grid.shown = this.gridOn;
 }
 
 Terrain.events = events;
@@ -204,13 +221,42 @@ Terrain.prototype.init = function () {
 };
 
 /**
- * Draws the grid over the ground, or leaves it off - drawn as lines over the
- * tiles (components/terraingridrenderer), so none of them is drawn again.
+ * Draws the grid over the ground, or leaves it off, with the words over the
+ * world (client/serviceman toggleLabels) - if it is wanted at all (setGrid).
+ * Drawn as lines over the tiles (components/terraingridrenderer), so none
+ * of them is drawn again.
  *
  * @param shown {boolean}
  */
 Terrain.prototype.showGrid = function (shown) {
-  this.grid.shown = shown;
+  this.gridShown = shown;
+  this.grid.shown = shown && this.gridOn;
+};
+
+/**
+ * Has the grid over the ground wanted, or not at all - off, nothing brings it
+ * back but this (showGrid); kept in the browser for next time.
+ *
+ * @param [on] {boolean} - or the other way round from how it is
+ */
+Terrain.prototype.setGrid = function (on) {
+  this.gridOn = on === undefined ? !this.gridOn : on === true;
+
+  try {
+    localStorage.setItem(GRID_STORE, this.gridOn ? "on" : "off");
+  } catch (e) {
+    //not kept: as it is now, then
+  }
+
+  this.grid.shown = this.gridShown && this.gridOn;
+  this.gridListeners.forEach(function (fn) {
+    fn();
+  });
+};
+
+//told whenever the grid is set wanted or not
+Terrain.prototype.onGrid = function (fn) {
+  this.gridListeners.push(fn);
 };
 
 /**

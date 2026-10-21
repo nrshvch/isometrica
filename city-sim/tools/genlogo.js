@@ -5,10 +5,9 @@
  * the town were seen through a round window. The tower is too tall for it
  * and breaks out through the top of the ring.
  *
- * The picture is SIZE pixels square, transparent round the ring, and shown
- * at half that (ui/world/Hud.jsx), so that every pixel of it is sharp on a
- * screen of two pixels a point. What is in it, and where, is SCENE below;
- * the ring's colours are the game's (ui/app.css).
+ * The picture is SIZE pixels square, transparent round the ring - the
+ * page's icon (index.html). What is in it, and where, is SCENE below; the
+ * ring's colours are its own.
  *
  * Usage:
  *   npm run generate:logo        (in city-sim/)

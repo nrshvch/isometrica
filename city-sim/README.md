@@ -111,11 +111,13 @@ isometrica's `gfx/` fetched from the top whatever the address.
 
 The world is drawn under everything else, the two laid one over the other
 (`src/ui/kit.jsx` LayeredLayout), as high as the window: over the world -
-kept to the middle of a wide screen (Container) - along the top the logo,
-the city's money (opening the city screen) and what comes in a tick, under
+kept to the middle of a wide screen (Container) - along the top the city's
+money (opening the city screen) and what comes in a tick, under
 it the city's name and how many live there (back to the city), the time and
 the weather, the view from above and the menu (the sounds, the day and the
-night going by, a new city), with zooming in and out under them; along the
+night going by, the grid over the ground - kept off, if switched off,
+whatever a tap on the world puts away and brings back - a new city), with
+zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
 catalogue, a road, the ground, land, or those of the action going on, its
 tick faded while it cannot be pressed - and over it a line of what to do
@@ -149,7 +151,7 @@ npm run generate:logo    # tools/genlogo.js → public/logo.png
 A little town out of the game's own pieces - a house, a pine, a water tower
 on a slab of ground, painted by isometrica's generators - in a ring, the
 tower too tall for it and breaking out through the top: 128 pixels square,
-shown at 64 (and as the page's icon).
+the page's icon.
 
 ### Its icons
 

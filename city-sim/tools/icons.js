@@ -317,6 +317,18 @@ var WORLD = {
   //its head pressed into the plot, over more of its back
   lower: plot(0.6).concat(vertical(3, 17)),
 
+  //the grid over the ground: a stretch of it, its tiles marked out
+  grid: (function () {
+    var at = tile(12, 12, 21),
+      out = [edges(at)];
+
+    [1 / 3, 2 / 3].forEach(function (k) {
+      out.push(line(at(k, 0), at(k, 1)), line(at(0, k), at(1, k)));
+    });
+
+    return out;
+  })(),
+
   //a bulldozer from the side, going right: its tracks round two wheels, the
   //cab over the back of them, the blade held out ahead, its edge on the
   //ground - the ground cleared
