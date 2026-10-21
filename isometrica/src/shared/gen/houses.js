@@ -16,8 +16,8 @@
  *     hens, an orchard and beehives, a well, a woodpile and a goat, or
  *     flowers; a farmstead on two, its farmyard behind it a pasture with
  *     a barn and cows, a field of wheat or a flock of sheep, and a croft on
- *     three; a hamlet of cottages or farmsteads side by side (beside), each
- *     its own; a longhouse along the street, house and byre under one roof;
+ *     three, or along the street on three, facing a lane up its side; a
+ *     hamlet of cottages or farmsteads side by side (beside), each its own; a longhouse along the street, house and byre under one roof;
  *     and a farm round its yard, the barn at the back, a paddock, a field or
  *     a flock behind the farmhouse. No fences: many of them together are a
  *     village;
@@ -1820,6 +1820,33 @@ function farmOn(D, o, rnd, stage) {
   return { boxes: b, bays: [] };
 }
 
+/**
+ * A house of the village on a footprint one tile across and D deep, turned
+ * a quarter turn - so many turns as isobox rotate has it - to lie along the
+ * street, facing a lane up the side of it: a croft with its house at one end,
+ * its farmyard along the street behind it. Its chimney with it.
+ */
+function sideways(paint, D, turns) {
+  return function (o, rnd, stage) {
+    var from = smoking !== null ? smoking.length : 0,
+      built = paint(o, rnd, stage),
+      i;
+
+    function turn(x, y) {
+      return turns === 1 ? [y, TILE - x] : [D - y, x];
+    }
+
+    for (i = from; smoking !== null && i < smoking.length; i++) {
+      var at = turn(smoking[i][0], smoking[i][1]);
+
+      smoking[i] = [at[0], at[1], smoking[i][2]];
+    }
+
+    //no bays to turn: nothing parks at a croft
+    return { boxes: iso.rotate(built.boxes, 1, D / TILE, turns), bays: [] };
+  };
+}
+
 //the roof of a town house
 function cityRoof(o, P, axis) {
   return {
@@ -3407,6 +3434,9 @@ var DESIGNS = {
   cottage: cottage,
   farm: farmOf(2),
   croft: farmOf(3),
+  //the croft along the street, its house at the one end or the other
+  sidecroftw: sideways(farmOf(3), 3 * TILE, 1),
+  sidecrofte: sideways(farmOf(3), 3 * TILE, 3),
   wide: wide,
   deep: deep,
   long: long,
@@ -3621,6 +3651,15 @@ var FOOTPRINTS = {
       tiles: tilesOf(3, 1, "houses/longhouse3/std/{pal}/{roof}/{yard}/{plot}"),
     },
   ],
+  //a croft along the street, its house facing a lane up the side of it
+  "village-3x1-side": ["sidecroftw", "sidecrofte"].map(function (design) {
+    return {
+      design: design,
+      weight: 1,
+      axes: FARM_AXES,
+      tiles: tilesOf(3, 1, "houses/" + design + "/{layout}/{pal}/{roof}"),
+    };
+  }),
   "village-1x3": [
     {
       design: "croft",
@@ -3820,6 +3859,8 @@ var OPTIONS = {
   villa23: ["style", "bound"],
   villa33: ["style", "bound"],
   croft: ["pal", "roof"],
+  sidecroftw: ["pal", "roof"],
+  sidecrofte: ["pal", "roof"],
   longhouse2: ["pal", "roof", "yard"],
   longhouse3: ["pal", "roof", "yard", "plot"],
   farmyard22: ["pal", "roof"],

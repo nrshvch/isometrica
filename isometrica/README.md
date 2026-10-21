@@ -462,8 +462,8 @@ dev`) plays them the way a game would - all three weathers together, the
   stores, a shopping centre) and then either farmers' markets or office
   blocks. The catalogue keeps each tier together, its footprint on every
   card (`isometrica/src/data/houses.js`, `shops.js`, `flats.js`, `offices.js`).
-  What is no longer offered - the village house on 1x1, the villas on one
-  row of tiles, and the blocks, stores and shops a tower or a shop on the
+  What is no longer offered - the village house on 1x1, the hamlet on 3x1,
+  the villas on one row of tiles, and the blocks, stores and shops a tower or a shop on the
   street with yards or car parks beside it took the place of - is kept,
   hidden, for the cities that have it, marked `deprecated` (and
   `replacedBy` what took its place), till the saves are rid of it.
@@ -499,7 +499,8 @@ dev`) plays them the way a game would - all three weathers together, the
   catalogue entry per kind and footprint (`isometrica/src/data/houses.js`): village
   houses that need no road or water - a cottage with hens, a cow, an
   orchard or a well, a farmstead on 1x2 with a barn, a field or sheep, a
-  croft on 1x3, hamlets of cottages or farmsteads side by side, a longhouse
+  croft on 1x3 - and on 3x1 along the street, its house at one end facing a
+  lane up the side - hamlets of cottages or farmsteads side by side, a longhouse
   with its byre along the street, a farm round its yard with a barn and a
   paddock; town houses with hedges or picket fences - a bungalow with its
   garage on 2x1 (and set back on 2x2, 2x3 and 3x2, a car on the drive and a

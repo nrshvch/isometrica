@@ -28,6 +28,7 @@
  *  farmstead            4500    5    20     2.5      50       45
  *  cottages, 2x1        5000    6    20      3       60       42
  *  hamlet, 3x1          7500    9    20      3       60       42
+ *  croft along street   6000    7    20     2.3      47       43
  *  croft, 1x3           6000    7    20     2.3      47       43
  *  farm, 2x2            9000   11    20     2.8      55       41
  *  long farm, 2x3      12500   14    20     2.3      47       45
@@ -49,7 +50,8 @@
  *  villa estate, 3x3   140000   20    75     2.2     167       93
  *
  * Those marked deprecated - the village house on one tile, the villas on one
- * row of tiles - are no longer offered: they are kept, hidden, only for the
+ * row of tiles - or replacedBy another - the hamlet by the croft along the
+ * street - are no longer offered: they are kept, hidden, only for the
  * cities that have them, till the saves are rid of them.
  */
 import BuildingClassCode from "./classcode";
@@ -58,7 +60,9 @@ import BuildingClassCode from "./classcode";
 var BASE = 4000;
 
 //each kind a hundred of its own, each footprint of it ten a tile across and
-//one a tile deep within that
+//one a tile deep within that - and for a footprint's second design, which
+//took the place of its first, five hundred more than that (code), with the
+//footprint it is painted as (gen)
 var KINDS = ["village", "city", "town", "villa"];
 
 var HOUSES = [
@@ -94,6 +98,17 @@ var HOUSES = [
     heads: 9,
     cost: 7500,
     time: 50000,
+    replacedBy: 4531,
+  },
+  {
+    kind: "village",
+    footprint: "3x1",
+    code: 4531,
+    gen: "village-3x1-side",
+    name: "croft along the street",
+    heads: 7,
+    cost: 6000,
+    time: 45000,
   },
   {
     kind: "village",
@@ -273,6 +288,8 @@ var HOUSES = [
 var TIERS = { village: 1, city: 2, town: 2, villa: 3 };
 
 function code(house) {
+  if (house.code !== undefined) return house.code;
+
   var size = house.footprint.split("x").map(Number);
 
   return BASE + KINDS.indexOf(house.kind) * 100 + size[0] * 10 + size[1];
@@ -306,7 +323,10 @@ function buildings() {
         //drawn out of parts, see client/compoundbuilding
         compound: {
           gen: "houses",
-          footprint: house.kind + "-" + house.footprint,
+          footprint:
+            house.gen !== undefined
+              ? house.gen
+              : house.kind + "-" + house.footprint,
           sizeX: size[0],
           sizeY: size[1],
         },
@@ -315,11 +335,13 @@ function buildings() {
     //they live off the land, not off a job in town
     if (village) data.needsJobs = false;
     if (house.tax !== undefined) data.taxPerResident = house.tax;
-    //no longer offered, kept only for the cities that have them
-    if (house.deprecated) {
+    //no longer offered, kept only for the cities that have them - and what
+    //took the place of one, if anything did
+    if (house.deprecated || house.replacedBy !== undefined) {
       data.hidden = true;
       data.deprecated = true;
     }
+    if (house.replacedBy !== undefined) data.replacedBy = house.replacedBy;
 
     out[code(house)] = data;
   });
