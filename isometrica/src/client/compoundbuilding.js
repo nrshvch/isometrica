@@ -250,6 +250,7 @@ function smallSite(staticData) {
     one = staticData.sizeX * staticData.sizeY === 1;
 
   if (gen === "parks" || gen === "oldtown") return true;
+  if (gen === "civic" && compound.footprint === "square") return true;
   if (gen === "houses" && /^village-/.test(compound.footprint)) return true;
 
   return (

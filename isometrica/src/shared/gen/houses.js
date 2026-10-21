@@ -4176,17 +4176,32 @@ export function paint(name) {
 
 export { PARTS, STOREY, cover };
 
-//what a house is drawn with, for the old town (shared/gen/oldtown)
+//what a house is drawn with, for the old town (shared/gen/oldtown) and the
+//town's own buildings (shared/gen/civic)
 export {
   face,
   windowOn,
   windowsOn,
+  windowsAround,
   doorOn,
   walls,
+  pitched,
+  flatRoof,
+  column,
+  steps,
+  balustrade,
+  lawn,
+  paved,
+  flowers,
+  bush,
+  topiary,
+  gardenTree,
   cypress,
   well,
   woodpile,
   fountain,
   site,
   SH,
+  DOOR,
+  PANE,
 };

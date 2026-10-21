@@ -12,6 +12,7 @@ import Offices from "./offices";
 import Shops from "./shops";
 import Houses from "./houses";
 import Parks from "./parks";
+import Civic from "./civic";
 import Oldtown from "./oldtown";
 import Trees from "./trees";
 
@@ -209,6 +210,7 @@ Object.assign(
   Shops.buildings(),
   Houses.buildings(),
   Parks.buildings(),
+  Civic.buildings(),
   Oldtown.buildings(),
 );
 

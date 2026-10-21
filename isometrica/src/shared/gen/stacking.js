@@ -258,7 +258,12 @@ export function siteTiles(tiles, stage, seed, small) {
   if (gen === "shops")
     return fenced(shopSite(tiles, stage, seed, small), small);
   if (gen === "oldtown") return fenced(oldtownSite(tiles, stage, seed), true);
-  if (gen === "houses" || gen === "utilities" || gen === "parks")
+  if (
+    gen === "houses" ||
+    gen === "utilities" ||
+    gen === "parks" ||
+    gen === "civic"
+  )
     return fenced(houseSite(tiles, stage, seed, small), small);
 
   var dealt = deal(tiles.length, seed, small),
@@ -360,7 +365,8 @@ function shopSite(tiles, stage, seed, small) {
  * tile, by the design of the house and where its buildings stand. A water
  * tower (shared/gen/utilities) goes up the same way: its shaft, then its
  * tank; and a park (shared/gen/parks): its ground graded and its walks laid
- * out, then grassed and paved, and then planted.
+ * out, then grassed and paved, and then planted; and the town's own
+ * buildings (shared/gen/civic) the way the houses do.
  */
 function houseSite(tiles, stage, seed, small) {
   var dealt = deal(tiles.length, seed, small);

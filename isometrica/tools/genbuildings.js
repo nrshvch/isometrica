@@ -21,13 +21,15 @@
  * quarter turn - and under each footprint's row the same shops going up.
  * houses.png has the houses of shared/gen/houses the same way, a row for
  * every kind of house and footprint; utilities.png the water tower and the
- * pump station.
+ * pump station; parks.png the parks, civic.png the church, the town hall and
+ * the square, oldtown.png the old town.
  *
  * Usage:
  *   node tools/genbuildings.js [outDir] [sheet...]
  *
  * outDir is assets/previews unless given; with sheets named - buildings,
- * sites, shops, houses, utilities, parks - only those are written.
+ * sites, shops, houses, utilities, parks, civic, oldtown - only those are
+ * written.
  */
 
 var fs = require("fs");
@@ -46,6 +48,7 @@ var GENERATORS = {
   houses: require("../src/shared/gen/houses.js"),
   utilities: require("../src/shared/gen/utilities.js"),
   parks: require("../src/shared/gen/parks.js"),
+  civic: require("../src/shared/gen/civic.js"),
   oldtown: require("../src/shared/gen/oldtown.js"),
 };
 
@@ -485,6 +488,8 @@ function main() {
     write(footprintSheet("utilities"), path.join(out, "utilities.png"));
   if (wanted("parks"))
     write(footprintSheet("parks"), path.join(out, "parks.png"));
+  if (wanted("civic"))
+    write(footprintSheet("civic"), path.join(out, "civic.png"));
   if (wanted("oldtown"))
     write(footprintSheet("oldtown"), path.join(out, "oldtown.png"));
   if (!wanted("buildings") && !wanted("sites")) return;

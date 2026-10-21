@@ -541,11 +541,29 @@ dev`) plays them the way a game would - all three weathers together, the
   pattern of paved walks, a fountain where they cross and beds edged with
   box, of flowers or lawn with small trees; or a town park of gravel walks
   winding between trees, benches, bins and lamps, with a big fountain or a
-  pond on the bigger footprints. Its lamps, and the floodlights at two
+  pond on the bigger footprints. The central park on 3x3 has no courts - it
+  is one park all through: the garden, the town park, or a wood of trees
+  and pines on mossy ground, a walk looping round it and a clearing in the
+  middle with picnic tables or a pond. Its lamps, and the floodlights at two
   corners of every court and skate spot, come on with the street lights
   and light the ground round them the way a street light does
   (`client/buildingview.js` lightsOf "park"). A park needs no road or water
   and earns nothing; the town pays its upkeep.
+- The town's own buildings are painted too (`isometrica/src/shared/gen/civic.js`,
+  `isometrica/src/data/civic.js`): a church on 1x2, end on to the street,
+  whitewashed or of dark red brick, its tower at the front half as high
+  again as the old town's, in a churchyard - its bell rung now and then by
+  day while it is on screen, as the old town's church's is
+  (`client/audio/soundman.js`); a town hall end on to the street on 1x2, or
+  along it on 2x1 - white with a portico and a dome like a capitol, cream
+  with a portico and a clock tower, clapboard with a porch and a bell
+  cupola, or brick with the clock in its gable - behind a forecourt with
+  its flag; and a square on 1x1 to fill a gap between roads where a park
+  would be wasted: slabs or cobbles, benches, trees in tubs and lamps, and
+  an advertising column, a street food stand or an ice cream cart in the
+  middle, or nothing - or bare paving and nothing else at all. Like a park
+  they earn nothing; the church and the town hall have people working in
+  them.
 - The old town (`isometrica/src/shared/gen/oldtown.js`, `isometrica/src/data/oldtown.js`) is the
   commerce a village starts with, next to its cottages: it needs no road or
   water, and makes its money with the cottagers working in it. On 1x2 and

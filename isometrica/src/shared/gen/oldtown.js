@@ -2055,3 +2055,6 @@ export function paint(name) {
 }
 
 export { PARTS, STOREY, MASKS };
+
+//its steep roofs and spires, for the town's own buildings (shared/gen/civic)
+export { gable, pyramid };

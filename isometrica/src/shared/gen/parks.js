@@ -6,15 +6,19 @@
  *
  *   - sports: courts and a skate spot inside a wire fence - a basketball
  *     court, half a one on a single tile; a skate spot of ramps, a box and
- *     a rail; a tennis court on three tiles; on the bigger footprints two,
- *     three or four of them side by side - with benches and bushes round them;
+ *     a rail; a tennis court on three tiles; on the bigger footprints two or
+ *     three of them side by side - with benches and bushes round them. Not on
+ *     3x3, the central park, which is one park all through (kindsOf);
  *   - garden: a formal garden laid out to a pattern - straight walks of
  *     paving crossing each other, a ring walk round the bigger ones, beds
  *     edged with low box hedges and full of flowers or with a small tree in
  *     each, a fountain where the walks cross, benches facing it;
  *   - city: a town park - gravel walks winding through it, trees all over,
  *     bushes, benches along the walks with a bin by each, lamps; on the
- *     bigger footprints a plaza with a big fountain, or a pond.
+ *     bigger footprints a plaza with a big fountain, or a pond;
+ *   - woods, on 3x3 only: trees thick on mossy ground, pines among them, a
+ *     walk winding round in a loop, and a clearing in the middle with
+ *     picnic tables, or a pond.
  *
  * Each kind comes in two variants (which court, which feature). While a park
  * is laid out its tiles are a building site like anybody's (shared/gen/sites),
@@ -36,6 +40,7 @@ import {
   METAL,
   LEAF,
   HEDGE,
+  TRUNK,
   DIRT,
   CONCRETE,
   LIT,
@@ -426,11 +431,6 @@ function sports(b, W, H, variant, stage, rnd) {
   else if (W === 2 * TILE && H === 2 * TILE) {
     court("basket", 4, 28, 5, 59);
     court(variant ? "skate" : "basket", 36, 60, 5, 59);
-  } else if (W === 3 * TILE && H === 3 * TILE) {
-    court("tennis", 4, 28, 4, 92);
-    court("tennis", 36, 60, 4, 92);
-    court(a, 68, 92, 5, 59);
-    court(variant ? "basket" : "skate", 68, 92, 66, 92);
   } else {
     court("tennis", 4, 28, 4, 92);
     court(a, 36, 60, 5, 59);
@@ -725,9 +725,195 @@ function cityPark(b, W, H, variant, stage, rnd) {
     }
 }
 
+/* --- The woods ------------------------------------------------------- */
+
+//the floor of the woods, mossy under the trees, and the pines' needles
+var MOSS = madeOf([96, 138, 72], "grass"),
+  PINE = [52, 102, 70],
+  LOG = [118, 84, 58];
+
+//a pine: a trunk, and its crown a cone over it, h high
+function pine(b, x, y, h) {
+  var r = h * 0.26,
+    base = h * 0.3;
+
+  b.push(box(x - 0.5, x + 0.5, y - 0.5, y + 0.5, 1, base + 1, TRUNK));
+  round(b, x, y, r, PINE, 0.08, function (u, v) {
+    var d = Math.sqrt(u * u + v * v) / r;
+
+    if (d >= 1) return null;
+
+    return [base, base + (h - base) * (1 - d), u, v, 1.2];
+  });
+}
+
+//a picnic table, its benches either side along x, at x, y
+function picnicTable(b, x, y) {
+  b.push(box(x, x + 6, y + 1, y + 4, 3.4, 4, WOOD));
+  b.push(box(x + 1, x + 1.6, y + 1.5, y + 3.5, 1, 3.4, WOOD));
+  b.push(box(x + 4.4, x + 5, y + 1.5, y + 3.5, 1, 3.4, WOOD));
+  b.push(box(x, x + 6, y - 0.5, y + 0.5, 2.2, 2.6, WOOD));
+  b.push(box(x, x + 6, y + 4.5, y + 5.5, 2.2, 2.6, WOOD));
+}
+
+/**
+ * A wood on a footprint W by H, for a town to walk in: trees thick on
+ * mossy ground, pines among them, a gravel walk winding round it in a loop
+ * and in to it from the front, and in the middle a clearing - with picnic
+ * tables and benches in it (variant 0), or a pond (variant 1); a log fallen
+ * here and there, bushes, a lamp or two along the walk.
+ */
+function woods(b, W, H, variant, stage, rnd) {
+  var cx = W / 2,
+    cy = H / 2,
+    clearing = Math.min(W, H) * 0.17,
+    loop = Math.min(W, H) * 0.36;
+
+  //how far a spot is out along the loop's wobbly ring, 1 on it
+  function ring(x, y) {
+    var dx = x - cx,
+      dy = y - cy,
+      a = Math.atan2(dy, dx),
+      r = loop * (1 + 0.1 * Math.sin(a * 3 + 0.7));
+
+    return Math.sqrt(dx * dx + dy * dy) / r;
+  }
+
+  function inClearing(x, y) {
+    var dx = (x - cx) / clearing,
+      dy = (y - cy) / (clearing * 0.85);
+
+    return dx * dx + dy * dy < 1;
+  }
+
+  function inPond(x, y) {
+    if (!variant) return false;
+
+    var dx = (x - cx) / (clearing - 3),
+      dy = (y - cy) / (clearing * 0.85 - 3),
+      wobble = 0.1 * Math.sin(Math.atan2(dy, dx) * 4);
+
+    return dx * dx + dy * dy < 1 + wobble;
+  }
+
+  function isWalk(x, y) {
+    if (inPond(x, y)) return false;
+    if (Math.abs(ring(x, y) - 1) * loop < 1.6) return true;
+    //in from the front, and across to the clearing
+    if (Math.abs(x - cx - 4 * Math.sin(y / 9)) < 1.6 && y < cy) return true;
+
+    return false;
+  }
+
+  cells(
+    b,
+    W,
+    H,
+    function (x, y) {
+      return !inPond(x, y);
+    },
+    0,
+    1,
+    stage === 1 ? DIRT : GRASS,
+  );
+  if (stage !== 1)
+    cells(
+      b,
+      W,
+      H,
+      function (x, y) {
+        return !inClearing(x, y) && !isWalk(x, y) && (x * 7 + y * 3) % 5 < 3;
+      },
+      1,
+      1.05,
+      MOSS,
+    );
+  cells(b, W, H, isWalk, 1, 1.1, GRAVEL);
+  if (variant) cells(b, W, H, inPond, 0, 0.2, stage === 1 ? DIRT : WATER);
+
+  if (stage) return;
+
+  //the trees, thick, clear of the walks, the clearing and each other
+  var planted = [];
+
+  function clear(x, y, r) {
+    for (var dx = -r; dx <= r; dx++)
+      for (var dy = -r; dy <= r; dy++) {
+        var px = x + dx,
+          py = y + dy;
+
+        if (px < 1 || py < 1 || px > W - 1 || py > H - 1) return false;
+        if (isWalk(px, py) || inClearing(px, py)) return false;
+      }
+
+    for (var i = 0; i < planted.length; i++) {
+      var q = planted[i];
+
+      if (Math.abs(q[0] - x) < q[2] + r && Math.abs(q[1] - y) < q[2] + r)
+        return false;
+    }
+
+    return true;
+  }
+
+  for (var k = 0; k < (W * H) / 14; k++) {
+    var x = 2 + Math.floor(rnd() * (W - 4)),
+      y = 2 + Math.floor(rnd() * (H - 4)),
+      kind = rnd(),
+      size = kind < 0.3 ? 2 : 3 + Math.floor(rnd() * 3);
+
+    if (!clear(x, y, size)) continue;
+
+    planted.push([x, y, size]);
+    if (kind < 0.3) bush(b, x, y, 2, rnd() < 0.5 ? HEDGE : LEAF);
+    else if (kind < 0.55) pine(b, x, y, 14 + Math.floor(rnd() * 8));
+    else tree(b, x, y, size);
+  }
+
+  //a log or two fallen among them
+  for (var l = 0; l < 3; l++) {
+    var lx = 4 + Math.floor(rnd() * (W - 12)),
+      ly = 4 + Math.floor(rnd() * (H - 8));
+
+    if (clear(lx + 3, ly, 3))
+      b.push(box(lx, lx + 7, ly, ly + 1.5, 1, 2.5, LOG));
+  }
+
+  //the clearing: tables and a bench, or the pond with reeds round it
+  if (variant)
+    for (var r = 0; r < 16; r++) {
+      var a = rnd() * Math.PI * 2,
+        rx = Math.round(cx + Math.cos(a) * (clearing - 2.5)),
+        ry = Math.round(cy + Math.sin(a) * (clearing * 0.85 - 2.5));
+
+      if (!inPond(rx, ry) && !isWalk(rx, ry))
+        b.push(box(rx, rx + 1, ry, ry + 1, 1, 3, darker(LEAF, 0.1)));
+    }
+  else {
+    picnicTable(b, Math.round(cx - 9), Math.round(cy - 3));
+    picnicTable(b, Math.round(cx + 3), Math.round(cy + 1));
+    seat(b, Math.round(cx - 2), Math.round(cy + clearing * 0.85 - 4), "-y");
+    bin(b, Math.round(cx + 4), Math.round(cy - 6));
+  }
+
+  //benches along the walk at the front, lamps by the way in
+  seat(b, Math.round(cx - loop * 0.7), Math.round(cy - 3), "+x");
+  seat(b, Math.round(cx + loop * 0.7) - 2, Math.round(cy + 2), "-x");
+  lamp(b, Math.round(cx) - 4, 2);
+  lamp(b, Math.round(cx) + 4, 2);
+}
+
 /* --- Parts ----------------------------------------------------------- */
 
-var KINDS = { sports: sports, garden: garden, city: cityPark };
+var KINDS = { sports: sports, garden: garden, city: cityPark, woods: woods };
+
+//which kinds of park a footprint comes in: courts side by side are no park
+//to have in the middle of town, and the biggest has the woods instead
+function kindsOf(fp) {
+  return fp === "3x3"
+    ? ["garden", "city", "woods"]
+    : ["sports", "garden", "city"];
+}
 
 /**
  * The boxes of a whole park: of a kind, on a footprint "1x2", a variant of
@@ -738,7 +924,7 @@ function park(kind, fp, variant, stage) {
     b = [],
     rnd = random([kind, fp, variant].join("/"));
 
-  if (kind !== "garden" && kind !== "city")
+  if (kind === "sports")
     b.push(
       box(
         0,
@@ -777,7 +963,7 @@ var FOOTPRINTS = (function () {
           parts: ["parks/{kind}/" + fp + "/{variant}/" + x + "/" + y],
         });
 
-    out[fp] = Object.keys(KINDS).map(function (kind) {
+    out[fp] = kindsOf(fp).map(function (kind) {
       return {
         design: kind,
         weight: 1,
@@ -802,7 +988,7 @@ var PARTS = (function () {
   FOOTPRINT_NAMES.forEach(function (fp) {
     var size = fp.split("x").map(Number);
 
-    Object.keys(KINDS).forEach(function (kind) {
+    kindsOf(fp).forEach(function (kind) {
       ["0", "1"].forEach(function (variant) {
         for (var x = 0; x < size[0]; x++)
           for (var y = 0; y < size[1]; y++) {

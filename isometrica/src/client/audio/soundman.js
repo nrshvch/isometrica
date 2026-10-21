@@ -12,9 +12,9 @@
  *   by day, crickets and an owl at night; the sea - only a slight wind
  *   over it, stronger in a gale, no waves. Louder the closer the camera
  *   is;
- * - the old town's church (shared/gen/bells): now and then by day, while
- *   one is on screen, its one small bell, from where the church is - rung
- *   for a service, or tolled;
+ * - the old town's church (shared/gen/bells), and the town's own (shared/gen
+ *   civic): now and then by day, while one is on screen, its one small
+ *   bell, from where the church is - rung for a service, or tolled;
  * - the hum of the town heard from above (shared/gen/skyline): full over
  *   the busy middle of a town - its shops, offices and works, and the cars
  *   going about it - and faint and dull, far off, over the outskirts and
@@ -518,9 +518,10 @@ Soundman.prototype.survey = function () {
         cars++;
     }
 
-  //the old town on screen, and its church if it has one: looked for block
-  //by block - one is small enough for the grid to miss - by where each is
-  //on screen, as many tiles of it as there are
+  //the old town on screen, and its church if it has one - and the town's
+  //own churches: looked for block by block - one is small enough for the
+  //grid to miss - by where each is on screen, as many tiles of it as there
+  //are
   var toViewport = this.root.camera.camera.getWorldToViewport(),
     old = 0,
     church = 0,
@@ -528,7 +529,11 @@ Soundman.prototype.survey = function () {
 
   for (var id in buildings.buildings) {
     b = buildings.buildings[id];
-    if (!oldtown(b)) continue;
+
+    var inOld = oldtown(b),
+      own = civicChurch(b);
+
+    if (!inOld && !own) continue;
 
     var size = b.data.sizeX * b.data.sizeY,
       at = this.where(
@@ -541,8 +546,8 @@ Soundman.prototype.survey = function () {
 
     if (at === null) continue;
 
-    old += size;
-    if (this.church(b)) {
+    if (inOld) old += size;
+    if (own || this.church(b)) {
       church += size;
       churchX += at.x * size;
     }
@@ -579,6 +584,18 @@ function oldtown(b) {
     !!b.data &&
     !!b.data.compound &&
     b.data.compound.gen === "oldtown" &&
+    b.getState() === BuildingState.ready
+  );
+}
+
+//whether a building is one of the town's own churches, standing finished
+function civicChurch(b) {
+  return (
+    b !== null &&
+    !!b.data &&
+    !!b.data.compound &&
+    b.data.compound.gen === "civic" &&
+    b.data.compound.footprint === "church" &&
     b.getState() === BuildingState.ready
   );
 }
@@ -718,7 +735,8 @@ Soundman.prototype.skyline = function () {
 };
 
 /**
- * The old town's church bell, now and then by day: a little while after a
+ * A church's bell - the old town's, or the town's own - now and then by
+ * day: a little while after a
  * church is first seen, then every minute or so (BELLS_FIRST, BELLS_EVERY)
  * - rung for a service, or tolled - from where the church is across the
  * screen, louder closer in. Its time goes on with no church on screen: one

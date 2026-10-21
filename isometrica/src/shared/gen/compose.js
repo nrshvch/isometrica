@@ -14,6 +14,7 @@ import * as Shops from "./shops.js";
 import * as Houses from "./houses.js";
 import * as Utilities from "./utilities.js";
 import * as Parks from "./parks.js";
+import * as Civic from "./civic.js";
 import * as Oldtown from "./oldtown.js";
 import { lifts, kindOf } from "./stacking.js";
 
@@ -28,6 +29,7 @@ var GENERATORS = {
   houses: Houses,
   utilities: Utilities,
   parks: Parks,
+  civic: Civic,
   oldtown: Oldtown,
 };
 

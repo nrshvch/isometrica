@@ -555,6 +555,14 @@ function lightsOf(staticData) {
   if (gen === "houses" || gen === "flats" || gen === "oldtown") return "home";
   //its lamps, with the street lights
   if (gen === "parks") return "park";
+  //the town's own: a square's lamps, a town hall's offices, a church as a
+  //house is
+  if (gen === "civic")
+    return staticData.compound.footprint === "square"
+      ? "park"
+      : /^townhall/.test(staticData.compound.footprint)
+        ? "office"
+        : "home";
 
   return undefined;
 }

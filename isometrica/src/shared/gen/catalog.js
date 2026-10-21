@@ -22,6 +22,7 @@ import * as Shops from "./shops.js";
 import * as Houses from "./houses.js";
 import * as Utilities from "./utilities.js";
 import * as Parks from "./parks.js";
+import * as Civic from "./civic.js";
 import * as Oldtown from "./oldtown.js";
 import * as Roads from "./roads.js";
 import * as Trees from "./trees.js";
@@ -52,6 +53,7 @@ export var GENERATORS = [
   "houses",
   "utilities",
   "parks",
+  "civic",
   "oldtown",
   "roads",
   "trees",
@@ -69,6 +71,7 @@ var BLOCKS = {
   houses: Houses,
   utilities: Utilities,
   parks: Parks,
+  civic: Civic,
   oldtown: Oldtown,
   roads: Roads,
   trees: Trees,
@@ -110,6 +113,7 @@ export var INPUTS = {
   houses: [],
   utilities: [],
   parks: [],
+  civic: [],
   oldtown: [],
   roads: [],
   trees: [],
