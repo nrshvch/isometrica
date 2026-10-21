@@ -747,6 +747,10 @@ function square(o, rnd, stage) {
 
   b.push(box(0, W, 0, W, 0, 1, GRASS));
   b.push(box(0, W, 0, W, 1, 1.2, ground));
+
+  //bare paving, and nothing else
+  if (o.stand === "empty") return b;
+
   //a ring of a darker stone round the middle
   for (var i = 0; i < 24; i++) {
     var a = (i / 24) * Math.PI * 2,
@@ -757,8 +761,6 @@ function square(o, rnd, stage) {
       box(x - 0.6, x + 0.6, y - 0.6, y + 0.6, 1.2, 1.3, darker(ground, 0.2)),
     );
   }
-
-  if (o.stand === "empty") return b;
 
   //the trees in their tubs at the corners
   [
