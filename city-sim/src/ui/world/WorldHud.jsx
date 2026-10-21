@@ -1,8 +1,9 @@
 /**
  * What goes over the world when no screen is up, along the bottom where a
  * thumb is: the bar of buttons - whatever holds them (bridge.js): the
- * building tools, or the action going on - and over it, on a card, a line
- * of what to do.
+ * building tools, or the action going on - and over it, on a card as wide,
+ * a line of what to do. As wide as what is along the top on a phone; in
+ * the middle on a desktop, where the top has the width of the screen.
  */
 import { BarButton, Container, Icon, cx } from "../kit";
 import { useGame } from "../store";
@@ -22,9 +23,6 @@ var LABELS = {
 function labelOf(b) {
   return b.label || LABELS[b.icon.split("-")[0]] || "";
 }
-
-//how wide a button of the bar gets at most
-var BUTTON_PX = 104;
 
 /**
  * The line of what to do: by the icon of the toggle that is on, if one is -
@@ -62,13 +60,10 @@ export default function WorldHud() {
 
   return (
     <Container className="flex flex-1 flex-col justify-end pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4">
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-2">
+      <div className="mx-auto flex w-full flex-col gap-2 sm:max-w-xl">
         {hint && <Hint text={hint} on={on} />}
         {shown.length > 0 && (
-          <div
-            className="card mx-auto flex w-full px-1 pt-2 pb-2.5"
-            style={{ maxWidth: shown.length * BUTTON_PX }}
-          >
+          <div className="card flex w-full justify-center px-1 pt-2 pb-2.5">
             {shown.map(function (b) {
               return (
                 <BarButton

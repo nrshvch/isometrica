@@ -87,14 +87,25 @@ function edges(at) {
 
 //the plot of land the world's things are done to, along the bottom of the
 //grid: whatever is put up on it stands in its middle, at 12, 17 - its back
-//corner, right behind that, hidden by it a GAP of each of its back edges
-//either side
+//corner, right behind that, hidden by it: gap of each of its back edges
+//either side, GAP unless what stands there hides more
 var PLOT = tile(12, 17, 20),
   GAP = 0.34;
 
-function plot() {
+function plot(gap) {
+  var g = gap || GAP;
+
+  return [line(PLOT(1 - g, 0), PLOT(0, 0), PLOT(0, 1), PLOT(1, 1), PLOT(1, g))];
+}
+
+//an arrow straight up or down, from tail to tip: its head 4 back from its
+//tip and 4 out either side, its shaft ending inside it
+function vertical(tail, tip) {
+  var dir = tip > tail ? 1 : -1;
+
   return [
-    line(PLOT(1 - GAP, 0), PLOT(0, 0), PLOT(0, 1), PLOT(1, 1), PLOT(1, GAP)),
+    line([12, tail], [12, tip - dir]),
+    line([8, tip - 4 * dir], [12, tip], [16, tip - 4 * dir]),
   ];
 }
 
@@ -301,15 +312,10 @@ var WORLD = {
   ]),
 
   //the ground of a plot raised, or lowered
-  raise: plot().concat([
-    line([12, 17], [12, 3]),
-    line([8, 7], [12, 3], [16, 7]),
-  ]),
+  raise: plot().concat(vertical(17, 3)),
 
-  lower: plot().concat([
-    line([12, 3], [12, 17]),
-    line([10.25, 14.75], [12, 17], [13.75, 14.75]),
-  ]),
+  //its head pressed into the plot, over more of its back
+  lower: plot(0.6).concat(vertical(3, 17)),
 
   //a bulldozer from the side, going right: its tracks round two wheels, the
   //cab over the back of them, the blade held out ahead, its edge on the

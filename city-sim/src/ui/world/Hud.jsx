@@ -423,11 +423,11 @@ export default function Hud() {
         className="pixelated size-16 self-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)] [grid-area:logo] max-sm:hidden"
       />
       {funds && (
-        <div className="min-w-0 [grid-area:funds]">
+        <div className="flex min-w-0 self-stretch [grid-area:funds] *:flex-1">
           <Funds world={world} onMoney={openCity} onHome={home} />
         </div>
       )}
-      <div className="[grid-area:time]">
+      <div className="flex self-stretch justify-self-end [grid-area:time] *:flex-1">
         <Time world={world} />
       </div>
       {funds && (
@@ -436,7 +436,7 @@ export default function Hud() {
           className="justify-self-start [grid-area:city] sm:hidden"
         />
       )}
-      <div className="flex gap-2 [grid-area:tools]">
+      <div className="flex gap-2 justify-self-end [grid-area:tools]">
         <HudButton
           icon="map"
           label="View from above (T)"
