@@ -128,7 +128,7 @@ export default function Splash({ onGone }) {
           <span className="text-sm font-bold text-[#a9aed6]">
             Denis Narushevich&apos;s
           </span>
-          <span className="mt-1 text-6xl leading-none font-black tracking-tight sm:text-7xl">
+          <span className="mt-1 font-title text-6xl leading-none font-bold tracking-tight sm:text-7xl">
             Peepsland
           </span>
         </h1>

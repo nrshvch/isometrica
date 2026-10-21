@@ -10,6 +10,9 @@
  */
 @import "tailwindcss" source("..");
 @import "@fontsource-variable/nunito";
+/* the game's name on the splash, its corners cut like the world's pixels -
+   bold alone, all it is set in */
+@import "@fontsource/chakra-petch/700.css";
 
 /* the colours that change with the night, by name - read where they are
    used, so a .night round them changes them */
@@ -28,6 +31,7 @@
 
 @theme {
   --font-sans: "Nunito Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-title: "Chakra Petch", "Nunito Variable", ui-sans-serif, sans-serif;
 
   /* what stays the same by day and by night: the dark behind the world,
      the light on a coloured tile, and the colours that mean something */
