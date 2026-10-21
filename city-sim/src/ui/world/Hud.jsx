@@ -1,10 +1,10 @@
 /**
  * What goes over the top of the world, on cards: the city's money - which
  * opens the city screen and puts it away again - and how it is doing, and
- * under it the city's name and its address - back to it; the time, and the
- * weather; the view from above, and the menu: the sounds, the day and the
- * night going by, the grid over the ground, the city's address shared, a
- * new city. Under them, zooming in and out, and how close the camera is.
+ * under it the city's name - back to it; the time, and the weather; the
+ * view from above, and the menu: the sounds, the day and the night going
+ * by, the grid over the ground, the city's address shared, a new city.
+ * Under them, zooming in and out, and how close the camera is.
  *
  * On a phone the money and the time take the top, the city's name and the
  * buttons the line under it; on a desktop the rest goes along the top.
@@ -205,30 +205,23 @@ function Time({ world }) {
   );
 }
 
-/**
- * The city's name, how many live there and its address - a click on them
- * back to the city, wherever the camera has got to.
- */
-function City({ world, address, onClick, className }) {
+//the city's name and how many live there - a click on them back to the
+//city, wherever the camera has got to
+function City({ world, onClick, className }) {
   return (
     <button
       type="button"
       title={"Back to " + world.name}
       onClick={onClick}
       className={cx(
-        "card pointer-events-auto flex max-w-full min-w-0 cursor-pointer flex-col px-3 py-2 text-left",
+        "card pointer-events-auto flex max-w-full min-w-0 cursor-pointer items-center gap-2 px-3 py-2 text-left",
         className,
       )}
     >
-      <span className="flex max-w-full min-w-0 items-center gap-2">
-        <span className="truncate font-extrabold">{world.name}</span>
-        <span className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-muted tabular-nums">
-          <Icon name="people" size={14} strokeWidth={2} />
-          {world.population}
-        </span>
-      </span>
-      <span className="max-w-full truncate text-xs font-semibold text-muted">
-        {address.replace(/^https?:\/\//, "")}
+      <span className="truncate font-extrabold">{world.name}</span>
+      <span className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-muted tabular-nums">
+        <Icon name="people" size={14} strokeWidth={2} />
+        {world.population}
       </span>
     </button>
   );
@@ -492,7 +485,6 @@ export default function Hud() {
       {funds && (
         <City
           world={world}
-          address={address}
           onClick={home}
           className="justify-self-start [grid-area:city]"
         />
