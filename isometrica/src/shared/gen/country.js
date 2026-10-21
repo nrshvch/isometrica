@@ -703,26 +703,26 @@ var WOODS = [
   //day
   {
     seconds: 36,
-    air: 0.035,
-    leaves: 0.015,
+    air: 0.0175,
+    leaves: 0.0075,
     gusts: 0.5,
     birds: true,
     crickets: 0,
     owl: false,
     ring: 0.9,
-    loud: 0.07,
+    loud: 0.0423,
   },
   //night
   {
     seconds: 36,
-    air: 0.02,
-    leaves: 0.008,
+    air: 0.01,
+    leaves: 0.004,
     gusts: 0.4,
     birds: false,
     crickets: 24,
     owl: true,
     ring: 1.2,
-    loud: 0.06,
+    loud: 0.0561,
   },
 ];
 
