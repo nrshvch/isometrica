@@ -12,7 +12,25 @@ import Game from "../game";
 import { createBridge } from "./bridge";
 import { store } from "./store";
 
-var START_AT_KEY = "isometrica.startAt";
+var START_AT_KEY = "isometrica.startAt",
+  //the id of a new city to start from the initial city, rather than from
+  //nothing - kept over the page going up again on it (startFreshCity)
+  FROM_INITIAL_KEY = "isometrica.fromInitial";
+
+//whether the city asked for is a new one to start from the initial city -
+//asked once
+function fromInitial(id) {
+  var asked = null;
+
+  try {
+    asked = window.sessionStorage.getItem(FROM_INITIAL_KEY);
+    window.sessionStorage.removeItem(FROM_INITIAL_KEY);
+  } catch (e) {
+    //no storage: nothing was asked
+  }
+
+  return id !== null && asked === id;
+}
 
 var core = null,
   client = null,
@@ -182,7 +200,7 @@ export function start(requestedId) {
     .then(function () {
       var cities = core.cities;
 
-      var id = core.persistence.open(requestedId);
+      var id = core.persistence.open(requestedId, fromInitial(requestedId));
 
       //in the address bar, so the tab can be bookmarked or shared - the
       //screen it asked for, if any, kept after it
@@ -231,14 +249,27 @@ export function reopen(id) {
 }
 
 /**
- * Leaves the city behind and starts a new one, blank, under an id of its own.
- * The old one stays in storage, to be come back to by its own address.
+ * Leaves the city behind and starts a new one under an id of its own: blank,
+ * or the initial city every new player starts on. The old one stays in
+ * storage, to be come back to by its own address.
+ *
+ * @param initial {boolean} from the initial city, rather than from nothing
  */
-function startFreshCity() {
-  //the new city is not dropped right where the player stands, but somewhere
+function startFreshCity(initial) {
+  var id = core === null ? null : core.persistence.newCityId();
+
+  //the initial city opens where it stands, the camera on it - and nothing
+  //asked of a city with no id to go by
+  if (initial && id !== null)
+    try {
+      window.sessionStorage.setItem(FROM_INITIAL_KEY, id);
+    } catch (e) {
+      //no storage - a blank city, then
+    }
+  //a blank one is not dropped right where the player stands, but somewhere
   //within a square ClientConfig.citySpreadTiles wide around it - cityman
   //picks it up after the reload and opens the camera there
-  if (client !== null && client.camera) {
+  else if (client !== null && client.camera) {
     var pos = client.camera.transform.getPosition(),
       span = ClientConfig.citySpreadTiles * ClientConfig.tileSize;
 
@@ -255,27 +286,35 @@ function startFreshCity() {
     }
   }
 
-  reopen(core === null ? null : core.persistence.newCityId());
+  reopen(id);
 }
 
 /**
  * Asks whether the player really means to leave this city behind, and starts
- * a new blank one under a new id if they do. The city they are on is kept -
- * it stays in storage under its own address.
+ * a new one under a new id if they do - blank, or the initial city. The city
+ * they are on is kept - it stays in storage under its own address.
+ *
+ * @param [initial] {boolean} from the initial city, rather than from nothing
  */
-export function startFresh() {
+export function startFresh(initial) {
   var world = worldScreen(),
     controls;
 
   //asked over the world, from whatever screen the menu was opened on
   go("");
-  world.showHint("Do you really want to start fresh?");
+  world.showHint(
+    initial
+      ? "Do you really want to start over on " +
+          core.persistence.initialName() +
+          "?"
+      : "Do you really want to start fresh?",
+  );
 
   controls = world.showControls();
   controls.canRotate(false);
   controls.onSubmit = function () {
     world.hideHint();
-    startFreshCity();
+    startFreshCity(initial === true);
   };
   controls.onDiscard = function () {
     world.hideHint();

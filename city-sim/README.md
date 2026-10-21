@@ -114,7 +114,9 @@ it the city's name and how many live there (back to the city), the time and
 the weather, the view from above and the menu (the sounds, the day and the
 night going by, the grid over the ground - kept off, if switched off,
 whatever a tap on the world puts away and brings back - the city's address
-at https://peeps.land shared, or copied, a new city), with
+at https://peeps.land shared, or copied, a new city on empty land, or
+starting over on the city new players start on - each under an id of its
+own, the city left kept under its own), with
 zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
 catalogue, a road, the ground, land, or those of the action going on, its
@@ -132,7 +134,8 @@ the world - is `pointer-events-auto` itself.
 
 The game opens under its splash (`src/ui/world/Splash.jsx`): "Denis
 Narushevich's Peepsland", the maker over the name the way the nineties'
-games had it - both in the middle, the maker's name small - a bar of how far along it is, and its release along the
+games had it - both in the middle, the maker's name small, the game's in
+Chakra Petch, its corners cut like the world's pixels - a bar of how far along it is, and its release along the
 bottom edge. The bar is the game coming up, then the
 pictures of what is on screen painted, those the camera sees from where it
 looks and not the other sides of the world painted ahead meanwhile

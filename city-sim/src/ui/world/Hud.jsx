@@ -303,11 +303,14 @@ var COPIED_MS = 1500;
 /**
  * The menu behind the button in the top right corner: what is switched on
  * and off for the whole game, the city's address shared - as the phone
- * shares things, or else copied - and a new city. Put away by a click
+ * shares things, or else copied - and a new city: blank, or the one a new
+ * player starts on. Put away by a click
  * anywhere else, or Escape.
  */
 function Menu({ client, world, address, busy }) {
   var [open, setOpen] = useState(false),
+    //the city a new player starts on, to start over on
+    initialName = client.core.persistence.initialName(),
     [copied, setCopied] = useState(false),
     box = useRef(null);
 
@@ -415,6 +418,7 @@ function Menu({ client, world, address, busy }) {
           <Row
             icon="found"
             label="Start a new city"
+            sub="On empty land, from scratch"
             //an action owns the world while it runs
             disabled={busy}
             onClick={function () {
@@ -422,6 +426,18 @@ function Menu({ client, world, address, busy }) {
               startFresh();
             }}
           />
+          {initialName && (
+            <Row
+              icon="city"
+              label={"Start over on " + initialName}
+              sub="The city new players start on"
+              disabled={busy}
+              onClick={function () {
+                setOpen(false);
+                startFresh(true);
+              }}
+            />
+          )}
         </div>
       )}
     </div>
