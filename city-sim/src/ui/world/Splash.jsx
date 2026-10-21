@@ -1,8 +1,10 @@
 /**
- * What the game opens on, over it while it comes up: its name, which
- * release it is - or "dev" and the commit (vite.config.js) - and who made
- * it, on the night's blue, lighter in the middle - a circle as wide as the
- * window is high, whatever its shape - and under them how far along it is.
+ * What the game opens on, over it while it comes up: its name with its
+ * maker's over it, the way the games of the nineties had them - Sid Meier's
+ * Civilization, Chris Sawyer's Transport Tycoon - on the night's blue,
+ * lighter in the middle - a circle as wide as the window is high, whatever
+ * its shape - how far along it is under them, and along the bottom which
+ * release it is, or "dev" and the commit (vite.config.js).
  *
  * Up till the world is drawn as it should be: the pictures of what is on
  * screen - the side the camera looks from, not the others, painted ahead
@@ -122,13 +124,14 @@ export default function Splash({ onGone }) {
       )}
     >
       <div className="flex flex-col items-center">
-        <h1 className="text-5xl font-black tracking-tight">Peepsland</h1>
-        <div className="mt-3 text-sm font-bold text-[#a9aed6]">
-          {__VERSION__}
-        </div>
-        <div className="mt-1 text-sm font-bold text-[#a9aed6]">
-          by Denis Narushevich
-        </div>
+        <h1 className="flex flex-col items-start leading-none">
+          <span className="text-lg font-extrabold tracking-wide text-gold italic sm:text-xl">
+            Denis Narushevich&apos;s
+          </span>
+          <span className="text-6xl font-black tracking-tight sm:text-7xl">
+            Peepsland
+          </span>
+        </h1>
         <div
           role="progressbar"
           aria-label="Painting the city"
@@ -142,6 +145,9 @@ export default function Splash({ onGone }) {
             style={{ width: shown * 100 + "%" }}
           />
         </div>
+      </div>
+      <div className="absolute inset-x-0 bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))] text-xs font-bold text-[#a9aed6]">
+        {__VERSION__}
       </div>
     </div>
   );

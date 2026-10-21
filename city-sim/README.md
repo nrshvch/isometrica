@@ -130,8 +130,10 @@ world nothing takes a click unless it says so: the layer over it is
 world's canvas, and anything to be clicked - a button, a screen covering
 the world - is `pointer-events-auto` itself.
 
-The game opens under its splash (`src/ui/world/Splash.jsx`): its name, its
-release, and a bar of how far along it is - the game coming up, then the
+The game opens under its splash (`src/ui/world/Splash.jsx`): "Denis
+Narushevich's Peepsland", the maker over the name the way the nineties'
+games had it, a bar of how far along it is, and its release along the
+bottom edge. The bar is the game coming up, then the
 pictures of what is on screen painted, those the camera sees from where it
 looks and not the other sides of the world painted ahead meanwhile
 (isometrica's `SpriteCache#progress`). Once they are all painted and on the
