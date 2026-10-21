@@ -15,6 +15,7 @@ import CityComponent from "./components/city";
 import Buildman from "./buildman";
 import ErrorCode from "../core/errorcode";
 import Config from "./config";
+import View from "./view";
 import * as glMatrix from "gl-matrix";
 
 var City = Core.City;
@@ -135,9 +136,41 @@ Cityman.prototype.init = function () {
   for (var i = 0; i < cities.length; i++)
     onNewCity(root.core.cities, cities[i], this);
 
+  //turned the way it was left - before it moves, as it turns about where
+  //it is
+  keepTurns(root);
+
   if (cities.length > 0) this.locate(cities[0]);
   else startAtPicked(root);
 };
+
+/**
+ * The camera turned the way the save says, and the save told of every turn
+ * from here on - so that the city opens the way it was looked at. A save
+ * from before that was kept, or one that makes no sense, opens unturned.
+ */
+function keepTurns(root) {
+  var persistence = root.core.persistence;
+
+  if (!persistence) return;
+
+  var view = persistence.view(),
+    turns = view !== null ? view.turns : 0;
+
+  if (typeof turns === "number" && isFinite(turns) && turns % 1 === 0) {
+    turns = ((turns % 4) + 4) % 4;
+    if (turns !== View.turns())
+      root.camera.cameraScript.turn(turns - View.turns());
+  }
+
+  Events.on(View, View.events.change, function () {
+    //from above it is unturned for a while - the side it was seen from is
+    //the one to come back to
+    persistence.setView({
+      turns: View.top() ? root.turnsBeforeTop : View.turns(),
+    });
+  });
+}
 
 /**
  * A blank city opens wherever UIManager#startFreshCity picked for it, once.

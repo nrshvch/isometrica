@@ -62,6 +62,9 @@ function CityPersistence(world, store, sync) {
   this._sync = sync || null;
   this._id = null;
   this._city = null;
+  //how the player was looking at the city - the client's, kept as it is
+  //(see #view)
+  this._view = null;
   this._ticks = 0;
   this._subscriptions = null;
   this._onUnload = null;
@@ -77,6 +80,27 @@ CityPersistence.VERSION = VERSION;
  */
 CityPersistence.prototype.cityId = function () {
   return this._id;
+};
+
+/**
+ * How the player was looking at the city when it was saved - {turns}, the
+ * camera's quarter turns (client/view) - for the client to open it the same
+ * way. Core does not look into it. null for a save from before it was kept,
+ * or a city never looked at: the client's own default, then.
+ *
+ * @returns {Object|null}
+ */
+CityPersistence.prototype.view = function () {
+  return this._view;
+};
+
+/**
+ * How the player is looking at the city now, to go into the next save.
+ *
+ * @param view {Object|null}
+ */
+CityPersistence.prototype.setView = function (view) {
+  this._view = view;
 };
 
 /**
@@ -185,7 +209,7 @@ CityPersistence.prototype.snapshot = function () {
 
   if (city === null || this._id === null) return null;
 
-  return {
+  var data = {
     version: VERSION,
     id: this._id,
     savedAt: Date.now(),
@@ -194,6 +218,10 @@ CityPersistence.prototype.snapshot = function () {
     terrain: this.world.terrain.save(),
     city: city.save(),
   };
+
+  if (this._view !== null) data.view = this._view;
+
+  return data;
 };
 
 /**
@@ -320,6 +348,10 @@ function restore(self, data) {
 
   if (data.city !== undefined && data.city !== null)
     self.world.cities.restoreCity(data.city);
+
+  //saves from before it was kept have none
+  self._view =
+    data.view !== null && typeof data.view === "object" ? data.view : null;
 }
 
 export default CityPersistence;
