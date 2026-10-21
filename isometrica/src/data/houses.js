@@ -5,9 +5,9 @@
  * footprint, at random - so a street of them is not the same house over and
  * over.
  *
- * Three tiers of them, every one on every footprint - a tile or two along
- * the street and one deep (2x1, 3x1), end on to it (1x2, 1x3), or on a lot
- * both ways (2x2, 2x3, 3x2):
+ * Three tiers of them, on the footprints that suit them - a tile or two
+ * along the street and one deep (2x1, 3x1), end on to it (1x2, 1x3), or on a
+ * lot both ways (2x2, 2x3, 3x2, and a villa's 3x3):
  *
  *   1. village houses need no street and no water, and their people no job
  *      in town: cottages, a longhouse, a farmstead or a croft, a farm round
@@ -46,6 +46,11 @@
  *  villa               60000   10    70     2.5     175       86
  *  grand villa         95000   14    75     2.3     175       90
  *  villa, 2x3          95000   13    75     2.2     163       97
+ *  villa estate, 3x3   140000   20    75     2.2     167       93
+ *
+ * Those marked deprecated - the village house on one tile, the villas on one
+ * row of tiles - are no longer offered: they are kept, hidden, only for the
+ * cities that have them, till the saves are rid of them.
  */
 import BuildingClassCode from "./classcode";
 
@@ -61,6 +66,7 @@ var HOUSES = [
     kind: "village",
     footprint: "1x1",
     name: "village house",
+    deprecated: true,
     heads: 3,
     cost: 2500,
     time: 30000,
@@ -188,6 +194,7 @@ var HOUSES = [
     kind: "villa",
     footprint: "1x2",
     name: "town villa",
+    deprecated: true,
     heads: 5,
     cost: 30000,
     tax: 70,
@@ -197,6 +204,7 @@ var HOUSES = [
     kind: "villa",
     footprint: "2x1",
     name: "villa on the street",
+    deprecated: true,
     heads: 5,
     cost: 33000,
     tax: 75,
@@ -206,6 +214,7 @@ var HOUSES = [
     kind: "villa",
     footprint: "1x3",
     name: "town villa with garden",
+    deprecated: true,
     heads: 6,
     cost: 42000,
     tax: 75,
@@ -215,6 +224,7 @@ var HOUSES = [
     kind: "villa",
     footprint: "3x1",
     name: "long villa",
+    deprecated: true,
     heads: 7,
     cost: 48000,
     tax: 75,
@@ -246,6 +256,15 @@ var HOUSES = [
     cost: 95000,
     tax: 75,
     time: 130000,
+  },
+  {
+    kind: "villa",
+    footprint: "3x3",
+    name: "villa estate",
+    heads: 20,
+    cost: 140000,
+    tax: 75,
+    time: 150000,
   },
 ];
 
@@ -296,6 +315,11 @@ function buildings() {
     //they live off the land, not off a job in town
     if (village) data.needsJobs = false;
     if (house.tax !== undefined) data.taxPerResident = house.tax;
+    //no longer offered, kept only for the cities that have them
+    if (house.deprecated) {
+      data.hidden = true;
+      data.deprecated = true;
+    }
 
     out[code(house)] = data;
   });

@@ -99,7 +99,8 @@ function seeded(seed) {
  * Picks a look: the same palette and storeys all along the block - for
  * flats, which windows have balconies; for offices, how the glass is hung -
  * a roof of its own for every section, and no yard the same as the one next
- * to it while there are others to pick.
+ * to it while there are others to pick. A block with yards beside it (sides)
+ * stands anywhere along its footprint, the yards either side of it.
  *
  * @param random {function(): number} 0..1
  * @param [showcase] {boolean} the yards in order, best seen first, rather
@@ -125,9 +126,26 @@ function pick(sprites, compound, random, showcase) {
     rows = yardRows(compound),
     yards = [],
     tiles = [],
-    cells = compound.cells;
+    cells = compound.cells,
+    sides = compound.sides || 0,
+    //where along its footprint the wall starts
+    from = sides > 0 && !showcase ? any(sides + 1) : 0,
+    c,
+    y;
 
-  for (var c = 0; c < cells; c++) {
+  function yardOn(x, y) {
+    if (yards.length === 0) yards = choices.slice();
+
+    var yard = yards.splice(showcase ? 0 : any(yards.length), 1)[0];
+
+    tiles.push({
+      x: x,
+      y: y,
+      parts: [gen + "/yard/" + yard + "/" + any(meta.yardVariants)],
+    });
+  }
+
+  for (c = 0; c < cells; c++) {
     var section = palette + "/" + endsOf(c, cells) + "/",
       parts = [gen + "/ground/" + section + (rows > 0 ? "yard" : "street")];
 
@@ -137,20 +155,14 @@ function pick(sprites, compound, random, showcase) {
     parts.push(gen + "/roof/" + section + any(meta.roofs));
 
     //the wall stands behind its yards
-    tiles.push({ x: c, y: rows, parts: parts });
+    tiles.push({ x: from + c, y: rows, parts: parts });
 
-    for (var y = rows - 1; y >= 0; y--) {
-      if (yards.length === 0) yards = choices.slice();
-
-      var yard = yards.splice(showcase ? 0 : any(yards.length), 1)[0];
-
-      tiles.push({
-        x: c,
-        y: y,
-        parts: [gen + "/yard/" + yard + "/" + any(meta.yardVariants)],
-      });
-    }
+    for (y = rows - 1; y >= 0; y--) yardOn(from + c, y);
   }
+
+  //and the yards beside it, as deep as it is with its yards in front
+  for (c = 0; c < cells + sides; c++)
+    if (c < from || c >= from + cells) for (y = rows; y >= 0; y--) yardOn(c, y);
 
   return { tiles: tiles };
 }
@@ -320,12 +332,13 @@ function pieces(sprites, look, compound, turns, seed, side) {
 
 /**
  * How many tiles across and deep a kind of building is, not turned: as it
- * says, or for a block, its sections along x and its yard in front.
+ * says, or for a block, its sections and the yards beside them along x, and
+ * its yard in front.
  */
 function footprint(compound) {
   if (compound.sizeX !== undefined) return [compound.sizeX, compound.sizeY];
 
-  return [compound.cells, 1 + yardRows(compound)];
+  return [compound.cells + (compound.sides || 0), 1 + yardRows(compound)];
 }
 
 /**

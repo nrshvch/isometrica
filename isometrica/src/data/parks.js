@@ -18,6 +18,7 @@ var PARKS = [
   { footprint: "1x3", name: "long park", cost: 4500, upkeep: 15 },
   { footprint: "2x2", name: "town park", cost: 6000, upkeep: 20 },
   { footprint: "2x3", name: "city park", cost: 9000, upkeep: 30 },
+  { footprint: "3x3", name: "central park", cost: 13500, upkeep: 45 },
 ];
 
 function code(park) {

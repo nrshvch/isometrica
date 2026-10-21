@@ -24,7 +24,11 @@ var BASE = 3000;
 
 //tier: which of the three above; code: for the first shops, which kept the
 //codes they had before there were tiers - the rest are numbered BASE, a
-//hundred for every tier, and the footprint
+//hundred for every tier, and the footprint - and for a footprint's second
+//design, which took the place of its first, five hundred more than that,
+//with the footprint it is painted as (gen). Those replacedBy another are no
+//longer offered: deprecated, kept hidden only for the cities that have them,
+//till the saves are rid of them
 var SHOPS = [
   {
     tier: 1,
@@ -63,6 +67,18 @@ var SHOPS = [
     money: 360,
     cost: 27000,
     time: 60000,
+    replacedBy: 3631,
+  },
+  {
+    tier: 1,
+    code: 3631,
+    footprint: "3x1",
+    gen: "small-3x1-side",
+    name: "shop with side parking",
+    jobs: 32,
+    money: 250,
+    cost: 23000,
+    time: 65000,
   },
   {
     tier: 1,
@@ -128,6 +144,18 @@ var SHOPS = [
     money: 440,
     cost: 42000,
     time: 90000,
+    replacedBy: 3721,
+  },
+  {
+    tier: 2,
+    code: 3721,
+    footprint: "2x1",
+    gen: "mall-2x1-side",
+    name: "store with side parking",
+    jobs: 45,
+    money: 330,
+    cost: 31000,
+    time: 80000,
   },
   {
     tier: 2,
@@ -236,6 +264,8 @@ var SHOPS = [
 var GEN = { 1: "small-", 2: "mall-", 3: "market-" };
 
 function genFootprint(shop) {
+  if (shop.gen !== undefined) return shop.gen;
+
   return shop.code !== undefined
     ? shop.footprint
     : GEN[shop.tier] + shop.footprint;
@@ -256,9 +286,10 @@ function buildings() {
   var out = {};
 
   SHOPS.forEach(function (shop) {
-    var size = shop.footprint.split("x").map(Number);
+    var size = shop.footprint.split("x").map(Number),
+      data;
 
-    out[code(shop)] = {
+    data = out[code(shop)] = {
       sizeX: size[0],
       sizeY: size[1],
       buildingCode: code(shop),
@@ -287,6 +318,12 @@ function buildings() {
         sizeY: size[1],
       },
     };
+
+    if (shop.replacedBy !== undefined) {
+      data.hidden = true;
+      data.deprecated = true;
+      data.replacedBy = shop.replacedBy;
+    }
   });
 
   return out;

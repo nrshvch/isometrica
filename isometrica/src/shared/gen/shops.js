@@ -21,7 +21,8 @@
  *   - the small shops' other footprints: a parade of those small-town shops
  *     side by side, each with its own colours, awning and sign under the same
  *     kind of roof, or shops with car parks side by side - behind a row or
- *     two of car park on the deeper footprints (along);
+ *     two of car park on the deeper footprints (along); or one of them on
+ *     the street with car parks beside it (besideParking);
  *   - 2x2, a superstore over the two tiles at the back, a car park over the
  *     two in front: a firm's - the builders' merchant in orange, or white
  *     and orange; the bank in navy and gold; the grocer in white with green
@@ -34,7 +35,8 @@
  *   - the stores' other footprints: the superstore along the street on one
  *     row of tiles or three long behind its car park (bigboxAt), or a
  *     department store of two floors over shop windows, every firm on its
- *     sign and a lantern of glass on its roof (departmentAt);
+ *     sign and a lantern of glass on its roof (departmentAt) - on one tile,
+ *     its car park beside it;
  *   - the farmers' markets, on every footprint: a square of cobbles or slabs
  *     with rows of stalls under striped canopies - or round its edge, round
  *     a fountain - and a farm's trailer come in with hay and pumpkins
@@ -1596,6 +1598,7 @@ more("bigbox21", bigboxAt(2, 1, 0), ["style", "roof"]);
 more("bigbox31", bigboxAt(3, 1, 0), ["style", "roof"]);
 more("bigbox32", bigboxAt(3, 2, 1), ["style", "roof"]);
 [
+  [1, 1, 0],
   [1, 2, 0],
   [1, 3, 1],
   [2, 1, 0],
@@ -1953,6 +1956,47 @@ function along(design, n, rows, cy, axes, shared, pylons) {
   return { design: design, weight: 1, axes: all, tiles: tiles };
 }
 
+/**
+ * A shop of a design on one tile on the street, at x `at` of a footprint n
+ * tiles along it, and car parks on the rest of the row either side of it -
+ * the sign on its pole, if any, on the first of them. Its building's tile
+ * the one at cy of its own.
+ */
+function besideParking(design, n, at, cy, axes, pylons) {
+  var all = Object.assign({}, axes),
+    tiles = [],
+    first = true;
+
+  all.pylon = pylons || ["none"];
+
+  for (var x = 0; x < n; x++) {
+    if (x === at) {
+      tiles.push({ x: x, y: 0, parts: [template(design) + "/0/" + cy] });
+      continue;
+    }
+
+    tiles.push({
+      x: x,
+      y: 0,
+      parts: ["shops/parking/big/" + (first ? "{pylon}" : "none")],
+    });
+    first = false;
+  }
+
+  return { design: design, weight: 1, axes: all, tiles: tiles };
+}
+
+//a shop of a design on a footprint n along the street, beside car parks,
+//standing at any tile along it
+function besideParkings(design, n, cy, axes, pylons) {
+  var out = [];
+
+  for (var at = 0; at < n; at++)
+    out.push(besideParking(design, n, at, cy, axes, pylons));
+
+  return out;
+}
+
 var SMALL_AXES = FOOTPRINTS["1x1"][0].axes,
   STORE_AXES = {
     pal: Object.keys(STORE),
@@ -1985,6 +2029,10 @@ Object.assign(FOOTPRINTS, {
     along("small", 3, 1, 0, SMALL_AXES, ["roof"]),
     along("store", 3, 1, 1, STORE_AXES, ["front"], ["none", "store-{pal}"]),
   ],
+  //a corner shop or a firm's on the street, its car parks beside it
+  "small-3x1-side": besideParkings("small", 3, 0, SMALL_AXES).concat(
+    besideParkings("store", 3, 1, STORE_AXES, ["none", "store-{pal}"]),
+  ),
 });
 
 //the stores' tier: superstores and department stores
@@ -2006,6 +2054,11 @@ Object.assign(FOOTPRINTS, {
     }),
     wholeOn("dept31", 3, 1, 0, DEPT_AXES),
   ],
+  //a department store on one tile on the street, its car park beside it
+  "mall-2x1-side": besideParkings("dept11", 2, 0, DEPT_AXES, [
+    "none",
+    "mall-{style}",
+  ]),
   "mall-1x2": [wholeOn("dept12", 1, 2, 0, DEPT_AXES)],
   "mall-1x3": [wholeOn("dept13", 1, 3, 1, DEPT_AXES, ["none", "mall-{style}"])],
   "mall-3x2": [

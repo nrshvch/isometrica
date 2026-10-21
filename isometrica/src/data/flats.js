@@ -1,8 +1,9 @@
 /**
  * The blocks of flats put together out of parts the game paints (see
  * shared/gen/flats and client/compoundbuilding): a tower of one section, a
- * wall of two or three, with no yard, a row of yard in front or two - two to
- * four storeys high - each of those a building of its own in the catalogue.
+ * wall of two or three, with no yard, a row of yard in front or two - or a
+ * tower on the street with a yard or two beside it - two to four storeys
+ * high - each of those a building of its own in the catalogue.
  * The town's housing at its densest: a lot of people on little ground, paying
  * little each. What a block looks
  * like, its colours and details, is picked for each one as it goes up.
@@ -18,8 +19,10 @@ var BASE = 100;
 
 //a layout is worth 100 and a storey 10: room for nine storeys of each
 //layout before one layout runs into the next, and nine layouts before the
-//offices' codes. cells, how many sections side by side; yards, how many rows
-//of yard there are in front
+//offices' codes - those after that numbered from a base of their own, past
+//the old town's codes. cells, how many sections side by side; yards, how
+//many rows of yard there are in front; sides, how many tiles of yard there
+//are beside them
 var LAYOUTS = {
   tower: { cells: 1, yards: 0, name: "tower" },
   toweryard: { cells: 1, yards: 1, name: "tower with a yard" },
@@ -29,6 +32,20 @@ var LAYOUTS = {
   rowyard: { cells: 3, yards: 1, name: "long block with a yard" },
   towercourt: { cells: 1, yards: 2, name: "tower with a court" },
   wallcourt: { cells: 2, yards: 2, name: "block with a court" },
+  towerside: {
+    cells: 1,
+    yards: 0,
+    sides: 1,
+    base: 8000,
+    name: "tower with a yard beside it",
+  },
+  towersides: {
+    cells: 1,
+    yards: 0,
+    sides: 2,
+    base: 8100,
+    name: "tower with yards beside it",
+  },
 };
 
 var ORDER = [
@@ -40,6 +57,8 @@ var ORDER = [
   "rowyard",
   "towercourt",
   "wallcourt",
+  "towerside",
+  "towersides",
 ];
 
 var STOREYS = [2, 3, 4];
@@ -49,20 +68,32 @@ var STOREYS = [2, 3, 4];
 //others stay buildable from a save that has them, and are not offered any
 //more
 var OFFERED = {
-  wall: [3],
   toweryard: [3],
   wallyard: [3],
-  row: [3],
   rowyard: [4],
   towercourt: [4],
   wallcourt: [4],
+  towerside: [3],
+  towersides: [3],
+};
+
+//what was offered once and is not any more, for what took its place: kept,
+//hidden, only for the cities that have them, till the saves are rid of them
+var DEPRECATED = {
+  wall: { 3: "towerside" },
+  row: { 3: "towersides" },
 };
 
 //how many live in a section, each storey of it
 var PER_STOREY = 8;
 
 function code(layout, storeys) {
-  return BASE + ORDER.indexOf(layout) * 100 + storeys * 10;
+  var base = LAYOUTS[layout].base;
+
+  return (
+    (base !== undefined ? base : BASE + ORDER.indexOf(layout) * 100) +
+    storeys * 10
+  );
 }
 
 /**
@@ -75,10 +106,13 @@ function buildings() {
     var l = LAYOUTS[layout];
 
     STOREYS.forEach(function (storeys) {
-      var capacity = l.cells * storeys * PER_STOREY;
+      var capacity = l.cells * storeys * PER_STOREY,
+        sides = l.sides || 0,
+        replaced = (DEPRECATED[layout] || {})[storeys],
+        data;
 
-      out[code(layout, storeys)] = {
-        sizeX: l.cells,
+      data = out[code(layout, storeys)] = {
+        sizeX: l.cells + sides,
         sizeY: 1 + l.yards,
         buildingCode: code(layout, storeys),
         classCode: BuildingClassCode.house,
@@ -95,8 +129,11 @@ function buildings() {
         constructionTime: 50000 + storeys * 25000,
         constructionCost: {
           //a row of yard costs what a storey of the block it is in front
-          //of does
-          money: capacity * 1000 + l.yards * l.cells * PER_STOREY * 1000,
+          //of does, and a tile of it beside the block what a storey of a
+          //section does
+          money:
+            capacity * 1000 +
+            (l.yards * l.cells + sides * (1 + l.yards)) * PER_STOREY * 1000,
         },
         name: storeys + "-storey " + l.name,
         hidden: (OFFERED[layout] || []).indexOf(storeys) === -1,
@@ -109,9 +146,15 @@ function buildings() {
           cells: l.cells,
           yard: l.yards > 0,
           yardRows: l.yards,
+          sides: sides,
           storeys: storeys,
         },
       };
+
+      if (replaced !== undefined) {
+        data.deprecated = true;
+        data.replacedBy = code(replaced, storeys);
+      }
     });
   });
 

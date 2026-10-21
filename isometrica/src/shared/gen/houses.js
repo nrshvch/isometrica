@@ -6,7 +6,7 @@
  *
  * There are four kinds, each a building of its own for every footprint it
  * comes in - every one of 2x1, 3x1, 1x2, 1x3, 2x2, 2x3 and 3x2, the town's
- * kinds between them - and every house of one picked at random among the
+ * kinds between them, and 3x3 a villa's - and every house of one picked at random among the
  * designs and options there are for it (client/compoundbuilding, see
  * describe footprints):
  *
@@ -37,7 +37,8 @@
  *     iron gate between pillars in a high hedge or a wall, in a garden of
  *     lawns, cypresses and clipped box - in the middle of it with a fountain
  *     before it, or to one side of a pool; on one row of tiles straight up
- *     their steps from the gate, with no court before them.
+ *     their steps from the gate, with no court before them; on nine tiles,
+ *     an estate with a pool and a pool house in its grounds as well.
  *
  * The cars on the drives are not painted: they are the vehicle generator's,
  * different for every house (blocks baysOverlay) - and what of the house
@@ -3005,6 +3006,25 @@ var VILLAS = {
       bays: [bayAt(12, 13), bayAt(42, 13)],
     },
   },
+  "3x3": {
+    center: {
+      r: { x0: 27, x1: 69, y0: 38, y1: 62 },
+      wing: 6,
+      gate: [42, 54],
+      fountain: [48, 17],
+      pool: { x0: 30, x1: 66, y0: 74, y1: 84, loungers: "below" },
+      house: { x0: 6, x1: 20, y0: 74, y1: 86 },
+      bays: [bayAt(28, 15), bayAt(68, 15)],
+    },
+    side: {
+      r: { x0: 6, x1: 48, y0: 36, y1: 60 },
+      gate: [21, 33],
+      pool: { x0: 60, x1: 88, y0: 30, y1: 44, loungers: "below" },
+      house: { x0: 66, x1: 88, y0: 70, y1: 82 },
+      tree: [24, 82],
+      bays: [bayAt(12, 14), bayAt(42, 14)],
+    },
+  },
 };
 
 /**
@@ -3399,6 +3419,7 @@ var DESIGNS = {
   villa21: villa("2x1"),
   villa31: villa("3x1"),
   villa23: villa("2x3"),
+  villa33: villa("3x3"),
   longhouse2: longhouse(2),
   longhouse3: longhouse(3),
   farmyard22: farmyard(2, 2),
@@ -3778,6 +3799,7 @@ var FOOTPRINTS = {
   "villa-2x1": [villaDesign("villa21", "2x1")],
   "villa-3x1": [villaDesign("villa31", "3x1")],
   "villa-2x3": [villaDesign("villa23", "2x3")],
+  "villa-3x3": [villaDesign("villa33", "3x3")],
 };
 
 //the options in a part's name after its design and layout, by design
@@ -3796,6 +3818,7 @@ var OPTIONS = {
   villa21: ["style", "bound"],
   villa31: ["style", "bound"],
   villa23: ["style", "bound"],
+  villa33: ["style", "bound"],
   croft: ["pal", "roof"],
   longhouse2: ["pal", "roof", "yard"],
   longhouse3: ["pal", "roof", "yard", "plot"],

@@ -460,6 +460,11 @@ dev`) plays them the way a game would - all three weathers together, the
   stores, a shopping centre) and then either farmers' markets or office
   blocks. The catalogue keeps each tier together, its footprint on every
   card (`isometrica/src/data/houses.js`, `shops.js`, `flats.js`, `offices.js`).
+  What is no longer offered - the village house on 1x1, the villas on one
+  row of tiles, and the blocks, stores and shops a tower or a shop on the
+  street with yards or car parks beside it took the place of - is kept,
+  hidden, for the cities that have it, marked `deprecated` (and
+  `replacedBy` what took its place), till the saves are rid of it.
 - Blocks of flats and offices are put together out of parts the game
   paints - ground storey, upper storeys, roof, yard - in a style each
   (`isometrica/src/shared/gen/flats.js`, `offices.js`) on what all blocks share
@@ -468,13 +473,17 @@ dev`) plays them the way a game would - all three weathers together, the
   save (`isometrica/src/client/compoundbuilding.js`); the catalogue shows one of
   each kind (`isometrica/src/data/flats.js`, `offices.js`). A wall can be three
   sections long, the one in the middle neither end of it, with a row or two
-  of yard in front - a car park, a playground, a plaza.
+  of yard in front - a car park, a playground, a plaza. On 2x1 and 3x1 the
+  block is a tower of one section on the street, the rest of the row yards
+  beside it, either side.
 - Shops are painted the same way (`isometrica/src/shared/gen/shops.js`), but one
   catalogue entry per tier and footprint (`isometrica/src/data/shops.js`) stands for
   several designs: a 1x1 corner shop (flat, gable or shed roof, a firm's
   striped awning or none, fascia or side board), a 1x2 shop with a car park,
   parades of corner shops and rows of shops with car parks on the other
-  footprints; a 2x2 superstore, superstores along the street or behind a
+  footprints, and on 3x1 a corner shop or a firm's beside its car parks; a
+  2x2 superstore, a department store on one tile beside its car park on
+  2x1, superstores along the street or behind a
   car park three tiles long, department stores of two floors with a glass
   lantern on the roof, and a 2x3 shopping centre or covered market, the big
   ones with a pole sign; and farmers' markets - stalls under striped
@@ -486,7 +495,7 @@ dev`) plays them the way a game would - all three weathers together, the
   cars from the vehicle generator, different for every building.
 - Houses are painted the same way (`isometrica/src/shared/gen/houses.js`), one
   catalogue entry per kind and footprint (`isometrica/src/data/houses.js`): village
-  houses that need no road or water - a cottage on 1x1 with hens, a cow, an
+  houses that need no road or water - a cottage with hens, a cow, an
   orchard or a well, a farmstead on 1x2 with a barn, a field or sheep, a
   croft on 1x3, hamlets of cottages or farmsteads side by side, a longhouse
   with its byre along the street, a farm round its yard with a barn and a
@@ -496,8 +505,8 @@ dev`) plays them the way a game would - all three weathers together, the
   1x3, a two-storey house end on to the street on 1x2 and 1x3, terraced
   houses along the street on 2x1, 3x1 and 3x2; semi-detached houses on
   2x2, and on 2x3 end on to the street with a back garden behind each
-  half, each half with its own parking space and gate; and villas on every
-  footprint behind a gate in a high hedge or a wall, with a fountain or a
+  half, each half with its own parking space and gate; and villas on 2x2,
+  2x3, 3x2 and 3x3 behind a gate in a high hedge or a wall, with a fountain or a
   pool. Houses are
   built to the scale of the cars and roads - a car is about 4.5 m long, so
   a tile is about 10 m across and a storey 12 high - and what does not fit
@@ -522,7 +531,7 @@ dev`) plays them the way a game would - all three weathers together, the
   chimney stack and settling tank, a pump hall with two steel tanks, or a
   reservoir under a grassed mound with its valve house.
 - Parks are painted too (`isometrica/src/shared/gen/parks.js`), one catalogue entry
-  per footprint (`isometrica/src/data/parks.js`) - 1x1, 1x2, 1x3, 2x2 and 2x3 - each
+  per footprint (`isometrica/src/data/parks.js`) - 1x1, 1x2, 1x3, 2x2, 2x3 and 3x3 - each
   laid out as one of three kinds picked when it is placed: a sports park of
   courts and a skate spot (basketball, half a court on one tile, tennis on
   three, ramps, a box and a rail) inside a wire fence; a formal garden on a

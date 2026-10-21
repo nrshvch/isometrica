@@ -1,13 +1,13 @@
 /**
  * Parks, put together the way the shops are (shared/gen/shops): one park
  * painted whole on its footprint and cut into its tiles (onTile). Every
- * footprint - 1x1, 1x2, 1x3, 2x2, 2x3 - comes in three kinds, one of them
+ * footprint - 1x1, 1x2, 1x3, 2x2, 2x3, 3x3 - comes in three kinds, one of them
  * picked for each park when it is placed (client/compoundbuilding):
  *
  *   - sports: courts and a skate spot inside a wire fence - a basketball
  *     court, half a one on a single tile; a skate spot of ramps, a box and
- *     a rail; a tennis court on three tiles; on the bigger footprints two or
- *     three of them side by side - with benches and bushes round them;
+ *     a rail; a tennis court on three tiles; on the bigger footprints two,
+ *     three or four of them side by side - with benches and bushes round them;
  *   - garden: a formal garden laid out to a pattern - straight walks of
  *     paving crossing each other, a ring walk round the bigger ones, beds
  *     edged with low box hedges and full of flowers or with a small tree in
@@ -426,6 +426,11 @@ function sports(b, W, H, variant, stage, rnd) {
   else if (W === 2 * TILE && H === 2 * TILE) {
     court("basket", 4, 28, 5, 59);
     court(variant ? "skate" : "basket", 36, 60, 5, 59);
+  } else if (W === 3 * TILE && H === 3 * TILE) {
+    court("tennis", 4, 28, 4, 92);
+    court("tennis", 36, 60, 4, 92);
+    court(a, 68, 92, 5, 59);
+    court(variant ? "basket" : "skate", 68, 92, 66, 92);
   } else {
     court("tennis", 4, 28, 4, 92);
     court(a, 36, 60, 5, 59);
@@ -751,7 +756,7 @@ function park(kind, fp, variant, stage) {
   return b;
 }
 
-var FOOTPRINT_NAMES = ["1x1", "1x2", "1x3", "2x2", "2x3"];
+var FOOTPRINT_NAMES = ["1x1", "1x2", "1x3", "2x2", "2x3", "3x3"];
 
 /**
  * What every footprint can be, as shared/gen/shops has them: a design for

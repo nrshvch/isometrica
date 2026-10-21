@@ -2,7 +2,8 @@
  * The office blocks put together out of parts the game paints (see
  * shared/gen/offices and client/compoundbuilding): a tower of one section, a
  * wall of two or three, right on the street or behind a car park and a plaza
- * - a row of them, or two in front of the taller ones. What
+ * - a row of them, or two in front of the taller ones - or a tower on the
+ * street with a car park or a plaza beside it, or one either side. What
  * a block looks like, its glass and its roofs, is picked for each one as it
  * goes up.
  *
@@ -21,8 +22,12 @@ var PER_STOREY = 12,
   COST_PER_JOB = 700;
 
 //cells: how many sections side by side; yards: what is in front of them, as
-//many rows of it as rows says. The first two keep the codes they were given
-//by their sections and storeys, the rest are numbered by their footprint
+//many rows of it as rows says, and beside them, as many tiles of it as sides
+//says. The first two keep the codes they were given by their sections and
+//storeys, the rest are numbered by their footprint - a tower with yards
+//beside it from 2500, by how wide it is and its storeys. Those replacedBy
+//another are no longer offered: deprecated, kept hidden only for the cities
+//that have them, till the saves are rid of them
 var BLOCKS = [
   {
     code: 1130,
@@ -49,6 +54,7 @@ var BLOCKS = [
     rows: 0,
     storeys: 4,
     name: "office block on the street",
+    replacedBy: 2524,
   },
   {
     code: 2304,
@@ -57,6 +63,27 @@ var BLOCKS = [
     rows: 0,
     storeys: 4,
     name: "office row",
+    replacedBy: 2534,
+  },
+  {
+    code: 2524,
+    layout: "officeside",
+    cells: 1,
+    rows: 0,
+    sides: 1,
+    storeys: 4,
+    yards: ["parking", "plaza"],
+    name: "office tower with a yard beside it",
+  },
+  {
+    code: 2534,
+    layout: "officesides",
+    cells: 1,
+    rows: 0,
+    sides: 2,
+    storeys: 4,
+    yards: ["parking", "plaza"],
+    name: "office tower with yards beside it",
   },
   {
     code: 2126,
@@ -98,10 +125,12 @@ function buildings() {
   var out = {};
 
   BLOCKS.forEach(function (block) {
-    var jobs = block.cells * block.storeys * PER_STOREY;
+    var jobs = block.cells * block.storeys * PER_STOREY,
+      sides = block.sides || 0,
+      data;
 
-    out[code(block)] = {
-      sizeX: block.cells,
+    data = out[code(block)] = {
+      sizeX: block.cells + sides,
       sizeY: 1 + block.rows,
       buildingCode: code(block),
       classCode: BuildingClassCode.commerce,
@@ -130,9 +159,16 @@ function buildings() {
         yard: block.rows > 0,
         yardRows: block.rows,
         yards: block.yards,
+        sides: sides,
         storeys: block.storeys,
       },
     };
+
+    if (block.replacedBy !== undefined) {
+      data.hidden = true;
+      data.deprecated = true;
+      data.replacedBy = block.replacedBy;
+    }
   });
 
   return out;

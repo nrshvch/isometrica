@@ -60,13 +60,14 @@ var ROOT = path.resolve(__dirname, "..");
 var DEFAULT_OUT = path.join(ROOT, "assets/previews");
 
 //as in data/flats and data/offices: which generator, how many sections side
-//by side, whether there is a row of yard in front and which yards
+//by side, whether there is a row of yard in front and which yards, and how
+//many tiles of yard beside them
 var KINDS = [
   { gen: "flats", cells: 1, yard: false, storeys: [2, 3] },
   { gen: "flats", cells: 1, yard: true, storeys: [3] },
-  { gen: "flats", cells: 2, yard: false, storeys: [3] },
+  { gen: "flats", cells: 1, yardRows: 0, sides: 1, storeys: [3] },
   { gen: "flats", cells: 2, yard: true, storeys: [3] },
-  { gen: "flats", cells: 3, yardRows: 0, storeys: [3] },
+  { gen: "flats", cells: 1, yardRows: 0, sides: 2, storeys: [3] },
   { gen: "flats", cells: 3, yardRows: 1, storeys: [4] },
   { gen: "flats", cells: 1, yardRows: 2, storeys: [4] },
   { gen: "flats", cells: 2, yardRows: 2, storeys: [4] },
@@ -78,8 +79,22 @@ var KINDS = [
     storeys: [4],
     yards: ["parking", "plaza"],
   },
-  { gen: "offices", cells: 2, yardRows: 0, storeys: [4] },
-  { gen: "offices", cells: 3, yardRows: 0, storeys: [4] },
+  {
+    gen: "offices",
+    cells: 1,
+    yardRows: 0,
+    sides: 1,
+    storeys: [4],
+    yards: ["parking", "plaza"],
+  },
+  {
+    gen: "offices",
+    cells: 1,
+    yardRows: 0,
+    sides: 2,
+    storeys: [4],
+    yards: ["parking", "plaza"],
+  },
   {
     gen: "offices",
     cells: 1,
@@ -116,7 +131,8 @@ function plan(kind, storeys, palette, n) {
     detail = data.details[n % data.details.length],
     tiles = [];
 
-  var rows = stacking.yardRows(kind);
+  var rows = stacking.yardRows(kind),
+    sides = kind.sides || 0;
 
   for (var c = 0; c < kind.cells; c++) {
     var section = palette + "/" + stacking.endsOf(c, kind.cells) + "/",
@@ -143,7 +159,22 @@ function plan(kind, storeys, palette, n) {
       });
   }
 
-  return { tiles: tiles, sizeX: kind.cells, sizeY: 1 + rows };
+  //the yards beside it, the block at the start of its footprint
+  for (var x = kind.cells; x < kind.cells + sides; x++)
+    for (var yy = 0; yy <= rows; yy++)
+      tiles.push({
+        x: x,
+        y: yy,
+        parts: [
+          kind.gen +
+            "/yard/" +
+            yards[(n + x + yy) % yards.length] +
+            "/" +
+            ((x + yy) % 2),
+        ],
+      });
+
+  return { tiles: tiles, sizeX: kind.cells + sides, sizeY: 1 + rows };
 }
 
 function canvas(cols, rows) {
@@ -208,6 +239,9 @@ function overlays(parts, turns) {
       listed = (data.data.overlays || {})[part + "/r" + turns] || [];
 
     listed.forEach(function (o, k) {
+      //the work lamps' light is the game's to draw, not a picture
+      if (o.lights !== undefined) return;
+
       if (o.bays !== undefined) {
         //cars in the bays, some of them empty, as a shop or a block might
         //have them
@@ -252,7 +286,7 @@ function overlays(parts, turns) {
         );
       } else {
         //the jib straight along its track, halfway through its turn
-        var name = o.frames[(o.frames.length - 1) / 2],
+        var name = o.frames[Math.floor((o.frames.length - 1) / 2)],
           size = data.sizes[name];
 
         out.push(picture(g.paint(name), size.pivotX, size.pivotY + up[i]));
