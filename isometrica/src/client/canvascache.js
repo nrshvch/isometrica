@@ -67,6 +67,9 @@ function CanvasCache(clock, options) {
   this.frameStarted = 0;
   this.frameTook = 0;
   this.spent = 0;
+  //the last frame something drawn had to wait for the next, no time left
+  //to paint it in (behind)
+  this.behindFrame = -1;
 
   //the pages there are, by number; and where a picture painted goes,
   //upload(page, x, y, w, h, pixels) - its slot on its page (client/glview)
@@ -147,8 +150,10 @@ CanvasCache.prototype.acquire = function (entry) {
     this.frameStarted = t;
     this.budgetFrame = frame;
     this.spent = 0;
-  } else if (this.spent >= Math.max(this.budget, this.frameTook * SHARE))
+  } else if (this.spent >= Math.max(this.budget, this.frameTook * SHARE)) {
+    this.behindFrame = frame;
     return false;
+  }
 
   var steal = entry.direct === false ? 1 : 0;
 
@@ -173,6 +178,15 @@ CanvasCache.prototype.acquire = function (entry) {
   place(this, entry, slot, frame);
 
   return true;
+};
+
+/**
+ * Whether anything drawn lately - this frame or the one before - had to wait
+ * for the next to be painted onto a page, there being no time left for it:
+ * the pages still catching up with what is drawn.
+ */
+CanvasCache.prototype.behind = function () {
+  return this.behindFrame >= this.clock.frame - 1;
 };
 
 /**

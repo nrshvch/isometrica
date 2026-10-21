@@ -130,6 +130,14 @@ world nothing takes a click unless it says so: the layer over it is
 world's canvas, and anything to be clicked - a button, a screen covering
 the world - is `pointer-events-auto` itself.
 
+The game opens under its splash (`src/ui/world/Splash.jsx`): its name, its
+release, and a bar of how far along it is - the game coming up, then the
+pictures of what is on screen painted, those the camera sees from where it
+looks and not the other sides of the world painted ahead meanwhile
+(isometrica's `SpriteCache#progress`). Once they are all painted and on the
+pages, a couple of frames running, it fades away over the world drawn as it
+should be - or after half a minute, whatever is still to come.
+
 isometrica's client tells the screens what to show through the `ui` every
 game hands it - `ui.gameScreen().worldScreen()`: a hint, the buttons of what
 it is doing, a word asked for, the world given back - and here that goes

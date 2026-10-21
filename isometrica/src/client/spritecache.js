@@ -422,6 +422,25 @@ SpriteCache.prototype.getComposite = function (parts) {
 };
 
 /**
+ * How far the pictures of what is drawn are along - of the generated ones
+ * wanted by what is on screen, not those painted ahead (client/generator):
+ * how many have been painted so far, how many are still waited for, and
+ * whether all of it is there to be seen, painted and on the pages - for
+ * whatever waits for the world to look as it should (city-sim's splash).
+ *
+ * @returns {{painted: number, waiting: number, shown: boolean}}
+ */
+SpriteCache.prototype.progress = function () {
+  var generator = this.generator;
+
+  return {
+    painted: generator === null ? 0 : generator.painted,
+    waiting: generator === null ? 0 : generator.waiting(),
+    shown: (generator === null || generator.idle()) && !this.cache.behind(),
+  };
+};
+
+/**
  * Whether a sheet's picture is in - asking for it if it is not. Asked every
  * frame something on it is to be drawn: a generated picture wanted lately is
  * painted before one wanted a while ago, and one no longer wanted is not
