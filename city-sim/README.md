@@ -132,7 +132,7 @@ the world - is `pointer-events-auto` itself.
 
 The game opens under its splash (`src/ui/world/Splash.jsx`): "Denis
 Narushevich's Peepsland", the maker over the name the way the nineties'
-games had it, a bar of how far along it is, and its release along the
+games had it - both in the middle, the maker's name small - a bar of how far along it is, and its release along the
 bottom edge. The bar is the game coming up, then the
 pictures of what is on screen painted, those the camera sees from where it
 looks and not the other sides of the world painted ahead meanwhile

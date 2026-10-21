@@ -124,11 +124,11 @@ export default function Splash({ onGone }) {
       )}
     >
       <div className="flex flex-col items-center">
-        <h1 className="flex flex-col items-start leading-none">
-          <span className="text-lg font-extrabold tracking-wide text-gold italic sm:text-xl">
+        <h1 className="flex flex-col items-center">
+          <span className="text-sm font-bold text-[#a9aed6]">
             Denis Narushevich&apos;s
           </span>
-          <span className="text-6xl font-black tracking-tight sm:text-7xl">
+          <span className="mt-1 text-6xl leading-none font-black tracking-tight sm:text-7xl">
             Peepsland
           </span>
         </h1>
