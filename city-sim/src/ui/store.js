@@ -19,7 +19,7 @@ export var store = createStore(function () {
     //buttons
     busy: false,
     //the buttons along the bottom, five slots: {icon, label, on, go,
-    //action} each, or undefined for an empty one
+    //disabled, action} each, or undefined for an empty one
     buttons: [],
     //whether the world is drawn at night - the screens over it dark with it
     night: false,

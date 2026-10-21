@@ -1,13 +1,12 @@
 /**
- * The game: the world, drawn over the whole window and kept there as the
- * page scrolls, and over it what is always there (Hud) and whatever the
- * address says is up (router.jsx) - the world's own buttons, the
+ * The game: the world, drawn over the whole window, and over it what is
+ * always there (Hud) and whatever the address says is up (router.jsx) - the world's own buttons, the
  * catalogue, the city screen - or a word asked for: by day on sky white
  * cards, by night on night blue ones (app.css .night). Starts the game on
  * the city in the address, and opens another if the address changes to it.
  */
 import { useEffect, useState } from "react";
-import { Outlet, useLocation, useMatch, useParams } from "react-router";
+import { Outlet, useMatch, useParams } from "react-router";
 import { LayeredLayout, cx } from "../kit";
 import { useGame } from "../store";
 import { reopen, start } from "../session";
@@ -38,7 +37,6 @@ export default function GameScreen() {
     night = useGame(function (s) {
       return s.night;
     }),
-    path = useLocation().pathname,
     onWorld = useMatch("/:city?") !== null,
     //a screen up over the world: the world dimmed behind it, and none of
     //it to be clicked
@@ -67,19 +65,13 @@ export default function GameScreen() {
     [asked],
   );
 
-  //a screen opens at its top
-  useEffect(
-    function () {
-      window.scrollTo(0, 0);
-    },
-    [path],
-  );
-
   return (
     <>
       <LayeredLayout
         className={cx(
-          "pointer-events-none min-h-svh select-none",
+          //as high as the window, not to be scrolled - a screen taller
+          //than what is left of it scrolls what it holds (kit Screen)
+          "pointer-events-none h-svh overflow-hidden select-none",
           night && "night",
         )}
         background={

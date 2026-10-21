@@ -164,7 +164,7 @@ function pick(self) {
 
   var controls = self.root.ui.gameScreen().showActionControls();
   controls.canRotate(false);
-  controls.canSubmit(false);
+  controls.submits = false;
   controls.onDiscard = function () {
     self.exit();
   };

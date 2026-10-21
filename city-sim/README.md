@@ -110,19 +110,21 @@ the page - the Worker serves `index.html` for any it has no file for
 isometrica's `gfx/` fetched from the top whatever the address.
 
 The world is drawn under everything else, the two laid one over the other
-(`src/ui/kit.jsx` LayeredLayout): the world kept in sight as the page
-scrolls, and over it - kept to the middle of a wide screen (Container) -
-along the top the logo, the city's money (opening the city screen), what
-comes in a tick, how many live there and back to the city, the time and
+(`src/ui/kit.jsx` LayeredLayout), as high as the window: over the world -
+kept to the middle of a wide screen (Container) - along the top the logo,
+the city's money (opening the city screen) and what comes in a tick, under
+it the city's name and how many live there (back to the city), the time and
 the weather, the view from above and the menu (the sounds, the day and the
 night going by, a new city), with zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
-catalogue, a road, the ground, land, or those of the action going on - and
-over it a line of what to do (`src/ui/world/Hud.jsx`, `WorldHud.jsx`). On
-a phone the money and the time take the top, the city's name and the
-buttons the line under it. A screen - the catalogue, the city screen - is a
-card over the world dimmed behind it; one taller than the window scrolls
-the page as any page does. Over the
+catalogue, a road, the ground, land, or those of the action going on, its
+tick faded while it cannot be pressed - and over it a line of what to do
+(`src/ui/world/Hud.jsx`, `WorldHud.jsx`). On a phone the money and the time
+take the top, the city's name and the buttons the line under it. A screen -
+the catalogue, the city screen - is a card over the world dimmed behind it,
+as high as the HUD leaves it: what it holds scrolls under its title, which
+stays where it is. The city's name is not written over it in the world
+too (`src/play.js`). Over the
 world nothing takes a click unless it says so: the layer over it is
 `pointer-events-none`, so a tap, a drag or a pinch goes through to the
 world's canvas, and anything to be clicked - a button, a screen covering

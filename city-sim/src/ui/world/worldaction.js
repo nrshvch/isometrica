@@ -10,7 +10,12 @@ function WorldAction() {
   //goes to the far end for them: {icon, on, action} each, on for one that is
   //switched on (WorldScreenView#showActionButtons) - or null for none
   this.tools = ReactiveProperty(null);
+  //whether it can be confirmed as it stands - its tick there all the same,
+  //not to be pressed till it can
   this.canSubmit = ReactiveProperty(true);
+  //whether it is ever confirmed at all, or only ever left - picking which
+  //block of land to buy, say, has no tick
+  this.submits = true;
   this.canDiscard = ReactiveProperty(true);
 }
 

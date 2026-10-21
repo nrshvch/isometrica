@@ -1,12 +1,13 @@
 /**
  * What goes over the top of the world, on cards: the game's logo, the
- * city's money - which opens the city screen and puts it away again - how
- * it is doing and back to it; the time, and the weather; the view from
- * above, and the menu: the sounds, the day and the night going by, a new
- * city. Under them, zooming in and out, and how close the camera is.
+ * city's money - which opens the city screen and puts it away again - and
+ * how it is doing, and under it the city's name - back to it; the time,
+ * and the weather; the view from above, and the menu: the sounds, the day
+ * and the night going by, a new city. Under them, zooming in and out, and
+ * how close the camera is.
  *
  * On a phone the money and the time take the top, the city's name and the
- * buttons the line under it; on a desktop all of it goes along the top.
+ * buttons the line under it; on a desktop the rest goes along the top.
  */
 import { useEffect, useRef, useState } from "react";
 import { useMatch } from "react-router";
@@ -145,33 +146,30 @@ function useWorld(client, hasCity) {
 
 /**
  * The city's money - a click on it opens the city screen - and, given the
- * room, what comes in a tick and how many live there; and back to the city,
- * wherever the camera has got to.
+ * room, what comes in a tick.
  */
-function Funds({ world, onMoney, onHome }) {
+function Funds({ world, onClick }) {
   return (
-    <div className="card pointer-events-auto flex min-w-0 items-center gap-2.5 p-2">
-      <button
-        type="button"
-        title="The city"
-        onClick={onMoney}
-        className="flex min-w-0 cursor-pointer items-center gap-2.5 text-left"
-      >
-        <span className="tile tile-green">
-          <Icon name="dollar" size={24} strokeWidth={2} />
+    <button
+      type="button"
+      title="The city"
+      onClick={onClick}
+      className="card pointer-events-auto flex min-w-0 cursor-pointer items-center gap-2.5 p-2 pr-3 text-left"
+    >
+      <span className="tile tile-green">
+        <Icon name="dollar" size={24} strokeWidth={2} />
+      </span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="label">Funds</span>
+        <span className="figure truncate">
+          <span className="sm:hidden">{world.shortMoney}</span>
+          <span className="max-sm:hidden">{world.money}</span>
         </span>
-        <span className="flex min-w-0 flex-col gap-1 pr-1">
-          <span className="label">Funds</span>
-          <span className="figure truncate">
-            <span className="sm:hidden">{world.shortMoney}</span>
-            <span className="max-sm:hidden">{world.money}</span>
-          </span>
-        </span>
-      </button>
+      </span>
       <span
         title="A tick"
         className={cx(
-          "pill max-sm:hidden",
+          "pill ml-1 max-sm:hidden",
           world.losing ? "text-bad" : "text-good",
         )}
       >
@@ -182,20 +180,7 @@ function Funds({ world, onMoney, onHome }) {
         />
         {world.net}
       </span>
-      <span title="People" className="pill max-sm:hidden">
-        <Icon name="people" size={16} strokeWidth={2} />
-        {world.population}
-      </span>
-      <button
-        type="button"
-        title="Back to the city"
-        aria-label="Back to the city"
-        onClick={onHome}
-        className="tile tile-home ml-auto cursor-pointer"
-      >
-        <Icon name="home" size={22} strokeWidth={1.75} />
-      </button>
-    </div>
+    </button>
   );
 }
 
@@ -217,14 +202,28 @@ function Time({ world }) {
   );
 }
 
-//the city's name, and how many live there - where the money has no room
-function City({ world, className }) {
+//the city's name and how many live there - a click on it back to the city,
+//wherever the camera has got to
+function City({ world, onClick, className }) {
   return (
-    <div className={cx("card pill bg-card px-3 py-2", className)}>
-      <Icon name="people" size={16} strokeWidth={2} />
-      <span className="truncate">{world.name}</span>
-      <span className="font-semibold text-muted">· {world.population}</span>
-    </div>
+    <button
+      type="button"
+      title={"Back to " + world.name}
+      onClick={onClick}
+      className={cx(
+        "card pointer-events-auto flex max-w-full min-w-0 cursor-pointer items-center gap-2 p-1.5 pr-3 text-left",
+        className,
+      )}
+    >
+      <span className="tile tile-home size-8">
+        <Icon name="home" size={18} strokeWidth={1.75} />
+      </span>
+      <span className="truncate font-extrabold">{world.name}</span>
+      <span className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-muted tabular-nums">
+        <Icon name="people" size={14} strokeWidth={2} />
+        {world.population}
+      </span>
+    </button>
   );
 }
 
@@ -416,7 +415,7 @@ export default function Hud() {
   }
 
   return (
-    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-2.5 [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_auto_1fr_auto_auto] sm:gap-3 sm:pt-4 sm:[grid-template-areas:'logo_funds_._time_tools'_'._._._._zoom']">
+    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-2.5 [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_auto_1fr_auto_auto] sm:gap-3 sm:pt-4 sm:[grid-template-areas:'logo_funds_._time_tools'_'._city_._._zoom']">
       <img
         src="/logo.png"
         alt="Peepsland"
@@ -424,7 +423,7 @@ export default function Hud() {
       />
       {funds && (
         <div className="flex min-w-0 self-stretch [grid-area:funds] *:flex-1">
-          <Funds world={world} onMoney={openCity} onHome={home} />
+          <Funds world={world} onClick={openCity} />
         </div>
       )}
       <div className="flex self-stretch justify-self-end [grid-area:time] *:flex-1">
@@ -433,7 +432,8 @@ export default function Hud() {
       {funds && (
         <City
           world={world}
-          className="justify-self-start [grid-area:city] sm:hidden"
+          onClick={home}
+          className="justify-self-start [grid-area:city]"
         />
       )}
       <div className="flex gap-2 justify-self-end [grid-area:tools]">

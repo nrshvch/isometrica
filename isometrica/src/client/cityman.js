@@ -42,7 +42,8 @@ function labelText(city) {
 function updateLabel(self, city) {
   var go = self._cityGOs[city.tile()];
 
-  go.textRenderer.text = self._namesHidden ? "" : labelText(city);
+  go.textRenderer.text =
+    self._namesHidden || !self.names ? "" : labelText(city);
   //and the city limits with it
   if (go.border) go.border.hidden = self._namesHidden;
 }
@@ -101,6 +102,10 @@ function Cityman(root) {
   //the cities' names put away, with the rest of the words over the world
   //(ServiceMan#toggleLabels)
   this._namesHidden = false;
+  //whether the cities' names are written over them at all - a game that
+  //shows its city's elsewhere goes without (city-sim play.js); their limits
+  //are drawn round them all the same
+  this.names = true;
 }
 
 /**

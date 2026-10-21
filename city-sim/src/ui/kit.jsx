@@ -106,7 +106,8 @@ export function HudButton({ icon, label, on, className, ...props }) {
 
 /**
  * A button of the bar along the bottom: its icon over its word - picked
- * (on), or the one that goes ahead (go).
+ * (on), or the one that goes ahead (go) - faded while it cannot be pressed
+ * (disabled).
  */
 export function BarButton({ icon, label, on, go, className, ...props }) {
   return (
@@ -126,15 +127,16 @@ export function BarButton({ icon, label, on, go, className, ...props }) {
 }
 
 /**
- * A screen over the world: a card in the middle of the page, its title, a
- * way out in its corner, and what it holds - the page scrolling as it does
- * when that is taller than the window. The world behind it is dimmed by
- * the game screen (GameScreen).
+ * A screen over the world: a card in the middle of the page, as high as
+ * what the HUD leaves of the window, its title and a way out along its top
+ * and what it holds under them - scrolled, when that is taller, under the
+ * title staying where it is. The world behind it is dimmed by the game
+ * screen (GameScreen).
  */
 export function Screen({ title, aside, onClose, className, children }) {
   return (
-    <Container className="flex flex-1 flex-col pt-2 pb-6">
-      <section className="card flex flex-1 flex-col">
+    <Container className="flex min-h-0 flex-1 flex-col pt-2 pb-3 sm:pb-6">
+      <section className="card flex min-h-0 flex-1 flex-col overflow-hidden">
         <header className="flex flex-wrap items-center gap-3 border-b-[1.5px] border-inset px-4 py-3 sm:px-5">
           <h2 className="text-xl font-black">{title}</h2>
           {aside && <div className="text-sm text-muted">{aside}</div>}
@@ -150,7 +152,9 @@ export function Screen({ title, aside, onClose, className, children }) {
             </button>
           )}
         </header>
-        <div className={cx("flex-1", className)}>{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className={className}>{children}</div>
+        </div>
       </section>
     </Container>
   );

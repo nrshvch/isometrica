@@ -72,6 +72,7 @@ export default function WorldHud() {
                   label={labelOf(b)}
                   on={b.on}
                   go={b.go}
+                  disabled={b.disabled}
                   onClick={b.action}
                 />
               );

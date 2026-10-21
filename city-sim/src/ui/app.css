@@ -144,9 +144,13 @@
     @apply grid h-8 w-[52px] place-items-center rounded-[3px] transition-colors;
   }
 
-  .bar-button:hover .well,
+  .bar-button:not(:disabled):hover .well,
   .bar-button:focus-visible .well {
     @apply bg-inset;
+  }
+
+  .bar-button:disabled {
+    @apply cursor-default opacity-40;
   }
 
   .bar-button.on .well {

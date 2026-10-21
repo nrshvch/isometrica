@@ -59,8 +59,8 @@ export function createBridge(go) {
     /**
      * Puts up the buttons, nothing holding them.
      *
-     * @param buttons {Object[]} per slot, {icon, label, action, on, go} - a
-     *        slot left undefined has none
+     * @param buttons {Object[]} per slot, {icon, label, action, on, go,
+     *        disabled} - a slot left undefined has none
      */
     showButtons: function (buttons) {
       release();
@@ -173,12 +173,15 @@ function actionButtons(controls) {
   };
 
   //an action that is only ever left, never confirmed - picking which block
-  //of land to buy, say - has nothing for a tick to do
-  if (controls.canSubmit())
+  //of land to buy, say - has no tick; one that cannot be confirmed as it
+  //stands has its tick all the same, not to be pressed, so that the bar
+  //stays as it is
+  if (controls.submits)
     buttons[4] = {
       icon: "check",
       label: "Done",
       go: true,
+      disabled: !controls.canSubmit(),
       action: function () {
         controls.submit();
       },
