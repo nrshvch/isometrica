@@ -271,8 +271,9 @@ function Zoom({ client, zoom }) {
   );
 }
 
-//a line of the menu: what it does, and whether it is on
-function Row({ icon, label, on, disabled, className, onClick }) {
+//a line of the menu: what it does - and what to, under it - and whether it
+//is on
+function Row({ icon, label, sub, on, disabled, className, onClick }) {
   return (
     <button
       type="button"
@@ -286,7 +287,14 @@ function Row({ icon, label, on, disabled, className, onClick }) {
       )}
     >
       <Icon name={icon} size={20} />
-      <span className="whitespace-nowrap">{label}</span>
+      <span className="flex min-w-0 flex-col">
+        <span className="whitespace-nowrap">{label}</span>
+        {sub && (
+          <span className="truncate text-xs font-semibold text-muted">
+            {sub}
+          </span>
+        )}
+      </span>
       {on === undefined ? (
         <Icon name="chevron-right" size={16} className="ml-auto text-muted" />
       ) : (
@@ -406,6 +414,7 @@ function Menu({ client, world, address, busy }) {
             <Row
               icon={copied ? "check" : "share"}
               label={copied ? "Address copied" : "Share the city"}
+              sub={address.replace(/^https?:\/\//, "")}
               className={copied && "text-good"}
               onClick={share}
             />
