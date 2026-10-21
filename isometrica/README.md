@@ -123,7 +123,9 @@ engine in `engine/`.
     is taken up (`traffic.js` mayEnter, Traffic#loopOf).
 - There is a car for every four road tiles loaded through the day, and more
   in the rush hours - about one for every two and a half at eight in the
-  morning and five in the evening (`isometrica/src/client/carman.js`). In the
+  morning and five in the evening (`isometrica/src/client/carman.js`) - a
+  gravel lane counting for a quarter of a road, and a quarter as likely to
+  be set out from, so a village's lanes stay quiet (GRAVEL_SHARE). In the
   morning the light cars set out from the houses and are done when they get
   to work, in the evening the other way round; afterwards the ones more
   than the hour wants are done when they get where they are going. A car

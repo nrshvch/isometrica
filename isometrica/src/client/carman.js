@@ -22,7 +22,9 @@ var Terrain = Core.Terrain;
 //
 //There is one for every four road tiles that are loaded through the day, and
 //more in the rush hours - one for every two and a half at eight in the
-//morning and at five in the evening. Each goes from a random road tile to
+//morning and at five in the evening. A gravel lane counts for a quarter of a
+//road, a village's being quiet, and is as much less likely to be one set out
+//from (GRAVEL_SHARE). Each goes from a random road tile to
 //another one it can reach, and on from there to the next once it gets there
 //- never turning back in the middle of a street to get there, only at a
 //junction or the end of a road (Traffic.route). Whenever the roads under one go - demolished, or
@@ -82,6 +84,12 @@ var Terrain = Core.Terrain;
 var CARS_PER_ROAD = 1 / 4,
   //and at the height of the rush hours
   RUSH_PER_ROAD = 0.4,
+  //how much of a road a tile of gravel counts for, in how many cars there
+  //are and where they set out from
+  GRAVEL_SHARE = 0.25,
+  //tiles picked to find one to set out from, gravel turned down but for its
+  //share, before the last one picked will do
+  PICK_TRIES = 8,
   //how long one waits in a queue that does not move before it gives up on
   //it, ms
   STUCK_FOR = 60000,
@@ -191,6 +199,45 @@ var LIGHTS_OUT_UNTIL = 6;
 var position = new Float32Array(3);
 
 var DIRECTIONS = Traffic.DIRECTIONS;
+
+/**
+ * How much of a road a road tile counts for: a tile of gravel its share,
+ * anything else all of one.
+ */
+function shareOf(roadman, tile) {
+  var road = roadman.getRoad(tile),
+    look = road !== null && road.data ? road.data.look : null;
+
+  return look && look.material === "gravel" ? GRAVEL_SHARE : 1;
+}
+
+/**
+ * How many roads the loaded road tiles count for, gravel at its share.
+ */
+function roadCount(roadman) {
+  var tiles = roadman.getRoadTiles(),
+    n = 0;
+
+  for (var i = 0; i < tiles.length; i++) n += shareOf(roadman, tiles[i]);
+
+  return n;
+}
+
+/**
+ * One of the road tiles to set out from, a tile of gravel only so often as
+ * its share has it - or -1 when there are none.
+ */
+function pickStart(roadman, tiles) {
+  var tile = -1;
+
+  for (var i = 0; i < PICK_TRIES && tiles.length > 0; i++) {
+    tile = tiles[(Math.random() * tiles.length) | 0];
+
+    if (Math.random() < shareOf(roadman, tile)) break;
+  }
+
+  return tile;
+}
 
 function distance(a, b) {
   return Pathfinder.manhattan(
@@ -475,7 +522,8 @@ CarScript.prototype.spawn = function (traffic) {
     tile = origin === null ? -1 : man.pickRoadBy(origin);
 
     //nowhere of that kind to start from, so anywhere will do
-    if (tile === -1) tile = root.roadman.getRandomRoadTile();
+    if (tile === -1)
+      tile = pickStart(root.roadman, root.roadman.getRoadTiles());
 
     if (tile === -1) return false;
 
@@ -1581,7 +1629,7 @@ function reconcile(self) {
   }
 
   var light = lightAllowed(self.root),
-    roads = self.root.roadman.getRoadCount(),
+    roads = roadCount(self.root.roadman),
     //as many as the roads take - though in the small hours the buses are
     //not running and the light cars are down to a few tearing about, so
     //what is left is the vans and the lorries
@@ -2152,12 +2200,11 @@ Carman.prototype.getDestinations = function (kind) {
 
 /**
  * A loaded road that runs past a building of that kind, or -1 when there is
- * none - where a light car setting out is put.
+ * none - where a light car setting out is put: gravel only so often as its
+ * share has it (pickStart).
  */
 Carman.prototype.pickRoadBy = function (kind) {
-  var tiles = this.getDestinations(kind);
-
-  return tiles.length === 0 ? -1 : tiles[(Math.random() * tiles.length) | 0];
+  return pickStart(this.root.roadman, this.getDestinations(kind));
 };
 
 /**
