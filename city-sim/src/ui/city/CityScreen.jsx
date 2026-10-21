@@ -1,17 +1,11 @@
 /**
  * The city screen (a click on the money): the city's budget, its people and
- * its services, as they are tick by tick - and at the bottom, the city as it
- * stands handed over as the one every new player starts on (export.js).
- * Its tabs are in the address: /<id>/city/info, /<id>/city/map.
+ * its services, as they are tick by tick.
  */
 import { useEffect, useState } from "react";
-import { NavLink, useParams } from "react-router";
-import { Icon, Screen, cx } from "../kit";
-import { getClient, getCore, goWorld } from "../session";
-import { download, initialCityFile } from "./export";
+import { Screen, cx } from "../kit";
+import { getClient, goWorld } from "../session";
 import { stats } from "./stats";
-
-var TABS = ["info", "map"];
 
 //the city's stats, worked out again every time it updates
 function useStats(city) {
@@ -33,15 +27,6 @@ function useStats(city) {
   );
 
   return now;
-}
-
-/**
- * Downloads the city as it stands as data/initialcity.js.
- */
-function exportCity() {
-  var save = getCore().persistence.snapshot();
-
-  if (save !== null) download("initialcity.js", initialCityFile(save));
 }
 
 function Section({ heading, className, children }) {
@@ -158,88 +143,16 @@ function Info({ city }) {
           </Section>
         </div>
       </div>
-
-      <Section heading="Hand over">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-lg text-sm font-semibold text-muted">
-            {s.name +
-              " as the city every new player starts on, the delivery game's" +
-              " too - to be saved over isometrica/src/data/initialcity.js"}
-          </p>
-          <button type="button" onClick={exportCity} className="btn">
-            <Icon name="download" size={20} strokeWidth={2} />
-            Download as the initial city
-          </button>
-        </div>
-      </Section>
-    </div>
-  );
-}
-
-//what the map will show, one day
-function MapTab() {
-  var [on, setOn] = useState({ Ecology: true });
-
-  return (
-    <div className="flex flex-col gap-3 p-4">
-      <div className="grid aspect-[2/1] place-items-center rounded-[3px] bg-inset/60 font-bold text-muted">
-        The map is still being drawn
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {["Crime", "Ecology", "Wealth", "Terrain", "Names"].map(function (m) {
-          return (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={!!on[m]}
-              onClick={function () {
-                setOn(Object.assign({}, on, { [m]: !on[m] }));
-              }}
-              className={cx("btn py-1.5", on[m] && "btn-primary")}
-            >
-              {m}
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
 
 export default function CityScreen() {
-  var params = useParams(),
-    tab = params.tab,
-    city = getClient().core.cities.getCity(0);
-
-  if (TABS.indexOf(tab) === -1) tab = "info";
+  var city = getClient().core.cities.getCity(0);
 
   return (
-    <Screen
-      title={city ? city.name() : "The city"}
-      aside={
-        <nav className="flex rounded-[3px] bg-inset p-1">
-          {TABS.map(function (t) {
-            return (
-              <NavLink
-                key={t}
-                to={"/" + params.city + "/city/" + t}
-                replace
-                className={cx(
-                  "rounded-[2px] px-3 py-1 font-extrabold capitalize",
-                  t === tab
-                    ? "bg-card text-ink shadow"
-                    : "text-muted hover:text-ink",
-                )}
-              >
-                {t}
-              </NavLink>
-            );
-          })}
-        </nav>
-      }
-      onClose={goWorld}
-    >
-      {city ? tab === "map" ? <MapTab /> : <Info city={city} /> : null}
+    <Screen title={city ? city.name() : "The city"} onClose={goWorld}>
+      {city && <Info city={city} />}
     </Screen>
   );
 }

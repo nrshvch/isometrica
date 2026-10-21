@@ -2,7 +2,7 @@
  * Where the game is, in the address: the city played - /<id>, the address a
  * city is opened anywhere by - and the screen over it: the world itself,
  * /<id>/catalogue (a building of it, /<id>/catalogue/<code>), the city
- * screen, /<id>/city (a tab of it, /<id>/city/map).
+ * screen, /<id>/city.
  */
 import { createBrowserRouter } from "react-router";
 import GameScreen from "./world/GameScreen";
@@ -24,7 +24,8 @@ export var router = createBrowserRouter([
       { index: true, element: <WorldHud /> },
       { path: "catalogue", element: <Catalogue /> },
       { path: "catalogue/:code", element: <Building /> },
-      { path: "city/:tab?", element: <CityScreen /> },
+      //and whatever came after it once - the tabs it had - all the same
+      { path: "city/*", element: <CityScreen /> },
     ],
   },
 ]);

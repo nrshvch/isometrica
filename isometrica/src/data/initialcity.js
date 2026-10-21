@@ -6,9 +6,9 @@
  * fresh id of its own, so the moment the player changes anything it becomes
  * their own city in their own storage row, leaving this one untouched.
  *
- * To fill it in, build the city in the city builder and download it from
- * the city screen ("Download as the initial city"), then save the file over
- * this one. The "id" and "savedAt" fields are ignored.
+ * To fill it in, build the city in the city builder and put its save over
+ * this one - as it is kept (core/persistence snapshot). The "id" and
+ * "savedAt" fields are ignored.
  *
  * null means there is nothing to start from: the game opens on a blank world
  * and the player founds their city themselves.

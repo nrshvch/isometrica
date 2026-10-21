@@ -57,10 +57,7 @@ other games start on is built here, and handed over from the city screen.
   shown by the time in the top right corner; W goes round the kinds of it to see
   each, and back to the game's own (`isometrica/src/client/weather.js`).
 - The city screen (a click on the money) has the city's budget, its people
-  and its services - and at the bottom of it, "Download as the initial
-  city": the city as it stands, as `initialcity.js`, the city every new
-  player of either game starts on - to be saved over
-  `isometrica/src/data/initialcity.js` (`src/ui/city/export.js`).
+  and its services.
 
 ### Running it
 
@@ -104,7 +101,7 @@ cards of its own - sky white by day, night blue once the world is drawn at
 night - corners all but square, colour kept for what it means), found by the
 address (`src/ui/router.jsx`): `/<id>` the
 world, `/<id>/catalogue` (`/<id>/catalogue/<code>` one building of it),
-`/<id>/city` the city screen (`/<id>/city/map` a tab of it). Every address is
+`/<id>/city` the city screen. Every address is
 the page - the Worker serves `index.html` for any it has no file for
 (`wrangler.jsonc` `not_found_handling`), and `<base href="/">` has
 isometrica's `gfx/` fetched from the top whatever the address.
@@ -113,7 +110,8 @@ The world is drawn under everything else, the two laid one over the other
 (`src/ui/kit.jsx` LayeredLayout), as high as the window: over the world -
 kept to the middle of a wide screen (Container) - along the top the city's
 money (opening the city screen) and what comes in a tick, under
-it the city's name and how many live there (back to the city), the time and
+it the city's name and how many live there (back to the city) and its
+address at https://peeps.land (shared, or copied), the time and
 the weather, the view from above and the menu (the sounds, the day and the
 night going by, the grid over the ground - kept off, if switched off,
 whatever a tap on the world puts away and brings back - a new city), with

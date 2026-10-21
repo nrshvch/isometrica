@@ -15,6 +15,9 @@ export default {
   //and where they are kept on the server, the game's own Worker
   //(worker/saves) - for the city to open anywhere by its address
   api: "/api",
+  //where it is played for good: a city's address is this and its id, the
+  //one shared from the HUD (ui/world/Hud)
+  url: "https://peeps.land",
 
   //land, and shaping the ground (play.js)
   client: function () {

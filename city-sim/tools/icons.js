@@ -234,10 +234,11 @@ var SIGNS = {
 
   info: [ring(12, 12, 9), line([12, 11], [12, 16.5]), dot(12, 7.75, 1)],
 
-  download: [
-    line([12, 3], [12, 15]),
-    line([7, 10], [12, 15], [17, 10]),
-    line([4, 17], [4, 20], [20, 20], [20, 17]),
+  //handed on: an arrow up out of a box
+  share: [
+    line([8.5, 9], [5, 9], [5, 20.5], [19, 20.5], [19, 9], [15.5, 9]),
+    line([12, 14.5], [12, 4]),
+    line([8, 7], [12, 3], [16, 7]),
   ],
 
   //turned round, most of the way, the arrow's head where it has got to

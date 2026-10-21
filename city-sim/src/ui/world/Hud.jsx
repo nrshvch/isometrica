@@ -1,10 +1,10 @@
 /**
  * What goes over the top of the world, on cards: the city's money - which
  * opens the city screen and puts it away again - and how it is doing, and
- * under it the city's name - back to it; the time, and the weather; the
- * view from above, and the menu: the sounds, the day and the night going
- * by, the grid over the ground, a new city. Under them, zooming in and out,
- * and how close the camera is.
+ * under it the city's name - back to it - and its address, to share; the
+ * time, and the weather; the view from above, and the menu: the sounds, the
+ * day and the night going by, the grid over the ground, a new city. Under
+ * them, zooming in and out, and how close the camera is.
  *
  * On a phone the money and the time take the top, the city's name and the
  * buttons the line under it; on a desktop the rest goes along the top.
@@ -16,6 +16,7 @@ import Numeral from "numeral";
 import WorldView from "isometrica/client/view";
 import CameraControl from "isometrica/client/cameracontrol";
 import ResourceCode from "isometrica/core/resourcecode";
+import Game from "../../game";
 import { Container, HudButton, Icon, cx } from "../kit";
 import { store, useGame } from "../store";
 import {
@@ -204,28 +205,80 @@ function Time({ world }) {
   );
 }
 
-//the city's name and how many live there - a click on it back to the city,
-//wherever the camera has got to
-function City({ world, onClick, className }) {
+//how long the share button says the address was copied
+var COPIED_MS = 1500;
+
+/**
+ * The city's name, how many live there and its address - a click on them
+ * back to the city, wherever the camera has got to - and the address
+ * shared: as the phone shares things, or else copied.
+ */
+function City({ world, address, onClick, className }) {
+  var [copied, setCopied] = useState(false);
+
+  useEffect(
+    function () {
+      if (!copied) return;
+
+      var done = setTimeout(function () {
+        setCopied(false);
+      }, COPIED_MS);
+
+      return function () {
+        clearTimeout(done);
+      };
+    },
+    [copied],
+  );
+
+  function share() {
+    if (navigator.share)
+      navigator.share({ title: world.name, url: address }).catch(function () {
+        //put away without sharing
+      });
+    else if (navigator.clipboard)
+      navigator.clipboard.writeText(address).then(function () {
+        setCopied(true);
+      });
+  }
+
   return (
-    <button
-      type="button"
-      title={"Back to " + world.name}
-      onClick={onClick}
+    <div
       className={cx(
-        "card pointer-events-auto flex max-w-full min-w-0 cursor-pointer items-center gap-2 p-1.5 pr-3 text-left",
+        "card pointer-events-auto flex max-w-full min-w-0 items-center gap-1 p-1.5 pl-3",
         className,
       )}
     >
-      <span className="tile tile-home size-8">
-        <Icon name="home" size={18} strokeWidth={1.75} />
-      </span>
-      <span className="truncate font-extrabold">{world.name}</span>
-      <span className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-muted tabular-nums">
-        <Icon name="people" size={14} strokeWidth={2} />
-        {world.population}
-      </span>
-    </button>
+      <button
+        type="button"
+        title={"Back to " + world.name}
+        onClick={onClick}
+        className="flex min-w-0 cursor-pointer flex-col py-0.5 text-left"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-extrabold">{world.name}</span>
+          <span className="flex shrink-0 items-center gap-1 text-[13px] font-bold text-muted tabular-nums">
+            <Icon name="people" size={14} strokeWidth={2} />
+            {world.population}
+          </span>
+        </span>
+        <span className="truncate text-xs font-semibold text-muted">
+          {address.replace(/^https?:\/\//, "")}
+        </span>
+      </button>
+      <button
+        type="button"
+        title={copied ? "Copied" : "Share"}
+        aria-label={copied ? "Copied" : "Share the city"}
+        onClick={share}
+        className={cx(
+          "grid size-9 shrink-0 cursor-pointer place-items-center rounded-[3px] hover:bg-inset",
+          copied && "text-good",
+        )}
+      >
+        <Icon name={copied ? "check" : "share"} size={20} strokeWidth={1.75} />
+      </button>
+    </div>
   );
 }
 
@@ -389,6 +442,9 @@ export default function Hud() {
     prompt = useGame(function (s) {
       return s.prompt;
     }),
+    cityId = useGame(function (s) {
+      return s.cityId;
+    }),
     world = useWorld(client, hasCity),
     onCity = useMatch("/:city/city/*") !== null,
     //the world itself, no screen up over it - the camera's to be zoomed
@@ -430,6 +486,7 @@ export default function Hud() {
       {funds && (
         <City
           world={world}
+          address={Game.url + "/" + cityId}
           onClick={home}
           className="justify-self-start [grid-area:city]"
         />

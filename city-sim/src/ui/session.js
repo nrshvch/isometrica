@@ -77,8 +77,8 @@ export function goCatalogue() {
   go("/catalogue");
 }
 
-export function goCity(tab) {
-  go("/city" + (tab ? "/" + tab : ""));
+export function goCity() {
+  go("/city");
 }
 
 /**
