@@ -121,6 +121,7 @@ function load() {
     import("isometrica/client/main"),
     import("isometrica/core/main"),
     Game.client ? Game.client() : null,
+    Game.initialCity ? Game.initialCity() : null,
   ]).then(function (modules) {
     var Vkaria = modules[0].default.Vkaria,
       Core = modules[1].default;
@@ -129,6 +130,7 @@ function load() {
       tick: Game.tick,
       saves: Game.saves,
       api: Game.api,
+      initialCity: modules[3] ? modules[3].default : undefined,
     });
     client = new Vkaria(core, bridge, modules[2] ? modules[2].default : null);
   });

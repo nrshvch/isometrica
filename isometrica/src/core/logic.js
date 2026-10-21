@@ -51,6 +51,7 @@ function Logic(options) {
     this,
     store,
     options.api ? new CitySync(options.api, store) : null,
+    options.initialCity,
   );
 }
 

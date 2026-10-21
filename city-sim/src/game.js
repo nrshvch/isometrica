@@ -19,6 +19,12 @@ export default {
   //one shared from the HUD (ui/world/Hud)
   url: "https://peeps.land",
 
+  //the city a brand new player starts on - its own, not the one the
+  //delivery game starts on (isometrica data/initialcity)
+  initialCity: function () {
+    return import("./initialcity");
+  },
+
   //land, and shaping the ground (play.js)
   client: function () {
     return import("./play");

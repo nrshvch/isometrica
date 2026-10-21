@@ -11,7 +11,8 @@
  *  - the url names nobody, but there is an
  *    active city in storage                     -> that one is loaded
  *  - nothing anywhere                           -> the hardcoded initial city
- *    (data/initialcity), opened under a fresh id of its own
+ *    (the game's own, or data/initialcity), opened under a fresh id of its
+ *    own
  *
  * With a server, #prepare goes first: it settles whether the save here or the
  * server's is the one to open, and puts the server's here if it is - so that
@@ -54,12 +55,15 @@ function onTick(sender, args, self) {
  * @param world {Logic}
  * @param [store] {CityStore}
  * @param [sync] {CitySync} the server the city is kept on as well, if any
+ * @param [initial] {Object|null} the city a brand new player starts on, for
+ *        a game that has one of its own - data/initialcity otherwise
  * @constructor
  */
-function CityPersistence(world, store, sync) {
+function CityPersistence(world, store, sync, initial) {
   this.world = world;
   this._store = store || new CityStore();
   this._sync = sync || null;
+  this._initial = initial === undefined ? InitialCity : initial;
   this._id = null;
   this._city = null;
   //how the player was looking at the city - the client's, kept as it is
@@ -154,14 +158,16 @@ CityPersistence.prototype.open = function (requestedId) {
       data = store.read(activeId);
     } else {
       //nothing of the player's own to come back to
+      var initial = this._initial;
+
       id = store.newId();
       //the template may be a whole save row or just the city in it
       data =
-        InitialCity === null
+        initial === null
           ? null
-          : InitialCity.city === undefined
-            ? { city: InitialCity }
-            : InitialCity;
+          : initial.city === undefined
+            ? { city: initial }
+            : initial;
     }
   }
 
