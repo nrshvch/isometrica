@@ -860,11 +860,28 @@ function placeAt(me, tile, force) {
 }
 
 /**
+ * Whether what was tapped at x, y - over tile - is a road: its sprite, or the
+ * ground it lies on.
+ */
+function roadAt(root, x, y, tile) {
+  var building = root.buildman.pickBuilding(x, y);
+
+  if (building === null) building = root.core.buildings.get(tile);
+
+  return (
+    building !== null &&
+    building !== undefined &&
+    building.data.classCode === Core.BuildingClassCode.road
+  );
+}
+
+/**
  * A tap on anything with something to show for it - a house, a tower - shows
  * it, the same as it does outside of any action, and one on a city's name
  * shows its city hall. One on the selection, or on what is being placed on
  * it, does nothing. A tap anywhere else on the ground puts the selection
- * there, back down to one footprint.
+ * there, back down to one footprint - and, laying roads, so does one on a
+ * road, which is ground to lay one on rather than one to look at.
  */
 function onClick(sender, e, me) {
   var x = e.gameViewportX,
@@ -892,7 +909,13 @@ function onClick(sender, e, me) {
     }
   }
 
-  if (hit.preview || hit.tile === -1 || root.serviceman.inspect(x, y)) return;
+  if (hit.preview || hit.tile === -1) return;
+
+  //what was being looked at put away, as a tap on bare ground puts it
+  if (me._roadsAsGround && roadAt(root, x, y, hit.tile)) {
+    root.serviceman.hideCoverage();
+    root.serviceman.hideInfo();
+  } else if (root.serviceman.inspect(x, y)) return;
 
   if (!contains(me, Terrain.extractX(hit.tile), Terrain.extractY(hit.tile)))
     placeAt(me, hit.tile);
@@ -927,6 +950,9 @@ var events = {
  *        buildings    - a building tapped selects the tiles it stands on,
  *                       rather than showing what it is doing - for shaping
  *                       the ground, where it is the ground that is wanted
+ *        roads        - a road tapped is ground: the selection put there,
+ *                       rather than what the road is shown - for laying
+ *                       roads, over the ones there or along them
  * @constructor
  */
 function AreaSelector(root, options) {
@@ -941,6 +967,7 @@ function AreaSelector(root, options) {
   this._corners = options.corners !== false;
   this._resizable = options.resizable !== false;
   this._pickBuildings = options.buildings === true;
+  this._roadsAsGround = options.roads === true;
   this._handleTokens = [];
   this._handles = {};
   this._cells = {};
