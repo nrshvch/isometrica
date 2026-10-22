@@ -19,7 +19,11 @@ other games start on is built here, and handed over from the city screen.
   being laid: the selection is up to be dragged out from the start, and the
   preview of all of it changes with the toggle. Gravel laid next to the old
   town comes out cobbled (`isometrica/src/client/road.js` materialAt). What a road
-  is laid in is kept with it, in the save.
+  is laid in is kept with it, in the save. Laid over a road of something
+  less - cobbles or asphalt over gravel, asphalt over cobbles - it paves
+  that one over where it lies, for the price of a road, the traffic on it
+  driving on (`isometrica/src/core/city/citybuildings.js` upgradeOf); over
+  one of the same or more it is turned down, the tile taken.
 - Toggled on again, it goes one way only, again the other way round - with
   no need to drag the selection out again the other way - and again both
   ways; the one that is on shows which, with the arrows a road of it has.

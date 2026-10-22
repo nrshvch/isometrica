@@ -4,8 +4,9 @@
  * Three things, all about the same question - what a building is doing for
  * the city, and why a house is standing empty:
  *
- *  - a red word over anything going without, "no road" before "no water",
- *    because a street is the first thing to put right. Without it a house
+ *  - a red word over anything going without, "no road" before "no water" -
+ *    and the least of a road it wants, "no road (gravel)", "no road
+ *    (cobble)" - because a street is the first thing to put right. Without it a house
  *    nobody moves into looks like a bug rather than a missing street.
  *  - the ground a water tower waters, outlined in one continuous line the way
  *    the city limits are. Clicking a tower shows its reach and clicking
@@ -138,6 +139,21 @@ function hide(self, tile) {
 }
 
 /**
+ * What is said over a building going without: for a road, the least of one
+ * it wants - "no road (cobble)" over a shop on a gravel lane.
+ */
+function wordsFor(building, missing) {
+  var wants =
+    missing === ServiceCode.road && building.data.requires
+      ? building.data.requires[ServiceCode.road]
+      : undefined;
+
+  return typeof wants === "string"
+    ? text[missing] + " (" + wants + ")"
+    : text[missing];
+}
+
+/**
  * Goes over everything on screen and puts a word over whatever is going
  * without, and how far along it is over whatever is going up. Once a tick is
  * plenty - a street or a tower takes longer than that to build.
@@ -181,7 +197,7 @@ function refresh(self) {
       missing = NO_JOBS;
 
     if (missing === null) hide(self, tile);
-    else show(self, model, text[missing], WARNING_COLOR);
+    else show(self, model, wordsFor(model, missing), WARNING_COLOR);
   }
 }
 

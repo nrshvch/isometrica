@@ -15,6 +15,7 @@ import TileIterator from "../tileiterator";
 
 import namespace from "namespace";
 import Rotation from "../rotation";
+import * as RoadRules from "../roadrules";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Buildings = CityBuildings;
 
@@ -90,6 +91,66 @@ function variantOf(code) {
 CityBuildings.variantOf = variantOf;
 
 /**
+ * The road on tile that a road laid in look's material would be an upgrade
+ * of - gravel to cobbles or asphalt, cobbles to asphalt (core/roadrules
+ * MATERIALS) - or null. A road laid over one like that takes its place for
+ * the price of a road, rather than being turned down for the tile being
+ * taken: what is there is paved over where it is (upgrade).
+ *
+ * @param code {number} what is being put down
+ * @param [look] {Object} what it would look like (client/buildman)
+ * @returns {Building|null}
+ */
+function upgradeOf(self, code, tile, look) {
+  var material = look ? look.material : undefined,
+    there;
+
+  if (
+    BuildingData[code].classCode !== BuildingClassCode.road ||
+    RoadRules.MATERIALS.indexOf(material) === -1
+  )
+    return null;
+
+  there = self.city.world.buildings.get(tile);
+
+  if (
+    there === null ||
+    BuildingData[there.buildingCode].classCode !== BuildingClassCode.road
+  )
+    return null;
+
+  return RoadRules.MATERIALS.indexOf(material) >
+    RoadRules.MATERIALS.indexOf(RoadRules.materialOf(there))
+    ? there
+    : null;
+}
+
+/**
+ * Paves road over in what look says, the way it lies - the network never
+ * broken for it, the traffic on it driving on: its material, the way it goes
+ * if it is laid one way, and its bus stop, if it has one, kept. What it cost
+ * is billed, and whoever draws it told.
+ */
+function upgrade(self, road, look, cost) {
+  var next = { material: look.material };
+
+  if (look.way !== undefined) next.way = look.way;
+  if (road.look && road.look.stop) next.stop = true;
+
+  road.look = next;
+  //shown over it as a new road's price is (client/buildman)
+  road.expense = cost[Resource.money] || 0;
+
+  self.city.resources.sub(cost);
+
+  Events.fire(
+    self.city.root.buildings,
+    self.city.root.buildings.events.buildingUpdated,
+    road,
+  );
+}
+
+/**
  * @param code {number} a building, or a type - which goes up as any of its
  *        variants
  * @param tile {number}
@@ -114,7 +175,17 @@ CityBuildings.prototype.buildBuilding = function (
   //"3" is not BuildingCode.cityHall however much it looks like it
   code = variantOf(parseInt(code, 10));
 
-  var errorCode = buildTest(this, code, tile, rotate);
+  //a road laid over a lesser one: that one paved over where it lies
+  var road = upgradeOf(this, code, tile, look),
+    errorCode =
+      road !== null
+        ? upgradeTest(this, code)
+        : buildTest(this, code, tile, rotate);
+
+  if (road !== null && errorCode === ErrorCode.NONE) {
+    upgrade(this, road, look, BuildingData[code].constructionCost);
+    return;
+  }
 
   if (errorCode === ErrorCode.NONE) {
     var data = BuildingData[code];
@@ -168,12 +239,21 @@ CityBuildings.prototype.buildBuilding = function (
  * building the build would turn down is left out, save one turned down for
  * want of money only - its price is still worth knowing.
  *
+ * A road laid over a lesser one is quoted at a road's price (upgradeOf).
+ *
  * @param code {number}
  * @param anchors {number[]} the tile each building would stand on
  * @param [rotation] {number} quarter turns, 0..3
- * @returns {{tile: number, cost: number, error: number}[]}
+ * @param [looks] {Array<Object|null>} what each would look like - for a
+ *        road, what it is laid in
+ * @returns {{tile: number, cost: number, error: number, upgrade: boolean}[]}
  */
-CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
+CityBuildings.prototype.quoteSelection = function (
+  code,
+  anchors,
+  rotation,
+  looks,
+) {
   code = parseInt(code, 10);
 
   var data = BuildingData[code],
@@ -187,6 +267,7 @@ CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
     tile,
     errorCode,
     clearing,
+    upgrading,
     money,
     key,
     enough,
@@ -195,7 +276,12 @@ CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
   for (i = 0; i < anchors.length; i++) {
     tile = anchors[i];
 
-    errorCode = this.city.root.buildingService.test(code, tile, rotation);
+    //a road paved over is there already, on ground that took it
+    upgrading =
+      upgradeOf(this, code, tile, looks ? looks[i] : undefined) !== null;
+    errorCode = upgrading
+      ? ErrorCode.NONE
+      : this.city.root.buildingService.test(code, tile, rotation);
 
     //the rest of buildTest, less what is about money - that is held
     //against what the buildings before would have spent instead
@@ -218,7 +304,8 @@ CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
 
     if (errorCode !== ErrorCode.NONE) continue;
 
-    clearing = clearingCost(this, code, tile, rotation);
+    //nothing to clear under a road there already
+    clearing = upgrading ? 0 : clearingCost(this, code, tile, rotation);
     money = (cost[Resource.money] || 0) + clearing;
 
     enough =
@@ -232,7 +319,12 @@ CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
     }
 
     if (!enough) {
-      r.push({ tile: tile, cost: money, error: ErrorCode.NOT_ENOUGH_RES });
+      r.push({
+        tile: tile,
+        cost: money,
+        error: ErrorCode.NOT_ENOUGH_RES,
+        upgrade: upgrading,
+      });
       continue;
     }
 
@@ -241,7 +333,12 @@ CityBuildings.prototype.quoteSelection = function (code, anchors, rotation) {
 
     if (code === BuildingCode.cityHall) cityHall = true;
 
-    r.push({ tile: tile, cost: money, error: ErrorCode.NONE });
+    r.push({
+      tile: tile,
+      cost: money,
+      error: ErrorCode.NONE,
+      upgrade: upgrading,
+    });
   }
 
   return r;
@@ -421,6 +518,20 @@ function onBuildingRemoved(sender, building, self) {
   self._buildings.splice(index, 1);
 
   if (self.cityHall === building) self.cityHall = null;
+}
+
+//what buildTest asks of a road paved over another, the ground and the
+//borders aside - the road is there already
+function upgradeTest(self, code) {
+  var city = self.city,
+    data = BuildingData[code];
+
+  if (city.laboratoryService.getAvailableBuildings()[code] !== true)
+    return ErrorCode.BUILDING_NOT_AVAIL;
+  if (!city.resources.hasEnough(data.constructionCost))
+    return ErrorCode.NOT_ENOUGH_RES;
+
+  return ErrorCode.NONE;
 }
 
 function buildTest(self, code, tile, rotation) {

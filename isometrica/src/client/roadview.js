@@ -17,8 +17,9 @@ import WorkLights from "./worklights";
 var Terrain = Core.Terrain;
 
 //what a road's piece number (see Road.profile) is drawn with: the roads
-//generator's pieces (shared/gen/roads) - plain or paved asphalt, gravel or
-//cobbles, by how the road joins up with its neighbours, or a ramp - as it is
+//generator's pieces (shared/gen/roads) - plain or paved asphalt, gravel,
+//cobbles or a cobbled street with its pavements, by how the road joins up
+//with its neighbours, or a ramp - as it is
 //seen, the camera turned (see client/view). A one-way road's straight piece
 //has an arrow down it the way its traffic goes, as that is seen, and its
 //ramp no dashes up it
@@ -27,8 +28,9 @@ function spriteOf(id) {
     kind = KINDS[Math.floor(id / Road_PAVED) % 10] || "plain",
     way = Math.floor(id / ONE_WAY) - 1;
 
-  //a bus stop is laid as a street is; its shelter and sign stand on it
-  if (kind === "stop") kind = "paved";
+  //a bus stop is laid as a street of what it is laid in is; its shelter and
+  //sign stand on it
+  if (STOP_LAID[kind] !== undefined) kind = STOP_LAID[kind];
 
   if (shape < 10)
     return (
@@ -70,6 +72,14 @@ function seenJoins(shape) {
   ]);
 }
 
+//what a bus stop is laid as, by what it is laid in: an asphalt street, a
+//cobbled one, or a gravel lane
+var STOP_LAID = {
+  stop: "paved",
+  "stop-cobble": "cobble-paved",
+  "stop-gravel": "gravel",
+};
+
 //where a paved street has its street light, if it has one there - every
 //other tile along a street, and never on a ramp. Where it stands is the
 //road's in the world, so it stays on its side of the street as the camera
@@ -77,11 +87,14 @@ function seenJoins(shape) {
 //one; at a corner or a junction in the corner of the tile between the ways
 //it goes - the first of them with a way on both sides of it, else on one -
 //its arm reaching in over the way beside it. Then which of the roads
-//generator's lights that is as it is seen (shared/gen/roads lightPlace)
+//generator's lights that is as it is seen (shared/gen/roads lightPlace) - a
+//lantern on a cobbled street, one on an arm over the asphalt
 function lightOf(id, tile) {
-  var shape = id % Road_PAVED;
+  var shape = id % Road_PAVED,
+    kind = KINDS[Math.floor(id / Road_PAVED) % 10],
+    light = kind === "paved" ? "light" : "lantern";
 
-  if (Math.floor(id / Road_PAVED) % 10 !== 1 || shape < 10) return null;
+  if ((kind !== "paved" && kind !== "cobble-paved") || shape < 10) return null;
   if ((Terrain.extractX(tile) + Terrain.extractY(tile)) % 2 !== 0) return null;
 
   //the ways it goes, in the world: -x, -y, +x, +y
@@ -94,8 +107,8 @@ function lightOf(id, tile) {
     alongX = j[0] || j[2],
     alongY = j[1] || j[3];
 
-  if (alongX && !alongY) return "gen/roads/light/side" + seenSide(1);
-  if (alongY && !alongX) return "gen/roads/light/side" + seenSide(0);
+  if (alongX && !alongY) return "gen/roads/" + light + "/side" + seenSide(1);
+  if (alongY && !alongX) return "gen/roads/" + light + "/side" + seenSide(0);
 
   var best = null,
     most = 0;
@@ -118,7 +131,9 @@ function lightOf(id, tile) {
     d = View.vector(best.d[0], best.d[1]);
 
   return (
-    "gen/roads/light/corner" +
+    "gen/roads/" +
+    light +
+    "/corner" +
     ((c[0] > 0 ? 1 : 0) + (c[1] > 0 ? 2 : 0)) +
     "-" +
     SIDE_OF[d[0] + "," + d[1]]
@@ -139,15 +154,16 @@ var SIDE_OF = { "-1,0": 0, "0,-1": 1, "1,0": 2, "0,1": 3 };
 
 /**
  * Where a bus stop has its shelters, if piece id is one: on the pavements
- * either side of the road - as the sides they are seen on, the camera
- * turned. Null for anything else, or a stop that is not a straight piece of
- * road.
+ * either side of the road - or the verges of a lane - as the sides they are
+ * seen on, the camera turned; made the way the road it stands by is
+ * (shared/gen/roads SHELTERS). Null for anything else, or a stop that is not
+ * a straight piece of road.
  */
 function stopOf(id) {
-  var shape = id % Road_PAVED;
+  var shape = id % Road_PAVED,
+    kind = KINDS[Math.floor(id / Road_PAVED) % 10];
 
-  if (KINDS[Math.floor(id / Road_PAVED) % 10] !== "stop" || shape < 10)
-    return null;
+  if (STOP_LAID[kind] === undefined || shape < 10) return null;
 
   var j = [
       Math.floor(shape / 1000) % 10,
@@ -165,8 +181,8 @@ function stopOf(id) {
     k = SIDE_OF[seen[0] + "," + seen[1]];
 
   return [
-    "gen/roads/stop/shelter" + k,
-    "gen/roads/stop/shelter" + ((k + 2) % 4),
+    "gen/roads/" + kind + "/shelter" + k,
+    "gen/roads/" + kind + "/shelter" + ((k + 2) % 4),
   ];
 }
 
@@ -188,9 +204,22 @@ function setPiece(renderer, name) {
 }
 
 //added to a road's piece number for the paved one (see Road.profile) - and
-//twice and three times over for gravel and for cobbles: what it is laid in
+//twice and three times over for gravel and for cobbles, and so on: what it
+//is laid in, and how. Ten at the most, the one-way roads' numbers start at
+//ten times this (ONE_WAY)
 var Road_PAVED = RoadRules.PAVED,
-  KINDS = ["plain", "paved", "gravel", "cobble", "stop", "dug", "bed"];
+  KINDS = [
+    "plain",
+    "paved",
+    "gravel",
+    "cobble",
+    "stop",
+    "dug",
+    "bed",
+    "cobble-paved",
+    "stop-cobble",
+    "stop-gravel",
+  ];
 
 //and for a one-way road, this more for each of the way it goes + 1 (client/
 //road ONE_WAY)
@@ -423,7 +452,7 @@ function addLight(parent, name, tile) {
   parent.transform.addChild(part.transform);
   standPole(part, sprite, name.split("/").pop());
 
-  return lampAt(name.split("/").pop());
+  return lampAt(name);
 }
 
 //hangs something standing on a road's pavement under parent - a bus stop's
@@ -557,12 +586,20 @@ function standAt(part, sprite, pole) {
 /**
  * Where the spot under a street light's lamp is from the middle of its tile,
  * in the world, the camera turned the way it is: where that is on the tile,
- * the roads' generator says (shared/gen/roads lampAt) - for the lamp to light
- * everything round it at night (client/lighting).
+ * the roads' generator says (shared/gen/roads lampAt, lanternAt) - for the
+ * lamp to light everything round it at night (client/lighting).
+ *
+ * @param name {string} its sprite: "gen/roads/light/side1",
+ *        "gen/roads/lantern/side1"
  */
-function lampAt(at) {
+function lampAt(name) {
   var roads = vkaria.generated !== null ? vkaria.generated.roads : null,
-    lamp = roads && roads.lamps ? roads.lamps[at] : null;
+    parts = name.split("/"),
+    at = parts.pop(),
+    lamps = roads
+      ? roads[parts.pop() === "lantern" ? "lanterns" : "lamps"]
+      : null,
+    lamp = lamps ? lamps[at] : null;
 
   if (!lamp) return null;
 

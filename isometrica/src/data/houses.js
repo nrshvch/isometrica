@@ -9,45 +9,39 @@
  * along the street and one deep (2x1, 3x1), end on to it (1x2, 1x3), or on a
  * lot both ways (2x2, 2x3, 3x2, and a villa's 3x3):
  *
- *   1. village houses need no street and no water, and their people no job
- *      in town: cottages, a longhouse, a farmstead or a croft, a farm round
- *      its yard - what a village is before it is a town;
+ *   1. village houses need no more than a gravel lane and no water, and
+ *      their people no job in town: cottages, a longhouse, a farmstead or a
+ *      croft, a farm round its yard - what a village is before it is a town;
  *   2. town houses - bungalows, two-storey houses, terraces and
  *      semi-detached houses (kinds "city" and "town"): a house of one's own
- *      on its own land, worth more a head to the treasury than flats - the
- *      more garden the more;
+ *      on its own land, worth more a head to the treasury than flats;
  *   3. villas: few people on a lot of land, and the richest of them - or,
  *      the other way, flats (data/flats): a lot of people on little land,
  *      paying little each.
  *
- * Measured against the rest the way data/buildings measures them:
+ * What a house holds and costs is its tier's and how many tiles it covers,
+ * and nothing else (BY_TILES): the footprints of the same size are the same
+ * house laid out another way - a farmstead end on to the street or cottages
+ * along it, five homes for $4,500 either way. And the more tiles, the more
+ * homes on each of them, for a little more a home: a big lot is the better
+ * use of the land, a small one the cheaper start.
  *
- *                       cost  heads  tax   heads   money   payback
- *                                    /head /tile   /tile
- *  village house        2500    3    20      3       60       42
- *  farmstead            4500    5    20     2.5      50       45
- *  cottages, 2x1        5000    6    20      3       60       42
- *  hamlet, 3x1          7500    9    20      3       60       42
- *  croft along street   6000    7    20     2.3      47       43
- *  croft, 1x3           6000    7    20     2.3      47       43
- *  farm, 2x2            9000   11    20     2.8      55       41
- *  long farm, 2x3      12500   14    20     2.3      47       45
- *  wide farm, 3x2      12500   14    20     2.3      47       45
- *  bungalow            14000    8    25      4      100       70
- *  two-storey house    13000    8    25      4      100       65
- *  house, long garden  18000   10    25     3.3      83       72
- *  terrace, 3x1        21000   12    25      4      100       70
- *  semi-detached       28000   16    25      4      100       70
- *   with gardens       34000   16    30     2.7      80       71
- *  terrace, 3x2        38000   18    28      3       84       75
- *  town villa, 1x2     30000    5    70     2.5     175       86
- *  villa, 2x1          33000    5    75     2.5     188       88
- *  town villa, 1x3     42000    6    75      2      150       93
- *  villa, 3x1          48000    7    75     2.3     175       91
- *  villa               60000   10    70     2.5     175       86
- *  grand villa         95000   14    75     2.3     175       90
- *  villa, 2x3          95000   13    75     2.2     163       97
- *  villa estate, 3x3   140000   20    75     2.2     167       93
+ *              tiles  heads   cost    tax   heads   money  payback
+ *                                    /head  /tile   /tile
+ *  village       1      2     1800    20     2.0      40      45
+ *                2      5     4500    20     2.5      50      45
+ *                3      8     8000    20     2.7      53      50
+ *                4     11    12000    20     2.8      55      55
+ *                6     17    20000    20     2.8      57      59
+ *  town          2      8    13000    25     4.0     100      65
+ *                3     13    22000    25     4.3     108      68
+ *                4     18    31000    25     4.5     113      69
+ *                6     28    50000    25     4.7     117      71
+ *  villa         2      5    30000    75     2.5     188      80
+ *                3      8    50000    75     2.7     200      83
+ *                4     11    70000    75     2.8     206      85
+ *                6     17   112000    75     2.8     213      88
+ *                9     26   175000    75     2.9     217      90
  *
  * Those marked deprecated - the village house on one tile, the villas on one
  * row of tiles - or replacedBy another - the hamlet by the croft along the
@@ -71,33 +65,21 @@ var HOUSES = [
     footprint: "1x1",
     name: "village house",
     deprecated: true,
-    heads: 3,
-    cost: 2500,
-    time: 30000,
   },
   {
     kind: "village",
     footprint: "1x2",
     name: "farmstead",
-    heads: 5,
-    cost: 4500,
-    time: 40000,
   },
   {
     kind: "village",
     footprint: "2x1",
     name: "cottages",
-    heads: 6,
-    cost: 5000,
-    time: 40000,
   },
   {
     kind: "village",
     footprint: "3x1",
     name: "hamlet",
-    heads: 9,
-    cost: 7500,
-    time: 50000,
     replacedBy: 4531,
   },
   {
@@ -106,186 +88,139 @@ var HOUSES = [
     code: 4531,
     gen: "village-3x1-side",
     name: "croft along the street",
-    heads: 7,
-    cost: 6000,
-    time: 45000,
   },
   {
     kind: "village",
     footprint: "1x3",
     name: "croft",
-    heads: 7,
-    cost: 6000,
-    time: 45000,
   },
   {
     kind: "village",
     footprint: "2x2",
     name: "farm",
-    heads: 11,
-    cost: 9000,
-    time: 55000,
   },
   {
     kind: "village",
     footprint: "2x3",
     name: "long farm",
-    heads: 14,
-    cost: 12500,
-    time: 65000,
   },
   {
     kind: "village",
     footprint: "3x2",
     name: "wide farm",
-    heads: 14,
-    cost: 12500,
-    time: 65000,
   },
   {
     kind: "city",
     footprint: "2x1",
     name: "bungalow with garage",
-    heads: 8,
-    cost: 14000,
-    tax: 25,
-    time: 45000,
   },
   {
     kind: "city",
     footprint: "1x2",
     name: "town house",
-    heads: 8,
-    cost: 13000,
-    tax: 25,
-    time: 45000,
   },
   {
     kind: "city",
     footprint: "1x3",
     name: "house with long garden",
-    heads: 10,
-    cost: 18000,
-    tax: 25,
-    time: 55000,
   },
   {
     kind: "city",
     footprint: "3x1",
     name: "terrace",
-    heads: 12,
-    cost: 21000,
-    tax: 25,
-    time: 60000,
   },
   {
     kind: "town",
     footprint: "2x2",
     name: "semi-detached houses",
-    heads: 16,
-    cost: 28000,
-    tax: 25,
-    time: 70000,
   },
   {
     kind: "town",
     footprint: "2x3",
     name: "semi-detached with gardens",
-    heads: 16,
-    cost: 34000,
-    tax: 30,
-    time: 80000,
   },
   {
     kind: "town",
     footprint: "3x2",
     name: "terrace with gardens",
-    heads: 18,
-    cost: 38000,
-    tax: 28,
-    time: 85000,
   },
   {
     kind: "villa",
     footprint: "1x2",
     name: "town villa",
     deprecated: true,
-    heads: 5,
-    cost: 30000,
-    tax: 70,
-    time: 80000,
   },
   {
     kind: "villa",
     footprint: "2x1",
     name: "villa on the street",
     deprecated: true,
-    heads: 5,
-    cost: 33000,
-    tax: 75,
-    time: 85000,
   },
   {
     kind: "villa",
     footprint: "1x3",
     name: "town villa with garden",
     deprecated: true,
-    heads: 6,
-    cost: 42000,
-    tax: 75,
-    time: 90000,
   },
   {
     kind: "villa",
     footprint: "3x1",
     name: "long villa",
     deprecated: true,
-    heads: 7,
-    cost: 48000,
-    tax: 75,
-    time: 100000,
   },
   {
     kind: "villa",
     footprint: "2x2",
     name: "villa with garden",
-    heads: 10,
-    cost: 60000,
-    tax: 70,
-    time: 100000,
   },
   {
     kind: "villa",
     footprint: "3x2",
     name: "grand villa",
-    heads: 14,
-    cost: 95000,
-    tax: 75,
-    time: 130000,
   },
   {
     kind: "villa",
     footprint: "2x3",
     name: "villa with grounds",
-    heads: 13,
-    cost: 95000,
-    tax: 75,
-    time: 130000,
   },
   {
     kind: "villa",
     footprint: "3x3",
     name: "villa estate",
-    heads: 20,
-    cost: 140000,
-    tax: 75,
-    time: 150000,
   },
 ];
 
 //which tier of housing each kind is (see above), for the catalogue to keep
 //them together
 var TIERS = { village: 1, city: 2, town: 2, villa: 3 };
+
+//what a house of each tier holds, costs and takes to build by how many
+//tiles it covers - [heads, cost, time] - and what each head of it pays
+var BY_TILES = {
+  1: {
+    tax: 20,
+    1: [2, 1800, 30000],
+    2: [5, 4500, 40000],
+    3: [8, 8000, 45000],
+    4: [11, 12000, 55000],
+    6: [17, 20000, 65000],
+  },
+  2: {
+    tax: 25,
+    2: [8, 13000, 45000],
+    3: [13, 22000, 55000],
+    4: [18, 31000, 70000],
+    6: [28, 50000, 85000],
+  },
+  3: {
+    tax: 75,
+    2: [5, 30000, 80000],
+    3: [8, 50000, 95000],
+    4: [11, 70000, 100000],
+    6: [17, 112000, 130000],
+    9: [26, 175000, 150000],
+  },
+};
 
 function code(house) {
   if (house.code !== undefined) return house.code;
@@ -304,6 +239,8 @@ function buildings() {
   HOUSES.forEach(function (house) {
     var size = house.footprint.split("x").map(Number),
       village = house.kind === "village",
+      tier = BY_TILES[TIERS[house.kind]],
+      numbers = tier[size[0] * size[1]],
       data = {
         sizeX: size[0],
         sizeY: size[1],
@@ -311,12 +248,16 @@ function buildings() {
         classCode: BuildingClassCode.house,
         producing: {},
         demanding: {},
-        //a village needs nothing of the town - a well and a lane of its own
-        requires: village ? {} : { road: true, water: true },
-        citizenCapacity: house.heads,
-        constructionTime: house.time,
+        //a village needs nothing of the town but a lane to it - a well of its
+        //own; a house in town a cobbled street at least, and the mains
+        requires: village
+          ? { road: "gravel" }
+          : { road: "cobble", water: true },
+        citizenCapacity: numbers[0],
+        taxPerResident: tier.tax,
+        constructionTime: numbers[2],
         constructionCost: {
-          money: house.cost,
+          money: numbers[1],
         },
         name: house.name,
         tier: TIERS[house.kind],
@@ -334,7 +275,6 @@ function buildings() {
 
     //they live off the land, not off a job in town
     if (village) data.needsJobs = false;
-    if (house.tax !== undefined) data.taxPerResident = house.tax;
     //no longer offered, kept only for the cities that have them - and what
     //took the place of one, if anything did
     if (house.deprecated || house.replacedBy !== undefined) {

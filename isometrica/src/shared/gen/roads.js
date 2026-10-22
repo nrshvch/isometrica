@@ -13,7 +13,9 @@
  *   - gravel: a track of gravel, packed paler where the wheels go, its edges
  *     darker - what the village's lanes are laid in;
  *   - cobble: setts of stone between a gutter of darker stone either side -
- *     the old town's streets.
+ *     the old town's lanes; and cobble-paved, the same between kerbs with a
+ *     pavement along both sides, the way the asphalt street has - a cobbled
+ *     street with buildings on it.
  *
  * A one-way road is laid the same, but with no line down the middle of a
  * straight piece: an arrow down it instead, the way the traffic goes - white
@@ -21,10 +23,13 @@
  * and no dashes up a ramp.
  *
  * And a street light, apart: a sprite of its own, for it is tall and has to
- * be drawn among the buildings and the cars rather than under them - and so
- * is a bus stop's shelter: on the pavement of a paved street, glass at the
- * back, a bench in it and the stop's sign on a post at the end of it, one on
- * each side of the road for the buses going each way.
+ * be drawn among the buildings and the cars rather than under them - over
+ * the asphalt one on an arm, and along a cobbled street a lantern on an old
+ * cast-iron post. And so is a bus stop's shelter: on the pavement of a paved
+ * street, glass at the back, a bench in it and the stop's sign on a post at
+ * the end of it, one on each side of the road for the buses going each way -
+ * of cast iron, painted green, on a cobbled street, and on the verge of a
+ * gravel lane a wooden one.
  *
  * Units as everywhere: a tile is 32 along the ground - about ten metres -
  * heights in pixels. The asphalt is 20 across, two lanes of the cars' width
@@ -56,7 +61,17 @@ var GRAVEL = [150, 140, 122],
   SHELTER_ROOF = [70, 78, 88],
   BENCH = [150, 104, 64],
   STOP_SIGN = [246, 200, 40],
-  STOP_BAND = [36, 120, 72];
+  STOP_BAND = [36, 120, 72],
+  //an old town's street: its pavement of stone flags, its lanterns and its
+  //bus shelters of cast iron, painted green
+  FLAGS = [196, 188, 172],
+  IRON = [50, 60, 56],
+  LANTERN_GLASS = [252, 226, 172],
+  SHELTER_IRON = [46, 84, 64],
+  //and a village's: the shelter of timber, boarded at the back
+  TIMBER = [118, 82, 50],
+  BOARDS = [150, 110, 70],
+  SHINGLE = [88, 66, 50];
 
 //the asphalt's edges across the tile, and how high a pavement stands - all
 //whole units, so that every edge of a road comes out a clean step of two
@@ -226,7 +241,7 @@ function arrow(b, to, z, color, finish) {
 function arrowOf(kind) {
   return kind === "gravel"
     ? { color: TRACK_EDGE, finish: STONES }
-    : kind === "cobble"
+    : kind === "cobble" || kind === "cobble-paved"
       ? { color: KERB, finish: COBBLED }
       : { color: STRIPE, finish: undefined };
 }
@@ -261,7 +276,7 @@ function crossings(b, joins, z) {
  * raised a kerb's height, paved in slabs (iso MATERIALS) - and the kerb along
  * every edge where the pavement meets the road.
  */
-function pavement(b, joins, ramp) {
+function pavement(b, joins, ramp, color) {
   //the tile in thirds: the corners are always pavement, the sides where no
   //road comes in, and the middle never
   [
@@ -291,7 +306,7 @@ function pavement(b, joins, ramp) {
           ys[1],
           KERB_H,
           KERB_H,
-          PAVING,
+          color || PAVING,
           SLABS,
         );
     });
@@ -336,8 +351,11 @@ function piece(joins, ramp, paved, oneway) {
 
   if (paved === "dug" || paved === "bed") return works(joins, ramp, paved);
 
-  if (paved === "gravel" || paved === "cobble") {
-    b = laid(joins, ramp, paved);
+  if (paved === "gravel" || paved === "cobble" || paved === "cobble-paved") {
+    b = laid(joins, ramp, paved === "gravel" ? "gravel" : "cobble");
+
+    //a cobbled street: its pavement of flags along both sides, kerbed
+    if (paved === "cobble-paved") pavement(b, joins, ramp, FLAGS);
 
     if (oneway && !ramp) {
       var mark = arrowOf(paved);
@@ -677,6 +695,60 @@ function streetLight(at) {
 var GLOWS = Object.assign({}, LIT, { glow: true });
 
 /**
+ * A lantern on a cobbled street, standing on the pavement where `at` says
+ * (lightPlace) - which way an arm would reach never minded: an old cast-iron
+ * post, a plinth at its foot and a collar half way up, and on top of it the
+ * lantern - frosted glass in a frame of iron, under a roof that comes to a
+ * point. Its glass is about as high as an asphalt street's lamp, so it
+ * lights the street the same (client/lighting LAMP_HIGH).
+ */
+function lantern(at) {
+  var b = [],
+    p = lightPlace(at),
+    x = p.x,
+    y = p.y,
+    z = KERB_H,
+    dark = lighter(IRON, 0.12);
+
+  //a square of it round the post, d out from it either way
+  function post(d, z0, z1, color, finish) {
+    b.push(box(x - d, x + 1 + d, y - d, y + 1 + d, z0, z1, color, finish));
+  }
+
+  //the plinth, the post and its collar
+  post(1, z, z + 3, IRON);
+  post(0, z + 3, z + 16, IRON);
+  post(1, z + 7, z + 8, dark);
+  //the cradle the lantern sits in, its glass, and the iron at its corners
+  post(1, z + 15, z + 16, dark);
+  post(1, z + 16, z + 20, LANTERN_GLASS, GLOWS);
+  [
+    [x - 1, y - 1],
+    [x + 1.5, y - 1],
+    [x - 1, y + 1.5],
+    [x + 1.5, y + 1.5],
+  ].forEach(function (c) {
+    b.push(box(c[0], c[0] + 0.5, c[1], c[1] + 0.5, z + 16, z + 20, IRON));
+  });
+  //its roof, out over the glass and up to a point, a knob on it
+  post(2, z + 20, z + 21, IRON);
+  post(1, z + 21, z + 22, IRON);
+  post(0, z + 22, z + 24, dark);
+
+  return b;
+}
+
+/**
+ * Where a lantern's glass is over the ground, on its tile as it is painted
+ * (lantern): x, y - straight over its post.
+ */
+function lanternAt(at) {
+  var p = lightPlace(at);
+
+  return [p.x + 0.5, p.y + 0.5];
+}
+
+/**
  * Where a street light's lamp hangs over the ground, on its tile as it is
  * painted (streetLight): x, y - for the pool of light it casts at night to
  * be laid round the spot under it (client/roadview).
@@ -714,24 +786,40 @@ function sideBox(side, a0, a1, v0, v1, z0, z1, color, finish) {
   return box(TILE - v1, TILE - v0, a0, a1, z0, z1, color, finish);
 }
 
+//what a bus shelter is made of, by the road it stands by: on an asphalt
+//street's pavement steel and glass, on a cobbled one's cast iron painted
+//green and glass, on the verge of a gravel lane timber, boarded at the back
+//- and how high it stands, on the pavement or on the ground
+var SHELTERS = {
+  stop: { z: KERB_H, post: POLE, back: SHELTER_GLASS, roof: SHELTER_ROOF },
+  "stop-cobble": {
+    z: KERB_H,
+    post: SHELTER_IRON,
+    back: SHELTER_GLASS,
+    roof: SHELTER_IRON,
+  },
+  "stop-gravel": { z: 0, post: TIMBER, back: BOARDS, roof: SHINGLE },
+};
+
 /**
- * A bus shelter on the pavement along side: a roof on two posts, glass at
- * the back, a bench under it - and the stop's sign, a plate on a post, at the
- * end of it.
+ * A bus shelter along side, made the way style says (SHELTERS): a roof on two
+ * posts, its back glazed or boarded, a bench under it - and the stop's sign,
+ * a plate on a post, at the end of it.
  */
-function shelter(side) {
+function shelter(side, style) {
   var b = [],
-    z = KERB_H;
+    m = SHELTERS[style] || SHELTERS.stop,
+    z = m.z;
 
-  b.push(sideBox(side, 9, 10, 1, 4.5, z, z + 11, POLE));
-  b.push(sideBox(side, 22, 23, 1, 4.5, z, z + 11, POLE));
-  b.push(sideBox(side, 10, 22, 0.6, 1.2, z + 1, z + 10, SHELTER_GLASS));
-  b.push(sideBox(side, 8, 24, 0.2, 5.2, z + 11, z + 12, SHELTER_ROOF));
+  b.push(sideBox(side, 9, 10, 1, 4.5, z, z + 11, m.post));
+  b.push(sideBox(side, 22, 23, 1, 4.5, z, z + 11, m.post));
+  b.push(sideBox(side, 10, 22, 0.6, 1.2, z + 1, z + 10, m.back));
+  b.push(sideBox(side, 8, 24, 0.2, 5.2, z + 11, z + 12, m.roof));
   b.push(sideBox(side, 11, 21, 1.4, 3, z + 3, z + 3.6, BENCH));
-  b.push(sideBox(side, 11, 12, 1.6, 2.6, z, z + 3, POLE));
-  b.push(sideBox(side, 20, 21, 1.6, 2.6, z, z + 3, POLE));
+  b.push(sideBox(side, 11, 12, 1.6, 2.6, z, z + 3, m.post));
+  b.push(sideBox(side, 20, 21, 1.6, 2.6, z, z + 3, m.post));
 
-  b.push(sideBox(side, 26, 27, 2.5, 3.5, z, z + 14, POLE));
+  b.push(sideBox(side, 26, 27, 2.5, 3.5, z, z + 14, m.post));
   b.push(sideBox(side, 24.5, 28.5, 2.6, 3.4, z + 13, z + 17, STOP_SIGN, LIT));
   b.push(sideBox(side, 24.5, 28.5, 2.5, 3.5, z + 15, z + 16, STOP_BAND, LIT));
 
@@ -830,81 +918,93 @@ function barrierAt(side) {
  * cobble, or dug and bed for a road being laid (works) - the joins in the order
  * client/road reads its neighbours, -x, -y, +x, +y - "gen/roads/paved/ramp3",
  * and "gen/roads/light/side1" - a street light, on a side of the tile or in a
- * corner of it (lightPlace). A one-way road's straight pieces, the way the traffic goes
+ * corner of it (lightPlace) - and "gen/roads/lantern/side1", a cobbled
+ * street's. A one-way road's straight pieces, the way the traffic goes
  * one of SIDES by number: "gen/roads/plain/oneway2/1010" along +x - and its
  * ramps, with no dashes up them: "gen/roads/paved/oneway/ramp3". And
  * "gen/roads/stop/shelter0" and "gen/roads/works/barrier0", a bus shelter
- * and a road works barrier along each side of the tile.
+ * and a road works barrier along each side of the tile - and the shelters
+ * of a cobbled street and a gravel lane, "gen/roads/stop-cobble/shelter0"
+ * and "gen/roads/stop-gravel/shelter0".
  */
 function sprites() {
   var out = {};
 
-  ["plain", "paved", "gravel", "cobble", "dug", "bed"].forEach(function (kind) {
-    var paved = kind === "plain" ? false : kind === "paved" ? true : kind;
+  ["plain", "paved", "gravel", "cobble", "cobble-paved", "dug", "bed"].forEach(
+    function (kind) {
+      var paved = kind === "plain" ? false : kind === "paved" ? true : kind;
 
-    for (var m = 0; m < 16; m++) {
-      var bits = [(m >> 3) & 1, (m >> 2) & 1, (m >> 1) & 1, m & 1],
-        joins = {};
+      for (var m = 0; m < 16; m++) {
+        var bits = [(m >> 3) & 1, (m >> 2) & 1, (m >> 1) & 1, m & 1],
+          joins = {};
 
-      SIDES.forEach(function (s, i) {
-        joins[s] = bits[i] === 1;
-      });
+        SIDES.forEach(function (s, i) {
+          joins[s] = bits[i] === 1;
+        });
 
-      out["gen/roads/" + kind + "/" + bits.join("")] = {
-        joins: joins,
-        paved: paved,
-      };
-
-      //a straight piece of one-way road, an arrow down it either way
-      var alongX = joins["-x"] || joins["+x"],
-        alongY = joins["-y"] || joins["+y"];
-
-      //and no arrow on a road still being laid
-      if (alongX === alongY || kind === "dug" || kind === "bed") continue;
-
-      SIDES.forEach(function (to, k) {
-        if ((k % 2 === 0) !== alongX) return;
-
-        out["gen/roads/" + kind + "/oneway" + k + "/" + bits.join("")] = {
+        out["gen/roads/" + kind + "/" + bits.join("")] = {
           joins: joins,
           paved: paved,
-          oneway: to,
         };
-      });
-    }
 
-    Object.keys(RAMPS).forEach(function (n) {
-      var up = RAMPS[n],
-        joins = {};
+        //a straight piece of one-way road, an arrow down it either way
+        var alongX = joins["-x"] || joins["+x"],
+          alongY = joins["-y"] || joins["+y"];
 
-      //a ramp runs straight up the slope
-      joins["-x"] = joins["+x"] = up === "-x" || up === "+x";
-      joins["-y"] = joins["+y"] = up === "-y" || up === "+y";
+        //and no arrow on a road still being laid
+        if (alongX === alongY || kind === "dug" || kind === "bed") continue;
 
-      out["gen/roads/" + kind + "/ramp" + n] = {
-        joins: joins,
-        ramp: up,
-        paved: paved,
-      };
+        SIDES.forEach(function (to, k) {
+          if ((k % 2 === 0) !== alongX) return;
 
-      //and one-way, with no dashes up it - asphalt alone has any
-      if (kind === "plain" || kind === "paved")
-        out["gen/roads/" + kind + "/oneway/ramp" + n] = {
+          out["gen/roads/" + kind + "/oneway" + k + "/" + bits.join("")] = {
+            joins: joins,
+            paved: paved,
+            oneway: to,
+          };
+        });
+      }
+
+      Object.keys(RAMPS).forEach(function (n) {
+        var up = RAMPS[n],
+          joins = {};
+
+        //a ramp runs straight up the slope
+        joins["-x"] = joins["+x"] = up === "-x" || up === "+x";
+        joins["-y"] = joins["+y"] = up === "-y" || up === "+y";
+
+        out["gen/roads/" + kind + "/ramp" + n] = {
           joins: joins,
           ramp: up,
           paved: paved,
-          oneway: false,
         };
-    });
-  });
+
+        //and one-way, with no dashes up it - asphalt alone has any
+        if (kind === "plain" || kind === "paved")
+          out["gen/roads/" + kind + "/oneway/ramp" + n] = {
+            joins: joins,
+            ramp: up,
+            paved: paved,
+            oneway: false,
+          };
+      });
+    },
+  );
 
   lightNames().forEach(function (at) {
     out["gen/roads/light/" + at] = { light: at };
+    out["gen/roads/lantern/" + at] = { lantern: at };
   });
 
-  //a bus stop's shelter, on each side of the tile
-  STOP_SIDES.forEach(function (side, k) {
-    out["gen/roads/stop/shelter" + k] = { stop: true, side: side };
+  //a bus stop's shelter, on each side of the tile - of each of the ways one
+  //is made (SHELTERS)
+  Object.keys(SHELTERS).forEach(function (style) {
+    STOP_SIDES.forEach(function (side, k) {
+      out["gen/roads/" + style + "/shelter" + k] = {
+        stop: style,
+        side: side,
+      };
+    });
   });
 
   //and a road works barrier across each side of it
@@ -922,8 +1022,9 @@ export function boxesOf(name) {
 
   if (s === undefined) throw new Error("no such sprite: " + name);
 
-  if (s.stop) return shelter(s.side);
+  if (s.stop) return shelter(s.side, s.stop);
   if (s.barrier) return barrier(s.barrier);
+  if (s.lantern) return lantern(s.lantern);
 
   return s.light
     ? streetLight(s.light)
@@ -948,6 +1049,11 @@ export function describe() {
       //where each street light's lamp hangs, x, y on its tile
       lamps: lightNames().reduce(function (out, at) {
         out[at] = lampAt(at);
+        return out;
+      }, {}),
+      //and where a lantern's glass is
+      lanterns: lightNames().reduce(function (out, at) {
+        out[at] = lanternAt(at);
         return out;
       }, {}),
       //and where its pole stands

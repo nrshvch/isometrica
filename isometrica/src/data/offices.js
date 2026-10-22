@@ -16,10 +16,26 @@ import BuildingClassCode from "./classcode";
 //over the blocks of flats' codes (data/flats)
 var BASE = 1000;
 
-//how many work on a storey of a section, and what each of them brings in
-var PER_STOREY = 12,
-  MONEY_PER_JOB = 7,
-  COST_PER_JOB = 700;
+//what each of them that work in it brings in
+var MONEY_PER_JOB = 7;
+
+//how many work in a block and what it costs by how many tiles it covers -
+//[jobs, cost] - however high it is and whatever is round it: the blocks on
+//the same ground are the same offices laid out another way, and the more
+//ground, the more jobs on every tile of it, for a little more a job
+//
+//   tiles  jobs    cost   money   payback
+//                         /tile
+//     2     44    31000    154      101
+//     3     70    50000    163      102
+//     4     96    69000    168      103
+//     6    150   108000    175      103
+var BY_TILES = {
+  2: [44, 31000],
+  3: [70, 50000],
+  4: [96, 69000],
+  6: [150, 108000],
+};
 
 //cells: how many sections side by side; yards: what is in front of them, as
 //many rows of it as rows says, and beside them, as many tiles of it as sides
@@ -125,8 +141,9 @@ function buildings() {
   var out = {};
 
   BLOCKS.forEach(function (block) {
-    var jobs = block.cells * block.storeys * PER_STOREY,
-      sides = block.sides || 0,
+    var sides = block.sides || 0,
+      numbers = BY_TILES[(block.cells + sides) * (1 + block.rows)],
+      jobs = numbers[0],
       data;
 
     data = out[code(block)] = {
@@ -140,13 +157,14 @@ function buildings() {
       //it only makes its money with them in
       jobs: jobs,
       demanding: {},
+      //a cobbled street at least, and the mains
       requires: {
-        road: true,
+        road: "cobble",
         water: true,
       },
       constructionTime: 60000 + block.storeys * 30000,
       constructionCost: {
-        money: jobs * COST_PER_JOB,
+        money: numbers[1],
       },
       name: block.storeys + "-storey " + block.name,
       //the top tier of commerce, with the farmers' markets (data/shops)

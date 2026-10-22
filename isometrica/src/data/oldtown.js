@@ -4,19 +4,23 @@
  * for it - a lane of craftsmen, a yard with its smithy, a market square, a
  * church, a quarter, and on three tiles by three all of it at once.
  *
- * It is what a village trades in from the first day: it needs no road and no
- * water, and makes its money with the people who work in it - the cottagers
- * round it, whose houses need no jobs of their own (data/houses). Later on
- * the town keeps it as its old town. Old town next to old town is one town,
- * and one wall goes round all of it (client/compoundbuilding walled).
+ * It is what a village trades in from the first day: it needs no water, but
+ * a cobbled street to it - the way its own lanes are laid (gravel laid next
+ * to it is cobbled, client/road materialAt) - and makes its money with the
+ * people who work in it - the cottagers round it, whose houses need no jobs
+ * of their own (data/houses). Later on the town keeps it as its old town. Old
+ * town next to old town is one town, and one wall goes round all of it
+ * (client/compoundbuilding walled).
+ *
+ * The bigger it is, the more it makes for every tile it covers:
  *
  *                      cost   jobs   money   money   payback
  *                                            /tile
  *  lane, 1x2           6000    10      80      40       75
- *  street, 1x3         9000    15     120      40       75
- *  square, 2x2        12500    20     170      43       74
- *  quarter, 2x3       18500    30     255      43       73
- *  centre, 3x3        28000    45     400      44       70
+ *  street, 1x3         9500    16     126      42       75
+ *  square, 2x2        13000    22     176      44       74
+ *  quarter, 2x3       20000    34     270      45       74
+ *  centre, 3x3        31000    52     414      46       75
  */
 import BuildingClassCode from "./classcode";
 
@@ -28,30 +32,30 @@ var TOWNS = [
   {
     footprint: "1x3",
     name: "old town street",
-    jobs: 15,
-    money: 120,
-    cost: 9000,
+    jobs: 16,
+    money: 126,
+    cost: 9500,
   },
   {
     footprint: "2x2",
     name: "old town square",
-    jobs: 20,
-    money: 170,
-    cost: 12500,
+    jobs: 22,
+    money: 176,
+    cost: 13000,
   },
   {
     footprint: "2x3",
     name: "old town quarter",
-    jobs: 30,
-    money: 255,
-    cost: 18500,
+    jobs: 34,
+    money: 270,
+    cost: 20000,
   },
   {
     footprint: "3x3",
     name: "old town centre",
-    jobs: 45,
-    money: 400,
-    cost: 28000,
+    jobs: 52,
+    money: 414,
+    cost: 31000,
   },
 ];
 
@@ -81,8 +85,8 @@ function buildings() {
       //it only makes its money with them in
       jobs: town.jobs,
       demanding: {},
-      //what a village has from the start: no road, no water
-      requires: {},
+      //no water - a well in the square - but a cobbled street to it
+      requires: { road: "cobble" },
       constructionTime: 40000 + 15000 * size[0] * size[1],
       constructionCost: {
         money: town.cost,

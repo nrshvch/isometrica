@@ -84,8 +84,25 @@ var DEPRECATED = {
   row: { 3: "towersides" },
 };
 
-//how many live in a section, each storey of it
-var PER_STOREY = 8;
+//how many live in a block and what it costs by how many tiles it covers -
+//[heads, cost] - however high it is and whatever is round it: the blocks on
+//the same ground are the same flats laid out another way, and the more
+//ground, the more of them on every tile of it, for a little more a head
+//
+//   tiles  heads    cost   heads  cost
+//                          /tile  /head
+//     1      11    15000    11    1364
+//     2      24    32000    12    1333
+//     3      38    52000    12.7  1368
+//     4      52    72000    13    1385
+//     6      82   116000    13.7  1415
+var BY_TILES = {
+  1: [11, 15000],
+  2: [24, 32000],
+  3: [38, 52000],
+  4: [52, 72000],
+  6: [82, 116000],
+};
 
 function code(layout, storeys) {
   var base = LAYOUTS[layout].base;
@@ -106,8 +123,8 @@ function buildings() {
     var l = LAYOUTS[layout];
 
     STOREYS.forEach(function (storeys) {
-      var capacity = l.cells * storeys * PER_STOREY,
-        sides = l.sides || 0,
+      var sides = l.sides || 0,
+        numbers = BY_TILES[(l.cells + sides) * (1 + l.yards)],
         replaced = (DEPRECATED[layout] || {})[storeys],
         data;
 
@@ -118,22 +135,18 @@ function buildings() {
         classCode: BuildingClassCode.house,
         producing: {},
         demanding: {},
+        //a cobbled street at least, and the mains
         requires: {
-          road: true,
+          road: "cobble",
           water: true,
         },
         //flats like the handmade ones: their people's work is what the
         //treasury gets out of them, not their taxes
         taxPerResident: 10,
-        citizenCapacity: capacity,
+        citizenCapacity: numbers[0],
         constructionTime: 50000 + storeys * 25000,
         constructionCost: {
-          //a row of yard costs what a storey of the block it is in front
-          //of does, and a tile of it beside the block what a storey of a
-          //section does
-          money:
-            capacity * 1000 +
-            (l.yards * l.cells + sides * (1 + l.yards)) * PER_STOREY * 1000,
+          money: numbers[1],
         },
         name: storeys + "-storey " + l.name,
         hidden: (OFFERED[layout] || []).indexOf(storeys) === -1,

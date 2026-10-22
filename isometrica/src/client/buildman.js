@@ -22,6 +22,7 @@ import ErrorCode from "../core/errorcode";
 import Numeral from "numeral";
 import Rotation from "../core/rotation";
 import CompoundBuilding from "./compoundbuilding";
+import * as RoadRules from "../core/roadrules";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -481,6 +482,13 @@ function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
 
   try {
     for (i = 0; i < anchors.length; i++) {
+      //a road there, which a road laid in more may pave over
+      var there = root.core.buildingService.get(anchors[i]),
+        was =
+          there !== null && there.data.classCode === BuildingClassCode.road
+            ? RoadRules.materialOf(there)
+            : null;
+
       tried++;
       root.core.cities
         .getCity(0)
@@ -491,6 +499,10 @@ function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
           looks[i],
           surfaces ? surfaces[i] : undefined,
         );
+
+      //paved over: what it cost floats over it, as a new road's does
+      if (was !== null && RoadRules.materialOf(there) !== was)
+        showConstructionCost(self, there);
     }
   } finally {
     Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
@@ -1101,6 +1113,12 @@ Buildman.prototype.build = function (code, options) {
     return looks[slot];
   }
 
+  //for a road, what each of tiles would be laid in - a road there already
+  //that it is more than is paved over (core/city/citybuildings upgradeOf)
+  function roadLooks(tiles) {
+    return isRoad ? tiles.map(lookAt) : undefined;
+  }
+
   //show hint - for a one-way road, the way it goes. Turned round, it is
   //only where there is a turn button for it (see controls.tools below)
   function showHint(turnable) {
@@ -1267,6 +1285,22 @@ Buildman.prototype.build = function (code, options) {
     for (i = 0; i < quotes.length; i++) {
       tile = quotes[i].tile;
 
+      //a road there paved over: shown as it would be, where it lies
+      road = quotes[i].upgrade ? roadman.anyRoad(tile) : null;
+
+      if (road !== null) {
+        seen[tile] = true;
+        road.view.showPiece(
+          Road.profile(
+            tile,
+            net,
+            Road.kindFor(roadman, tile, lookAt(tile).material, road.isStop()),
+            oneWay && ways[tile] !== undefined ? ways[tile] : -1,
+          ),
+        );
+        reshaped.push(road);
+      }
+
       //one that cannot go down is shown on its own, as it would be laid
       var surface = net.surface(tile);
 
@@ -1276,24 +1310,25 @@ Buildman.prototype.build = function (code, options) {
         surface = any.length > 0 ? any[0] : Road.ground(terrain, tile);
       }
 
-      previews.push(
-        createRoadPreview(
-          self,
-          tile,
-          net.surface(tile) !== null
-            ? Road.profile(
-                tile,
-                net,
-                kindAt(tile),
-                oneWay && ways[tile] !== undefined ? ways[tile] : -1,
-              )
-            : Road.shapeOf(surface) > 0
-              ? Road.shapeOf(surface)
-              : 90000,
-          surface,
-          laid[tile],
-        ),
-      );
+      if (road === null)
+        previews.push(
+          createRoadPreview(
+            self,
+            tile,
+            net.surface(tile) !== null
+              ? Road.profile(
+                  tile,
+                  net,
+                  kindAt(tile),
+                  oneWay && ways[tile] !== undefined ? ways[tile] : -1,
+                )
+              : Road.shapeOf(surface) > 0
+                ? Road.shapeOf(surface)
+                : 90000,
+            surface,
+            laid[tile],
+          ),
+        );
 
       for (j = 0; j < 4; j++) {
         next = tile + [1, -1, Terrain.dy, -Terrain.dy][j];
@@ -1333,7 +1368,7 @@ Buildman.prototype.build = function (code, options) {
 
     quotes = root.core.cities
       .getCity(0)
-      .buildingService.quoteSelection(code, tiles, rotation);
+      .buildingService.quoteSelection(code, tiles, rotation, roadLooks(tiles));
 
     clearPreview();
 
@@ -1475,7 +1510,12 @@ Buildman.prototype.build = function (code, options) {
       var planned = plannedRoads(
         root.core.cities
           .getCity(0)
-          .buildingService.quoteSelection(code, anchors, rotation),
+          .buildingService.quoteSelection(
+            code,
+            anchors,
+            rotation,
+            roadLooks(anchors),
+          ),
         anchors,
       ).surfaces;
 

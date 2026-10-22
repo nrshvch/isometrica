@@ -130,10 +130,11 @@ City.prototype.missing = function (building) {
 
   if (requires === undefined) return null;
 
-  if (
-    requires[ServiceCode.road] === true &&
-    !this.roadService.reaches(building)
-  )
+  //true for any road, or the least of one it wants - a gravel lane for a
+  //village's houses, a cobbled street for the rest (data/buildings)
+  var road = requires[ServiceCode.road];
+
+  if (road && !this.roadService.reaches(building, road))
     return ServiceCode.road;
 
   if (

@@ -30,6 +30,11 @@ Road.prototype.setData = function (data) {
   //finished, or come back part laid: kept as it is now (client/roadman)
   if (this.root.roadman) this.root.roadman.refile(this);
 
+  //paved over in something else (core/city/citybuildings upgrade): another
+  //piece for it - once it is among the roads it joins up with
+  if (this.root.roadman && this.root.roadman.anyRoad(data.tile) === this)
+    this.updateProfile();
+
   this.view.update();
   this.view.render();
 };
@@ -446,7 +451,8 @@ Road.plan = function (terrain, roadman, tiles, run) {
  *
  * @param net {{surface: function(number)}} the roads' surfaces (Road.network)
  * @param [kind] {boolean|string} what it is laid in: "plain" or "paved"
- *        asphalt - or true for paved - "gravel" or "cobble"
+ *        asphalt - or true for paved - "gravel", "cobble" or "cobble-paved"
+ *        (see Road.kindOf)
  * @param [way] {number} for a one-way road, the way its traffic goes
  *        (Road.wayOf); none, or -1, for a road driven both ways
  * @returns {number} the piece: 9abcd for one joined up towards -x, -y, +x and
@@ -497,24 +503,48 @@ Road.wayOf = RoadRules.wayOf;
 Road.goes = RoadRules.goes;
 
 /**
- * What a road is laid in (see Road.profile): gravel or cobbles, as it was
- * laid - a bus stop, a street with a stop on it, where one was put - or asphalt, paved for a street of the city's (Roadman#paved), plain
- * otherwise. Roads laid before there was any choice are asphalt.
+ * What a road is laid in (see Road.profile): gravel, cobbles or asphalt, as
+ * it was laid - cobbles and asphalt with pavements along them for a street of
+ * the city's (Roadman#paved), without out of town - and a bus stop, where one
+ * was put, a street of what it is laid in with a stop on it, or a lane with
+ * one by it. Roads laid before there was any choice are asphalt.
  */
 Road.kindOf = function (roadman, data) {
-  var material = data.look && data.look.material,
-    road = roadman.anyRoad(data.tile);
+  var road = roadman.anyRoad(data.tile);
 
   //still being laid: dug out, then its bed of stone (client/roadworks)
   if (road !== null && road.data === data && road.stage() !== null)
     return road.stage();
 
-  //a stop for the buses (client/carman): a street, with its shelter
-  if (data.look && data.look.stop) return "stop";
+  return Road.kindFor(
+    roadman,
+    data.tile,
+    RoadRules.materialOf(data),
+    !!(data.look && data.look.stop),
+  );
+};
 
-  if (material === "gravel" || material === "cobble") return material;
+/**
+ * The piece a finished road on tile is laid as (Road.kindOf), laid in
+ * material - "gravel", "cobble" or "asphalt" - and with a bus stop on it or
+ * none: for a road there, or one it would be turned into.
+ */
+Road.kindFor = function (roadman, tile, material, stop) {
+  //a stop for the buses (client/carman): a street, with its shelter - or a
+  //lane with its shelter on the verge
+  if (stop)
+    return material === "gravel"
+      ? "stop-gravel"
+      : material === "cobble"
+        ? "stop-cobble"
+        : "stop";
 
-  return roadman.paved(data.tile) ? "paved" : "plain";
+  if (material === "gravel") return material;
+
+  if (material === "cobble")
+    return roadman.paved(tile) ? "cobble-paved" : "cobble";
+
+  return roadman.paved(tile) ? "paved" : "plain";
 };
 
 /**

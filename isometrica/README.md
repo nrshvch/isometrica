@@ -145,7 +145,9 @@ engine in `engine/`.
   once the lane behind it is clear. It only gives out on a street, clear of
   the junctions, where it can pull over - until then it crawls on.
 - The buses run between the bus stops (a stop is a road with a shelter on
-  each pavement, `isometrica/src/shared/gen/roads.js`; `Road#isStop`), each a round of a
+  each pavement - of steel and glass on asphalt, of green-painted cast iron
+  on cobbles, and of timber on the verges of a gravel lane,
+  `isometrica/src/shared/gen/roads.js`; `Road#isStop`), each a round of a
   few stops near each other, standing at each for a few seconds in its
   lane. The traffic behind it queues; the first car to get to it goes round
   it through the other lane, once that is clear well ahead and there is no
@@ -454,14 +456,25 @@ dev`) plays them the way a game would - all three weathers together, the
   footprint: 2x1 and 3x1 along the street, 1x2 and 1x3 end on to it, and
   2x2, 2x3 and 3x2 - the first number along the street, the second back from
   it - each with designs and options of its own, so no two need be alike.
-  Housing: the village (cottages, farms, a croft - needing no road or
-  water), town houses (bungalows, two-storey and terraced houses,
+  Housing: the village (cottages, farms, a croft - needing a gravel lane
+  at least, and no water), town houses (bungalows, two-storey and terraced houses,
   semi-detached pairs) and then either villas - few people on a lot of
   land, paying a lot - or blocks of flats, a lot of people on little land.
   Commerce: small shops, stores (supermarkets, superstores, department
   stores, a shopping centre) and then either farmers' markets or office
   blocks. The catalogue keeps each tier together, its footprint on every
   card (`isometrica/src/data/houses.js`, `shops.js`, `flats.js`, `offices.js`).
+  Everything but the village, its old town included, wants a cobbled street
+  at least alongside it - asphalt will do - and says "no road (cobble)"
+  over it till it has one, the village "no road (gravel)" (`core/roadrules`
+  serves, `core/city/cityroads` reaches); a park, a water tower and a pump
+  station want no road at all. What a building of a tier holds or employs,
+  makes and costs goes by how many tiles it covers and nothing else - a
+  footprint and the same one turned are the same building laid out another
+  way - and the more tiles, the more of it on each, for a little more:
+  cottages on 2x1 and a farmstead on 1x2 are five homes for $4,500 each, a
+  croft on 3x1 or 1x3 eight for $8,000, a farm on 3x2 or 2x3 seventeen for
+  $20,000 (the tables in each of those files).
   What is no longer offered - the village house on 1x1, the hamlet on 3x1,
   the villas on one row of tiles, and the blocks, stores and shops a tower or a shop on the
   street with yards or car parks beside it took the place of - is kept,
@@ -497,7 +510,7 @@ dev`) plays them the way a game would - all three weathers together, the
   cars from the vehicle generator, different for every building.
 - Houses are painted the same way (`isometrica/src/shared/gen/houses.js`), one
   catalogue entry per kind and footprint (`isometrica/src/data/houses.js`): village
-  houses that need no road or water - a cottage with hens, a cow, an
+  houses that need a gravel lane and no water - a cottage with hens, a cow, an
   orchard or a well, a farmstead on 1x2 with a barn, a field or sheep, a
   croft on 1x3 - and on 3x1 along the street, its house at one end facing a
   lane up the side - hamlets of cottages or farmsteads side by side, a longhouse
@@ -565,8 +578,8 @@ dev`) plays them the way a game would - all three weathers together, the
   they earn nothing; the church and the town hall have people working in
   them.
 - The old town (`isometrica/src/shared/gen/oldtown.js`, `isometrica/src/data/oldtown.js`) is the
-  commerce a village starts with, next to its cottages: it needs no road or
-  water, and makes its money with the cottagers working in it. On 1x2 and
+  commerce a village starts with, next to its cottages: it needs no water
+  but a cobbled street to it, and makes its money with the cottagers working in it. On 1x2 and
   1x3 a lane of craftsmen's houses - narrow, tall, their steep gables to
   the lane, half-timbered or rendered in ochre, rose, sky blue, sage or
   stone, the smith's, baker's, cooper's, potter's and weaver's signs
@@ -606,7 +619,9 @@ dev`) plays them the way a game would - all three weathers together, the
   a tile joins up with its neighbours and a ramp for every slope, each
   plain - asphalt with a dashed line and gravel edges - or paved, with
   kerbs, pavements and zebra crossings over junctions, and street lights
-  along it. A light stands on every other tile, on the pavement of one
+  along it. A cobbled road is paved the same way, with pavements of stone
+  flags and, for street lights, lanterns on old cast-iron posts; a gravel
+  lane never is. A light stands on every other tile, on the pavement of one
   side of the road in the world - so it stays where it is as the camera
   turns round - and on a bend or a junction in the corner between two
   joining roads, its arm reaching out over one of them. It is painted for

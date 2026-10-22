@@ -1,8 +1,7 @@
 /**
  * What the catalogue says of the buildings it offers, and the order it
- * offers them in: what a game starts with - what needs neither a road nor
- * water, the houses, the old town, the water tower and the pump station
- * first, then the parks - and then everything else: houses, then shops, a
+ * offers them in: what a game starts with - what needs no water, the
+ * houses, the old town, the water tower and the pump station first, then the parks - and then everything else: houses, then shops, a
  * tier at a time, the cheaper first within one.
  */
 import Data from "isometrica/data/buildings";
@@ -56,7 +55,11 @@ function getStats(b) {
     cost.push(formatMoney(b.demanding.money) + "/tick upkeep");
   }
 
-  if (requires.road) needs.push("road");
+  //and the least of a road it wants: "cobble road"
+  if (requires.road)
+    needs.push(
+      typeof requires.road === "string" ? requires.road + " road" : "road",
+    );
   if (requires.water) needs.push("water");
   if (b.citizenCapacity && CityPopulation.needsJobs(b)) needs.push("jobs");
 
@@ -105,10 +108,10 @@ function orderOf(code) {
   return variants ? Math.min.apply(null, variants) : parseInt(code, 10);
 }
 
-//what a game starts with comes first: whatever needs nothing - no road, no
-//water - can go down on the first day, the houses and the water tower that a
-//village is made of before what only looks well, a park; and the rest only
-//once there are roads and water to it
+//what a game starts with comes first: whatever needs no water - a lane at
+//most - can go down on the first day, the houses, the old town and the water
+//tower that a village is made of before what only looks well, a park; and
+//the rest only once there are streets and water to it
 function startRank(code) {
   var b = BuildingData[code],
     requires = b.requires || {},
@@ -118,7 +121,7 @@ function startRank(code) {
       b.jobs ||
       Object.keys(b.producing || {}).length > 0;
 
-  if (requires.road || requires.water) return 2;
+  if (requires.water) return 2;
 
   return gives ? 0 : 1;
 }

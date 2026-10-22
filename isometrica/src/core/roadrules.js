@@ -78,3 +78,29 @@ export function paceOf(data) {
 
   return PACE[material] || 1;
 }
+
+//what a road can be laid in, from the least of a road to the most: a
+//building that wants a road of one of them (data/buildings requires) is
+//served by that or anything after it - and a road an upgrade of another
+//(core/city/citybuildings) is laid in one after the other's
+export var MATERIALS = ["gravel", "cobble", "asphalt"];
+
+/**
+ * What a road is laid in, from its core model - asphalt for one laid before
+ * there was any choice.
+ */
+export function materialOf(data) {
+  var material = data && data.look ? data.look.material : undefined;
+
+  return MATERIALS.indexOf(material) === -1 ? "asphalt" : material;
+}
+
+/**
+ * Whether a road laid in material is at least the road `least` asks for -
+ * any road at all for true or nothing.
+ */
+export function serves(material, least) {
+  if (typeof least !== "string") return true;
+
+  return MATERIALS.indexOf(material) >= MATERIALS.indexOf(least);
+}

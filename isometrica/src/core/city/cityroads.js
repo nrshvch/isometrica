@@ -10,8 +10,12 @@
  *
  * That is what makes a player lay streets instead of dropping houses wherever
  * there is room: a house off the network holds nobody (Building#citizenCapacity).
+ * And a building may want more of a road than a gravel lane (data/buildings
+ * requires): a cobbled street or asphalt alongside it, for anything but a
+ * village's own houses.
  */
 import Events from "events";
+import * as RoadRules from "../roadrules";
 import BuildingData from "../../data/buildings";
 import BuildingClassCode from "../../data/classcode";
 import BuildingState from "../buildingstate";
@@ -44,16 +48,27 @@ CityRoads.prototype.init = function () {
 
 /**
  * @param building {Building}
+ * @param [least] {string} the least of a road it wants alongside it -
+ *        "gravel", "cobble" or "asphalt" (core/roadrules MATERIALS); any road
+ *        where left out
  * @returns {boolean} whether the city's streets reach it
  */
-CityRoads.prototype.reaches = function (building) {
+CityRoads.prototype.reaches = function (building, least) {
   update(this);
 
-  var sides = alongside(building),
+  var world = this.city.world,
+    sides = alongside(building),
     i;
 
   for (i = 0; i < sides.length; i++) {
-    if (this._network[sides[i]] === true) return true;
+    if (
+      this._network[sides[i]] === true &&
+      RoadRules.serves(
+        RoadRules.materialOf(world.buildings.get(sides[i])),
+        least,
+      )
+    )
+      return true;
   }
 
   return false;
