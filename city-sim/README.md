@@ -116,7 +116,8 @@ night going by, the grid over the ground - kept off, if switched off,
 whatever a tap on the world puts away and brings back - the city's address
 at https://peeps.land shared, or copied, a new city on empty land, or
 starting over on the city new players start on - each under an id of its
-own, the city left kept under its own), with
+own, the city left kept under its own - and under them the other cities
+saved in the browser to go back to, the ten played most lately), with
 zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
 catalogue, a road, the ground, land, or those of the action going on, its

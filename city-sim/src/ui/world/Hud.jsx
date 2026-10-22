@@ -23,6 +23,7 @@ import {
   getClient,
   goCity,
   goWorld,
+  reopen,
   startFresh,
   worldScreen,
 } from "../session";
@@ -299,18 +300,56 @@ function Row({ icon, label, sub, on, disabled, className, onClick }) {
 
 //how long the menu says the city's address was copied
 var COPIED_MS = 1500;
+//how many of the cities saved here the menu lists at most
+var CITIES = 10;
+
+//how long ago something was, as it is said: just now, 5 min ago, 3 h ago,
+//2 days ago - and from a month on, the day
+function ago(at) {
+  var s = (Date.now() - at) / 1000;
+
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  if (s < 30 * 86400) {
+    var days = Math.floor(s / 86400);
+
+    return days + (days === 1 ? " day ago" : " days ago");
+  }
+
+  return new Date(at).toLocaleDateString();
+}
+
+/**
+ * The cities saved here other than the one being played, the one played
+ * most lately first - a city is written every few ticks while it is played,
+ * so its last save is when it was last played (core/persistence/citystore).
+ */
+function savedCities(client, cityId) {
+  return client.core.persistence
+    .list()
+    .filter(function (c) {
+      return c.id !== cityId;
+    })
+    .sort(function (a, b) {
+      return b.updatedAt - a.updatedAt;
+    })
+    .slice(0, CITIES);
+}
 
 /**
  * The menu behind the button in the top right corner: what is switched on
  * and off for the whole game, the city's address shared - as the phone
- * shares things, or else copied - and a new city: blank, or the one a new
- * player starts on. Put away by a click
- * anywhere else, or Escape.
+ * shares things, or else copied - a new city: blank, or the one a new
+ * player starts on - and, under them, the other cities saved here, to go
+ * back to. Put away by a click anywhere else, or Escape.
  */
-function Menu({ client, world, address, busy }) {
+function Menu({ client, world, cityId, address, busy }) {
   var [open, setOpen] = useState(false),
     //the city a new player starts on, to start over on
     initialName = client.core.persistence.initialName(),
+    //read afresh whenever it opens
+    cities = open ? savedCities(client, cityId) : [],
     [copied, setCopied] = useState(false),
     box = useRef(null);
 
@@ -379,7 +418,7 @@ function Menu({ client, world, address, busy }) {
       {open && (
         <div
           role="menu"
-          className="card absolute top-full right-0 z-30 mt-2 w-64 overflow-hidden"
+          className="card absolute top-full right-0 z-30 mt-2 max-h-[calc(100svh-9rem-env(safe-area-inset-bottom))] w-64 overflow-y-auto overscroll-contain"
         >
           <Row
             icon={world.sounds ? "sound-on" : "sound-off"}
@@ -438,6 +477,27 @@ function Menu({ client, world, address, busy }) {
               }}
             />
           )}
+          {cities.length > 0 && (
+            <div className="label border-t-4 border-inset px-3 pt-3 pb-1">
+              Your other cities
+            </div>
+          )}
+          {cities.map(function (c) {
+            return (
+              <Row
+                key={c.id}
+                icon="home"
+                label={c.name || "Unnamed"}
+                sub={c.id + " · " + ago(c.updatedAt)}
+                //the city left is written out on the way, as when the tab
+                //is closed - but an action going on is left alone
+                disabled={busy}
+                onClick={function () {
+                  reopen(c.id);
+                }}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -517,6 +577,7 @@ export default function Hud() {
         <Menu
           client={client}
           world={world}
+          cityId={cityId}
           address={funds ? address : null}
           busy={busy}
         />
