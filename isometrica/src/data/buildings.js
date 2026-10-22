@@ -87,16 +87,13 @@ buildingData[BuildingCode.cityHall] = {
   buildingCode: BuildingCode.cityHall,
   classCode: BuildingClassCode.municipal,
   producing: {},
-  //the city pays for its own offices - a flat sum for the building and
-  //the block it was founded on, which the taxes of a single trailer
+  //the city pays for its own offices - a flat sum, which the taxes of a
+  //single trailer
   //just cover: the first house keeps the town afloat, the second one
   //starts earning (nothing is due while the town stands empty)...
   demanding: {
     money: 40,
   },
-  //...and so much for every tile of land bought on top of that, which is
-  //what makes sprawl expensive and a tight, tall city cheap to run
-  upkeepPerTile: 15,
   //a few clerks, so that the first proper house in town has somebody
   //working before there is a shop to work in
   jobs: 4,

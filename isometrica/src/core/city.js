@@ -2,7 +2,6 @@ import namespace from "namespace";
 import Events from "events";
 import Laboratory from "./city/laboratory";
 import CityStats from "./city/citystats";
-import Area from "./city/area";
 import CityBuildings from "./city/citybuildings";
 import CityResources from "./city/cityresources";
 import CityTilesParams from "./city/citytilesparams";
@@ -20,6 +19,7 @@ import Terrain from "./terrain";
 import ErrorCode from "./errorcode";
 import TerrainType from "./terraintype";
 import Surface from "./surface";
+import Rotation from "./rotation";
 
 var Core = namespace("Isometrica.Core");
 
@@ -50,7 +50,6 @@ function City(world, tile) {
   this._tile = tile;
   this.timeEstablished = world.time.milliseconds;
 
-  this.area = this.areaService = new Area(this);
   this.tilesParams = this.tileParamsService = new CityTilesParams(this);
   this.resourcesModule =
     this.resources =
@@ -64,42 +63,13 @@ function City(world, tile) {
   this.water = this.waterService = new CityWater(this);
   this.roads = this.roadService = new CityRoads(this);
 
-  //register city in influence map
-  //this.root.areaService.registerCity(this);
-
   this.statsService.init();
   this.waterService.init();
   this.roadService.init();
   this.populationService.init();
-  this.areaService.init();
   this.buildingService.init();
 
   Events.on(world, world.events.tick, this.onTick, { self: this });
-  Events.on(world, world.events.tick, onLandTick, this);
-}
-
-/**
- * What the land costs to hold, on every tick, when there is no town hall to
- * bill it to (see the town hall's upkeepPerTile in data/buildings): so much
- * for every tile bought on top of the block the city was founded on -
- * nothing while nobody lives in the town.
- *
- * @returns {number} money per tick
- */
-function landUpkeep(self) {
-  if (self.buildingService.cityHall !== null) return 0;
-  if (self.populationService.getPopulation() === 0) return 0;
-
-  return (
-    (BuildingData[BuildingCode.cityHall].upkeepPerTile || 0) *
-    self.areaService.getBoughtTileCount()
-  );
-}
-
-function onLandTick(sender, args, self) {
-  var due = landUpkeep(self);
-
-  if (due > 0) self.resourcesService.subResource(Resource.money, due);
 }
 
 City.events = events;
@@ -166,13 +136,11 @@ City.prototype.getBuildingIncome = function (building) {
  * Where the city's money came from and went on the last tick, the way the
  * buildings were paid and billed for it (see Building): the taxes of the
  * people in the houses, what the businesses took over the counter, and the
- * upkeep of the roads, the water towers and the city hall - which is billed
- * for the offices themselves and for every tile of land bought on top of the
- * block the city was founded on.
+ * upkeep of the roads, the water towers and the city hall.
  *
  * @returns {{taxes: number, commerce: number, income: number, roads: number,
- *          water: number, land: number, cityHall: number, other: number,
- *          upkeep: number, net: number}} money per tick, upkeep as what is paid
+ *          water: number, cityHall: number, other: number, upkeep: number,
+ *          net: number}} money per tick, upkeep as what is paid
  */
 City.prototype.getBudget = function () {
   var buildings = this.buildingService.getBuildings(),
@@ -181,14 +149,12 @@ City.prototype.getBudget = function () {
       commerce: 0,
       roads: 0,
       water: 0,
-      land: 0,
       cityHall: 0,
       other: 0,
     },
     building,
     data,
     paid,
-    flat,
     i;
 
   for (i = 0; i < buildings.length; i++) {
@@ -207,23 +173,14 @@ City.prototype.getBudget = function () {
       //whatever waters the town: a water tower, a pump station
       r.water += paid;
     } else if (building.buildingCode === BuildingCode.cityHall) {
-      //the flat part is the offices, the rest is the land
-      flat = Math.min(
-        paid,
-        (data.demanding && data.demanding[Resource.money]) || 0,
-      );
-      r.cityHall += flat;
-      r.land += paid - flat;
+      r.cityHall += paid;
     } else {
       r.other += paid;
     }
   }
 
-  //the land, when there is no town hall it is billed through
-  r.land += landUpkeep(this);
-
   r.income = r.taxes + r.commerce;
-  r.upkeep = r.roads + r.water + r.land + r.cityHall + r.other;
+  r.upkeep = r.roads + r.water + r.cityHall + r.other;
   r.net = r.income - r.upkeep;
 
   return r;
@@ -281,14 +238,9 @@ function clearable(self, tile) {
   //bare ground has nothing to clear away, so it is free and does nothing
   if (building === null) return self.world.envService.hasScenery(tile);
 
-  //roads may be laid outside of the borders, so they have to be
-  //removable out there as well - any other building is city land only.
-  //A tree or a rock is part of the world, not of the city, so it can go
-  //anywhere
-  return (
-    self.areaService.contains(tile) ||
-    BuildingData[building.buildingCode].classCode === BuildingClassCode.road
-  );
+  //anything standing is the city's to clear - there are no borders - and a
+  //tree or a rock is part of the world, so it can go anywhere
+  return true;
 }
 
 /**
@@ -525,18 +477,43 @@ City.prototype.tile = function (value) {
 };
 
 /**
- * The middle of the town: of all the land it owns, wherever that is - which
- * is where its name is shown.
+ * The middle of the town: of what it built, the roads to it left out - or
+ * where it was founded, while nothing stands - which is where the camera
+ * goes back to.
  *
  * @returns {{x: number, y: number}} in tiles, not whole ones
  */
 City.prototype.center = function () {
-  return this.areaService.center();
+  var buildings = this.buildingService.getBuildings(),
+    x = 0,
+    y = 0,
+    n = 0,
+    b,
+    i;
+
+  for (i = 0; i < buildings.length; i++) {
+    b = buildings[i];
+    if (b.data.classCode === BuildingClassCode.road) continue;
+
+    x +=
+      Terrain.extractX(b.tile) + Rotation.sizeX(b.data, b.rotation) / 2 - 0.5;
+    y +=
+      Terrain.extractY(b.tile) + Rotation.sizeY(b.data, b.rotation) / 2 - 0.5;
+    n++;
+  }
+
+  if (n === 0)
+    return {
+      x: Terrain.extractX(this.tile()),
+      y: Terrain.extractY(this.tile()),
+    };
+
+  return { x: x / n, y: y / n };
 };
 
 /**
  * Everything of the city that came from the player: what they named it, where
- * they put it, what they own and what they built. What they cleared away is
+ * they put it, what they have and what they built. What they cleared away is
  * the world's, and saved with it (see Terrain#save).
  * Anything the game can work out on its own - production, ratings, what the
  * research opened up - is left to it.
@@ -550,10 +527,6 @@ City.prototype.save = function () {
     established: this.timeEstablished,
     resources: this.resourcesService.save(),
     population: this.populationService.save(),
-    area: this.areaService.save(),
-    //how big the blocks of land are, for a save made before they were
-    //this size to be told apart (Area#load)
-    areaBlockSize: Area.BLOCK_SIZE,
     research: this.laboratoryService.save(),
     buildings: this.buildingService.save(),
   };
@@ -561,7 +534,7 @@ City.prototype.save = function () {
 
 /**
  * Puts a saved city back together. The order is the one the city grew in:
- * research opens the buildings up, the land is bought, the ground is cleared,
+ * research opens the buildings up, the ground is cleared,
  * and only then does anything stand on it.
  *
  * @param data {Object} as City#save left it
@@ -572,7 +545,8 @@ City.prototype.load = function (data) {
   if (data.established !== undefined) this.timeEstablished = data.established;
 
   this.laboratoryService.load(data.research || {});
-  this.areaService.load(data.area || [], data.areaBlockSize);
+  //the land a save of before bought (data.area) is no more: the city has
+  //it all
   //saves from before the world kept its own cleared tiles have them here -
   //they move over to the world, which saves them from then on
   var cleared = data.clearedTiles || [];

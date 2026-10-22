@@ -443,7 +443,6 @@ errorText[ErrorCode.WRONG_RESOURCE_TILE] = "no deposit";
 errorText[ErrorCode.LAND_NOT_SUITABLE] = "too steep";
 errorText[ErrorCode.FLAT_LAND_REQUIRED] = "not flat";
 errorText[ErrorCode.TILE_TAKEN] = "occupied";
-errorText[ErrorCode.OUTSIDE_CITY] = "outside city";
 errorText[ErrorCode.ON_SHORE] = "on shore";
 
 /**
@@ -1398,7 +1397,7 @@ Buildman.prototype.build = function (code, options) {
       }),
     );
 
-    //what these towers would water, outlined the way the city limits are
+    //what these towers would water, outlined as a tower's reach is clicked
     if (waterRadius > 0)
       root.serviceman.showPlacementCoverage(tiles, waterRadius);
   }

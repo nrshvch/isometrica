@@ -172,20 +172,17 @@ function actionButtons(controls) {
     },
   };
 
-  //an action that is only ever left, never confirmed - picking which block
-  //of land to buy, say - has no tick; one that cannot be confirmed as it
-  //stands has its tick all the same, not to be pressed, so that the bar
-  //stays as it is
-  if (controls.submits)
-    buttons[4] = {
-      icon: "check",
-      label: "Done",
-      go: true,
-      disabled: !controls.canSubmit(),
-      action: function () {
-        controls.submit();
-      },
-    };
+  //one that cannot be confirmed as it stands has its tick all the same,
+  //not to be pressed, so that the bar stays as it is
+  buttons[4] = {
+    icon: "check",
+    label: "Done",
+    go: true,
+    disabled: !controls.canSubmit(),
+    action: function () {
+      controls.submit();
+    },
+  };
 
   if (tools) {
     tools.forEach(function (tool, i) {
@@ -220,8 +217,8 @@ function actionButtons(controls) {
 /**
  * The city builder's buttons when nothing else is going on: the one it
  * starts on - to found a city where there is none - and the building tools
- * once there is: the city screen, the catalogue, a road, shaping the ground
- * and buying land. A road is picked - what it is laid in, which ways it goes
+ * once there is: the city screen, the catalogue, a road and shaping the
+ * ground. A road is picked - what it is laid in, which ways it goes
  * - as it is laid (isometrica client/buildman build). Starting afresh, which
  * leaves the city, is in the menu (world/Hud).
  */
@@ -256,14 +253,6 @@ function idle(go, name) {
       action: function () {
         go.world();
         client.terrainman.enter();
-      },
-    },
-    {
-      icon: "land",
-      label: "Land",
-      action: function () {
-        go.world();
-        client.landman.enter();
       },
     },
   ];

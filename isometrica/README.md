@@ -605,10 +605,9 @@ dev`) plays them the way a game would - all three weathers together, the
     comes up to it and in the middle of each piece's front. It is worked out
     as the town is drawn, and drawn again as anything goes up or comes down
     next to it.
-- A tap on nothing - bare ground, a road, the sea - while nothing is being
+- A tap on nothing - bare ground, a tree, the sea - while nothing is being
   looked at puts away the words over the world ("no jobs", how far along
-  one going up is, the city's name), the city limits drawn round it and the
-  grid over the ground: the town on its own, for a picture of it. They stay away while the camera is dragged, zoomed or turned, and come
+  one going up is, the city's name) and the grid over the ground: the town on its own, for a picture of it. They stay away while the camera is dragged, zoomed or turned, and come
   back with the next tap on nothing - or with anything else: a tap on a
   building, placing or shaping the ground, a press on any button.
 - A few firms turn up all over town (`isometrica/src/shared/gen/brands.js`): bolt the
@@ -714,11 +713,14 @@ dev`) plays them the way a game would - all three weathers together, the
   camera shows another side of it, and a tree stands whichever way round
   its tile has it. The world grows each kind in stands
   (`isometrica/src/core/ambient.js`).
-- A town starts without a town hall. Its name hangs over the middle of the
-  land it owns, and its road network is the biggest stretch of its roads
-  that hangs together - a building is on the road when it is next to that;
-  a lane off on its own does not count. With no town hall to bill it to,
-  the land is billed by the city itself.
+- A town starts without a town hall, and has no borders: all the land there
+  is, is the city's (`Construction#getCity`), and anything can go up
+  anywhere. Its name hangs over the middle of what it built (`City#center`),
+  and its road network is the biggest stretch of its roads that hangs
+  together - a building is on the road when it is next to that; a lane off
+  on its own does not count, and a house or shop that is not on it gets
+  nobody to live or work in it. Roads costing to lay and to keep is what
+  keeps a town close together.
 - The backs of buildings are not left bare (`isometrica/src/shared/gen/blocks.js`
   backs): a shop has a steel door out to its bins - and a skip, behind a
   big one - the air conditioning's units on the wall, rain streaks, the odd
@@ -794,8 +796,8 @@ dev`) plays them the way a game would - all three weathers together, the
   lands. Pictures of the side the camera is on and of the sides it turns
   to, each taken zoomed out to take in half as much again as the screen
   shows and bare - no cars (they would be elsewhere by the time it lands),
-  no rain, no lightning, nothing drawn over the city: the grid, the
-  borders, the names, the signs - are laid over the game, each over a mesh
+  no rain, no lightning, nothing drawn over the city: the grid, the names,
+  the signs - are laid over the game, each over a mesh
   lifted as high as every pixel of it stands (`GLView#readHeights`), and
   the land under it over the sea (as cars have it, `Carman.groundHeight`),
   turned about the up axis through that spot, in a WebGL canvas of its

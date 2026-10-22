@@ -55,7 +55,6 @@ export function stats(city) {
     upkeep: signed(-budget.upkeep),
     roadsUpkeep: money(budget.roads),
     waterUpkeep: money(budget.water),
-    landUpkeep: money(budget.land),
     cityHallUpkeep: money(budget.cityHall),
     otherUpkeep: budget.other > 0 ? money(budget.other) : null,
 
