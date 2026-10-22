@@ -119,7 +119,7 @@ CityBuildings.costOf = costOf;
  * of - gravel to cobbles or asphalt, cobbles to asphalt (core/roadrules
  * MATERIALS) - or null. A road laid over one like that takes its place for
  * the price of a road, rather than being turned down for the tile being
- * taken: what is there is paved over where it is (upgrade).
+ * taken: what is there is dug up and laid again where it is (upgrade).
  *
  * @param code {number} what is being put down
  * @param [look] {Object} what it would look like (client/buildman)
@@ -150,10 +150,12 @@ function upgradeOf(self, code, tile, look) {
 }
 
 /**
- * Paves road over in what look says, the way it lies - the network never
- * broken for it, the traffic on it driving on: its material, the way it goes
- * if it is laid one way, and its bus stop, if it has one, kept. What it cost
- * is billed, and whoever draws it told.
+ * Lays road again in what look says, the way it lies: its material, the way it
+ * goes if it is laid one way, and its bus stop, if it has one, kept. It is
+ * dug up and laid the way a new road is, through its works from the start
+ * (client/roadworks) - closed meanwhile, off the network and nothing driving
+ * on it, the way a new one is till it is finished. What it cost is billed,
+ * and whoever draws it told (Building stateChange).
  */
 function upgrade(self, road, look, cost) {
   var next = { material: look.material };
@@ -167,11 +169,7 @@ function upgrade(self, road, look, cost) {
 
   self.city.resources.sub(cost);
 
-  Events.fire(
-    self.city.root.buildings,
-    self.city.root.buildings.events.buildingUpdated,
-    road,
-  );
+  road.rebuild();
 }
 
 /**
@@ -199,7 +197,7 @@ CityBuildings.prototype.buildBuilding = function (
   //"3" is not BuildingCode.cityHall however much it looks like it
   code = variantOf(parseInt(code, 10));
 
-  //a road laid over a lesser one: that one paved over where it lies
+  //a road laid over a lesser one: that one laid again where it lies
   var road = upgradeOf(this, code, tile, look),
     errorCode =
       road !== null

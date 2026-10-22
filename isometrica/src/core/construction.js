@@ -30,23 +30,36 @@ function init(self, world, code, tile, rot, done) {
   self.buildingCode = code;
   self.rotation = Rotation.turns(rot);
 
+  start(self, done === true ? 1 : typeof done === "number" ? done : 0);
+}
+
+/**
+ * Sets it going up from progress, 0..1 - or finished, from 1 - and has it
+ * finished once the rest of its construction time is up: only the last time
+ * it was set going counts, so one built over again (rebuild) is not finished
+ * early by the timer of the time before.
+ */
+function start(self, progress) {
   var time = self.data.constructionTime,
-    progress = done === true ? 1 : typeof done === "number" ? done : 0;
+    run = (self._run = (self._run || 0) + 1);
 
   if (time === 0 || progress >= 1) {
     self._state = ConstructionState.ready;
-  } else {
-    self._state = ConstructionState.underConstruction;
-    //as if it had started that long ago, so that it is timed the same
-    self._startedAt = Date.now() - progress * time;
-    setTimeout(
-      function () {
-        self._state = ConstructionState.ready;
-        Events.fire(self, events.stateChange, self._state);
-      },
-      (1 - progress) * time,
-    );
+    return;
   }
+
+  self._state = ConstructionState.underConstruction;
+  //as if it had started that long ago, so that it is timed the same
+  self._startedAt = Date.now() - progress * time;
+  setTimeout(
+    function () {
+      if (self._run !== run) return;
+
+      self._state = ConstructionState.ready;
+      Events.fire(self, events.stateChange, self._state);
+    },
+    (1 - progress) * time,
+  );
 }
 
 function Construction() {
@@ -66,9 +79,21 @@ Construction.prototype.buildingCode = -1;
 Construction.prototype._state = ConstructionState.none;
 //when it started going up, on the clock that times it (see init)
 Construction.prototype._startedAt = 0;
+//how many times it was set going up (start), for the timer of the last one
+Construction.prototype._run = 0;
 
 Construction.prototype.init = function (world, code, tile, rot, done) {
   return init(this, world, code, tile, rot, done);
+};
+
+/**
+ * Has it built over again from the start, where it stands - a road paved over
+ * in something else (core/city/citybuildings upgrade) goes through its works
+ * the way a new one does.
+ */
+Construction.prototype.rebuild = function () {
+  start(this, 0);
+  Events.fire(this, events.stateChange, this._state);
 };
 
 Construction.prototype.getState = function () {

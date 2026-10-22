@@ -30,7 +30,7 @@ Road.prototype.setData = function (data) {
   //finished, or come back part laid: kept as it is now (client/roadman)
   if (this.root.roadman) this.root.roadman.refile(this);
 
-  //paved over in something else (core/city/citybuildings upgrade): another
+  //laid again in something else (core/city/citybuildings upgrade): another
   //piece for it - once it is among the roads it joins up with
   if (this.root.roadman && this.root.roadman.anyRoad(data.tile) === this)
     this.updateProfile();

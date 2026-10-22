@@ -20,10 +20,11 @@ other games start on is built here, and handed over from the city screen.
   preview of all of it changes with the toggle. Gravel laid next to the old
   town comes out cobbled (`isometrica/src/client/road.js` materialAt). What a road
   is laid in is kept with it, in the save. Laid over a road of something
-  less - cobbles or asphalt over gravel, asphalt over cobbles - it paves
-  that one over where it lies, for the price of a road, the traffic on it
-  driving on (`isometrica/src/core/city/citybuildings.js` upgradeOf); over
-  one of the same or more it is turned down, the tile taken.
+  less - cobbles or asphalt over gravel, asphalt over cobbles - it takes
+  that one's place where it lies, for the price of a road: dug up and laid
+  again the way a new road is, closed to the traffic till it is finished
+  (`isometrica/src/core/city/citybuildings.js` upgradeOf); over one of the
+  same or more it is turned down, the tile taken.
 - Toggled on again, it goes one way only, again the other way round - with
   no need to drag the selection out again the other way - and again both
   ways; the one that is on shows which, with the arrows a road of it has.

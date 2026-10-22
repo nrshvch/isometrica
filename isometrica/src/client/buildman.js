@@ -500,7 +500,7 @@ function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
           surfaces ? surfaces[i] : undefined,
         );
 
-      //paved over: what it cost floats over it, as a new road's does
+      //laid again: what it cost floats over it, as a new road's does
       if (was !== null && RoadRules.materialOf(there) !== was)
         showConstructionCost(self, there);
     }
@@ -1114,7 +1114,7 @@ Buildman.prototype.build = function (code, options) {
   }
 
   //for a road, what each of tiles would be laid in - a road there already
-  //that it is more than is paved over (core/city/citybuildings upgradeOf)
+  //that it is more than is laid again (core/city/citybuildings upgradeOf)
   function roadLooks(tiles) {
     return isRoad ? tiles.map(lookAt) : undefined;
   }
@@ -1285,7 +1285,7 @@ Buildman.prototype.build = function (code, options) {
     for (i = 0; i < quotes.length; i++) {
       tile = quotes[i].tile;
 
-      //a road there paved over: shown as it would be, where it lies
+      //a road there laid again: shown as it would be, where it lies
       road = quotes[i].upgrade ? roadman.anyRoad(tile) : null;
 
       if (road !== null) {
