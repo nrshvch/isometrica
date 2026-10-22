@@ -1144,6 +1144,8 @@ Buildman.prototype.build = function (code, options) {
     //the way, and there is no rectangle to pull by its corners
     turns: data.classCode === BuildingClassCode.road,
     corners: data.classCode !== BuildingClassCode.road,
+    //and a road tapped is somewhere to lay one, not one to look at
+    roads: data.classCode === BuildingClassCode.road,
   });
   var previews = [];
   //roads already standing that are showing what they would turn into
