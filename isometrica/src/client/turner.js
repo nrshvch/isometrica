@@ -7,8 +7,8 @@
  * For the while, a picture of the city is laid over the game, the game
  * going on under it unseen: the side the camera is on, and the sides it
  * turns to, each drawn - OVER more of it than the screen shows, bare: no
- * rain, no lightning, nothing drawn over the city (the grid, the borders,
- * the names, the signs) - and kept, with the picture of how high each pixel
+ * rain, no lightning, nothing drawn over the city (the grid, the names,
+ * the signs) - and kept, with the picture of how high each pixel
  * of it stands. Each is laid over a mesh, every point of it lifted as high
  * as what is there stands, and turned about the up axis through that spot
  * on the ground, as the world would be, and drawn from where the camera

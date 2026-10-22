@@ -1,8 +1,12 @@
 # city-sim
 
-The city builder: found a city, build it from the catalogue, lay its roads,
-shape the ground under it and buy land for it to grow into. The city the
-other games start on is built here, and handed over from the city screen.
+The city builder: found a city, build it from the catalogue, lay its roads
+and shape the ground under it. There are no borders and no land to buy -
+anything can go up anywhere - but a house, a shop or an office works only
+with a road alongside it that joins the city's roads, and roads cost to lay
+and to keep (dearer as they go from gravel to cobbles to asphalt), so a town
+built close together costs less than one spread thin. The city the other
+games start on is built here.
 
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
@@ -95,7 +99,7 @@ without a connection too, from whatever was fetched while there was one.
 
 Its own: `src/main.jsx` starts it, `src/game.js` says what it is (five
 minutes a tick of the clock, its saves under `city-sim.v1.*` in
-localStorage and on the server at `/api`), `src/play.js` adds land and
+localStorage and on the server at `/api`), `src/play.js` adds
 ground shaping to the world, `src/client` is those, `src/ui` its screens;
 `worker/` is its Worker, the saves. The world is isometrica's.
 
@@ -127,7 +131,7 @@ of its own, the city left kept under its own - and under them the other cities
 saved in the browser to go back to, the five played most lately), with
 zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
-catalogue, a road, the ground, land, or those of the action going on, its
+catalogue, a road, the ground, or those of the action going on, its
 tick faded while it cannot be pressed - and over it a line of what to do
 (`src/ui/world/Hud.jsx`, `WorldHud.jsx`). On a phone the money and the time
 take the top, the city's name and the buttons the line under it. A screen -
@@ -184,8 +188,8 @@ npm run generate:icons   # tools/icons.js, by tools/genicons.js →
 
 Lines in one colour, `currentColor`, on a 24 by 24 grid: 1.5 wide, square
 at their ends and mitred at their joins, to go with the world's pixels.
-What is of the world - a plot of land to found a city on, buy, raise or
-lower, a road - is a flat tile of it, twice as wide as it is high; a road
+What is of the world - a plot of land to found a city on, raise or lower,
+a road - is a flat tile of it, twice as wide as it is high; a road
 is drawn on a grid 18 high, shown a third wider than the others and in
 finer lines, laid in asphalt, gravel or cobbles and going both ways, one
 way or the other (`-two`, `-one`, `-back`). Shown by

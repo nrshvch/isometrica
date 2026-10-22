@@ -615,7 +615,7 @@ Lighting.prototype.end = function () {
 Lighting.prototype.onFrame = null;
 
 //whether the city is drawn bare - no cars, no rain falling, no lightning,
-//nothing drawn over it, the grid, the borders, the names, the signs (GLView
+//nothing drawn over it, the grid, the names, the signs (GLView
 //bare) - for a picture of it to be taken (client/turner)
 Lighting.prototype.calm = false;
 

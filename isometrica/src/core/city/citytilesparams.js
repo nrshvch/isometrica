@@ -11,24 +11,20 @@ function CityTilesParams(city) {
   this.city = city;
 }
 
+/**
+ * How green the town is: the ecology of the ground its buildings stand on,
+ * on average - what the parks round them raise - or -1 while nothing does.
+ */
 CityTilesParams.prototype.avgEco = function () {
-  var area = this.city.area.getTiles(),
-    t,
+  var buildings = this.city.buildingService.getBuildings(),
     worldTilesParams = this.city.world.tileParams,
-    params,
-    eco,
     ecosum = 0,
-    i = 0;
+    i;
 
-  for (var key in area) {
-    t = area[key];
-    params = worldTilesParams.get(t);
-    eco = params[TileParam.Ecology] || 0;
-    ecosum += eco;
-    i++;
-  }
+  for (i = 0; i < buildings.length; i++)
+    ecosum += worldTilesParams.get(buildings[i].tile)[TileParam.Ecology] || 0;
 
-  return (i > 0 && ecosum / i) || -1;
+  return (buildings.length > 0 && ecosum / buildings.length) || -1;
 };
 
 export default CityTilesParams;

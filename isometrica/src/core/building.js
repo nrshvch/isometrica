@@ -225,8 +225,7 @@ function produce(self) {
   var data = BuildingData[self.buildingCode];
   var city = self.getCity();
 
-  //a road laid outside of any city's borders belongs to no one, so there is
-  //no treasury to pay into
+  //before a city is founded there is no treasury to pay into
   if (city === null) return;
 
   //a shop with no street to it or no water in it takes nothing over the counter
@@ -265,18 +264,6 @@ function demand(self) {
         RoadRules.costShare(self.look),
       );
     else Resources.add(self.demanding, self.demanding, data.demanding);
-
-    //the city hall is paid to administer the city, and the more land there
-    //is to administer the more it costs - which is what makes a tight city
-    //of tall houses cheaper to run than the same people spread thin. The
-    //block the city was founded on is covered by its flat upkeep.
-    if (data.upkeepPerTile !== undefined)
-      Resources.addOne(
-        self.demanding,
-        self.demanding,
-        Resource.money,
-        data.upkeepPerTile * city.area.getBoughtTileCount(),
-      );
 
     city.resources.sub(self.demanding);
   }

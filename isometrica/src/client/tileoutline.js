@@ -16,8 +16,7 @@
  * its own area - two areas that share a border then show two lines side by
  * side instead of one on top of the other.
  *
- * This is how the city limits, the blocks of land for sale and a water tower's
- * reach are all drawn: one continuous line around "these tiles, together",
+ * This is how a water tower's reach is drawn: one continuous line around "these tiles, together",
  * rather than a grid of per tile hilites.
  */
 import Core from "../core/main";

@@ -29,7 +29,6 @@ export default {
   "grid": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M1.5 12L12 6.75L22.5 12L12 17.25Z\"/><path d=\"M5 10.25L15.5 15.5\"/><path d=\"M5 13.75L15.5 8.5\"/><path d=\"M8.5 8.5L19 13.75\"/><path d=\"M8.5 15.5L19 10.25\"/>" },
   "home": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M4 10.5L12 4L20 10.5L20 20L4 20Z\"/><path d=\"M10 20L10 15L14 15L14 20\"/>" },
   "info": { w: 24, h: 24, stroke: 1.5, body: "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11L12 16.5\"/><circle cx=\"12\" cy=\"7.75\" r=\"1\" fill=\"currentColor\" stroke=\"none\"/>" },
-  "land": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M8.6 13.7L2 17L12 22L22 17L15.4 13.7\"/><path d=\"M12 17L12 10\"/><path d=\"M5 3.5L19 3.5L19 10L5 10Z\"/><path d=\"M8.5 6.75L15.5 6.75\"/>" },
   "lower": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M6 15L2 17L12 22L22 17L18 15\"/><path d=\"M12 3L12 16\"/><path d=\"M8 13L12 17L16 13\"/>" },
   "map": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M3 6L9 3.5L15 6L21 3.5L21 18L15 20.5L9 18L3 20.5Z\"/><path d=\"M9 3.5L9 18\"/><path d=\"M15 6L15 20.5\"/>" },
   "menu": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M4 6.5L20 6.5\"/><path d=\"M4 12L20 12\"/><path d=\"M4 17.5L20 17.5\"/>" },

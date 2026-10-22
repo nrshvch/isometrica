@@ -114,14 +114,16 @@ Construction.prototype.getProgress = function () {
   );
 };
 
+/**
+ * The city it is part of: the world's, wherever it stands - there are no
+ * borders to say otherwise - or null before one is founded.
+ *
+ * @returns {City|null}
+ */
 Construction.prototype.getCity = function () {
-  var world = this.world,
-    city = null,
-    cityId = world.landRegistry.getTileOwner(this.tile);
+  var cities = this.world.cities.getCities();
 
-  if (cityId !== -1) city = world.cities.getCity(cityId);
-
-  return city;
+  return cities.length > 0 ? cities[0] : null;
 };
 
 /**

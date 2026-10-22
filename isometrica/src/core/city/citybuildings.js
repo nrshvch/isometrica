@@ -23,18 +23,6 @@ CityService.Buildings = CityBuildings;
  * @param city {City}
  * @constructor
  */
-/**
- * Roads may be laid anywhere, they are how a city reaches out beyond its own
- * borders in the first place - and trees and cliffs are part of the world, not
- * of the city. Everything else stays inside the borders.
- */
-function placeableOutside(data) {
-  return (
-    data.classCode === BuildingClassCode.road ||
-    data.classCode === BuildingClassCode.tree
-  );
-}
-
 function CityBuildings(city) {
   this._buildings = [];
   this.city = this._city = city;
@@ -280,10 +268,7 @@ CityBuildings.prototype.quoteSelection = function (
 ) {
   code = parseInt(code, 10);
 
-  var data = BuildingData[code],
-    sizeX = Rotation.sizeX(data, rotation),
-    sizeY = Rotation.sizeY(data, rotation),
-    resources = this.city.resources.getResources(),
+  var resources = this.city.resources.getResources(),
     cost,
     spent = Object.create(null),
     cityHall = this.cityHall !== null,
@@ -315,16 +300,6 @@ CityBuildings.prototype.quoteSelection = function (
         errorCode = ErrorCode.BUILDING_NOT_AVAIL;
       else if (code === BuildingCode.cityHall && cityHall)
         errorCode = ErrorCode.CITY_HALL_ALREADY_BUILT;
-      else if (
-        !placeableOutside(data) &&
-        !this.city.area.contains(
-          Terrain.extractX(tile),
-          Terrain.extractY(tile),
-          sizeX,
-          sizeY,
-        )
-      )
-        errorCode = ErrorCode.OUTSIDE_CITY;
     }
 
     if (errorCode !== ErrorCode.NONE) continue;
@@ -544,8 +519,8 @@ function onBuildingRemoved(sender, building, self) {
   if (self.cityHall === building) self.cityHall = null;
 }
 
-//what buildTest asks of a road paved over another, the ground and the
-//borders aside - the road is there already
+//what buildTest asks of a road paved over another, the ground aside - the
+//road is there already
 function upgradeTest(self, code, look) {
   var city = self.city;
 
@@ -564,24 +539,12 @@ function buildTest(self, code, tile, rotation, look) {
 
   var city = self.city;
 
-  var data = BuildingData[code],
-    cost = costOf(code, look),
+  var cost = costOf(code, look),
     availableBuildingList = city.laboratoryService.getAvailableBuildings();
 
   if (availableBuildingList[code] !== true) return ErrorCode.BUILDING_NOT_AVAIL;
   else if (code === BuildingCode.cityHall && self.cityHall !== null)
     return ErrorCode.CITY_HALL_ALREADY_BUILT;
-  //turned round, the footprint's sides swap
-  else if (
-    !placeableOutside(data) &&
-    !city.area.contains(
-      Terrain.extractX(tile),
-      Terrain.extractY(tile),
-      Rotation.sizeX(data, rotation),
-      Rotation.sizeY(data, rotation),
-    )
-  )
-    return ErrorCode.OUTSIDE_CITY;
   else if (!city.resources.hasEnough(cost)) return ErrorCode.NOT_ENOUGH_RES;
   else if (
     !city.resources.hasEnoughResource(

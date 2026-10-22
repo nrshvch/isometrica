@@ -8,8 +8,8 @@
  *    and the least of a road it wants, "no road (gravel)", "no road
  *    (cobble)" - because a street is the first thing to put right. Without it a house
  *    nobody moves into looks like a bug rather than a missing street.
- *  - the ground a water tower waters, outlined in one continuous line the way
- *    the city limits are. Clicking a tower shows its reach and clicking
+ *  - the ground a water tower waters, outlined in one continuous line.
+ *    Clicking a tower shows its reach and clicking
  *    anywhere else puts it away again; an outline of its own follows the
  *    selection while a tower is being placed (see buildman), so the towers
  *    already standing can be clicked to see how the two line up.
@@ -293,9 +293,9 @@ function infoLines(city, building) {
 }
 
 /**
- * Trees and rocks do nothing for anybody, and a road out past the borders has
- * no city to do it for - a road in it costs it its upkeep, by what it is
- * laid in, and says so.
+ * Trees and rocks do nothing for anybody, and before a city is founded
+ * nothing has a city to do it for - a road costs its city its upkeep, by
+ * what it is laid in, and says so.
  */
 function hasInfo(building) {
   return (

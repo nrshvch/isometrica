@@ -114,9 +114,6 @@ function Info({ city }) {
           <Stat label="Water towers" sub>
             {s.waterUpkeep}
           </Stat>
-          <Stat label="Land" sub>
-            {s.landUpkeep}
-          </Stat>
           <Stat label="Town hall" sub>
             {s.cityHallUpkeep}
           </Stat>

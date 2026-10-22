@@ -300,18 +300,6 @@ var WORLD = {
     ]),
   ]),
 
-  //a board put up on a plot - for sale
-  land: plot().concat([
-    line([12, 17], [12, 10]),
-    shape([
-      [5, 3.5],
-      [19, 3.5],
-      [19, 10],
-      [5, 10],
-    ]),
-    line([8.5, 6.75], [15.5, 6.75]),
-  ]),
-
   //the ground of a plot raised, or lowered
   raise: plot().concat(vertical(17, 3)),
 

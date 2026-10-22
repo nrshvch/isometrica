@@ -5,9 +5,6 @@ import Core from "../core/main";
 import Events from "events";
 import CityLabel from "./gameObjects/citylabel";
 import AreaSelector from "./areaselector";
-import TileAreaBorderRenderer from "./components/tileareaborderrenderer";
-import engine from "engine";
-import Area from "../core/city/area";
 import BuildingCode from "../data/buildingcode";
 import BuildingData from "../data/buildings";
 import ResourceCode from "../core/resourcecode";
@@ -45,8 +42,6 @@ function updateLabel(self, city) {
 
   go.textRenderer.text =
     self._namesHidden || !self.names ? "" : labelText(city);
-  //and the city limits with it
-  if (go.border) go.border.hidden = self._namesHidden;
 }
 
 function setupLabel(self, city) {
@@ -57,8 +52,8 @@ function setupLabel(self, city) {
 }
 
 /**
- * Hangs the city's name over the middle of the land it owns - moved along
- * as it buys more - at the height of the ground there.
+ * Hangs the city's name over the middle of the town (City#center) - moved
+ * along as it grows - at the height of the ground there.
  */
 function placeLabel(self, city) {
   var go = self._cityGOs[city.tile()],
@@ -75,15 +70,6 @@ function placeLabel(self, city) {
 function onNewCity(sender, city, self) {
   setupLabel(self, city);
 
-  Events.on(
-    city.area,
-    city.area.events.change,
-    function () {
-      placeLabel(self, city);
-    },
-    self,
-  );
-
   Events.on(city, City.events.rename, onCityRename, self);
   //the city ticks its update event, which is when the population moves
   Events.on(city, City.events.update, onCityUpdate, self);
@@ -94,6 +80,7 @@ function onCityRename(city, name, self) {
 }
 
 function onCityUpdate(city, args, self) {
+  placeLabel(self, city);
   updateLabel(self, city);
 }
 
@@ -229,38 +216,6 @@ Cityman.prototype.locate = function (city, glide) {
   cam.glideTo(pos[0], pos[2]);
 };
 
-/**
- * What founding a city on tile would look like: the block of land it would
- * start out with, outlined the way the city limits are - nothing stands on it
- * yet.
- */
-function previewCity(self, tile) {
-  var root = self.root,
-    half = Area.BLOCK_SIZE >> 1,
-    x0 = CoreTerrain.extractX(tile) - half,
-    y0 = CoreTerrain.extractY(tile) - half,
-    tiles = [],
-    x,
-    y;
-
-  for (y = 0; y < Area.BLOCK_SIZE; y++)
-    for (x = 0; x < Area.BLOCK_SIZE; x++)
-      tiles.push(CoreTerrain.convertToIndex(x0 + x, y0 + y));
-
-  var border = new engine.GameObject("city border preview"),
-    renderer = border.addComponent(
-      new TileAreaBorderRenderer(root.core.terrain, tiles),
-    );
-
-  renderer.fillColor = "rgba(255,255,255,0)";
-  renderer.borderColor = "rgba(255,255,255,0.7)";
-  renderer.borderWidth = 3;
-  renderer.dash = [4];
-  root.game.logic.world.addGameObject(border);
-
-  return [border];
-}
-
 //how many spots a roll of the dice tries for one a city could be founded on,
 //before it settles for the last of them - out at sea, say
 var ROLLS = 100;
@@ -342,12 +297,6 @@ Cityman.prototype.establish = function () {
     resizable: false,
   });
   var tokens = [];
-  var previews = [];
-
-  function clearPreview() {
-    for (var i = 0; i < previews.length; i++) previews[i].destroy();
-    previews = [];
-  }
 
   //green where a city could be founded, red where it could not - the same
   //as the ground under a building being placed
@@ -355,8 +304,6 @@ Cityman.prototype.establish = function () {
     var tile = ts.anchors()[0],
       ok = City.canEstablish(root.core.world, tile);
 
-    clearPreview();
-    previews = previewCity(self, tile);
     root.buildman.fadeAround(ts.tiles());
 
     root.hiliteMan.disable(tokens);
@@ -378,7 +325,6 @@ Cityman.prototype.establish = function () {
   var sub = Events.on(ts, AreaSelector.events.change, update);
 
   function cleanup() {
-    clearPreview();
     root.buildman.unfade();
     root.hiliteMan.disable(tokens);
     Events.off(ts, AreaSelector.events.change, sub);
