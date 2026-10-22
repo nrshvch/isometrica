@@ -51,10 +51,6 @@ function getStats(b) {
         : res + " " + b.constructionCost[res],
     );
   }
-  if (b.demanding && b.demanding.money) {
-    cost.push(formatMoney(b.demanding.money) + "/tick upkeep");
-  }
-
   //and the least of a road it wants: "cobble road"
   if (requires.road)
     needs.push(
@@ -89,6 +85,11 @@ function getStats(b) {
     citizens: b.citizenCapacity ? String(b.citizenCapacity) : "\u2014",
     jobs: b.jobs ? String(b.jobs) : "\u2014",
     needs: needs.length ? formatList(needs) : "nothing",
+    //what it costs to keep, every tick - or null for nothing
+    upkeep:
+      b.demanding && b.demanding.money
+        ? formatMoney(b.demanding.money) + "/tick"
+        : null,
     benefits: formatList(benefits),
   };
 }

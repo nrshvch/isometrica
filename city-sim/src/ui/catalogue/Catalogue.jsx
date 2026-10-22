@@ -47,10 +47,21 @@ function Card({ building }) {
           <Figure label="Jobs" value={s.jobs} />
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-xs font-semibold">
-          <dt className="text-muted">Needs</dt>
-          <dd className="truncate" title={s.needs}>
-            {s.needs}
-          </dd>
+          {/* only what it does need, and what it costs to keep */}
+          {s.needs !== "nothing" && (
+            <>
+              <dt className="text-muted">Needs</dt>
+              <dd className="truncate" title={s.needs}>
+                {s.needs}
+              </dd>
+            </>
+          )}
+          {s.upkeep && (
+            <>
+              <dt className="text-muted">Upkeep</dt>
+              <dd className="truncate">{s.upkeep}</dd>
+            </>
+          )}
           <dt className="text-muted">Gives</dt>
           <dd className="truncate text-good" title={s.benefits}>
             {s.benefits}
