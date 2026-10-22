@@ -301,7 +301,7 @@ function Row({ icon, label, sub, on, disabled, className, onClick }) {
 //how long the menu says the city's address was copied
 var COPIED_MS = 1500;
 //how many of the cities saved here the menu lists at most
-var CITIES = 10;
+var CITIES = 5;
 
 //how long ago something was, as it is said: just now, 5 min ago, 3 h ago,
 //2 days ago - and from a month on, the day
