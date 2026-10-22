@@ -21,7 +21,7 @@
  * those as chunks come and go), so nothing is drawn for a part of the map that
  * is not on screen in the first place.
  *
- * A tap on nothing - bare ground, a road, the sea - while nothing is being
+ * A tap on nothing - bare ground, a tree, the sea - while nothing is being
  * looked at puts all the words over the buildings away, and the grid over
  * the ground with them, and the next one brings them back: the town without
  * its warnings, for a picture of it.
@@ -37,6 +37,7 @@ import WorldCamera from "./components/camerascript";
 import TileAreaBorderRenderer from "./components/tileareaborderrenderer";
 import MultilineTextRenderer from "./components/multilinetextrenderer";
 import BuildingClassCode from "../data/classcode";
+import * as RoadRules from "../core/roadrules";
 import RenderLayer from "./renderlayer";
 import Config from "./config";
 import BuildingView from "./buildingview";
@@ -263,8 +264,13 @@ function formatMoney(amount) {
  */
 function infoLines(city, building) {
   var data = building.data,
-    //its name heads it, the way it heads its card in the catalogue
-    lines = [data.name.charAt(0).toUpperCase() + data.name.slice(1)];
+    //its name heads it, the way it heads its card in the catalogue - a
+    //road's, what it is laid in: "Gravel road"
+    name =
+      data.classCode === BuildingClassCode.road
+        ? RoadRules.materialOf(building) + " " + data.name
+        : data.name,
+    lines = [name.charAt(0).toUpperCase() + name.slice(1)];
 
   if (building.getState() === BuildingState.underConstruction) {
     lines.push(progressText(building));
@@ -288,16 +294,12 @@ function infoLines(city, building) {
 
 /**
  * Trees and rocks do nothing for anybody, and a road out past the borders has
- * no city to do it for.
+ * no city to do it for - a road in it costs it its upkeep, by what it is
+ * laid in, and says so.
  */
-//a road's upkeep is all there is to say about it, and that is on the price
-//tag already - clicked, it is ground like any other
 function hasInfo(building) {
-  var classCode = building.data.classCode;
-
   return (
-    classCode !== BuildingClassCode.tree &&
-    classCode !== BuildingClassCode.road &&
+    building.data.classCode !== BuildingClassCode.tree &&
     building.getCity() !== null
   );
 }
@@ -446,14 +448,14 @@ ServiceMan.prototype.quiet = function () {
 };
 
 /**
- * Clicking a building shows what it is worth, and a water tower what it waters
- * as well. Clicking it again puts them away, and so does clicking anything
- * else - bare ground, a road, a tree, the sea.
+ * Clicking a building shows what it is worth - a road, what it costs to keep
+ * - and a water tower what it waters as well. Clicking it again puts them
+ * away, and so does clicking anything else - bare ground, a tree, the sea.
  *
  * @param screenX {number} where the click was, in viewport pixels
  * @param screenY {number}
  * @returns {boolean} whether it landed on something there is anything to show
- *                    for, rather than on bare ground, a road or a tree
+ *                    for, rather than on bare ground or a tree
  */
 ServiceMan.prototype.inspect = function (screenX, screenY) {
   var root = this.root,
