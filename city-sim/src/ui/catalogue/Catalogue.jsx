@@ -59,7 +59,7 @@ function Card({ building }) {
           {s.upkeep && (
             <>
               <dt className="text-muted">Upkeep</dt>
-              <dd className="truncate">{s.upkeep}</dd>
+              <dd className="truncate text-bad">{s.upkeep}</dd>
             </>
           )}
           <dt className="text-muted">Gives</dt>
