@@ -91,6 +91,30 @@ function variantOf(code) {
 CityBuildings.variantOf = variantOf;
 
 /**
+ * What putting code down costs: what the catalogue says - for a road, the
+ * share of it what it is laid in costs (core/roadrules costShare).
+ *
+ * @param code {number}
+ * @param [look] {Object} what it would look like - for a road, {material}
+ * @returns {Object} resources
+ */
+function costOf(code, look) {
+  var data = BuildingData[code],
+    cost = data.constructionCost || {},
+    out = {},
+    share;
+
+  if (data.classCode !== BuildingClassCode.road) return cost;
+
+  share = RoadRules.costShare(look);
+  for (var key in cost) out[key] = Math.round(cost[key] * share);
+
+  return out;
+}
+
+CityBuildings.costOf = costOf;
+
+/**
  * The road on tile that a road laid in look's material would be an upgrade
  * of - gravel to cobbles or asphalt, cobbles to asphalt (core/roadrules
  * MATERIALS) - or null. A road laid over one like that takes its place for
@@ -179,11 +203,12 @@ CityBuildings.prototype.buildBuilding = function (
   var road = upgradeOf(this, code, tile, look),
     errorCode =
       road !== null
-        ? upgradeTest(this, code)
-        : buildTest(this, code, tile, rotate);
+        ? upgradeTest(this, code, look)
+        : buildTest(this, code, tile, rotate, look),
+    cost = costOf(code, look);
 
   if (road !== null && errorCode === ErrorCode.NONE) {
-    upgrade(this, road, look, BuildingData[code].constructionCost);
+    upgrade(this, road, look, cost);
     return;
   }
 
@@ -207,11 +232,11 @@ CityBuildings.prototype.buildBuilding = function (
 
     //what the player pays for it, set before the build is announced so
     //that whoever shows it over the site has it in hand
-    building.expense = (data.constructionCost[Resource.money] || 0) + clearing;
+    building.expense = (cost[Resource.money] || 0) + clearing;
 
     root.buildings.build(building);
 
-    city.resources.sub(data.constructionCost);
+    city.resources.sub(cost);
 
     if (clearing > 0) city.resources.subResource(Resource.money, clearing);
 
@@ -239,7 +264,8 @@ CityBuildings.prototype.buildBuilding = function (
  * building the build would turn down is left out, save one turned down for
  * want of money only - its price is still worth knowing.
  *
- * A road laid over a lesser one is quoted at a road's price (upgradeOf).
+ * A road laid over a lesser one is quoted at a road's price (upgradeOf) -
+ * and a road at what it is laid in costs (costOf).
  *
  * @param code {number}
  * @param anchors {number[]} the tile each building would stand on
@@ -260,7 +286,7 @@ CityBuildings.prototype.quoteSelection = function (
     sizeX = Rotation.sizeX(data, rotation),
     sizeY = Rotation.sizeY(data, rotation),
     resources = this.city.resources.getResources(),
-    cost = data.constructionCost || {},
+    cost,
     spent = Object.create(null),
     cityHall = this.cityHall !== null,
     r = [],
@@ -275,6 +301,7 @@ CityBuildings.prototype.quoteSelection = function (
 
   for (i = 0; i < anchors.length; i++) {
     tile = anchors[i];
+    cost = costOf(code, looks ? looks[i] : undefined);
 
     //a road paved over is there already, on ground that took it
     upgrading =
@@ -349,7 +376,6 @@ CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
 
   var city = this.city;
   var root = city.root;
-  var data = BuildingData[code];
   var iter = new TileIterator(tile0, tile1);
   var bs = [];
   while (!iter.done) {
@@ -370,7 +396,7 @@ CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
 
     root.buildings.build(building);
 
-    city.resources.sub(data.constructionCost);
+    city.resources.sub(costOf(code));
 
     this._buildings.push(building);
 
@@ -522,19 +548,18 @@ function onBuildingRemoved(sender, building, self) {
 
 //what buildTest asks of a road paved over another, the ground and the
 //borders aside - the road is there already
-function upgradeTest(self, code) {
-  var city = self.city,
-    data = BuildingData[code];
+function upgradeTest(self, code, look) {
+  var city = self.city;
 
   if (city.laboratoryService.getAvailableBuildings()[code] !== true)
     return ErrorCode.BUILDING_NOT_AVAIL;
-  if (!city.resources.hasEnough(data.constructionCost))
+  if (!city.resources.hasEnough(costOf(code, look)))
     return ErrorCode.NOT_ENOUGH_RES;
 
   return ErrorCode.NONE;
 }
 
-function buildTest(self, code, tile, rotation) {
+function buildTest(self, code, tile, rotation, look) {
   var test = self.city.root.buildingService.test(code, tile, rotation);
 
   if (test !== ErrorCode.NONE) return test;
@@ -542,6 +567,7 @@ function buildTest(self, code, tile, rotation) {
   var city = self.city;
 
   var data = BuildingData[code],
+    cost = costOf(code, look),
     availableBuildingList = city.laboratoryService.getAvailableBuildings();
 
   if (availableBuildingList[code] !== true) return ErrorCode.BUILDING_NOT_AVAIL;
@@ -558,13 +584,11 @@ function buildTest(self, code, tile, rotation) {
     )
   )
     return ErrorCode.OUTSIDE_CITY;
-  else if (!city.resources.hasEnough(data.constructionCost))
-    return ErrorCode.NOT_ENOUGH_RES;
+  else if (!city.resources.hasEnough(cost)) return ErrorCode.NOT_ENOUGH_RES;
   else if (
     !city.resources.hasEnoughResource(
       Resource.money,
-      (data.constructionCost[Resource.money] || 0) +
-        clearingCost(self, code, tile, rotation),
+      (cost[Resource.money] || 0) + clearingCost(self, code, tile, rotation),
     )
   )
     return ErrorCode.NOT_ENOUGH_RES;

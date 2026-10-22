@@ -13,12 +13,12 @@ import BuildingClassCode from "./classcode";
 var BASE = 5000;
 
 var PARKS = [
-  { footprint: "1x1", name: "pocket park", cost: 1500, upkeep: 5 },
-  { footprint: "1x2", name: "park", cost: 3000, upkeep: 10 },
-  { footprint: "1x3", name: "long park", cost: 4500, upkeep: 15 },
-  { footprint: "2x2", name: "town park", cost: 6000, upkeep: 20 },
-  { footprint: "2x3", name: "city park", cost: 9000, upkeep: 30 },
-  { footprint: "3x3", name: "central park", cost: 13500, upkeep: 45 },
+  { footprint: "1x1", name: "pocket park", cost: 3000, upkeep: 10 },
+  { footprint: "1x2", name: "park", cost: 6000, upkeep: 20 },
+  { footprint: "1x3", name: "long park", cost: 9000, upkeep: 30 },
+  { footprint: "2x2", name: "town park", cost: 12000, upkeep: 40 },
+  { footprint: "2x3", name: "city park", cost: 18000, upkeep: 60 },
+  { footprint: "3x3", name: "central park", cost: 27000, upkeep: 90 },
 ];
 
 function code(park) {

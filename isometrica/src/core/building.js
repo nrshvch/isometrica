@@ -32,6 +32,7 @@ import Terrain from "./terrain";
 import Construction from "./construction";
 import Rotation from "./rotation";
 import Surface from "./surface";
+import * as RoadRules from "./roadrules";
 
 var events = {
   stateChange: 0,
@@ -256,7 +257,14 @@ function demand(self) {
   if (city.population.getPopulation() === 0) return;
 
   if (self._state == BuildingState.ready) {
-    Resources.add(self.demanding, self.demanding, data.demanding);
+    //a road's, the share of asphalt's what it is laid in costs to keep
+    if (data.classCode === BuildingClassCode.road)
+      Resources.mul(
+        self.demanding,
+        data.demanding,
+        RoadRules.costShare(self.look),
+      );
+    else Resources.add(self.demanding, self.demanding, data.demanding);
 
     //the city hall is paid to administer the city, and the more land there
     //is to administer the more it costs - which is what makes a tight city

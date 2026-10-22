@@ -51,15 +51,17 @@ buildingData[BuildingCode.road] = {
   buildingCode: BuildingCode.road,
   classCode: BuildingClassCode.road,
   producing: {},
-  //a street is the city's to keep up, and there are always a lot of them
+  //a street is the city's to keep up, and there are always a lot of them -
+  //asphalt's, gravel and cobbles a share of it (core/roadrules costShare)
   demanding: {
-    money: 5,
+    money: 10,
   },
   //dug out, then a bed of crushed stone rolled in, then the asphalt
   //(client/roadworks) - nothing drives on it till then
   constructionTime: 40000,
+  //asphalt's too, the others a share of it
   constructionCost: {
-    money: 500,
+    money: 1000,
   },
   name: "road",
   //drawn as client/roadview draws it (shared/gen/roads)

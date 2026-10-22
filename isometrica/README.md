@@ -116,6 +116,11 @@ engine in `engine/`.
   its own speed, cobbles a tenth slower, gravel a tenth slower again
   (`core/roadrules.js` paceOf, Driver#pace) - a courier's way down the old
   town's cobbled lanes or a gravel track takes that much longer.
+- And what it costs: a tile of asphalt $1,000 to lay and $10 a tick to
+  keep, cobbles 70% of that, gravel half (`core/roadrules.js` costShare,
+  CityBuildings costOf) - charged, quoted while it is laid, and billed as
+  upkeep alike. A road in the city, clicked, says what it is laid in and
+  what it costs to keep (`client/serviceman.js`).
 - A roundabout - any small loop of one-way road, twelve tiles round at most
   - locks solid once it is full: everything on it waits for what is in
     front of it, all the way round. So what comes onto it gives way to what
