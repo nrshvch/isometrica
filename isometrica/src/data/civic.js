@@ -6,7 +6,8 @@
  * the ones there are of it, at random.
  *
  * Like a park they earn nothing - the town keeps them up - but the church and
- * the town hall have people working in them.
+ * the town hall have people working in them, and unlike one they want a
+ * cobbled street to them at least (core/roadrules serves).
  */
 import BuildingClassCode from "./classcode";
 
@@ -23,7 +24,7 @@ var CIVIC = [
     cost: 1200,
     upkeep: 3,
     time: 20000,
-    requires: { road: true },
+    requires: { road: "cobble" },
   },
   {
     kind: 1,
@@ -34,7 +35,7 @@ var CIVIC = [
     upkeep: 25,
     jobs: 2,
     time: 120000,
-    requires: { road: true },
+    requires: { road: "cobble" },
   },
   {
     kind: 2,
@@ -45,7 +46,7 @@ var CIVIC = [
     upkeep: 60,
     jobs: 14,
     time: 150000,
-    requires: { road: true, water: true },
+    requires: { road: "cobble", water: true },
   },
   {
     kind: 2,
@@ -56,7 +57,7 @@ var CIVIC = [
     upkeep: 60,
     jobs: 14,
     time: 150000,
-    requires: { road: true, water: true },
+    requires: { road: "cobble", water: true },
   },
 ];
 
