@@ -551,6 +551,9 @@ City.prototype.save = function () {
     resources: this.resourcesService.save(),
     population: this.populationService.save(),
     area: this.areaService.save(),
+    //how big the blocks of land are, for a save made before they were
+    //this size to be told apart (Area#load)
+    areaBlockSize: Area.BLOCK_SIZE,
     research: this.laboratoryService.save(),
     buildings: this.buildingService.save(),
   };
@@ -569,7 +572,7 @@ City.prototype.load = function (data) {
   if (data.established !== undefined) this.timeEstablished = data.established;
 
   this.laboratoryService.load(data.research || {});
-  this.areaService.load(data.area || []);
+  this.areaService.load(data.area || [], data.areaBlockSize);
   //saves from before the world kept its own cleared tiles have them here -
   //they move over to the world, which saves them from then on
   var cleared = data.clearedTiles || [];

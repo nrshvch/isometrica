@@ -18,7 +18,10 @@ import namespace from "namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Area = Area;
 
-var BLOCK_SIZE = 5;
+var BLOCK_SIZE = 15;
+
+//how big the blocks were in saves that do not say (City#save areaBlockSize)
+var OLD_BLOCK_SIZE = 5;
 var BLOCK_BASE_PRICE = 1000000;
 
 var events = {
@@ -274,13 +277,38 @@ Area.prototype.save = function () {
 };
 
 /**
- * Hands the city back the blocks it had, free of charge.
+ * Hands the city back the blocks it had, free of charge - a save made while
+ * the blocks were another size has every block now that its blocks were on,
+ * all of each: the land it had and the rest of the blocks round it. The
+ * blocks of old, 5 by 5, fit three by three into one of 15 by 15, both
+ * centred on where the city was founded, so the city keeps the shape it had.
  *
  * @param list {Array[]} [bx, by] pairs
+ * @param [size] {number} how big the blocks were in the save - the old 5
+ *        where it does not say
  */
-Area.prototype.load = function (list) {
-  for (var i = 0; i < list.length; i++)
-    claimBlock(this, block(this, list[i][0], list[i][1]));
+Area.prototype.load = function (list, size) {
+  size = size || OLD_BLOCK_SIZE;
+
+  var self = this,
+    oldX = Terrain.extractX(this._city.tile()) - (size >> 1),
+    oldY = Terrain.extractY(this._city.tile()) - (size >> 1);
+
+  for (var i = 0; i < list.length; i++) {
+    if (size === BLOCK_SIZE) {
+      claimBlock(this, block(this, list[i][0], list[i][1]));
+      continue;
+    }
+
+    //every block now under the one saved, from its first tile to its last
+    var x0 = oldX + list[i][0] * size,
+      y0 = oldY + list[i][1] * size;
+
+    for (var bx = blockX(self, x0); bx <= blockX(self, x0 + size - 1); bx++)
+      for (var by = blockY(self, y0); by <= blockY(self, y0 + size - 1); by++)
+        if (this._blocks[key(bx, by)] === undefined)
+          claimBlock(this, block(this, bx, by));
+  }
 };
 
 function key(bx, by) {

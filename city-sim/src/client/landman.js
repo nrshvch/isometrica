@@ -1,7 +1,7 @@
 /**
  * Buying city land.
  *
- * The city no longer grows by itself - it expands one 5x5 block at a time, and
+ * The city no longer grows by itself - it expands one 15x15 block at a time, and
  * only when the player pays for it. This puts the player in charge of which way
  * the city spreads, keeps it off the water and hands over a whole block of free
  * land at once, so even the biggest buildings have somewhere to go.
