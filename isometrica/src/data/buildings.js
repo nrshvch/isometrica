@@ -51,11 +51,9 @@ buildingData[BuildingCode.road] = {
   buildingCode: BuildingCode.road,
   classCode: BuildingClassCode.road,
   producing: {},
-  //a street is the city's to keep up, and there are always a lot of them -
-  //asphalt's, gravel and cobbles a share of it (core/roadrules costShare)
-  demanding: {
-    money: 10,
-  },
+  //nothing to keep up: a lane out to a farm costs what it costs to lay and
+  //no more, so a town can reach out into the country
+  demanding: {},
   //dug out, then a bed of crushed stone rolled in, then the asphalt
   //(client/roadworks) - nothing drives on it till then
   constructionTime: 40000,

@@ -108,9 +108,6 @@ function Info({ city }) {
           <Stat label="Upkeep" tone="expense">
             {s.upkeep}/tick
           </Stat>
-          <Stat label="Roads" sub>
-            {s.roadsUpkeep}
-          </Stat>
           <Stat label="Water towers" sub>
             {s.waterUpkeep}
           </Stat>
