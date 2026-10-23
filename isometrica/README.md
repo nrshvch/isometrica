@@ -116,11 +116,11 @@ engine in `engine/`.
   its own speed, cobbles a tenth slower, gravel a tenth slower again
   (`core/roadrules.js` paceOf, Driver#pace) - a courier's way down the old
   town's cobbled lanes or a gravel track takes that much longer.
-- And what it costs: a tile of asphalt $1,000 to lay and $10 a tick to
-  keep, cobbles 70% of that, gravel half (`core/roadrules.js` costShare,
-  CityBuildings costOf) - charged, quoted while it is laid, and billed as
-  upkeep alike. A road in the city, clicked, says what it is laid in and
-  what it costs to keep (`client/serviceman.js`).
+- And what it costs: a tile of asphalt $1,000 to lay, cobbles 70% of that,
+  gravel half (`core/roadrules.js` costShare, CityBuildings costOf) -
+  charged and quoted while it is laid alike - and nothing to keep, so a
+  town can reach out into the country with lanes to its farms. Clicked, a
+  road is ground like any other.
 - A roundabout - any small loop of one-way road, twelve tiles round at most
   - locks solid once it is full: everything on it waits for what is in
     front of it, all the way round. So what comes onto it gives way to what
@@ -719,8 +719,8 @@ dev`) plays them the way a game would - all three weathers together, the
   and its road network is the biggest stretch of its roads that hangs
   together - a building is on the road when it is next to that; a lane off
   on its own does not count, and a house or shop that is not on it gets
-  nobody to live or work in it. Roads costing to lay and to keep is what
-  keeps a town close together.
+  nobody to live or work in it. Roads costing to lay is what keeps a town
+  close together.
 - The backs of buildings are not left bare (`isometrica/src/shared/gen/blocks.js`
   backs): a shop has a steel door out to its bins - and a skip, behind a
   big one - the air conditioning's units on the wall, rain streaks, the odd

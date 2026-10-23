@@ -136,18 +136,18 @@ City.prototype.getBuildingIncome = function (building) {
  * Where the city's money came from and went on the last tick, the way the
  * buildings were paid and billed for it (see Building): the taxes of the
  * people in the houses, what the businesses took over the counter, and the
- * upkeep of the roads, the water towers and the city hall.
+ * upkeep of the water towers, the city hall and the rest - the roads cost
+ * nothing to keep.
  *
- * @returns {{taxes: number, commerce: number, income: number, roads: number,
- *          water: number, cityHall: number, other: number, upkeep: number,
- *          net: number}} money per tick, upkeep as what is paid
+ * @returns {{taxes: number, commerce: number, income: number, water: number,
+ *          cityHall: number, other: number, upkeep: number, net: number}}
+ *          money per tick, upkeep as what is paid
  */
 City.prototype.getBudget = function () {
   var buildings = this.buildingService.getBuildings(),
     r = {
       taxes: this.populationService.getTaxIncomeAmount(),
       commerce: 0,
-      roads: 0,
       water: 0,
       cityHall: 0,
       other: 0,
@@ -167,9 +167,7 @@ City.prototype.getBudget = function () {
 
     if (paid === 0) continue;
 
-    if (data.classCode === BuildingClassCode.road) {
-      r.roads += paid;
-    } else if (data.waterRadius) {
+    if (data.waterRadius) {
       //whatever waters the town: a water tower, a pump station
       r.water += paid;
     } else if (building.buildingCode === BuildingCode.cityHall) {
@@ -180,7 +178,7 @@ City.prototype.getBudget = function () {
   }
 
   r.income = r.taxes + r.commerce;
-  r.upkeep = r.roads + r.water + r.cityHall + r.other;
+  r.upkeep = r.water + r.cityHall + r.other;
   r.net = r.income - r.upkeep;
 
   return r;

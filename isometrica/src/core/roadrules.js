@@ -95,13 +95,13 @@ export function materialOf(data) {
   return MATERIALS.indexOf(material) === -1 ? "asphalt" : material;
 }
 
-//what a road of each kind costs to lay and to keep, a share of asphalt's
-//(data/buildings road): gravel the least, then cobbles
+//what a road of each kind costs to lay, a share of asphalt's (data/buildings
+//road): gravel the least, then cobbles - none of them anything to keep
 var COST = { gravel: 0.5, cobble: 0.7, asphalt: 1 };
 
 /**
- * What a road costs to lay and to keep, a share of what asphalt does - for
- * one laid in look's material, or asphalt for one with none.
+ * What a road costs to lay, a share of what asphalt does - for one laid in
+ * look's material, or asphalt for one with none.
  *
  * @param [look] {Object} what it is laid in, {material}
  */
