@@ -1,7 +1,7 @@
 /**
- * The city builder: the city is the player's to found, build, lay roads in,
- * shape the ground under and buy land for - and where the city the delivery
- * game is played in is built, to be handed over to it (ui/city export).
+ * The city builder: the city is the player's to found, build, lay roads in
+ * and shape the ground under - and where the city the delivery game is
+ * played in is built, to be handed over to it (ui/city export).
  * What the game is, for the world it is played in (ui/session).
  */
 export default {

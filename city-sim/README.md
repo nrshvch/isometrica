@@ -4,9 +4,11 @@ The city builder: found a city, build it from the catalogue, lay its roads
 and shape the ground under it. There are no borders and no land to buy -
 anything can go up anywhere - but a house, a shop or an office works only
 with a road alongside it that joins the city's roads, and roads cost to lay
-and to keep (dearer as they go from gravel to cobbles to asphalt), so a town
-built close together costs less than one spread thin. The city the other
-games start on is built here.
+(dearer as they go from gravel to cobbles to asphalt), so a town built close
+together costs less than one spread thin. The city the other games start on
+is built here.
+
+Where it is going, and what has been settled on the way: [its design](docs/README.md).
 
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
