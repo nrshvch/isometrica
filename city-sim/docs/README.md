@@ -35,10 +35,10 @@ Every point is marked:
 ## Phase 0
 
 - [x] Roads cost nothing to keep
-- [ ] A city is founded by placing its first house
-- [ ] The main part of a city: where the town hall is, or else the bigger part
-- [ ] The centre: the town hall, or else the middle of the main part
-- [ ] People kept house by house
-- [ ] A part cut off is abandoned: its people move out one a tick, and
+- [x] A city is founded by placing its first house
+- [x] The main part of a city: where the town hall is, or else the bigger part
+- [x] The centre: the town hall, or else the middle of the main part
+- [x] People kept house by house
+- [x] A part cut off is abandoned: its people move out one a tick, and
       joining it back takes it in again
-- [ ] What the city earned while the game was closed, up to a game day
+- [x] What the city earned while the game was closed, up to a game day

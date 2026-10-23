@@ -29,19 +29,25 @@ pay its upkeep with. But a city may have no town hall at all.
 
 ## While the game is closed
 
-**Phase 0.** When the player comes back, the city catches up on the time it
-was closed, once, in one go, up to a game day.
+**Done.** When the player comes back, the city catches up on the time it was
+away, once, in one go, up to a game day (`catchUp` in
+`isometrica/src/core/logic.js`, switched on by `city-sim/src/game.js`).
 
 - Only real time counts: the city gets as many ticks as seconds really went
-  by since it was last saved, and no more than a game day's 288. A game day
-  only comes back to a player who was gone for five real minutes or more.
-- The ticks are played out as they would have been, without drawing
-  anything, so that the city grows and earns as it would have.
-- The time is reckoned from when the city was last saved. The browser's clock
-  can be put forward; a city that is kept on the server has the server's
-  time of its last save to go by, which can't (`city-sim/worker/saves.js`).
-
-Today the city's clock stops when the game is closed, and nothing is earned.
+  by, and no more than a game day's 288. A game day only comes back to a
+  player who was gone for five real minutes or more.
+- The ticks are played out at once, as they would have gone, before anything
+  is drawn, so that the city grows and earns as it would have. What it made
+  floats up over it once the splash is gone.
+- Opening a saved city, the time is reckoned from when it was last saved
+  (`isometrica/src/core/persistence/citypersistence.js`). The browser's clock
+  can be put forward, the server's cannot: where the city is kept on the
+  server, the time since the server last had it, by the server's own clock
+  (its `Saved-At` and `Date`), caps it (`CitySync#awayFor` in
+  `isometrica/src/core/persistence/citysync.js`).
+- A page out of sight stops the world's clock, as it did; back in sight, it
+  makes up for the time it was stopped the same way.
+- The city everybody starts on does not catch up: it was never played.
 
 ## Bankruptcy
 
