@@ -254,6 +254,9 @@ function demand(self) {
   //look around before the clock starts ticking
   if (city.population.getPopulation() === 0) return;
 
+  //and what is cut off from it is not the city's to keep up
+  if (city.roadService.cutOff(self) !== null) return;
+
   if (self._state == BuildingState.ready) {
     Resources.add(self.demanding, self.demanding, data.demanding);
 

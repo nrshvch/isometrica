@@ -47,6 +47,7 @@ var CIVIC = [
     jobs: 14,
     time: 150000,
     requires: { road: "cobble", water: true },
+    townHall: true,
   },
   {
     kind: 2,
@@ -58,6 +59,7 @@ var CIVIC = [
     jobs: 14,
     time: 150000,
     requires: { road: "cobble", water: true },
+    townHall: true,
   },
 ];
 
@@ -97,6 +99,9 @@ function buildings() {
     };
 
     if (civic.jobs) data.jobs = civic.jobs;
+    //where the city is: its part of the roads, and its middle (core/city/
+    //cityroads)
+    if (civic.townHall) data.townHall = true;
 
     out[data.buildingCode] = data;
   });

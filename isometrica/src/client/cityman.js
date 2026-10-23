@@ -4,16 +4,9 @@
 import Core from "../core/main";
 import Events from "events";
 import CityLabel from "./gameObjects/citylabel";
-import AreaSelector from "./areaselector";
-import BuildingCode from "../data/buildingcode";
-import BuildingData from "../data/buildings";
-import ResourceCode from "../core/resourcecode";
 import CityComponent from "./components/city";
-import Buildman from "./buildman";
-import ErrorCode from "../core/errorcode";
 import Config from "./config";
 import View from "./view";
-import * as glMatrix from "gl-matrix";
 
 var City = Core.City;
 var CoreTerrain = Core.Terrain;
@@ -216,179 +209,20 @@ Cityman.prototype.locate = function (city, glide) {
   cam.glideTo(pos[0], pos[2]);
 };
 
-//how many spots a roll of the dice tries for one a city could be founded on,
-//before it settles for the last of them - out at sea, say
-var ROLLS = 100;
-
 /**
- * Somewhere about tile x, y - within a square Config.citySpreadTiles wide -
- * a city could be founded: where its city hall would go, its least x and y.
- * Or the last spot tried, should none of them do.
+ * Floats money the city made over the middle of it (City#center) - what it
+ * made while the game was away, say.
+ *
+ * @param city {City}
+ * @param amount {number}
  */
-function randomSite(root, x, y) {
-  var tile, i;
+Cityman.prototype.showIncome = function (city, amount) {
+  var c = city.center();
 
-  for (i = 0; i < ROLLS; i++) {
-    tile = CoreTerrain.convertToIndex(
-      Math.round(x + (Math.random() - 0.5) * Config.citySpreadTiles),
-      Math.round(y + (Math.random() - 0.5) * Config.citySpreadTiles),
-    );
-
-    if (City.canEstablish(root.core.world, tile)) break;
-  }
-
-  return tile;
-}
-
-var siteBuffer = new Float32Array(3),
-  groundBuffer = new Float32Array(3);
-
-/**
- * Glides the camera over the middle of a city hall sizeX by sizeY on tile, up
- * on the ground there - so it ends up in the middle of the screen, however
- * high the ground (WorldCamera#glideTo).
- */
-function glideToSite(root, tile, sizeX, sizeY) {
-  var cam = root.camera.cameraScript,
-    ts = Config.tileSize,
-    x = (CoreTerrain.extractX(tile) + (sizeX - 1) / 2) * ts,
-    z = (CoreTerrain.extractY(tile) + (sizeY - 1) / 2) * ts,
-    m = cam.gameObject.camera.getWorldToScreen();
-
-  //how far off the ground under it the ground up there is drawn - the same
-  //wherever the camera is
-  siteBuffer[0] = groundBuffer[0] = 0;
-  siteBuffer[2] = groundBuffer[2] = 0;
-  siteBuffer[1] = root.terrain.tileYPos(tile);
-  groundBuffer[1] = 0;
-  glMatrix.vec3.transformMat4(siteBuffer, siteBuffer, m);
-  glMatrix.vec3.transformMat4(groundBuffer, groundBuffer, m);
-
-  var shift = cam.panShift(
-    groundBuffer[0] - siteBuffer[0],
-    groundBuffer[1] - siteBuffer[1],
+  this.root.buildman.showIncome(
+    CoreTerrain.convertToIndex(Math.round(c.x), Math.round(c.y)),
+    amount,
   );
-
-  cam.glideTo(x + shift[0], z + shift[1]);
-}
-
-/**
- * Picks where to found a city: a city hall's footprint, in the middle of the
- * screen to start with, dragged about or tapped elsewhere - and the dice
- * takes it off to somewhere else a city could go, the camera gliding after.
- */
-Cityman.prototype.establish = function () {
-  var self = this;
-  var root = this.root;
-
-  root.ui
-    .gameScreen()
-    .worldScreen()
-    .showHint(
-      "Drag to where you want your city to be established, or roll the dice!",
-    );
-
-  //one city hall's footprint, up from the start in the middle of the screen
-  //- dragged about or tapped elsewhere, never resized
-  var hall = BuildingData[BuildingCode.cityHall];
-  var ts = new AreaSelector(root, {
-    stepX: hall.sizeX,
-    stepY: hall.sizeY,
-    resizable: false,
-  });
-  var tokens = [];
-
-  //green where a city could be founded, red where it could not - the same
-  //as the ground under a building being placed
-  function update() {
-    var tile = ts.anchors()[0],
-      ok = City.canEstablish(root.core.world, tile);
-
-    root.buildman.fadeAround(ts.tiles());
-
-    root.hiliteMan.disable(tokens);
-    tokens = root.hiliteMan.hilite(
-      ts.tiles().map(function (t) {
-        return {
-          x: CoreTerrain.extractX(t),
-          y: CoreTerrain.extractY(t),
-          fillColor: ok ? Buildman.HILITE_FILL : Buildman.HILITE_BLOCKED_FILL,
-          borderColor: ok
-            ? Buildman.HILITE_BORDER
-            : Buildman.HILITE_BLOCKED_BORDER,
-          borderWidth: 2,
-        };
-      }),
-    );
-  }
-
-  var sub = Events.on(ts, AreaSelector.events.change, update);
-
-  function cleanup() {
-    root.buildman.unfade();
-    root.hiliteMan.disable(tokens);
-    Events.off(ts, AreaSelector.events.change, sub);
-    ts.dispose();
-    root.ui.gameScreen().worldScreen().hideHint();
-  }
-
-  //bind ui
-  var controls = root.ui.gameScreen().showActionControls();
-  controls.canRotate(false);
-  controls.onSubmit = function () {
-    var tile = ts.anchors()[0],
-      reason = City.establishTest(root.core.world, tile);
-
-    //turned down, the player is told why and gets to pick again
-    if (reason !== ErrorCode.NONE) {
-      root.buildman.showError(tile, reason);
-      return;
-    }
-
-    root.ui.gameScreen().showPrompt(
-      "Give city a name!",
-      function (val) {
-        var city = root.core.cities.establishCity(tile, val);
-        root.ui.gameScreen().showWorld();
-
-        //what the new city starts out with, handed over where it stands
-        if (city)
-          root.buildman.showIncome(
-            tile,
-            city.resources.getResources()[ResourceCode.money],
-          );
-      },
-      ["Miniville", "Peepsville", "Flatville", "Greenville", "Happyville"][
-        Math.round(Math.random() * 2)
-      ],
-      function () {
-        root.ui.gameScreen().showWorld();
-        self.establish();
-      },
-    );
-
-    cleanup();
-  };
-  controls.onDiscard = function () {
-    cleanup();
-    root.ui.gameScreen().showWorld();
-  };
-
-  //every roll about where the camera was to start with, so that rolling
-  //again and again does not wander off ever further
-  var from = root.camera.transform.getPosition(),
-    fromX = Math.round(from[0] / Config.tileSize),
-    fromY = Math.round(from[2] / Config.tileSize);
-
-  if (controls.canShuffle) controls.canShuffle(true);
-  controls.onShuffle = function () {
-    var tile = randomSite(root, fromX, fromY);
-
-    glideToSite(root, tile, hall.sizeX, hall.sizeY);
-    ts.selectTiles([tile]);
-  };
-
-  update();
 };
 
 Cityman.prototype.getCityGameObject = function (cityId) {

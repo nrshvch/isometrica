@@ -713,14 +713,40 @@ dev`) plays them the way a game would - all three weathers together, the
   camera shows another side of it, and a tree stands whichever way round
   its tile has it. The world grows each kind in stands
   (`isometrica/src/core/ambient.js`).
-- A town starts without a town hall, and has no borders: all the land there
-  is, is the city's (`Construction#getCity`), and anything can go up
-  anywhere. Its name hangs over the middle of what it built (`City#center`),
-  and its road network is the biggest stretch of its roads that hangs
-  together - a building is on the road when it is next to that; a lane off
-  on its own does not count, and a house or shop that is not on it gets
-  nobody to live or work in it. Roads costing to lay is what keeps a town
-  close together.
+- A town is founded with its first house - a village's, which needs
+  nothing of a town but a lane (`CityPopulation.canFound`): the player puts
+  it down, names the city, and it goes up out of what the city starts with
+  (`City.quoteFounding`, `client/buildman.js` found). It puts up a town hall
+  when it has grown into a town, and has no borders: all the land there is,
+  is the city's (`Construction#getCity`), and anything can go up anywhere.
+- Its road network is the stretch of its roads that hangs together that is
+  the city (`isometrica/src/core/city/cityroads.js`): the one its town hall
+  stands on, if one does, otherwise the bigger - its roads, and the ground
+  taken by what stands along them - then the one more people live along,
+  then the one with the oldest building. It is worked out again whenever
+  something goes up, comes down or is finished, and nothing of it is saved.
+  A building is on it when it is next to it; a house or shop that is not
+  gets nobody to live or work in it, and one that wants a road and is on a
+  stretch that came apart from the network is cut off - abandoned: it costs
+  and earns the city nothing, and "cut off" hangs over it. Its name hangs
+  over its town hall, or the middle of what stands on its roads
+  (`City#center`). Roads costing to lay is what keeps a town close together.
+- People live in houses, each keeping how many live in it, in the save by
+  the tile it stands on (`isometrica/src/core/city/citypopulation.js`); a
+  save of before, with a head count only, has them put up oldest house
+  first. The city grows into the room its houses have - their beds, as
+  long as they have what they need, and for houses whose people work in
+  town as many as there are jobs - oldest first, more a tick the more room
+  there is; whoever is in a house with less room than people moves out, one
+  a tick out of the city and one out of each part cut off from it, and is
+  gone. A part cut off and joined up again is the city's once more, with
+  whoever is still there.
+- A game can have its city go on while it is away (`Logic` catchUp, city-sim
+  only): opened again, or back in sight, the world plays out the ticks it
+  missed at once - as many as seconds went by, a game day's at most - by the
+  shorter of the browser's clock and the server's, where the city is kept
+  on one (`CitySync#awayFor`), and the city-sim floats what it made over
+  it.
 - The backs of buildings are not left bare (`isometrica/src/shared/gen/blocks.js`
   backs): a shop has a steel door out to its bins - and a skip, behind a
   big one - the air conditioning's units on the wall, rain streaks, the odd

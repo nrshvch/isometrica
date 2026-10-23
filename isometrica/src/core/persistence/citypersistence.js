@@ -48,6 +48,9 @@ function onNewCity(sender, city, self) {
 function onTick(sender, args, self) {
   if (self._city === null) return;
 
+  //what the world makes up for at once is saved once it has (catchUp)
+  if (self.world.catchingUp) return;
+
   if (++self._ticks < SAVE_EVERY_TICKS) return;
 
   self._ticks = 0;
@@ -76,6 +79,9 @@ function CityPersistence(world, store, sync, initial) {
   this._subscriptions = null;
   this._onUnload = null;
   this._onHide = null;
+  //what the city did while the game was closed, made up for when it was
+  //opened (#open): {ticks, money} - or null, for nothing
+  this.caughtUp = null;
 }
 
 CityPersistence.VERSION = VERSION;
@@ -150,12 +156,15 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
   var store = this._store,
     world = this.world,
     id = CityStore.isValidId(requestedId) ? requestedId : null,
-    data = null;
+    data = null,
+    //a save of the player's, rather than the city everybody starts on
+    saved = false;
 
   if (id !== null && store.has(id)) {
     //the player followed a link to a city of theirs, so that is the one
     //they are playing from now on
     data = store.read(id);
+    saved = true;
     store.setActiveCityId(id);
   } else if (id === null || fromInitial) {
     var activeId = store.activeCityId();
@@ -163,6 +172,7 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
     if (!fromInitial && activeId !== null && store.has(activeId)) {
       id = activeId;
       data = store.read(activeId);
+      saved = true;
     } else {
       //nothing of the player's own to come back to - or the initial city
       //asked for, or another in its place
@@ -188,6 +198,11 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
   this.watch();
 
   if (data !== null) restore(this, data);
+
+  //a city of the player's goes on from when it was last saved, as far as
+  //the world goes on while it is away (Logic#catchUp)
+  if (saved && data !== null && this._city !== null)
+    this.caughtUp = catchUp(this, data);
 
   if (this._sync !== null) this._sync.start(this._id);
 
@@ -367,6 +382,37 @@ CityPersistence.prototype.remove = function (id) {
 
   return this._store.remove(id);
 };
+
+/**
+ * Makes up for the time since the city was last saved, and saves it as it is
+ * then: as long as it really was - the browser's clock can be put forward,
+ * but not the server's, so the shorter of the two where the server knows
+ * when it last had it (CitySync#awayFor).
+ *
+ * @returns {{ticks: number, money: number}|null} what went by, and the money
+ *          it brought in, less what it cost - or null, for nothing
+ */
+function catchUp(self, data) {
+  var now = Date.now(),
+    away = now - (isFinite(data.savedAt) ? data.savedAt : now),
+    server = self._sync !== null ? self._sync.awayFor(self._id) : null,
+    resources = self._city.resources.getResources(),
+    before = resources.money || 0,
+    ticks;
+
+  if (server !== null) away = Math.min(away, server);
+
+  ticks = self.world.catchUp(away);
+
+  if (ticks === 0) return null;
+
+  self.save();
+
+  return {
+    ticks: ticks,
+    money: (self._city.resources.getResources().money || 0) - before,
+  };
+}
 
 function restore(self, data) {
   if (data.time !== undefined && data.time !== null)

@@ -1125,14 +1125,85 @@ Buildman.prototype.build = function (code, options) {
       .gameScreen()
       .worldScreen()
       .showHint(
-        !oneWay
-          ? "Drag to place, pull arrows to resize!"
-          : turnable
-            ? "Drag the way the traffic goes, turn to flip it!"
-            : way === "one"
-              ? "One way, as dragged - tap the road again to flip it!"
-              : "One way, flipped - tap the road again for both ways!",
+        founding()
+          ? "Your first house founds the city - drag it where it should be!"
+          : !oneWay
+            ? "Drag to place, pull arrows to resize!"
+            : turnable
+              ? "Drag the way the traffic goes, turn to flip it!"
+              : way === "one"
+                ? "One way, as dragged - tap the road again to flip it!"
+                : "One way, flipped - tap the road again for both ways!",
       );
+  }
+
+  //before there is a city, what goes up first founds it (City.quoteFounding)
+  function founding() {
+    return !root.core.cities.getCity(0);
+  }
+
+  //what each building of the selection would cost, and whether it can go up
+  function quoteOf(tiles) {
+    if (founding())
+      return Core.City.quoteFounding(root.core.world, code, tiles, rotation);
+
+    return root.core.cities
+      .getCity(0)
+      .buildingService.quoteSelection(code, tiles, rotation, roadLooks(tiles));
+  }
+
+  //the city, named and founded where the first of the selection goes up -
+  //and the selection built in it, as any other: the player back in the
+  //world then, on their city. Not named, it goes on being placed
+  function found(anchors) {
+    var quotes = quoteOf(anchors),
+      tile = null,
+      i;
+
+    for (i = 0; i < quotes.length; i++)
+      if (quotes[i].error === ErrorCode.NONE) {
+        tile = quotes[i].tile;
+        break;
+      }
+
+    if (tile === null) {
+      self.showError(
+        anchors[0],
+        quotes.length > 0
+          ? quotes[0].error
+          : root.core.buildingService.test(code, anchors[0], rotation),
+      );
+      return;
+    }
+
+    root.ui.gameScreen().showPrompt(
+      "Give city a name!",
+      function (name) {
+        //the money it starts out with comes up with it, in the game's own
+        //screens - and what the house cost floats over the house
+        if (root.core.cities.establishCity(tile, name))
+          buildSelection(
+            self,
+            code,
+            anchors,
+            rotation,
+            anchors.map(variantAt),
+            anchors.map(lookAt),
+            null,
+          );
+
+        controls.onDiscard();
+      },
+      ["Miniville", "Peepsville", "Flatville", "Greenville", "Happyville"][
+        Math.floor(Math.random() * 5)
+      ],
+      function () {
+        var screen = root.ui.gameScreen();
+
+        if (screen.hidePrompt) screen.hidePrompt();
+        else controls.onDiscard();
+      },
+    );
   }
 
   //the selection covers whole footprints, one building each
@@ -1367,9 +1438,7 @@ Buildman.prototype.build = function (code, options) {
       ways = flowOf(tiles);
     }
 
-    quotes = root.core.cities
-      .getCity(0)
-      .buildingService.quoteSelection(code, tiles, rotation, roadLooks(tiles));
+    quotes = quoteOf(tiles);
 
     clearPreview();
 
@@ -1503,6 +1572,11 @@ Buildman.prototype.build = function (code, options) {
 
     layout(anchors);
     if (oneWay) ways = flowOf(anchors);
+
+    if (founding()) {
+      found(anchors);
+      return;
+    }
 
     //roads laid as the preview showed them, each with its surface
     var surfaces = null;

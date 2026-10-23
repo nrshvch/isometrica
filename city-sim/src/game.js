@@ -9,6 +9,10 @@ export default {
   //a tick of the clock is five minutes of game time: a day goes by in under
   //five minutes of the real thing
   tick: 300000,
+  //and the city goes on while the game is closed, or out of sight - up to a
+  //game day of it, made up for when it is back (isometrica core/logic
+  //catchUp)
+  catchUp: true,
   //what its cities are saved under in localStorage - a new generation drops
   //the saves of before
   saves: "city-sim.v1",

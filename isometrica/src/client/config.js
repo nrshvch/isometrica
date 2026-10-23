@@ -11,8 +11,6 @@ export default (Client.Config = {
   //chunkSize: (window.matchMedia("handheld").matches ? 8 : 24)
   chunkSize: window.matchMedia("(max-width: 800px)").matches ? 12 : 24,
   //a new city goes somewhere in a square this many tiles wide around where
-  //the player was: a fresh one (city-sim UIManager#startFreshCity), and each
-  //roll of the dice while picking where to found it (client/cityman
-  //establish)
+  //the player was: a fresh one (city-sim ui/session startFreshCity)
   citySpreadTiles: 10000,
 });

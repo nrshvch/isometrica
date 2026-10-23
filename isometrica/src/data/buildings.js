@@ -99,8 +99,9 @@ buildingData[BuildingCode.cityHall] = {
   //it comes with the city, so there is nobody to bill for it
   constructionCost: {},
   name: "town hall",
-  //never drawn: no city has one put up any more - kept for what founding a
-  //city takes, its footprint and its upkeep (core/city)
+  //never drawn: no city has one put up any more - a city is founded with
+  //its first house (core/city), and puts up a town hall of data/civic's -
+  //kept for its upkeep, in the saves of before that have one
   sprites: [],
 };
 

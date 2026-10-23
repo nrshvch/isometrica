@@ -208,7 +208,7 @@ CityBuildings.prototype.buildBuilding = function (
     var clearing =
       code === BuildingCode.cityHall
         ? 0
-        : clearingCost(this, code, tile, rotate);
+        : clearingCost(city.world, code, tile, rotate);
 
     var building = new Building();
     if (look) building.look = look;
@@ -266,12 +266,46 @@ CityBuildings.prototype.quoteSelection = function (
   rotation,
   looks,
 ) {
+  var self = this;
+
+  return quote(
+    {
+      world: this.city.world,
+      resources: this.city.resources.getResources(),
+      available: this.city.laboratoryService.getAvailableBuildings(),
+      cityHall: this.cityHall !== null,
+      upgrade: function (code, tile, look) {
+        return upgradeOf(self, code, tile, look) !== null;
+      },
+    },
+    code,
+    anchors,
+    rotation,
+    looks,
+  );
+};
+
+/**
+ * #quoteSelection for a city that is not there yet - the one the first
+ * buildings put down would found (City.quoteFounding): what it would have,
+ * what it could put up, and the world they would go up in.
+ *
+ * @param context {{world: Logic, resources: Object, available: Object|null,
+ *        cityHall: boolean, upgrade: function|undefined}} available null for
+ *        anything at all
+ * @returns {Array} as #quoteSelection
+ */
+CityBuildings.quote = function (context, code, anchors, rotation, looks) {
+  return quote(context, code, anchors, rotation, looks);
+};
+
+function quote(context, code, anchors, rotation, looks) {
   code = parseInt(code, 10);
 
-  var resources = this.city.resources.getResources(),
+  var resources = context.resources,
     cost,
     spent = Object.create(null),
-    cityHall = this.cityHall !== null,
+    cityHall = context.cityHall,
     r = [],
     tile,
     errorCode,
@@ -288,15 +322,16 @@ CityBuildings.prototype.quoteSelection = function (
 
     //a road paved over is there already, on ground that took it
     upgrading =
-      upgradeOf(this, code, tile, looks ? looks[i] : undefined) !== null;
+      context.upgrade !== undefined &&
+      context.upgrade(code, tile, looks ? looks[i] : undefined);
     errorCode = upgrading
       ? ErrorCode.NONE
-      : this.city.root.buildingService.test(code, tile, rotation);
+      : context.world.buildingService.test(code, tile, rotation);
 
     //the rest of buildTest, less what is about money - that is held
     //against what the buildings before would have spent instead
     if (errorCode === ErrorCode.NONE) {
-      if (this.city.laboratoryService.getAvailableBuildings()[code] !== true)
+      if (context.available !== null && context.available[code] !== true)
         errorCode = ErrorCode.BUILDING_NOT_AVAIL;
       else if (code === BuildingCode.cityHall && cityHall)
         errorCode = ErrorCode.CITY_HALL_ALREADY_BUILT;
@@ -305,7 +340,9 @@ CityBuildings.prototype.quoteSelection = function (
     if (errorCode !== ErrorCode.NONE) continue;
 
     //nothing to clear under a road there already
-    clearing = upgrading ? 0 : clearingCost(this, code, tile, rotation);
+    clearing = upgrading
+      ? 0
+      : clearingCost(context.world, code, tile, rotation);
     money = (cost[Resource.money] || 0) + clearing;
 
     enough =
@@ -342,7 +379,7 @@ CityBuildings.prototype.quoteSelection = function (
   }
 
   return r;
-};
+}
 
 CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
   code = parseInt(code, 10);
@@ -491,9 +528,8 @@ CityBuildings.prototype.getBuildings = function () {
  *
  * @returns {number}
  */
-function clearingCost(self, code, tile, rotation) {
-  var world = self.city.world,
-    data = BuildingData[code],
+function clearingCost(world, code, tile, rotation) {
+  var data = BuildingData[code],
     sizeX = Rotation.sizeX(data, rotation),
     sizeY = Rotation.sizeY(data, rotation),
     iter = new TileIterator(
@@ -549,7 +585,8 @@ function buildTest(self, code, tile, rotation, look) {
   else if (
     !city.resources.hasEnoughResource(
       Resource.money,
-      (cost[Resource.money] || 0) + clearingCost(self, code, tile, rotation),
+      (cost[Resource.money] || 0) +
+        clearingCost(city.world, code, tile, rotation),
     )
   )
     return ErrorCode.NOT_ENOUGH_RES;

@@ -163,6 +163,7 @@ function load() {
       tick: Game.tick,
       saves: Game.saves,
       api: Game.api,
+      catchUp: Game.catchUp,
       initialCity: modules[3] ? modules[3].default : undefined,
     });
     client = new Vkaria(core, bridge, modules[2] ? modules[2].default : null);
@@ -249,6 +250,21 @@ export function start(requestedId) {
     });
 
   return starting;
+}
+
+/**
+ * What the city made while the game was closed (isometrica core/persistence
+ * caughtUp), floated up over the middle of it - once, when the splash is out
+ * of the way of it.
+ */
+export function showCaughtUp() {
+  var caught = core === null ? null : core.persistence.caughtUp,
+    city = core === null ? null : core.cities.getCity(0);
+
+  if (caught === null || !city || !(caught.money >= 1)) return;
+
+  core.persistence.caughtUp = null;
+  client.cityman.showIncome(city, Math.round(caught.money));
 }
 
 /**

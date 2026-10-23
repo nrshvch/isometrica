@@ -146,6 +146,11 @@ export function createBridge(go) {
         },
       });
     },
+
+    //and takes it away, whatever action was going on going on
+    hidePrompt: function () {
+      set({ prompt: null });
+    },
   };
 
   return {
@@ -216,7 +221,8 @@ function actionButtons(controls) {
 
 /**
  * The city builder's buttons when nothing else is going on: the one it
- * starts on - to found a city where there is none - and the building tools
+ * starts on - to found a city where there is none, with its first house out
+ * of the catalogue (isometrica client/buildman) - and the building tools
  * once there is: the city screen, the catalogue, a road and shaping the
  * ground. A road is picked - what it is laid in, which ways it goes
  * - as it is laid (isometrica client/buildman build). Starting afresh, which
@@ -231,9 +237,7 @@ function idle(go, name) {
         icon: "found",
         label: "Found a city",
         go: true,
-        action: function () {
-          client.cityman.establish();
-        },
+        action: go.catalogue,
       },
     ];
 

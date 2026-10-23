@@ -14,10 +14,14 @@ CityService.Resource = CityResources;
  */
 function CityResources(city) {
   this.city = city;
-  this._resources = {
-    money: 10000,
-  };
+  this._resources = Resources.clone(START);
 }
+
+//what a city is founded with: enough for its first house and the lane to it
+var START = {
+  money: 10000,
+};
+CityResources.START = START;
 
 /**
  * @type {City}
