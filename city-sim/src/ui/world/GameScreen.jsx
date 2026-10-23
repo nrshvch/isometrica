@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useMatch, useParams } from "react-router";
 import { LayeredLayout, cx } from "../kit";
 import { useGame } from "../store";
-import { reopen, start } from "../session";
+import { reopen, showCaughtUp, start } from "../session";
 import WorldCanvas from "./WorldCanvas";
 import Hud from "./Hud";
 import Prompt from "./Prompt";
@@ -88,6 +88,8 @@ export default function GameScreen() {
         <Splash
           onGone={function () {
             setSplash(false);
+            //and what the city made meanwhile, if it was away
+            showCaughtUp();
           }}
         />
       )}

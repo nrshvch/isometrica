@@ -47,6 +47,13 @@ VTime.setTickLength = function (ms) {
   millisecondsInTick = VTime.millisecondsPerTick = ms;
 };
 
+/**
+ * @returns {number} how many ticks of the world a game day is
+ */
+VTime.ticksPerDay = function () {
+  return Math.round(millisecondsInDay / millisecondsInTick);
+};
+
 VTime.prototype.constructor = VTime;
 
 VTime.prototype.start = function () {

@@ -79,8 +79,9 @@ City.prototype.world = null;
 City.prototype._tile = -1;
 
 /**
- * A city is founded on bare land: a small town has no need of a town hall,
- * and the player puts one up when it has grown into one.
+ * A city is founded with its first house - a family or a few settling
+ * somewhere (CityPopulation.canFound) - and puts up a town hall once it has
+ * grown into a town.
  */
 City.prototype.init = function () {};
 
@@ -127,8 +128,7 @@ City.prototype.getBuildingIncome = function (building) {
   return (
     (building.producing[Resource.money] || 0) -
     (building.demanding[Resource.money] || 0) +
-    this.populationService.getResidents(building) *
-      CityPopulation.taxPerResident(building.data)
+    this.populationService.getTaxes(building)
   );
 };
 
@@ -475,39 +475,67 @@ City.prototype.tile = function (value) {
 };
 
 /**
- * The middle of the town: of what it built, the roads to it left out - or
- * where it was founded, while nothing stands - which is where the camera
- * goes back to.
+ * The middle of the town, which is where its name goes and the camera goes
+ * back to: its town hall, if one stands on its roads (CityRoads#townHall) -
+ * a town's centre need not be the thick of it, it can be a square or a park
+ * - and otherwise the middle of what stands on its roads, the roads left
+ * out. Before anything does, the middle of whatever it has built; before
+ * that, where it was founded.
  *
  * @returns {{x: number, y: number}} in tiles, not whole ones
  */
 City.prototype.center = function () {
-  var buildings = this.buildingService.getBuildings(),
-    x = 0,
+  var hall = this.roadService.townHall(),
+    buildings = this.buildingService.getBuildings(),
+    on = [],
+    all = [],
+    classCode,
+    b,
+    i;
+
+  if (hall !== null) return middleOf([hall]);
+
+  for (i = 0; i < buildings.length; i++) {
+    b = buildings[i];
+    classCode = b.data.classCode;
+
+    if (
+      classCode === BuildingClassCode.road ||
+      classCode === BuildingClassCode.tree
+    )
+      continue;
+
+    all.push(b);
+    if (this.roadService.onNetwork(b)) on.push(b);
+  }
+
+  if (on.length > 0) return middleOf(on);
+  if (all.length > 0) return middleOf(all);
+
+  return {
+    x: Terrain.extractX(this.tile()),
+    y: Terrain.extractY(this.tile()),
+  };
+};
+
+//the middle of the footprints of buildings, in tiles
+function middleOf(buildings) {
+  var x = 0,
     y = 0,
-    n = 0,
     b,
     i;
 
   for (i = 0; i < buildings.length; i++) {
     b = buildings[i];
-    if (b.data.classCode === BuildingClassCode.road) continue;
 
     x +=
       Terrain.extractX(b.tile) + Rotation.sizeX(b.data, b.rotation) / 2 - 0.5;
     y +=
       Terrain.extractY(b.tile) + Rotation.sizeY(b.data, b.rotation) / 2 - 0.5;
-    n++;
   }
 
-  if (n === 0)
-    return {
-      x: Terrain.extractX(this.tile()),
-      y: Terrain.extractY(this.tile()),
-    };
-
-  return { x: x / n, y: y / n };
-};
+  return { x: x / buildings.length, y: y / buildings.length };
+}
 
 /**
  * Everything of the city that came from the player: what they named it, where
@@ -578,38 +606,43 @@ City.prototype.toJSON = function () {
 };
 
 /**
- * Why a city could not be founded on tile, or ErrorCode.NONE when it can: the
- * middle of the land it starts out with has to be ground a building could
- * go up on - flat, dry and free, as a town hall's would be.
+ * What putting code down on each of anchors would come to as the first of a
+ * city - which they would found: quoted the way CityBuildings#quoteSelection
+ * quotes, out of what a city is founded with, for a house it can be founded
+ * with (CityPopulation.canFound) and nothing else.
  *
  * @param world
- * @param tile
- * @returns {number} ErrorCode
+ * @param code {number}
+ * @param anchors {number[]}
+ * @param [rotation] {number}
+ * @returns {Array} as CityBuildings#quoteSelection
  */
-City.establishTest = function (world, tile) {
-  return world.buildingService.test(BuildingCode.cityHall, tile, false);
+City.quoteFounding = function (world, code, anchors, rotation) {
+  if (!CityPopulation.canFound(BuildingData[code])) return [];
+
+  return CityBuildings.quote(
+    {
+      world: world,
+      resources: CityResources.START,
+      available: null,
+      cityHall: false,
+    },
+    code,
+    anchors,
+    rotation,
+  );
 };
 
 /**
- *
- * @param world
- * @param tile
- * @returns {boolean}
- */
-City.canEstablish = function (world, tile) {
-  return City.establishTest(world, tile) === ErrorCode.NONE;
-};
-
-/**
+ * A city, founded where its first house is to go up - which the founder
+ * builds then, as any other.
  *
  * @param world
  * @param tile
  * @param name
- * @returns {*}
+ * @returns {City}
  */
 City.establish = function (world, tile, name) {
-  if (!City.canEstablish(world, tile)) return null;
-
   var city = new City(world, tile);
   city.name(name);
   return city;

@@ -72,6 +72,14 @@ CityJobs.prototype.getStaffing = function (building) {
   return this.getWorkers(building) / jobs;
 };
 
+/**
+ * Hands the jobs out again next time they are asked about - for when the
+ * city's people were put back in their houses, out of a save.
+ */
+CityJobs.prototype.recount = function () {
+  this._at = null;
+};
+
 function allocate(self) {
   var now = self.city.world.time.now;
 

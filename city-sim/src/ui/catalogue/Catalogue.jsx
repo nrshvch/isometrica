@@ -2,11 +2,15 @@
  * The catalogue: everything there is to build (buildings.js), a card each -
  * its picture, what it costs, who lives and works in it, what it needs and
  * what it gives. A card picked is built: back in the world, its selection
- * up to be dragged out.
+ * up to be dragged out. Before there is a city, only the houses one can be
+ * founded with - the first of it founds it (isometrica client/buildman).
  */
 import { useMemo } from "react";
+import Data from "isometrica/data/buildings";
+import CityPopulation from "isometrica/core/city/citypopulation";
 import { Screen } from "../kit";
 import { build, goWorld } from "../session";
+import { useGame } from "../store";
 import { buildings } from "./buildings";
 import Preview from "./Preview";
 
@@ -73,16 +77,28 @@ function Card({ building }) {
 }
 
 export default function Catalogue() {
-  var all = useMemo(buildings, []);
+  var hasCity = useGame(function (s) {
+      return s.hasCity;
+    }),
+    all = useMemo(buildings, []),
+    shown = hasCity
+      ? all
+      : all.filter(function (b) {
+          return CityPopulation.canFound(Data[b.code]);
+        });
 
   return (
     <Screen
-      title="Build"
-      aside={all.length + " to choose from"}
+      title={hasCity ? "Build" : "Found a city"}
+      aside={
+        hasCity
+          ? shown.length + " to choose from"
+          : "with its first house - " + shown.length + " to choose from"
+      }
       onClose={goWorld}
       className="grid grid-cols-2 content-start gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4"
     >
-      {all.map(function (b) {
+      {shown.map(function (b) {
         return <Card key={b.code} building={b} />;
       })}
     </Screen>

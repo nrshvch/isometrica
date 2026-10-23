@@ -10,10 +10,22 @@ is built here.
 
 Where it is going, and what has been settled on the way: [its design](docs/README.md).
 
+- A city is founded with its first house: with none yet, the button along
+  the bottom opens the catalogue on the village's houses only - those that
+  need nothing but a lane - and the one picked is put down as any building
+  is; Done asks for the city's name, and the house goes up in it, out of
+  the money it starts with. The town hall comes later, when it has grown
+  into a town; where it stands is the city's middle, and the stretch of
+  road it is on the city - otherwise the bigger stretch, and its middle
+  (see the isometrica README).
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
   station first, then the parks - and then everything else: houses, then
   shops, a tier at a time, the cheaper first within one.
+- The city goes on while the game is closed or out of sight, up to a game
+  day of it: opened again, it plays out what it missed at once, and what
+  it made floats up over it once the splash is gone (`src/game.js`
+  catchUp).
 - Shaping the ground picks tiles straight away, and clears, raises or lowers
   them as toggled on along the bottom - priced over them as they are picked,
   done with the tick, and started out on what was toggled on last time.

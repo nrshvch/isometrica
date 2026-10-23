@@ -15,7 +15,7 @@ export var store = createStore(function () {
     hasCity: false,
     //a line of what to do, over the world
     hint: "",
-    //true while an action (build, shape the ground, buy land...) holds the
+    //true while an action (build, lay a road, shape the ground...) holds the
     //buttons
     busy: false,
     //the buttons along the bottom, five slots: {icon, label, on, go,

@@ -79,6 +79,8 @@ function CitySync(api, store, ask) {
   this._busy = null;
   this._stalled = false;
   this._listeners = null;
+  //how long ago the server last had the city being opened (#awayFor)
+  this._away = null;
 }
 
 function confirmed() {
@@ -154,8 +156,10 @@ function decode(response) {
  * The server's save of a city.
  *
  * @param id {string}
- * @returns {Promise<{rev: number, data: Object}|null>} null for a city it
- *          does not have; rejected when it cannot be reached
+ * @returns {Promise<{rev: number, data: Object, away: number|null}|null>}
+ *          null for a city it does not have; rejected when it cannot be
+ *          reached. away is how long ago the server had it, ms, by the
+ *          server's own clock - null where it does not say
  */
 CitySync.prototype.download = function (id) {
   if (!this.available) return Promise.reject(new Error("No saves"));
@@ -166,12 +170,26 @@ CitySync.prototype.download = function (id) {
     if (response.status !== 200)
       throw new Error("Could not load the city: " + response.status);
 
-    var rev = +response.headers.get("Save-Rev");
+    var rev = +response.headers.get("Save-Rev"),
+      savedAt = +response.headers.get("Saved-At"),
+      now = Date.parse(response.headers.get("Date") || ""),
+      away = savedAt > 0 && isFinite(now) ? Math.max(now - savedAt, 0) : null;
 
     return decode(response).then(function (data) {
-      return { rev: rev, data: data };
+      return { rev: rev, data: data, away: away };
     });
   });
+};
+
+/**
+ * How long ago the server last had the city, ms, by its own clock - as it
+ * said when the city was opened (#reconcile) - or null, where it did not.
+ *
+ * @param id {string}
+ * @returns {number|null}
+ */
+CitySync.prototype.awayFor = function (id) {
+  return this._away !== null && this._away.id === id ? this._away.ms : null;
 };
 
 //the server's save, in place of the one here
@@ -199,6 +217,11 @@ CitySync.prototype.reconcile = function (id) {
   return this.download(id)
     .then(function (remote) {
       var local = store.syncState(id);
+
+      self._away =
+        remote !== null && remote.away !== null
+          ? { id: id, ms: remote.away }
+          : null;
 
       if (remote === null) {
         //the server has none: what is here goes up as a new city
