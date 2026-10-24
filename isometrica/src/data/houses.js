@@ -9,7 +9,7 @@
  * along the street and one deep (2x1, 3x1), end on to it (1x2, 1x3), or on a
  * lot both ways (2x2, 2x3, 3x2, and a villa's 3x3):
  *
- *   1. village houses need no more than to stand next to the village - a
+ *   1. village houses need no more than to stand with the village - near a
  *      house of it, or a road - no water, and their people no job in town:
  *      cottages, a longhouse, a farmstead or a croft, a farm round its yard
  *      - what a village is before it is a town;
@@ -250,10 +250,10 @@ function buildings() {
         producing: {},
         demanding: {},
         //a village's house needs nothing of the town but to stand with it,
-        //next to another of its buildings or a road - its fields in its
+        //as everything does (core/city/cityroads) - its fields in its
         //footprint, a well of its own; a house in town a cobbled street at
         //least, and the mains
-        requires: village ? { linked: true } : { road: "cobble", water: true },
+        requires: village ? undefined : { road: "cobble", water: true },
         citizenCapacity: numbers[0],
         taxPerResident: tier.tax,
         constructionTime: numbers[2],

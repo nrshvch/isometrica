@@ -4,10 +4,11 @@
  * for it - a lane of craftsmen, a yard with its smithy, a market square, a
  * church, a quarter, and on three tiles by three all of it at once.
  *
- * It is what a village trades in from the first day: it needs no water, but
- * a cobbled street to it - the way its own lanes are laid (gravel laid next
- * to it is cobbled, client/road materialAt) - and makes its money with the
- * people who work in it - the cottagers round it, whose houses need no jobs
+ * It is what a village trades in from the first day: it needs no water and no
+ * street to it - only to stand with the village, as everything does
+ * (core/city/cityroads); gravel laid next to it is cobbled, the way its own
+ * lanes are (client/road materialAt) - and makes its money with the people
+ * who work in it - the cottagers round it, whose houses need no jobs
  * of their own (data/houses). Later on the town keeps it as its old town. Old
  * town next to old town is one town, and one wall goes round all of it
  * (client/compoundbuilding walled).
@@ -85,8 +86,8 @@ function buildings() {
       //it only makes its money with them in
       jobs: town.jobs,
       demanding: {},
-      //no water - a well in the square - but a cobbled street to it
-      requires: { road: "cobble" },
+      //nothing - a well in the square, its own lanes - but to stand with
+      //the village
       constructionTime: 40000 + 15000 * size[0] * size[1],
       constructionCost: {
         money: town.cost,

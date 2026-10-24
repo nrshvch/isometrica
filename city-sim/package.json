@@ -1,6 +1,6 @@
 {
   "name": "city-sim",
-  "description": "The city builder: found a city, build it, lay its roads, shape the ground and buy land",
+  "description": "The city builder: found a city, build it, lay its roads and shape the ground",
   "private": true,
   "type": "module",
   "scripts": {

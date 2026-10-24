@@ -51,9 +51,8 @@ function getStats(b) {
         : res + " " + b.constructionCost[res],
     );
   }
-  //to stand with the town, next to a building or road of it - or the least
-  //of a road it wants: "cobble road"
-  if (requires.linked) needs.push("a neighbour or road");
+  //the least of a road it wants: "cobble road" - and nothing for standing
+  //with the town, which everything wants
   if (requires.road)
     needs.push(
       typeof requires.road === "string" ? requires.road + " road" : "road",
@@ -112,7 +111,7 @@ function orderOf(code) {
 }
 
 //what a game starts with comes first: whatever needs no water - a lane at
-//most, or only to stand with the village - can go down on the first day, the houses, the old town and the water
+//most - can go down on the first day, the houses, the old town and the water
 //tower that a village is made of before what only looks well, a park; and
 //the rest only once there are streets and water to it
 function startRank(code) {

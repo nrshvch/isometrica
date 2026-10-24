@@ -20,6 +20,7 @@ import ErrorCode from "./errorcode";
 import TerrainType from "./terraintype";
 import Surface from "./surface";
 import Rotation from "./rotation";
+import BuildingState from "./buildingstate";
 
 var Core = namespace("Isometrica.Core");
 
@@ -99,14 +100,11 @@ City.prototype.init = function () {};
 City.prototype.missing = function (building) {
   var requires = BuildingData[building.buildingCode].requires;
 
-  if (requires === undefined) return null;
+  //part of the city first, standing near enough to it - whatever it is, and
+  //all a village's house wants (core/city/cityroads)
+  if (this.roadService.cutOff(building) !== null) return ServiceCode.linked;
 
-  //part of the city, standing next to it - all a village's house wants
-  if (
-    requires[ServiceCode.linked] === true &&
-    !this.roadService.linked(building)
-  )
-    return ServiceCode.linked;
+  if (requires === undefined) return null;
 
   //true for any road, or the least of one it wants - a cobbled street for a
   //house in town, say (data/buildings)
@@ -210,7 +208,7 @@ City.prototype.getHousingSlots = function () {
 /**
  * How many of the city's buildings are going without, per service - one cut
  * off from it going without being part of it (ServiceCode.linked), whatever
- * else it wants.
+ * else it wants. What is still going up wants nothing yet.
  *
  * @returns {Object} ServiceCode -> count
  */
@@ -223,10 +221,9 @@ City.prototype.getMissingServices = function () {
   for (var name in ServiceCode) r[ServiceCode[name]] = 0;
 
   for (i = 0; i < buildings.length; i++) {
-    missing =
-      this.roadService.cutOff(buildings[i]) !== null
-        ? ServiceCode.linked
-        : this.missing(buildings[i]);
+    if (buildings[i].getState() !== BuildingState.ready) continue;
+
+    missing = this.missing(buildings[i]);
 
     if (missing !== null) r[missing]++;
   }

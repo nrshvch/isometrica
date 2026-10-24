@@ -128,6 +128,9 @@ function update(self) {
 
     if (radius <= 0 || building.getState() !== BuildingState.ready) continue;
 
+    //one cut off from the city is nobody's to run (core/city/cityroads)
+    if (self.city.roadService.cutOff(building) !== null) continue;
+
     towers++;
 
     tiles = CityWater.coverage(building.tile, radius);

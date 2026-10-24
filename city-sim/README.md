@@ -12,12 +12,19 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 
 - A city is founded with its first house: with none yet, the button along
   the bottom opens the catalogue on the village's houses only - those that
-  need nothing but to stand with the village - and the one picked is put down as any building
+  need nothing of a town - and the one picked is put down as any building
   is; Done asks for the city's name, and the house goes up in it, out of
-  the money it starts with. The town hall comes later, when it has grown
-  into a town; where it stands is the city's middle, and the stretch of
-  road it is on the city - otherwise the bigger stretch, and its middle
-  (see the isometrica README).
+  the $100,000 it starts with. The town hall comes later, when it has grown
+  into a town; where it stands is the city's middle (see the isometrica
+  README).
+- Everything the city builds has to stand with it - near enough to another
+  of its buildings or roads, a tile between them at most along a row or a
+  column, or corner to corner - and a dashed line goes round all of it, the
+  gaps it holds together across and whatever it closes in taken in: the
+  city's border (`src/client/cityborder.js`, `cityarea.js`). Whatever stands
+  further off is cut off, with no border round it, till a road - the cheap
+  way across - or another building joins it up. The border is put away with
+  the words over the world.
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
   station first, then the parks - and then everything else: houses, then

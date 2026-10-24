@@ -469,11 +469,12 @@ dev`) plays them the way a game would - all three weathers together, the
   stores, a shopping centre) and then either farmers' markets or office
   blocks. The catalogue keeps each tier together, its footprint on every
   card (`isometrica/src/data/houses.js`, `shops.js`, `flats.js`, `offices.js`).
-  Everything but the village, its old town included, wants a cobbled street
-  at least alongside it - asphalt will do - and says "no road (cobble)"
-  over it till it has one, the village "no road (gravel)" (`core/roadrules`
-  serves, `core/city/cityroads` reaches); a park, a water tower and a pump
-  station want no road at all. What a building of a tier holds or employs,
+  Everything has to stand with the city (`core/city/cityroads` linked); the
+  houses in town, the shops and offices and the town hall want a cobbled
+  street at least right alongside them as well - asphalt will do - and say
+  "no road (cobble)" over them till they have one (`core/roadrules` serves,
+  `core/city/cityroads` reaches); the village, its old town, the church, a
+  square, a park, a water tower and a pump station want no road at all. What a building of a tier holds or employs,
   makes and costs goes by how many tiles it covers and nothing else - a
   footprint and the same one turned are the same building laid out another
   way - and the more tiles, the more of it on each, for a little more:
@@ -584,7 +585,7 @@ dev`) plays them the way a game would - all three weathers together, the
   them.
 - The old town (`isometrica/src/shared/gen/oldtown.js`, `isometrica/src/data/oldtown.js`) is the
   commerce a village starts with, next to its cottages: it needs no water
-  but a cobbled street to it, and makes its money with the cottagers working in it. On 1x2 and
+  and no street, and makes its money with the cottagers working in it. On 1x2 and
   1x3 a lane of craftsmen's houses - narrow, tall, their steep gables to
   the lane, half-timbered or rendered in ochre, rose, sky blue, sage or
   stone, the smith's, baker's, cooper's, potter's and weaver's signs
@@ -719,23 +720,25 @@ dev`) plays them the way a game would - all three weathers together, the
   (`City.quoteFounding`, `client/buildman.js` found). It puts up a town hall
   when it has grown into a town, and has no borders: all the land there is,
   is the city's (`Construction#getCity`), and anything can go up anywhere.
-- The city holds together where its finished buildings and roads touch,
-  side by side, never only at a corner (`isometrica/src/core/city/cityroads.js`):
-  houses standing next to each other, a road next to a road, a building next
-  to a road - a village holds together by its houses, and a road reaches
-  out to what stands further off. Of the parts that hang together, the city
-  is the one its town hall stands in, if one does, otherwise the bigger - its
-  road tiles and the ground its buildings stand on - then the one more people
-  live in, then the one with the oldest building; its roads are the road
-  network. It is worked out again whenever something goes up, comes down or
-  is finished, and nothing of it is saved. A village's houses, parks and
-  squares want only to be part of it (`requires` linked); anything more wants
-  a road of the network alongside - or a square that opens onto one, itself
-  or through the squares next to it, which passes it on. What wants either
-  and is not part of the city is cut off - abandoned: it costs and earns the
-  city nothing, and "cut off" hangs over it. Its name hangs over its town
-  hall, or the middle of what is part of it (`City#center`). Roads costing
-  to lay is what keeps a town reaching out close together.
+- The city holds together where its finished buildings and roads stand
+  near enough to each other (`isometrica/src/core/city/cityroads.js`): next
+  to each other, with a tile between along a row or a column, or corner to
+  corner - two tiles apart at most, counted along the rows and columns
+  (`CityRoads.LINKS`). A village holds together by its houses, with a yard
+  between them or none, and a road - laid a tile short of either end, even
+  - is the cheap way to reach out to what stands further off. Of the parts
+    that hang together, the city is the one its town hall stands in, if one
+    does, otherwise the bigger - its road tiles and the ground its buildings
+    stand on - then the one more people live in, then the one with the oldest
+    building; its roads are the road network. It is worked out again whenever
+    something goes up, comes down or is finished, and nothing of it is saved.
+    Everything of the city wants to be part of it, a water tower as much as a
+    house; what is not is cut off - abandoned: it costs and earns the city
+    nothing, waters nothing, and "cut off" hangs over it. A road a building
+    wants has to be right alongside it, no tile between. The city-sim draws
+    a border round the city (`city-sim/src/client/cityborder.js`); the world
+    itself has none. Its name hangs over its town hall, or the middle of what
+    is part of it (`City#center`).
 - People live in houses, each keeping how many live in it, in the save by
   the tile it stands on (`isometrica/src/core/city/citypopulation.js`); a
   save of before, with a head count only, has them put up oldest house

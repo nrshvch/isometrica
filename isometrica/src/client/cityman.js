@@ -84,14 +84,20 @@ function Cityman(root) {
   //(ServiceMan#toggleLabels)
   this._namesHidden = false;
   //whether the cities' names are written over them at all - a game that
-  //shows its city's elsewhere goes without (city-sim play.js); their limits
-  //are drawn round them all the same
+  //shows its city's elsewhere goes without (city-sim play.js)
   this.names = true;
 }
 
 /**
- * Puts the cities' names away, and their limits drawn round them, or brings
- * them back.
+ * @returns {boolean} whether the cities' names are put away with the rest of
+ *          the words over the world - and whatever a game draws with them
+ */
+Cityman.prototype.namesHidden = function () {
+  return this._namesHidden;
+};
+
+/**
+ * Puts the cities' names away, or brings them back.
  *
  * @param hidden {boolean}
  */

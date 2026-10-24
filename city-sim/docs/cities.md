@@ -22,17 +22,17 @@ Alaska was five families in 1968, on land bought with a grant
   placing it.
 - The town hall comes later, once the town has grown into one: it wants a
   cobbled street and water (`isometrica/src/data/civic.js`).
-- The money a city starts with, $10,000 (`CityResources.START` in
-  `isometrica/src/core/city/cityresources.js`), covers two of the smaller
-  houses ($4,500 each) - next to each other, they are both lived in.
+- A city starts with $100,000 (`CityResources.START` in
+  `isometrica/src/core/city/cityresources.js`): the founders' savings, enough
+  for a village and the start of a town. The numbers are to be tuned.
 
 ## Growing by what it needs
 
 **Done** (in the data). A village needs nothing but to hold together: village
-houses want only to stand next to the city - another of its buildings, or a
-road - and no water and no jobs in town; their fields are in their
-footprints. Parks and squares want the same. Town houses want a cobbled
-street and water, and so does everything after them
+houses want only to stand with the city - near another of its buildings, or
+a road - and no water and no jobs in town; their fields are in their
+footprints. Parks, squares, the church and the old town want the same. Town
+houses want a cobbled street and water, and so does everything after them
 (`isometrica/src/data/houses.js`). A player who wants something more than a
 village has to lay streets and bring water in; one who does not can grow a
 village without end, with no roads at all - the poorest use of the land
@@ -40,30 +40,35 @@ there is, at $20 a head. The numbers are to be tuned.
 
 ## What the city is
 
-**Done.** There are no borders. The city holds together where its finished
-buildings and roads touch side by side - never only at a corner
-(`isometrica/src/core/city/cityroads.js`):
+**Done.** There is no land to buy. Linking is what says where the city is: it
+holds together where its finished buildings and roads stand near enough to
+each other (`isometrica/src/core/city/cityroads.js`) -
 
-- a building next to another building of the city;
-- a building next to one of its roads;
-- a road next to a road.
+- next to each other;
+- with a tile between them along a row or a column;
+- corner to corner, the nearest corner only - a corner with a tile between is
+  too far;
 
-So a village holds together by its houses standing next to each other, the
-way families settle, and a road is what bridges out to a group of buildings
-further off. Only what is finished holds anything together; a tree is the
-world's.
+that is, two tiles apart at most, counted along the rows and columns
+(`CityRoads.LINKS`). Roads link the same way, so a road is the cheap way to
+bridge out to a group of buildings further off. Only what is finished holds
+anything together; a tree is the world's.
 
-What a building wants of the city (`requires` in the data):
+What a building wants of the city:
 
-- **linked**: to be part of it - all a village's house, a park or a square
-  wants;
-- **road**: a road of the city's network alongside, of at least the material
-  it asks for - a cobbled street for a house in town, a shop, the church or
-  the town hall. A square passes on the road it has to what stands round it:
-  a building on a square that opens onto a street, itself or through the
-  squares next to it, is on that street. A square costs more than the street
-  it stands in for, so it is not a way round laying streets;
+- **to be part of it**: everything does - a village's house, a park, a
+  square, the church, the old town, the water tower. One that is not is cut
+  off;
+- **a road** (`requires` in the data), for a house in town, a shop, offices,
+  flats and the town hall: a road of the city's network right alongside it,
+  no tile between, of at least the material it asks for;
 - **water**, as before.
+
+**Done.** The city-sim draws a border round the city: a dashed line round
+everything that is part of it, the tiles it holds together across taken in,
+and whatever it closes in (`city-sim/src/client/cityborder.js`,
+`cityarea.js`). Nothing cut off has one. It is put away with the words over
+the world.
 
 When what hangs together comes apart, the city is:
 
@@ -113,8 +118,8 @@ nobody is lost.
 
 ## A part cut off
 
-**Done.** A building that wants to be part of the city - linked, or on a road -
-and is not is cut off from it: abandoned.
+**Done.** A building of the city that is not part of it is cut off from it:
+abandoned.
 
 - Its people stay in their houses for now, and pay nothing.
 - They move out one person a tick out of each part cut off, till it is
@@ -126,8 +131,7 @@ and is not is cut off from it: abandoned.
 - "cut off" hangs over it, and the city screen counts it.
 - Joined up again - by a building in the gap, or a road - it is the city's
   once more, with whoever still lives there. Taking it over costs nothing.
-- What wants nothing of the city - a water tower - is never cut off: it does
-  what it does wherever it stands.
+- A water tower cut off waters nothing.
 
 In the single-player game a part cut off is not a city of its own: it stays
 with the one city, as its buildings that are cut off. Multiplayer will need it

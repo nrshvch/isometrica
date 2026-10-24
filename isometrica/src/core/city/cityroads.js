@@ -1,35 +1,34 @@
 /**
  * What holds the city together, and what its streets reach.
  *
- * The city's buildings and roads hang together where they touch, side by
- * side - north, south, east or west, never only at a corner: a road to the
- * road next to it, a building to the roads alongside it, and to the
- * buildings it shares a side with. A village holds together by its houses
- * standing next to each other, the way families settle; a road is what
- * reaches out to whatever stands further off. Only what is finished holds
- * anything together - a road still being laid, a house still going up, not
- * yet - and a tree is the world's, not the city's.
+ * The city's buildings and roads hang together where they stand near enough
+ * to each other: next to each other, or with a tile between them along a row
+ * or a column, or corner to corner - never further (LINKS: two tiles apart,
+ * counted along the rows and columns). A village holds together by its
+ * houses standing near each other, the way families settle, with a yard
+ * between them or none; a road is what reaches out to whatever stands
+ * further off, and the cheapest way to. Only what is finished holds anything
+ * together - a road still being laid, a house still going up, not yet - and a
+ * tree is the world's, not the city's.
  *
  * What hangs together may come apart into parts. The city is the part its
  * town hall stands in, if one stands, and otherwise the bigger one, by
  * everything in it: its road tiles and the ground its buildings stand on. Of
  * two the same, the one more people live in, then the one with the oldest of
- * the city's buildings. Its roads are the city's road network. It is worked
- * out again whenever something goes up, comes down or is finished - from
- * what stands then, so nothing of it goes into the save.
+ * the city's buildings. It is worked out again whenever something goes up,
+ * comes down or is finished - from what stands then, so nothing of it goes
+ * into the save.
  *
- * What wants to be part of the city (data/buildings requires: linked, or a
- * road) and is not is cut off from it - abandoned: it costs the city
- * nothing, earns it nothing, and its people move out (core/city/
- * citypopulation), till it is joined up again.
+ * Every building of the city wants to be part of it (#linked) - the water
+ * tower as much as a house. One that is not is cut off from it - abandoned:
+ * it costs the city nothing, earns it nothing, waters nothing, and its people
+ * move out (core/city/citypopulation), till it is joined up again.
  *
- * Being part of the city is all a village's houses want, and a park or a
- * square. Anything more wants a road alongside it, on the network - and may
- * want more of a road than a gravel lane: a cobbled street or asphalt. A
- * square passes on the road it has to what stands round it: a building on a
- * square that opens onto a street - itself, or through the squares next to
- * it - is on that street (#reaches). That is what makes a player lay
- * streets: a house in town off them holds nobody (Building#citizenCapacity).
+ * The roads of the part that is the city are its road network. What wants a
+ * road (data/buildings requires) wants one of them right alongside it, no
+ * tile between - and may want more of a road than a gravel lane: a cobbled
+ * street or asphalt. That is what makes a player lay streets for a town: a
+ * house in town off them holds nobody (Building#citizenCapacity).
  */
 import Events from "events";
 import * as RoadRules from "../roadrules";
@@ -37,13 +36,36 @@ import BuildingData from "../../data/buildings";
 import BuildingClassCode from "../../data/classcode";
 import BuildingState from "../buildingstate";
 import Rotation from "../rotation";
-import ServiceCode from "../servicecode";
 import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
 
 import namespace from "namespace";
 var CityService = namespace("Isometrica.Core.CityService");
 CityService.Roads = CityRoads;
+
+/**
+ * Where from a tile of one thing a tile of another holds it together with it:
+ * two tiles apart at most, counted along the rows and columns - next to it,
+ * with a tile between along the row or the column, or corner to corner - as
+ * [x, y].
+ *
+ * @type {number[][]}
+ */
+var LINKS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [2, 0],
+  [-2, 0],
+  [0, 2],
+  [0, -2],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+];
+CityRoads.LINKS = LINKS;
 
 /**
  * @param city {City}
@@ -58,9 +80,6 @@ function CityRoads(city) {
   this._main = -1;
   //the town hall the city is where it is for, if any
   this._hall = null;
-  //building id -> what a square passes on to what stands round it: the best
-  //road its squares open onto, or nothing
-  this._plaza = {};
   //how many times it was worked out (#version)
   this._version = 0;
   this._stale = true;
@@ -86,30 +105,22 @@ CityRoads.prototype.init = function () {
  *        "gravel", "cobble" or "asphalt" (core/roadrules MATERIALS); any road
  *        where left out
  * @returns {boolean} whether the city's streets reach it: a road of the
- *          network alongside it, or a square that opens onto one
+ *          network right alongside it
  */
 CityRoads.prototype.reaches = function (building, least) {
   update(this);
 
   var world = this.city.world,
     sides = alongside(building),
-    there,
     i;
 
   for (i = 0; i < sides.length; i++) {
-    there = world.buildings.get(sides[i]);
-
-    if (there === null) continue;
-
     if (
       this._network[sides[i]] === true &&
-      RoadRules.serves(RoadRules.materialOf(there), least)
-    )
-      return true;
-
-    if (
-      typeof this._plaza[there.id] === "string" &&
-      RoadRules.serves(this._plaza[there.id], least)
+      RoadRules.serves(
+        RoadRules.materialOf(world.buildings.get(sides[i])),
+        least,
+      )
     )
       return true;
   }
@@ -153,22 +164,21 @@ CityRoads.prototype.getNetworkSize = function () {
 };
 
 /**
- * What a building that wants to be part of the city is cut off from it with,
- * if it is: the same for everything in one part that is not the city's, and
- * a building's own while it is not finished. Null for one that is part of
- * the city, and for anything that wants nothing of it - a water tower - which
- * does what it does wherever it stands.
+ * What a building of the city is cut off from it with, if it is: the same for
+ * everything in one part that is not the city's, and a building's own while
+ * it is not finished. Null for one that is part of the city - and for a road,
+ * which is only part of the network or not, or a tree, which is the world's.
  *
  * @param building {Building}
  * @returns {string|null}
  */
 CityRoads.prototype.cutOff = function (building) {
-  var requires = BuildingData[building.buildingCode].requires,
+  var classCode = BuildingData[building.buildingCode].classCode,
     part;
 
   if (
-    requires === undefined ||
-    !(requires[ServiceCode.road] || requires[ServiceCode.linked])
+    classCode === BuildingClassCode.road ||
+    classCode === BuildingClassCode.tree
   )
     return null;
 
@@ -179,6 +189,23 @@ CityRoads.prototype.cutOff = function (building) {
   if (part === undefined) return "own" + building.id;
 
   return part === this._main ? null : "part" + part;
+};
+
+/**
+ * @returns {Building[]} what the city is made of: its buildings and roads
+ *          that are part of it - for what shows where it is
+ */
+CityRoads.prototype.members = function () {
+  update(this);
+
+  var buildings = this.city.buildings.getBuildings(),
+    r = [],
+    i;
+
+  for (i = 0; i < buildings.length; i++)
+    if (this._partOf[buildings[i].id] === this._main) r.push(buildings[i]);
+
+  return r;
 };
 
 /**
@@ -250,6 +277,43 @@ function offer(sides, footprint, tile) {
   if (footprint[tile] !== true && sides.indexOf(tile) === -1) sides.push(tile);
 }
 
+/**
+ * Every tile near enough to a building to hold together with what stands on
+ * it (LINKS), its own left out.
+ *
+ * @param building {Building}
+ * @returns {number[]}
+ */
+function near(building) {
+  var iter = building.occupiedTiles(),
+    footprint = {},
+    tiles = [],
+    out = [],
+    seen = {},
+    tile,
+    next,
+    i,
+    j;
+
+  while (!iter.done) {
+    tile = TileIterator.next(iter);
+    footprint[tile] = true;
+    tiles.push(tile);
+  }
+
+  for (i = 0; i < tiles.length; i++)
+    for (j = 0; j < LINKS.length; j++) {
+      next = tiles[i] + LINKS[j][0] + LINKS[j][1] * Terrain.dy;
+
+      if (footprint[next] === true || seen[next] === true) continue;
+
+      seen[next] = true;
+      out.push(next);
+    }
+
+  return out;
+}
+
 function isRoadData(building) {
   return (
     BuildingData[building.buildingCode].classCode === BuildingClassCode.road
@@ -308,7 +372,7 @@ function update(self) {
     var index = parts.length,
       part = { size: 0, people: 0, oldest: i, hall: -1 },
       open = [b],
-      sides,
+      tiles,
       next,
       j;
 
@@ -320,10 +384,10 @@ function update(self) {
 
       weigh(part, b, order[b.id], population);
 
-      sides = alongside(b);
+      tiles = near(b);
 
-      for (j = 0; j < sides.length; j++) {
-        next = world.buildings.get(sides[j]);
+      for (j = 0; j < tiles.length; j++) {
+        next = world.buildings.get(tiles[j]);
 
         if (
           next === null ||
@@ -359,7 +423,6 @@ function update(self) {
   self._main = main;
   self._network = network;
   self._hall = hall === -1 ? null : buildings[hall];
-  self._plaza = plazas(self, buildings, partOf, main, network);
 }
 
 //what a building adds to the part it is in
@@ -376,75 +439,6 @@ function weigh(part, building, at, population) {
   if (at < part.oldest) part.oldest = at;
   if (CityRoads.isTownHall(building) && (part.hall === -1 || at < part.hall))
     part.hall = at;
-}
-
-/**
- * Every square of the city, and the best road the squares it stands with -
- * those next to it, and those next to them - open onto: what it passes on
- * to whatever stands round it. Only the squares of the city, onto its
- * network.
- *
- * @returns {Object} building id -> a material, or null
- */
-function plazas(self, buildings, partOf, main, network) {
-  var world = self.city.world,
-    plaza = {},
-    group,
-    best,
-    sides,
-    next,
-    b,
-    i,
-    j,
-    k;
-
-  for (i = 0; i < buildings.length; i++) {
-    b = buildings[i];
-
-    if (
-      BuildingData[b.buildingCode].plaza !== true ||
-      partOf[b.id] !== main ||
-      plaza[b.id] !== undefined
-    )
-      continue;
-
-    group = [b];
-    best = null;
-    plaza[b.id] = null;
-
-    for (j = 0; j < group.length; j++) {
-      sides = alongside(group[j]);
-
-      for (k = 0; k < sides.length; k++) {
-        next = world.buildings.get(sides[k]);
-
-        if (next === null) continue;
-
-        if (network[sides[k]] === true) {
-          best = bestOf(best, RoadRules.materialOf(next));
-        } else if (
-          BuildingData[next.buildingCode].plaza === true &&
-          partOf[next.id] === main &&
-          plaza[next.id] === undefined
-        ) {
-          plaza[next.id] = null;
-          group.push(next);
-        }
-      }
-    }
-
-    for (j = 0; j < group.length; j++) plaza[group[j].id] = best;
-  }
-
-  return plaza;
-}
-
-function bestOf(a, b) {
-  if (a === null) return b;
-
-  return RoadRules.MATERIALS.indexOf(b) > RoadRules.MATERIALS.indexOf(a)
-    ? b
-    : a;
 }
 
 //whether part a is more the city than b: bigger, then more lived in, then

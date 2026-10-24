@@ -17,9 +17,10 @@ function CityResources(city) {
   this._resources = Resources.clone(START);
 }
 
-//what a city is founded with: enough for its first house or two
+//what a city is founded with: the founders' savings, enough for a village
+//and the start of a town
 var START = {
-  money: 10000,
+  money: 100000,
 };
 CityResources.START = START;
 
