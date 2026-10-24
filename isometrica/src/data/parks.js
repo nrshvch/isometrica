@@ -4,8 +4,9 @@
  * each laid out as any of the kinds of park there are, at random - courts
  * and a skate spot, a formal garden, or a town park with trees and a pond.
  *
- * A park earns nothing and needs nothing - no road, no water - so it can go
- * anywhere from the start: the town keeps it up.
+ * A park earns nothing and needs nothing - no road, no water - but to stand
+ * with the town, next to one of its buildings or roads, from the start: the
+ * town keeps it up.
  */
 import BuildingClassCode from "./classcode";
 
@@ -45,6 +46,8 @@ function buildings() {
       demanding: {
         money: park.upkeep,
       },
+      //with the town, and no more (core/city/cityroads linked)
+      requires: { linked: true },
       constructionTime: 20000 + 10000 * size[0] * size[1],
       constructionCost: {
         money: park.cost,

@@ -102,8 +102,8 @@ CityPopulation.needsJobs = needsJobs;
 
 /**
  * Whether a city can be founded with a house of this kind: one whose people
- * need nothing of a town - no work in it, no water - but a lane to it, the
- * way a family or a few settle somewhere. Only what is offered to be built.
+ * need nothing of a town - no work in it, no water, no road - the way a
+ * family or a few settle somewhere. Only what is offered to be built.
  *
  * @param data {Object} building data
  * @returns {boolean}

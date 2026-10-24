@@ -7,7 +7,10 @@
  *
  * Like a park they earn nothing - the town keeps them up - but the church and
  * the town hall have people working in them, and unlike one they want a
- * cobbled street to them at least (core/roadrules serves).
+ * cobbled street to them at least (core/roadrules serves). A square wants
+ * only to stand with the town, as a park does, and squares side by side make
+ * a bigger one: what stands round them is on whatever street they open onto
+ * (core/city/cityroads reaches).
  */
 import BuildingClassCode from "./classcode";
 
@@ -24,7 +27,8 @@ var CIVIC = [
     cost: 1200,
     upkeep: 3,
     time: 20000,
-    requires: { road: "cobble" },
+    requires: { linked: true },
+    plaza: true,
   },
   {
     kind: 1,
@@ -102,6 +106,8 @@ function buildings() {
     //where the city is: its part of the roads, and its middle (core/city/
     //cityroads)
     if (civic.townHall) data.townHall = true;
+    //a square passes on the street it opens onto (core/city/cityroads)
+    if (civic.plaza) data.plaza = true;
 
     out[data.buildingCode] = data;
   });

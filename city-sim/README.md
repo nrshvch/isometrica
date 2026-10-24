@@ -12,7 +12,7 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 
 - A city is founded with its first house: with none yet, the button along
   the bottom opens the catalogue on the village's houses only - those that
-  need nothing but a lane - and the one picked is put down as any building
+  need nothing but to stand with the village - and the one picked is put down as any building
   is; Done asks for the city's name, and the house goes up in it, out of
   the money it starts with. The town hall comes later, when it has grown
   into a town; where it stands is the city's middle, and the stretch of

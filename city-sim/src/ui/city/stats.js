@@ -23,6 +23,18 @@ function signed(amount) {
   );
 }
 
+//what goes without what it wants, "-" for nothing: "2 cut off, 1 without
+//water"
+function unserved(missing) {
+  var r = [];
+
+  if (missing.linked > 0) r.push(missing.linked + " cut off");
+  if (missing.road > 0) r.push(missing.road + " without a road");
+  if (missing.water > 0) r.push(missing.water + " without water");
+
+  return r.length > 0 ? r.join(", ") : "-";
+}
+
 /**
  * Everything the info tab shows, as it reads - worked out afresh every time
  * the city updates.
@@ -72,9 +84,6 @@ export function stats(city) {
 
     towers: number(city.water.getTowerCount()),
     roads: number(city.roads.getNetworkSize()),
-    unserved:
-      missing.road === 0 && missing.water === 0
-        ? "-"
-        : missing.road + " without a road, " + missing.water + " without water",
+    unserved: unserved(missing),
   };
 }

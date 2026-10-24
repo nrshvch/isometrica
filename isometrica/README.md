@@ -461,8 +461,8 @@ dev`) plays them the way a game would - all three weathers together, the
   footprint: 2x1 and 3x1 along the street, 1x2 and 1x3 end on to it, and
   2x2, 2x3 and 3x2 - the first number along the street, the second back from
   it - each with designs and options of its own, so no two need be alike.
-  Housing: the village (cottages, farms, a croft - needing a gravel lane
-  at least, and no water), town houses (bungalows, two-storey and terraced houses,
+  Housing: the village (cottages, farms, a croft - needing only to stand
+  next to the village, and no water), town houses (bungalows, two-storey and terraced houses,
   semi-detached pairs) and then either villas - few people on a lot of
   land, paying a lot - or blocks of flats, a lot of people on little land.
   Commerce: small shops, stores (supermarkets, superstores, department
@@ -515,7 +515,7 @@ dev`) plays them the way a game would - all three weathers together, the
   cars from the vehicle generator, different for every building.
 - Houses are painted the same way (`isometrica/src/shared/gen/houses.js`), one
   catalogue entry per kind and footprint (`isometrica/src/data/houses.js`): village
-  houses that need a gravel lane and no water - a cottage with hens, a cow, an
+  houses that need only to stand next to the village and no water - a cottage with hens, a cow, an
   orchard or a well, a farmstead on 1x2 with a barn, a field or sheep, a
   croft on 1x3 - and on 3x1 along the street, its house at one end facing a
   lane up the side - hamlets of cottages or farmsteads side by side, a longhouse
@@ -714,23 +714,28 @@ dev`) plays them the way a game would - all three weathers together, the
   its tile has it. The world grows each kind in stands
   (`isometrica/src/core/ambient.js`).
 - A town is founded with its first house - a village's, which needs
-  nothing of a town but a lane (`CityPopulation.canFound`): the player puts
-  it down, names the city, and it goes up out of what the city starts with
+  nothing of a town (`CityPopulation.canFound`): the player puts it down,
+  names the city, and it goes up out of what the city starts with
   (`City.quoteFounding`, `client/buildman.js` found). It puts up a town hall
   when it has grown into a town, and has no borders: all the land there is,
   is the city's (`Construction#getCity`), and anything can go up anywhere.
-- Its road network is the stretch of its roads that hangs together that is
-  the city (`isometrica/src/core/city/cityroads.js`): the one its town hall
-  stands on, if one does, otherwise the bigger - its roads, and the ground
-  taken by what stands along them - then the one more people live along,
-  then the one with the oldest building. It is worked out again whenever
-  something goes up, comes down or is finished, and nothing of it is saved.
-  A building is on it when it is next to it; a house or shop that is not
-  gets nobody to live or work in it, and one that wants a road and is on a
-  stretch that came apart from the network is cut off - abandoned: it costs
-  and earns the city nothing, and "cut off" hangs over it. Its name hangs
-  over its town hall, or the middle of what stands on its roads
-  (`City#center`). Roads costing to lay is what keeps a town close together.
+- The city holds together where its finished buildings and roads touch,
+  side by side, never only at a corner (`isometrica/src/core/city/cityroads.js`):
+  houses standing next to each other, a road next to a road, a building next
+  to a road - a village holds together by its houses, and a road reaches
+  out to what stands further off. Of the parts that hang together, the city
+  is the one its town hall stands in, if one does, otherwise the bigger - its
+  road tiles and the ground its buildings stand on - then the one more people
+  live in, then the one with the oldest building; its roads are the road
+  network. It is worked out again whenever something goes up, comes down or
+  is finished, and nothing of it is saved. A village's houses, parks and
+  squares want only to be part of it (`requires` linked); anything more wants
+  a road of the network alongside - or a square that opens onto one, itself
+  or through the squares next to it, which passes it on. What wants either
+  and is not part of the city is cut off - abandoned: it costs and earns the
+  city nothing, and "cut off" hangs over it. Its name hangs over its town
+  hall, or the middle of what is part of it (`City#center`). Roads costing
+  to lay is what keeps a town reaching out close together.
 - People live in houses, each keeping how many live in it, in the save by
   the tile it stands on (`isometrica/src/core/city/citypopulation.js`); a
   save of before, with a head count only, has them put up oldest house

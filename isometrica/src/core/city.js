@@ -101,8 +101,15 @@ City.prototype.missing = function (building) {
 
   if (requires === undefined) return null;
 
-  //true for any road, or the least of one it wants - a gravel lane for a
-  //village's houses, a cobbled street for the rest (data/buildings)
+  //part of the city, standing next to it - all a village's house wants
+  if (
+    requires[ServiceCode.linked] === true &&
+    !this.roadService.linked(building)
+  )
+    return ServiceCode.linked;
+
+  //true for any road, or the least of one it wants - a cobbled street for a
+  //house in town, say (data/buildings)
   var road = requires[ServiceCode.road];
 
   if (road && !this.roadService.reaches(building, road))
@@ -201,7 +208,9 @@ City.prototype.getHousingSlots = function () {
 };
 
 /**
- * How many of the city's buildings are going without, per service.
+ * How many of the city's buildings are going without, per service - one cut
+ * off from it going without being part of it (ServiceCode.linked), whatever
+ * else it wants.
  *
  * @returns {Object} ServiceCode -> count
  */
@@ -214,7 +223,10 @@ City.prototype.getMissingServices = function () {
   for (var name in ServiceCode) r[ServiceCode[name]] = 0;
 
   for (i = 0; i < buildings.length; i++) {
-    missing = this.missing(buildings[i]);
+    missing =
+      this.roadService.cutOff(buildings[i]) !== null
+        ? ServiceCode.linked
+        : this.missing(buildings[i]);
 
     if (missing !== null) r[missing]++;
   }
@@ -476,11 +488,11 @@ City.prototype.tile = function (value) {
 
 /**
  * The middle of the town, which is where its name goes and the camera goes
- * back to: its town hall, if one stands on its roads (CityRoads#townHall) -
- * a town's centre need not be the thick of it, it can be a square or a park
- * - and otherwise the middle of what stands on its roads, the roads left
- * out. Before anything does, the middle of whatever it has built; before
- * that, where it was founded.
+ * back to: its town hall, if one stands in it (CityRoads#townHall) - a
+ * town's centre need not be the thick of it, it can be a square or a park -
+ * and otherwise the middle of what is part of it, the roads left out.
+ * Before anything is, the middle of whatever it has built; before that,
+ * where it was founded.
  *
  * @returns {{x: number, y: number}} in tiles, not whole ones
  */
@@ -506,7 +518,7 @@ City.prototype.center = function () {
       continue;
 
     all.push(b);
-    if (this.roadService.onNetwork(b)) on.push(b);
+    if (this.roadService.linked(b)) on.push(b);
   }
 
   if (on.length > 0) return middleOf(on);

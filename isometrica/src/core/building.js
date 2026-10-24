@@ -91,7 +91,8 @@ Building.prototype.citizenCapacity = function () {
 
   if (this._state !== BuildingState.ready) return 0;
 
-  //nobody moves into a house with no street to it or no water in it
+  //nobody moves into a house that is not part of the city, or has no street
+  //to it or no water in it
   var city = this.getCity();
 
   if (city !== null && city.missing(this) !== null) return 0;

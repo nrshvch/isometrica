@@ -55,10 +55,11 @@ text[NO_WORKERS] = "no workers";
 //and a house whose people would have nowhere to work
 var NO_JOBS = "noJobs";
 text[NO_JOBS] = "no jobs";
-//and anything on a road that is not the city's - one that came apart from it
-//(core/city/cityroads cutOff): abandoned, till it is joined up again
+//and anything that wants to be part of the city and is not (core/city/
+//cityroads cutOff): abandoned, till it is joined up again
 var CUT_OFF = "cutOff";
 text[CUT_OFF] = "cut off";
+text[ServiceCode.linked] = text[CUT_OFF];
 
 //high enough to clear the roof of anything it sits over - and, over a
 //building still going up, just off the pit dug for it
@@ -191,12 +192,8 @@ function refresh(self) {
 
     missing = city.missing(model);
 
-    //a road of its own, only not the city's
-    if (
-      missing === ServiceCode.road &&
-      /^road/.test(city.roadService.cutOff(model) || "")
-    )
-      missing = CUT_OFF;
+    //not part of the city at all comes before anything it has or not
+    if (city.roadService.cutOff(model) !== null) missing = CUT_OFF;
     else if (
       missing === null &&
       model.jobs() > 0 &&

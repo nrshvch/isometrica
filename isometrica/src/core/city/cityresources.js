@@ -17,7 +17,7 @@ function CityResources(city) {
   this._resources = Resources.clone(START);
 }
 
-//what a city is founded with: enough for its first house and the lane to it
+//what a city is founded with: enough for its first house or two
 var START = {
   money: 10000,
 };

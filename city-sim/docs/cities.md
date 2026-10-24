@@ -10,8 +10,10 @@ Alaska was five families in 1968, on land bought with a grant
 
 - There is no step of picking a tile to found on. With no city yet, "Found a
   city" opens the catalogue on the houses a city can be founded with: the
-  village's, which need nothing but a lane - no water, no jobs
+  village's, which need no road, no water, no jobs
   (`CityPopulation.canFound` in `isometrica/src/core/city/citypopulation.js`).
+- The first house is the city on its own: a family moves in as soon as it is
+  finished, and pays its taxes from then on - no road needed.
 - The one picked is put down like any building, and priced out of what a
   city starts with (`City.quoteFounding` in `isometrica/src/core/city.js`).
   Done asks for the city's name; the city is founded where the first of them
@@ -21,33 +23,56 @@ Alaska was five families in 1968, on land bought with a grant
 - The town hall comes later, once the town has grown into one: it wants a
   cobbled street and water (`isometrica/src/data/civic.js`).
 - The money a city starts with, $10,000 (`CityResources.START` in
-  `isometrica/src/core/city/cityresources.js`), covers a house and the gravel
-  lane to it: cottages are $4,500, gravel $500 a tile.
+  `isometrica/src/core/city/cityresources.js`), covers two of the smaller
+  houses ($4,500 each) - next to each other, they are both lived in.
 
 ## Growing by what it needs
 
-**Done** (in the data). A village needs nothing but a lane: village houses
-want a gravel road, no water and no jobs in town. Town houses want a cobbled
+**Done** (in the data). A village needs nothing but to hold together: village
+houses want only to stand next to the city - another of its buildings, or a
+road - and no water and no jobs in town; their fields are in their
+footprints. Parks and squares want the same. Town houses want a cobbled
 street and water, and so does everything after them
 (`isometrica/src/data/houses.js`). A player who wants something more than a
-village has to bring water in; one who does not can grow a village without
-end.
+village has to lay streets and bring water in; one who does not can grow a
+village without end, with no roads at all - the poorest use of the land
+there is, at $20 a head. The numbers are to be tuned.
 
 ## What the city is
 
-**Done.** There are no borders. A building is part of the city when a road
-alongside it joins the city's road network, and one off the network holds
-nobody and earns nothing (`isometrica/src/core/city/cityroads.js`).
+**Done.** There are no borders. The city holds together where its finished
+buildings and roads touch side by side - never only at a corner
+(`isometrica/src/core/city/cityroads.js`):
 
-**Done.** When the city's roads come apart into stretches that no longer join,
-the city is:
+- a building next to another building of the city;
+- a building next to one of its roads;
+- a road next to a road.
 
-- the stretch a town hall stands on, finished - the oldest town hall, if
-  there are several;
-- otherwise the bigger stretch: its road tiles, and the ground taken by what
-  stands along it, counted together;
-- of two the same, the one more people live along, then the one the oldest of
-  the city's buildings is on.
+So a village holds together by its houses standing next to each other, the
+way families settle, and a road is what bridges out to a group of buildings
+further off. Only what is finished holds anything together; a tree is the
+world's.
+
+What a building wants of the city (`requires` in the data):
+
+- **linked**: to be part of it - all a village's house, a park or a square
+  wants;
+- **road**: a road of the city's network alongside, of at least the material
+  it asks for - a cobbled street for a house in town, a shop, the church or
+  the town hall. A square passes on the road it has to what stands round it:
+  a building on a square that opens onto a street, itself or through the
+  squares next to it, is on that street. A square costs more than the street
+  it stands in for, so it is not a way round laying streets;
+- **water**, as before.
+
+When what hangs together comes apart, the city is:
+
+- the part a finished town hall stands in - the oldest town hall, if there
+  are several;
+- otherwise the bigger part: its road tiles and the ground its buildings
+  stand on, counted together;
+- of two the same, the one more people live in, then the one with the oldest
+  of the city's buildings.
 
 It is worked out again whenever something goes up, comes down or is finished,
 and nothing of it is kept in the save. People moving about between those
@@ -59,8 +84,7 @@ times does not change it, so it does not flip back and forth.
 (`City#center` in `isometrica/src/core/city.js`):
 
 - the town hall the city goes by, if there is one;
-- otherwise the middle of what stands on the city's roads, the roads left
-  out;
+- otherwise the middle of what is part of the city, the roads left out;
 - before anything does, the middle of whatever the city has built; before
   that, where it was founded.
 
@@ -84,26 +108,25 @@ nobody is lost.
 - Whoever is in a house with less room than people - its water gone, its
   jobs gone - moves out, one person a tick out of the city, and is gone. The
   city fills the room it has elsewhere with its own growth.
-- The city's people are those in the houses on its roads: they are its
+- The city's people are those in the houses that are part of it: they are its
   population, and they pay it their taxes.
 
 ## A part cut off
 
-**Done.** A building that wants a road and stands along a stretch that is not
-the city's, or along none, is cut off from it: abandoned.
+**Done.** A building that wants to be part of the city - linked, or on a road -
+and is not is cut off from it: abandoned.
 
 - Its people stay in their houses for now, and pay nothing.
 - They move out one person a tick out of each part cut off, till it is
-  empty. Everything along the one stretch is one part; a building with no
-  road at all is a part of its own.
+  empty. Whatever hangs together is one part; a building still going up is
+  a part of its own.
 - The main city fills its own free beds by its own growth, as if those who
   moved out had moved in.
 - It costs the city nothing to keep, and earns it nothing.
-- "cut off" hangs over a building on a stretch of road that is not the
-  city's; "no road" over one with no road at all.
-- A road joining it up again takes it back in, with whoever still lives
-  there. Taking it over costs nothing.
-- What wants no road - a water tower, a park - is never cut off: it does
+- "cut off" hangs over it, and the city screen counts it.
+- Joined up again - by a building in the gap, or a road - it is the city's
+  once more, with whoever still lives there. Taking it over costs nothing.
+- What wants nothing of the city - a water tower - is never cut off: it does
   what it does wherever it stands.
 
 In the single-player game a part cut off is not a city of its own: it stays
