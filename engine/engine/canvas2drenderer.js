@@ -8,6 +8,43 @@ define(function (require) {
     var Renderer = require("./components/renderer");
     var SpriteRenderer = require("./components/spriterenderer");
     var World = require("./world");
+    var Stats = require("./stats");
+
+    //what drawing a frame goes on (Stats): the slots brought up to date, the
+    //culling, the grouping by layer and the sorting by depth; and every layer
+    //drawn - its renderers gone through, then what they drew handed over to
+    //be drawn (renderGL) - the light, and the frame put on the screen
+    var SLOTS = Stats.section("render: slots"),
+        CULL = Stats.section("render: cull"),
+        GROUP = Stats.section("render: layers"),
+        SORT = Stats.section("render: sort"),
+        LIGHT = Stats.section("render: light"),
+        PRESENT = Stats.section("render: present"),
+        //sections by layer, made as they are first wanted: going through its
+        //renderers, and handing what they drew over
+        layerDraw = [],
+        layerFlush = [],
+        //how many gameObjects there are, how many tick, and how many of them
+        //were drawn
+        OBJECTS = Stats.counter("gameObjects", true),
+        TICKERS = Stats.counter("tickers", true),
+        VISIBLE = Stats.counter("drawn");
+
+    function layerName(i) {
+        var names = config.layerNames;
+
+        return names && names[i] !== undefined ? names[i] : "layer " + i;
+    }
+
+    function drawSection(i) {
+        return layerDraw[i] !== undefined ? layerDraw[i] :
+            (layerDraw[i] = Stats.section("draw: " + layerName(i)));
+    }
+
+    function flushSection(i) {
+        return layerFlush[i] !== undefined ? layerFlush[i] :
+            (layerFlush[i] = Stats.section("submit: " + layerName(i)));
+    }
 
     function Canvas2dRenderer(graphics) {
         this.graphics = graphics;
@@ -398,9 +435,19 @@ define(function (require) {
 
         reserve(gameObjects.length, layersCount);
 
+        Stats.begin(SLOTS);
         world.refreshSlots(refreshSlot);
+        Stats.end(SLOTS);
+        Stats.begin(CULL);
         count = cull(world, gameObjects, viewport, self);
+        Stats.end(CULL);
+        Stats.begin(GROUP);
         groupLayers(count, layersCount);
+        Stats.end(GROUP);
+
+        Stats.gauge(OBJECTS, world.gameObjectsCount);
+        Stats.gauge(TICKERS, world.tickersCount);
+        Stats.count(VISIBLE, count);
 
         //everything drawn in WebGL instead, but what is drawn on a canvas
         if (config.gl !== null && config.gl !== undefined) {
@@ -475,11 +522,15 @@ define(function (require) {
             //what lines, shapes and words are drawn with: gl's own
             ctx = gl.context;
 
-            if (end - start > 1 && (~noLayerDepthSortingMask & 1 << i))
+            if (end - start > 1 && (~noLayerDepthSortingMask & 1 << i)) {
+                Stats.begin(SORT);
                 depthSort(start, end);
+                Stats.end(SORT);
+            }
 
             gl.layer((litMask & 1 << i) !== 0, (flatMask & 1 << i) !== 0);
 
+            Stats.begin(drawSection(i));
             for (j = end - 1; j >= start; j--) {
                 entry = order[j];
                 renderer = visibleRenderers[entry];
@@ -491,15 +542,23 @@ define(function (require) {
                 else
                     renderer.render(ctx, self, viewport, renderer);
             }
+            Stats.end(drawSection(i));
 
+            Stats.begin(flushSection(i));
             gl.flush();
+            Stats.end(flushSection(i));
 
-            if (i === lastLit)
+            if (i === lastLit) {
+                Stats.begin(LIGHT);
                 gl.light();
+                Stats.end(LIGHT);
+            }
         }
 
         SpriteRenderer.collect = null;
+        Stats.begin(PRESENT);
         gl.end(viewport.context, viewport);
+        Stats.end(PRESENT);
     }
 
     p.graphics = null;

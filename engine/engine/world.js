@@ -6,7 +6,8 @@
 
 define(function (require) {
     var Octree = require('./lib/octree'),
-        EventManager = require("events");
+        EventManager = require("events"),
+        Stats = require("./stats");
 
     /**
      * @param {Logic} logic
@@ -423,6 +424,11 @@ define(function (require) {
     p.tick = function (time) {
         var tickers = this.tickers;
 
+        if (Stats.timingTickers()) {
+            tickTimed(this, time);
+            return;
+        }
+
         // tickersCount is read fresh every iteration (not cached) because a
         // gameObject can unregister itself -- or another gameObject -- from
         // within its own tick(), which shrinks this list in place; the cursor
@@ -434,6 +440,43 @@ define(function (require) {
             this._tickCursor = -1;
         }
     };
+
+    /**
+     * The same as p.tick, every ticker timed and the time put down to its
+     * name (tickerName) - for a debug panel to show what the world's frame
+     * goes on.
+     */
+    function tickTimed(world, time) {
+        var tickers = world.tickers,
+            gameObject, t;
+
+        try {
+            for (world._tickCursor = 0; world._tickCursor < world.tickersCount; world._tickCursor++) {
+                gameObject = tickers[world._tickCursor];
+                t = performance.now();
+                gameObject.tick(time);
+                Stats.ticked(tickerName(gameObject), performance.now() - t);
+            }
+        } finally {
+            world._tickCursor = -1;
+        }
+    }
+
+    /**
+     * What a ticker is called in the panel: its first component that ticks,
+     * by the name that gives itself (Component#profileName) - or else the
+     * gameObject's own.
+     */
+    function tickerName(gameObject) {
+        var components = gameObject.components,
+            i;
+
+        for (i = 0; i < gameObject.componentsCount; i++)
+            if (components[i].tick !== null && components[i].profileName !== null)
+                return components[i].profileName;
+
+        return gameObject.name;
+    }
 
     p.findByName = function (name) {
         compact(this);

@@ -17,6 +17,7 @@ define(function (require) {
     p.frames = null;
     p.currentFrame = 0;
     p.speed = 1; // 0 - 1.  1 = 24FPS
+    p.profileName = "animations";
 
     p.addFrame = function (sprite) {
         this.frames.push(sprite);

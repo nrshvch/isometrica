@@ -15,6 +15,7 @@ define(function(require){
     var namespace = require("namespace");
 
     var Config = require("./config");
+    var Stats = require("./stats");
     var Game = require("./game");
     var GameObject = require("./gameobject");
     var Component = require("./component");

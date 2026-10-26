@@ -44,5 +44,12 @@ define(function (require) {
      */
     p.tick = null;
 
+    /**
+     * What the time it ticks is put down to in a debug panel (World tick,
+     * Stats), all of its kind together - or null for its gameObject's name
+     * @type {string}
+     */
+    p.profileName = null;
+
     return Component;
 });

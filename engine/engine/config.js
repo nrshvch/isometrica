@@ -6,6 +6,8 @@ define(function(require) {
         noLayerDepthSortingMask: 0,
         noLayerClearMask: 0,
         layersCount: 1,
+        //what each layer is called, by number - for a debug panel (Stats)
+        layerNames: null,
         useOctree: false,
         renderOctree: false,
         //the layers drawn lit, and of them those of flat ground, and what

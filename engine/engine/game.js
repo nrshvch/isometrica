@@ -3,8 +3,14 @@ define(function (require) {
     var Graphics = require("./graphics");
     var Time = require("./time");
     var Scene = require("./world");
+    var Stats = require("./stats");
 
     var Engine = namespace("Isometrica.Engine");
+
+    //what a frame takes: all of it, the world going on, and it drawn
+    var FRAME = Stats.section("frame"),
+        UPDATE = Stats.section("update"),
+        RENDER = Stats.section("render");
 
     /**
      * @constructor
@@ -36,13 +42,20 @@ define(function (require) {
             //allowed for
             var now = performance.now();
 
-            if (now - last < 1000 / FPS - SLACK)
+            if (now - last < 1000 / FPS - SLACK && !self.uncapped)
                 return;
             last = now;
 
+            Stats.begin(FRAME);
             time.tick();
+            Stats.begin(UPDATE);
             scene.tick(time);
+            Stats.end(UPDATE);
+            Stats.begin(RENDER);
             graphics.render();
+            Stats.end(RENDER);
+            Stats.end(FRAME);
+            Stats.frame();
         }
     }
 
@@ -84,6 +97,13 @@ define(function (require) {
      */
     p.paused = false;
     p.running = false;
+
+    /**
+     * Whether it is drawn as often as the screen is, rather than at most FPS
+     * frames a second - to see how much time a frame leaves (a debug panel's).
+     * @type {boolean}
+     */
+    p.uncapped = false;
 
     /**
      * Holds the loop: nothing moves and nothing is drawn until resume -
