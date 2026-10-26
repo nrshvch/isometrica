@@ -25,9 +25,12 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   area, along the tiles' edges - the city's border (`src/client/cityborder.js`,
   `cityarea.js`). Whatever stands further off is cut off, with no border
   round it, till a road - the cheap way across - or another building joins it
-  up. A road has an area only where it joins buildings, two at least: one
-  that leads nowhere is just a road, abandoned, and the city's only as far as
-  its area meets a house's. While something is being put down the border is
+  up. A road has an area only where it joins buildings - where a way along
+  it, never over the same tile twice, goes from one building to another, both
+  branches where two go from one village to another: one that leads nowhere
+  is just a road, abandoned - a tile of it on its own, a loop that only leads
+  back - and a lane off into the country is the city's only as far as its
+  area meets a house's. While something is being put down the border is
   drawn as it would be with it - a road out into nowhere adding nothing to
   it, one reaching a village further off taking it in; in amber what would
   stand apart - and the areas of whatever stands apart already, faintly; and

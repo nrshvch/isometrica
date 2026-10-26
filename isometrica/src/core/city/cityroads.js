@@ -16,12 +16,14 @@
  * city's.
  *
  * A road has no area of its own: only where it joins buildings to each other
- * does it have one, each tile of it as a building's - from the area of one
- * building on to another's, two of them at least (prune). A road that leads
- * nowhere is just a road, abandoned: a tile of it in the middle of nowhere
- * stands apart from nothing; a lane running off into the country past the
- * last house is the city's as far as its area meets the house's, and no
- * further.
+ * does it have one, each tile of it as a building's - where a way along it,
+ * never over the same tile twice, goes from one building to another (prune).
+ * Roads join where their tiles are side by side, not across a gap. A road
+ * that leads nowhere is just a road, abandoned: a tile of it in the middle
+ * of nowhere stands apart from nothing, a loop only leads back to where it
+ * left, and a lane running off into the country past the last house is the
+ * city's as far as its area meets the house's, and no further. Two branches
+ * from one village to another are both the city's.
  *
  * What hangs together may come apart into parts. The city is the part its
  * town hall stands in, if one stands, and otherwise the bigger one, by
@@ -666,44 +668,19 @@ function workOut(things) {
 }
 
 /**
- * Where a road tile is joined to another for the lead of a road: to the next
- * tile of the same run of road, side by side - a straight run of road is a
- * line, one tile to the next - and to any tile of another run whose area
- * shares a tile with its own (REACH), the way the two runs hold together.
+ * The roads that lead nowhere, out of what holds the city together. A road
+ * holds it together only where it joins buildings to each other: where a way
+ * along it goes from one building to another - from a tile of it whose area
+ * shares a tile with the one's (near) to one whose area shares a tile with
+ * the other's, its tiles side by side between, never over the same tile
+ * twice. Two branches both going from one village to another are such ways; a
+ * loop that only leads back to where it left the road, a lane on into the
+ * country, a tile on its own, are not.
  *
- * @param runOf {Object} road tile -> the run of road it is part of
- */
-function roadsFrom(road, runOf, byTile) {
-  var tile = road.tile,
-    run = runOf[tile],
-    out = [],
-    next,
-    i;
-
-  for (i = 0; i < REACH.length; i++) {
-    next = tile + REACH[i][0] + REACH[i][1] * Terrain.dy;
-
-    if (runOf[next] === undefined) continue;
-
-    if (
-      runOf[next] === run &&
-      Math.abs(REACH[i][0]) + Math.abs(REACH[i][1]) !== 1
-    )
-      continue;
-
-    out.push(byTile[next]);
-  }
-
-  return out;
-}
-
-/**
- * The roads that lead nowhere, out of what holds the city together: from the
- * far end of a road whose area shares no tile with a building's, a tile at a
- * time, back to the last of it whose area does or with a road going on - and
- * every road whose area, all of it together, shares a tile with no more than
- * one building's, round in a ring even, or a tile on its own. What is left
- * joins buildings to each other.
+ * Worked out as graph theory has it: the roads, and the buildings their areas
+ * meet, each building joined to one more thing, the same for all of them - a
+ * road is on such a way if it is on a ring with that one thing, which is when
+ * the two are in a block of the graph together (ringsWith).
  *
  * @param things {Object[]} (holders)
  * @param byTile {Object} tile -> the thing on it
@@ -711,121 +688,122 @@ function roadsFrom(road, runOf, byTile) {
  */
 function prune(things, byTile) {
   var roads = [],
-    runOf = {},
-    //road id -> the buildings its area shares a tile with
-    meets = {},
-    left = {},
-    degree = {},
+    //thing id -> where it is in the graph; 0 the one thing the buildings are
+    //all joined to
+    at = {},
+    joins = [[]],
     pruned = {},
-    links = {},
-    open = [],
+    on,
     road,
-    tiles,
     other,
+    tiles,
     i,
     j;
 
   for (i = 0; i < things.length; i++)
     if (things[i].road) {
+      at[things[i].id] = joins.length;
+      joins.push([]);
       roads.push(things[i]);
-      runOf[things[i].tile] = -1;
     }
 
-  //the runs of road, tile by tile side by side
-  for (i = 0, j = 0; i < roads.length; i++) {
-    if (runOf[roads[i].tile] !== -1) continue;
-
-    var open_ = [roads[i].tile];
-
-    runOf[roads[i].tile] = j;
-
-    while (open_.length > 0) {
-      var at = open_.pop();
-
-      STEP.forEach(function (step) {
-        if (runOf[at + step] === -1) {
-          runOf[at + step] = j;
-          open_.push(at + step);
-        }
-      });
-    }
-
-    j++;
-  }
-
-  //a road whose area shares a tile with a building's is where it leads
   for (i = 0; i < roads.length; i++) {
     road = roads[i];
+
+    //the road's tiles side by side
+    for (j = 0; j < STEP.length; j++) {
+      other = byTile[road.tile + STEP[j]];
+
+      if (other !== undefined && other.road)
+        joins[at[road.id]].push(at[other.id]);
+    }
+
+    //and the buildings its area meets
     tiles = near(road);
-    meets[road.id] = [];
 
     for (j = 0; j < tiles.length; j++) {
       other = byTile[tiles[j]];
 
-      if (
-        other !== undefined &&
-        !other.road &&
-        meets[road.id].indexOf(other.id) === -1
-      )
-        meets[road.id].push(other.id);
-    }
+      if (other === undefined || other.road) continue;
 
-    links[road.id] = roadsFrom(road, runOf, byTile);
-    degree[road.id] = links[road.id].length;
-    left[road.id] = true;
+      if (at[other.id] === undefined) {
+        at[other.id] = joins.length;
+        joins.push([0]);
+        joins[0].push(at[other.id]);
+      }
 
-    if (meets[road.id].length === 0 && degree[road.id] <= 1) open.push(road);
-  }
-
-  //the far ends, back to where they lead
-  while (open.length > 0) {
-    road = open.pop();
-
-    if (left[road.id] !== true) continue;
-
-    delete left[road.id];
-    pruned[road.id] = true;
-
-    for (j = 0; j < links[road.id].length; j++) {
-      other = links[road.id][j];
-
-      if (left[other.id] !== true) continue;
-
-      degree[other.id]--;
-      if (meets[other.id].length === 0 && degree[other.id] <= 1)
-        open.push(other);
+      if (joins[at[road.id]].indexOf(at[other.id]) === -1) {
+        joins[at[road.id]].push(at[other.id]);
+        joins[at[other.id]].push(at[road.id]);
+      }
     }
   }
 
-  //and whatever is left that joins no two buildings
-  var seen = {};
+  on = ringsWith(joins, 0);
 
-  for (i = 0; i < roads.length; i++) {
-    if (left[roads[i].id] !== true || seen[roads[i].id] === true) continue;
-
-    var run = [roads[i]],
-      joins = [];
-
-    seen[roads[i].id] = true;
-
-    for (j = 0; j < run.length; j++) {
-      meets[run[j].id].forEach(function (id) {
-        if (joins.indexOf(id) === -1) joins.push(id);
-      });
-
-      links[run[j].id].forEach(function (next) {
-        if (left[next.id] === true && seen[next.id] !== true) {
-          seen[next.id] = true;
-          run.push(next);
-        }
-      });
-    }
-
-    if (joins.length < 2)
-      for (j = 0; j < run.length; j++) pruned[run[j].id] = true;
-  }
+  for (i = 0; i < roads.length; i++)
+    if (on[at[roads[i].id]] !== true) pruned[roads[i].id] = true;
 
   return pruned;
+}
+
+/**
+ * What is on a ring with root in a graph: whatever is in a block - a
+ * biconnected component - with it. Hopcroft and Tarjan's, gone over without
+ * recursion: a depth-first walk from root, every block found as the walk
+ * comes back up to the first of it, which for a block of root's is root.
+ *
+ * @param joins {number[][]} what each is joined to
+ * @param root {number}
+ * @returns {Object} -> true, for root and what is on a ring with it
+ */
+function ringsWith(joins, root) {
+  var found = [],
+    low = [],
+    count = 0,
+    stack = [],
+    walk = [{ at: root, from: -1, next: 0 }],
+    on = {},
+    step,
+    v,
+    w,
+    up;
+
+  found[root] = low[root] = count++;
+  on[root] = true;
+
+  while (walk.length > 0) {
+    step = walk[walk.length - 1];
+    v = step.at;
+
+    if (step.next < joins[v].length) {
+      w = joins[v][step.next++];
+
+      if (found[w] === undefined) {
+        found[w] = low[w] = count++;
+        stack.push(w);
+        walk.push({ at: w, from: v, next: 0 });
+      } else if (w !== step.from) low[v] = Math.min(low[v], found[w]);
+
+      continue;
+    }
+
+    walk.pop();
+
+    if (walk.length === 0) break;
+
+    up = walk[walk.length - 1].at;
+    low[up] = Math.min(low[up], low[v]);
+
+    //a block, up the first of it
+    if (low[v] >= found[up])
+      do {
+        w = stack.pop();
+        if (up === root) on[w] = true;
+      } while (w !== v);
+  }
+
+  return on;
 }
 
 //from a tile to the next one at each side, -x, -y, +x, +y

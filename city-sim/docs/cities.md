@@ -58,10 +58,10 @@ there is, at $20 a head. The numbers are to be tuned.
    (`CityRoads.REACH`).
 3. The city's area is all of it that hangs together.
 4. A road has no area of its own: it has one only where it joins buildings
-   to each other, two at least - each tile of it then as a building's - so
-   a road is the cheap way to reach out to a group of buildings further off.
-   A road on its own in the middle of nowhere is not something standing
-   apart: it is just a road, abandoned.
+   to each other - each tile of it then as a building's - so a road is the
+   cheap way to reach out to a group of buildings further off. A road on its
+   own in the middle of nowhere is not something standing apart: it is just
+   a road, abandoned.
 
 It holds together once it is finished - a house still going up, a road still
 being laid, not yet; its area is shown while it is being put down all the
@@ -78,13 +78,28 @@ What a building wants of the city:
 - **water**, as before.
 
 **Done.** A road that leads nowhere is not part of the city: only roads that
-join buildings to each other hold anything together - from the area of one
-building to another's, two at least, the road's own area sharing a tile with
-a building's at either end, or going on to a road whose does (`prune`). A
-lane running off into the country past the last house is the city's as long
-as its area meets the house's - four tiles out - and no further; a lane off
-a house on its own, or whose area meets no building's, is not the city's at
-all.
+join buildings to each other hold anything together. A road tile does where a
+way along the road goes through it from one building to another - from a
+tile whose area meets the one's to a tile whose area meets the other's, the
+road's tiles side by side between, never over the same tile twice (`prune`).
+Roads join where their tiles are side by side, not across a gap.
+
+- A lane running off into the country past the last house is the city's as
+  long as its area meets the houses' - four tiles out - and no further; a
+  lane off a house on its own is not the city's at all.
+- A tile of road on its own is just a road, abandoned - beside a road
+  leading nowhere as much as in the middle of nowhere.
+- A loop that only leads back to the road it left is not the city's: going
+  round it leads nowhere new.
+- Two branches from one village to another are both the city's: either way
+  round goes from one to the other. So is a loop on a road between two
+  villages, which is a way round too.
+
+Which tiles those are is graph theory: the roads and the buildings they meet
+are a graph, every building joined to one more node, the same for all of
+them; a road is on a way from one building to another, never over the same
+tile twice, exactly when it is on a ring with that node - in one of its
+blocks, its biconnected components (Hopcroft and Tarjan's, `ringsWith`).
 
 **Done.** The city-sim draws a border round the city's area, along the tiles'
 edges (`city-sim/src/client/cityborder.js`, `cityarea.js`) - none round what

@@ -745,11 +745,14 @@ dev`) plays them the way a game would - all three weathers together, the
   (REACH, worked out from AREA): three tiles
   between two buildings along a row, and they do; four, and their areas only
   touch (REACH). A road has no area of its own: only where it joins
-  buildings to each other - from the area of one on to another's, two at
-  least - has it one, a tile of it as a building's; a road that leads
-  nowhere is just a road, abandoned, a tile of it on its own in the middle
-  of nowhere standing apart from nothing, and a lane off into the country
-  is the city's only as far as its area meets a house's (`prune`). It holds
+  buildings to each other - where a way along it, its tiles side by side,
+  never over the same tile twice, goes from one building to another, both
+  branches where two go from one village to another - has it one, a tile of
+  it as a building's (`prune`, by the blocks of a graph of the roads and
+  the buildings they meet, `ringsWith`); a road that leads nowhere is just a
+  road, abandoned - a tile of it on its own, a loop that only leads back to
+  where it left - and a lane off into the country is the city's only as far
+  as its area meets a house's. It holds
   together once it is finished - a house going up, a road being laid, not
   yet. A village holds together by its houses, and a road is the cheap way
   to reach out to what stands further off. Of the parts that hang together, the
