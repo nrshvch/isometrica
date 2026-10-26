@@ -505,6 +505,31 @@ CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
   return result;
 };
 
+/**
+ * Whether pixel x, y of image is there to be seen: of the picture as the
+ * frame draws it - from its pictures to be lit, on a layer that is lit
+ * (client/cachedsprite hitAt) - never put on a page for the asking; or, of
+ * a picture that cannot tell, as it is put on a page.
+ */
+function hit(image, layer, x, y) {
+  if (image.hitAt !== undefined)
+    return image.hitAt(
+      x,
+      y,
+      (engine.Config.litLayersMask & (1 << layer)) !== 0,
+    );
+
+  return (
+    image.acquire !== undefined &&
+    image.acquire() &&
+    vkaria.sprites.cache.alphaAt(
+      image.sourceImage,
+      image.offsetX + x,
+      image.offsetY + y,
+    ) > 0
+  );
+}
+
 function pick(self, x, y, resultArray) {
   var vec3 = glMatrix.vec3,
     gameObjects = self.gameObject.world.retrieve(self.gameObject),
@@ -543,27 +568,15 @@ function pick(self, x, y, resultArray) {
       x1 = x0 + spriteImage.width;
       y1 = y0 + spriteImage.height;
 
-      //fast & inaccurate test - then the pixel itself, of a picture that is
-      //there to look at
+      //fast & inaccurate test - then the pixel itself
       if (
         x >= x0 &&
         x <= x1 &&
         y >= y0 &&
         y <= y1 &&
-        spriteImage.acquire !== undefined &&
-        spriteImage.acquire()
-      ) {
-        //detailed test: the pixel itself, on the page the picture is on
-        if (
-          vkaria.sprites.cache.alphaAt(
-            spriteImage.sourceImage,
-            spriteImage.offsetX + Math.floor(x - x0),
-            spriteImage.offsetY + Math.floor(y - y0),
-          ) > 0
-        ) {
-          result.push(gameObject);
-        }
-      }
+        hit(spriteImage, sprite.layer, Math.floor(x - x0), Math.floor(y - y0))
+      )
+        result.push(gameObject);
     } else if (text !== undefined && text.enabled) {
       if (textHit(text, vec3Buffer1[0], vec3Buffer1[1], x, y)) {
         result.push(gameObject);

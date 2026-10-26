@@ -59,6 +59,11 @@ AnimatedSprite.prototype.nightLights = function () {
   return (this.shown || current(this)).nightLights();
 };
 
+//as the frame shown last is (client/cachedsprite hitAt)
+AnimatedSprite.prototype.hitAt = function (x, y, lit) {
+  return (this.shown || this.frames[0]).hitAt(x, y, lit);
+};
+
 AnimatedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
   var frame = current(this);
 

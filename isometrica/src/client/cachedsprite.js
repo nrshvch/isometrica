@@ -258,6 +258,30 @@ CachedSprite.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
 };
 
 /**
+ * Whether its pixel x, y is there to be seen, as the frame draws it (glQuad):
+ * from its colours to be lit, drawn lit - lit, its layer one of the lit ones
+ * - if it has them, or from itself - for what is under the pointer to be
+ * told (client/components camerascript). Never put on a page for the asking:
+ * not on one, it is not being drawn, and nothing of it is there.
+ */
+CachedSprite.prototype.hitAt = function (x, y, lit) {
+  var layers = lit ? layersOf(this, "deferred") : null,
+    entry = layers !== null ? layers : this,
+    at = layers !== null ? ALBEDO * this.width : 0;
+
+  if (x < 0 || y < 0 || x >= this.width || y >= this.height) return false;
+  if (entry.slot < 0) return false;
+
+  return (
+    this.sprites.cache.alphaAt(
+      entry.sourceImage,
+      entry.offsetX + at + x,
+      entry.offsetY + y,
+    ) > 0
+  );
+};
+
+/**
  * The top of it, once its picture of how high it stands is drawn (topOf):
  * for the warning lights on anything tall (client/lighting beacons).
  */
