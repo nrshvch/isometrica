@@ -371,7 +371,7 @@ dev`) plays them the way a game would - all three weathers together, the
   and a half screens round); hushed in the woods. The day's, the rush
   hour's and the night's by the hour the city is drawn at
   (`Lighting#shownHour`), one into the next - with the day and the night
-  not going by, the middle of the day's all the while, as are the places'.
+  not going by, ten in the morning's all the while, as are the places'.
 - thunder - each flash of lightning to come is known ahead of time
   (`Weather.flashesAhead`, the same sums as `Weather.flash`), so its
   thunder starts a moment before the sky lights up.
@@ -919,7 +919,9 @@ dev`) plays them the way a game would - all three weathers together, the
   towards either end of the day, and the shade goes from sky blue to the
   dark blue of night. That is only once asked for - N, or ☾ night in the
   top bar, or `?daynight=on`, kept in the browser: else the city is drawn
-  in the middle of the day whatever the hour (`lighting.js` setDayNight),
+  at ten in the morning whatever the hour - the sun well up and off to the
+  side, the clock in the top bar going by the game's own time all the same
+  (`lighting.js` setDayNight, STILL),
   the clock and all that goes by it (the traffic, the weather, the sounds)
   going on as ever. The canvas only paints the pictures: every picture is
   painted once on a canvas of its own and handed over into its slot on a

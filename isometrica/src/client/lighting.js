@@ -28,8 +28,8 @@
  *
  * The day and the night go by only if asked for (setDayNight: N, its button
  * in the top bar, ?daynight=on; kept in the browser for next time) - else
- * the city is drawn in the middle of the day whatever the clock says, the
- * clock and all that goes by it going on as ever.
+ * the city is drawn at ten in the morning whatever the clock says (STILL),
+ * the clock and all that goes by it going on as ever.
  *
  * With ?light=0 everything is drawn as it is painted, lit by the one sun of
  * old.
@@ -55,9 +55,10 @@ var gloom = 0;
 var SUNRISE = 5,
   SUNSET = 21.5;
 
-//the hour the city is drawn at with no day and night going by: the middle
-//of the day, the sun at its highest
-var MIDDAY = (SUNRISE + SUNSET) / 2;
+//the hour the city is drawn at with no day and night going by: ten in the
+//morning, the sun well up and off to the side, the shadows long enough to
+//show
+var STILL = 10;
 
 //where the day and the night going by is kept on or off in the browser
 var DAY_NIGHT_STORE = "isometrica.daynight";
@@ -213,7 +214,7 @@ function Lighting(root, cache) {
   this.clockAt = -1;
   this.clockSince = 0;
 
-  //whether the day and the night go by, or it is the middle of the day all
+  //whether the day and the night go by, or it is ten in the morning all
   //the while (setDayNight) - and who is told when it changes
   this.dayNight = dayNightWanted();
   this.dayNightListeners = [];
@@ -243,8 +244,8 @@ Lighting.prototype.install = function () {
 };
 
 /**
- * Has the day and the night go by with the clock, or the city drawn in the
- * middle of the day all the while - the clock going on either way - and
+ * Has the day and the night go by with the clock, or the city drawn at ten
+ * in the morning all the while - the clock going on either way - and
  * keeps it so for next time.
  *
  * @param [on] {boolean} the other way round from now, unless given
@@ -279,11 +280,11 @@ Lighting.prototype.hour = function () {
 
 /**
  * The hour the city is drawn at: the clock's while the day and the night go
- * by, else the middle of the day all the while - the hour the sounds go by
+ * by, else ten in the morning all the while (STILL) - the hour the sounds go by
  * too, so they are the day's when the city is.
  */
 Lighting.prototype.shownHour = function () {
-  return this.dayNight ? this.hour() : MIDDAY;
+  return this.dayNight ? this.hour() : STILL;
 };
 
 /**
@@ -314,7 +315,7 @@ Lighting.prototype.begin = function (viewport, M) {
   //from the side, or from straight above (client/view top)
   this.top = View.top();
   this.view.projection = GLView.PROJECTIONS[this.top ? "top" : "side"];
-  //the hour the city is drawn at - the clock's, or the middle of the day
+  //the hour the city is drawn at - the clock's, or ten in the morning
   hourNow = this.shownHour();
   this.weather = Weather.at(this.clock());
   Wind.factor = this.weather.wind;
