@@ -409,6 +409,7 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed, side) {
         up,
         turns,
         ((seed | 0) * 31 + tile.x * 7 + tile.y) | 0,
+        laid,
       ),
       sprite: sprites.getComposite(
         laid.map(function (p) {
@@ -429,14 +430,21 @@ function tilePieces(sprites, tiles, sizeX, sizeY, turns, seed, side) {
  * in front of them (shared/gen/houses cover). Each with its pivot taken from
  * where the tile's middle is.
  *
+ * The jib is drawn with the whole of the crane under it, a picture of the
+ * tile's parts and the jib together for each way it points (jibFrame): put
+ * together, the jib stands as high as the crane is laid, over the ground at
+ * its foot - painted on its own, it stood as high as on a mast of one storey,
+ * over the ground just under it, and threw its shadow from there.
+ *
  * @param up {number[]} how far each part is laid higher than it was painted
  * @param seed {number} the same for the same tile of the same building
+ * @param laid {Object[]} the tile's parts as they are laid (tilePieces)
  */
-function overlaysOf(sprites, parts, up, turns, seed) {
+function overlaysOf(sprites, parts, up, turns, seed, laid) {
   var vehicles = sprites.generated.vehicles,
     random = seeded("bays" + seed),
     out = [],
-    //the jib swings high over everything else on the tile
+    //the jib, with the crane under it - first, and its lights over it
     high = [];
 
   parts.forEach(function (part, i) {
@@ -502,7 +510,16 @@ function overlaysOf(sprites, parts, up, turns, seed) {
         //again over that - only for something under it
         if (o.cover && out.length === 0) return;
 
-        (o.cover ? out : high).push({
+        if (!o.cover) {
+          high.push({
+            frames: o.frames.map(function (name) {
+              return jibFrame(sprites, laid, name, up[i]);
+            }),
+          });
+          return;
+        }
+
+        out.push({
           frames: o.frames.map(function (name) {
             var f = sprites.frame(name);
 
@@ -548,7 +565,34 @@ function overlaysOf(sprites, parts, up, turns, seed) {
     });
   });
 
-  return out.concat(high);
+  return high.concat(out);
+}
+
+/**
+ * A frame of the jib, name, laid up as high as the top of the crane it turns
+ * on, up - with the tile's parts as they are laid under it, all one picture:
+ * {sprite, pivotX, pivotY} from where the tile's middle is.
+ */
+function jibFrame(sprites, laid, name, up) {
+  var f = sprites.frame(name),
+    parts = laid.concat({ name: name, left: -f.pivotX, top: -f.pivotY - up }),
+    minX = Infinity,
+    minY = Infinity;
+
+  parts.forEach(function (p) {
+    minX = Math.min(minX, p.left);
+    minY = Math.min(minY, p.top);
+  });
+
+  return {
+    sprite: sprites.getComposite(
+      parts.map(function (p) {
+        return { name: p.name, x: p.left - minX, y: p.top - minY };
+      }),
+    ),
+    pivotX: -minX,
+    pivotY: -minY,
+  };
 }
 
 //the cars that park at home and at the shops - no lorries or buses

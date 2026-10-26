@@ -816,7 +816,10 @@ dev`) plays them the way a game would - all three weathers together, the
   and its lower storeys finish under it from halfway; the crane, stacked
   out of steel lattice mast sections that shade each other, grows with it. The excavator drives, stops and turns
   to dig, and the crane's jib swings to and fro
-  (`isometrica/src/client/siterenderer.js`); the lorry and the excavator are the
+  (`isometrica/src/client/siterenderer.js`) - each way it points drawn with
+  the crane under it, one picture, so that it stands as high as the crane is
+  and throws its shadow from there (`client/compoundbuilding.js` jibFrame);
+  the lorry and the excavator are the
   vehicle generator's, and the excavator never drives the streets.
 - What works has its lights on (`isometrica/src/client/worklights.js`): the
   excavators and lorries on building sites and road works an amber beacon
