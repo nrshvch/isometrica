@@ -24,7 +24,9 @@
  * leads back to where it left, and a lane running off into the country past
  * the last house is the city's to the edge of the house's area, and no
  * further - the city's area along it two tiles on from there. Two branches
- * from one village to another are both the city's.
+ * from one village to another are both the city's; out in the country, a
+ * road is the city's only where it is the shortest way from one village to
+ * another, so a loop on the road between them, a way round, is not.
  *
  * What hangs together may come apart into parts. The city is the part its
  * town hall stands in, if one stands, and otherwise the bigger one, by
@@ -682,10 +684,14 @@ function workOut(things) {
  * loop that only leads back to where it left the road, a lane on into the
  * country, a tile on its own, are not.
  *
+ * Out in the country - outside every building's area - a road is the city's
+ * only where it is the shortest way from one village to another (country): a
+ * loop on the road between two villages is a way round, and no part of it.
+ *
  * Worked out as graph theory has it: the roads, and the buildings they stand
- * in the areas of, each building joined to one more thing, the same for all of them - a
- * road is on such a way if it is on a ring with that one thing, which is when
- * the two are in a block of the graph together (ringsWith).
+ * in the areas of, each building joined to one more thing, the same for all
+ * of them - a road is on such a way if it is on a ring with that one thing,
+ * which is when the two are in a block of the graph together (ringsWith).
  *
  * @param things {Object[]} (holders)
  * @param byTile {Object} tile -> the thing on it
@@ -693,6 +699,10 @@ function workOut(things) {
  */
 function prune(things, byTile) {
   var roads = [],
+    //road id -> the buildings it stands in the area of
+    inside = {},
+    //of the country's roads, those that are a shortest way between villages
+    ways,
     //thing id -> where it is in the graph; 0 the one thing the buildings are
     //all joined to
     at = {},
@@ -707,49 +717,249 @@ function prune(things, byTile) {
 
   for (i = 0; i < things.length; i++)
     if (things[i].road) {
-      at[things[i].id] = joins.length;
+      road = things[i];
+      roads.push(road);
+      inside[road.id] = [];
+      tiles = near(road, AREA);
+
+      for (j = 0; j < tiles.length; j++) {
+        other = byTile[tiles[j]];
+
+        if (
+          other !== undefined &&
+          !other.road &&
+          inside[road.id].indexOf(other.id) === -1
+        )
+          inside[road.id].push(other.id);
+      }
+    }
+
+  ways = country(roads, inside, villages(things, byTile), byTile);
+
+  //what is left of the roads, in the graph
+  for (i = 0; i < roads.length; i++)
+    if (inside[roads[i].id].length > 0 || ways[roads[i].id] === true) {
+      at[roads[i].id] = joins.length;
       joins.push([]);
-      roads.push(things[i]);
     }
 
   for (i = 0; i < roads.length; i++) {
     road = roads[i];
 
+    if (at[road.id] === undefined) continue;
+
     //the road's tiles side by side
     for (j = 0; j < STEP.length; j++) {
       other = byTile[road.tile + STEP[j]];
 
-      if (other !== undefined && other.road)
+      if (other !== undefined && at[other.id] !== undefined && other.road)
         joins[at[road.id]].push(at[other.id]);
     }
 
     //and the buildings it stands in the area of
-    tiles = near(road, AREA);
+    for (j = 0; j < inside[road.id].length; j++) {
+      other = inside[road.id][j];
 
-    for (j = 0; j < tiles.length; j++) {
-      other = byTile[tiles[j]];
-
-      if (other === undefined || other.road) continue;
-
-      if (at[other.id] === undefined) {
-        at[other.id] = joins.length;
+      if (at[other] === undefined) {
+        at[other] = joins.length;
         joins.push([0]);
-        joins[0].push(at[other.id]);
+        joins[0].push(at[other]);
       }
 
-      if (joins[at[road.id]].indexOf(at[other.id]) === -1) {
-        joins[at[road.id]].push(at[other.id]);
-        joins[at[other.id]].push(at[road.id]);
-      }
+      joins[at[road.id]].push(at[other]);
+      joins[at[other]].push(at[road.id]);
     }
   }
 
   on = ringsWith(joins, 0);
 
   for (i = 0; i < roads.length; i++)
-    if (on[at[roads[i].id]] !== true) pruned[roads[i].id] = true;
+    if (at[roads[i].id] === undefined || on[at[roads[i].id]] !== true)
+      pruned[roads[i].id] = true;
 
   return pruned;
+}
+
+/**
+ * The villages: the buildings that hang together by their areas alone, no
+ * road between - building id -> the village it is in.
+ *
+ * @param things {Object[]} (holders)
+ * @param byTile {Object} tile -> the thing on it
+ * @returns {Object}
+ */
+function villages(things, byTile) {
+  var of = {},
+    count = 0,
+    open,
+    tiles,
+    next,
+    t,
+    i,
+    j;
+
+  for (i = 0; i < things.length; i++) {
+    if (things[i].road || of[things[i].id] !== undefined) continue;
+
+    of[things[i].id] = count;
+    open = [things[i]];
+
+    while (open.length > 0) {
+      t = open.pop();
+      tiles = near(t);
+
+      for (j = 0; j < tiles.length; j++) {
+        next = byTile[tiles[j]];
+
+        if (next === undefined || next.road || of[next.id] !== undefined)
+          continue;
+
+        of[next.id] = count;
+        open.push(next);
+      }
+    }
+
+    count++;
+  }
+
+  return of;
+}
+
+/**
+ * Of the country's roads - those inside no building's area - the ones that
+ * are a shortest way from one village to another: each stretch of country
+ * road, its tiles side by side, goes from the roads inside the villages' areas
+ * at its ends (its gates); from every village's gates, a road is on the way
+ * where it is on a shortest way to a gate of another village. Each of two
+ * branches that reach a village at two places is the way to its own; a loop
+ * on a road between two villages is never the shortest way to anywhere; a
+ * stretch that leaves a village and comes back to it goes to no other.
+ *
+ * @param roads {Object[]} (holders)
+ * @param inside {Object} road id -> the buildings it stands in the area of
+ * @param village {Object} building id -> its village (villages)
+ * @param byTile {Object} tile -> the thing on it
+ * @returns {Object} road id -> true
+ */
+function country(roads, inside, village, byTile) {
+  var out = {},
+    seen = {},
+    i;
+
+  //the country road next to a tile, side by side, or what is inside an area
+  function step(tile, k, inArea) {
+    var next = byTile[tile + STEP[k]];
+
+    return next !== undefined &&
+      next.road &&
+      inside[next.id].length > 0 === inArea
+      ? next
+      : null;
+  }
+
+  for (i = 0; i < roads.length; i++) {
+    if (inside[roads[i].id].length > 0 || seen[roads[i].id] === true) continue;
+
+    //the stretch, and the villages at its gates
+    var stretch = [roads[i]],
+      gates = {},
+      ends = [],
+      j,
+      k,
+      next;
+
+    seen[roads[i].id] = true;
+
+    for (j = 0; j < stretch.length; j++)
+      for (k = 0; k < 4; k++) {
+        next = step(stretch[j].tile, k, false);
+
+        if (next !== null && seen[next.id] !== true) {
+          seen[next.id] = true;
+          stretch.push(next);
+        }
+
+        next = step(stretch[j].tile, k, true);
+
+        if (next !== null) {
+          var v = village[inside[next.id][0]],
+            at = (gates[stretch[j].id] = gates[stretch[j].id] || []);
+
+          if (at.indexOf(v) === -1) at.push(v);
+          if (ends.indexOf(v) === -1) ends.push(v);
+        }
+      }
+
+    if (ends.length < 2) continue;
+
+    ends.forEach(function (from) {
+      waysFrom(stretch, gates, from, step, out);
+    });
+  }
+
+  return out;
+}
+
+//the roads of stretch on a shortest way from a gate of village from to a gate
+//of another, into out
+function waysFrom(stretch, gates, from, step, out) {
+  var far = {},
+    open = [],
+    back = [],
+    on = {},
+    at,
+    next,
+    i,
+    k;
+
+  //how far along from from's gates
+  for (i = 0; i < stretch.length; i++)
+    if (gates[stretch[i].id] && gates[stretch[i].id].indexOf(from) !== -1) {
+      far[stretch[i].id] = 0;
+      open.push(stretch[i]);
+    }
+
+  for (i = 0; i < open.length; i++)
+    for (k = 0; k < 4; k++) {
+      next = step(open[i].tile, k, false);
+
+      if (next !== null && far[next.id] === undefined) {
+        far[next.id] = far[open[i].id] + 1;
+        open.push(next);
+      }
+    }
+
+  //and back from every other village's gate, the way it was come by
+  for (i = 0; i < stretch.length; i++) {
+    at = gates[stretch[i].id];
+
+    if (
+      at &&
+      far[stretch[i].id] !== undefined &&
+      at.some(function (v) {
+        return v !== from;
+      })
+    ) {
+      on[stretch[i].id] = true;
+      back.push(stretch[i]);
+    }
+  }
+
+  for (i = 0; i < back.length; i++)
+    for (k = 0; k < 4; k++) {
+      next = step(back[i].tile, k, false);
+
+      if (
+        next !== null &&
+        on[next.id] !== true &&
+        far[next.id] === far[back[i].id] - 1
+      ) {
+        on[next.id] = true;
+        back.push(next);
+      }
+    }
+
+  for (var id in on) out[id] = true;
 }
 
 /**

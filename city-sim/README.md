@@ -28,10 +28,12 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   up. A road has an area only where it joins buildings - where a way along
   it, never over the same tile twice, goes from inside one building's area
   to inside another's, both branches where two go from one village to
-  another: one that leads nowhere is just a road, abandoned - a tile of it
-  on its own, a loop that only leads back - and a lane off into the country
-  is the city's only to the edge of a house's area, the border two tiles on
-  along it from there. While something is being put down the border is
+  another, and out in the country only where it is the shortest way from one
+  village to another - a loop on the road between them is not: one that
+  leads nowhere is just a road, abandoned - a tile of it on its own, a loop
+  that only leads back - and a lane off into the country is the city's only
+  to the edge of a house's area, the border two tiles on along it from
+  there. While something is being put down the border is
   drawn as it would be with it - a road out into nowhere adding nothing to
   it, one reaching a village further off taking it in; in amber what would
   stand apart - and the areas of whatever stands apart already, faintly; and

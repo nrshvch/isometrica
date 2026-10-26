@@ -750,10 +750,14 @@ dev`) plays them the way a game would - all three weathers together, the
   inside another's, both branches where two go from one village to another -
   has it one, a tile of it as a building's (`prune`, by the blocks of a
   graph of the roads and the buildings whose areas they are in,
-  `ringsWith`); a road that leads nowhere is just a road, abandoned - a tile
-  of it on its own, a loop that only leads back to where it left - and a
-  lane off into the country is the city's only to the edge of a house's
-  area, the city's area going on two tiles along it from there. It holds
+  `ringsWith`); out in the country, outside every building's area, a road is
+  the city's only where it is the shortest way from one village - buildings
+  that hang together by their areas alone - to another (`country`), so a
+  loop on the road between two villages is a way round and not the city's;
+  a road that leads nowhere is just a road, abandoned - a tile of it on its
+  own, a loop that only leads back to where it left - and a lane off into
+  the country is the city's only to the edge of a house's area, the city's
+  area going on two tiles along it from there. It holds
   together once it is finished - a house going up, a road being laid, not
   yet. A village holds together by its houses, and a road is the cheap way
   to reach out to what stands further off. Of the parts that hang together, the

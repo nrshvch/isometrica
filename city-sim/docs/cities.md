@@ -93,12 +93,20 @@ a house is inside its area, and leads to it.
   leading nowhere as much as in the middle of nowhere.
 - A loop that only leads back to the road it left is not the city's: going
   round it leads nowhere new.
-- Two branches from one village to another are both the city's: either way
-  round goes from one to the other. So is a loop on a road between two
-  villages, which is a way round too.
+- Two branches from one village to another are both the city's: each is
+  the way to the place it reaches the other village at.
+- Out in the country - outside every building's area - a road is the city's
+  only where it is the shortest way from one village to another, a village
+  being buildings that hang together by their areas alone (`villages`,
+  `country`). Each stretch of country road goes from the roads inside the
+  villages' areas at its ends, its gates; a road of it is the city's where
+  it is on a shortest way from the gates of one village to a gate of
+  another. A loop on the road between two villages is a way round, never
+  the shortest to anywhere, and not the city's; nor is a stretch that
+  leaves a village and comes back to it.
 
-Which tiles those are is graph theory: the roads and the buildings whose
-areas they are in are a graph, every building joined to one more node, the same for all of
+Which tiles of what is left those are is graph theory: the roads and the
+buildings whose areas they are in are a graph, every building joined to one more node, the same for all of
 them; a road is on a way from one building to another, never over the same
 tile twice, exactly when it is on a ring with that node - in one of its
 blocks, its biconnected components (Hopcroft and Tarjan's, `ringsWith`).
