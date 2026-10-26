@@ -17,12 +17,13 @@
  *
  * A road has no area of its own: only where it joins buildings to each other
  * does it have one, each tile of it as a building's - where a way along it,
- * never over the same tile twice, goes from one building to another (prune).
- * Roads join where their tiles are side by side, not across a gap. A road
- * that leads nowhere is just a road, abandoned: a tile of it in the middle
- * of nowhere stands apart from nothing, a loop only leads back to where it
- * left, and a lane running off into the country past the last house is the
- * city's as far as its area meets the house's, and no further. Two branches
+ * never over the same tile twice, goes from inside one building's area to
+ * inside another's (prune). Roads join where their tiles are side by side,
+ * not across a gap. A road that leads nowhere is just a road, abandoned: a
+ * tile of it in the middle of nowhere stands apart from nothing, a loop only
+ * leads back to where it left, and a lane running off into the country past
+ * the last house is the city's to the edge of the house's area, and no
+ * further - the city's area along it two tiles on from there. Two branches
  * from one village to another are both the city's.
  *
  * What hangs together may come apart into parts. The city is the part its
@@ -444,12 +445,13 @@ function offer(sides, footprint, tile) {
 
 /**
  * Every tile a thing's area shares a tile with the area of another on (REACH)
- * - its own left out.
+ * - or, with AREA, every tile of its area - its own left out.
  *
  * @param thing {Object} (holders)
+ * @param [offsets] {number[][]} REACH where left out
  * @returns {number[]}
  */
-function near(thing) {
+function near(thing, offsets) {
   var tiles = thing.tiles,
     own = {},
     out = [],
@@ -458,11 +460,13 @@ function near(thing) {
     i,
     j;
 
+  offsets = offsets || REACH;
+
   for (i = 0; i < tiles.length; i++) own[tiles[i]] = true;
 
   for (i = 0; i < tiles.length; i++)
-    for (j = 0; j < REACH.length; j++) {
-      next = tiles[i] + REACH[j][0] + REACH[j][1] * Terrain.dy;
+    for (j = 0; j < offsets.length; j++) {
+      next = tiles[i] + offsets[j][0] + offsets[j][1] * Terrain.dy;
 
       if (own[next] === true || seen[next] === true) continue;
 
@@ -670,15 +674,16 @@ function workOut(things) {
 /**
  * The roads that lead nowhere, out of what holds the city together. A road
  * holds it together only where it joins buildings to each other: where a way
- * along it goes from one building to another - from a tile of it whose area
- * shares a tile with the one's (near) to one whose area shares a tile with
- * the other's, its tiles side by side between, never over the same tile
- * twice. Two branches both going from one village to another are such ways; a
+ * along it goes from one building to another - from a tile of it inside the
+ * one's area (AREA) to a tile of it inside the other's, its tiles side by side
+ * between, never over the same tile twice. A road past the last house is the
+ * city's to the edge of the house's area, and its area two tiles on from
+ * there. Two branches both going from one village to another are such ways; a
  * loop that only leads back to where it left the road, a lane on into the
  * country, a tile on its own, are not.
  *
- * Worked out as graph theory has it: the roads, and the buildings their areas
- * meet, each building joined to one more thing, the same for all of them - a
+ * Worked out as graph theory has it: the roads, and the buildings they stand
+ * in the areas of, each building joined to one more thing, the same for all of them - a
  * road is on such a way if it is on a ring with that one thing, which is when
  * the two are in a block of the graph together (ringsWith).
  *
@@ -718,8 +723,8 @@ function prune(things, byTile) {
         joins[at[road.id]].push(at[other.id]);
     }
 
-    //and the buildings its area meets
-    tiles = near(road);
+    //and the buildings it stands in the area of
+    tiles = near(road, AREA);
 
     for (j = 0; j < tiles.length; j++) {
       other = byTile[tiles[j]];

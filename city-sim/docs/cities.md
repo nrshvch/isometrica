@@ -80,13 +80,15 @@ What a building wants of the city:
 **Done.** A road that leads nowhere is not part of the city: only roads that
 join buildings to each other hold anything together. A road tile does where a
 way along the road goes through it from one building to another - from a
-tile whose area meets the one's to a tile whose area meets the other's, the
-road's tiles side by side between, never over the same tile twice (`prune`).
-Roads join where their tiles are side by side, not across a gap.
+tile inside the one's area to a tile inside the other's, the road's tiles
+side by side between, never over the same tile twice (`prune`). Roads join
+where their tiles are side by side, not across a gap; a road a tile short of
+a house is inside its area, and leads to it.
 
-- A lane running off into the country past the last house is the city's as
-  long as its area meets the houses' - four tiles out - and no further; a
-  lane off a house on its own is not the city's at all.
+- A lane running off into the country past the last house is the city's to
+  the edge of the house's area - two tiles out - and no further, and the
+  city's area along it goes two tiles on from there, where its signs stand;
+  a lane off a house on its own is not the city's at all.
 - A tile of road on its own is just a road, abandoned - beside a road
   leading nowhere as much as in the middle of nowhere.
 - A loop that only leads back to the road it left is not the city's: going
@@ -95,8 +97,8 @@ Roads join where their tiles are side by side, not across a gap.
   round goes from one to the other. So is a loop on a road between two
   villages, which is a way round too.
 
-Which tiles those are is graph theory: the roads and the buildings they meet
-are a graph, every building joined to one more node, the same for all of
+Which tiles those are is graph theory: the roads and the buildings whose
+areas they are in are a graph, every building joined to one more node, the same for all of
 them; a road is on a way from one building to another, never over the same
 tile twice, exactly when it is on a ring with that node - in one of its
 blocks, its biconnected components (Hopcroft and Tarjan's, `ringsWith`).
