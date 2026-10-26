@@ -35,7 +35,8 @@ Every point is marked:
 ## Phase 0
 
 - [x] Roads cost nothing to keep
-- [x] A city is founded by placing its first house
+- [x] A city is founded by placing its first house - or whatever goes up
+      first
 - [x] The main part of a city: where the town hall is, or else the bigger part
 - [x] The centre: the town hall, or else the middle of the main part
 - [x] People kept house by house

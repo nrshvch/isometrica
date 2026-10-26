@@ -1126,7 +1126,7 @@ Buildman.prototype.build = function (code, options) {
       .worldScreen()
       .showHint(
         founding()
-          ? "Your first house founds the city - drag it where it should be!"
+          ? "What goes up first founds the city - drag it where it should be!"
           : !oneWay
             ? "Drag to place, pull arrows to resize!"
             : turnable

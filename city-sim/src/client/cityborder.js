@@ -5,18 +5,21 @@
  * from the city has an area of its own, and none is drawn round it - but
  * while something is being put down (client/buildman, #placing): then its
  * area is drawn too, and if it shares a tile with the city's, the border as
- * it will be with it in it; and every area that stands apart, faintly. Drawn
- * again whenever what hangs together changes, and as the ground under it
- * moves; put away with the words over the world (client/serviceman,
+ * it will be with it in it; and every area that stands apart, faintly. And
+ * while something that stands apart is looked at (client/serviceman,
+ * #inspecting), the area of all that hangs together with it. Drawn again
+ * whenever what hangs together changes, and as the ground under it moves;
+ * put away with the words over the world (client/serviceman,
  * Cityman#namesHidden), but while something is being put down.
  *
  * And where a road leaves the city, leading nowhere (CityRoads#exits), the
- * sign of a town's limits by it where it crosses the border - on the last of
- * the road inside the city's area, at the side it goes on out at: a sign of
- * no words on two posts on the verge, the town to whoever comes in, struck
- * through red to whoever leaves (isometrica shared/gen/roads townSign). It is
- * the road's own, drawn with it (client/roadview townSignsOf, #townSignsOn),
- * and stays up with the words put away.
+ * signs of a town's limits by it where it crosses the border - on the last of
+ * the road inside the city's area, at the side it goes on out at: signs of no
+ * words, each on a post on the verge, the town to whoever comes in, on their
+ * right, and struck through red to whoever leaves, on theirs (isometrica
+ * shared/gen/roads townSign). They are the road's own, drawn with it
+ * (client/roadview townSignsOf, #townSignsOn), and stay up with the words
+ * put away.
  */
 import engine from "engine";
 import Events from "events";
@@ -28,8 +31,8 @@ import { areaOf, areaOfTiles, footprints, overlap, tilesOf } from "./cityarea";
 
 var Terrain = Core.Terrain;
 
-//the city's line, white; what is being put down standing apart from it,
-//amber; and what already stands apart, faint
+//the city's line, white; what is being put down standing apart from it, or
+//what is looked at that does, amber; and what already stands apart, faint
 var CITY = "rgba(255,255,255,0.55)",
   APART = "rgba(255,190,70,0.9)",
   DETACHED = "rgba(255,255,255,0.25)";
@@ -46,13 +49,17 @@ function CityBorder(root) {
   this.detached = null;
   //what is being put down: {anchors, sizeX, sizeY}, or null (#placing)
   this._placing = null;
+  //what is being looked at, or null (#inspecting)
+  this._inspecting = null;
   //road tile -> the sides a town's limits are at, 0..3 (#townSignsOn)
   this._signs = {};
   //what it was last worked out for - the city, how far along what hangs
-  //together it was (CityRoads#version) - and the areas then
+  //together it was (CityRoads#version) - and the areas then, with what
+  //stands apart, each part's
   this._city = null;
   this._version = -1;
   this._cityArea = {};
+  this._detached = [];
   this._detachedAreas = [];
 }
 
@@ -98,7 +105,7 @@ CityBorder.prototype.init = function () {
     return self._placing !== null || !root.cityman.namesHidden();
   });
   this.placed = line(root, "area put down", APART, function () {
-    return self._placing !== null;
+    return self._placing !== null || self._inspecting !== null;
   });
   this.detached = line(root, "areas apart", DETACHED, function () {
     return self._placing !== null;
@@ -130,6 +137,19 @@ CityBorder.prototype.placing = function (what) {
 };
 
 /**
+ * What is being looked at - the area of all that hangs together with it shown,
+ * if it stands apart from the city - or null once nothing is
+ * (client/serviceman).
+ *
+ * @param building {Building|null}
+ */
+CityBorder.prototype.inspecting = function (building) {
+  this._inspecting = building;
+
+  if (this.renderer !== null) lines(this);
+};
+
+/**
  * Which sides of the road on tile a town's limits are at, -x, -y, +x, +y as
  * 0..3 - for the road to draw its sign there (client/roadview).
  *
@@ -137,9 +157,11 @@ CityBorder.prototype.placing = function (what) {
  * @returns {number[]}
  */
 CityBorder.prototype.townSignsOn = function (tile) {
-  if (this._city !== null && this._city.roads.version() !== this._version)
-    draw(this);
-
+  //what it was last worked out to be, and nothing more: a road asks while it
+  //is being drawn, or while the pictures of another side are being looked
+  //out (client/preloader View.peek) - drawing roads again from there draws
+  //them for the side looked at. The signs are put up afresh on the city's
+  //next tick (watch), the roads that change drawn again then
   return this._signs[tile] || [];
 };
 
@@ -160,7 +182,8 @@ function draw(self) {
   if (self._city !== null) {
     self._version = self._city.roads.version();
     self._cityArea = areaOf(self._city.roads.members());
-    self._detachedAreas = self._city.roads.detached().map(function (part) {
+    self._detached = self._city.roads.detached();
+    self._detachedAreas = self._detached.map(function (part) {
       return areaOf(part);
     });
     putUpSigns(self);
@@ -170,10 +193,11 @@ function draw(self) {
 }
 
 /**
- * The lines as they are now: the city's area - and while something is being
- * put down, its area: in the city's if they share a tile, with every area
- * standing apart that it shares one with; its own otherwise, those with it;
- * and the rest of what stands apart.
+ * The lines as they are now: the city's area, and that of what stands apart
+ * that is looked at - and while something is being put down, its area: in the
+ * city's if they share a tile, with every area standing apart that it shares
+ * one with; its own otherwise, those with it; and the rest of what stands
+ * apart.
  */
 function lines(self) {
   var city = self._cityArea,
@@ -187,7 +211,7 @@ function lines(self) {
 
   if (placing === null) {
     self.renderer.setTiles(tilesOf(city));
-    self.placed.setTiles([]);
+    self.placed.setTiles(tilesOf(lookedAt(self)));
     self.detached.setTiles([]);
     return;
   }
@@ -214,6 +238,20 @@ function lines(self) {
       }, {}),
     ),
   );
+}
+
+//the area of the part standing apart that what is looked at is in - none if
+//it is the city's, or nothing is looked at
+function lookedAt(self) {
+  var building = self._inspecting,
+    i;
+
+  if (building !== null)
+    for (i = 0; i < self._detached.length; i++)
+      if (self._detached[i].indexOf(building) !== -1)
+        return self._detachedAreas[i];
+
+  return {};
 }
 
 //from a tile to the next one at each side, -x, -y, +x, +y

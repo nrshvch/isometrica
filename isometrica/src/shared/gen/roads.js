@@ -913,129 +913,149 @@ function barrierAt(side) {
   return out;
 }
 
-//a town's limits, by the road where it leaves the town: a sign on two
-//posts of grey steel - white, black at its edge, the town's houses on it,
-//and on the side the town is left by a red stripe across them
+//a town's limits, by the road where it leaves the town: a sign on a post of
+//grey steel - white, black at its edge, the town's houses on it, and on the
+//one for the way out a red stripe across them; grey at its back
 var SIGN_POST = [124, 130, 140],
   SIGN_WHITE = [236, 236, 230],
   SIGN_EDGE = [40, 42, 46],
+  SIGN_BACK = [140, 146, 154],
   SIGN_HOUSES = [44, 46, 52],
   SIGN_RED = [206, 46, 38];
 
-//how far in from the edge of its tile the sign stands, across its tile from
-//the road's edge out on the verge - as the stop's sign is, its plate the size
-//of a bus stop's and a little wider - and how high its plate is
+//how far in from the edge of its tile the sign stands, how far out on the
+//verge from the road's edge, how wide its plate - the size of a bus stop's
+//and a little wider - and how high
 var SIGN_IN = 2.5,
-  SIGN_A0 = A1 + 0.5,
-  SIGN_A1 = A1 + 5.5,
+  SIGN_OUT = 0.5,
+  SIGN_W = 4.5,
   SIGN_Z0 = 4,
-  SIGN_Z1 = 8;
+  SIGN_Z1 = 7.5,
+  SIGN_EDGE_W = 0.25;
 
-//the houses on the sign, each [a0, a1, height] along its bottom, a church
-//among them
+//the houses on a sign, each [a, width, height] along its bottom from its
+//end, a church among them
 var SIGN_TOWN = [
-  [A1 + 1.2, A1 + 2, 0.8],
-  [A1 + 2.2, A1 + 2.7, 1.6],
-  [A1 + 2.7, A1 + 3.4, 0.8],
-  [A1 + 3.8, A1 + 4.6, 1],
+  [0.6, 0.8, 0.8],
+  [1.6, 0.5, 1.6],
+  [2.1, 0.7, 0.8],
+  [3.1, 0.8, 1],
 ];
 
-//how far in from the edge of the plate its black edge comes
-var SIGN_EDGE_W = 0.25;
+/**
+ * Whether a town's sign at side, for the way in or out, stands at the high
+ * end of the tile's edge (a past the road) rather than the low one: on the
+ * right of the traffic it is for, which keeps to the right (client/traffic
+ * rightOf) - the way in on the right of what comes in, from past side; the
+ * way out on the other.
+ */
+function signHigh(side, way) {
+  var inHigh = side === "-y" || side === "+x";
+
+  return way === "in" ? inHigh : !inHigh;
+}
 
 /**
  * The sign of a town's limits at side of its tile - "-x", "-y", "+x", "+y" -
- * where the road leaves a town (client/roadview townSignsOf): on two posts on
- * the verge, its plate across the way the road goes. It shows the town to
- * whoever comes in - its face out over side - and the town struck through
- * with a red stripe to whoever leaves it, on its face in: a sign of no
- * words, as the road signs of a town's limits have it.
+ * where the road leaves a town (client/roadview townSignsOf), for the way in
+ * or the way out: on a post on the verge on the right of the traffic it is
+ * for, its plate across the way the road goes, its face to that traffic -
+ * out over side for the way in, in for the way out. No words on it, as the
+ * road signs of a town's limits have none: the town's houses, and on the way
+ * out a red stripe through them.
  */
-function townSign(side) {
+function townSign(side, way) {
   var b = [],
+    a0 = signHigh(side, way) ? A1 + SIGN_OUT : A0 - SIGN_OUT - SIGN_W,
+    a1 = a0 + SIGN_W,
+    mid = (a0 + a1) / 2,
     v0 = SIGN_IN - 0.3,
-    v1 = SIGN_IN + 0.3;
+    v1 = SIGN_IN + 0.3,
+    //its face, out over side or in, and the side of it its back is at
+    out = way === "in",
+    face = out ? [v0 - 0.2, v0] : [v1, v1 + 0.2],
+    back = out ? [v1, v1 + 0.2] : [v0 - 0.2, v0],
+    //and how far further out of it what is on its face is
+    fore = out ? -1 : 1,
+    on = out ? v0 - 0.2 : v1 + 0.2,
+    i;
 
-  //its posts, and its plate between them: black at its edge, white either
-  //side
-  [SIGN_A0, SIGN_A1 - 0.6].forEach(function (a) {
-    b.push(sideBox(side, a, a + 0.6, v0, v1, 0, SIGN_Z1, SIGN_POST));
-  });
-  b.push(sideBox(side, SIGN_A0, SIGN_A1, v0, v1, SIGN_Z0, SIGN_Z1, SIGN_EDGE));
+  //its post, and its plate on it: black at its edge, grey at its back
+  b.push(sideBox(side, mid - 0.3, mid + 0.3, v0, v1, 0, SIGN_Z1, SIGN_POST));
+  b.push(sideBox(side, a0, a1, v0, v1, SIGN_Z0, SIGN_Z1, SIGN_EDGE));
+  b.push(
+    sideBox(
+      side,
+      a0 + SIGN_EDGE_W,
+      a1 - SIGN_EDGE_W,
+      back[0],
+      back[1],
+      SIGN_Z0 + SIGN_EDGE_W,
+      SIGN_Z1 - SIGN_EDGE_W,
+      SIGN_BACK,
+    ),
+  );
+  b.push(
+    sideBox(
+      side,
+      a0 + SIGN_EDGE_W,
+      a1 - SIGN_EDGE_W,
+      face[0],
+      face[1],
+      SIGN_Z0 + SIGN_EDGE_W,
+      SIGN_Z1 - SIGN_EDGE_W,
+      SIGN_WHITE,
+    ),
+  );
 
-  [
-    [v0 - 0.2, v0, v0 - 0.4],
-    [v1, v1 + 0.2, v1 + 0.2],
-  ].forEach(function (face, k) {
-    var out = face[2],
-      i;
-
+  //the town along its bottom
+  SIGN_TOWN.forEach(function (house) {
     b.push(
       sideBox(
         side,
-        SIGN_A0 + SIGN_EDGE_W,
-        SIGN_A1 - SIGN_EDGE_W,
-        face[0],
-        face[1],
-        SIGN_Z0 + SIGN_EDGE_W,
-        SIGN_Z1 - SIGN_EDGE_W,
-        SIGN_WHITE,
+        a0 + house[0],
+        a0 + house[0] + house[1],
+        Math.min(on, on + fore * 0.2),
+        Math.max(on, on + fore * 0.2),
+        SIGN_Z0 + 0.8,
+        SIGN_Z0 + 0.8 + house[2],
+        SIGN_HOUSES,
       ),
     );
+  });
 
-    //the town along its bottom
-    SIGN_TOWN.forEach(function (house) {
+  //and on the way out, the stripe through it, a step at a time from the
+  //bottom of one end to the top of the other
+  if (!out)
+    for (i = 0; i < 4; i++)
       b.push(
         sideBox(
           side,
-          house[0],
-          house[1],
-          out,
-          out + 0.2,
-          SIGN_Z0 + 0.8,
-          SIGN_Z0 + 0.8 + house[2],
-          SIGN_HOUSES,
+          a0 + 0.4 + i * 0.95,
+          a0 + 1.35 + i * 0.95,
+          on + 0.2,
+          on + 0.4,
+          SIGN_Z0 + 0.6 + i * 0.6,
+          SIGN_Z0 + 1.2 + i * 0.6,
+          SIGN_RED,
         ),
       );
-    });
-
-    //and on the face in, the stripe through it, a step at a time from the
-    //bottom of one end to the top of the other
-    if (k === 1)
-      for (i = 0; i < 4; i++)
-        b.push(
-          sideBox(
-            side,
-            SIGN_A0 + 0.6 + i,
-            SIGN_A0 + 1.6 + i,
-            out + 0.2,
-            out + 0.4,
-            SIGN_Z0 + 0.6 + i * 0.75,
-            SIGN_Z0 + 1.2 + i * 0.75,
-            SIGN_RED,
-          ),
-        );
-  });
 
   return b;
 }
 
 /**
- * Where a town's sign at side stands on its tile, x, y - the middle of its
- * plate, for it to be sorted among the cars by that (client/roadview).
+ * Where a town's sign at side, for the way in or out, stands on its tile, x,
+ * y - its post - for it to be sorted among the cars by that
+ * (client/roadview).
  */
-function townSignAt(side) {
-  var mid = sideBox(
-    side,
-    (SIGN_A0 + SIGN_A1) / 2,
-    (SIGN_A0 + SIGN_A1) / 2,
-    SIGN_IN,
-    SIGN_IN,
-    0,
-    0,
-  );
+function townSignAt(side, way) {
+  var a = signHigh(side, way)
+      ? A1 + SIGN_OUT + SIGN_W / 2
+      : A0 - SIGN_OUT - SIGN_W / 2,
+    at = sideBox(side, a, a, SIGN_IN, SIGN_IN, 0, 0);
 
-  return [mid.x0, mid.y0];
+  return [at.x0, at.y0];
 }
 
 /**
@@ -1050,8 +1070,9 @@ function townSignAt(side) {
  * "gen/roads/stop/shelter0" and "gen/roads/works/barrier0", a bus shelter
  * and a road works barrier along each side of the tile - and the shelters
  * of a cobbled street and a gravel lane, "gen/roads/stop-cobble/shelter0"
- * and "gen/roads/stop-gravel/shelter0" - and "gen/roads/limit/sign0", a
- * town's limits by the road at each side.
+ * and "gen/roads/stop-gravel/shelter0" - and "gen/roads/limit/in0" and
+ * "gen/roads/limit/out0", the signs of a town's limits by the road at each
+ * side, the way in and the way out.
  */
 function sprites() {
   var out = {};
@@ -1138,9 +1159,12 @@ function sprites() {
     out["gen/roads/works/barrier" + k] = { barrier: side };
   });
 
-  //and the sign of a town's limits by it, at each side
+  //and the signs of a town's limits by it, the way in and the way out, at
+  //each side
   STOP_SIDES.forEach(function (side, k) {
-    out["gen/roads/limit/sign" + k] = { townSign: side };
+    ["in", "out"].forEach(function (way) {
+      out["gen/roads/limit/" + way + k] = { townSign: side, way: way };
+    });
   });
 
   return out;
@@ -1155,7 +1179,7 @@ export function boxesOf(name) {
 
   if (s.stop) return shelter(s.side, s.stop);
   if (s.barrier) return barrier(s.barrier);
-  if (s.townSign) return townSign(s.townSign);
+  if (s.townSign) return townSign(s.townSign, s.way);
   if (s.lantern) return lantern(s.lantern);
 
   return s.light
@@ -1203,9 +1227,10 @@ export function describe() {
         out["barrier" + k] = barrierAt(side);
         return out;
       }, {}),
-      //and where a town's sign stands, by name
+      //and where a town's signs stand, by name
       townSigns: STOP_SIDES.reduce(function (out, side, k) {
-        out["sign" + k] = townSignAt(side);
+        out["in" + k] = townSignAt(side, "in");
+        out["out" + k] = townSignAt(side, "out");
         return out;
       }, {}),
     },

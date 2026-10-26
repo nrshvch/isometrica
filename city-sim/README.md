@@ -10,13 +10,15 @@ is built here.
 
 Where it is going, and what has been settled on the way: [its design](docs/README.md).
 
-- A city is founded with its first house: with none yet, the button along
-  the bottom opens the catalogue on the village's houses only - those that
-  need nothing of a town - and the one picked is put down as any building
-  is; Done asks for the city's name, and the house goes up in it, out of
-  the $100,000 it starts with. The town hall comes later, when it has grown
-  into a town; where it stands is the city's middle (see the isometrica
-  README).
+- A city is founded with whatever goes up first - its first house, as often
+  as not: with none yet, the button along the bottom opens the catalogue on
+  everything there is to build, and the one picked is put down as any
+  building is; Done asks for the city's name, and it goes up in it, out of
+  the $100,000 the city starts with. The dice next to the button takes the
+  camera off to somewhere else a town could go up, about where it was when
+  the dice was first rolled (`isometrica/src/client/cityman.js` roll). The
+  town hall comes later, when it has grown into a town; where it stands is
+  the city's middle (see the isometrica README).
 - Every building and every road tile has an area round it, two tiles out,
   rounded - five tiles across with its corners cut - and where two areas share a tile they hang
   together: the city is all of it that does, and a dashed line goes round its
@@ -25,14 +27,17 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   round it, till a road - the cheap way across - or another building joins it
   up. While something is being put down its area is drawn too - in the
   city's border, as it will be, if it joins it; in amber if it stands apart -
-  and the areas of whatever stands apart already, faintly. A road that leads
-  nowhere is not the city's past where its area meets a building's, and
-  where a road leaves the city that way the town's sign stands on the verge
-  where it crosses the border: a sign of no words on two posts, the town's
-  houses on it, struck through red on the side it is left by. A building's
-  area is the city's once it is finished. The border is put away with the
-  words over the world, but while something is being put down; the signs are
-  the road's, and stay.
+  and the areas of whatever stands apart already, faintly; and something
+  that stands apart, tapped, has the area of all that hangs together with it
+  drawn in amber while it is looked at. A road that leads nowhere is not the
+  city's past where its area meets a building's, and where a road leaves the
+  city that way the town's signs stand by it where it crosses the border,
+  each on a post on the verge, no words on them: the way in on the right of
+  whoever comes in, the town's houses facing them; the way out across the
+  road, on the right of whoever leaves, the houses struck through red. A
+  building's area is the city's once it is finished. The border is put away
+  with the words over the world, but while something is being put down; the
+  signs are the road's, and stay.
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
   station first, then the parks - and then everything else: houses, then

@@ -533,10 +533,14 @@ function showCoverage(self, key, towers, radius) {
  * own reach too, for a tower - or none again with null.
  */
 function raise(self, building) {
-  var i;
+  var play = self.root.play,
+    i;
 
   for (i = 0; i < self._raised.length; i++) self._raised[i].destroy();
   self._raised = [];
+
+  //the game played shown what is looked at too, for what it shows of it
+  if (play && play.inspecting) play.inspecting(building);
 
   if (building === null) return;
 

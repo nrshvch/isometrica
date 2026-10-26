@@ -9,9 +9,12 @@ Alaska was five families in 1968, on land bought with a grant
 ([references](references.md#real-towns)).
 
 - There is no step of picking a tile to found on. With no city yet, "Found a
-  city" opens the catalogue on the houses a city can be founded with: the
-  village's, which need no road, no water, no jobs
-  (`CityPopulation.canFound` in `isometrica/src/core/city/citypopulation.js`).
+  city" opens the catalogue on everything there is to build: a village's
+  house is the natural start, needing no road, no water, no jobs, but a
+  city can be founded with whatever goes up first. The dice next to it,
+  "Elsewhere", takes the camera off to somewhere else a town could go up -
+  room for a town hall there - about where it was first rolled (`roll` in
+  `isometrica/src/client/cityman.js`).
 - The first house is the city on its own: a family moves in as soon as it is
   finished, and pays its taxes from then on - no road needed.
 - The one picked is put down like any building, and priced out of what a
@@ -90,20 +93,26 @@ something is being put down (`isometrica/src/client/buildman.js`, the play's
 - whatever stands apart from the city has its area drawn faintly - and taken
   in with what is being put down, if that would join it up.
 
+And something that stands apart, tapped, has the area of all that hangs
+together with it drawn in amber while it is looked at
+(`isometrica/src/client/serviceman.js`, the play's `inspecting`).
+
 The border is drawn whenever any of it is on screen, wherever the middle of
 the city is.
 
 **Done.** Where a road leaves the city, leading nowhere (`CityRoads#exits`),
-the sign of the town's limits stands by it where it crosses the border: on
+the signs of the town's limits stand by it where it crosses the border: on
 the last of the road inside the city's area, at the side it goes on out at -
 walked out along the road, round its bends, from the last of the city's
 (`crossing` in `city-sim/src/client/cityborder.js`). A road that ends inside
-has none. The sign is small, on two posts on the verge, the size of a bus
-stop's: no words on it, the town's houses on a white plate, and on the side
-it is left by a red stripe through them, the way the road signs of a town's
-limits have it (`gen/roads/limit/sign` in
-`isometrica/src/shared/gen/roads.js`). It is the road's own, drawn with it,
-and stays up with the words put away.
+has none. They are small, each on a post on the verge, the size of a bus
+stop's sign, with no words on them, the way the road signs of a town's
+limits have it: the way in on the right of whoever comes in - the traffic
+keeps to the right - the town's houses on a white plate facing them; the
+way out on the other verge, facing whoever leaves, a red stripe through the
+houses (`gen/roads/limit/in`, `out` in
+`isometrica/src/shared/gen/roads.js`). They are the road's own, drawn with
+it, and stay up with the words put away.
 
 When what hangs together comes apart, the city is:
 

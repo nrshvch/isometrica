@@ -7,6 +7,10 @@ import CityLabel from "./gameObjects/citylabel";
 import CityComponent from "./components/city";
 import Config from "./config";
 import View from "./view";
+import BuildingCode from "../data/buildingcode";
+import BuildingData from "../data/buildings";
+import ErrorCode from "../core/errorcode";
+import * as glMatrix from "gl-matrix";
 
 var City = Core.City;
 var CoreTerrain = Core.Terrain;
@@ -86,6 +90,8 @@ function Cityman(root) {
   //whether the cities' names are written over them at all - a game that
   //shows its city's elsewhere goes without (city-sim play.js)
   this.names = true;
+  //the tile the dice was first rolled about, x and y, or null (#roll)
+  this._rolledFrom = null;
 }
 
 /**
@@ -228,6 +234,93 @@ Cityman.prototype.showIncome = function (city, amount) {
   this.root.buildman.showIncome(
     CoreTerrain.convertToIndex(Math.round(c.x), Math.round(c.y)),
     amount,
+  );
+};
+
+//how many spots a roll of the dice tries for one a city could be founded on,
+//before it settles for the last of them - out at sea, say
+var ROLLS = 100;
+
+/**
+ * Somewhere about tile x, y - within a square Config.citySpreadTiles wide -
+ * a town could go up: where a town hall would, its least x and y. Or the last
+ * spot tried, should none of them do.
+ */
+function randomSite(root, x, y) {
+  var tile, i;
+
+  for (i = 0; i < ROLLS; i++) {
+    tile = CoreTerrain.convertToIndex(
+      Math.round(x + (Math.random() - 0.5) * Config.citySpreadTiles),
+      Math.round(y + (Math.random() - 0.5) * Config.citySpreadTiles),
+    );
+
+    if (
+      root.core.world.buildingService.test(BuildingCode.cityHall, tile, 0) ===
+      ErrorCode.NONE
+    )
+      break;
+  }
+
+  return tile;
+}
+
+var siteBuffer = new Float32Array(3),
+  groundBuffer = new Float32Array(3);
+
+/**
+ * Glides the camera over the middle of a footprint sizeX by sizeY on tile, up
+ * on the ground there - so it ends up in the middle of the screen, however
+ * high the ground (WorldCamera#glideTo).
+ */
+function glideToSite(root, tile, sizeX, sizeY) {
+  var cam = root.camera.cameraScript,
+    ts = Config.tileSize,
+    x = (CoreTerrain.extractX(tile) + (sizeX - 1) / 2) * ts,
+    z = (CoreTerrain.extractY(tile) + (sizeY - 1) / 2) * ts,
+    m = cam.gameObject.camera.getWorldToScreen();
+
+  //how far off the ground under it the ground up there is drawn - the same
+  //wherever the camera is
+  siteBuffer[0] = groundBuffer[0] = 0;
+  siteBuffer[2] = groundBuffer[2] = 0;
+  siteBuffer[1] = root.terrain.tileYPos(tile);
+  groundBuffer[1] = 0;
+  glMatrix.vec3.transformMat4(siteBuffer, siteBuffer, m);
+  glMatrix.vec3.transformMat4(groundBuffer, groundBuffer, m);
+
+  var shift = cam.panShift(
+    groundBuffer[0] - siteBuffer[0],
+    groundBuffer[1] - siteBuffer[1],
+  );
+
+  cam.glideTo(x + shift[0], z + shift[1]);
+}
+
+/**
+ * Rolls the dice for somewhere else to found a city: the camera glides off to
+ * a spot a town could go up on - room for a town hall there - about where it
+ * was when the dice was first rolled, so that rolling again and again does
+ * not wander off ever further.
+ */
+Cityman.prototype.roll = function () {
+  var root = this.root,
+    hall = BuildingData[BuildingCode.cityHall],
+    from;
+
+  if (this._rolledFrom === null) {
+    from = root.camera.transform.getPosition();
+    this._rolledFrom = [
+      Math.round(from[0] / Config.tileSize),
+      Math.round(from[2] / Config.tileSize),
+    ];
+  }
+
+  glideToSite(
+    root,
+    randomSite(root, this._rolledFrom[0], this._rolledFrom[1]),
+    hall.sizeX,
+    hall.sizeY,
   );
 };
 

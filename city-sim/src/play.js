@@ -32,4 +32,10 @@ export default {
   placing: function (what) {
     if (border !== null) border.placing(what);
   },
+
+  //what is being looked at, for the area of what stands apart (isometrica
+  //client/serviceman)
+  inspecting: function (building) {
+    if (border !== null) border.inspecting(building);
+  },
 };

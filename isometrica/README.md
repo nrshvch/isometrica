@@ -691,15 +691,20 @@ dev`) plays them the way a game would - all three weathers together, the
   behind it spreading it - a crew to every six tiles or so of a long stretch.
   Where they are is worked out from how far along the road is, so it is the
   same after a reload.
-- The sign of a town's limits can stand by a road
-  (`isometrica/src/shared/gen/roads.js` townSign, `gen/roads/limit/sign0`-`3`):
-  at one side of its tile, on two posts of grey steel on the verge, its
-  plate across the way the road goes - the size of a bus stop's sign, no
-  words on it, the town's houses in black on a white plate, a church's spire
-  among them, and on the side the town is left by a red stripe through them.
-  A game says which roads have one, and on which side (its play's
-  `townSignsOn`, `client/roadview.js` townSignsOf); the city-sim puts one
-  where a road crosses its city's border.
+- The signs of a town's limits can stand by a road
+  (`isometrica/src/shared/gen/roads.js` townSign, `gen/roads/limit/in0`-`3`
+  and `out0`-`3`): at one side of its tile, a pair of them, each on a post
+  of grey steel on the verge, its plate across the way the road goes - the
+  size of a bus stop's sign, no words on it, grey at its back. The way in
+  stands on the right of whoever comes in over that side - the traffic keeps
+  to the right - facing them: the town's houses in black on a white plate, a
+  church's spire among them. The way out stands on the other verge, facing
+  whoever leaves, the houses struck through red. A game says which roads
+  have them, and on which side (its play's `townSignsOn`,
+  `client/roadview.js` townSignsOf) - out of what it last worked out, never
+  working anything out then, as a road asks while it is drawn, and while the
+  pictures of another side are looked out (`client/preloader.js`); the
+  city-sim puts them up where a road crosses its city's border.
 - A run of road the player drags is laid all at once (Road.plan): each new
   tile gets the surface that has the run join up the most - with itself,
   and with the roads already there, which stay as they are, joining those
@@ -723,10 +728,13 @@ dev`) plays them the way a game would - all three weathers together, the
   camera shows another side of it, and a tree stands whichever way round
   its tile has it. The world grows each kind in stands
   (`isometrica/src/core/ambient.js`).
-- A town is founded with its first house - a village's, which needs
-  nothing of a town (`CityPopulation.canFound`): the player puts it down,
-  names the city, and it goes up out of what the city starts with
-  (`City.quoteFounding`, `client/buildman.js` found). It puts up a town hall
+- A town is founded with whatever goes up first - anything there is to
+  build, its first house as often as not: the player puts it down, names the
+  city, and it goes up out of what the city starts with
+  (`City.quoteFounding`, `client/buildman.js` found). Before then, a roll of
+  the dice takes the camera off to somewhere else a town could go up, with
+  room for a town hall, about where it first was rolled
+  (`client/cityman.js` roll). It puts up a town hall
   when it has grown into a town, and has no borders: all the land there is,
   is the city's (`Construction#getCity`), and anything can go up anywhere.
 - Every building of a city and every tile of its roads has an area round it,
@@ -754,8 +762,9 @@ dev`) plays them the way a game would - all three weathers together, the
   right alongside it, no tile between. The city-sim draws a border round the
   city's area (`city-sim/src/client/cityborder.js`), and while something is
   being put down its area too - the builder tells the game played what is
-  being put down where (its play's `placing`, `client/buildman.js`); the
-  world itself has none. A line round tiles is drawn whenever any of it is on
+  being put down where (its play's `placing`, `client/buildman.js`), and
+  what is looked at (its play's `inspecting`, `client/serviceman.js`) - the
+  area of what it stands apart with; the world itself has none. A line round tiles is drawn whenever any of it is on
   screen (`client/components/tileareaborderrenderer.js`). Its name hangs over
   its town hall, or the middle of what is part of it (`City#center`).
 - People live in houses, each keeping how many live in it, in the save by

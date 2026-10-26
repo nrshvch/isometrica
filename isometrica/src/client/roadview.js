@@ -273,7 +273,8 @@ BuildingView.prototype.seenSprites = function (out) {
     out.push(pieceOf("gen/roads/works/barrier" + seenSide(side)));
   });
   townSignsOf(road).forEach(function (side) {
-    out.push(pieceOf("gen/roads/limit/sign" + seenSide(side)));
+    out.push(pieceOf("gen/roads/limit/in" + seenSide(side)));
+    out.push(pieceOf("gen/roads/limit/out" + seenSide(side)));
   });
 
   collecting = out;
@@ -330,9 +331,11 @@ function draw(view, id, surface) {
     addBarrier(go, "gen/roads/works/barrier" + seenSide(side), tile, side);
   });
 
-  //and the sign of a town's limits, where a game puts one up
+  //and the signs of a town's limits, the way in and the way out, where a
+  //game puts them up
   townSignsOf(view.road).forEach(function (side) {
-    addTownSign(go, "gen/roads/limit/sign" + seenSide(side));
+    addTownSign(go, "gen/roads/limit/in" + seenSide(side));
+    addTownSign(go, "gen/roads/limit/out" + seenSide(side));
   });
 
   place(go, tile, surface);
@@ -539,8 +542,8 @@ function townSignsOf(road) {
   return play.townSignsOn(road.data.tile) || [];
 }
 
-//hangs the sign of a town's limits under parent, standing where it does on
-//its tile: sorted among the cars by the middle of its plate
+//hangs a sign of a town's limits under parent, standing where it does on its
+//tile: sorted among the cars by its post
 function addTownSign(parent, name) {
   var part = new engine.GameObject(),
     sprite = new engine.SpriteRenderer(),

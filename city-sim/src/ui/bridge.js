@@ -220,9 +220,11 @@ function actionButtons(controls) {
 }
 
 /**
- * The city builder's buttons when nothing else is going on: the one it
- * starts on - to found a city where there is none, with its first house out
- * of the catalogue (isometrica client/buildman) - and the building tools
+ * The city builder's buttons when nothing else is going on: those it starts
+ * on - to found a city where there is none, with whatever goes up first out
+ * of the catalogue (isometrica client/buildman), and the dice to look for
+ * somewhere else to found it (isometrica client/cityman roll) - and the
+ * building tools
  * once there is: the city screen, the catalogue, a road and shaping the
  * ground. A road is picked - what it is laid in, which ways it goes
  * - as it is laid (isometrica client/buildman build). Starting afresh, which
@@ -233,6 +235,13 @@ function idle(go, name) {
 
   if (name !== "build" && !client.core.cities.getCity(0))
     return [
+      {
+        icon: "dice",
+        label: "Elsewhere",
+        action: function () {
+          client.cityman.roll();
+        },
+      },
       {
         icon: "found",
         label: "Found a city",

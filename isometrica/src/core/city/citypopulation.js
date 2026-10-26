@@ -101,24 +101,6 @@ function needsJobs(data) {
 CityPopulation.needsJobs = needsJobs;
 
 /**
- * Whether a city can be founded with a house of this kind: one whose people
- * need nothing of a town - no work in it, no water, no road - the way a
- * family or a few settle somewhere. Only what is offered to be built.
- *
- * @param data {Object} building data
- * @returns {boolean}
- */
-CityPopulation.canFound = function (data) {
-  return (
-    data !== undefined &&
-    !data.hidden &&
-    data.citizenCapacity > 0 &&
-    !needsJobs(data) &&
-    !(data.requires && data.requires.water)
-  );
-};
-
-/**
  * @returns {number} how many the city's houses have room for: every bed in
  *                   the houses that need no jobs, and as many of the rest as
  *                   there are jobs to go round

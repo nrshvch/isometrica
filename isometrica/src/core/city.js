@@ -80,9 +80,9 @@ City.prototype.world = null;
 City.prototype._tile = -1;
 
 /**
- * A city is founded with its first house - a family or a few settling
- * somewhere (CityPopulation.canFound) - and puts up a town hall once it has
- * grown into a town.
+ * A city is founded with whatever goes up first - its first house, a family
+ * or a few settling somewhere, as often as not (City.quoteFounding) - and
+ * puts up a town hall once it has grown into a town.
  */
 City.prototype.init = function () {};
 
@@ -617,8 +617,8 @@ City.prototype.toJSON = function () {
 /**
  * What putting code down on each of anchors would come to as the first of a
  * city - which they would found: quoted the way CityBuildings#quoteSelection
- * quotes, out of what a city is founded with, for a house it can be founded
- * with (CityPopulation.canFound) and nothing else.
+ * quotes, out of what a city is founded with, for anything that is offered to
+ * be built.
  *
  * @param world
  * @param code {number}
@@ -627,7 +627,9 @@ City.prototype.toJSON = function () {
  * @returns {Array} as CityBuildings#quoteSelection
  */
 City.quoteFounding = function (world, code, anchors, rotation) {
-  if (!CityPopulation.canFound(BuildingData[code])) return [];
+  var data = BuildingData[code];
+
+  if (data === undefined || data.hidden) return [];
 
   return CityBuildings.quote(
     {
@@ -643,7 +645,7 @@ City.quoteFounding = function (world, code, anchors, rotation) {
 };
 
 /**
- * A city, founded where its first house is to go up - which the founder
+ * A city, founded where the first of it is to go up - which the founder
  * builds then, as any other.
  *
  * @param world
