@@ -83,6 +83,18 @@ var OUTLINE_REACH = 16;
 
 var cornerBuffer = new Float32Array(3);
 
+//the grid points round the tile drawn under the finger, as outlineAt
+//projects them: where each is on the screen and how near, both at the
+//height of the ground and flat at the water's surface - and the pick it was
+//last projected for. Kept from one pick to the next, nothing allocated for
+//any of them
+var SIDE = 2 * OUTLINE_REACH + 2,
+  projectedX = new Float64Array(SIDE * SIDE * 2),
+  projectedY = new Float64Array(SIDE * SIDE * 2),
+  projectedZ = new Float64Array(SIDE * SIDE * 2),
+  projectedFor = new Int32Array(SIDE * SIDE * 2),
+  picked = 0;
+
 /**
  * The tile whose outline is under screenX, screenY - found near tile, the
  * ground tile drawn there. The selection is drawn the way the tiles' outlines
@@ -102,47 +114,56 @@ function outlineAt(me, tile, screenX, screenY) {
     y0 = Terrain.extractY(tile),
     best = tile,
     bestDepth = Infinity,
-    //each grid point projected once, by its offset from x0, y0
-    projected = {},
+    flat,
+    a,
+    b,
+    c,
+    d,
     x,
     y,
-    quad,
-    depth,
-    k;
+    depth;
 
+  //this pick's grid points, each projected once (projected)
+  picked++;
+
+  //where grid point gx, gy is in projected - on the screen at the height of
+  //the ground there, or flat at the water's surface - projected the first
+  //time it is asked for
   function corner(gx, gy, flat) {
-    var id = gx - x0 + "," + (gy - y0) + (flat ? "f" : "");
+    var i =
+      ((gx - x0 + OUTLINE_REACH) * SIDE + (gy - y0 + OUTLINE_REACH)) * 2 +
+      (flat ? 1 : 0);
 
-    if (projected[id] === undefined) {
+    if (projectedFor[i] !== picked) {
       cornerBuffer[0] = (gx - 0.5) * ts;
       cornerBuffer[1] = flat ? 0 : terrain.getGridPointHeight(gx, gy) * zStep;
       cornerBuffer[2] = (gy - 0.5) * ts;
       glMatrix.vec3.transformMat4(cornerBuffer, cornerBuffer, m);
-      projected[id] = [cornerBuffer[0], cornerBuffer[1], cornerBuffer[2]];
+      projectedX[i] = cornerBuffer[0];
+      projectedY[i] = cornerBuffer[1];
+      projectedZ[i] = cornerBuffer[2];
+      projectedFor[i] = picked;
     }
 
-    return projected[id];
+    return i;
   }
 
   for (x = x0 - OUTLINE_REACH; x <= x0 + OUTLINE_REACH; x++) {
     for (y = y0 - OUTLINE_REACH; y <= y0 + OUTLINE_REACH; y++) {
       //water is outlined flat at its surface, unless it is the bottom
       //that is being picked
-      var flat =
+      flat =
         !me._underwater &&
         terrain.getTerrainType(x, y) === Core.TerrainType.water;
 
-      quad = [
-        corner(x, y, flat),
-        corner(x, y + 1, flat),
-        corner(x + 1, y + 1, flat),
-        corner(x + 1, y, flat),
-      ];
+      a = corner(x, y, flat);
+      b = corner(x, y + 1, flat);
+      c = corner(x + 1, y + 1, flat);
+      d = corner(x + 1, y, flat);
 
-      if (!inside(quad, screenX, screenY)) continue;
+      if (!inside(a, b, c, d, screenX, screenY)) continue;
 
-      depth = 0;
-      for (k = 0; k < 4; k++) depth += quad[k][2];
+      depth = projectedZ[a] + projectedZ[b] + projectedZ[c] + projectedZ[d];
 
       if (depth < bestDepth) {
         bestDepth = depth;
@@ -155,27 +176,25 @@ function outlineAt(me, tile, screenX, screenY) {
 }
 
 /**
- * Whether x, y is inside the polygon points on screen.
+ * Whether x, y is inside the outline of grid points a, b, c, d on screen
+ * (projected), by how many of its edges a line from it crosses.
  */
-function inside(points, x, y) {
-  var r = false,
-    i,
-    j,
-    a,
-    b;
+function inside(a, b, c, d, x, y) {
+  return (
+    ((crosses(a, d, x, y) !== crosses(b, a, x, y)) !== crosses(c, b, x, y)) !==
+    crosses(d, c, x, y)
+  );
+}
 
-  for (i = 0, j = points.length - 1; i < points.length; j = i++) {
-    a = points[i];
-    b = points[j];
+//whether a line from x, y going right crosses the edge from grid point i
+//to grid point j
+function crosses(i, j, x, y) {
+  var ax = projectedX[i],
+    ay = projectedY[i],
+    bx = projectedX[j],
+    by = projectedY[j];
 
-    if (
-      a[1] > y !== b[1] > y &&
-      x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0]
-    )
-      r = !r;
-  }
-
-  return r;
+  return ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax;
 }
 
 /**
@@ -395,6 +414,17 @@ function drawHandles(me) {
  * listening if that is anything new.
  */
 function select(me, ox, oy, cells, force) {
+  //where it was, as it was: nothing new - cells are made afresh whenever
+  //they change, never changed as they are
+  if (
+    !force &&
+    me._sig !== null &&
+    ox === me._ox &&
+    oy === me._oy &&
+    cells === me._cells
+  )
+    return;
+
   var sig = ox + ":" + oy + ":" + Object.keys(cells).sort().join(";");
 
   if (!force && sig === me._sig) return;
