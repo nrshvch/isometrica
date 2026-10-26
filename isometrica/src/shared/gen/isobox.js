@@ -97,7 +97,6 @@ function moved(b, dx, dy, dz) {
     b.finish,
   );
 
-  r.group = b.group;
   if (b.cuts)
     r.cuts = b.cuts.map(function (c) {
       return plane(
@@ -124,7 +123,6 @@ function clip(b, x0, x1, y0, y1) {
 
   var r = box(cx0, cx1, cy0, cy1, b.z0, b.z1, b.color, b.finish);
 
-  r.group = b.group;
   r.cuts = b.cuts;
 
   return r;
@@ -158,7 +156,6 @@ function rotate(boxes, sizeX, sizeY, turns) {
       q = turn(b.x1, b.y1);
     var r = box(p[0], q[0], p[1], q[1], b.z0, b.z1, b.color, b.finish);
 
-    r.group = b.group;
     if (b.cuts)
       r.cuts = b.cuts.map(function (c) {
         var n = c.n;
@@ -242,7 +239,6 @@ function snap(b, outward) {
     z = b.cuts ? [b.z0, b.z1] : snapSide(b.z0, b.z1, true),
     r = box(x[0], x[1], y[0], y[1], z[0], z[1], b.color, b.finish);
 
-  r.group = b.group;
   r.cuts = b.cuts;
 
   return r;
@@ -518,13 +514,6 @@ function shadeHit(boxes, hit, face, px, py, pz) {
           ? shade(hit.color, face)
           : lit(hit.color, normal[0], normal[1], normal[2]);
 
-    if (
-      hit.finish !== undefined &&
-      hit.finish.shadow &&
-      shadowed(boxes, hit, px, py, pz)
-    )
-      color = darker(color, SHADOW);
-
     //a sign of no material is only a colour that shines at night (shine)
     if (hit.finish !== undefined && !(hit.finish.sign && !hit.finish.material))
       color = finish(color, face, normal, hit.finish, px, py, pz);
@@ -559,9 +548,6 @@ function shadeHit(boxes, hit, face, px, py, pz) {
 
   return color;
 }
-
-//how much darker a spot in another box's shadow is
-var SHADOW = 0.32;
 
 var BLACK = [0, 0, 0],
   //what of the panes are lit at night - with the first of a building's
@@ -738,55 +724,6 @@ function facing(face, normal, f) {
     v = Math.round((0.5 * w[2] + w[1]) * 255);
 
   return [v, v, v];
-}
-
-/**
- * Whether the sun is kept off that point of box `hit` by another box of the
- * same group that casts a shadow (finish.shadow) - a strut of a lattice
- * falling across the next one. Only a box's own group shades it, so a part
- * comes out the same alone as laid with others (see compose).
- */
-function shadowed(boxes, hit, px, py, pz) {
-  var e = 0.05,
-    ox = px + SUN[0] * e,
-    oy = py + SUN[1] * e,
-    oz = pz + SUN[2] * e;
-
-  for (var i = 0; i < boxes.length; i++) {
-    var b = boxes[i];
-
-    if (
-      b === hit ||
-      b.group !== hit.group ||
-      b.finish === undefined ||
-      !b.finish.shadow
-    )
-      continue;
-
-    var t0 = 0,
-      t1 = Infinity,
-      lo = [b.x0, b.y0, b.z0],
-      hi = [b.x1, b.y1, b.z1],
-      o = [ox, oy, oz],
-      k;
-
-    for (k = 0; k < 3 && t0 <= t1; k++) {
-      if (Math.abs(SUN[k]) < 1e-9) {
-        if (o[k] < lo[k] || o[k] > hi[k]) t0 = Infinity;
-        continue;
-      }
-
-      var a = (lo[k] - o[k]) / SUN[k],
-        c = (hi[k] - o[k]) / SUN[k];
-
-      t0 = Math.max(t0, Math.min(a, c));
-      t1 = Math.min(t1, Math.max(a, c));
-    }
-
-    if (t0 <= t1) return true;
-  }
-
-  return false;
 }
 
 //what comes out of a hash of whole numbers: 0..1, the same every time
@@ -1039,10 +976,6 @@ var MATERIALS = {
  * painted on a tile of its own comes out the same as it does in a whole
  * building put together out of it, whichever tile and storey it is laid on.
  *
- * A finish with shadow set has the shadows of the other boxes of its group
- * with shadow set fall on it (see shadowed) - the members of a steel
- * lattice shading each other.
- *
  * A finish with lit set instead is a box whose colour has had the light on
  * it worked out already - a little column of something round, shaded by
  * which way its surface faces there rather than by the faces of the column -
@@ -1199,7 +1132,6 @@ function render(boxes) {
       z1: b.z1,
       color: b.color,
       finish: b.finish,
-      group: b.group,
       cuts: b.cuts,
       sMinX: r.minX,
       sMaxX: r.maxX,

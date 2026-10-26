@@ -196,14 +196,10 @@ var LOTS = {
   },
 };
 
-//a steel lattice: every member of it throws its shadow on the others (see
-//iso finish)
-var LATTICE = { shadow: true };
-
 /**
  * The mast from z0 to z1: an open steel lattice - a post at each corner, a
  * ring of struts round it every half storey and a brace across each side
- * from corner to corner in between, each throwing its shadow on the rest.
+ * from corner to corner in between.
  * Half a storey to a panel, so one storey of it stacked on the next carries
  * straight on; square on its tile's middle, so it is the same turned round.
  */
@@ -225,17 +221,17 @@ function mastSection(b, z0, z1) {
     [x0, y1 - t],
     [x1 - t, y1 - t],
   ].forEach(function (c) {
-    b.push(box(c[0], c[0] + t, c[1], c[1] + t, z0, z1, MACHINE, LATTICE));
+    b.push(box(c[0], c[0] + t, c[1], c[1] + t, z0, z1, MACHINE));
   });
 
   for (z = z0; z < z1 - 0.01; z += panel) {
     var top = Math.min(z + panel, z1),
       ring = Math.min(0.4, top - z);
 
-    b.push(box(x0, x1, y0, y0 + 0.35, z, z + ring, MACHINE, LATTICE));
-    b.push(box(x0, x1, y1 - 0.35, y1, z, z + ring, MACHINE, LATTICE));
-    b.push(box(x0, x0 + 0.35, y0, y1, z, z + ring, MACHINE, LATTICE));
-    b.push(box(x1 - 0.35, x1, y0, y1, z, z + ring, MACHINE, LATTICE));
+    b.push(box(x0, x1, y0, y0 + 0.35, z, z + ring, MACHINE));
+    b.push(box(x0, x1, y1 - 0.35, y1, z, z + ring, MACHINE));
+    b.push(box(x0, x0 + 0.35, y0, y1, z, z + ring, MACHINE));
+    b.push(box(x1 - 0.35, x1, y0, y1, z, z + ring, MACHINE));
 
     //the braces, each side's the other way round to the one before it
     for (k = 0; k < steps; k++) {
@@ -253,7 +249,6 @@ function mastSection(b, z0, z1) {
           zz - h,
           zz + h,
           MACHINE,
-          LATTICE,
         ),
       );
       b.push(
@@ -265,7 +260,6 @@ function mastSection(b, z0, z1) {
           zz - h,
           zz + h,
           MACHINE,
-          LATTICE,
         ),
       );
       b.push(
@@ -277,7 +271,6 @@ function mastSection(b, z0, z1) {
           zz - h,
           zz + h,
           MACHINE,
-          LATTICE,
         ),
       );
       b.push(
@@ -289,7 +282,6 @@ function mastSection(b, z0, z1) {
           zz - h,
           zz + h,
           MACHINE,
-          LATTICE,
         ),
       );
     }
@@ -318,16 +310,7 @@ function jib(angle) {
   for (s = -8; s <= 22; s += 0.75) {
     p = at(s);
     b.push(
-      box(
-        p[0] - 0.7,
-        p[0] + 0.7,
-        p[1] - 0.7,
-        p[1] + 0.7,
-        z,
-        z + 1.5,
-        MACHINE,
-        LATTICE,
-      ),
+      box(p[0] - 0.7, p[0] + 0.7, p[1] - 0.7, p[1] + 0.7, z, z + 1.5, MACHINE),
     );
   }
 

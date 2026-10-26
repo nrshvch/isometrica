@@ -814,7 +814,7 @@ dev`) plays them the way a game would - all three weathers together, the
   block of
   flats or offices then grows its own structure from a quarter of the way,
   and its lower storeys finish under it from halfway; the crane, stacked
-  out of steel lattice mast sections that shade each other, grows with it. The excavator drives, stops and turns
+  out of steel lattice mast sections, grows with it. The excavator drives, stops and turns
   to dig, and the crane's jib swings to and fro
   (`isometrica/src/client/siterenderer.js`) - each way it points drawn with
   the crane under it, one picture, so that it stands as high as the crane is

@@ -54,12 +54,6 @@ export function partBoxes(key, turns) {
  * @param sizeY {number}
  * @param turns {number}
  */
-function withGroup(b, group) {
-  b.group = group;
-
-  return b;
-}
-
 export function model(plan, sizeX, sizeY, turns) {
   var b = [];
 
@@ -68,13 +62,7 @@ export function model(plan, sizeX, sizeY, turns) {
 
     tile.parts.forEach(function (key, i) {
       partBoxes(key, turns).forEach(function (c) {
-        //what a part's boxes cast shadows on is the part's own, as when it
-        //is painted alone
-        var group = tile.x + "," + tile.y + "/" + i;
-
-        b.push(
-          withGroup(iso.moved(c, tile.x * TILE, tile.y * TILE, up[i]), group),
-        );
+        b.push(iso.moved(c, tile.x * TILE, tile.y * TILE, up[i]));
       });
     });
   });
