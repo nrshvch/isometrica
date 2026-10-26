@@ -222,9 +222,14 @@ vec4 drawn(vec4 src, ivec2 at, float shape) {
 
 //how high it stands, as much there as its colours are: every pixel of
 //that picture is there - what it stands over the ground under it carried
-//in the green (client/cachedsprite Layers finish)
+//in the green, and the foot of that in the blue (client/cachedsprite Layers
+//finish), which is not its glowing
 vec4 tall(vec4 src, ivec2 at, float shape) {
-  return vec4(drawn(src, at, shape).rgb, src.w < 0.5 ? 0.0 : shape);
+  vec3 t = drawn(src, at, shape).rgb;
+
+  if (src.w > 1.5 && src.w < 2.5) t.b = 0.0;
+
+  return vec4(t, src.w < 0.5 ? 0.0 : shape);
 }
 
 uniform bool colours;
@@ -328,8 +333,10 @@ void main() {
 
 //what a picture stands over the ground, as high as it stands over it, into
 //the map of the ground on the screen (the ground spot under a pixel h high
-//is h pixels lower down): the most of whatever stands over every bit of it
-//- drawn with the margin round the screen there is round the map
+//is h pixels lower down): the most of whatever stands on every bit of it in
+//the red - and of what stands clear of it there, the most of its top in the
+//green, the least of its foot in the blue, as 1 less it - drawn with the
+//margin round the screen there is round the map
 var STAMP_VS = `#version 300 es
 precision highp float;
 
@@ -374,10 +381,11 @@ void main() {
   if (vSrc.w < 1.5 || vSrc.w > 2.5 || vAlpha < 0.99) discard;
 
   ivec2 at = ivec2(int(gl_FragCoord.x), int(size.y - gl_FragCoord.y)) - ivec2(vRect.xy);
-  float over = texelFetch(pages, ivec3(ivec2(vSrc.yz) + at, int(vSrc.x)), 0).g;
+  vec4 t = texelFetch(pages, ivec3(ivec2(vSrc.yz) + at, int(vSrc.x)), 0);
+  float over = t.g, foot = t.b;
 
   if (over <= 0.0) discard;
-  out0 = vec4(over, 0.0, 0.0, 1.0);
+  out0 = foot > 0.0 ? vec4(0.0, over, 1.0 - foot, 1.0) : vec4(over, 0.0, 0.0, 1.0);
 }
 `;
 
@@ -601,9 +609,13 @@ const float SHADOW_OUT = 2.5;
 
 //whether a pixel is in the shadow of anything: from the pixel, the way to
 //the sun - over the ground under it on the screen, and up as it goes - and
-//anything standing over the ground along it higher than that. Each pixel
-//starts a little further along than the next, dithered as the lamps' light
-//is, so the end of a long shadow frays rather than stepping
+//anything standing on the ground along it higher than that, or standing
+//clear of it as high as that (stamp): the jib of a crane throws its shadow
+//as far out as it is high, not all the way from under it. As high as that
+//is a step of the way up at least, so that something thin is not stepped
+//over. Each pixel starts a little further along than the next, dithered as
+//the lamps' light is, so the end of a long shadow frays rather than
+//stepping
 float shadowed(ivec2 px, vec3 n, float b) {
   float h = texelFetch(heights, px, 0).r * 255.0;
   vec2 under = vec2(gl_FragCoord.x, size.y - gl_FragCoord.y) - rise * h + margin;
@@ -622,9 +634,11 @@ float shadowed(ivec2 px, vec3 n, float b) {
 
     if (q.x < 0.0 || q.y < 0.0 || q.x >= cols || q.y >= rows) return 0.0;
 
-    float over = texelFetch(ground, ivec2(int(q.x), int(rows - 1.0 - floor(q.y))), 0).r * 255.0;
+    vec4 g = texelFetch(ground, ivec2(int(q.x), int(rows - 1.0 - floor(q.y))), 0);
+    float ray = h + sunStep.z * t + SHADOW_BIAS;
 
-    if (over > h + sunStep.z * t + SHADOW_BIAS) return 1.0;
+    if (g.r * 255.0 > ray) return 1.0;
+    if (g.g * 255.0 > ray && (1.0 - g.b) * 255.0 <= ray + max(sunStep.z, 1.0)) return 1.0;
   }
 
   return 0.0;

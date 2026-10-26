@@ -522,8 +522,12 @@ function lift(pixels, w, image, f, x, y, up, deferred) {
  * that bit of the ground - the most of what stands over it - in the green.
  * A pixel h high stands over the ground h pixels further down the picture,
  * a pixel a unit; a roof stands over all the ground the building does, a
- * wall over the ground at its foot. Every pixel of it is then as there as
- * can be, the colours' own saying how much of it there is (client/glview).
+ * wall over the ground at its foot. And in the blue, where what stands
+ * highest over it stands clear of the ground - the jib of a crane, the
+ * crown of a tree - how high its foot is (footOf); nothing where it stands
+ * on the ground all the way up, as a wall does. Every pixel of it is then as
+ * there as can be, the colours' own saying how much of it there is (client/
+ * glview).
  */
 Layers.prototype.finish = function (pixels, w) {
   if (this.look !== "deferred") return;
@@ -560,17 +564,74 @@ Layers.prototype.finish = function (pixels, w) {
 
   this.sprite.top = topOf(pixels, w, x0, W, H);
 
+  //seen from above, nothing shows what is under what
+  var foot = this.sprite.fromAbove ? null : footOf(pixels, w, x0, W, H, over);
+
   for (j = 0; j < H; j++)
     for (i = 0; i < W; i++) {
       o = (j * w + x0 + i) * 4;
       k = over[j * W + i];
       pixels[o + 1] = k;
-      //and nothing of it glows (client/glview GLOW) - what lifted it added
-      //to the blue as well
-      pixels[o + 2] = 0;
+      //and the foot of what stands clear of the ground - over what lifted
+      //it added to the blue
+      pixels[o + 2] = foot === null ? 0 : foot[j * W + i];
       if (k > 0 || pixels[o + 3] > 0) pixels[o + 3] = 255;
     }
 };
+
+//as low as what stands over the ground has to be for its foot to count
+var LOW = 2;
+
+/**
+ * Under every bit of the ground in a picture of how high things stand (the
+ * red of it, x0 across in pixels w wide) - over which `over` says how high
+ * the most of it stands - the foot of that, where it stands clear of the
+ * ground: 0 where it stands on it all the way up.
+ *
+ * What stands over a bit of the ground is on the line up the picture from
+ * it, a pixel a unit up. Each point of that line is there where the picture
+ * shows it - a pixel as high as the point is - or shows something in front
+ * of it, higher; it is not where the picture shows something lower, from
+ * behind it, or nothing at all: the ground behind the jib, the sky beside
+ * the crown of a tree. Up from the ground as far as the line is there is
+ * what stands on it; down from the top, as far as it is there, the foot of
+ * what is highest - which, standing clear of what is under it, is all that
+ * keeps the sun off up there.
+ *
+ * @returns {Uint8Array} W * H
+ */
+function footOf(pixels, w, x0, W, H, over) {
+  var foot = new Uint8Array(W * H),
+    i,
+    g,
+    z,
+    b,
+    top;
+
+  //whether the point z high over the ground at g, i is there
+  function there(i, g, z) {
+    var o = ((g - z) * w + x0 + i) * 4;
+
+    return pixels[o + 3] > 0 && pixels[o] + 1 >= z;
+  }
+
+  for (g = 0; g < H; g++)
+    for (i = 0; i < W; i++) {
+      top = over[g * W + i];
+
+      if (top <= LOW || top > g) continue;
+
+      for (z = 0; z < top && there(i, g, z); z++);
+
+      if (z >= top - 1) continue;
+
+      for (b = top - 1; b > z && there(i, g, b); b--);
+
+      foot[g * W + i] = Math.max(1, b + 1);
+    }
+
+  return foot;
+}
 
 /**
  * The top of a picture, from how high each pixel of it stands (the red of
