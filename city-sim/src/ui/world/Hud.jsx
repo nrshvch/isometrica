@@ -9,16 +9,17 @@
  * On a phone the money and the time take the top, the city's name and the
  * buttons the line under it; on a desktop the rest goes along the top.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useMatch } from "react-router";
 import Events from "events";
+import engine from "engine";
 import Numeral from "numeral";
 import WorldView from "isometrica/client/view";
 import CameraControl from "isometrica/client/cameracontrol";
 import ResourceCode from "isometrica/core/resourcecode";
 import Game from "../../game";
 import { Container, HudButton, Icon, cx } from "../kit";
-import { store, useGame } from "../store";
+import { setDebug, store, useGame } from "../store";
 import {
   bigCityName,
   getClient,
@@ -28,6 +29,11 @@ import {
   startFresh,
   worldScreen,
 } from "../session";
+
+//for the debug panel (engine Stats): what reading the world for the HUD
+//takes, and drawing it again
+var READ = engine.Stats.section("hud: read"),
+  RENDER = engine.Stats.section("hud: render");
 
 function money(amount) {
   return "$" + Numeral(amount).format("0,0");
@@ -105,7 +111,10 @@ function useWorld(client, hasCity) {
       function update() {
         if (!live) return;
 
-        var fresh = read(client);
+        var started = performance.now(),
+          fresh = read(client);
+
+        engine.Stats.add(READ, performance.now() - started);
 
         setNow(function (was) {
           return same(was, fresh) ? was : fresh;
@@ -353,6 +362,9 @@ function Menu({ client, world, cityId, address, busy }) {
     //read afresh whenever it opens
     cities = open ? savedCities(client, cityId) : [],
     [copied, setCopied] = useState(false),
+    debug = useGame(function (s) {
+      return s.debug;
+    }),
     box = useRef(null);
 
   useEffect(
@@ -447,6 +459,15 @@ function Menu({ client, world, cityId, address, busy }) {
               if (client.terrain) client.terrain.setGrid();
             }}
           />
+          <Row
+            icon="info"
+            label="Debug panel"
+            sub="Frame times, draw calls"
+            on={debug}
+            onClick={function () {
+              setDebug();
+            }}
+          />
           {address && (
             <Row
               icon={copied ? "check" : "share"}
@@ -519,7 +540,8 @@ function Menu({ client, world, cityId, address, busy }) {
 }
 
 export default function Hud() {
-  var client = getClient(),
+  var started = performance.now(),
+    client = getClient(),
     hasCity = useGame(function (s) {
       return s.hasCity;
     }),
@@ -539,6 +561,11 @@ export default function Hud() {
     funds = hasCity && world.money !== null,
     //where the city is played for good, to be shared
     address = Game.url + "/" + cityId;
+
+  //what it took to be drawn again, from here to the page changed
+  useLayoutEffect(function () {
+    engine.Stats.add(RENDER, performance.now() - started);
+  });
 
   //the game's screens, dark at night with the world (GameScreen)
   useEffect(

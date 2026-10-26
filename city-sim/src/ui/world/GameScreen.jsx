@@ -12,6 +12,7 @@ import { useGame } from "../store";
 import { reopen, showCaughtUp, start } from "../session";
 import WorldCanvas from "./WorldCanvas";
 import Hud from "./Hud";
+import DebugPanel from "./DebugPanel";
 import Prompt from "./Prompt";
 import Splash from "./Splash";
 
@@ -33,6 +34,9 @@ export default function GameScreen() {
     }),
     night = useGame(function (s) {
       return s.night;
+    }),
+    debug = useGame(function (s) {
+      return s.debug;
     }),
     onWorld = useMatch("/:city?") !== null,
     //a screen up over the world: the world dimmed behind it, and none of
@@ -76,6 +80,7 @@ export default function GameScreen() {
         }}
       >
         {phase === "ready" && <Hud />}
+        {phase === "ready" && debug && <DebugPanel />}
         {/* the screens are of the city, and wait for it to be up */}
         {phase !== "ready" ? null : prompt ? (
           <Prompt prompt={prompt} />
