@@ -1137,6 +1137,12 @@ Buildman.prototype.build = function (code, options) {
       );
   }
 
+  //what is being put down, for the game played to show what it would do -
+  //null once nothing is
+  function placing(what) {
+    if (root.play && root.play.placing) root.play.placing(what);
+  }
+
   //before there is a city, what goes up first founds it (City.quoteFounding)
   function founding() {
     return !root.core.cities.getCity(0);
@@ -1447,6 +1453,10 @@ Buildman.prototype.build = function (code, options) {
 
     updatePriceTags(quotes);
 
+    //and the game told what is being put down where, for what it shows of
+    //it (its play's placing: the city-sim the area it would take)
+    placing({ anchors: tiles, sizeX: sizeX(), sizeY: sizeY() });
+
     //so that a tower in front of the selection does not hide it
     fadeAround(self, ts.tiles());
 
@@ -1626,6 +1636,7 @@ Buildman.prototype.build = function (code, options) {
     //release resources
     ts.dispose();
     clearPreview();
+    placing(null);
     updatePriceTags([]);
     unfade(self);
     root.hiliteMan.disable(tokens);

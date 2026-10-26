@@ -1,21 +1,25 @@
 /**
  * What holds the city together, and what its streets reach.
  *
- * The city's buildings and roads hang together where they stand near enough
- * to each other: next to each other, or with a tile between them along a row
- * or a column, or corner to corner - never further (LINKS: two tiles apart,
- * counted along the rows and columns). A village holds together by its
- * houses standing near each other, the way families settle, with a yard
- * between them or none; a road is what reaches out to whatever stands
- * further off, and the cheapest way to. Only what is finished holds anything
- * together - a road still being laid, a house still going up, not yet - and a
- * tree is the world's, not the city's.
+ * Every building of the city, and every tile of its roads, has an area round
+ * it: what is within RADIUS of it, two tiles - counted from the middle of
+ * one tile to the middle of the other, so along a row or a column two tiles
+ * out, and corner to corner one (AREA). Where two areas share a tile they
+ * are one: along a row, two buildings with three tiles between them share
+ * the middle one, and hang together; with four between, their areas only
+ * touch, and they do not (REACH). The city's area is all of it that hangs
+ * together. A village holds together by its houses standing near each
+ * other, the way families settle; a road is what reaches out to whatever
+ * stands further off, and the cheapest way to. It holds together from the
+ * moment it is put down, going up or not; a tree is the world's, not the
+ * city's.
  *
  * A road that leads nowhere is not part of the city: of the city's roads, only
- * those that join something to something - a building near it at either end,
- * or a road on to one - hold anything together; a lane running off into the
- * country past the last house does not, from the last of it that does on
- * (prune). Where a road leaves the city that way is its way out (#exits).
+ * those that join something to something - their area sharing a tile with a
+ * building's at either end, or on to a road whose does - hold anything
+ * together; a lane running off into the country past the last house does
+ * not, from the last of it that does on (prune). Where a road leaves the city
+ * that way is its way out (#exits).
  *
  * What hangs together may come apart into parts. The city is the part its
  * town hall stands in, if one stands, and otherwise the bigger one, by
@@ -30,10 +34,10 @@
  * it costs the city nothing, earns it nothing, waters nothing, and its people
  * move out (core/city/citypopulation), till it is joined up again.
  *
- * The roads of the part that is the city are its road network. What wants a
- * road (data/buildings requires) wants one of them right alongside it, no
- * tile between - and may want more of a road than a gravel lane: a cobbled
- * street or asphalt. That is what makes a player lay streets for a town: a
+ * The finished roads of the part that is the city are its road network - one
+ * still being laid reaches nothing yet. What wants a road (data/buildings
+ * requires) wants one of them right alongside it, no tile between - and may
+ * want more of a road than a gravel lane: a cobbled street or asphalt. That is what makes a player lay streets for a town: a
  * house in town off them holds nobody (Building#citizenCapacity).
  */
 import Events from "events";
@@ -50,28 +54,41 @@ var CityService = namespace("Isometrica.Core.CityService");
 CityService.Roads = CityRoads;
 
 /**
- * Where from a tile of one thing a tile of another holds it together with it:
- * two tiles apart at most, counted along the rows and columns - next to it,
- * with a tile between along the row or the column, or corner to corner - as
- * [x, y].
+ * How far a building's area, or a road tile's, reaches round each of its
+ * tiles: within two tiles of its middle (RADIUS) - along a row or a column
+ * two tiles out, corner to corner one, never further - as [x, y], its own
+ * tile among them.
  *
  * @type {number[][]}
  */
-var LINKS = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-  [2, 0],
-  [-2, 0],
-  [0, 2],
-  [0, -2],
-  [1, 1],
-  [1, -1],
-  [-1, 1],
-  [-1, -1],
-];
-CityRoads.LINKS = LINKS;
+var RADIUS = 2;
+var AREA = within(RADIUS, true);
+CityRoads.RADIUS = RADIUS;
+CityRoads.AREA = AREA;
+
+/**
+ * Where from a tile of one thing a tile of another has an area that shares a
+ * tile with its own (AREA): twice as far - three tiles between them along a
+ * row or a column at most - as [x, y].
+ *
+ * @type {number[][]}
+ */
+var REACH = within(2 * RADIUS, false);
+CityRoads.REACH = REACH;
+
+//every [x, y] within r along the rows and columns, and [0, 0] with them or not
+function within(r, own) {
+  var out = [],
+    dx,
+    dy;
+
+  for (dy = -r; dy <= r; dy++)
+    for (dx = -r; dx <= r; dx++)
+      if (Math.abs(dx) + Math.abs(dy) <= r && (own || dx !== 0 || dy !== 0))
+        out.push([dx, dy]);
+
+  return out;
+}
 
 /**
  * @param city {City}
@@ -231,6 +248,32 @@ CityRoads.prototype.exits = function () {
 };
 
 /**
+ * @returns {Building[][]} what hangs together but is not the city: each part
+ *          of the city's buildings and roads cut off from it - for what shows
+ *          where they are
+ */
+CityRoads.prototype.detached = function () {
+  update(this);
+
+  var buildings = this.city.buildings.getBuildings(),
+    parts = {},
+    out = [],
+    part,
+    i;
+
+  for (i = 0; i < buildings.length; i++) {
+    part = this._partOf[buildings[i].id];
+
+    if (part === undefined || part === this._main) continue;
+
+    if (parts[part] === undefined) out.push((parts[part] = []));
+    parts[part].push(buildings[i]);
+  }
+
+  return out;
+};
+
+/**
  * @returns {number} changes whenever what hangs together is worked out again
  *          - for whatever goes by who is part of the city to know it may
  *          have changed
@@ -300,13 +343,14 @@ function offer(sides, footprint, tile) {
 }
 
 /**
- * Every tile near enough to a building to hold together with what stands on
- * it (LINKS), its own left out.
+ * Every tile within offsets of a building's - its area (AREA), or what an area
+ * shares a tile with (REACH) - its own left out.
  *
  * @param building {Building}
+ * @param [offsets] {number[][]} REACH where left out
  * @returns {number[]}
  */
-function near(building) {
+function near(building, offsets) {
   var iter = building.occupiedTiles(),
     footprint = {},
     tiles = [],
@@ -317,6 +361,8 @@ function near(building) {
     i,
     j;
 
+  offsets = offsets || REACH;
+
   while (!iter.done) {
     tile = TileIterator.next(iter);
     footprint[tile] = true;
@@ -324,8 +370,8 @@ function near(building) {
   }
 
   for (i = 0; i < tiles.length; i++)
-    for (j = 0; j < LINKS.length; j++) {
-      next = tiles[i] + LINKS[j][0] + LINKS[j][1] * Terrain.dy;
+    for (j = 0; j < offsets.length; j++) {
+      next = tiles[i] + offsets[j][0] + offsets[j][1] * Terrain.dy;
 
       if (footprint[next] === true || seen[next] === true) continue;
 
@@ -342,13 +388,18 @@ function isRoadData(building) {
   );
 }
 
-//whether a building of the city holds it together: finished - a road still
-//being laid, or laid again, reaches nothing yet - and not a tree
+//whether a building of the city holds it together: anything but a tree, from
+//the moment it is put down
 function holds(building) {
   return (
-    building.getState() === BuildingState.ready &&
     BuildingData[building.buildingCode].classCode !== BuildingClassCode.tree
   );
+}
+
+//a road the traffic can drive, finished - one still being laid reaches
+//nothing yet
+function finished(building) {
+  return building.getState() === BuildingState.ready;
 }
 
 function onChange(sender, args, self) {
@@ -441,7 +492,11 @@ function update(self) {
       if (main === -1 || better(parts[i], parts[main])) main = i;
 
   for (i = 0; i < buildings.length; i++)
-    if (isRoadData(buildings[i]) && partOf[buildings[i].id] === main)
+    if (
+      isRoadData(buildings[i]) &&
+      partOf[buildings[i].id] === main &&
+      finished(buildings[i])
+    )
       network[buildings[i].tile] = true;
 
   self._partOf = partOf;
@@ -452,32 +507,30 @@ function update(self) {
 }
 
 /**
- * Where a road tile is joined to another for the lead of a road: next to it,
- * or across a tile with no road on it - corner to corner, across two - the
- * way LINKS reaches, less what a road between already joins. A straight run
- * of road is a line, one tile to the next.
+ * Where a road tile is joined to another for the lead of a road: to the next
+ * tile of the same run of road, side by side - a straight run of road is a
+ * line, one tile to the next - and to any tile of another run whose area
+ * shares a tile with its own (REACH), the way the two runs hold together.
+ *
+ * @param runOf {Object} road tile -> the run of road it is part of
  */
-function roadsFrom(world, road, isRoadAt) {
+function roadsFrom(world, road, runOf) {
   var tile = road.tile,
+    run = runOf[tile],
     out = [],
-    dx,
-    dy,
     next,
     i;
 
-  for (i = 0; i < LINKS.length; i++) {
-    dx = LINKS[i][0];
-    dy = LINKS[i][1];
-    next = tile + dx + dy * Terrain.dy;
+  for (i = 0; i < REACH.length; i++) {
+    next = tile + REACH[i][0] + REACH[i][1] * Terrain.dy;
 
-    if (!isRoadAt(next)) continue;
+    if (runOf[next] === undefined) continue;
 
-    //across a tile: only where that tile is no road
-    if (Math.abs(dx) === 2 || Math.abs(dy) === 2) {
-      if (isRoadAt(tile + dx / 2 + (dy / 2) * Terrain.dy)) continue;
-    } else if (dx !== 0 && dy !== 0) {
-      if (isRoadAt(tile + dx) || isRoadAt(tile + dy * Terrain.dy)) continue;
-    }
+    if (
+      runOf[next] === run &&
+      Math.abs(REACH[i][0]) + Math.abs(REACH[i][1]) !== 1
+    )
+      continue;
 
     out.push(world.buildings.get(next));
   }
@@ -487,16 +540,16 @@ function roadsFrom(world, road, isRoadAt) {
 
 /**
  * Takes the roads that lead nowhere out of what holds the city together
- * (order): from the far end of a road with nothing near it, a tile at a time,
- * back to the last of it with a building near it or a road going on - and a
- * run of roads with no building near any of it at all, round in a ring
- * even. What is left joins something to something.
+ * (order): from the far end of a road whose area shares no tile with a
+ * building's, a tile at a time, back to the last of it whose area does or
+ * with a road going on - and roads whose areas share none with a building's
+ * at all, round in a ring even. What is left joins something to something.
  *
  * @returns {Object} road id -> true, for every road taken out
  */
 function prune(world, buildings, order) {
   var roads = [],
-    isRoad = {},
+    runOf = {},
     near_ = {},
     left = {},
     degree = {},
@@ -512,14 +565,33 @@ function prune(world, buildings, order) {
   for (i = 0; i < buildings.length; i++)
     if (order[buildings[i].id] !== undefined && isRoadData(buildings[i])) {
       roads.push(buildings[i]);
-      isRoad[buildings[i].tile] = true;
+      runOf[buildings[i].tile] = -1;
     }
 
-  function isRoadAt(tile) {
-    return isRoad[tile] === true;
+  //the runs of road, tile by tile side by side
+  for (i = 0, j = 0; i < roads.length; i++) {
+    if (runOf[roads[i].tile] !== -1) continue;
+
+    var open_ = [roads[i].tile];
+
+    runOf[roads[i].tile] = j;
+
+    while (open_.length > 0) {
+      var at = open_.pop();
+
+      STEP.forEach(function (step) {
+        if (runOf[at + step] === -1) {
+          runOf[at + step] = j;
+          open_.push(at + step);
+        }
+      });
+    }
+
+    j++;
   }
 
-  //a road with a building of the city near it is where it leads
+  //a road whose area shares a tile with a building's of the city is where it
+  //leads
   for (i = 0; i < roads.length; i++) {
     road = roads[i];
     tiles = near(road);
@@ -537,7 +609,7 @@ function prune(world, buildings, order) {
       }
     }
 
-    links[road.id] = roadsFrom(world, road, isRoadAt);
+    links[road.id] = roadsFrom(world, road, runOf);
     degree[road.id] = links[road.id].length;
     left[road.id] = true;
 

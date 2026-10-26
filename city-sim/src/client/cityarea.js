@@ -1,109 +1,111 @@
 /**
- * Where the city is, tile by tile, for its border (client/cityborder): what
- * its buildings and roads that are part of it stand on (isometrica
- * core/city/cityroads) with a tile round each, and whatever all of that
- * closes in.
+ * Where the city is, tile by tile, for its border (client/cityborder): the
+ * area round everything that is part of it - each of its buildings' tiles and
+ * its roads' with what is within two tiles of it (isometrica
+ * core/city/cityroads AREA), all of it together. And the same for what stands
+ * apart from it, and for what is being put down.
  */
 import Core from "isometrica/core/main";
+import CityRoads from "isometrica/core/city/cityroads";
 import TileIterator from "isometrica/core/tileiterator";
 
 var Terrain = Core.Terrain;
 
 /**
- * The city's tiles: what its buildings and roads stand on and the tiles round
- * each of them, a tile out all round, corners too - as far as a building
- * near it holds together with it, a tile between - and whatever all of that
- * closes in. A road leading nowhere is not part of the city, and has none.
+ * The tiles a footprint's area covers - within two tiles of any of them.
+ *
+ * @param tiles {number[]}
+ * @param [into] {Object} tile -> true, the tiles so far, added to
+ * @returns {Object} tile -> true
+ */
+export function areaOfTiles(tiles, into) {
+  var on = into || {},
+    i,
+    j;
+
+  for (i = 0; i < tiles.length; i++)
+    for (j = 0; j < CityRoads.AREA.length; j++)
+      on[tiles[i] + CityRoads.AREA[j][0] + CityRoads.AREA[j][1] * Terrain.dy] =
+        true;
+
+  return on;
+}
+
+/**
+ * The tiles buildings' areas cover, all together.
+ *
+ * @param buildings {Building[]}
+ * @param [into] {Object}
+ * @returns {Object} tile -> true
+ */
+export function areaOf(buildings, into) {
+  var on = into || {},
+    tiles = [],
+    iter,
+    i;
+
+  for (i = 0; i < buildings.length; i++) {
+    iter = buildings[i].occupiedTiles();
+
+    while (!iter.done) tiles.push(TileIterator.next(iter));
+  }
+
+  return areaOfTiles(tiles, on);
+}
+
+/**
+ * The tiles of what is about to be put down: a footprint sizeX by sizeY on
+ * each of anchors - a road one tile each.
+ *
+ * @param anchors {number[]}
+ * @param sizeX {number}
+ * @param sizeY {number}
+ * @returns {number[]}
+ */
+export function footprints(anchors, sizeX, sizeY) {
+  var out = [],
+    iter,
+    i;
+
+  for (i = 0; i < anchors.length; i++) {
+    iter = new TileIterator(
+      anchors[i],
+      anchors[i] + (sizeX - 1) + (sizeY - 1) * Terrain.dy,
+    );
+
+    while (!iter.done) out.push(TileIterator.next(iter));
+  }
+
+  return out;
+}
+
+/**
+ * Whether two areas share a tile.
+ *
+ * @param a {Object} tile -> true
+ * @param b {Object} tile -> true
+ * @returns {boolean}
+ */
+export function overlap(a, b) {
+  for (var tile in a) if (b[tile] === true) return true;
+
+  return false;
+}
+
+/**
+ * @param on {Object} tile -> true
+ * @returns {number[]}
+ */
+export function tilesOf(on) {
+  return Object.keys(on).map(Number);
+}
+
+/**
+ * The city's tiles: its area, all of it together.
  *
  * @param city {City}
  * @returns {number[]}
  */
 export function area(city) {
-  var members = city.roads.members(),
-    on = {},
-    tiles = [],
-    iter,
-    tile,
-    dx,
-    dy,
-    t,
-    i;
-
-  for (i = 0; i < members.length; i++) {
-    iter = members[i].occupiedTiles();
-
-    while (!iter.done) {
-      tile = TileIterator.next(iter);
-
-      for (dy = -1; dy <= 1; dy++)
-        for (dx = -1; dx <= 1; dx++) {
-          t = tile + dx + dy * Terrain.dy;
-
-          if (on[t] === true) continue;
-
-          on[t] = true;
-          tiles.push(t);
-        }
-    }
-  }
-
-  return closeIn(on, tiles);
-}
-
-//the tiles with whatever they close in: everything round them that can not be
-//got to from outside, round the edge of the ground they cover
-function closeIn(on, tiles) {
-  if (tiles.length === 0) return tiles;
-
-  var minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity,
-    outside = {},
-    open = [],
-    x,
-    y,
-    t,
-    i;
-
-  for (i = 0; i < tiles.length; i++) {
-    x = Terrain.extractX(tiles[i]);
-    y = Terrain.extractY(tiles[i]);
-    minX = Math.min(minX, x - 1);
-    minY = Math.min(minY, y - 1);
-    maxX = Math.max(maxX, x + 1);
-    maxY = Math.max(maxY, y + 1);
-  }
-
-  function visit(x, y) {
-    if (x < minX || x > maxX || y < minY || y > maxY) return;
-
-    var t = Terrain.convertToIndex(x, y);
-
-    if (on[t] === true || outside[t] === true) return;
-
-    outside[t] = true;
-    open.push([x, y]);
-  }
-
-  visit(minX, minY);
-
-  while (open.length > 0) {
-    t = open.pop();
-    visit(t[0] + 1, t[1]);
-    visit(t[0] - 1, t[1]);
-    visit(t[0], t[1] + 1);
-    visit(t[0], t[1] - 1);
-  }
-
-  var all = tiles.slice();
-
-  for (y = minY; y <= maxY; y++)
-    for (x = minX; x <= maxX; x++) {
-      t = Terrain.convertToIndex(x, y);
-
-      if (on[t] !== true && outside[t] !== true) all.push(t);
-    }
-
-  return all;
+  return tilesOf(areaOf(city.roads.members()));
 }

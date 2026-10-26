@@ -17,18 +17,21 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   the $100,000 it starts with. The town hall comes later, when it has grown
   into a town; where it stands is the city's middle (see the isometrica
   README).
-- Everything the city builds has to stand with it - near enough to another
-  of its buildings or roads, a tile between them at most along a row or a
-  column, or corner to corner - and a dashed line goes round all of it, a
-  tile out round each building and road and whatever that closes in: the
-  city's border (`src/client/cityborder.js`, `cityarea.js`). Whatever stands
-  further off is cut off, with no border round it, till a road - the cheap
-  way across - or another building joins it up. A road that leads nowhere is
-  not the city's past the last thing near it, and where a road leaves the
-  city that way a gantry stands over the last of the city's road: a sign of
-  no words, the town's houses on it, struck through red on the side it is
-  left by. The border is put away with the words over the world; the
-  gantries are the road's, and stay.
+- Every building and every road tile has an area round it, two tiles out
+  (one corner to corner), and where two areas share a tile they hang
+  together: the city is all of it that does, and a dashed line goes round its
+  area, along the tiles' edges - the city's border (`src/client/cityborder.js`,
+  `cityarea.js`). Whatever stands further off is cut off, with no border
+  round it, till a road - the cheap way across - or another building joins it
+  up. While something is being put down its area is drawn too - in the
+  city's border, as it will be, if it joins it; in amber if it stands apart -
+  and the areas of whatever stands apart already, faintly. A road that leads
+  nowhere is not the city's past where its area meets a building's, and
+  where a road leaves the city that way a gantry stands over the last of the
+  city's road: a sign of no words, the town's houses on it, struck through
+  red on the side it is left by. The border is put away with the words over
+  the world, but while something is being put down; the gantries are the
+  road's, and stay.
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
   station first, then the parks - and then everything else: houses, then

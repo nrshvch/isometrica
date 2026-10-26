@@ -45,9 +45,16 @@ TileAreaBorderRenderer.prototype.setTiles = function (tiles) {
   this.paths = outline(tiles || [], this.terrain, this.padding);
 };
 
+//drawn whenever any of it is on screen: what its outline spans, rather than
+//where its corners are - an area round the camera, its corners all off
+//screen, is still there to see
 TileAreaBorderRenderer.prototype.cullingTest = function (viewport, vprender) {
   var buffer = float32Buffer,
     paths = this.paths,
+    minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity,
     path,
     i,
     j;
@@ -58,12 +65,14 @@ TileAreaBorderRenderer.prototype.cullingTest = function (viewport, vprender) {
     for (j = 0; j < path.length; j++) {
       Vec3.transformMat4(buffer, path[j], vprender.V);
 
-      if (buffer[0] > -1 && buffer[0] < 1 && buffer[1] > -1 && buffer[1] < 1)
-        return true;
+      if (buffer[0] < minX) minX = buffer[0];
+      if (buffer[0] > maxX) maxX = buffer[0];
+      if (buffer[1] < minY) minY = buffer[1];
+      if (buffer[1] > maxY) maxY = buffer[1];
     }
   }
 
-  return false;
+  return minX < 1 && maxX > -1 && minY < 1 && maxY > -1;
 };
 
 TileAreaBorderRenderer.prototype.render = function (ctx, viewportrenderer) {

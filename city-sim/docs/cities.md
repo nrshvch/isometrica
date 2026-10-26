@@ -40,19 +40,23 @@ there is, at $20 a head. The numbers are to be tuned.
 
 ## What the city is
 
-**Done.** There is no land to buy. Linking is what says where the city is: it
-holds together where its finished buildings and roads stand near enough to
-each other (`isometrica/src/core/city/cityroads.js`) -
+**Done.** There is no land to buy. The city's area says where the city is
+(`isometrica/src/core/city/cityroads.js`):
 
-- next to each other;
-- with a tile between them along a row or a column;
-- corner to corner, the nearest corner only - a corner with a tile between is
-  too far;
+1. Every building, and every tile of a road, has an area round it: what is
+   within two tiles of each of its tiles (`CityRoads.RADIUS`, `AREA`) -
+   counted from the middle of one tile to the middle of the other, so along a
+   row or a column two tiles out, corner to corner one.
+2. Where two areas share a tile they are one. Along a row, two buildings with
+   three tiles between them share the middle one and hang together; with four
+   between, their areas only touch, and one of them stands apart
+   (`CityRoads.REACH`).
+3. The city's area is all of it that hangs together. A road has an area as
+   any building has, so a road is the cheap way to reach out to a group of
+   buildings further off.
 
-that is, two tiles apart at most, counted along the rows and columns
-(`CityRoads.LINKS`). Roads link the same way, so a road is the cheap way to
-bridge out to a group of buildings further off. Only what is finished holds
-anything together; a tree is the world's.
+It holds together from the moment it is put down - going up or not; a tree is
+the world's.
 
 What a building wants of the city:
 
@@ -65,18 +69,28 @@ What a building wants of the city:
 - **water**, as before.
 
 **Done.** A road that leads nowhere is not part of the city: only the city's
-roads that join something to something hold anything together - a building
-near it at either end, or a road on to one. A lane running off into the
-country past the last house is the city's up to the last of it with
-something near it, and no further; a lane with nothing near any of it is
-not the city's at all.
+roads that join something to something hold anything together - their area
+sharing a tile with a building's at either end, or going on to a road whose
+does. A lane running off into the country past the last house is the city's
+as long as its area meets the house's - four tiles out - and no further; a
+lane whose area meets no building's is not the city's at all. A road still
+being laid is part of the city, but no road anyone drives or a building is
+reached by till it is finished.
 
-**Done.** The city-sim draws a border round the city: a dashed line a tile out
-round everything that is part of it - each building and road with the tile
-round it, corners too, as far as something near it holds together with it -
-and whatever that closes in (`city-sim/src/client/cityborder.js`,
-`cityarea.js`). Nothing cut off has one. It is put away with the words over
-the world.
+**Done.** The city-sim draws a border round the city's area, along the tiles'
+edges (`city-sim/src/client/cityborder.js`, `cityarea.js`) - none round what
+stands apart from it. It is put away with the words over the world, but while
+something is being put down (`isometrica/src/client/buildman.js`, the play's
+`placing`). Then:
+
+- what is being put down has its area drawn: in the city's border, as the
+  border will be with it in it, if its area shares a tile with the city's;
+  in amber, on its own, if it does not;
+- whatever stands apart from the city has its area drawn faintly - and taken
+  in with what is being put down, if that would join it up.
+
+The border is drawn whenever any of it is on screen, wherever the middle of
+the city is.
 
 **Done.** Where a road leaves the city, leading nowhere, a gantry stands over
 the last of the city's road that way (`CityRoads#exits`): two posts on the

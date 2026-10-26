@@ -26,4 +26,10 @@ export default {
   gantriesOn: function (tile) {
     return border !== null ? border.gantriesOn(tile) : [];
   },
+
+  //what is being put down, for the area it would take (isometrica
+  //client/buildman)
+  placing: function (what) {
+    if (border !== null) border.placing(what);
+  },
 };
