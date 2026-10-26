@@ -85,14 +85,14 @@ define(function (require) {
             if (e.touches.length === 1) {
                 var t = e.changedTouches[0];
                 touch = t.identifier;
-                Events.fire(viewport, viewport.events.pointerdown, locate(viewport, t, t));
+                Events.fire(viewport, viewport.events.pointerdown, touched(viewport, t));
                 return;
             }
 
             var first = touch === null ? null : find(e.touches, touch);
             touch = null;
             if (first !== null)
-                Events.fire(viewport, viewport.events.pointerout, locate(viewport, first, first));
+                Events.fire(viewport, viewport.events.pointerout, touched(viewport, first));
 
             var a = e.touches[0],
                 b = e.touches[1],
@@ -125,7 +125,7 @@ define(function (require) {
 
             var t = touch === null ? null : find(e.changedTouches, touch);
             if (t !== null)
-                Events.fire(viewport, viewport.events.pointermove, locate(viewport, t, t));
+                Events.fire(viewport, viewport.events.pointermove, touched(viewport, t));
         });
 
         function lift(event) {
@@ -142,7 +142,7 @@ define(function (require) {
                     var t = touch === null ? null : find(e.changedTouches, touch);
                     if (t !== null) {
                         touch = null;
-                        Events.fire(viewport, event, locate(viewport, t, t));
+                        Events.fire(viewport, event, touched(viewport, t));
                     }
                 }
 
@@ -245,6 +245,17 @@ define(function (require) {
         target.gameViewportY = (e.clientY - rect.top) / viewport.pixelSize;
 
         return target;
+    }
+
+    /**
+     * A finger's touch, located (locate) and marked as a finger's - touch
+     * true - for whatever goes by how far a finger goes or how quickly it
+     * comes down again, which a mouse does differently.
+     */
+    function touched(viewport, t) {
+        t.touch = true;
+
+        return locate(viewport, t, t);
     }
 
     /**

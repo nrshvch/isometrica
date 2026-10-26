@@ -24,6 +24,12 @@ var events = {
 var DOUBLE_TAP_TIME = 300,
   DOUBLE_TAP_DISTANCE = 24;
 
+//how far the pointer goes before what it does is a drag rather than a tap,
+//in page pixels - the screen's, whatever the zoom: a mouse held a little
+//unsteady clicking is still clicking, and a finger more so
+var DRAG_MOUSE = 6,
+  DRAG_TOUCH = 10;
+
 function CameraScript() {
   engine.Component.call(this);
 
@@ -89,12 +95,18 @@ function CameraScript() {
 
       if (
         !isDrag &&
-        Math.sqrt(Math.pow(moveLen[0], 2) + Math.pow(moveLen[1], 2)) > 2
+        Math.sqrt(Math.pow(moveLen[0], 2) + Math.pow(moveLen[1], 2)) *
+          self.gameObject.camera.zoom >
+          (e.touch === true ? DRAG_TOUCH : DRAG_MOUSE)
       ) {
         isDrag = true;
         //a tap, a drag and a tap is no double tap
         lastTap = null;
         self.dispatchEvent(self.events.inputDragStart, lastPointerDownEvent);
+        //the way it has gone since it came down, all of it: what is dragged
+        //stays under it, none of the way there lost
+        x = moveLen[0];
+        y = moveLen[1];
       }
 
       if (isDrag)
