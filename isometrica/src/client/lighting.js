@@ -195,7 +195,6 @@ function Lighting(root, cache) {
   this.context = this.view.overlay;
   //what is painted goes straight into its slot on its page, on the GPU
   cache.upload = this.view.upload.bind(this.view);
-  cache.alphaAt = this.view.alphaAt.bind(this.view);
   //?light=0: the city as it is painted, lit by the one sun of old
   this.plain = /[?&]light=0/.test(location.search);
   this.lamps = [];

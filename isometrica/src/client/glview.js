@@ -1291,32 +1291,6 @@ GLView.prototype.upload = function (page, x, y, w, h, pixels) {
   );
 };
 
-/**
- * How see-through the pixel at x, y of page is, 0..255 - for what is under
- * a finger to be told (client/components camerascript).
- */
-GLView.prototype.alphaAt = function (page, x, y) {
-  var gl = this.gl,
-    read = this.reader || (this.reader = gl.createFramebuffer()),
-    out = this.pixel || (this.pixel = new Uint8Array(4));
-
-  if (page >= this.depth) return 0;
-
-  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
-  gl.framebufferTextureLayer(
-    gl.READ_FRAMEBUFFER,
-    gl.COLOR_ATTACHMENT0,
-    this.pages,
-    0,
-    page,
-  );
-  gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
-  Stats.count(READS, 1);
-  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-
-  return out[3];
-};
-
 /* --- A frame ----------------------------------------------------------- */
 
 /**

@@ -84,8 +84,10 @@ function CanvasCache(clock, options) {
   //upload(page, x, y, w, h, pixels) - its slot on its page (client/glview)
   this.pages = [];
   this.upload = null;
-  //and how see-through a pixel on a page is, alphaAt(page, x, y)
-  this.alphaAt = null;
+  //which pixels of each page have anything there at all, a bit a pixel, row
+  //after row - kept as they are painted, for what is under the pointer to be
+  //told without reading the GPU back (alphaAt)
+  this.masks = [];
   //the pixels a picture is painted on, as many as the biggest's so far
   this.scratch = null;
   //where the next shelf of each page starts
@@ -277,6 +279,7 @@ function place(self, entry, slot, frame) {
   //and whatever is worked out from the pixels painted, put in among them
   if (entry.finish !== undefined) entry.finish(pixels, w, h);
   if (self.upload !== null) self.upload(page, x, y, w, h, pixels);
+  mark(self, page, x, y, w, h, pixels);
   self.painted++;
   self.spent += performance.now() - started;
   Stats.add(PAINT, performance.now() - started);
@@ -291,6 +294,47 @@ function place(self, entry, slot, frame) {
   entry.sourceImage = page;
   entry.offsetX = x;
   entry.offsetY = y;
+}
+
+/**
+ * How see-through the pixel at x, y of page is, 0 or 255: whether anything
+ * was painted there, as it was handed over - for what is under a finger to
+ * be told (client/components camerascript), off the CPU.
+ */
+CanvasCache.prototype.alphaAt = function (page, x, y) {
+  var mask = this.masks[page],
+    size = this.pageSize,
+    at;
+
+  if (mask === undefined || x < 0 || y < 0 || x >= size || y >= size) return 0;
+
+  at = y * size + x;
+
+  return (mask[at >> 3] >> (at & 7)) & 1 ? 255 : 0;
+};
+
+//the pixels of slot x, y, w by h of page into its mask: there or not, as
+//painted - all of the slot, as all of it is handed over
+function mark(self, page, x, y, w, h, pixels) {
+  var size = self.pageSize,
+    mask = self.masks[page],
+    r,
+    c,
+    at,
+    p;
+
+  if (mask === undefined)
+    mask = self.masks[page] = new Uint8Array(Math.ceil((size * size) / 8));
+
+  for (r = 0; r < h; r++) {
+    at = (y + r) * size + x;
+    p = r * w * 4 + 3;
+
+    for (c = 0; c < w; c++, at++, p += 4) {
+      if (pixels[p] > 0) mask[at >> 3] |= 1 << (at & 7);
+      else mask[at >> 3] &= ~(1 << (at & 7));
+    }
+  }
 }
 
 /**
