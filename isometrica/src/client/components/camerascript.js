@@ -530,60 +530,88 @@ function hit(image, layer, x, y) {
   );
 }
 
+//what may be under the pointer, and where each picture's corner is on the
+//screen (engine Canvas2dRenderer under) - kept for the next pick
+var found = [],
+  corners = [];
+
 function pick(self, x, y, resultArray) {
-  var vec3 = glMatrix.vec3,
-    gameObjects = self.gameObject.world.retrieve(self.gameObject),
-    len = gameObjects.length,
+  var result = resultArray || [],
+    n = engine.Canvas2dRenderer.under(
+      self.gameObject.world,
+      self.gameObject.camera,
+      x,
+      y,
+      found,
+      corners,
+    ),
     gameObject,
-    camera = self.gameObject.camera,
-    wTs = camera.getWorldToScreen(),
-    wTv = camera.getWorldToViewport(),
     sprite,
-    text,
-    x0,
-    y0,
-    x1,
-    y1,
-    result = resultArray || [];
+    i;
 
-  for (var i = 0; i < len; i++) {
-    gameObject = gameObjects[i];
-
-    gameObject.transform.getPosition(vec3Buffer1);
-
-    //skip objects that lay outside of screen
-    vec3.transformMat4(vec3Buffer2, vec3Buffer1, wTv);
-    if (Math.abs(vec3Buffer2[0]) > 1 || Math.abs(vec3Buffer2[1]) > 1) continue;
-
-    vec3.transformMat4(vec3Buffer1, vec3Buffer1, wTs);
-
+  for (i = 0; i < n; i++) {
+    gameObject = found[i];
+    found[i] = null;
     sprite = gameObject.spriteRenderer;
-    text = gameObject.textRenderer;
 
-    if (sprite !== undefined && sprite.enabled) {
-      var spriteImage = sprite.sprite;
-
-      x0 = vec3Buffer1[0] - sprite.pivotX;
-      y0 = vec3Buffer1[1] - sprite.pivotY;
-      x1 = x0 + spriteImage.width;
-      y1 = y0 + spriteImage.height;
-
-      //fast & inaccurate test - then the pixel itself
+    //a picture whose box takes in the pointer, put where the frame puts it:
+    //the pixel itself - or anything else there, looked at itself
+    if (corners[2 * i] === corners[2 * i] && sprite === gameObject.renderer) {
       if (
-        x >= x0 &&
-        x <= x1 &&
-        y >= y0 &&
-        y <= y1 &&
-        hit(spriteImage, sprite.layer, Math.floor(x - x0), Math.floor(y - y0))
+        hit(
+          sprite.sprite,
+          sprite.layer,
+          Math.floor(x - corners[2 * i]),
+          Math.floor(y - corners[2 * i + 1]),
+        )
       )
         result.push(gameObject);
-    } else if (text !== undefined && text.enabled) {
-      if (textHit(text, vec3Buffer1[0], vec3Buffer1[1], x, y)) {
-        result.push(gameObject);
-      }
-    }
+    } else if (closer(self, gameObject, x, y)) result.push(gameObject);
   }
+
   return result;
+}
+
+/**
+ * Whether what gameObject draws is under x, y on the screen - one the
+ * slots could not tell about, drawn at a point (text) or culled some other
+ * way, looked at itself, as every gameObject there was once was.
+ */
+function closer(self, gameObject, x, y) {
+  var vec3 = glMatrix.vec3,
+    camera = self.gameObject.camera,
+    sprite = gameObject.spriteRenderer,
+    text = gameObject.textRenderer,
+    x0,
+    y0;
+
+  gameObject.transform.getPosition(vec3Buffer1);
+
+  //off the screen
+  vec3.transformMat4(vec3Buffer2, vec3Buffer1, camera.getWorldToViewport());
+  if (Math.abs(vec3Buffer2[0]) > 1 || Math.abs(vec3Buffer2[1]) > 1)
+    return false;
+
+  vec3.transformMat4(vec3Buffer1, vec3Buffer1, camera.getWorldToScreen());
+
+  if (sprite !== undefined && sprite.enabled) {
+    x0 = vec3Buffer1[0] - sprite.pivotX;
+    y0 = vec3Buffer1[1] - sprite.pivotY;
+
+    return (
+      x >= x0 &&
+      x <= x0 + sprite.sprite.width &&
+      y >= y0 &&
+      y <= y0 + sprite.sprite.height &&
+      hit(sprite.sprite, sprite.layer, Math.floor(x - x0), Math.floor(y - y0))
+    );
+  }
+
+  return (
+    text !== undefined &&
+    text.enabled &&
+    textHit(text, vec3Buffer1[0], vec3Buffer1[1], x, y)
+  );
 }
 
 export default CameraScript;

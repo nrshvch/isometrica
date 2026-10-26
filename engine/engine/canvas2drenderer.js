@@ -2,6 +2,7 @@
 //TODO each GO could have multiple renderers...
 //TODO ...all scene renderers should be grouped in single array.
 define(function (require) {
+    var namespace = require("namespace");
     var config = require("./config");
     var glMatrix = require("gl-matrix");
     var Transform = require("./components/transformcomponent");
@@ -492,6 +493,99 @@ define(function (require) {
     };
 
     Canvas2dRenderer.render = render;
+
+    /**
+     * What may be drawn where x, y is on the screen camera looks at, for a
+     * pick to look at closer, in the world's order: every enabled sprite
+     * whose picture - put where cull() puts it, to the pixel - takes in x, y
+     * onto found, and where the picture's top left corner is onto corners,
+     * two numbers each; and every other renderer that may be there - one
+     * drawn at a point on the screen (text), or that culls some other way -
+     * onto found, with NaN, NaN onto corners, for the pick to work out
+     * itself. Read off the slots, brought up to date first as the frame
+     * brings them: what is anywhere else costs a read of its slot, and no
+     * more - the same tests as cull(), and they have to stay in step.
+     *
+     * @param {World} world
+     * @param {CameraComponent} camera
+     * @param {GameObject[]} found
+     * @param {number[]} corners
+     * @returns {number} how many were found
+     */
+    function under(world, camera, x, y, found, corners) {
+        var M = camera.getWorldToScreen(),
+            V = camera.getWorldToViewport(),
+            m0 = M[0], m1 = M[1], m4 = M[4], m5 = M[5],
+            m8 = M[8], m9 = M[9], m12 = M[12], m13 = M[13],
+            v0 = V[0], v1 = V[1], v4 = V[4], v5 = V[5],
+            v8 = V[8], v9 = V[9], v12 = V[12], v13 = V[13],
+            gameObjects, slots, count, kind, renderer, sprite,
+            o, px, py, pz, sx, sy, i, n = 0;
+
+        world.refreshSlots(refreshSlot);
+
+        gameObjects = world.gameObjects;
+        slots = world.slots;
+        count = gameObjects.length;
+
+        for (i = 0; i < count; i++) {
+            o = i * SLOT_SIZE;
+            kind = slots[o + SLOT_KIND];
+
+            if (kind === KIND_NONE)
+                continue;
+
+            px = slots[o + SLOT_X];
+            py = slots[o + SLOT_Y];
+            pz = slots[o + SLOT_Z];
+
+            if (kind === KIND_SPRITE) {
+                sx = Math.floor(m0 * px + m4 * py + m8 * pz + m12 - slots[o + SLOT_PIVOT_X] + 0.5);
+                sy = Math.floor(m1 * px + m5 * py + m9 * pz + m13 - slots[o + SLOT_PIVOT_Y] + 0.5);
+
+                if (x < sx || x >= sx + slots[o + SLOT_WIDTH] ||
+                    y < sy || y >= sy + slots[o + SLOT_HEIGHT])
+                    continue;
+
+                if (!gameObjects[i].renderer.enabled)
+                    continue;
+            } else if (kind === KIND_UNSIZED_SPRITE) {
+                renderer = gameObjects[i].renderer;
+                sprite = renderer._sprite;
+
+                if (!renderer.enabled || sprite === null)
+                    continue;
+
+                sx = Math.floor(m0 * px + m4 * py + m8 * pz + m12 - renderer._pivotX + 0.5);
+                sy = Math.floor(m1 * px + m5 * py + m9 * pz + m13 - renderer._pivotY + 0.5);
+
+                if (x < sx || x >= sx + sprite.width || y < sy || y >= sy + sprite.height)
+                    continue;
+            } else {
+                //on the screen at all, by where it is, as the point renderers
+                //are culled - and the rest, whatever they are, all of them
+                if (kind === KIND_POINT) {
+                    sx = v0 * px + v4 * py + v8 * pz + v12;
+                    sy = v1 * px + v5 * py + v9 * pz + v13;
+
+                    if (sx > 1 || sx < -1 || sy > 1 || sy < -1)
+                        continue;
+                }
+
+                sx = sy = NaN;
+            }
+
+            found[n++] = gameObjects[i];
+            corners[2 * n - 2] = sx;
+            corners[2 * n - 1] = sy;
+        }
+
+        return n;
+    }
+
+    Canvas2dRenderer.under = under;
+
+    namespace("Isometrica.Engine").Canvas2dRenderer = Canvas2dRenderer;
 
     /**
      * Draws the frame through gl (client/lighting): every layer in turn, its
