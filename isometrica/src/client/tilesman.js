@@ -160,8 +160,6 @@ Tilesman.prototype.getCurrentChunks = function () {
 };
 
 Tilesman.prototype.loadChunks2 = function (centerX, centerY) {
-  console.log("Load chunks");
-
   centerX = centerX || this.currentChunkX;
   centerY = centerY || this.currentChunkY;
 
