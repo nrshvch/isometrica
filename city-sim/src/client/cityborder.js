@@ -10,18 +10,20 @@
  * moves; put away with the words over the world (client/serviceman,
  * Cityman#namesHidden), but while something is being put down.
  *
- * And where a road leaves the city, leading nowhere, a town's limits over the
- * last of its road that way (CityRoads#exits): a gantry across the road, its
- * sign of no words - the town to whoever comes in, struck through red to
- * whoever leaves (isometrica shared/gen/roads gantry). It is the road's own,
- * drawn with it (client/roadview gantriesOf, #gantriesOn), and stays up with
- * the words put away.
+ * And where a road leaves the city, leading nowhere (CityRoads#exits), the
+ * sign of a town's limits by it where it crosses the border - on the last of
+ * the road inside the city's area, at the side it goes on out at: a sign of
+ * no words on two posts on the verge, the town to whoever comes in, struck
+ * through red to whoever leaves (isometrica shared/gen/roads townSign). It is
+ * the road's own, drawn with it (client/roadview townSignsOf, #townSignsOn),
+ * and stays up with the words put away.
  */
 import engine from "engine";
 import Events from "events";
 import Core from "isometrica/core/main";
 import TileAreaBorderRenderer from "isometrica/client/components/tileareaborderrenderer";
 import RenderLayer from "isometrica/client/renderlayer";
+import BuildingClassCode from "isometrica/data/classcode";
 import { areaOf, areaOfTiles, footprints, overlap, tilesOf } from "./cityarea";
 
 var Terrain = Core.Terrain;
@@ -44,8 +46,8 @@ function CityBorder(root) {
   this.detached = null;
   //what is being put down: {anchors, sizeX, sizeY}, or null (#placing)
   this._placing = null;
-  //road tile -> the sides a town's limits are over, 0..3 (#gantriesOn)
-  this._gantries = {};
+  //road tile -> the sides a town's limits are at, 0..3 (#townSignsOn)
+  this._signs = {};
   //what it was last worked out for - the city, how far along what hangs
   //together it was (CityRoads#version) - and the areas then
   this._city = null;
@@ -128,17 +130,17 @@ CityBorder.prototype.placing = function (what) {
 };
 
 /**
- * Which sides of the road on tile a town's limits are over, -x, -y, +x, +y
- * as 0..3 - for the road to draw its gantry there (client/roadview).
+ * Which sides of the road on tile a town's limits are at, -x, -y, +x, +y as
+ * 0..3 - for the road to draw its sign there (client/roadview).
  *
  * @param tile {number}
  * @returns {number[]}
  */
-CityBorder.prototype.gantriesOn = function (tile) {
+CityBorder.prototype.townSignsOn = function (tile) {
   if (this._city !== null && this._city.roads.version() !== this._version)
     draw(this);
 
-  return this._gantries[tile] || [];
+  return this._signs[tile] || [];
 };
 
 function watch(self, city) {
@@ -161,7 +163,7 @@ function draw(self) {
     self._detachedAreas = self._city.roads.detached().map(function (part) {
       return areaOf(part);
     });
-    putUpGantries(self);
+    putUpSigns(self);
   }
 
   if (self.renderer !== null) lines(self);
@@ -214,19 +216,77 @@ function lines(self) {
   );
 }
 
-//a gantry over every side a road leaves the city by - and the roads whose
-//gantries came or went drawn again
-function putUpGantries(self) {
-  var was = self._gantries,
+//from a tile to the next one at each side, -x, -y, +x, +y
+var STEP = [-1, -Terrain.dy, 1, Terrain.dy];
+
+//as far as a road is walked out of the city looking for its border
+var WALK = 64;
+
+/**
+ * Where a road leaving the city at exit crosses its border: walked on from the
+ * last of the city's road, along the road - straight on where it can, round
+ * its bends - for as long as it is inside the city's area; the last of it
+ * that is, and the side it goes on out at. Null for a road that ends inside.
+ *
+ * @param exit {{tile: number, side: number}} (CityRoads#exits)
+ * @returns {{tile: number, side: number}|null}
+ */
+function crossing(self, exit) {
+  var area = self._cityArea,
+    at = exit.tile,
+    side = exit.side,
+    next,
+    turns,
+    i,
+    k;
+
+  for (i = 0; i < WALK; i++) {
+    next = at + STEP[side];
+
+    if (!isRoad(self, next)) return null;
+    if (area[next] !== true) return { tile: at, side: side };
+
+    at = next;
+
+    //on along the road: straight on, or round the bend, never back
+    turns = [side, (side + 1) % 4, (side + 3) % 4];
+    for (k = 0; k < turns.length; k++)
+      if (isRoad(self, at + STEP[turns[k]])) break;
+
+    if (k === turns.length) return null;
+
+    side = turns[k];
+  }
+
+  return null;
+}
+
+function isRoad(self, tile) {
+  var b = self.root.core.buildingService.get(tile);
+
+  return b !== null && b.data.classCode === BuildingClassCode.road;
+}
+
+//a sign where every road out of the city crosses its border - and the roads
+//whose signs came or went drawn again
+function putUpSigns(self) {
+  var was = self._signs,
     now = {},
     exits = self._city.roads.exits(),
+    at,
     tile,
     i;
 
-  for (i = 0; i < exits.length; i++)
-    (now[exits[i].tile] = now[exits[i].tile] || []).push(exits[i].side);
+  for (i = 0; i < exits.length; i++) {
+    at = crossing(self, exits[i]);
 
-  self._gantries = now;
+    if (at === null) continue;
+
+    now[at.tile] = now[at.tile] || [];
+    if (now[at.tile].indexOf(at.side) === -1) now[at.tile].push(at.side);
+  }
+
+  self._signs = now;
 
   for (tile in was)
     if (String(now[tile]) !== String(was[tile])) redraw(self, +tile);

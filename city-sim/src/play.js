@@ -21,10 +21,10 @@ export default {
     vkaria.cityBorder.init();
   },
 
-  //where a road leaves the city, the gantry of its limits (isometrica
-  //client/roadview gantriesOf)
-  gantriesOn: function (tile) {
-    return border !== null ? border.gantriesOn(tile) : [];
+  //where a road crosses the city's border, the sign of its limits
+  //(isometrica client/roadview townSignsOf)
+  townSignsOn: function (tile) {
+    return border !== null ? border.townSignsOn(tile) : [];
   },
 
   //what is being put down, for the area it would take (isometrica

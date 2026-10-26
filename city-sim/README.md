@@ -27,11 +27,12 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   city's border, as it will be, if it joins it; in amber if it stands apart -
   and the areas of whatever stands apart already, faintly. A road that leads
   nowhere is not the city's past where its area meets a building's, and
-  where a road leaves the city that way a gantry stands over the last of the
-  city's road: a sign of no words, the town's houses on it, struck through
-  red on the side it is left by. The border is put away with the words over
-  the world, but while something is being put down; the gantries are the
-  road's, and stay.
+  where a road leaves the city that way the town's sign stands on the verge
+  where it crosses the border: a sign of no words on two posts, the town's
+  houses on it, struck through red on the side it is left by. A building's
+  area is the city's once it is finished. The border is put away with the
+  words over the world, but while something is being put down; the signs are
+  the road's, and stay.
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
   station first, then the parks - and then everything else: houses, then

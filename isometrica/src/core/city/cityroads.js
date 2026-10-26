@@ -11,9 +11,9 @@
  * only touch, and they do not (REACH). The city's area is all of it that hangs
  * together. A village holds together by its houses standing near each
  * other, the way families settle; a road is what reaches out to whatever
- * stands further off, and the cheapest way to. It holds together from the
- * moment it is put down, going up or not; a tree is the world's, not the
- * city's.
+ * stands further off, and the cheapest way to. It holds together once it is
+ * finished - a house still going up, a road still being laid, not yet; a
+ * tree is the world's, not the city's.
  *
  * A road that leads nowhere is not part of the city: of the city's roads, only
  * those that join something to something - their area sharing a tile with a
@@ -35,10 +35,10 @@
  * it costs the city nothing, earns it nothing, waters nothing, and its people
  * move out (core/city/citypopulation), till it is joined up again.
  *
- * The finished roads of the part that is the city are its road network - one
- * still being laid reaches nothing yet. What wants a road (data/buildings
- * requires) wants one of them right alongside it, no tile between - and may
- * want more of a road than a gravel lane: a cobbled street or asphalt. That is what makes a player lay streets for a town: a
+ * The roads of the part that is the city are its road network. What wants a
+ * road (data/buildings requires) wants one of them right alongside it, no
+ * tile between - and may want more of a road than a gravel lane: a cobbled
+ * street or asphalt. That is what makes a player lay streets for a town: a
  * house in town off them holds nobody (Building#citizenCapacity).
  */
 import Events from "events";
@@ -413,16 +413,16 @@ function isRoadData(building) {
   );
 }
 
-//whether a building of the city holds it together: anything but a tree, from
-//the moment it is put down
+//whether a building of the city holds it together: anything but a tree, once
+//it is finished - a house going up, a road being laid, not yet
 function holds(building) {
   return (
+    finished(building) &&
     BuildingData[building.buildingCode].classCode !== BuildingClassCode.tree
   );
 }
 
-//a road the traffic can drive, finished - one still being laid reaches
-//nothing yet
+//whether it is finished: a road the traffic can drive, a house to live in
 function finished(building) {
   return building.getState() === BuildingState.ready;
 }

@@ -691,14 +691,15 @@ dev`) plays them the way a game would - all three weathers together, the
   behind it spreading it - a crew to every six tiles or so of a long stretch.
   Where they are is worked out from how far along the road is, so it is the
   same after a reload.
-- A town's limits can stand over a road (`isometrica/src/shared/gen/roads.js`
-  gantry, `gen/roads/limit/gantry0`-`3`): a gantry of grey steel across it at
-  one side of its tile, a post on each verge, and its sign hung over the
-  middle of the road - no words on it, the town's houses in black on a white
-  plate, a church's spire among them, and on the side the town is left by a
-  red stripe through them. A game says which roads have one, and on which
-  side (its play's `gantriesOn`, `client/roadview.js` gantriesOf); the
-  city-sim puts one where a road leaves its city.
+- The sign of a town's limits can stand by a road
+  (`isometrica/src/shared/gen/roads.js` townSign, `gen/roads/limit/sign0`-`3`):
+  at one side of its tile, on two posts of grey steel on the verge, its
+  plate across the way the road goes - the size of a bus stop's sign, no
+  words on it, the town's houses in black on a white plate, a church's spire
+  among them, and on the side the town is left by a red stripe through them.
+  A game says which roads have one, and on which side (its play's
+  `townSignsOn`, `client/roadview.js` townSignsOf); the city-sim puts one
+  where a road crosses its city's border.
 - A run of road the player drags is laid all at once (Road.plan): each new
   tile gets the surface that has the run join up the most - with itself,
   and with the roads already there, which stay as they are, joining those
@@ -735,8 +736,8 @@ dev`) plays them the way a game would - all three weathers together, the
   RADIUS, AREA) - and where two areas share a tile they hang together
   (REACH, worked out from AREA): three tiles
   between two buildings along a row, and they do; four, and their areas only
-  touch (REACH). It holds together from the moment it is put down, going up or
-  not. A village holds together by its houses, and a road is the cheap way to
+  touch (REACH). It holds together once it is finished - a house going up, a
+  road being laid, not yet. A village holds together by its houses, and a road is the cheap way to
   reach out to what stands further off. Of the parts that hang together, the
   city is the one its town hall stands in, if one does, otherwise the bigger -
   its road tiles and the ground its buildings stand on - then the one more

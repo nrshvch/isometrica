@@ -57,8 +57,9 @@ there is, at $20 a head. The numbers are to be tuned.
    any building has, so a road is the cheap way to reach out to a group of
    buildings further off.
 
-It holds together from the moment it is put down - going up or not; a tree is
-the world's.
+It holds together once it is finished - a house still going up, a road still
+being laid, not yet; its area is shown while it is being put down all the
+same. A tree is the world's.
 
 What a building wants of the city:
 
@@ -75,9 +76,7 @@ roads that join something to something hold anything together - their area
 sharing a tile with a building's at either end, or going on to a road whose
 does. A lane running off into the country past the last house is the city's
 as long as its area meets the house's - four tiles out - and no further; a
-lane whose area meets no building's is not the city's at all. A road still
-being laid is part of the city, but no road anyone drives or a building is
-reached by till it is finished.
+lane whose area meets no building's is not the city's at all.
 
 **Done.** The city-sim draws a border round the city's area, along the tiles'
 edges (`city-sim/src/client/cityborder.js`, `cityarea.js`) - none round what
@@ -94,12 +93,15 @@ something is being put down (`isometrica/src/client/buildman.js`, the play's
 The border is drawn whenever any of it is on screen, wherever the middle of
 the city is.
 
-**Done.** Where a road leaves the city, leading nowhere, a gantry stands over
-the last of the city's road that way (`CityRoads#exits`): two posts on the
-verges, a beam across, and the sign of the town's limits hung over the
-road - no words on it, the town's houses on a white plate, and on the side
-it is left by a red stripe through them, the way the road signs of a
-town's limits have it (`gen/roads/limit/gantry` in
+**Done.** Where a road leaves the city, leading nowhere (`CityRoads#exits`),
+the sign of the town's limits stands by it where it crosses the border: on
+the last of the road inside the city's area, at the side it goes on out at -
+walked out along the road, round its bends, from the last of the city's
+(`crossing` in `city-sim/src/client/cityborder.js`). A road that ends inside
+has none. The sign is small, on two posts on the verge, the size of a bus
+stop's: no words on it, the town's houses on a white plate, and on the side
+it is left by a red stripe through them, the way the road signs of a town's
+limits have it (`gen/roads/limit/sign` in
 `isometrica/src/shared/gen/roads.js`). It is the road's own, drawn with it,
 and stays up with the words put away.
 
