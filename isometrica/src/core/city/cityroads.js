@@ -3,11 +3,12 @@
  *
  * Every building of the city, and every tile of its roads, has an area round
  * it: what is within RADIUS of it, two tiles - counted from the middle of
- * one tile to the middle of the other, so along a row or a column two tiles
- * out, and corner to corner one (AREA). Where two areas share a tile they
- * are one: along a row, two buildings with three tiles between them share
- * the middle one, and hang together; with four between, their areas only
- * touch, and they do not (REACH). The city's area is all of it that hangs
+ * one tile to the middle of the other, and rounded, so along a row or a
+ * column two tiles out, and a tile to either side of those, and corner to
+ * corner one: round, rather than a diamond (AREA). Where two areas share a
+ * tile they are one: along a row, two buildings with three tiles between them
+ * share the middle one, and hang together; with four between, their areas
+ * only touch, and they do not (REACH). The city's area is all of it that hangs
  * together. A village holds together by its houses standing near each
  * other, the way families settle; a road is what reaches out to whatever
  * stands further off, and the cheapest way to. It holds together from the
@@ -55,37 +56,61 @@ CityService.Roads = CityRoads;
 
 /**
  * How far a building's area, or a road tile's, reaches round each of its
- * tiles: within two tiles of its middle (RADIUS) - along a row or a column
- * two tiles out, corner to corner one, never further - as [x, y], its own
- * tile among them.
+ * tiles: the tiles whose middles are two tiles from its middle, rounded
+ * (RADIUS) - along a row or a column two tiles out and one to either side of
+ * those, corner to corner one, never two across and two down - as [x, y], its
+ * own tile among them.
  *
  * @type {number[][]}
  */
 var RADIUS = 2;
-var AREA = within(RADIUS, true);
+var AREA = within(RADIUS);
 CityRoads.RADIUS = RADIUS;
 CityRoads.AREA = AREA;
 
 /**
  * Where from a tile of one thing a tile of another has an area that shares a
- * tile with its own (AREA): twice as far - three tiles between them along a
- * row or a column at most - as [x, y].
+ * tile with its own (AREA) - three tiles between them along a row or a column
+ * at most - as [x, y].
  *
  * @type {number[][]}
  */
-var REACH = within(2 * RADIUS, false);
+var REACH = shared(AREA);
 CityRoads.REACH = REACH;
 
-//every [x, y] within r along the rows and columns, and [0, 0] with them or not
-function within(r, own) {
+//every [x, y] whose distance from [0, 0], rounded, is r at most
+function within(r) {
   var out = [],
     dx,
     dy;
 
   for (dy = -r; dy <= r; dy++)
     for (dx = -r; dx <= r; dx++)
-      if (Math.abs(dx) + Math.abs(dy) <= r && (own || dx !== 0 || dy !== 0))
-        out.push([dx, dy]);
+      if (Math.round(Math.sqrt(dx * dx + dy * dy)) <= r) out.push([dx, dy]);
+
+  return out;
+}
+
+//every [x, y] but [0, 0] two areas the shape of area that far apart share a
+//tile from: one's tiles less the other's
+function shared(area) {
+  var seen = {},
+    out = [],
+    dx,
+    dy,
+    i,
+    j;
+
+  for (i = 0; i < area.length; i++)
+    for (j = 0; j < area.length; j++) {
+      dx = area[i][0] - area[j][0];
+      dy = area[i][1] - area[j][1];
+
+      if ((dx === 0 && dy === 0) || seen[dx + "," + dy]) continue;
+
+      seen[dx + "," + dy] = true;
+      out.push([dx, dy]);
+    }
 
   return out;
 }

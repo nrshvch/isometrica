@@ -17,8 +17,8 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   the $100,000 it starts with. The town hall comes later, when it has grown
   into a town; where it stands is the city's middle (see the isometrica
   README).
-- Every building and every road tile has an area round it, two tiles out
-  (one corner to corner), and where two areas share a tile they hang
+- Every building and every road tile has an area round it, two tiles out,
+  rounded - five tiles across with its corners cut - and where two areas share a tile they hang
   together: the city is all of it that does, and a dashed line goes round its
   area, along the tiles' edges - the city's border (`src/client/cityborder.js`,
   `cityarea.js`). Whatever stands further off is cut off, with no border

@@ -45,8 +45,10 @@ there is, at $20 a head. The numbers are to be tuned.
 
 1. Every building, and every tile of a road, has an area round it: what is
    within two tiles of each of its tiles (`CityRoads.RADIUS`, `AREA`) -
-   counted from the middle of one tile to the middle of the other, so along a
-   row or a column two tiles out, corner to corner one.
+   counted from the middle of one tile to the middle of the other and
+   rounded, so along a row or a column two tiles out and one to either side of
+   those, corner to corner one, but never two across and two down: round,
+   five tiles across with its corners cut, not a diamond.
 2. Where two areas share a tile they are one. Along a row, two buildings with
    three tiles between them share the middle one and hang together; with four
    between, their areas only touch, and one of them stands apart

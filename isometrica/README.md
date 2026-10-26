@@ -729,9 +729,11 @@ dev`) plays them the way a game would - all three weathers together, the
   when it has grown into a town, and has no borders: all the land there is,
   is the city's (`Construction#getCity`), and anything can go up anywhere.
 - Every building of a city and every tile of its roads has an area round it,
-  within two tiles of each of its tiles - along a row or a column two tiles
-  out, corner to corner one (`isometrica/src/core/city/cityroads.js` RADIUS,
-  AREA) - and where two areas share a tile they hang together: three tiles
+  within two tiles of each of its tiles, rounded - along a row or a column
+  two tiles out and one to either side of those, corner to corner one, five
+  across with its corners cut (`isometrica/src/core/city/cityroads.js`
+  RADIUS, AREA) - and where two areas share a tile they hang together
+  (REACH, worked out from AREA): three tiles
   between two buildings along a row, and they do; four, and their areas only
   touch (REACH). It holds together from the moment it is put down, going up or
   not. A village holds together by its houses, and a road is the cheap way to
