@@ -1,10 +1,17 @@
 /**
  * The city's border: one line round all of it - everything that is part of
- * it (isometrica core/city/cityroads), the tiles it holds together across
- * taken in with it, and whatever it closes in - and none round anything cut
- * off from it. Drawn again whenever what hangs together changes, and as the
- * ground under it moves; put away with the words over the world
- * (client/serviceman, Cityman#namesHidden).
+ * it (isometrica core/city/cityroads) with a tile round each, and whatever it
+ * closes in (cityarea) - and none round anything cut off from it. Drawn again
+ * whenever what hangs together changes, and as the ground under it moves; put
+ * away with the words over the world (client/serviceman,
+ * Cityman#namesHidden).
+ *
+ * And where a road leaves the city, leading nowhere, a town's limits over the
+ * last of its road that way (CityRoads#exits): a gantry across the road, its
+ * sign of no words - the town to whoever comes in, struck through red to
+ * whoever leaves (isometrica shared/gen/roads gantry). It is the road's own,
+ * drawn with it (client/roadview gantriesOf, #gantriesOn), and stays up with
+ * the words put away.
  */
 import engine from "engine";
 import Events from "events";
@@ -22,6 +29,8 @@ var Terrain = Core.Terrain;
 function CityBorder(root) {
   this.root = root;
   this.renderer = null;
+  //road tile -> the sides a town's limits are over, 0..3 (#gantriesOn)
+  this._gantries = {};
   //what it was last drawn for - the city, and how far along what hangs
   //together it was (CityRoads#version)
   this._city = null;
@@ -73,6 +82,20 @@ CityBorder.prototype.init = function () {
   });
 };
 
+/**
+ * Which sides of the road on tile a town's limits are over, -x, -y, +x, +y
+ * as 0..3 - for the road to draw its gantry there (client/roadview).
+ *
+ * @param tile {number}
+ * @returns {number[]}
+ */
+CityBorder.prototype.gantriesOn = function (tile) {
+  if (this._city !== null && this._city.roads.version() !== this._version)
+    draw(this);
+
+  return this._gantries[tile] || [];
+};
+
 function watch(self, city) {
   if (self._city !== null) return;
 
@@ -90,7 +113,33 @@ function draw(self) {
   if (self._city === null) return;
 
   self._version = self._city.roads.version();
-  self.renderer.setTiles(area(self._city));
+  if (self.renderer !== null) self.renderer.setTiles(area(self._city));
+  putUpGantries(self);
+}
+
+//a gantry over every side a road leaves the city by - and the roads whose
+//gantries came or went drawn again
+function putUpGantries(self) {
+  var was = self._gantries,
+    now = {},
+    exits = self._city.roads.exits(),
+    tile,
+    i;
+
+  for (i = 0; i < exits.length; i++)
+    (now[exits[i].tile] = now[exits[i].tile] || []).push(exits[i].side);
+
+  self._gantries = now;
+
+  for (tile in was)
+    if (String(now[tile]) !== String(was[tile])) redraw(self, +tile);
+  for (tile in now) if (was[tile] === undefined) redraw(self, +tile);
+}
+
+function redraw(self, tile) {
+  var road = self.root.roadman ? self.root.roadman.anyRoad(tile) : null;
+
+  if (road !== null && road.view) road.view.update();
 }
 
 export default CityBorder;

@@ -1,20 +1,19 @@
 /**
  * Where the city is, tile by tile, for its border (client/cityborder): what
  * its buildings and roads that are part of it stand on (isometrica
- * core/city/cityroads), the tiles it holds together across, and whatever all
- * of that closes in.
+ * core/city/cityroads) with a tile round each, and whatever all of that
+ * closes in.
  */
 import Core from "isometrica/core/main";
-import CityRoads from "isometrica/core/city/cityroads";
 import TileIterator from "isometrica/core/tileiterator";
 
 var Terrain = Core.Terrain;
 
 /**
- * The city's tiles: what its buildings and roads stand on; between two of
- * them a tile apart along a row or a column, the tile between; corner to
- * corner, the two tiles the corner is between; and whatever all of that
- * closes in.
+ * The city's tiles: what its buildings and roads stand on and the tiles round
+ * each of them, a tile out all round, corners too - as far as a building
+ * near it holds together with it, a tile between - and whatever all of that
+ * closes in. A road leading nowhere is not part of the city, and has none.
  *
  * @param city {City}
  * @returns {number[]}
@@ -25,40 +24,26 @@ export function area(city) {
     tiles = [],
     iter,
     tile,
-    i,
-    j;
-
-  function take(t) {
-    if (on[t] === true) return;
-
-    on[t] = true;
-    tiles.push(t);
-  }
+    dx,
+    dy,
+    t,
+    i;
 
   for (i = 0; i < members.length; i++) {
     iter = members[i].occupiedTiles();
 
-    while (!iter.done) take(TileIterator.next(iter));
-  }
+    while (!iter.done) {
+      tile = TileIterator.next(iter);
 
-  //the gaps it holds together across (CityRoads.LINKS two tiles apart)
-  var footprints = tiles.slice();
+      for (dy = -1; dy <= 1; dy++)
+        for (dx = -1; dx <= 1; dx++) {
+          t = tile + dx + dy * Terrain.dy;
 
-  for (i = 0; i < footprints.length; i++) {
-    tile = footprints[i];
+          if (on[t] === true) continue;
 
-    for (j = 0; j < CityRoads.LINKS.length; j++) {
-      var dx = CityRoads.LINKS[j][0],
-        dy = CityRoads.LINKS[j][1];
-
-      if (Math.abs(dx) + Math.abs(dy) < 2) continue;
-      if (on[tile + dx + dy * Terrain.dy] !== true) continue;
-
-      if (dx === 0 || dy === 0) take(tile + dx / 2 + (dy / 2) * Terrain.dy);
-      else {
-        take(tile + dx);
-        take(tile + dy * Terrain.dy);
-      }
+          on[t] = true;
+          tiles.push(t);
+        }
     }
   }
 

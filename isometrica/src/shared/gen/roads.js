@@ -913,6 +913,129 @@ function barrierAt(side) {
   return out;
 }
 
+//a town's limits, over the road where it leaves the town: a gantry of
+//grey steel and its sign - white, black at its edge, the town's houses on
+//it, and on the side the town is left by a red stripe across them
+var GANTRY = [124, 130, 140],
+  SIGN_WHITE = [236, 236, 230],
+  SIGN_EDGE = [40, 42, 46],
+  SIGN_HOUSES = [44, 46, 52],
+  SIGN_RED = [206, 46, 38];
+
+//how far in from the edge of its tile the gantry stands, where its posts
+//are either side of the road, and how high its beam and its sign are
+var GANTRY_IN = 2.5,
+  GANTRY_A0 = A0 - 3,
+  GANTRY_A1 = A1 + 3,
+  BEAM_Z = 22,
+  SIGN_A0 = 8,
+  SIGN_A1 = 24,
+  SIGN_Z0 = 13,
+  SIGN_Z1 = 21;
+
+//the houses on the sign, each [a0, a1, height] along its bottom - a church
+//with its spire among them
+var SIGN_TOWN = [
+  [9.5, 11.5, 2],
+  [12, 13, 4.5],
+  [13, 15, 2],
+  [15.5, 17.5, 3],
+  [18, 19.5, 1.5],
+  [20, 22.5, 2.5],
+];
+
+/**
+ * The gantry across the road at side of its tile - "-x", "-y", "+x", "+y" -
+ * where the road leaves a town (client/roadview gantriesOf): a post on each
+ * verge and a beam across over the traffic, the town's sign hung on it in the
+ * middle of the road. Its sign shows the town to whoever comes in - its face
+ * out over side - and the town struck through with a red stripe to whoever
+ * leaves it, on its face in: a sign of no words, as the road signs of a
+ * town's limits have it.
+ */
+function gantry(side) {
+  var b = [],
+    v0 = GANTRY_IN - 0.5,
+    v1 = GANTRY_IN + 0.5;
+
+  //the posts on the verges, and the beam over the road between them
+  [GANTRY_A0, GANTRY_A1 - 1].forEach(function (a) {
+    b.push(sideBox(side, a - 0.5, a + 1.5, v0 - 0.5, v1 + 0.5, 0, 1, GANTRY));
+    b.push(sideBox(side, a, a + 1, v0, v1, 1, BEAM_Z + 1, GANTRY));
+  });
+  b.push(
+    sideBox(side, GANTRY_A0, GANTRY_A1, v0, v1, BEAM_Z, BEAM_Z + 1, GANTRY),
+  );
+
+  //the sign: black at its edge, its faces white either side of the beam
+  b.push(sideBox(side, SIGN_A0, SIGN_A1, v0, v1, SIGN_Z0, SIGN_Z1, SIGN_EDGE));
+  [
+    [v0 - 0.3, v0, v0 - 0.5],
+    [v1, v1 + 0.3, v1 + 0.3],
+  ].forEach(function (face, k) {
+    var out = face[2],
+      i;
+
+    b.push(
+      sideBox(
+        side,
+        SIGN_A0 + 0.5,
+        SIGN_A1 - 0.5,
+        face[0],
+        face[1],
+        SIGN_Z0 + 0.5,
+        SIGN_Z1 - 0.5,
+        SIGN_WHITE,
+      ),
+    );
+
+    //the town along its bottom
+    SIGN_TOWN.forEach(function (house) {
+      b.push(
+        sideBox(
+          side,
+          house[0],
+          house[1],
+          out,
+          out + 0.2,
+          SIGN_Z0 + 1,
+          SIGN_Z0 + 1 + house[2],
+          SIGN_HOUSES,
+        ),
+      );
+    });
+
+    //and on the face in, the stripe through it, a step at a time from the
+    //bottom of one end to the top of the other
+    if (k === 1)
+      for (i = 0; i < 13; i++)
+        b.push(
+          sideBox(
+            side,
+            SIGN_A0 + 1.5 + i,
+            SIGN_A0 + 2.5 + i,
+            out + 0.2,
+            out + 0.4,
+            SIGN_Z0 + 1 + i * 0.45,
+            SIGN_Z0 + 2.6 + i * 0.45,
+            SIGN_RED,
+          ),
+        );
+  });
+
+  return b;
+}
+
+/**
+ * Where a gantry at side stands on its tile, x, y - the middle of its beam,
+ * for it to be sorted among the cars by that (client/roadview).
+ */
+function gantryAt(side) {
+  var mid = sideBox(side, 16, 16, GANTRY_IN, GANTRY_IN, 0, 0);
+
+  return [mid.x0, mid.y0];
+}
+
 /**
  * Every sprite, by name: "gen/roads/plain/1010" - plain, paved, gravel or
  * cobble, or dug and bed for a road being laid (works) - the joins in the order
@@ -925,7 +1048,8 @@ function barrierAt(side) {
  * "gen/roads/stop/shelter0" and "gen/roads/works/barrier0", a bus shelter
  * and a road works barrier along each side of the tile - and the shelters
  * of a cobbled street and a gravel lane, "gen/roads/stop-cobble/shelter0"
- * and "gen/roads/stop-gravel/shelter0".
+ * and "gen/roads/stop-gravel/shelter0" - and "gen/roads/limit/gantry0", a
+ * town's limits over the road at each side.
  */
 function sprites() {
   var out = {};
@@ -1012,6 +1136,11 @@ function sprites() {
     out["gen/roads/works/barrier" + k] = { barrier: side };
   });
 
+  //and a town's limits over it, at each side
+  STOP_SIDES.forEach(function (side, k) {
+    out["gen/roads/limit/gantry" + k] = { gantry: side };
+  });
+
   return out;
 }
 
@@ -1024,6 +1153,7 @@ export function boxesOf(name) {
 
   if (s.stop) return shelter(s.side, s.stop);
   if (s.barrier) return barrier(s.barrier);
+  if (s.gantry) return gantry(s.gantry);
   if (s.lantern) return lantern(s.lantern);
 
   return s.light
@@ -1069,6 +1199,11 @@ export function describe() {
       //and where a road works barrier stands, by name, and its lamps are
       barriers: STOP_SIDES.reduce(function (out, side, k) {
         out["barrier" + k] = barrierAt(side);
+        return out;
+      }, {}),
+      //and where a town's gantry stands, by name
+      gantries: STOP_SIDES.reduce(function (out, side, k) {
+        out["gantry" + k] = gantryAt(side);
         return out;
       }, {}),
     },

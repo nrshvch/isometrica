@@ -64,11 +64,28 @@ What a building wants of the city:
   no tile between, of at least the material it asks for;
 - **water**, as before.
 
-**Done.** The city-sim draws a border round the city: a dashed line round
-everything that is part of it, the tiles it holds together across taken in,
-and whatever it closes in (`city-sim/src/client/cityborder.js`,
+**Done.** A road that leads nowhere is not part of the city: only the city's
+roads that join something to something hold anything together - a building
+near it at either end, or a road on to one. A lane running off into the
+country past the last house is the city's up to the last of it with
+something near it, and no further; a lane with nothing near any of it is
+not the city's at all.
+
+**Done.** The city-sim draws a border round the city: a dashed line a tile out
+round everything that is part of it - each building and road with the tile
+round it, corners too, as far as something near it holds together with it -
+and whatever that closes in (`city-sim/src/client/cityborder.js`,
 `cityarea.js`). Nothing cut off has one. It is put away with the words over
 the world.
+
+**Done.** Where a road leaves the city, leading nowhere, a gantry stands over
+the last of the city's road that way (`CityRoads#exits`): two posts on the
+verges, a beam across, and the sign of the town's limits hung over the
+road - no words on it, the town's houses on a white plate, and on the side
+it is left by a red stripe through them, the way the road signs of a
+town's limits have it (`gen/roads/limit/gantry` in
+`isometrica/src/shared/gen/roads.js`). It is the road's own, drawn with it,
+and stays up with the words put away.
 
 When what hangs together comes apart, the city is:
 

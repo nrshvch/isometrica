@@ -251,7 +251,7 @@ function pieceOf(name) {
  * The pictures it would be drawn with as it is seen now - with View peek,
  * from another side - into out, without drawing anything (client/
  * preloader): its piece, its street light, a stop's shelters, the barriers
- * of road works, and the concrete under it.
+ * of road works, a town's gantries, and the concrete under it.
  */
 BuildingView.prototype.seenSprites = function (out) {
   var road = this.road;
@@ -271,6 +271,9 @@ BuildingView.prototype.seenSprites = function (out) {
     });
   barriersOf(road).forEach(function (side) {
     out.push(pieceOf("gen/roads/works/barrier" + seenSide(side)));
+  });
+  gantriesOf(road).forEach(function (side) {
+    out.push(pieceOf("gen/roads/limit/gantry" + seenSide(side)));
   });
 
   collecting = out;
@@ -325,6 +328,11 @@ function draw(view, id, surface) {
   //and a road being laid, its barriers where it ends
   barriersOf(view.road).forEach(function (side) {
     addBarrier(go, "gen/roads/works/barrier" + seenSide(side), tile, side);
+  });
+
+  //and the gantry of a town's limits, where a game puts one up
+  gantriesOf(view.road).forEach(function (side) {
+    addGantry(go, "gen/roads/limit/gantry" + seenSide(side));
   });
 
   place(go, tile, surface);
@@ -515,6 +523,36 @@ function barriersOf(road) {
   }
 
   return out;
+}
+
+/**
+ * Which sides of a road a town's limits are over, in the world - -x, -y, +x,
+ * +y as 0..3 - as the game played says (its play's gantriesOn: the city-sim
+ * puts one where a road leaves its city): none, for a game that puts up none.
+ */
+function gantriesOf(road) {
+  var play = road !== null ? road.root.play : null;
+
+  if (!play || !play.gantriesOn) return [];
+
+  return play.gantriesOn(road.data.tile) || [];
+}
+
+//hangs the gantry of a town's limits under parent, standing where it does on
+//its tile: sorted among the cars by the middle of its beam
+function addGantry(parent, name) {
+  var part = new engine.GameObject(),
+    sprite = new engine.SpriteRenderer(),
+    roads = vkaria.generated !== null ? vkaria.generated.roads : null,
+    key = name.split("/").pop(),
+    at = roads && roads.gantries ? roads.gantries[key] : null;
+
+  sprite.layer = RenderLayer.buildingsLayer;
+  part.addComponent(sprite);
+  setPiece(sprite, name);
+  parent.transform.addChild(part.transform);
+
+  if (at) standAt(part, sprite, at);
 }
 
 /**

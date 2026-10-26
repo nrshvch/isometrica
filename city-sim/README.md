@@ -19,12 +19,16 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   README).
 - Everything the city builds has to stand with it - near enough to another
   of its buildings or roads, a tile between them at most along a row or a
-  column, or corner to corner - and a dashed line goes round all of it, the
-  gaps it holds together across and whatever it closes in taken in: the
+  column, or corner to corner - and a dashed line goes round all of it, a
+  tile out round each building and road and whatever that closes in: the
   city's border (`src/client/cityborder.js`, `cityarea.js`). Whatever stands
   further off is cut off, with no border round it, till a road - the cheap
-  way across - or another building joins it up. The border is put away with
-  the words over the world.
+  way across - or another building joins it up. A road that leads nowhere is
+  not the city's past the last thing near it, and where a road leaves the
+  city that way a gantry stands over the last of the city's road: a sign of
+  no words, the town's houses on it, struck through red on the side it is
+  left by. The border is put away with the words over the world; the
+  gantries are the road's, and stay.
 - The catalogue opens with what a game starts with - what needs neither a
   road nor water, the houses, the old town, the water tower and the pump
   station first, then the parks - and then everything else: houses, then

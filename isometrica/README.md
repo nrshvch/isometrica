@@ -691,6 +691,14 @@ dev`) plays them the way a game would - all three weathers together, the
   behind it spreading it - a crew to every six tiles or so of a long stretch.
   Where they are is worked out from how far along the road is, so it is the
   same after a reload.
+- A town's limits can stand over a road (`isometrica/src/shared/gen/roads.js`
+  gantry, `gen/roads/limit/gantry0`-`3`): a gantry of grey steel across it at
+  one side of its tile, a post on each verge, and its sign hung over the
+  middle of the road - no words on it, the town's houses in black on a white
+  plate, a church's spire among them, and on the side the town is left by a
+  red stripe through them. A game says which roads have one, and on which
+  side (its play's `gantriesOn`, `client/roadview.js` gantriesOf); the
+  city-sim puts one where a road leaves its city.
 - A run of road the player drags is laid all at once (Road.plan): each new
   tile gets the surface that has the run join up the most - with itself,
   and with the roads already there, which stay as they are, joining those
@@ -730,7 +738,11 @@ dev`) plays them the way a game would - all three weathers together, the
     that hang together, the city is the one its town hall stands in, if one
     does, otherwise the bigger - its road tiles and the ground its buildings
     stand on - then the one more people live in, then the one with the oldest
-    building; its roads are the road network. It is worked out again whenever
+    building; its roads are the road network - those of them that join
+    something to something: a road that leads nowhere is the city's only up
+    to the last of it with something near it (`prune`), and where it goes on
+    from there is a way out of the city (`CityRoads#exits`), for a game to put
+    up a town's limits over. It is worked out again whenever
     something goes up, comes down or is finished, and nothing of it is saved.
     Everything of the city wants to be part of it, a water tower as much as a
     house; what is not is cut off - abandoned: it costs and earns the city

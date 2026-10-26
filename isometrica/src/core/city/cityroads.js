@@ -11,6 +11,12 @@
  * together - a road still being laid, a house still going up, not yet - and a
  * tree is the world's, not the city's.
  *
+ * A road that leads nowhere is not part of the city: of the city's roads, only
+ * those that join something to something - a building near it at either end,
+ * or a road on to one - hold anything together; a lane running off into the
+ * country past the last house does not, from the last of it that does on
+ * (prune). Where a road leaves the city that way is its way out (#exits).
+ *
  * What hangs together may come apart into parts. The city is the part its
  * town hall stands in, if one stands, and otherwise the bigger one, by
  * everything in it: its road tiles and the ground its buildings stand on. Of
@@ -80,6 +86,8 @@ function CityRoads(city) {
   this._main = -1;
   //the town hall the city is where it is for, if any
   this._hall = null;
+  //the road tiles of the city a road leaves it from (#exits)
+  this._exits = [];
   //how many times it was worked out (#version)
   this._version = 0;
   this._stale = true;
@@ -206,6 +214,20 @@ CityRoads.prototype.members = function () {
     if (this._partOf[buildings[i].id] === this._main) r.push(buildings[i]);
 
   return r;
+};
+
+/**
+ * Where the city's roads leave it: every road tile of the city's network that
+ * a road leading nowhere goes straight on from, next to it (prune) - the last
+ * of the city's that way - and the side it goes on at, -x, -y, +x, +y as 0..3:
+ * for a game to put up the sign of a town's limits there.
+ *
+ * @returns {{tile: number, side: number}[]}
+ */
+CityRoads.prototype.exits = function () {
+  update(this);
+
+  return this._exits;
 };
 
 /**
@@ -362,6 +384,9 @@ function update(self) {
   for (i = 0; i < buildings.length; i++)
     if (holds(buildings[i])) order[buildings[i].id] = i;
 
+  //the roads that lead nowhere are not part of it
+  var pruned = prune(world, buildings, order);
+
   //the parts, in the order the city's buildings went up: the first of
   //each is its oldest
   for (i = 0; i < buildings.length; i++) {
@@ -423,6 +448,179 @@ function update(self) {
   self._main = main;
   self._network = network;
   self._hall = hall === -1 ? null : buildings[hall];
+  self._exits = exits(world, buildings, partOf, main, pruned);
+}
+
+/**
+ * Where a road tile is joined to another for the lead of a road: next to it,
+ * or across a tile with no road on it - corner to corner, across two - the
+ * way LINKS reaches, less what a road between already joins. A straight run
+ * of road is a line, one tile to the next.
+ */
+function roadsFrom(world, road, isRoadAt) {
+  var tile = road.tile,
+    out = [],
+    dx,
+    dy,
+    next,
+    i;
+
+  for (i = 0; i < LINKS.length; i++) {
+    dx = LINKS[i][0];
+    dy = LINKS[i][1];
+    next = tile + dx + dy * Terrain.dy;
+
+    if (!isRoadAt(next)) continue;
+
+    //across a tile: only where that tile is no road
+    if (Math.abs(dx) === 2 || Math.abs(dy) === 2) {
+      if (isRoadAt(tile + dx / 2 + (dy / 2) * Terrain.dy)) continue;
+    } else if (dx !== 0 && dy !== 0) {
+      if (isRoadAt(tile + dx) || isRoadAt(tile + dy * Terrain.dy)) continue;
+    }
+
+    out.push(world.buildings.get(next));
+  }
+
+  return out;
+}
+
+/**
+ * Takes the roads that lead nowhere out of what holds the city together
+ * (order): from the far end of a road with nothing near it, a tile at a time,
+ * back to the last of it with a building near it or a road going on - and a
+ * run of roads with no building near any of it at all, round in a ring
+ * even. What is left joins something to something.
+ *
+ * @returns {Object} road id -> true, for every road taken out
+ */
+function prune(world, buildings, order) {
+  var roads = [],
+    isRoad = {},
+    near_ = {},
+    left = {},
+    degree = {},
+    pruned = {},
+    links = {},
+    open = [],
+    road,
+    tiles,
+    other,
+    i,
+    j;
+
+  for (i = 0; i < buildings.length; i++)
+    if (order[buildings[i].id] !== undefined && isRoadData(buildings[i])) {
+      roads.push(buildings[i]);
+      isRoad[buildings[i].tile] = true;
+    }
+
+  function isRoadAt(tile) {
+    return isRoad[tile] === true;
+  }
+
+  //a road with a building of the city near it is where it leads
+  for (i = 0; i < roads.length; i++) {
+    road = roads[i];
+    tiles = near(road);
+
+    for (j = 0; j < tiles.length; j++) {
+      other = world.buildings.get(tiles[j]);
+
+      if (
+        other !== null &&
+        order[other.id] !== undefined &&
+        !isRoadData(other)
+      ) {
+        near_[road.id] = true;
+        break;
+      }
+    }
+
+    links[road.id] = roadsFrom(world, road, isRoadAt);
+    degree[road.id] = links[road.id].length;
+    left[road.id] = true;
+
+    if (near_[road.id] !== true && degree[road.id] <= 1) open.push(road);
+  }
+
+  //the far ends, back to where they lead
+  while (open.length > 0) {
+    road = open.pop();
+
+    if (left[road.id] !== true) continue;
+
+    delete left[road.id];
+    pruned[road.id] = true;
+
+    for (j = 0; j < links[road.id].length; j++) {
+      other = links[road.id][j];
+
+      if (left[other.id] !== true) continue;
+
+      degree[other.id]--;
+      if (near_[other.id] !== true && degree[other.id] <= 1) open.push(other);
+    }
+  }
+
+  //and whatever is left with nothing near any of it
+  var seen = {};
+
+  for (i = 0; i < roads.length; i++) {
+    if (left[roads[i].id] !== true || seen[roads[i].id] === true) continue;
+
+    var run = [roads[i]],
+      leads = false;
+
+    seen[roads[i].id] = true;
+
+    for (j = 0; j < run.length; j++) {
+      if (near_[run[j].id] === true) leads = true;
+
+      links[run[j].id].forEach(function (next) {
+        if (left[next.id] === true && seen[next.id] !== true) {
+          seen[next.id] = true;
+          run.push(next);
+        }
+      });
+    }
+
+    if (!leads) for (j = 0; j < run.length; j++) pruned[run[j].id] = true;
+  }
+
+  for (var id in pruned) delete order[id];
+
+  return { pruned: pruned, links: links };
+}
+
+//from a tile to the next one at each side, -x, -y, +x, +y
+var STEP = [-1, -Terrain.dy, 1, Terrain.dy];
+
+//the city's road tiles a road leading nowhere goes on from, next to them, and
+//the side it does
+function exits(world, buildings, partOf, main, pruned) {
+  var out = [],
+    next,
+    b,
+    i,
+    s;
+
+  if (main === -1) return out;
+
+  for (i = 0; i < buildings.length; i++) {
+    b = buildings[i];
+
+    if (!isRoadData(b) || partOf[b.id] !== main) continue;
+
+    for (s = 0; s < 4; s++) {
+      next = world.buildings.get(b.tile + STEP[s]);
+
+      if (next !== null && pruned.pruned[next.id] === true)
+        out.push({ tile: b.tile, side: s });
+    }
+  }
+
+  return out;
 }
 
 //what a building adds to the part it is in
