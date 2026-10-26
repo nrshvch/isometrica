@@ -676,6 +676,22 @@ Buildman.prototype.showError = function (tile, reason) {
 Buildman.prototype.events = events;
 
 Buildman.prototype.start = function () {
+  //the camera turned (see client/view): every building and road drawn again,
+  //from the side of it that is seen now - from the start, as the camera
+  //turns the way the city was left (client/cityman) before init, and views
+  //are up by then whenever their chunks were streamed in already
+  Events.on(
+    View,
+    View.events.change,
+    function (sender, args, self) {
+      var views = self.getBuildingViews();
+
+      for (var i = 0; i < views.length; i++)
+        if (views[i].view) views[i].view.update();
+    },
+    this,
+  );
+
   Events.on(this.root.chunkman, Chunkman.events.chunkLoad, onChunkLoad, this);
   Events.on(
     this.root.chunkman,
@@ -715,20 +731,6 @@ Buildman.prototype.start = function () {
  * client is subscribed, so that roadman sees the roads it has to join up.
  */
 Buildman.prototype.init = function () {
-  //the camera turned (see client/view): every building and road drawn again,
-  //from the side of it that is seen now
-  Events.on(
-    View,
-    View.events.change,
-    function (sender, args, self) {
-      var views = self.getBuildingViews();
-
-      for (var i = 0; i < views.length; i++)
-        if (views[i].view) views[i].view.update();
-    },
-    this,
-  );
-
   var chunks = this.root.chunkman.getChunks();
 
   for (var i = 0; i < chunks.length; i++)
