@@ -20,7 +20,10 @@ var events = {
 };
 
 //how soon after one tap the next makes it a double tap, and how near, in
-//page pixels - a finger does not land twice on the same one
+//page pixels - a finger does not land twice on the same one. A finger's
+//only: a mouse has the zoom buttons, and ctrl and its wheel, and two clicks
+//one after the other are two clicks - two tiles picked, a road laid end to
+//end
 var DOUBLE_TAP_TIME = 300,
   DOUBLE_TAP_DISTANCE = 24;
 
@@ -45,6 +48,7 @@ function CameraScript() {
     var now = Date.now(),
       zoom = self.gameObject.camera.zoom,
       isDouble =
+        e.touch === true &&
         lastTap !== null &&
         now - lastTap.time <= DOUBLE_TAP_TIME &&
         Math.sqrt(
