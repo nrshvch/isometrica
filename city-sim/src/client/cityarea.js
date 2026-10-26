@@ -1,9 +1,9 @@
 /**
  * Where the city is, tile by tile, for its border (client/cityborder): the
- * area round everything that is part of it - each of its buildings' tiles and
- * its roads' with what is within two tiles of it (isometrica
- * core/city/cityroads AREA), all of it together. And the same for what stands
- * apart from it, and for what is being put down.
+ * area round everything that is part of it - each of its buildings' tiles,
+ * and its roads' where they join them, with what is within two tiles of it
+ * (isometrica core/city/cityroads AREA), all of it together. And the same for
+ * what stands apart from it, and for what is being put down.
  */
 import Core from "isometrica/core/main";
 import CityRoads from "isometrica/core/city/cityroads";
@@ -77,19 +77,6 @@ export function footprints(anchors, sizeX, sizeY) {
   }
 
   return out;
-}
-
-/**
- * Whether two areas share a tile.
- *
- * @param a {Object} tile -> true
- * @param b {Object} tile -> true
- * @returns {boolean}
- */
-export function overlap(a, b) {
-  for (var tile in a) if (b[tile] === true) return true;
-
-  return false;
 }
 
 /**

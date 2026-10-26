@@ -737,32 +737,38 @@ dev`) plays them the way a game would - all three weathers together, the
   (`client/cityman.js` roll). It puts up a town hall
   when it has grown into a town, and has no borders: all the land there is,
   is the city's (`Construction#getCity`), and anything can go up anywhere.
-- Every building of a city and every tile of its roads has an area round it,
+- Every building of a city has an area round it,
   within two tiles of each of its tiles, rounded - along a row or a column
   two tiles out and one to either side of those, corner to corner one, five
   across with its corners cut (`isometrica/src/core/city/cityroads.js`
   RADIUS, AREA) - and where two areas share a tile they hang together
   (REACH, worked out from AREA): three tiles
   between two buildings along a row, and they do; four, and their areas only
-  touch (REACH). It holds together once it is finished - a house going up, a
-  road being laid, not yet. A village holds together by its houses, and a road is the cheap way to
-  reach out to what stands further off. Of the parts that hang together, the
+  touch (REACH). A road has no area of its own: only where it joins
+  buildings to each other - from the area of one on to another's, two at
+  least - has it one, a tile of it as a building's; a road that leads
+  nowhere is just a road, abandoned, a tile of it on its own in the middle
+  of nowhere standing apart from nothing, and a lane off into the country
+  is the city's only as far as its area meets a house's (`prune`). It holds
+  together once it is finished - a house going up, a road being laid, not
+  yet. A village holds together by its houses, and a road is the cheap way
+  to reach out to what stands further off. Of the parts that hang together, the
   city is the one its town hall stands in, if one does, otherwise the bigger -
   its road tiles and the ground its buildings stand on - then the one more
   people live in, then the one with the oldest building (`CityRoads#detached`
-  the rest). Its finished roads are the road network - those of them that
-  join something to something: a road that leads nowhere is the city's only
-  as far as its area meets a building's (`prune`), and where it goes on from
-  there is a way out of the city (`CityRoads#exits`), for a game to put up a
-  town's limits over. It is worked out again whenever something goes up,
-  comes down or is finished, and nothing of it is saved. Everything of the
+  the rest). Its roads that are part of it are the road network. It is
+  worked out again whenever something goes up, comes down or is finished,
+  and nothing of it is saved - and for what would hang together with
+  something more put down, without putting it down (`CityRoads#plan`).
+  Everything of the
   city wants to be part of it, a water tower as much as a house; what is not
   is cut off - abandoned: it costs and earns the city nothing, waters
   nothing, and "cut off" hangs over it. A road a building wants has to be
   right alongside it, no tile between. The city-sim draws a border round the
   city's area (`city-sim/src/client/cityborder.js`), and while something is
-  being put down its area too - the builder tells the game played what is
-  being put down where (its play's `placing`, `client/buildman.js`), and
+  being put down the border as it would be with it - the builder tells the
+  game played what is being put down where (its play's `placing`,
+  `client/buildman.js`), and
   what is looked at (its play's `inspecting`, `client/serviceman.js`) - the
   area of what it stands apart with; the world itself has none. A line round tiles is drawn whenever any of it is on
   screen (`client/components/tileareaborderrenderer.js`). Its name hangs over

@@ -19,19 +19,21 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   the dice was first rolled (`isometrica/src/client/cityman.js` roll). The
   town hall comes later, when it has grown into a town; where it stands is
   the city's middle (see the isometrica README).
-- Every building and every road tile has an area round it, two tiles out,
-  rounded - five tiles across with its corners cut - and where two areas share a tile they hang
+- Every building has an area round it, two tiles out, rounded - five tiles
+  across with its corners cut - and where two areas share a tile they hang
   together: the city is all of it that does, and a dashed line goes round its
   area, along the tiles' edges - the city's border (`src/client/cityborder.js`,
   `cityarea.js`). Whatever stands further off is cut off, with no border
   round it, till a road - the cheap way across - or another building joins it
-  up. While something is being put down its area is drawn too - in the
-  city's border, as it will be, if it joins it; in amber if it stands apart -
-  and the areas of whatever stands apart already, faintly; and something
-  that stands apart, tapped, has the area of all that hangs together with it
-  drawn in amber while it is looked at. A road that leads nowhere is not the
-  city's past where its area meets a building's, and where a road leaves the
-  city that way the town's signs stand by it where it crosses the border,
+  up. A road has an area only where it joins buildings, two at least: one
+  that leads nowhere is just a road, abandoned, and the city's only as far as
+  its area meets a house's. While something is being put down the border is
+  drawn as it would be with it - a road out into nowhere adding nothing to
+  it, one reaching a village further off taking it in; in amber what would
+  stand apart - and the areas of whatever stands apart already, faintly; and
+  something that stands apart, tapped, has the area of all that hangs
+  together with it drawn in amber while it is looked at. Wherever a road
+  crosses the border the town's signs stand by it,
   each on a post on the verge, no words on them: the way in on the right of
   whoever comes in, the town's houses facing them; the way out across the
   road, on the right of whoever leaves, the houses struck through red. A

@@ -1,20 +1,22 @@
 /**
  * The city's border: one line round the city's area - the area round each
- * of its buildings and roads, all of it together (cityarea, isometrica
- * core/city/cityroads AREA) - drawn along the tiles' edges. What stands apart
- * from the city has an area of its own, and none is drawn round it - but
- * while something is being put down (client/buildman, #placing): then its
- * area is drawn too, and if it shares a tile with the city's, the border as
- * it will be with it in it; and every area that stands apart, faintly. And
+ * of its buildings, and its roads where they join them, all of it together
+ * (cityarea, isometrica core/city/cityroads AREA) - drawn along the tiles'
+ * edges. What stands apart from the city has an area of its own, and none is
+ * drawn round it - but while something is being put down (client/buildman,
+ * #placing): then the border is drawn as it would be with it
+ * (CityRoads#plan) - with it in it if it joins the city, and its area in
+ * amber if it would stand apart; a road that would lead nowhere has none -
+ * and every area that stands apart, faintly. And
  * while something that stands apart is looked at (client/serviceman,
  * #inspecting), the area of all that hangs together with it. Drawn again
  * whenever what hangs together changes, and as the ground under it moves;
  * put away with the words over the world (client/serviceman,
  * Cityman#namesHidden), but while something is being put down.
  *
- * And where a road leaves the city, leading nowhere (CityRoads#exits), the
- * signs of a town's limits by it where it crosses the border - on the last of
- * the road inside the city's area, at the side it goes on out at: signs of no
+ * And wherever a road crosses the border, out of the city's area, the signs
+ * of a town's limits by it - on the last of the road inside the city's area,
+ * at the side it goes on out at: signs of no
  * words, each on a post on the verge, the town to whoever comes in, on their
  * right, and struck through red to whoever leaves, on theirs (isometrica
  * shared/gen/roads townSign). They are the road's own, drawn with it
@@ -27,7 +29,8 @@ import Core from "isometrica/core/main";
 import TileAreaBorderRenderer from "isometrica/client/components/tileareaborderrenderer";
 import RenderLayer from "isometrica/client/renderlayer";
 import BuildingClassCode from "isometrica/data/classcode";
-import { areaOf, areaOfTiles, footprints, overlap, tilesOf } from "./cityarea";
+import BuildingState from "isometrica/core/buildingstate";
+import { areaOf, areaOfTiles, footprints, tilesOf } from "./cityarea";
 
 var Terrain = Core.Terrain;
 
@@ -47,7 +50,7 @@ function CityBorder(root) {
   this.renderer = null;
   this.placed = null;
   this.detached = null;
-  //what is being put down: {anchors, sizeX, sizeY}, or null (#placing)
+  //what is being put down: {code, anchors, sizeX, sizeY}, or null (#placing)
   this._placing = null;
   //what is being looked at, or null (#inspecting)
   this._inspecting = null;
@@ -125,10 +128,11 @@ CityBorder.prototype.init = function () {
 };
 
 /**
- * What is being put down, and where - its area shown, and the city's border
- * as it would be with it - or null once nothing is (client/buildman).
+ * What is being put down, and where - the city's border shown as it would be
+ * with it - or null once nothing is (client/buildman).
  *
- * @param what {{anchors: number[], sizeX: number, sizeY: number}|null}
+ * @param what {{code: number, anchors: number[], sizeX: number,
+ *        sizeY: number}|null}
  */
 CityBorder.prototype.placing = function (what) {
   this._placing = what && what.anchors.length > 0 ? what : null;
@@ -194,50 +198,50 @@ function draw(self) {
 
 /**
  * The lines as they are now: the city's area, and that of what stands apart
- * that is looked at - and while something is being put down, its area: in the
- * city's if they share a tile, with every area standing apart that it shares
- * one with; its own otherwise, those with it; and the rest of what stands
- * apart.
+ * that is looked at - and while something is being put down, as they would be
+ * with it (CityRoads#plan): the city's, the area of what it would stand apart
+ * with, if it would, and the rest of what stands apart. Before there is a
+ * city, what is put down is the city.
  */
 function lines(self) {
-  var city = self._cityArea,
-    apart = self._detachedAreas,
-    placing = self._placing,
-    joined = [],
-    rest = [],
+  var placing = self._placing,
+    plan,
     put,
-    into,
-    i;
+    rest;
 
   if (placing === null) {
-    self.renderer.setTiles(tilesOf(city));
+    self.renderer.setTiles(tilesOf(self._cityArea));
     self.placed.setTiles(tilesOf(lookedAt(self)));
     self.detached.setTiles([]);
     return;
   }
 
-  put = areaOfTiles(footprints(placing.anchors, placing.sizeX, placing.sizeY));
+  if (self._city === null) {
+    self.renderer.setTiles(
+      tilesOf(
+        areaOfTiles(footprints(placing.anchors, placing.sizeX, placing.sizeY)),
+      ),
+    );
+    self.placed.setTiles([]);
+    self.detached.setTiles([]);
+    return;
+  }
 
-  for (i = 0; i < apart.length; i++)
-    (overlap(put, apart[i]) ? joined : rest).push(apart[i]);
-
-  //a city with nothing to it yet is what is put down
-  var withCity = overlap(put, city) || tilesOf(city).length === 0;
-
-  into = Object.assign({}, withCity ? city : {}, put);
-  joined.forEach(function (area) {
-    Object.assign(into, area);
+  plan = self._city.roads.plan(
+    placing.code,
+    placing.anchors,
+    placing.sizeX,
+    placing.sizeY,
+  );
+  put = {};
+  rest = {};
+  plan.apart.forEach(function (part) {
+    areaOfTiles(part.tiles, part.added ? put : rest);
   });
 
-  self.renderer.setTiles(tilesOf(withCity ? into : city));
-  self.placed.setTiles(withCity ? [] : tilesOf(into));
-  self.detached.setTiles(
-    tilesOf(
-      rest.reduce(function (all, area) {
-        return Object.assign(all, area);
-      }, {}),
-    ),
-  );
+  self.renderer.setTiles(tilesOf(areaOfTiles(plan.city)));
+  self.placed.setTiles(tilesOf(put));
+  self.detached.setTiles(tilesOf(rest));
 }
 
 //the area of the part standing apart that what is looked at is in - none if
@@ -257,71 +261,36 @@ function lookedAt(self) {
 //from a tile to the next one at each side, -x, -y, +x, +y
 var STEP = [-1, -Terrain.dy, 1, Terrain.dy];
 
-//as far as a road is walked out of the city looking for its border
-var WALK = 64;
-
-/**
- * Where a road leaving the city at exit crosses its border: walked on from the
- * last of the city's road, along the road - straight on where it can, round
- * its bends - for as long as it is inside the city's area; the last of it
- * that is, and the side it goes on out at. Null for a road that ends inside.
- *
- * @param exit {{tile: number, side: number}} (CityRoads#exits)
- * @returns {{tile: number, side: number}|null}
- */
-function crossing(self, exit) {
-  var area = self._cityArea,
-    at = exit.tile,
-    side = exit.side,
-    next,
-    turns,
-    i,
-    k;
-
-  for (i = 0; i < WALK; i++) {
-    next = at + STEP[side];
-
-    if (!isRoad(self, next)) return null;
-    if (area[next] !== true) return { tile: at, side: side };
-
-    at = next;
-
-    //on along the road: straight on, or round the bend, never back
-    turns = [side, (side + 1) % 4, (side + 3) % 4];
-    for (k = 0; k < turns.length; k++)
-      if (isRoad(self, at + STEP[turns[k]])) break;
-
-    if (k === turns.length) return null;
-
-    side = turns[k];
-  }
-
-  return null;
+//a road that is finished, the traffic on it
+function isRoad(building) {
+  return (
+    building !== null &&
+    building.data.classCode === BuildingClassCode.road &&
+    building.getState() === BuildingState.ready
+  );
 }
 
-function isRoad(self, tile) {
-  var b = self.root.core.buildingService.get(tile);
-
-  return b !== null && b.data.classCode === BuildingClassCode.road;
-}
-
-//a sign where every road out of the city crosses its border - and the roads
-//whose signs came or went drawn again
+//a sign wherever a road crosses the city's border - on the last of it inside
+//the city's area, at the side it goes on out at - and the roads whose signs
+//came or went drawn again
 function putUpSigns(self) {
   var was = self._signs,
     now = {},
-    exits = self._city.roads.exits(),
-    at,
+    area = self._cityArea,
+    service = self.root.core.buildingService,
+    buildings = self._city.buildings.getBuildings(),
     tile,
-    i;
+    i,
+    s;
 
-  for (i = 0; i < exits.length; i++) {
-    at = crossing(self, exits[i]);
+  for (i = 0; i < buildings.length; i++) {
+    tile = buildings[i].tile;
 
-    if (at === null) continue;
+    if (area[tile] !== true || !isRoad(buildings[i])) continue;
 
-    now[at.tile] = now[at.tile] || [];
-    if (now[at.tile].indexOf(at.side) === -1) now[at.tile].push(at.side);
+    for (s = 0; s < 4; s++)
+      if (area[tile + STEP[s]] !== true && isRoad(service.get(tile + STEP[s])))
+        (now[tile] = now[tile] || []).push(s);
   }
 
   self._signs = now;

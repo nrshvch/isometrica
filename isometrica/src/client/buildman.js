@@ -1455,7 +1455,7 @@ Buildman.prototype.build = function (code, options) {
 
     //and the game told what is being put down where, for what it shows of
     //it (its play's placing: the city-sim the area it would take)
-    placing({ anchors: tiles, sizeX: sizeX(), sizeY: sizeY() });
+    placing({ code: code, anchors: tiles, sizeX: sizeX(), sizeY: sizeY() });
 
     //so that a tower in front of the selection does not hide it
     fadeAround(self, ts.tiles());

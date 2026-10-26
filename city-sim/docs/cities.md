@@ -46,7 +46,7 @@ there is, at $20 a head. The numbers are to be tuned.
 **Done.** There is no land to buy. The city's area says where the city is
 (`isometrica/src/core/city/cityroads.js`):
 
-1. Every building, and every tile of a road, has an area round it: what is
+1. Every building has an area round it: what is
    within two tiles of each of its tiles (`CityRoads.RADIUS`, `AREA`) -
    counted from the middle of one tile to the middle of the other and
    rounded, so along a row or a column two tiles out and one to either side of
@@ -56,9 +56,12 @@ there is, at $20 a head. The numbers are to be tuned.
    three tiles between them share the middle one and hang together; with four
    between, their areas only touch, and one of them stands apart
    (`CityRoads.REACH`).
-3. The city's area is all of it that hangs together. A road has an area as
-   any building has, so a road is the cheap way to reach out to a group of
-   buildings further off.
+3. The city's area is all of it that hangs together.
+4. A road has no area of its own: it has one only where it joins buildings
+   to each other, two at least - each tile of it then as a building's - so
+   a road is the cheap way to reach out to a group of buildings further off.
+   A road on its own in the middle of nowhere is not something standing
+   apart: it is just a road, abandoned.
 
 It holds together once it is finished - a house still going up, a road still
 being laid, not yet; its area is shown while it is being put down all the
@@ -74,12 +77,14 @@ What a building wants of the city:
   no tile between, of at least the material it asks for;
 - **water**, as before.
 
-**Done.** A road that leads nowhere is not part of the city: only the city's
-roads that join something to something hold anything together - their area
-sharing a tile with a building's at either end, or going on to a road whose
-does. A lane running off into the country past the last house is the city's
-as long as its area meets the house's - four tiles out - and no further; a
-lane whose area meets no building's is not the city's at all.
+**Done.** A road that leads nowhere is not part of the city: only roads that
+join buildings to each other hold anything together - from the area of one
+building to another's, two at least, the road's own area sharing a tile with
+a building's at either end, or going on to a road whose does (`prune`). A
+lane running off into the country past the last house is the city's as long
+as its area meets the house's - four tiles out - and no further; a lane off
+a house on its own, or whose area meets no building's, is not the city's at
+all.
 
 **Done.** The city-sim draws a border round the city's area, along the tiles'
 edges (`city-sim/src/client/cityborder.js`, `cityarea.js`) - none round what
@@ -87,11 +92,13 @@ stands apart from it. It is put away with the words over the world, but while
 something is being put down (`isometrica/src/client/buildman.js`, the play's
 `placing`). Then:
 
-- what is being put down has its area drawn: in the city's border, as the
-  border will be with it in it, if its area shares a tile with the city's;
-  in amber, on its own, if it does not;
-- whatever stands apart from the city has its area drawn faintly - and taken
-  in with what is being put down, if that would join it up.
+- the border is drawn as it would be with what is being put down - worked
+  out the way the city is, as if it were up and finished (`CityRoads#plan`):
+  a house with it in it, if it joins the city; a road out into nowhere
+  adding nothing; a road out to a village standing apart taking it in;
+- what would stand apart from the city with what is put down has its area
+  drawn in amber;
+- whatever else stands apart from the city has its area drawn faintly.
 
 And something that stands apart, tapped, has the area of all that hangs
 together with it drawn in amber while it is looked at
@@ -100,12 +107,11 @@ together with it drawn in amber while it is looked at
 The border is drawn whenever any of it is on screen, wherever the middle of
 the city is.
 
-**Done.** Where a road leaves the city, leading nowhere (`CityRoads#exits`),
-the signs of the town's limits stand by it where it crosses the border: on
-the last of the road inside the city's area, at the side it goes on out at -
-walked out along the road, round its bends, from the last of the city's
-(`crossing` in `city-sim/src/client/cityborder.js`). A road that ends inside
-has none. They are small, each on a post on the verge, the size of a bus
+**Done.** Wherever a road crosses the border, out of the city's area, the
+signs of the town's limits stand by it: on the last of the road inside the
+city's area, at the side it goes on out at (`putUpSigns` in
+`city-sim/src/client/cityborder.js`). A road that ends inside has none. They
+are small, each on a post on the verge, the size of a bus
 stop's sign, with no words on them, the way the road signs of a town's
 limits have it: the way in on the right of whoever comes in - the traffic
 keeps to the right - the town's houses on a white plate facing them; the
