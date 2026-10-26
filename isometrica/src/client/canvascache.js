@@ -34,6 +34,15 @@
 //A page is cut into shelves, rows of one height across the page, and a shelf
 //into slots along it. Everything about them is kept in typed arrays, indexed
 //by shelf and by slot, so that nothing is allocated on the way to a frame.
+import engine from "engine";
+
+var Stats = engine.Stats;
+
+//for a debug panel (engine Stats): how long painting and handing over took,
+//how many were painted, and how many put away for others to take their place
+var PAINT = Stats.section("sprites: paint"),
+  PAINTED = Stats.counter("sprites painted"),
+  EVICTED = Stats.counter("sprites evicted");
 
 //of a frame that took long anyway, as much as this share of it may go on
 //painting
@@ -270,6 +279,8 @@ function place(self, entry, slot, frame) {
   if (self.upload !== null) self.upload(page, x, y, w, h, pixels);
   self.painted++;
   self.spent += performance.now() - started;
+  Stats.add(PAINT, performance.now() - started);
+  Stats.count(PAINTED, 1);
 
   self.slotState[slot] = TAKEN;
   self.slotDirty[slot] = 1;
@@ -461,6 +472,7 @@ function free(self, slot) {
   if (owner) {
     owner.slot = -1;
     self.evicted++;
+    Stats.count(EVICTED, 1);
   }
 
   self.changes++;

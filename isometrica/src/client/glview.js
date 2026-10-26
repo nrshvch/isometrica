@@ -1,4 +1,21 @@
+import engine from "engine";
 import GLCanvas from "./glcanvas";
+
+var Stats = engine.Stats;
+
+//for a debug panel (engine Stats): the draw calls made, the squares of
+//pictures and the lamps drawn, the pixels read back off the GPU - each a
+//wait for it - and, where the browser can time the GPU, how long it took
+//over the lit city, its light, and what is drawn over it
+var DRAWS = Stats.counter("draw calls"),
+  SQUARES = Stats.counter("sprites batched"),
+  LAMPS = Stats.counter("lamps"),
+  READS = Stats.counter("pixels read back"),
+  GPU = [
+    Stats.counter("gpu: city ms", true),
+    Stats.counter("gpu: light ms", true),
+    Stats.counter("gpu: over ms", true),
+  ];
 
 /**
  * The city drawn in WebGL, and lit pixel by pixel as it is (client/lighting).
@@ -927,6 +944,79 @@ function GLView(pageSize, maxPages) {
 
   //what is drawn over the city as lines, shapes and words
   this.overlay = new GLCanvas(this);
+
+  //what the GPU takes is timed with, where the browser has it (gpuPhase):
+  //the queries waiting to come back, with the phase each timed, and the ones
+  //come back, to be used again
+  this.timer = this.gl.getExtension("EXT_disjoint_timer_query_webgl2");
+  this.phase = -1;
+  this.pending = [];
+  this.pendingPhase = [];
+  this.spareQueries = [];
+}
+
+//whether what is drawn as lines, shapes and words is drawn at all - for a
+//debug panel to see what the GPU takes for it
+GLView.prototype.overlayShown = true;
+
+/**
+ * Times what the GPU does from here on as phase (GPU) - 0 the lit city, 1
+ * its light, 2 what goes over it - or stops timing, with -1; and takes in
+ * what earlier frames' timings have come back. Only while a debug panel asks
+ * (engine Stats), and where the browser can.
+ */
+GLView.prototype.gpuPhase = function (phase) {
+  var gl = this.gl,
+    timer = this.timer,
+    q;
+
+  if (timer === null) return;
+
+  if (this.phase >= 0) gl.endQuery(timer.TIME_ELAPSED_EXT);
+  this.phase = -1;
+
+  if (!Stats.enabled()) return;
+
+  if (phase < 0) {
+    gpuResults(this);
+    return;
+  }
+
+  q = this.spareQueries.length > 0 ? this.spareQueries.pop() : gl.createQuery();
+  gl.beginQuery(timer.TIME_ELAPSED_EXT, q);
+  this.pending.push(q);
+  this.pendingPhase.push(phase);
+  this.phase = phase;
+};
+
+//the timings come back, in the order they were asked for - a few frames
+//later; none of them when the GPU was interrupted meanwhile
+function gpuResults(self) {
+  var gl = self.gl,
+    timer = self.timer,
+    done = 0,
+    disjoint = gl.getParameter(timer.GPU_DISJOINT_EXT),
+    q;
+
+  while (done < self.pending.length) {
+    q = self.pending[done];
+
+    if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) break;
+
+    if (!disjoint)
+      Stats.gauge(
+        GPU[self.pendingPhase[done]],
+        gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6,
+      );
+
+    self.spareQueries.push(q);
+    done++;
+  }
+
+  if (done > 0) {
+    self.pending.splice(0, done);
+    self.pendingPhase.splice(0, done);
+  }
 }
 
 GLView.prototype.setup = function () {
@@ -1221,6 +1311,7 @@ GLView.prototype.alphaAt = function (page, x, y) {
     page,
   );
   gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+  Stats.count(READS, 1);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
 
   return out[3];
@@ -1297,6 +1388,7 @@ GLView.prototype.readHeights = function () {
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.first);
   gl.readBuffer(gl.COLOR_ATTACHMENT0 + HEIGHT);
   gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  Stats.count(READS, 1);
   gl.readBuffer(gl.COLOR_ATTACHMENT0);
   gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
 
@@ -1415,6 +1507,7 @@ GLView.prototype.flush = function (lit, flat, sight) {
   this.count = 0;
 
   if (n > 0) {
+    Stats.count(SQUARES, n);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.spriteBuffer);
     gl.bufferData(
       gl.ARRAY_BUFFER,
@@ -1444,7 +1537,8 @@ GLView.prototype.flush = function (lit, flat, sight) {
   if (lit && sight && sight.count > 0) this.xray(sight);
 
   //(and of a city drawn bare, only the grid over its ground)
-  if (this.overlay.any() && (!this.bare || lit))
+  if (!this.overlayShown) this.overlay.discard();
+  else if (this.overlay.any() && (!this.bare || lit))
     this.overlay.draw(lit ? this.first : null, lit, this.bare);
   //every layer starts drawing as a canvas of its own would
   this.overlay.reset();
@@ -1480,6 +1574,7 @@ GLView.prototype.xray = function (sight) {
   gl.depthMask(false);
   gl.bindVertexArray(this.xrayVao);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, sight.count);
+  Stats.count(DRAWS, 1);
   gl.bindVertexArray(null);
   gl.disable(gl.DEPTH_TEST);
 };
@@ -1510,6 +1605,7 @@ GLView.prototype.stamp = function (n) {
   gl.blendFunc(gl.ONE, gl.ONE);
   gl.bindVertexArray(this.stampVao);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+  Stats.count(DRAWS, 1);
   gl.bindVertexArray(null);
   gl.blendEquation(gl.FUNC_ADD);
   gl.blendFuncSeparate(
@@ -1548,6 +1644,7 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
   }
 
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, n);
+  Stats.count(DRAWS, 1);
   gl.disable(gl.DEPTH_TEST);
 };
 
@@ -1593,6 +1690,8 @@ GLView.prototype.light = function (lamps, sky, origin) {
       gl.blendFunc(gl.ONE, gl.ONE);
       gl.bindVertexArray(this.lampVao);
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, lamps.length);
+      Stats.count(DRAWS, 1);
+      Stats.count(LAMPS, lamps.length);
       gl.disable(gl.BLEND);
     }
 
@@ -1625,6 +1724,7 @@ GLView.prototype.light = function (lamps, sky, origin) {
   weather(gl, p, sky.weather || NO_WEATHER, h);
   gl.bindVertexArray(this.fullVao);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
+  Stats.count(DRAWS, 1);
 
   gl.enable(gl.BLEND);
   gl.blendFuncSeparate(

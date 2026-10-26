@@ -15,6 +15,17 @@
  * there for as long as they are written the same.
  */
 
+import engine from "engine";
+
+var Stats = engine.Stats;
+
+//for a debug panel (engine Stats): the draw calls made - counted with the
+//rest of the frame's (client/glview) - and the shapes, lines and words drawn,
+//and their corners
+var DRAWS = Stats.counter("draw calls"),
+  OPS = Stats.counter("overlay ops"),
+  CORNERS = Stats.counter("overlay corners");
+
 //a corner of a shape to the shader: where it is on the screen, and its
 //colour (red, green, blue, how much of it)
 var SHAPE_FLOATS = 6;
@@ -670,6 +681,12 @@ p.any = function () {
   return this.ops.length > 0;
 };
 
+//what was drawn this layer, let go of undrawn (client/glview overlayShown)
+p.discard = function () {
+  this.ops.length = 0;
+  this.used = 0;
+};
+
 /**
  * Draws what was drawn this layer into frame - the pictures of the lit city
  * (lit), or the screen - over what is there, and starts over. Of a city
@@ -687,6 +704,7 @@ p.draw = function (frame, lit, bare) {
 
   if (ops.length === 0) return;
 
+  Stats.count(OPS, ops.length);
   gl.bindFramebuffer(gl.FRAMEBUFFER, frame);
   if (lit)
     gl.drawBuffers([
@@ -727,6 +745,8 @@ p.draw = function (frame, lit, bare) {
       gl.stencilFunc(gl.ALWAYS, 0, 0xff);
       gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
       gl.drawArrays(gl.TRIANGLES, first, n);
+      Stats.count(DRAWS, 1);
+      Stats.count(CORNERS, n);
       continue;
     }
 
@@ -770,6 +790,8 @@ p.draw = function (frame, lit, bare) {
       gl.stencilFunc(gl.ALWAYS, 0, 0xff);
       gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
       gl.drawArrays(gl.TRIANGLES, first, n);
+      Stats.count(DRAWS, 1);
+      Stats.count(CORNERS, n);
       continue;
     } else if (op.kind === "count") {
       //how many times its outline goes round each pixel, one way or the
@@ -787,6 +809,8 @@ p.draw = function (frame, lit, bare) {
     }
 
     gl.drawArrays(op.kind === "hair" ? gl.LINES : gl.TRIANGLES, first, n);
+    Stats.count(DRAWS, 1);
+    Stats.count(CORNERS, n);
     if (op.kind === "count") gl.colorMask(true, true, true, true);
   }
 

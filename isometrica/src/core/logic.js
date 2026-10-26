@@ -117,9 +117,21 @@ Logic.prototype.resume = function () {
   }
 
   this.ticking = setInterval(function () {
+    var started = self.timed !== null ? performance.now() : 0;
+
     Events.fire(self, events.tick, self, null);
+
+    if (self.timed !== null) self.timed(performance.now() - started, false);
   }, Config.tickDelay);
 };
+
+/**
+ * Told how long every tick took, ms - and whether it was the ticks made up
+ * for at once (#catchUp) - for a debug panel to show; or null.
+ *
+ * @type {function(number, boolean)|null}
+ */
+Logic.prototype.timed = null;
 
 /**
  * Makes up for real time the world was away - the game closed, the page out
@@ -139,11 +151,15 @@ Logic.prototype.catchUp = function (ms) {
 
   this.catchingUp = true;
 
+  var started = this.timed !== null ? performance.now() : 0;
+
   try {
     for (i = 0; i < ticks; i++) Events.fire(this, events.tick, this, null);
   } finally {
     this.catchingUp = false;
   }
+
+  if (this.timed !== null) this.timed(performance.now() - started, true);
 
   return ticks;
 };

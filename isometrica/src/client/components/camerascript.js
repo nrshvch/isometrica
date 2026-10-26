@@ -134,6 +134,11 @@ CameraScript.prototype = Object.create(engine.Component.prototype);
 CameraScript.prototype.events = events;
 CameraScript.prototype.constructor = CameraScript;
 
+//for a debug panel (engine Stats): what telling what is under the pointer
+//takes - a pick runs now and then, not every frame - and how many there are
+var PICK = engine.Stats.section("pick"),
+  PICKS = engine.Stats.counter("picks");
+
 var tmpctx = document.createElement("canvas").getContext("2d"),
   vec3Buffer1 = new Float32Array(3),
   vec3Buffer2 = new Float32Array(3),
@@ -490,11 +495,22 @@ CameraScript.prototype.zoom = function (zoom, x, y) {
 };
 
 CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
+  engine.Stats.begin(PICK);
+  engine.Stats.count(PICKS, 1);
+
+  var result = pick(this, x, y, resultArray);
+
+  engine.Stats.end(PICK);
+
+  return result;
+};
+
+function pick(self, x, y, resultArray) {
   var vec3 = glMatrix.vec3,
-    gameObjects = this.gameObject.world.retrieve(this.gameObject),
+    gameObjects = self.gameObject.world.retrieve(self.gameObject),
     len = gameObjects.length,
     gameObject,
-    camera = this.gameObject.camera,
+    camera = self.gameObject.camera,
     wTs = camera.getWorldToScreen(),
     wTv = camera.getWorldToViewport(),
     sprite,
@@ -555,6 +571,6 @@ CameraScript.prototype.pickGameObject = function (x, y, resultArray) {
     }
   }
   return result;
-};
+}
 
 export default CameraScript;

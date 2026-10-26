@@ -26,6 +26,16 @@ import Lighting from "./lighting";
 import Soundman from "./audio/soundman";
 import View from "./view";
 
+//how long the world's ticks take (core/logic timed), for a debug panel
+//(engine Stats): a tick of the clock, or the ticks made up for at once when
+//the game comes back to it
+var CITY_TICK = engine.Stats.section("city tick"),
+  CATCH_UP = engine.Stats.section("city catch-up");
+
+function timedTick(took, catchingUp) {
+  engine.Stats.add(catchingUp ? CATCH_UP : CITY_TICK, took);
+}
+
 /**
  * @param core {Logic} the world (core/logic)
  * @param ui {UIManager}
@@ -53,11 +63,17 @@ function Vkaria(core, ui, play) {
   //start game logic
   this.core = core; //new Core.CoreInterface();   //rename to core
   this.ui = ui;
+  //and how long the world's ticks take, for a debug panel (engine Stats)
+  core.timed = timedTick;
 
   //TODO there should be renderer layers and logical layers, and tags too
   //configure layers (render layers)
   vkaria.layers = RenderLayer;
   engine.Config.layersCount = Object.keys(RenderLayer).length;
+  //by name, for a debug panel (engine Stats)
+  engine.Config.layerNames = Object.keys(RenderLayer).map(function (name) {
+    return name.replace(/Layer$/, "");
+  });
   engine.Config.noLayerDepthSortingMask = 3;
   engine.Config.noLayerClearMask = 0;
 

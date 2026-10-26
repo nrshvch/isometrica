@@ -13,6 +13,7 @@ function EvaporatingTextScript(text, color) {
 }
 
 EvaporatingTextScript.prototype = Object.create(engine.Component.prototype);
+EvaporatingTextScript.prototype.profileName = "floating words";
 
 EvaporatingTextScript.prototype.ttl = 1800;
 //world units per second, same order of magnitude as the smoke particles

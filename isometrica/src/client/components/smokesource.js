@@ -64,6 +64,7 @@ function lit(hour) {
 }
 
 SmokeSourceScript.prototype = Object.create(engine.Component.prototype);
+SmokeSourceScript.prototype.profileName = "chimneys";
 
 SmokeSourceScript.prototype.start = function () {
   this.next = this.gameObject.world.logic.time.now + Math.random() * PUFF_EVERY;

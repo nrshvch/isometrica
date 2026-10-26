@@ -70,6 +70,7 @@ function RoadworksScript(man) {
 }
 
 RoadworksScript.prototype = Object.create(engine.Component.prototype);
+RoadworksScript.prototype.profileName = "roadworks";
 
 RoadworksScript.prototype.tick = function (time) {
   var man = this.man;

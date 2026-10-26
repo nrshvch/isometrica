@@ -406,6 +406,7 @@ function CarScript(man) {
 }
 
 CarScript.prototype = Object.create(engine.Component.prototype);
+CarScript.prototype.profileName = "cars";
 
 CarScript.prototype.man = null;
 //how it drives the roads, among everything else on them (client/traffic)
@@ -1677,6 +1678,7 @@ function CarManScript(man) {
 }
 
 CarManScript.prototype = Object.create(engine.Component.prototype);
+CarManScript.prototype.profileName = "traffic";
 
 CarManScript.prototype.elapsed = 0;
 
@@ -1684,14 +1686,22 @@ CarManScript.prototype.clock = 0;
 
 CarManScript.prototype.saved = 0;
 
+//for a debug panel (engine Stats): how many cars there are, and what keeping
+//the traffic takes (Carman#save)
+var CARS = engine.Stats.counter("cars", true),
+  SAVE = engine.Stats.section("traffic save");
+
 CarManScript.prototype.tick = function (time) {
+  engine.Stats.gauge(CARS, this.man.cars.length);
   this.elapsed += time.dt;
   this.clock += time.dt;
   this.saved += time.dt;
 
   if (this.saved >= SAVE_EVERY) {
     this.saved = 0;
+    engine.Stats.begin(SAVE);
     this.man.save();
+    engine.Stats.end(SAVE);
   }
 
   //where everything is, for everything to look at as it drives

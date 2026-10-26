@@ -1027,6 +1027,7 @@ function SoundScript(man) {
 }
 
 SoundScript.prototype = Object.create(engine.Component.prototype);
+SoundScript.prototype.profileName = "sound";
 
 SoundScript.prototype.tick = function () {
   this.man.frame();

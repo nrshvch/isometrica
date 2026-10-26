@@ -43,6 +43,12 @@ import GLView from "./glview";
 import Weather from "./weather";
 import Wind from "./wind";
 
+var Stats = engine.Stats;
+
+//for a debug panel (engine Stats): what getting the world ready to be seen
+//from its other sides takes, in what time a frame leaves (client/preloader)
+var PRELOAD = Stats.section("render: preload");
+
 //the hour the city is drawn at now, worked out once a frame (see begin)
 var hourNow = 12;
 
@@ -218,6 +224,11 @@ function Lighting(root, cache) {
   //the while (setDayNight) - and who is told when it changes
   this.dayNight = dayNightWanted();
   this.dayNightListeners = [];
+
+  //what of the light is drawn at all - all of it but in a debug panel, to
+  //see what the GPU takes for each: the shadows, the lamps, and the lines,
+  //shapes and words drawn over the city
+  this.passes = { shadows: true, lamps: true, overlay: true };
 }
 
 /**
@@ -327,13 +338,15 @@ Lighting.prototype.begin = function (viewport, M) {
   this.view.bare = this.calm;
   //for the dither of what is drawn see-through to stay put with the lamps'
   this.view.origin = [Math.round(M[12]), Math.round(M[13])];
+  this.view.overlayShown = this.passes.overlay;
   this.view.begin(
     viewport.width,
     viewport.height,
     this.night,
-    !this.plain && this.sky.step !== null,
+    !this.plain && this.sky.step !== null && this.passes.shadows,
     SHADOW_MARGIN,
   );
+  this.view.gpuPhase(0);
 };
 
 //the layer drawn next: lit, flat ground
@@ -596,19 +609,29 @@ Lighting.prototype.light = function () {
     if (!this.calm) headlights(this.lamps, M, w, h, this.root.carman);
   }
 
+  if (!this.passes.lamps) this.lamps.length = 0;
+
+  this.view.gpuPhase(1);
   this.view.light(this.lamps, this.sky, [Math.round(M[12]), Math.round(M[13])]);
+  this.view.gpuPhase(2);
 };
 
 //the frame is on the screen already: the canvas it is drawn on is the one
 //shown (engine Viewport) - and whoever waits on it told (onFrame)
 Lighting.prototype.end = function () {
+  this.view.gpuPhase(-1);
+
   if (this.onFrame !== null) this.onFrame();
 
   //and in what time is left, the world got ready to be seen from the other
   //sides (client/preloader)
   var preloader = this.root.sprites && this.root.sprites.preloader;
 
-  if (preloader) preloader.step(this.root);
+  if (preloader) {
+    Stats.begin(PRELOAD);
+    preloader.step(this.root);
+    Stats.end(PRELOAD);
+  }
 };
 
 //called once a frame has been drawn, while it is still there to be copied

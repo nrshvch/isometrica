@@ -13,6 +13,7 @@ function SmokeScript() {
 }
 
 SmokeScript.prototype = Object.create(engine.Component.prototype);
+SmokeScript.prototype.profileName = "smoke";
 
 //the pictures a puff grows through, one after another, by what it is
 function frames(kind) {
