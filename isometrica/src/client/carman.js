@@ -378,22 +378,28 @@ function groundHeight(root, x, y) {
     y0 = Math.floor(gy),
     fx = gx - x0,
     fy = gy - y0,
-    a = terrain.getGridPointHeight(x0, y0),
-    b = terrain.getGridPointHeight(x0 + 1, y0),
-    c = terrain.getGridPointHeight(x0, y0 + 1),
-    d = terrain.getGridPointHeight(x0 + 1, y0 + 1),
-    tile = Terrain.convertToIndex(x0, y0);
-
-  //on a road, its own surface - on its concrete, if it is on any
-  var road = root.roadman.anyRoad(tile);
+    tile = Terrain.convertToIndex(x0, y0),
+    //on a road, its own surface - on its concrete, if it is on any; and only
+    //off one, which a car hardly ever is, the ground's: every corner of it
+    //worked out afresh, from the noise the land is made of
+    road = root.roadman.anyRoad(tile),
+    surface,
+    a,
+    b,
+    c,
+    d;
 
   if (road !== null) {
-    var surface = road.surface();
-
+    surface = road.surface();
     a = surface[0];
     b = surface[1];
     c = surface[2];
     d = surface[3];
+  } else {
+    a = terrain.getGridPointHeight(x0, y0);
+    b = terrain.getGridPointHeight(x0 + 1, y0);
+    c = terrain.getGridPointHeight(x0, y0 + 1);
+    d = terrain.getGridPointHeight(x0 + 1, y0 + 1);
   }
 
   return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
