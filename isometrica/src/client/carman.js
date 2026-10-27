@@ -1697,6 +1697,28 @@ CarManScript.prototype.saved = 0;
 var CARS = engine.Stats.counter("cars", true),
   SAVE = engine.Stats.section("traffic save");
 
+/**
+ * Keeps the traffic once the page has a moment to spare - not in the
+ * middle of a frame, which every car's way put into words and written out
+ * would hold up - and within a second of being asked, whatever.
+ */
+function saveSoon(man) {
+  if (man.saving) return;
+
+  man.saving = true;
+
+  function save() {
+    man.saving = false;
+    engine.Stats.begin(SAVE);
+    man.save();
+    engine.Stats.end(SAVE);
+  }
+
+  if (typeof requestIdleCallback === "function")
+    requestIdleCallback(save, { timeout: 1000 });
+  else setTimeout(save, 0);
+}
+
 CarManScript.prototype.tick = function (time) {
   engine.Stats.gauge(CARS, this.man.cars.length);
   this.elapsed += time.dt;
@@ -1705,9 +1727,7 @@ CarManScript.prototype.tick = function (time) {
 
   if (this.saved >= SAVE_EVERY) {
     this.saved = 0;
-    engine.Stats.begin(SAVE);
-    this.man.save();
-    engine.Stats.end(SAVE);
+    saveSoon(this.man);
   }
 
   //where everything is, for everything to look at as it drives
@@ -1743,6 +1763,8 @@ function Carman(root) {
   //everything on the roads, these and whatever else drives them
   //(client/traffic)
   this.traffic = new Traffic(root.roadman);
+  //whether keeping the traffic waits for a moment to spare (saveSoon)
+  this.saving = false;
   //the bus stops loaded, as last found
   this._stops = null;
   this._stopsAt = 0;
