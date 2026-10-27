@@ -39,12 +39,10 @@ function money(amount) {
   return "$" + Numeral(amount).format("0,0");
 }
 
-//what the HUD shows, as it reads now
-function read(client) {
-  var lighting = client.lighting,
-    weather = lighting && lighting.weather,
-    city = client.player.city(),
-    camera = client.camera && client.camera.camera,
+//what the HUD shows of the view alone - from above or not, and the zoom:
+//all that the camera moving changes of it
+function view(client) {
+  var camera = client.camera && client.camera.camera,
     turner = client.cameraControl && client.cameraControl.turner,
     //while the world turns, the zoom it turns at - the camera is zoomed out
     //meanwhile for pictures of it (isometrica client/turner) - as its step,
@@ -53,7 +51,20 @@ function read(client) {
       ? turner && turner.active
         ? turner.zoom
         : camera.zoom
-      : null,
+      : null;
+
+  return {
+    top: WorldView.top(),
+    zoom: zoom === null ? "" : CameraControl.zoomStep(zoom) + "x",
+  };
+}
+
+//what the HUD shows, as it reads now
+function read(client) {
+  var lighting = client.lighting,
+    weather = lighting && lighting.weather,
+    city = client.player.city(),
+    seen = view(client),
     funds = city ? city.resources.getResources()[ResourceCode.money] || 0 : 0,
     net = city ? Math.round(city.getBudget().net) : 0;
 
@@ -78,8 +89,8 @@ function read(client) {
     sounds: !!(client.sound && client.sound.wants.sounds),
     grid: !!(client.terrain && client.terrain.gridOn),
     dayNight: !!(lighting && lighting.dayNight),
-    top: WorldView.top(),
-    zoom: zoom === null ? "" : CameraControl.zoomStep(zoom) + "x",
+    top: seen.top,
+    zoom: seen.zoom,
   };
 }
 
@@ -92,7 +103,10 @@ function same(a, b) {
 /**
  * What the HUD shows, read again whenever any of it may have changed: the
  * clock going on, the city changing, the sounds or the day and the night
- * switched, the view, the camera moving or zooming.
+ * switched, the view - and of the camera moving or zooming, the view alone,
+ * which is all it changes: not the city's money and budget, gone through
+ * building by building, on every move of a pan. Read at most once a frame,
+ * however often it is asked - a day made up for at once is a read, not 576.
  */
 function useWorld(client, hasCity) {
   var [now, setNow] = useState(function () {
@@ -106,19 +120,43 @@ function useWorld(client, hasCity) {
         city = client.player.city(),
         camera = client.camera && client.camera.camera,
         viewport = camera && camera.viewport,
-        tokens = [];
+        tokens = [],
+        //the frame it is read again in, if it is to be, and whether all of
+        //it is, or the view alone
+        asked = 0,
+        all = false;
 
-      function update() {
+      function ask(whole) {
         if (!live) return;
 
-        var started = performance.now(),
-          fresh = read(client);
+        all = all || whole;
+        if (asked !== 0) return;
 
-        engine.Stats.add(READ, performance.now() - started);
+        asked = requestAnimationFrame(function () {
+          asked = 0;
+          if (!live) return;
 
-        setNow(function (was) {
-          return same(was, fresh) ? was : fresh;
+          var whole = all,
+            started = performance.now(),
+            fresh = whole ? read(client) : view(client);
+
+          all = false;
+          engine.Stats.add(READ, performance.now() - started);
+
+          setNow(function (was) {
+            var next = whole ? fresh : Object.assign({}, was, fresh);
+
+            return same(was, next) ? was : next;
+          });
         });
+      }
+
+      function update() {
+        ask(true);
+      }
+
+      function moved() {
+        ask(false);
       }
 
       var ticked = Events.on(time, time.constructor.events.advance, update),
@@ -130,24 +168,25 @@ function useWorld(client, hasCity) {
       if (client.sound) client.sound.onChange(update);
       if (client.lighting) client.lighting.onDayNight(update);
       if (client.terrain) client.terrain.onGrid(update);
-      if (camera) camera.addEventListener(camera.events.update, update);
+      if (camera) camera.addEventListener(camera.events.update, moved);
       //and zoomed, which draws the world at another size (engine
       //CameraComponent setZoom)
       var resized = viewport
-        ? Events.on(viewport, viewport.events.resize, update)
+        ? Events.on(viewport, viewport.events.resize, moved)
         : null;
 
       update();
 
       return function () {
         live = false;
+        if (asked !== 0) cancelAnimationFrame(asked);
         Events.off(time, time.constructor.events.advance, ticked);
         Events.off(WorldView, WorldView.events.change, viewed);
         if (city) {
           city.rename().off(tokens[0]);
           city.update().off(tokens[1]);
         }
-        if (camera) camera.removeEventListener(camera.events.update, update);
+        if (camera) camera.removeEventListener(camera.events.update, moved);
         if (resized !== null)
           Events.off(viewport, viewport.events.resize, resized);
       };
