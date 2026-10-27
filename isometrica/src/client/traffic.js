@@ -1198,8 +1198,11 @@ Driver.prototype.aim = function () {
 };
 
 //the pieces of its way ahead of it, as far as far: [ax, ay, bx, by, from,
-//length, index of b] each - kept from one call to the next
-var SEG = [];
+//length, index of b] each - kept from one call to the next, each piece
+//too (SEG_KEPT): filled in again, not made again, three or four times a car
+//a frame. Whoever reads them reads them there and then, never keeps one
+var SEG = [],
+  SEG_KEPT = [];
 
 function ahead(self, far) {
   var wps = self.wps,
@@ -1209,14 +1212,24 @@ function ahead(self, far) {
     ay = self.y,
     i,
     b,
-    l;
+    l,
+    s;
 
   for (i = self.target; i < wps.length && at <= far; i++) {
     b = wps[i];
     l = Math.sqrt((b.x - ax) * (b.x - ax) + (b.y - ay) * (b.y - ay));
 
     if (l > 1e-6) {
-      SEG[n++] = [ax, ay, b.x, b.y, at, l, i];
+      s = SEG_KEPT[n];
+      if (s === undefined) s = SEG_KEPT[n] = [0, 0, 0, 0, 0, 0, 0];
+      s[0] = ax;
+      s[1] = ay;
+      s[2] = b.x;
+      s[3] = b.y;
+      s[4] = at;
+      s[5] = l;
+      s[6] = i;
+      SEG[n++] = s;
       at += l;
     }
 
