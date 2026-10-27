@@ -197,11 +197,14 @@ function Lighting(root, cache) {
   cache.upload = this.view.upload.bind(this.view);
   //?light=0: the city as it is painted, lit by the one sun of old
   this.plain = /[?&]light=0/.test(location.search);
-  this.lamps = [];
   //the tops of the tall buildings in the layer being drawn, for their
   //warning lights (beacons): by the building
   this.tops = new Map();
   this.M = null;
+  //where the world's origin is on the screen, as the frame begins and as it
+  //is lit (begin, light)
+  this.view.origin = [0, 0];
+  this.origin = [0, 0];
   this.lit = false;
   this.flat = false;
 
@@ -333,10 +336,11 @@ Lighting.prototype.begin = function (viewport, M) {
   if (!this.plain) weatherSky(this, this.sky, this.weather, viewport);
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
-  this.lamps.length = 0;
+  this.view.lampCount = 0;
   this.view.bare = this.calm;
   //for the dither of what is drawn see-through to stay put with the lamps'
-  this.view.origin = [Math.round(M[12]), Math.round(M[13])];
+  this.view.origin[0] = Math.round(M[12]);
+  this.view.origin[1] = Math.round(M[13]);
   this.view.overlayShown = this.passes.overlay;
   this.view.begin(
     viewport.width,
@@ -465,7 +469,7 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
 
   //what shines of a building at night lights what is round it
   if (this.lit && this.night && renderer.windows !== undefined)
-    windowLights(this.lamps, renderer, sprite, x0, y0);
+    windowLights(this.view, renderer, sprite, x0, y0);
 };
 
 //a square of what is kept in sight, its floats from d at from, among the
@@ -567,18 +571,24 @@ function beacons(self, ctx, tops) {
     ctx.fillRect(Math.floor(p[0]), Math.floor(p[1]) - 2, 2, 2);
 
     if (self.night)
-      self.lamps.push({
-        x: p[0],
-        y: p[1] + p[2],
-        z: p[2] + 1,
-        reach: BEACON_REACH,
-        color: BEACON_LIGHT,
-        peak: BEACON_PEAK,
-        aim: null,
-        cone: -1,
-        tall: TALL,
-        wrap: 0.6,
-      });
+      self.view.lamp(
+        p[0],
+        p[1] + p[2],
+        p[2] + 1,
+        BEACON_REACH,
+        BEACON_LIGHT[0],
+        BEACON_LIGHT[1],
+        BEACON_LIGHT[2],
+        BEACON_PEAK,
+        0,
+        0,
+        -1,
+        TALL,
+        0.6,
+        1,
+        0,
+        0,
+      );
   });
 
   ctx.restore();
@@ -596,23 +606,24 @@ Lighting.prototype.elevation = function (gameObject) {
 //the lit layers in: lit, by the sun and at night by the lamps
 Lighting.prototype.light = function () {
   var M = this.M,
-    w = this.view.width,
-    h = this.view.height;
+    view = this.view,
+    w = view.width,
+    h = view.height;
 
   //at any hour: the street lights and the cars' headlights are only on
   //after dark, but a police car's lights, indicators, brake lights and
   //beacons shine by day too (client/glview, lost in the sun mostly)
   if (!this.plain) {
-    streetLights(this.lamps, M, w, h);
+    streetLights(view, M, w, h);
     //(and no cars drawn bare, client/carman VehicleRenderer)
-    if (!this.calm) headlights(this.lamps, M, w, h, this.root.carman);
+    if (!this.calm) headlights(view, M, w, h, this.root.carman);
   }
 
-  if (!this.passes.lamps) this.lamps.length = 0;
-
-  this.view.gpuPhase(1);
-  this.view.light(this.lamps, this.sky, [Math.round(M[12]), Math.round(M[13])]);
-  this.view.gpuPhase(2);
+  this.origin[0] = Math.round(M[12]);
+  this.origin[1] = Math.round(M[13]);
+  view.gpuPhase(1);
+  view.light(this.passes.lamps ? view.lampCount : 0, this.sky, this.origin);
+  view.gpuPhase(2);
 };
 
 //the frame is on the screen already: the canvas it is drawn on is the one
@@ -679,7 +690,7 @@ function seen(x, y, reach, w, h) {
  * Every street light on the screen while they are on: its lamp over the
  * spot under it, shining down in a cone and a little round it below.
  */
-function streetLights(out, M, w, h) {
+function streetLights(view, M, w, h) {
   for (var key in streets) {
     var lamp = streets[key];
 
@@ -693,19 +704,24 @@ function streetLights(out, M, w, h) {
     screen(M, at[0] + lamp.x, at[1], at[2] + lamp.z, spot);
     if (!seen(spot[0], spot[1], LAMP_REACH, w, h)) continue;
 
-    out.push({
-      x: spot[0],
-      y: spot[1],
-      z: LAMP_HIGH,
-      reach: LAMP_REACH,
-      color: LAMP_LIGHT,
-      peak: LAMP_PEAK,
-      aim: null,
-      cone: -1,
-      tall: TALL,
-      down: LAMP_DOWN,
-      spill: LAMP_SPILL,
-    });
+    view.lamp(
+      spot[0],
+      spot[1],
+      LAMP_HIGH,
+      LAMP_REACH,
+      LAMP_LIGHT[0],
+      LAMP_LIGHT[1],
+      LAMP_LIGHT[2],
+      LAMP_PEAK,
+      0,
+      0,
+      -1,
+      TALL,
+      GLView.WRAP,
+      1,
+      LAMP_DOWN,
+      LAMP_SPILL,
+    );
   }
 }
 
@@ -715,7 +731,7 @@ function streetLights(out, M, w, h) {
  * nightLights): each where it shines from, as bright as how much of it is
  * lit.
  */
-function windowLights(out, renderer, sprite, x0, y0) {
+function windowLights(view, renderer, sprite, x0, y0) {
   var on = Lighting.shines(renderer),
     lights = on > 0 && sprite.nightLights ? sprite.nightLights() : null;
 
@@ -732,35 +748,47 @@ function windowLights(out, renderer, sprite, x0, y0) {
     //a lamp of its own - a park's, a court's floodlight - lights the ground
     //round it the way a street light does, not as a window does
     if (isLamp(l.color)) {
-      out.push({
-        x: x0 + l.x,
-        y: y0 + l.y + (View.top() ? 0 : l.z),
-        z: l.z,
-        reach: OWN_LAMP_REACH,
-        color: l.color,
-        peak: OWN_LAMP_PEAK,
-        aim: null,
-        cone: -1,
-        tall: TALL,
-      });
+      view.lamp(
+        x0 + l.x,
+        y0 + l.y + (View.top() ? 0 : l.z),
+        l.z,
+        OWN_LAMP_REACH,
+        l.color[0],
+        l.color[1],
+        l.color[2],
+        OWN_LAMP_PEAK,
+        0,
+        0,
+        -1,
+        TALL,
+        GLView.WRAP,
+        1,
+        0,
+        0,
+      );
       continue;
     }
 
-    out.push({
-      x: x0 + l.x,
+    view.lamp(
+      x0 + l.x,
       //the spot under it, on the ground
-      y: y0 + l.y + (View.top() ? 0 : l.z),
-      z: l.z,
-      reach: WINDOW_REACH,
-      color: l.color,
-      peak: WINDOW_PEAK * k,
-      aim: null,
-      cone: -1,
-      tall: TALL,
+      y0 + l.y + (View.top() ? 0 : l.z),
+      l.z,
+      WINDOW_REACH,
+      l.color[0],
+      l.color[1],
+      l.color[2],
+      WINDOW_PEAK * k,
+      0,
+      0,
+      -1,
+      TALL,
       //not round onto the wall it is in, and as bright as it is close by
-      wrap: 0,
-      foot: false,
-    });
+      0,
+      0,
+      0,
+      0,
+    );
   }
 }
 
@@ -789,10 +817,16 @@ Object.keys(AIM).forEach(function (heading) {
  * either side of the front of it, shining ahead, and two tail lights behind
  * it - and the flash of a police car, all round.
  */
-function headlights(out, M, w, h, carman) {
-  //the traffic, and whatever else drives with it - the courier's car
-  var cars = carman ? (carman.cars || []).concat(carman.extras || []) : [];
+function headlights(view, M, w, h, carman) {
+  if (!carman) return;
 
+  //the traffic, and whatever else drives with it - the courier's car
+  if (carman.cars) carLights(view, M, w, h, carman.cars);
+  if (carman.extras) carLights(view, M, w, h, carman.extras);
+}
+
+//the lamps of each of cars on the screen (headlights)
+function carLights(view, M, w, h, cars) {
   for (var i = 0; i < cars.length; i++) {
     var go = cars[i],
       car = go.car,
@@ -825,19 +859,25 @@ function headlights(out, M, w, h, carman) {
         var g = glows[f],
           a = turn + (f * Math.PI * 2) / glows.length;
 
-        out.push({
-          x: spot[0],
-          y: spot[1],
-          z: FLASH_HIGH,
-          reach: FLASH_REACH,
-          color: [g[0] / 255, g[1] / 255, g[2] / 255],
-          peak: FLASH_PEAK,
-          aim: [Math.cos(a), Math.sin(a)],
-          cone: FLASH_CONE,
-          tall: TALL,
+        view.lamp(
+          spot[0],
+          spot[1],
+          FLASH_HIGH,
+          FLASH_REACH,
+          g[0] / 255,
+          g[1] / 255,
+          g[2] / 255,
+          FLASH_PEAK,
+          Math.cos(a),
+          Math.sin(a),
+          FLASH_CONE,
+          TALL,
           //round onto the car itself, and about
-          wrap: 0.6,
-        });
+          0.6,
+          1,
+          0,
+          0,
+        );
       }
     }
 
@@ -846,18 +886,24 @@ function headlights(out, M, w, h, carman) {
 
     if (blink !== null)
       for (var b = 0; b < blink.length; b += 2)
-        out.push({
-          x: blink[b],
-          y: blink[b + 1],
-          z: HEAD_HIGH,
-          reach: BLINK_REACH,
-          color: BLINK_LIGHT,
-          peak: BLINK_PEAK,
-          aim: null,
-          cone: -1,
-          tall: 20,
-          wrap: 0.6,
-        });
+        view.lamp(
+          blink[b],
+          blink[b + 1],
+          HEAD_HIGH,
+          BLINK_REACH,
+          BLINK_LIGHT[0],
+          BLINK_LIGHT[1],
+          BLINK_LIGHT[2],
+          BLINK_PEAK,
+          0,
+          0,
+          -1,
+          20,
+          0.6,
+          1,
+          0,
+          0,
+        );
 
     var lamps = renderer.lamps !== undefined && lampsOn(renderer.lamps);
 
@@ -874,34 +920,50 @@ function headlights(out, M, w, h, carman) {
         gy = aim[1] * ahead + aim[0] * side * HEAD_APART;
 
       if (lamps)
-        out.push({
-          x: spot[0] + (View.top() ? 2 * gx : gx - gy),
-          y: spot[1] - (View.top() ? 2 * gy : (gx + gy) / 2),
-          z: HEAD_HIGH,
-          reach: HEAD_REACH,
-          color: HEAD_LIGHT,
-          peak: HEAD_PEAK,
-          aim: aim,
-          cone: HEAD_CONE,
-          tall: 20,
-        });
+        view.lamp(
+          spot[0] + (View.top() ? 2 * gx : gx - gy),
+          spot[1] - (View.top() ? 2 * gy : (gx + gy) / 2),
+          HEAD_HIGH,
+          HEAD_REACH,
+          HEAD_LIGHT[0],
+          HEAD_LIGHT[1],
+          HEAD_LIGHT[2],
+          HEAD_PEAK,
+          aim[0],
+          aim[1],
+          HEAD_CONE,
+          20,
+          GLView.WRAP,
+          1,
+          0,
+          0,
+        );
 
       //and a tail light at the back, red and dim, behind it - brighter on
       //the brakes
       gx = -aim[0] * ahead - aim[1] * side * HEAD_APART;
       gy = -aim[1] * ahead + aim[0] * side * HEAD_APART;
 
-      out.push({
-        x: spot[0] + (View.top() ? 2 * gx : gx - gy),
-        y: spot[1] - (View.top() ? 2 * gy : (gx + gy) / 2),
-        z: HEAD_HIGH,
-        reach: car.braking ? BRAKE_REACH : TAIL_REACH,
-        color: TAIL_LIGHT,
-        peak: car.braking ? BRAKE_PEAK : TAIL_PEAK,
-        aim: BEHIND[car.heading],
-        cone: TAIL_CONE,
-        tall: 20,
-      });
+      var behind = BEHIND[car.heading];
+
+      view.lamp(
+        spot[0] + (View.top() ? 2 * gx : gx - gy),
+        spot[1] - (View.top() ? 2 * gy : (gx + gy) / 2),
+        HEAD_HIGH,
+        car.braking ? BRAKE_REACH : TAIL_REACH,
+        TAIL_LIGHT[0],
+        TAIL_LIGHT[1],
+        TAIL_LIGHT[2],
+        car.braking ? BRAKE_PEAK : TAIL_PEAK,
+        behind[0],
+        behind[1],
+        TAIL_CONE,
+        20,
+        GLView.WRAP,
+        1,
+        0,
+        0,
+      );
     }
   }
 }
@@ -935,18 +997,24 @@ Lighting.prototype.workLight = function (
   if (this.plain || !seen(x, y, reach, this.view.width, this.view.height))
     return;
 
-  this.lamps.push({
-    x: x,
-    y: y,
-    z: z,
-    reach: reach,
-    color: color,
-    peak: peak,
-    aim: aim || null,
-    cone: aim ? cone : -1,
-    tall: TALL,
-    wrap: 0.6,
-  });
+  this.view.lamp(
+    x,
+    y,
+    z,
+    reach,
+    color[0],
+    color[1],
+    color[2],
+    peak,
+    aim ? aim[0] : 0,
+    aim ? aim[1] : 0,
+    aim ? cone : -1,
+    TALL,
+    0.6,
+    1,
+    0,
+    0,
+  );
 };
 
 //a car's signal (car.signal) with all four of its indicators going, as one

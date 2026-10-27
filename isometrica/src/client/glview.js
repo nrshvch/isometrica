@@ -958,7 +958,9 @@ function GLView(pageSize, maxPages) {
 
   this.sprites = new Float32Array(FLOATS * 1024);
   this.count = 0;
+  //the lamps lighting the frame, LAMP_FLOATS a lamp (lamp), and how many
   this.lampData = new Float32Array(LAMP_FLOATS * 64);
+  this.lampCount = 0;
 
   //what is drawn over the city as lines, shapes and words
   this.overlay = new GLCanvas(this);
@@ -1634,19 +1636,14 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
  * Lights the city drawn so far into the frame: by the sun, and at night by
  * every lamp.
  *
- * @param lamps {Array} at night, every lamp on the screen (LAMP_FLOATS):
- *        {x, y, z, reach, color, peak, aim, cone, tall, [wrap], [foot],
- *        [down], [spill]} - wrap, how far round what it lights it reaches
- *        (WRAP); foot, false for its peak to be how bright it is close by
- *        rather than on the ground under it; down, for a lamp shining down
- *        in a cone, the cosine of half of it; and spill, how much of its
- *        light still goes out to the sides of that cone, below the lamp
+ * @param count {number} how many of the lamps put in this frame (lamp) to
+ *        light it with - at night, every lamp on the screen
  * @param sky {{ambient, sun, dir, step}} the light of the sky and the sun,
  *        0..1, which way the sun is, and by day the way to it a step at a
  *        time, along the ground on the screen and up (see LIT_FS shadowed)
  * @param origin {number[]} where the world's origin is on the screen
  */
-GLView.prototype.light = function (lamps, sky, origin) {
+GLView.prototype.light = function (count, sky, origin) {
   var gl = this.gl,
     t = this.targets,
     w = this.width,
@@ -1661,8 +1658,8 @@ GLView.prototype.light = function (lamps, sky, origin) {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    if (lamps.length > 0) {
-      this.uploadLamps(lamps);
+    if (count > 0) {
+      this.uploadLamps(count);
       gl.useProgram(this.lampProgram);
       project(gl, this.lampProgram, this.projection);
       bind(gl, this.lampProgram, "normals", t[NORMAL], 0);
@@ -1671,9 +1668,9 @@ GLView.prototype.light = function (lamps, sky, origin) {
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE);
       gl.bindVertexArray(this.lampVao);
-      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, lamps.length);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
       Stats.count(DRAWS, 1);
-      Stats.count(LAMPS, lamps.length);
+      Stats.count(LAMPS, count);
       gl.disable(gl.BLEND);
     }
 
@@ -1771,46 +1768,78 @@ function weather(gl, p, w) {
 }
 
 GLView.BOLT = BOLT;
+GLView.WRAP = WRAP;
 GLView.PROJECTIONS = PROJECTIONS;
 
-//the lamps into their buffer, LAMP_FLOATS a lamp
-GLView.prototype.uploadLamps = function (lamps) {
-  var gl = this.gl;
+/**
+ * A lamp to light the frame with (light), put in after the ones before it
+ * since begin: at x, y on the screen, the spot on the ground under it, z
+ * over that; how far it reaches; its colour r, g, b 0..1, and how bright it
+ * is; for a lamp shining one way, that way along the ground on the screen
+ * ax, ay and the cosine of half of how wide, cone - else 0, 0 and -1; how
+ * tall what it lights is reached up; wrap, how far round what it lights it
+ * reaches (WRAP); foot, 0 for its peak to be how bright it is close by
+ * rather than on the ground under it, else 1; down, for a lamp shining down
+ * in a cone, the cosine of half of it, else 0; and spill, how much of its
+ * light still goes out to the sides of that cone, below the lamp.
+ */
+GLView.prototype.lamp = function (
+  x,
+  y,
+  z,
+  reach,
+  r,
+  g,
+  b,
+  peak,
+  ax,
+  ay,
+  cone,
+  tall,
+  wrap,
+  foot,
+  down,
+  spill,
+) {
+  var o = this.lampCount * LAMP_FLOATS,
+    d = this.lampData;
 
-  if (this.lampData.length < lamps.length * LAMP_FLOATS)
-    this.lampData = new Float32Array(lamps.length * LAMP_FLOATS * 2);
-
-  var d = this.lampData;
-
-  for (var i = 0; i < lamps.length; i++) {
-    var l = lamps[i],
-      o = i * LAMP_FLOATS;
-
-    d[o] = l.x;
-    d[o + 1] = l.y;
-    d[o + 2] = l.z;
-    d[o + 3] = l.reach;
-    d[o + 4] = l.color[0];
-    d[o + 5] = l.color[1];
-    d[o + 6] = l.color[2];
-    d[o + 7] = l.peak;
-    d[o + 8] = l.aim ? l.aim[0] : 0;
-    d[o + 9] = l.aim ? l.aim[1] : 0;
-    d[o + 10] = l.aim ? l.cone : -1;
-    d[o + 11] = l.tall;
-    d[o + 12] = l.wrap === undefined ? WRAP : l.wrap;
-    d[o + 13] = l.foot === false ? 0 : 1;
-    d[o + 14] = l.down === undefined ? 0 : l.down;
-    d[o + 15] = l.spill === undefined ? 0 : l.spill;
+  if (o + LAMP_FLOATS > d.length) {
+    d = new Float32Array(d.length * 2);
+    d.set(this.lampData);
+    this.lampData = d;
   }
+
+  d[o] = x;
+  d[o + 1] = y;
+  d[o + 2] = z;
+  d[o + 3] = reach;
+  d[o + 4] = r;
+  d[o + 5] = g;
+  d[o + 6] = b;
+  d[o + 7] = peak;
+  d[o + 8] = ax;
+  d[o + 9] = ay;
+  d[o + 10] = cone;
+  d[o + 11] = tall;
+  d[o + 12] = wrap;
+  d[o + 13] = foot;
+  d[o + 14] = down;
+  d[o + 15] = spill;
+  this.lampCount++;
+};
+
+//the first count of the lamps into their buffer, LAMP_FLOATS a lamp
+GLView.prototype.uploadLamps = function (count) {
+  var gl = this.gl;
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.lampBuffer);
   gl.bufferData(
     gl.ARRAY_BUFFER,
-    d,
+    this.lampData,
     gl.STREAM_DRAW,
     0,
-    lamps.length * LAMP_FLOATS,
+    count * LAMP_FLOATS,
   );
 };
 
