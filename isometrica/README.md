@@ -21,6 +21,8 @@ starts it up and puts its own over it (see the games' `src/main.js`).
 - `npm run build` writes `dist/gfx`: the manifests of what every generator
   will paint.
 - `vite.mjs` - the Vite plugin a game uses to serve and ship `dist/gfx`.
+- `docs/performance.md` - where a frame, a click and a tick go, the debug
+  panel that shows it, and what is left to make faster.
 - `lab/` - pages to look at the world without a game: `npm run dev` here
   opens them all from `/` - every sprite the generators paint, lit or at
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
