@@ -20,17 +20,20 @@ var Terrain = Core.Terrain;
 //Cars driving about the roads, for the look of it - they carry nothing and
 //nobody waits for them.
 //
-//There is one for every four road tiles that are loaded through the day, and
-//more in the rush hours - one for every two and a half at eight in the
-//morning and at five in the evening. A gravel lane counts for a quarter of a
-//road, a village's being quiet, and is as much less likely to be one set out
-//from (GRAVEL_SHARE). Each goes from a random road tile to
-//another one it can reach, and on from there to the next once it gets there
-//- never turning back in the middle of a street to get there, only at a
-//junction or the end of a road (Traffic.route). Whenever the roads under one go - demolished, or
-//their chunk unloaded - it is put on some other road. Once the rush is over,
-//the light cars more than the hour wants are done when they get where they
-//are going.
+//There is one for every four road tiles of the city's that are loaded
+//through the day - the roads that join its buildings, not the ones leading
+//nowhere - and more in the rush hours: one for every two and a half at eight
+//in the morning and at five in the evening. A gravel lane counts for a
+//quarter of a road, a village's being quiet, and is as much less likely to
+//be one set out from (GRAVEL_SHARE). No city, no traffic. Each is out for
+//a reason (PURPOSES): it sets out from a place of some kind - a house, a
+//shop, any building - and goes to another in the city it can reach, and on
+//from there to the next once it gets there - never turning back in the
+//middle of a street to get there, only at a junction or the end of a road
+//(Traffic.route). Whenever the roads under one go - demolished, or their
+//chunk unloaded - it is put on some other road. Once the rush is over, the
+//light cars more than the hour wants are done when they get where they are
+//going.
 //
 //How they drive is client/traffic's: each keeps to the right hand side of the
 //road, in its lane, and keeps its distance from what is in front of it; they
@@ -158,9 +161,14 @@ function gameSpeed() {
 
 var MINUTE = 60000;
 
-//what a building has to be for cars to drive to it
+//what a car drives to, and sets out from: a road outside a building with
+//work in it, a house, a house or a shop (where a van calls), any of the
+//city's buildings - or anywhere on the city's roads (Carman#cityRoads)
 var WORK = "work",
-  HOME = "home";
+  HOME = "home",
+  CALL = "call",
+  PLACE = "place",
+  CITY = "city";
 
 //how a body type picks where to go: by the time of day, at random, or back
 //and forth between the two stops it was given
@@ -180,11 +188,51 @@ var TRAFFIC = {
 };
 
 function wanted(kind, data) {
-  return kind === HOME
-    ? data.classCode === BuildingClassCode.house
-    : //anywhere anybody works: the shops, the industry, the town hall
-      data.jobs > 0;
+  var c = data.classCode;
+
+  switch (kind) {
+    case HOME:
+      return c === BuildingClassCode.house;
+    case CALL:
+      return c === BuildingClassCode.house || c === BuildingClassCode.commerce;
+    case PLACE:
+      return (
+        c === BuildingClassCode.house ||
+        c === BuildingClassCode.commerce ||
+        c === BuildingClassCode.industry ||
+        c === BuildingClassCode.municipal
+      );
+    default:
+      //anywhere anybody works: the shops, the industry, the town hall
+      return data.jobs > 0;
+  }
 }
+
+/*
+ * Every car is out for a reason: it sets out from somewhere and goes
+ * somewhere - only ever into the city, onto the roads that join its buildings
+ * (core/city/cityroads inNetwork), never down a road that leads nowhere.
+ * Where there is no city there is no traffic: nowhere to go, nowhere to come
+ * from.
+ *
+ * - a light car by the clock: from a house to work in the morning, from work
+ *   home in the evening; the rest of the day from one of the city's buildings
+ *   to another - and the few out in the small hours tearing about the city's
+ *   streets;
+ * - a van from a house or a shop to another, calling;
+ * - a cab from any building to any other, at any hour, with its fares;
+ * - a truck or a lorry from wherever it comes from - any road - to anywhere
+ *   in the city: it is passing through, with something to drop off;
+ * - a police car about the city's streets, on its rounds;
+ * - a bus round its stops.
+ */
+var PURPOSES = {
+  van: [CALL, CALL],
+  taxi: [PLACE, PLACE],
+  truck: [null, CITY],
+  lorry: [null, CITY],
+  police: [CITY, CITY],
+};
 
 //from this hour to that one, light cars set out from buildings of one kind
 //and drive to buildings of the other
@@ -212,10 +260,12 @@ function shareOf(roadman, tile) {
 }
 
 /**
- * How many roads the loaded road tiles count for, gravel at its share.
+ * How many roads the loaded road tiles of the city count for, gravel at its
+ * share - the traffic there is goes by them.
  */
-function roadCount(roadman) {
-  var tiles = roadman.getRoadTiles(),
+function roadCount(man) {
+  var roadman = man.root.roadman,
+    tiles = man.cityRoads(),
     n = 0;
 
   for (var i = 0; i < tiles.length; i++) n += shareOf(roadman, tiles[i]);
@@ -249,11 +299,13 @@ function distance(a, b) {
 }
 
 /**
- * Some road tile other than this one that can be driven to from it, or -1.
- * Picked among the ones nearest to it, so a car on a big network stays about
- * the same part of town.
+ * Some road tile of the city's other than this one that can be driven to
+ * from it, or -1. Picked among the ones nearest to it, so a car on a big
+ * network stays about the same part of town.
+ *
+ * @param city {Set<number>} the city's roads loaded (Carman#cityRoads)
  */
-function pickDestination(root, start) {
+function pickDestination(root, start, city) {
   var seen = new Set([start]),
     queue = [start],
     next = [],
@@ -274,9 +326,11 @@ function pickDestination(root, start) {
     }
   }
 
-  if (queue.length < 2) return -1;
+  var ends = queue.filter(function (t) {
+    return t !== start && city.has(t);
+  });
 
-  return queue[1 + ((Math.random() * (queue.length - 1)) | 0)];
+  return ends.length === 0 ? -1 : ends[(Math.random() * ends.length) | 0];
 }
 
 /**
@@ -321,16 +375,6 @@ function wantedKind(root) {
 }
 
 /**
- * What a light car put on the roads now is setting out from - a house in the
- * morning, work in the evening - or null at the hours it is neither.
- */
-function originKind(root) {
-  var hours = hoursNow(root);
-
-  return hours === null ? null : hours.origin;
-}
-
-/**
  * Road tiles from start to some other one it is connected to, both included,
  * or an empty array when there is nowhere to go. A road by a building of that
  * kind is tried first, if one is asked for; when there is no getting to one,
@@ -345,7 +389,7 @@ function findRoute(man, start, kind, from) {
     found,
     i;
 
-  if (kind !== null) {
+  if (kind !== null && kind !== CITY) {
     tiles = man.getDestinations(kind);
 
     for (i = 0; i < DESTINATION_TRIES && tiles.length > 0; i++) {
@@ -359,7 +403,7 @@ function findRoute(man, start, kind, from) {
     }
   }
 
-  end = pickDestination(root, start);
+  end = pickDestination(root, start, man.citySet());
 
   return end === -1 ? [] : routeTo(root, start, end, from);
 }
@@ -523,14 +567,18 @@ CarScript.prototype.spawn = function (traffic) {
 
   if (this.traffic === SHUTTLE) return this.startRound();
 
-  origin = this.traffic === COMMUTER ? originKind(root) : null;
+  origin = this.purpose()[0];
 
   for (attempt = 0; attempt < 4; attempt++) {
     tile = origin === null ? -1 : man.pickRoadBy(origin);
 
-    //nowhere of that kind to start from, so anywhere will do
+    //from anywhere at all - a lorry come from afar - or, nowhere of that
+    //kind to start from, anywhere in the city
     if (tile === -1)
-      tile = pickStart(root.roadman, root.roadman.getRoadTiles());
+      tile = pickStart(
+        root.roadman,
+        origin === null ? root.roadman.getRoadTiles() : man.cityRoads(),
+      );
 
     if (tile === -1) return false;
 
@@ -951,8 +999,29 @@ CarScript.prototype.toRoad = function () {
 };
 
 /**
- * Where it goes from here, as road tiles - by the clock for a light car,
- * anywhere for the rest.
+ * Where it sets out from and where it goes, as kinds of place (PURPOSES): a
+ * light car by the clock - and between the city's buildings at the hours it
+ * is not going to work or home, or about the city's streets in the small
+ * hours. null to set out from, for anywhere.
+ *
+ * @returns {Array}
+ */
+CarScript.prototype.purpose = function () {
+  var root = this.man.root,
+    fixed = PURPOSES[this.type.name];
+
+  if (fixed) return fixed;
+
+  if (this.nightRider || !lightAllowed(root)) return [CITY, CITY];
+
+  var hours = hoursNow(root);
+
+  return hours === null ? [PLACE, PLACE] : [hours.origin, hours.kind];
+};
+
+/**
+ * Where it goes from here, as road tiles - for what it is out for
+ * (purpose).
  *
  * @param [din] {number[]} the way it is going on tile from
  */
@@ -966,12 +1035,7 @@ CarScript.prototype.nextRoute = function (from, din) {
   //whoever is out in a light car in the small hours is in no mood to hang about
   this.driver.v0 = this.nightRider ? this.baseSpeed * SPEEDING : this.baseSpeed;
 
-  return findRoute(
-    man,
-    from,
-    this.traffic === COMMUTER ? wantedKind(man.root) : null,
-    din,
-  );
+  return findRoute(man, from, this.purpose()[1], din);
 };
 
 /**
@@ -1636,7 +1700,7 @@ function reconcile(self) {
   }
 
   var light = lightAllowed(self.root),
-    roads = roadCount(self.root.roadman),
+    roads = roadCount(self),
     //as many as the roads take - though in the small hours the buses are
     //not running and the light cars are down to a few tearing about, so
     //what is left is the vans and the lorries
@@ -1647,9 +1711,13 @@ function reconcile(self) {
     i;
 
   self.most = most;
-  self.speeders = light ? 0 : Math.max(1, Math.round(most * NIGHT_LIGHT_SHARE));
-  //a bus for every two stops, while they are running
-  self.buses = light ? Math.floor(self.busStops().length / 2) : 0;
+  self.speeders =
+    light || roads === 0
+      ? 0
+      : Math.max(1, Math.round(most * NIGHT_LIGHT_SHARE));
+  //a bus for every two stops, while they are running - and there is a city
+  //for them to run in
+  self.buses = light && roads > 0 ? Math.floor(self.busStops().length / 2) : 0;
 
   target = light
     ? Math.floor(roads * perRoad(self.root))
@@ -2196,11 +2264,12 @@ Carman.prototype.remove = function (script) {
 };
 
 /**
- * The loaded roads that run past a place people drive to at this time of day -
- * somewhere with work in it, or a house. Worked out again every so often, as
- * roads and buildings come and go.
+ * The loaded roads of the city that run past a place of a kind cars drive
+ * to - somewhere with work in it, a house, a house or a shop, any of the
+ * city's buildings (wanted). Worked out again every so often, as roads and
+ * buildings come and go.
  *
- * @param kind {string} WORK or HOME
+ * @param kind {string} WORK, HOME, CALL or PLACE
  * @returns {number[]}
  */
 Carman.prototype.getDestinations = function (kind) {
@@ -2211,7 +2280,7 @@ Carman.prototype.getDestinations = function (kind) {
     return found.tiles;
 
   var buildings = this.root.core.buildingService,
-    roads = this.root.roadman.getRoadTiles(),
+    roads = this.cityRoads(),
     tiles = [],
     tile,
     building,
@@ -2234,6 +2303,39 @@ Carman.prototype.getDestinations = function (kind) {
   this.destinations[kind] = { tiles: tiles, at: now };
 
   return tiles;
+};
+
+/**
+ * The loaded roads of the city - of any city: the roads that join its
+ * buildings (core/city/cityroads inNetwork), not those that lead nowhere.
+ * Worked out again every so often, as roads and buildings come and go.
+ *
+ * @returns {number[]}
+ */
+Carman.prototype.cityRoads = function () {
+  var found = this.destinations[CITY],
+    now = Date.now();
+
+  if (found !== undefined && now - found.at < DESTINATIONS_TTL)
+    return found.tiles;
+
+  var cities = this.root.core.cities.getCities(),
+    tiles = this.root.roadman.getRoadTiles().filter(function (tile) {
+      return cities.some(function (city) {
+        return city.roads.inNetwork(tile);
+      });
+    });
+
+  this.destinations[CITY] = { tiles: tiles, at: now, set: new Set(tiles) };
+
+  return tiles;
+};
+
+//the same, as a set
+Carman.prototype.citySet = function () {
+  this.cityRoads();
+
+  return this.destinations[CITY].set;
 };
 
 /**

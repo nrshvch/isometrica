@@ -128,14 +128,25 @@ engine in `engine/`.
     front of it, all the way round. So what comes onto it gives way to what
     is going round it already, and comes on only while less than half of it
     is taken up (`traffic.js` mayEnter, Traffic#loopOf).
-- There is a car for every four road tiles loaded through the day, and more
-  in the rush hours - about one for every two and a half at eight in the
-  morning and five in the evening (`isometrica/src/client/carman.js`) - a
-  gravel lane counting for a quarter of a road, and a quarter as likely to
-  be set out from, so a village's lanes stay quiet (GRAVEL_SHARE). In the
-  morning the light cars set out from the houses and are done when they get
-  to work, in the evening the other way round; afterwards the ones more
-  than the hour wants are done when they get where they are going. A car
+- There is a car for every four of the city's road tiles loaded through
+  the day - the roads that join its buildings, out to its villages, not the
+  ones leading nowhere (core/city/cityroads inNetwork) - and more in the
+  rush hours: about one for every two and a half at eight in the morning
+  and five in the evening (`isometrica/src/client/carman.js`) - a gravel
+  lane counting for a quarter of a road, and a quarter as likely to be set
+  out from, so a village's lanes stay quiet (GRAVEL_SHARE). No city, no
+  traffic: roads alone lead nowhere and come from nowhere.
+- Every car is out for a reason (`carman.js` PURPOSES, CarScript#purpose),
+  and only ever goes somewhere in the city - so nothing drives off down a
+  road that leads nowhere, but to turn round at the end of it on its way. In
+  the morning the light cars set out from the houses and are done when they
+  get to work, in the evening the other way round; the rest of the day they
+  go from one of the city's buildings to another, and the few out in the
+  small hours about its streets. A van goes calling from a house or a shop
+  to another; a cab from any building to any other, at any hour; a truck or
+  a lorry comes from anywhere - any road - into the city; a police car goes
+  about the city's streets. After the rush the light cars more than the
+  hour wants are done when they get where they are going. A car
   that has waited a minute in a queue that does not move turns off out of
   sight and is put on some other road - a queue behind a bus at its stop
   waits for it.
