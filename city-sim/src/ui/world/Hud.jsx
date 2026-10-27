@@ -9,7 +9,7 @@
  * On a phone the money and the time take the top, the city's name and the
  * buttons the line under it; on a desktop the rest goes along the top.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMatch } from "react-router";
 import Events from "events";
 import engine from "engine";
@@ -398,8 +398,14 @@ function Menu({ client, world, cityId, address, busy }) {
     //the city a new player starts on, to start over on - and the big one
     initialName = client.core.persistence.initialName(),
     bigName = bigCityName(),
-    //read afresh whenever it opens
-    cities = open ? savedCities(client, cityId) : [],
+    //read afresh whenever it opens - not again every time the HUD is
+    //drawn while it is open
+    cities = useMemo(
+      function () {
+        return open ? savedCities(client, cityId) : [];
+      },
+      [open, client, cityId],
+    ),
     [copied, setCopied] = useState(false),
     debug = useGame(function (s) {
       return s.debug;
