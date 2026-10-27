@@ -2694,6 +2694,10 @@ function Traffic(roadman) {
   this.drivers = [];
   //the drivers by every tile they are on, some part of them
   this.index = new Map();
+  //the lists of drivers it is made of, kept from one frame to the next to
+  //be filled in again (index), and how many of them are in it this frame
+  this.lists = [];
+  this.listsUsed = 0;
   //junction tile -> {holders: [{d, i, o}], waiting: [{d, i, o, since, at,
   //ready}]}
   this.junctions = new Map();
@@ -2741,8 +2745,14 @@ function index(self, d) {
 
     var here = self.index.get(t);
 
-    if (here === undefined) self.index.set(t, [d]);
-    else if (here.indexOf(d) === -1) here.push(d);
+    if (here === undefined) {
+      here = self.lists[self.listsUsed];
+      if (here === undefined) here = self.lists[self.listsUsed] = [];
+      else here.length = 0;
+      self.listsUsed++;
+      here.push(d);
+      self.index.set(t, here);
+    } else if (here.indexOf(d) === -1) here.push(d);
   }
 }
 
@@ -2764,6 +2774,7 @@ Traffic.prototype.frame = function (now) {
 
   this.now = now;
   this.index.clear();
+  this.listsUsed = 0;
 
   if (now - this._junctionAt > JUNCTION_TTL) {
     this._isJunction.clear();
@@ -2775,17 +2786,32 @@ Traffic.prototype.frame = function (now) {
     if (drivers[i].wps.length > 0) index(this, drivers[i]);
 
   //whoever stopped asking is not waiting any more
-  this.junctions.forEach(function (j, tile, all) {
-    j.waiting = j.waiting.filter(function (w) {
-      return w.d.alive && now - w.at < WAIT_TTL;
-    });
-    j.holders = j.holders.filter(function (h) {
-      return h.d.alive;
-    });
-
-    if (j.holders.length === 0 && j.waiting.length === 0) all.delete(tile);
-  });
+  pruneAt = now;
+  this.junctions.forEach(prune);
 };
+
+//the time a frame prunes the junctions at (prune)
+var pruneAt = 0;
+
+//a junction's waiting and holders, of only those still about, in the order
+//they were in - and the junction let go of once nobody is
+function prune(j, tile, all) {
+  var waiting = j.waiting,
+    holders = j.holders,
+    n = 0,
+    i;
+
+  for (i = 0; i < waiting.length; i++)
+    if (waiting[i].d.alive && pruneAt - waiting[i].at < WAIT_TTL)
+      waiting[n++] = waiting[i];
+  waiting.length = n;
+
+  for (i = 0, n = 0; i < holders.length; i++)
+    if (holders[i].d.alive) holders[n++] = holders[i];
+  holders.length = n;
+
+  if (holders.length === 0 && waiting.length === 0) all.delete(tile);
+}
 
 /**
  * The tiles the pieces of a way go through, as far as far along it.
