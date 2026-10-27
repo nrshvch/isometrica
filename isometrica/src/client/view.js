@@ -188,18 +188,38 @@ var HEADINGS = {
 //the eight headings round from +x, anticlockwise seen from above
 var ROUND = ["x+", "x+y+", "y+", "x-y+", "x-", "x-y-", "y-", "x+y-"];
 
+//which way each heading goes as it is seen, at each of the four turns:
+//worked out once, as heading would work it out - a car asks it every frame
+var SEEN = [0, 1, 2, 3].map(function (t) {
+  var seen = {};
+
+  Object.keys(HEADINGS).forEach(function (heading) {
+    var dx = HEADINGS[heading][0],
+      dy = HEADINGS[heading][1],
+      k,
+      s;
+
+    //as View.vector turns it
+    for (k = 0; k < t; k++) {
+      s = dx;
+      dx = dy;
+      dy = -s;
+    }
+
+    seen[heading] =
+      (dx > 0 ? "x+" : dx < 0 ? "x-" : "") +
+      (dy > 0 ? "y+" : dy < 0 ? "y-" : "");
+  });
+
+  return seen;
+});
+
 /**
  * Which way something going `heading` in the world - "x+", "y-", or one of
  * the four half way between, "x+y-" - goes as it is seen.
  */
 View.heading = function (heading) {
-  var v = HEADINGS[heading],
-    d = View.vector(v[0], v[1]);
-
-  return (
-    (d[0] > 0 ? "x+" : d[0] < 0 ? "x-" : "") +
-    (d[1] > 0 ? "y+" : d[1] < 0 ? "y-" : "")
-  );
+  return SEEN[turns][heading];
 };
 
 /**
