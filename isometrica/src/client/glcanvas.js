@@ -176,9 +176,33 @@ function GLCanvas(view) {
   this.written = new Map();
   this.frame = 0;
 
-  //for the colours, as the canvas has them
+  //for the colours, as the canvas has them - and the one asked for last,
+  //as see-through as it is drawn (colour)
   this.parsed = new Map();
   this.parser = null;
+  this.rgba = [0, 0, 0, 0];
+
+  //the path, as flat as it goes: every point of it, x and y after x and y
+  //(points, so many of them used); where each piece of it starts among them
+  //and whether it is closed (starts, closed, pieces); whether there is a
+  //piece going on now (open); and the piece it starts at (from) - a
+  //rectangle filled or drawn round has a path of its own after it, gone
+  //again once it is (fillRect)
+  this.points = new Float64Array(256);
+  this.pointsUsed = 0;
+  this.starts = new Int32Array(32);
+  this.closed = new Uint8Array(32);
+  this.pieces = 0;
+  this.from = 0;
+  this.open = false;
+
+  //where the corners being written go next in the data (begin)
+  this.writing = 0;
+
+  //the states saved, kept to be saved into again (save), and how many of
+  //them are saved now
+  this.saved = [];
+  this.depth = 0;
 
   this.reset();
 }
@@ -198,7 +222,7 @@ p.reset = function () {
   this.font = "10px sans-serif";
   this.textAlign = "start";
   this.textBaseline = "alphabetic";
-  this.dash = [];
+  this.dash = NO_DASH;
   //drawn glowing in the lit city, as bright as its colours whatever the
   //light - not a canvas's own (client/glview GLOW)
   this.glow = false;
@@ -209,9 +233,12 @@ p.reset = function () {
   //drawn even when the city is drawn bare, as part of the ground - the grid
   //over it (client/glview bare); not a canvas's own either
   this.ground = false;
-  this.saved = [];
+  this.depth = 0;
   this.beginPath();
 };
+
+//no dash at all, a solid line - shared, never changed
+var NO_DASH = [];
 
 var STATE = [
   "fillStyle",
@@ -229,29 +256,47 @@ var STATE = [
 ];
 
 p.save = function () {
-  var s = {};
+  var s = this.saved[this.depth];
 
+  if (s === undefined) s = this.saved[this.depth] = {};
   for (var i = 0; i < STATE.length; i++) s[STATE[i]] = this[STATE[i]];
-  this.saved.push(s);
+  this.depth++;
 };
 
 p.restore = function () {
-  var s = this.saved.pop();
+  if (this.depth === 0) return;
 
-  if (s === undefined) return;
+  var s = this.saved[--this.depth];
+
   for (var i = 0; i < STATE.length; i++) this[STATE[i]] = s[STATE[i]];
 };
 
 p.setLineDash = function (dash) {
-  var sum = dash.reduce(function (a, b) {
-    return a + Math.max(0, b);
-  }, 0);
+  var sum = 0,
+    i;
+
+  for (i = 0; i < dash.length; i++) sum += Math.max(0, dash[i]);
 
   //nothing but gaps of nothing is a solid line, as the canvas has it; an
   //odd number of them is gone through twice
-  if (!(sum > 0)) this.dash = [];
-  else this.dash = dash.length % 2 === 1 ? dash.concat(dash) : dash.slice();
+  if (!(sum > 0)) this.dash = NO_DASH;
+  //the same as it is, as it mostly is - a renderer sets its dash every
+  //time it draws: kept, not made again (a saved state may hold the one
+  //there is, so it is never changed, only put in the place of)
+  else if (!sameDash(this.dash, dash))
+    this.dash = dash.length % 2 === 1 ? dash.concat(dash) : dash.slice();
 };
+
+//whether dash is was, as setLineDash has it - gone through twice, if odd
+function sameDash(was, dash) {
+  var n = dash.length,
+    i;
+
+  if (was.length !== (n % 2 === 1 ? 2 * n : n)) return false;
+  for (i = 0; i < was.length; i++) if (was[i] !== dash[i % n]) return false;
+
+  return true;
+}
 
 p.getLineDash = function () {
   return this.dash.slice();
@@ -261,28 +306,38 @@ p.getLineDash = function () {
 p.clearRect = function () {};
 
 p.beginPath = function () {
-  this.path = [];
-  this.sub = null;
+  this.pointsUsed = 0;
+  this.pieces = 0;
+  this.from = 0;
+  this.open = false;
 };
 
 p.moveTo = function (x, y) {
-  this.sub = { points: [x, y], closed: false };
-  this.path.push(this.sub);
+  if (this.pieces === this.starts.length) {
+    this.starts = grown(this.starts, this.pieces * 2);
+    this.closed = grown(this.closed, this.pieces * 2);
+  }
+
+  this.starts[this.pieces] = this.pointsUsed;
+  this.closed[this.pieces] = 0;
+  this.pieces++;
+  this.open = true;
+  point(this, x, y);
 };
 
 p.lineTo = function (x, y) {
-  if (this.sub === null) this.moveTo(x, y);
-  else this.sub.points.push(x, y);
+  if (!this.open) this.moveTo(x, y);
+  else point(this, x, y);
 };
 
 p.closePath = function () {
-  if (this.sub === null) return;
+  if (!this.open) return;
 
-  var pts = this.sub.points;
+  var at = this.starts[this.pieces - 1];
 
-  this.sub.closed = true;
+  this.closed[this.pieces - 1] = 1;
   //and goes on from where it started
-  this.moveTo(pts[0], pts[1]);
+  this.moveTo(this.points[at], this.points[at + 1]);
 };
 
 p.rect = function (x, y, w, h) {
@@ -317,65 +372,156 @@ p.arc = function (x, y, r, a0, a1, anticlockwise) {
       px = x + Math.cos(a) * r,
       py = y + Math.sin(a) * r;
 
-    if (i === 0 && this.sub === null) this.moveTo(px, py);
+    if (i === 0 && !this.open) this.moveTo(px, py);
     else this.lineTo(px, py);
   }
 };
 
-//a rectangle filled, or its outline drawn, with the path left as it was
+//a rectangle filled, or its outline drawn, on a path of its own after the
+//one there is - which is left as it was
 p.fillRect = function (x, y, w, h) {
-  this.alone(function () {
-    this.rect(x, y, w, h);
-    this.fill();
-  });
+  var from = this.from,
+    pieces = this.pieces,
+    used = this.pointsUsed,
+    open = this.open;
+
+  this.from = pieces;
+  this.open = false;
+  this.rect(x, y, w, h);
+  this.fill();
+  this.from = from;
+  this.pieces = pieces;
+  this.pointsUsed = used;
+  this.open = open;
 };
 
 p.strokeRect = function (x, y, w, h) {
-  this.alone(function () {
-    this.rect(x, y, w, h);
-    this.stroke();
-  });
+  var from = this.from,
+    pieces = this.pieces,
+    used = this.pointsUsed,
+    open = this.open;
+
+  this.from = pieces;
+  this.open = false;
+  this.rect(x, y, w, h);
+  this.stroke();
+  this.from = from;
+  this.pieces = pieces;
+  this.pointsUsed = used;
+  this.open = open;
 };
 
 //draws on a path of its own, the path as it was kept for after
 p.alone = function (draw) {
-  var path = this.path,
-    sub = this.sub;
+  var from = this.from,
+    pieces = this.pieces,
+    used = this.pointsUsed,
+    open = this.open;
 
-  this.beginPath();
+  this.from = pieces;
+  this.open = false;
   draw.call(this);
-  this.path = path;
-  this.sub = sub;
+  this.from = from;
+  this.pieces = pieces;
+  this.pointsUsed = used;
+  this.open = open;
 };
+
+//a point onto the path's points
+function point(self, x, y) {
+  if (self.pointsUsed + 2 > self.points.length)
+    self.points = grown(self.points, self.points.length * 2);
+
+  self.points[self.pointsUsed++] = x;
+  self.points[self.pointsUsed++] = y;
+}
+
+//where piece i of the path ends among its points
+function pieceEnd(self, i) {
+  return i + 1 < self.pieces ? self.starts[i + 1] : self.pointsUsed;
+}
+
+//a typed array as long as n, what was in it kept
+function grown(a, n) {
+  var more = new a.constructor(n);
+
+  more.set(a);
+
+  return more;
+}
 
 /* --- Filling ----------------------------------------------------------- */
 
 p.fill = function () {
   var c = this.colour(this.fillStyle),
-    path = this.path.filter(function (s) {
-      return s.points.length >= 6;
-    });
+    first = -1,
+    count = 0,
+    i;
 
-  if (c === null || path.length === 0) return;
+  if (c === null) return;
+
+  //of a shape at all: three points and more
+  for (i = this.from; i < this.pieces; i++)
+    if (pieceEnd(this, i) - this.starts[i] >= 6) {
+      if (first === -1) first = i;
+      count++;
+    }
+
+  if (count === 0) return;
+
+  var points = this.points,
+    at,
+    n;
 
   //one that bulges out everywhere covers every pixel in it once, as a fan
-  if (path.length === 1 && convex(path[0].points)) {
-    this.shape("plain", fan(path[0].points, []), c);
+  if (
+    count === 1 &&
+    convex(points, this.starts[first], pieceEnd(this, first))
+  ) {
+    at = begin(this, SHAPE_FLOATS);
+    fan(this, this.starts[first], pieceEnd(this, first), c);
+    this.shape("plain", c, at, finish(this, at, SHAPE_FLOATS));
     return;
   }
 
-  var tris = [],
-    box = [Infinity, Infinity, -Infinity, -Infinity];
+  var x0 = Infinity,
+    y0 = Infinity,
+    x1 = -Infinity,
+    y1 = -Infinity,
+    j,
+    end;
 
-  path.forEach(function (s) {
-    fan(s.points, tris);
-    bound(s.points, box);
-  });
+  at = begin(this, SHAPE_FLOATS);
+  for (i = first; i < this.pieces; i++) {
+    end = pieceEnd(this, i);
+    if (end - this.starts[i] < 6) continue;
 
-  this.ops.push({ kind: "count", tris: this.corners(tris, c) });
+    fan(this, this.starts[i], end, c);
+    for (j = this.starts[i]; j < end; j += 2) {
+      x0 = Math.min(x0, points[j]);
+      y0 = Math.min(y0, points[j + 1]);
+      x1 = Math.max(x1, points[j]);
+      y1 = Math.max(y1, points[j + 1]);
+    }
+  }
+  n = finish(this, at, SHAPE_FLOATS);
+  this.ops.push({ kind: "count", tris: [at, n] });
+
+  //and a rectangle round all of it, to cover what is not at nothing
+  x0 -= 1;
+  y0 -= 1;
+  x1 += 1;
+  y1 += 1;
+  at = begin(this, SHAPE_FLOATS);
+  vertex(this, x0, y0, c);
+  vertex(this, x1, y0, c);
+  vertex(this, x0, y1, c);
+  vertex(this, x0, y1, c);
+  vertex(this, x1, y0, c);
+  vertex(this, x1, y1, c);
   this.ops.push({
     kind: "cover",
-    tris: this.corners(rect(box), c),
+    tris: [at, finish(this, at, SHAPE_FLOATS)],
     glow: this.glow,
     z: this.standsAt,
   });
@@ -386,23 +532,20 @@ p.fill = function () {
 p.stroke = function () {
   var c = this.colour(this.strokeStyle),
     w = this.lineWidth,
-    dash = this.dash,
-    tris = [];
+    at,
+    n,
+    i;
 
   if (c === null || w <= 0) return;
 
   //a pixel wide or so, drawn as lines
   var hair = w <= 1.5;
 
-  this.path.forEach(function (s) {
-    var pts = s.points.slice();
+  at = begin(this, SHAPE_FLOATS);
+  for (i = this.from; i < this.pieces; i++) line(this, i, w, hair, c);
+  n = finish(this, at, SHAPE_FLOATS);
 
-    if (s.closed) pts.push(pts[0], pts[1]);
-    if (hair) hairline(pts, dash, tris);
-    else strip(pts, w, dash, tris);
-  });
-
-  if (tris.length > 0) this.shape(hair ? "hair" : "line", tris, c);
+  if (n > 0) this.shape(hair ? "hair" : "line", c, at, n);
 };
 
 /* --- Words ------------------------------------------------------------- */
@@ -427,15 +570,20 @@ p.text = function (text, x, y, stroked) {
   if (text.length === 0 || this.globalAlpha <= 0) return;
 
   var style = stroked ? this.strokeStyle : this.fillStyle,
-    key = [
-      stroked ? "s" : "f",
-      this.font,
-      style,
-      stroked ? this.lineWidth + this.lineJoin : "",
-      this.textAlign,
-      this.textBaseline,
+    key =
+      (stroked ? "s" : "f") +
+      "|" +
+      this.font +
+      "|" +
+      style +
+      "|" +
+      (stroked ? this.lineWidth + this.lineJoin : "") +
+      "|" +
+      this.textAlign +
+      "|" +
+      this.textBaseline +
+      "|" +
       text,
-    ].join("|"),
     w = this.written.get(key);
 
   if (w === undefined) {
@@ -449,41 +597,21 @@ p.text = function (text, x, y, stroked) {
   var x0 = Math.round(x - w.ox),
     y0 = Math.round(y - w.oy),
     x1 = x0 + w.w,
-    y1 = y0 + w.h;
+    y1 = y0 + w.h,
+    at = begin(this, WORDS_FLOATS);
+
+  corner(this, x0, y0, 0, 0);
+  corner(this, x1, y0, 1, 0);
+  corner(this, x0, y1, 0, 1);
+  corner(this, x0, y1, 0, 1);
+  corner(this, x1, y0, 1, 0);
+  corner(this, x1, y1, 1, 1);
 
   this.ops.push({
     kind: "words",
     tex: w.tex,
     alpha: this.globalAlpha,
-    tris: this.put(
-      [
-        x0,
-        y0,
-        0,
-        0,
-        x1,
-        y0,
-        1,
-        0,
-        x0,
-        y1,
-        0,
-        1,
-        x0,
-        y1,
-        0,
-        1,
-        x1,
-        y0,
-        1,
-        0,
-        x1,
-        y1,
-        1,
-        1,
-      ],
-      WORDS_FLOATS,
-    ),
+    tris: [at, finish(this, at, WORDS_FLOATS)],
   });
 };
 
@@ -557,9 +685,12 @@ p.scratch = function () {
 /**
  * A canvas colour as red, green, blue and how much of it, 0..1 - as see-
  * through as globalAlpha makes it too - or null for nothing to be drawn.
+ * The same array every time, filled in afresh: for what is drawn there and
+ * then, not to be kept.
  */
 p.colour = function (style) {
-  var c = this.parsed.get(style);
+  var c = this.parsed.get(style),
+    out = this.rgba;
 
   if (c === undefined) {
     c = parse(this.scratch(), style);
@@ -568,7 +699,14 @@ p.colour = function (style) {
 
   var a = c[3] * this.globalAlpha;
 
-  return a > 0 ? [c[0], c[1], c[2], a] : null;
+  if (!(a > 0)) return null;
+
+  out[0] = c[0];
+  out[1] = c[1];
+  out[2] = c[2];
+  out[3] = a;
+
+  return out;
 };
 
 function parse(ctx, style) {
@@ -599,13 +737,13 @@ function parse(ctx, style) {
 /* --- Into the frame ---------------------------------------------------- */
 
 /**
- * Triangles of a shape, filled in colour c: drawn as they are ("plain"), or
- * every pixel of them once however they cross ("line") - or the ends of
- * lines a pixel wide, every pixel of them once too ("hair").
+ * The n corners written from at on (begin), of triangles of a shape filled in
+ * colour c: drawn as they are ("plain"), or every pixel of them once however
+ * they cross ("line") - or the ends of lines a pixel wide, every pixel of
+ * them once too ("hair").
  */
-p.shape = function (kind, tris, c) {
-  var last = this.ops[this.ops.length - 1],
-    data = this.corners(tris, c);
+p.shape = function (kind, c, at, n) {
+  var last = this.ops[this.ops.length - 1];
 
   //run on with the shapes just before it that are drawn the same way
   if (
@@ -616,65 +754,78 @@ p.shape = function (kind, tris, c) {
     last.z === this.standsAt &&
     last.ground === this.ground
   )
-    last.tris[1] += data[1];
+    last.tris[1] += n;
   else
     this.ops.push({
       kind: kind,
-      tris: data,
+      tris: [at, n],
       glow: this.glow,
       z: this.standsAt,
       ground: this.ground,
     });
 };
 
-//the corners of triangles - or the ends of lines - each in colour c, into
-//the data
-p.corners = function (tris, c) {
-  var n = tris.length / 2,
-    at = this.room(n * SHAPE_FLOATS, SHAPE_FLOATS),
-    data = this.data,
-    o = at;
+/**
+ * Corners are written straight into the data, one after another: from where
+ * begin says - on a whole corner of their own kind, the two kinds sharing
+ * the data - till finish, which says how many there were. A line over the
+ * whole screen has thousands, and none of them go anywhere else first.
+ */
+function begin(self, per) {
+  self.writing = Math.ceil(self.used / per) * per;
 
-  //straight into the data: a line over the whole screen has thousands
-  for (var i = 0; i < tris.length; i += 2) {
-    data[o] = tris[i];
-    data[o + 1] = tris[i + 1];
-    data[o + 2] = c[0];
-    data[o + 3] = c[1];
-    data[o + 4] = c[2];
-    data[o + 5] = c[3];
-    o += SHAPE_FLOATS;
+  return self.writing;
+}
+
+function finish(self, at, per) {
+  //nothing written takes up nothing, not even the room to start on a whole
+  //corner
+  if (self.writing > at) self.used = self.writing;
+
+  return (self.writing - at) / per;
+}
+
+//room for count more floats where the corners are being written
+function room(self, count) {
+  var need = self.writing + count;
+
+  if (need > self.data.length) {
+    var more = new Float32Array(Math.max(need, self.data.length * 2));
+
+    more.set(self.data.subarray(0, self.writing));
+    self.data = more;
   }
+}
 
-  return [at, n];
-};
+//a corner of a shape - or an end of a line - at x, y in colour c
+function vertex(self, x, y, c) {
+  room(self, SHAPE_FLOATS);
 
-//floats, so many a corner, into the data: where they start, how many corners
-p.put = function (floats, per) {
-  var at = this.room(floats.length, per);
+  var d = self.data,
+    o = self.writing;
 
-  this.data.set(floats, at);
+  d[o] = x;
+  d[o + 1] = y;
+  d[o + 2] = c[0];
+  d[o + 3] = c[1];
+  d[o + 4] = c[2];
+  d[o + 5] = c[3];
+  self.writing = o + SHAPE_FLOATS;
+}
 
-  return [at, floats.length / per];
-};
+//a corner of words at x, y, and where it is on their picture, u, v
+function corner(self, x, y, u, v) {
+  room(self, WORDS_FLOATS);
 
-//room for count floats, so many a corner, in the data: where they start
-p.room = function (count, per) {
-  //on a whole corner of its own kind, the two kinds sharing the data
-  var at = Math.ceil(this.used / per) * per,
-    need = at + count;
+  var d = self.data,
+    o = self.writing;
 
-  if (need > this.data.length) {
-    var more = new Float32Array(Math.max(need, this.data.length * 2));
-
-    more.set(this.data.subarray(0, this.used));
-    this.data = more;
-  }
-
-  this.used = need;
-
-  return at;
-};
+  d[o] = x;
+  d[o + 1] = y;
+  d[o + 2] = u;
+  d[o + 3] = v;
+  self.writing = o + WORDS_FLOATS;
+}
 
 //whether there is anything drawn this layer
 p.any = function () {
@@ -847,18 +998,19 @@ p.begin = function () {
 
 /* --- Geometry ---------------------------------------------------------- */
 
-//whether a closed outline, x, y after x, y, bulges out everywhere
-function convex(pts) {
-  var n = pts.length / 2,
+//whether a closed outline, the points from start to end, x, y after x, y,
+//bulges out everywhere
+function convex(points, start, end) {
+  var n = (end - start) / 2,
     sign = 0;
 
   for (var i = 0; i < n; i++) {
-    var a = i * 2,
-      b = ((i + 1) % n) * 2,
-      c = ((i + 2) % n) * 2,
+    var a = start + i * 2,
+      b = start + ((i + 1) % n) * 2,
+      c = start + ((i + 2) % n) * 2,
       cross =
-        (pts[b] - pts[a]) * (pts[c + 1] - pts[b + 1]) -
-        (pts[b + 1] - pts[a + 1]) * (pts[c] - pts[b]);
+        (points[b] - points[a]) * (points[c + 1] - points[b + 1]) -
+        (points[b + 1] - points[a + 1]) * (points[c] - points[b]);
 
     if (cross === 0) continue;
     if (sign === 0) sign = cross > 0 ? 1 : -1;
@@ -868,61 +1020,85 @@ function convex(pts) {
   return true;
 }
 
-//triangles from the first point to every edge after it, onto out
-function fan(pts, out) {
-  for (var i = 2; i + 3 < pts.length; i += 2)
-    out.push(pts[0], pts[1], pts[i], pts[i + 1], pts[i + 2], pts[i + 3]);
+//triangles from the first of the points from start to end to every edge
+//after it, in colour c
+function fan(self, start, end, c) {
+  var points = self.points;
 
-  return out;
-}
-
-function bound(pts, box) {
-  for (var i = 0; i < pts.length; i += 2) {
-    box[0] = Math.min(box[0], pts[i]);
-    box[1] = Math.min(box[1], pts[i + 1]);
-    box[2] = Math.max(box[2], pts[i]);
-    box[3] = Math.max(box[3], pts[i + 1]);
+  for (var i = start + 2; i + 3 < end; i += 2) {
+    vertex(self, points[start], points[start + 1], c);
+    vertex(self, points[i], points[i + 1], c);
+    vertex(self, points[i + 2], points[i + 3], c);
   }
 }
 
-function rect(box) {
-  var x0 = box[0] - 1,
-    y0 = box[1] - 1,
-    x1 = box[2] + 1,
-    y1 = box[3] + 1;
-
-  return [x0, y0, x1, y0, x0, y1, x0, y1, x1, y0, x1, y1];
-}
-
 /**
- * The dashes of a line along pts, as the canvas dashes it - the dash going
- * on round the corners: each(x, y, ux, uy, a, b, start, end) for every
- * stretch of it drawn, from a to b along the edge from x, y going ux, uy -
- * start and end, whether it starts or ends where the edge does.
+ * Piece i of the path drawn as a line w wide in colour c - dashed as the
+ * canvas dashes it, the dash going on round the corners, and back to its
+ * start, if it is closed. A line a pixel wide or so (hair) is drawn as the
+ * ends of its stretches, a pixel for every step along them with none
+ * missed, as a strip that thin would on a slope; any other as a strip along
+ * each stretch, running on past either end of an edge by half its width so
+ * that the corners are filled.
  */
-function dashes(pts, dash, each) {
-  var k = 0,
+function line(self, i, w, hair, c) {
+  var points = self.points,
+    start = self.starts[i],
+    count = (pieceEnd(self, i) - start) / 2,
+    //and the first again, at the end of one that is closed
+    m = count + (self.closed[i] === 1 ? 1 : 0),
+    dash = self.dash,
+    h = w / 2,
+    k = 0,
     left = dash.length > 0 ? dash[0] : Infinity,
-    on = true;
+    on = true,
+    j,
+    x0,
+    y0,
+    o,
+    dx,
+    dy,
+    len,
+    ux,
+    uy,
+    t,
+    step;
 
-  for (var i = 0; i + 3 < pts.length; i += 2) {
-    var x0 = pts[i],
-      y0 = pts[i + 1],
-      dx = pts[i + 2] - x0,
-      dy = pts[i + 3] - y0,
-      len = Math.sqrt(dx * dx + dy * dy);
+  for (j = 0; j + 1 < m; j++) {
+    x0 = points[start + j * 2];
+    y0 = points[start + j * 2 + 1];
+    o = j + 1 < count ? start + j * 2 + 2 : start;
+    dx = points[o] - x0;
+    dy = points[o + 1] - y0;
+    len = Math.sqrt(dx * dx + dy * dy);
 
     if (len === 0) continue;
 
-    var ux = dx / len,
-      uy = dy / len,
-      t = 0;
+    ux = dx / len;
+    uy = dy / len;
+    t = 0;
 
     //along the edge, a dash or a gap at a time
     while (t < len) {
-      var step = Math.min(left, len - t);
+      step = Math.min(left, len - t);
 
-      if (on) each(x0, y0, ux, uy, t, t + step, t === 0, t + step >= len);
+      if (on) {
+        if (hair) {
+          vertex(self, x0 + ux * t, y0 + uy * t, c);
+          vertex(self, x0 + ux * (t + step), y0 + uy * (t + step), c);
+        } else
+          quad(
+            self,
+            x0,
+            y0,
+            ux,
+            uy,
+            t === 0 ? t - h : t,
+            t + step >= len ? t + step + h : t + step,
+            h,
+            c,
+          );
+      }
 
       t += step;
       left -= step;
@@ -936,32 +1112,9 @@ function dashes(pts, dash, each) {
   }
 }
 
-/**
- * A line w wide along pts as triangles onto out: a strip along each edge,
- * running on past either end of it by half its width so that the corners
- * are filled.
- */
-function strip(pts, w, dash, out) {
-  var h = w / 2;
-
-  dashes(pts, dash, function (x, y, ux, uy, a, b, start, end) {
-    quad(x, y, ux, uy, start ? a - h : a, end ? b + h : b, h, out);
-  });
-}
-
-/**
- * A line a pixel wide along pts as the ends of its stretches onto out - to
- * be drawn as lines, a pixel for every step along them with none missed, as
- * a strip that thin would on a slope.
- */
-function hairline(pts, dash, out) {
-  dashes(pts, dash, function (x, y, ux, uy, a, b) {
-    out.push(x + ux * a, y + uy * a, x + ux * b, y + uy * b);
-  });
-}
-
-//a strip h either side of the line from x, y along ux, uy, from a to b on it
-function quad(x, y, ux, uy, a, b, h, out) {
+//a strip h either side of the line from x, y along ux, uy, from a to b on
+//it, in colour c
+function quad(self, x, y, ux, uy, a, b, h, c) {
   var nx = -uy * h,
     ny = ux * h,
     ax = x + ux * a,
@@ -969,20 +1122,12 @@ function quad(x, y, ux, uy, a, b, h, out) {
     bx = x + ux * b,
     by = y + uy * b;
 
-  out.push(
-    ax + nx,
-    ay + ny,
-    bx + nx,
-    by + ny,
-    ax - nx,
-    ay - ny,
-    ax - nx,
-    ay - ny,
-    bx + nx,
-    by + ny,
-    bx - nx,
-    by - ny,
-  );
+  vertex(self, ax + nx, ay + ny, c);
+  vertex(self, bx + nx, by + ny, c);
+  vertex(self, ax - nx, ay - ny, c);
+  vertex(self, ax - nx, ay - ny, c);
+  vertex(self, bx + nx, by + ny, c);
+  vertex(self, bx - nx, by - ny, c);
 }
 
 /* --- WebGL ------------------------------------------------------------- */
