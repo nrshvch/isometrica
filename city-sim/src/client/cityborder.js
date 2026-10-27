@@ -64,10 +64,19 @@ function CityBorder(root) {
   this._cityArea = {};
   this._detached = [];
   this._detachedAreas = [];
+  //whether the lines are to be traced again, before the next frame draws
+  //them (lines): however often what is put down moves in the meantime -
+  //several tiles a frame, dragged quickly - they are traced once
+  this._stale = false;
+  //what the city would be with what is being put down, and what that was
+  //asked for (CityRoads#plan): asked again for the same, it is the same
+  this._planned = null;
+  this._plan = null;
 }
 
-//a line round tiles, along their edges, in color - drawn while shown says
-function line(root, name, color, shown) {
+//a line round tiles, along their edges, in color - drawn while shown says,
+//and traced again first, if it is to be (lines)
+function line(self, root, name, color, shown) {
   var go = new engine.GameObject(name),
     renderer = go.addComponent(
       new TileAreaBorderRenderer(root.core.terrain, []),
@@ -79,6 +88,8 @@ function line(root, name, color, shown) {
   renderer.borderWidth = 3;
   renderer.dash = [4];
   renderer.cullingTest = function (viewport, vprender) {
+    if (self._stale) lines(self);
+
     return (
       shown() &&
       TileAreaBorderRenderer.prototype.cullingTest.call(
@@ -104,13 +115,13 @@ CityBorder.prototype.init = function () {
 
   //the city's put away with the words over the world, but while something
   //is being put down; the rest only ever up while it is
-  this.renderer = line(root, "city border", CITY, function () {
+  this.renderer = line(this, root, "city border", CITY, function () {
     return self._placing !== null || !root.cityman.namesHidden();
   });
-  this.placed = line(root, "area put down", APART, function () {
+  this.placed = line(this, root, "area put down", APART, function () {
     return self._placing !== null || self._inspecting !== null;
   });
-  this.detached = line(root, "areas apart", DETACHED, function () {
+  this.detached = line(this, root, "areas apart", DETACHED, function () {
     return self._placing !== null;
   });
 
@@ -136,8 +147,7 @@ CityBorder.prototype.init = function () {
  */
 CityBorder.prototype.placing = function (what) {
   this._placing = what && what.anchors.length > 0 ? what : null;
-
-  if (this.renderer !== null) lines(this);
+  this._stale = true;
 };
 
 /**
@@ -149,8 +159,7 @@ CityBorder.prototype.placing = function (what) {
  */
 CityBorder.prototype.inspecting = function (building) {
   this._inspecting = building;
-
-  if (this.renderer !== null) lines(this);
+  this._stale = true;
 };
 
 /**
@@ -193,7 +202,7 @@ function draw(self) {
     putUpSigns(self);
   }
 
-  if (self.renderer !== null) lines(self);
+  self._stale = true;
 }
 
 /**
@@ -208,6 +217,8 @@ function lines(self) {
     plan,
     put,
     rest;
+
+  self._stale = false;
 
   if (placing === null) {
     self.renderer.setTiles(tilesOf(self._cityArea));
@@ -227,12 +238,7 @@ function lines(self) {
     return;
   }
 
-  plan = self._city.roads.plan(
-    placing.code,
-    placing.anchors,
-    placing.sizeX,
-    placing.sizeY,
-  );
+  plan = planned(self, placing);
   put = {};
   rest = {};
   plan.apart.forEach(function (part) {
@@ -242,6 +248,35 @@ function lines(self) {
   self.renderer.setTiles(tilesOf(areaOfTiles(plan.city)));
   self.placed.setTiles(tilesOf(put));
   self.detached.setTiles(tilesOf(rest));
+}
+
+//what the city would be with what is being put down (CityRoads#plan) - the
+//plan asked for last, if it is asked for the same again: the same thing in
+//the same place, the city as it was then
+function planned(self, placing) {
+  var roads = self._city.roads,
+    asked =
+      placing.code +
+      " " +
+      placing.sizeX +
+      " " +
+      placing.sizeY +
+      " " +
+      placing.anchors.join(",") +
+      " " +
+      roads.version();
+
+  if (asked !== self._planned) {
+    self._plan = roads.plan(
+      placing.code,
+      placing.anchors,
+      placing.sizeX,
+      placing.sizeY,
+    );
+    self._planned = asked;
+  }
+
+  return self._plan;
 }
 
 //the area of the part standing apart that what is looked at is in - none if
