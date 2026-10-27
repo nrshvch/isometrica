@@ -20,8 +20,10 @@
  * Only the script is timed. What the GPU does is not, but where the browser
  * can time it (the GPU lines), and the switches at the bottom draw the city
  * without its shadows, its lamps or what goes over it, or as often as the
- * screen can, to see what each of them takes. Put away, everything is as it
- * was: nothing kept, everything drawn, at most 30 frames a second.
+ * screen can, to see what each of them takes - and as often as there is
+ * anything going on, without saving the battery (city-sim client/pace), to
+ * compare. Put away, everything is as it was: nothing kept, everything
+ * drawn, at most 30 frames a second, fewer while less is going on.
  */
 import { useEffect, useState } from "react";
 import engine from "engine";
@@ -49,6 +51,13 @@ var TOP = ["frame", "update", "render"],
 
 //nothing to show on a line, yet or this time
 var NONE = "–";
+
+//why the world is drawn fewer times a second than it could be (client/pace)
+var WHY = {
+  covered: "a screen over it",
+  idle: "left alone",
+  battery: "battery low",
+};
 
 /**
  * How much is easy on a phone and how much too much, by line: for each of
@@ -193,7 +202,7 @@ function Head({ children, cols }) {
  * as any of them, lined up with the line above - dimmed while there is
  * nothing on it, and set in a little under what it is part of.
  */
-function Line({ name, values, tones, dim, part }) {
+function Line({ name, values, tones, text, dim, part }) {
   return (
     <div
       className={cx(
@@ -217,6 +226,9 @@ function Line({ name, values, tones, dim, part }) {
           </span>
         );
       })}
+      {text !== undefined && (
+        <span className="shrink-0 text-right">{text}</span>
+      )}
     </div>
   );
 }
@@ -242,12 +254,13 @@ export default function DebugPanel() {
     [cache, setCache] = useState(null),
     //the tickers timed one by one, which costs a little itself
     [tickers, setTickers] = useState(true),
-    //what is drawn, and how often (Lighting passes, Game uncapped)
+    //what is drawn, and how often (Lighting passes, Game uncapped, Pace)
     [passes, setPasses] = useState({
       shadows: true,
       lamps: true,
       overlay: true,
       uncapped: false,
+      saving: true,
     });
 
   useEffect(
@@ -275,6 +288,7 @@ export default function DebugPanel() {
         lamps: true,
         overlay: true,
         uncapped: false,
+        saving: true,
       });
     };
   }, []);
@@ -291,7 +305,8 @@ export default function DebugPanel() {
     shown = snap === null ? null : order(snap.sections),
     //how many frames a second it may draw at most, and how well it keeps up
     //with that
-    cap = passes.uncapped ? 0 : 30,
+    pace = client ? client.pace : null,
+    cap = passes.uncapped ? 0 : client && client.game ? client.game.fps : 30,
     keepUp = cap
       ? { higher: true, good: cap - 2, bad: (cap * 2) / 3 }
       : { higher: true, good: 28, bad: 20 },
@@ -335,6 +350,21 @@ export default function DebugPanel() {
               cap ? String(cap) : NONE,
             ]}
             tones={[tone(snap.fps, keepUp)]}
+          />
+          <Line
+            name="fewer frames"
+            dim={pace === null || (passes.saving && pace.why === null)}
+            text={
+              pace === null
+                ? "never"
+                : passes.uncapped
+                  ? "as often as the screen"
+                  : !passes.saving
+                    ? "not saving"
+                    : pace.why !== null
+                      ? WHY[pace.why] || pace.why
+                      : "not now"
+            }
           />
           <Line
             name="between frames, ms"
@@ -531,6 +561,13 @@ export default function DebugPanel() {
             }}
           />
           <Switch
+            label="Save the battery"
+            on={passes.saving}
+            onClick={function () {
+              flip("saving");
+            }}
+          />
+          <Switch
             label="Time every ticker"
             on={tickers}
             onClick={function () {
@@ -554,4 +591,5 @@ function apply(client, passes) {
   }
 
   if (client.game) client.game.uncapped = passes.uncapped;
+  if (client.pace) client.pace.keep(passes.saving);
 }

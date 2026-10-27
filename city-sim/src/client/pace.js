@@ -37,8 +37,9 @@ function Pace(game) {
   this.game = game;
   //which reasons for fewer frames there are just now, by name
   this.asked = {};
-  //and the one kept to, or null
+  //and the one kept to, or null; and whether any is kept to at all (keep)
   this.why = null;
+  this.on = true;
   //when it was last not left alone, and which pointers are held down; and
   //what waits to see whether it is left alone by then
   this.lastInput = performance.now();
@@ -56,6 +57,17 @@ function Pace(game) {
  */
 Pace.prototype.ask = function (reason, yes) {
   this.asked[reason] = !!yes;
+  set(this);
+};
+
+/**
+ * Whether it keeps to its reasons at all - not, every frame there is, for a
+ * debug panel to compare the two.
+ *
+ * @param on {boolean}
+ */
+Pace.prototype.keep = function (on) {
+  this.on = on;
   set(this);
 };
 
@@ -143,7 +155,7 @@ function set(self) {
     why = null;
 
   for (var reason in RATE)
-    if (self.asked[reason] && RATE[reason] < fps) {
+    if (self.on && self.asked[reason] && RATE[reason] < fps) {
       fps = RATE[reason];
       why = reason;
     }
