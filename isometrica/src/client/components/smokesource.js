@@ -139,12 +139,17 @@ SmokeSourceScript.prototype.spawnSmoke = function () {
  * there - for whatever smokes on its own schedule rather than with a
  * SmokeSource on it, like a car.
  *
- * @param [kind] {Object} SmokeScript.steam, the default, SmokeScript.soot or
- *        SmokeScript.dust
+ * @param [kind] {Object} SmokeScript.steam, the default, SmokeScript.soot,
+ *        SmokeScript.dust or SmokeScript.debris
+ * @param [vx] {number} thrown out that way as it comes out, world units a
+ *        second along x, slowing to nothing (SmokeScript vx)
+ * @param [vz] {number} and along z
  */
-SmokeSourceScript.puff = function (world, x, y, z, kind) {
+SmokeSourceScript.puff = function (world, x, y, z, kind, vx, vz) {
   var smoke = getSmoke();
   smoke.smoke.kind = kind || SmokeScript.steam;
+  smoke.smoke.vx = vx || 0;
+  smoke.smoke.vz = vz || 0;
   smoke.transform.setPosition(x, y, z);
   world.addGameObject(smoke);
 };

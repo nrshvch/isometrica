@@ -237,38 +237,61 @@ City.prototype.onTick = function (sender, args, meta) {
 };
 
 /**
- * Whether there is anything on the tile the city may clear away.
+ * The tiles clearing the tile clears: every tile of whatever stands on it -
+ * a building comes down whole - or the tile, for a tree or stones the world
+ * put there; none, for bare ground, which has nothing to clear away.
  */
-function clearable(self, tile) {
-  var building = self.world.buildingService.get(tile);
+function clearedBy(self, tile) {
+  var building = self.world.buildingService.get(tile),
+    out = [];
 
-  //bare ground has nothing to clear away, so it is free and does nothing
-  if (building === null) return self.world.envService.hasScenery(tile);
+  if (building === null)
+    return self.world.envService.hasScenery(tile) ? [tile] : out;
 
   //anything standing is the city's to clear - there are no borders - and a
   //tree or a rock is part of the world, so it can go anywhere
-  return true;
+  var iter = building.occupiedTiles();
+
+  while (!iter.done) out.push(iter.next());
+
+  return out;
 }
 
 /**
- * What clearing these tiles would come to - one clearTileCost for each that
- * has anything on it to clear - without clearing any of them.
+ * What clearing these tiles would come to - one clearTileCost for every
+ * tile it clears, every tile of a building on any of them - without
+ * clearing any of them.
  *
  * @param tiles {number[]}
- * @returns {{error: number, tile: number, cost: number}} as #quoteTerraform
+ * @returns {{error: number, tile: number, cost: number}} as #quoteTerraform;
+ *          BEING_CLEARED, rather than nothing to clear, for tiles still
+ *          being cleared from before (Terrain#beingCleared)
  */
 City.prototype.quoteClear = function (tiles) {
-  var cost = 0,
+  var cleared = Object.create(null),
+    count = 0,
+    busy = false,
     i;
 
   for (i = 0; i < tiles.length; i++) {
-    if (clearable(this, tiles[i])) cost += Config.clearTileCost;
+    clearedBy(this, tiles[i]).forEach(function (tile) {
+      if (cleared[tile] === true) return;
+
+      cleared[tile] = true;
+      count++;
+    });
+
+    if (this.world.terrain.beingCleared(tiles[i])) busy = true;
   }
+
+  var cost = count * Config.clearTileCost;
 
   return {
     error:
       cost === 0
-        ? ErrorCode.NOTHING_TO_CLEAR
+        ? busy
+          ? ErrorCode.BEING_CLEARED
+          : ErrorCode.NOTHING_TO_CLEAR
         : this.resourcesService.hasEnoughResource(Resource.money, cost)
           ? ErrorCode.NONE
           : ErrorCode.NOT_ENOUGH_RES,
@@ -277,19 +300,35 @@ City.prototype.quoteClear = function (tiles) {
   };
 };
 
+/**
+ * Clears a tile - and every tile of a building standing on it, which comes
+ * down whole - and pays one clearTileCost for each. They are being cleared
+ * from then on (Terrain#beingCleared) - nothing built on them, nor the
+ * ground moved under them - until whoever shows it being done says it is.
+ *
+ * @param tile {number}
+ * @returns {number[]} the tiles cleared - none where there was nothing to
+ *          clear, or not the money to
+ */
 City.prototype.clearTile = function (tile) {
-  if (
-    !clearable(this, tile) ||
-    !this.resourcesService.hasEnoughResource(
-      Resource.money,
-      Config.clearTileCost,
-    )
-  )
-    return false;
+  var tiles = clearedBy(this, tile),
+    terrain = this.world.terrain,
+    cost = tiles.length * Config.clearTileCost,
+    i;
 
-  this.world.terrain.clear(tile);
-  this.resourcesModule.subResource(Resource.money, Config.clearTileCost);
-  return true;
+  if (
+    tiles.length === 0 ||
+    !this.resourcesService.hasEnoughResource(Resource.money, cost)
+  )
+    return [];
+
+  //being cleared before any of it goes, for whoever shows it going
+  for (i = 0; i < tiles.length; i++) terrain.startClearing(tiles[i]);
+  for (i = 0; i < tiles.length; i++) terrain.clear(tiles[i]);
+
+  this.resourcesModule.subResource(Resource.money, cost);
+
+  return tiles;
 };
 
 /**
@@ -385,6 +424,10 @@ City.prototype.quoteTerraform = function (tiles, direction) {
 
   for (i = 0; i < plan.tiles.length; i++) {
     tile = plan.tiles[i];
+
+    //not where the ground is still being cleared
+    if (terrain.beingCleared(tile))
+      return { error: ErrorCode.BEING_CLEARED, tile: tile, cost: 0 };
 
     building = world.buildingService.get(tile);
 

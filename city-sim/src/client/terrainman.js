@@ -9,6 +9,7 @@ import Core from "isometrica/core/main";
 import Events from "events";
 import AreaSelector from "isometrica/client/areaselector";
 import ServiceMan from "isometrica/client/serviceman";
+import Clearworks from "isometrica/client/clearworks";
 import Buildman from "isometrica/client/buildman";
 import ErrorCode from "isometrica/core/errorcode";
 import Numeral from "numeral";
@@ -24,6 +25,7 @@ errorText[ErrorCode.NOT_ENOUGH_RES] = "no money";
 errorText[ErrorCode.TILE_TAKEN] = "building in the way";
 errorText[ErrorCode.TERRAFORM_TOO_LARGE] = "too much land";
 errorText[ErrorCode.NOTHING_TO_CLEAR] = "nothing to clear";
+errorText[ErrorCode.BEING_CLEARED] = "being cleared";
 
 //how far around the picked tiles the ground is outlined, so the shape of it is
 //there to see even under water
@@ -231,7 +233,14 @@ Terrainman.prototype.enter = function () {
     updateQuote();
   }
 
-  var sub = Events.on(ts, AreaSelector.events.change, updateHilite);
+  var sub = Events.on(ts, AreaSelector.events.change, updateHilite),
+    //a tile the bulldozers are done with is free to clear, build on and
+    //shape again: priced afresh
+    reached = Events.on(
+      root.clearworks,
+      Clearworks.events.reached,
+      updateQuote,
+    );
 
   var clear = {
     question: "Clear these tiles",
@@ -242,14 +251,22 @@ Terrainman.prototype.enter = function () {
       var c = city();
 
       //what stood on them stays standing until a bulldozer gets to it, and
-      //goes down in a cloud of dust (client/clearworks)
+      //goes down in a cloud of dust - a building comes down whole first
+      //(client/clearworks, client/demolition)
       root.clearworks.clear(tiles, function (tile) {
-        //every tile is charged on its own, so each one that goes gets
-        //its own text
-        if (!c.clearTile(tile)) return false;
+        var cleared = c.clearTile(tile);
 
-        buildman.showCost(tile, 1, 1, Core.Config.clearTileCost);
-        return true;
+        //every tile picked is charged on its own, so each one that goes
+        //gets its own text - with the rest of a building on it
+        if (cleared.length > 0)
+          buildman.showCost(
+            tile,
+            1,
+            1,
+            cleared.length * Core.Config.clearTileCost,
+          );
+
+        return cleared;
       });
     },
   };
@@ -313,6 +330,7 @@ Terrainman.prototype.enter = function () {
     clearTag();
     root.hiliteMan.disable(tokens);
     Events.off(ts, AreaSelector.events.change, sub);
+    Events.off(root.clearworks, Clearworks.events.reached, reached);
 
     gameScreen.showWorld();
     worldScreen.hideHint();

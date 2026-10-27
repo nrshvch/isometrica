@@ -60,7 +60,11 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 - Clearing is paid for at once, but takes a little while to do: bulldozers
   sweep the tiles cleared, the trees and stones going down in their dust as
   they get to them, and leave the ground bare earth - which the grass grows
-  back over in a few game days (`isometrica/src/client/clearworks.js`).
+  back over in half a game day (`isometrica/src/client/clearworks.js`). A
+  building comes down whole, every tile of it paid for, floor onto floor in
+  a cloud of grey dust, into rubble for the bulldozers
+  (`isometrica/src/client/demolition.js`); and nothing can be built on a
+  tile till its bulldozer is done there.
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

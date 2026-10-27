@@ -48,6 +48,16 @@ SmokeScript.soot = {
   thick: 1,
 };
 
+//grey, the cloud a building comes down in (client/demolition): thick, rolling
+//out from where it goes up and slow to settle
+SmokeScript.debris = {
+  looks: frames("debris"),
+  ttl: 6000,
+  rise: 3.5,
+  peak: 0.06,
+  thick: 1,
+};
+
 //brown, kicked up off the ground being cleared (client/clearworks): it hangs
 //low, hardly rising, and lingers as the wind takes it off
 SmokeScript.dust = {
@@ -60,6 +70,10 @@ SmokeScript.dust = {
 
 //what it is
 SmokeScript.prototype.kind = SmokeScript.steam;
+//which way it is thrown out as it comes out, world units a second, along x
+//and z - slowing to nothing over its life
+SmokeScript.prototype.vx = 0;
+SmokeScript.prototype.vz = 0;
 SmokeScript.prototype.startedAt = 0;
 SmokeScript.prototype.frame = -1;
 //how high the ground under it is, in the world
@@ -155,12 +169,14 @@ SmokeScript.prototype.tick = function (time) {
     //the higher, the slower it rises and the more the wind has it - and
     //the harder it blows, the lower it bends it over
     rise = kind.rise * (1 - 0.65 * t) * (1 - 0.55 * Wind.strength(w)),
-    blown = 0.3 + t;
+    blown = 0.3 + t,
+    //thrown out, and slowing
+    thrown = (1 - t) * (1 - t);
 
   this.gameObject.transform.translate(
-    w[0] * blown * d,
+    (w[0] * blown + this.vx * thrown) * d,
     rise * d,
-    w[1] * blown * d,
+    (w[1] * blown + this.vz * thrown) * d,
     "world",
   );
   this.gameObject.transform.getPosition(at);

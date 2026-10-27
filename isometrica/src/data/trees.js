@@ -105,7 +105,7 @@ function turned(path, turns) {
 }
 
 //the pictures painted from all four sides
-var TURNING = /^gen\/(trees|scenery\/stone)/;
+var TURNING = /^gen\/(trees|scenery\/(stone|rubble))/;
 
 /**
  * The codes of every tree of each kind, by kind.

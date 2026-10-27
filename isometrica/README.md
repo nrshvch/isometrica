@@ -716,15 +716,31 @@ dev`) plays them the way a game would - all three weathers together, the
   together are swept as one, a row at a time along the longer way, a
   bulldozer to every six tiles or so, each backing up and pushing on over
   every tile it gets to; ground cleared next to ground still being cleared
-  is shared out afresh among the bulldozers already at it. A building
-  cleared away comes down in its dust there and then. None of it is kept -
-  after a reload the ground is bare.
+  is shared out afresh among the bulldozers already at it. A road taken up
+  goes in a puff of dust there and then. None of it is kept - after a
+  reload the ground is bare.
+- A building cleared away comes down whole, every tile of it, whichever was
+  picked (`isometrica/src/core/city.js` clearTile), and is paid for by the
+  tile. It comes down there and then (`isometrica/src/client/demolition.js`):
+  each tile's picture taken apart into the parts it was put together out of
+  (`client/compoundbuilding.js`) - its ground storey, every storey on that,
+  its roof - it shakes, then its floors give, the top first, dropping onto
+  the ones under it and sinking into a cloud of grey dust
+  (`isometrica/src/shared/gen/smoke.js` debris) that goes up its face as it
+  falls and rolls out over everything round once it is down. It leaves a
+  heap of rubble on every tile (`isometrica/src/shared/gen/stones.js`
+  rubble: a mound of grit, slabs of concrete, brick and timber on it), and
+  the bulldozers wait for the dust to settle before they push it away.
+- Till a bulldozer has been over a tile it is being cleared still
+  (`isometrica/src/core/terrain.js` beingCleared): nothing is built on it,
+  no road laid, nor the ground moved under it - "being cleared".
 - The earth a tile was cleared down to, or moved by raising or lowering it,
-  lies bare for a while of the game's time (`isometrica/src/core/terrain.js`
-  REGROWS, bareFor - kept in the save), its edge churned up over the grass
-  round it (`isometrica/src/shared/gen/terrain.js` earth); then the grass
-  comes up through it, spilling in from the grass round it (earth_regrowing),
-  a tile at a time, and it is grass again (`isometrica/src/client/terrain.js`
+  lies bare for a while of the game's time - half a day in all
+  (`isometrica/src/core/terrain.js` REGROWS, bareFor - kept in the save),
+  its edge churned up over the grass round it
+  (`isometrica/src/shared/gen/terrain.js` earth); then the grass comes up
+  through it, spilling in from the grass round it (earth_regrowing), a tile
+  at a time, and it is grass again (`isometrica/src/client/terrain.js`
   groundOf, Regrowth).
 - The signs of a town's limits can stand by a road
   (`isometrica/src/shared/gen/roads.js` townSign, `gen/roads/limit/in0`-`3`

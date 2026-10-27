@@ -104,6 +104,8 @@ function buildTest(self, code, tile, rotation) {
       !Surface.fits(terrain, tile, Surface.natural(terrain, tile))
     )
       return ErrorCode.LAND_NOT_SUITABLE;
+    //what was cleared off it is not all gone yet
+    else if (terrain.beingCleared(tile)) return ErrorCode.BEING_CLEARED;
     else {
       var b = self.get(tile);
       if (

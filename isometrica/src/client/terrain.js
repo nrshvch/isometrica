@@ -112,7 +112,7 @@ function tileHash(x, y) {
 /**
  * What the ground of the tile at x, y is - GRASS, BARE or REGROWING. Water
  * is none of them; and a tile being cleared is grass still until the
- * bulldozer gets to it (client/clearworks).
+ * bulldozer gets to it (core/terrain beingCleared, client/clearworks).
  */
 function groundOf(x, y) {
   var terrain = vkaria.core.world.terrain,
@@ -120,7 +120,7 @@ function groundOf(x, y) {
     t = terrain.bareFor(tile);
 
   if (t < 0 || terrain.getTerrainType(x, y) === TerrainType.water) return GRASS;
-  if (vkaria.clearworks && vkaria.clearworks.holds(tile)) return GRASS;
+  if (terrain.beingCleared(tile)) return GRASS;
 
   return t <
     CoreTerrain.REGROWS * (BARE_SHARE + BARE_JITTER * (tileHash(x, y) - 0.5))

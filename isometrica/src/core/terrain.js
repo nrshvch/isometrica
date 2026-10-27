@@ -15,9 +15,13 @@ var events = {
 };
 
 //how long, of the game's time, the earth a tile was cleared down to lies
-//bare before the grass has grown back over it - the second half of that
-//growing back (client/terrain)
-var REGROWS = 3 * 86400000;
+//bare before the grass has grown back over it - most of the second half of
+//that growing back (client/terrain): half a day
+var REGROWS = 43200000;
+
+//how long a tile is being cleared at the most, real time, ms - should
+//whoever shows it being done never say it is (beingCleared)
+var CLEARING_MOST = 180000;
 
 /**
  * @type {TileIterator}
@@ -201,6 +205,9 @@ function Terrain(world) {
   //and when, of the game's time, the ground of each was last cleared or
   //moved, for as long as it lies bare (REGROWS)
   this.bareSince = Object.create(null);
+  //the tiles being cleared, and since when, real time (startClearing) -
+  //not kept: a save has them cleared
+  this.clearing = Object.create(null);
 }
 
 Terrain.REGROWS = REGROWS;
@@ -409,6 +416,40 @@ function now(self) {
 
   return time ? time.now : 0;
 }
+
+/**
+ * Has a tile being cleared - from before whatever is on it goes until
+ * whoever shows it going says it is gone (endClearing): nothing is built on
+ * it, nor the ground under it moved, meanwhile. A building takes a while to
+ * come down, and a bulldozer to get to it (client/clearworks); with nobody
+ * to show it, it is done after CLEARING_MOST.
+ *
+ * @param tile {number}
+ */
+Terrain.prototype.startClearing = function (tile) {
+  this.clearing[tile] = Date.now();
+};
+
+//what was on a tile is gone now (startClearing)
+Terrain.prototype.endClearing = function (tile) {
+  delete this.clearing[tile];
+};
+
+/**
+ * Whether a tile is being cleared still (startClearing).
+ *
+ * @param tile {number}
+ * @returns {boolean}
+ */
+Terrain.prototype.beingCleared = function (tile) {
+  var since = this.clearing[tile];
+
+  if (since === undefined) return false;
+  if (Date.now() - since < CLEARING_MOST) return true;
+
+  delete this.clearing[tile];
+  return false;
+};
 
 /**
  * How long ago, of the game's time, the ground of a tile was cleared down

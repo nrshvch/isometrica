@@ -16,6 +16,12 @@
  * there as black, see-through; everywhere else there is nothing, so the
  * stones lie on whatever ground the tile is.
  *
+ * And what a building comes down to (client/demolition): a heap of rubble
+ * on every tile of it till the bulldozer pushes it away - a low mound of
+ * dusty grey debris ("rubble", "rubble0"), and on it, piled any which way,
+ * slabs of concrete, broken brick and splintered timber: flat-topped and
+ * sharp-edged, the lumps a stone is but squared off.
+ *
  * Every picture is the size of a tile of the ground, its middle where the
  * tile's is (data/rocks: pivot 32, 24). It paints into plain pictures,
  * {width, height, data} with the pixels as RGBA, as it is asked for them.
@@ -52,6 +58,31 @@ var GREY = [
     [140, 125, 108],
     [110, 98, 86],
     [80, 72, 64],
+  ],
+  //rubble: the dust and grit it lies in, and what it is broken out of
+  DEBRIS = [
+    [166, 160, 150],
+    [144, 138, 129],
+    [116, 111, 104],
+    [88, 85, 80],
+  ],
+  CONCRETE = [
+    [190, 188, 182],
+    [162, 160, 154],
+    [128, 127, 123],
+    [96, 95, 93],
+  ],
+  BRICK = [
+    [182, 106, 84],
+    [152, 86, 68],
+    [120, 68, 54],
+    [88, 51, 41],
+  ],
+  TIMBER = [
+    [156, 122, 86],
+    [128, 99, 68],
+    [99, 76, 53],
+    [72, 55, 39],
   ];
 
 //what is on each picture: how many stones, in what colours, how big round
@@ -70,6 +101,26 @@ var PLANS = {
     size: [3.2, 4.8],
     high: [4, 6.5],
     seed: 23,
+  },
+  //rubble: a mound, how big round and how high, and the pieces piled on it
+  //any which way - each of one of the colours - flat on top
+  rubble: {
+    mound: { r: 13, high: 4.6, colours: DEBRIS },
+    count: 24,
+    palettes: [CONCRETE, CONCRETE, BRICK, BRICK, TIMBER],
+    size: [1.2, 3],
+    high: [1.4, 3.6],
+    blocky: true,
+    seed: 41,
+  },
+  rubble0: {
+    mound: { r: 12, high: 3.8, colours: DEBRIS },
+    count: 20,
+    palettes: [CONCRETE, CONCRETE, CONCRETE, BRICK, TIMBER],
+    size: [1.3, 3.2],
+    high: [1.2, 3.2],
+    blocky: true,
+    seed: 53,
   },
 };
 
@@ -127,6 +178,8 @@ function stonesOf(plan) {
     out = [],
     tries = 0;
 
+  if (plan.mound) return heapOf(plan, rnd);
+
   while (out.length < plan.count && tries++ < 2000) {
     var r = plan.size[0] + rnd() * (plan.size[1] - plan.size[0]),
       x = 5 + r + rnd() * (TILE - 10 - 2 * r),
@@ -157,6 +210,50 @@ function stonesOf(plan) {
 }
 
 /**
+ * The pieces of a heap of rubble: its mound in the middle of the tile, and
+ * on it the pieces, thicker towards the top of it, each lying as high as
+ * the mound is where it lies - over one another as they come.
+ */
+function heapOf(plan, rnd) {
+  var m = plan.mound,
+    mound = {
+      x: TILE / 2,
+      y: TILE / 2,
+      r: m.r,
+      long: 1.15,
+      turn: rnd() * Math.PI,
+      high: m.high,
+      colours: m.colours,
+      seed: (rnd() * 1e6) | 0,
+      base: 0,
+    },
+    out = [mound];
+
+  for (var i = 0; i < plan.count; i++) {
+    var a = rnd() * 2 * Math.PI,
+      d = Math.sqrt(rnd()) * m.r * 0.8,
+      x = TILE / 2 + Math.cos(a) * d,
+      y = TILE / 2 + Math.sin(a) * d;
+
+    out.push({
+      x: x,
+      y: y,
+      r: plan.size[0] + rnd() * (plan.size[1] - plan.size[0]),
+      //slabs and beams, longer one way than a stone ever is
+      long: 1 + rnd() * 0.9,
+      turn: rnd() * Math.PI,
+      high: plan.high[0] + rnd() * (plan.high[1] - plan.high[0]),
+      colours: plan.palettes[Math.floor(rnd() * plan.palettes.length)],
+      seed: (rnd() * 1e6) | 0,
+      base: heightAt([mound], x, y).z * 0.8,
+      blocky: plan.blocky,
+    });
+  }
+
+  return out;
+}
+
+/**
  * How high the stones stand at x, y along the tile, and which of them it is
  * there: {z, stone}, z 0 and stone null where there are none.
  */
@@ -180,10 +277,14 @@ function heightAt(stones, x, y) {
     if (d >= 1) continue;
 
     //a boulder: steep round its foot, its top flattish - a face or two on
-    //it, as a broken stone has
-    var z = s.high * Math.sqrt(1 - Math.pow(d, 6));
+    //it, as a broken stone has; a piece of rubble flat on top, sheer
+    //round it
+    var z = s.blocky
+      ? s.high * Math.min(1, (1 - d) / 0.2)
+      : s.high * Math.sqrt(1 - Math.pow(d, 6));
 
-    z *= 0.92 + noise(x * 0.5, y * 0.5, s.seed + 7) * 0.16;
+    if (!s.blocky) z *= 0.92 + noise(x * 0.5, y * 0.5, s.seed + 7) * 0.16;
+    z += s.base || 0;
 
     if (z > best) {
       best = z;

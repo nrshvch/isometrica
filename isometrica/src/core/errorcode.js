@@ -18,6 +18,8 @@ var ErrorCode = {
   NOTHING_TO_CLEAR: 12,
   //a road down to the water's edge, where the land is all beach
   ON_SHORE: 13,
+  //on ground still being cleared (core/terrain beingCleared)
+  BEING_CLEARED: 14,
 };
 
 export default ErrorCode;

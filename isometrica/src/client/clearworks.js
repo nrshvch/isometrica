@@ -1,4 +1,5 @@
 import engine from "engine";
+import Events from "events";
 import Core from "../core/main";
 import Config from "./config";
 import View from "./view";
@@ -20,7 +21,12 @@ var Terrain = Core.Terrain,
  * was (client/envman, client/buildman hold), the grass under it, until a
  * bulldozer gets there: as its blade reaches it, it goes down in a cloud of
  * dust, and the tile is the bare earth the bulldozer leaves behind it
- * (client/terrain) - which the grass grows back over, in time.
+ * (client/terrain) - which the grass grows back over, in time. A building
+ * comes down first, there and then, into a heap of rubble on every tile of
+ * it (client/demolition), and the bulldozers wait for its dust to settle
+ * before they push the rubble away. Till a bulldozer has been over a tile,
+ * it is being cleared still (core/terrain beingCleared): nothing is built
+ * on it.
  *
  * The tiles cleared that hang together, corners touching, are a stretch of
  * ground worked as one, the way a road being laid is (client/roadworks):
@@ -78,14 +84,24 @@ var AROUND = [
   [-1, -1],
 ];
 
+var events = {
+  //a bulldozer got to a tile: it is free to build on again
+  reached: 0,
+};
+
 function Clearworks(root) {
   this.root = root;
   //the tiles cleared no bulldozer has got to yet, by the tile - each with
-  //what is to go from it once one does (hold)
+  //what is to go from it once one does, and till when on clock none may
+  //drive onto it (hold)
   this.waiting = {};
   this.dozers = [];
   this.looked = 0;
+  //how long the works have been going, ms
+  this.clock = 0;
 }
+
+Clearworks.events = events;
 
 Clearworks.prototype.init = function () {
   var go = new engine.GameObject("clearworks");
@@ -95,65 +111,63 @@ Clearworks.prototype.init = function () {
 };
 
 /**
- * Clears tiles - clear(tile) clearing each in the world, and saying whether
- * it did - and has the bulldozers out to them: what stood on them stays
- * standing until one gets there.
+ * Clears tiles - clear(tile) clearing each in the world, and saying which
+ * tiles it cleared, every tile of a building on it - and has the bulldozers
+ * out to them: what stood on them stays standing until one gets there.
  *
  * @param tiles {number[]}
- * @param clear {function(number): boolean}
+ * @param clear {function(number): number[]}
  */
 Clearworks.prototype.clear = function (tiles, clear) {
   var cleared = [],
-    tile;
+    self = this;
 
-  for (var i = 0; i < tiles.length; i++) {
-    tile = tiles[i];
+  tiles.forEach(function (tile) {
+    clear(tile).forEach(function (t) {
+      //held as it went, or nothing was (hold)
+      var held = waitOn(self, t);
 
-    //being cleared already: nothing left on it to clear
-    if (this.waiting[tile] !== undefined) continue;
+      cleared.push(t);
 
-    //waited on from before it is cleared, for whatever stands on it to be
-    //held as it goes (hold)
-    this.waiting[tile] = [];
-
-    //nothing on it to clear, and nothing to wait for
-    if (!clear(tile)) {
-      delete this.waiting[tile];
-      continue;
-    }
-
-    cleared.push(tile);
-
-    //nothing held, so nothing a bulldozer has to push over: a building
-    //came down - in its dust, there and then
-    if (this.waiting[tile].length === 0) burst(this, tile);
-  }
+      //nothing held, so nothing a bulldozer has to push over: a road was
+      //taken up - in its dust, there and then
+      if (held.letGo.length === 0) burst(self, t);
+    });
+  });
 
   if (cleared.length > 0) crew(this, cleared);
 };
 
-/**
- * Whether a tile is waiting for a bulldozer to get to it: cleared, with
- * whatever stood on it still standing, the grass still under it.
- */
-Clearworks.prototype.holds = function (tile) {
-  return this.waiting[tile] !== undefined;
-};
+//what is held on a tile being cleared, waiting for a bulldozer
+function waitOn(self, tile) {
+  return (
+    self.waiting[tile] ||
+    (self.waiting[tile] = { letGo: [], until: self.clock })
+  );
+}
 
 /**
- * Holds what stood on a tile cleared till a bulldozer gets to it, when
- * letGo() takes it away - if the tile is waiting for one at all.
+ * Holds what stood on a tile being cleared (core/terrain beingCleared) till
+ * a bulldozer gets to it, when letGo() takes it away - if the tile is being
+ * cleared at all; and has the bulldozer wait for so long first, for
+ * whatever is coming down there to be down.
  *
  * @param tile {number}
  * @param letGo {function}
+ * @param [ms] {number} how long before a bulldozer may drive onto it
  * @returns {boolean} whether it is held
  */
-Clearworks.prototype.hold = function (tile, letGo) {
-  var held = this.waiting[tile];
+Clearworks.prototype.hold = function (tile, letGo, ms) {
+  if (
+    this.waiting[tile] === undefined &&
+    !this.root.core.terrain.beingCleared(tile)
+  )
+    return false;
 
-  if (held === undefined) return false;
+  var held = waitOn(this, tile);
 
-  held.push(letGo);
+  held.letGo.push(letGo);
+  if (ms) held.until = Math.max(held.until, this.clock + ms);
 
   return true;
 };
@@ -170,6 +184,7 @@ ClearworksScript.prototype.tick = function (time) {
   var man = this.man,
     dozers = man.dozers;
 
+  man.clock += time.dt;
   man.looked += time.dt;
   if (man.looked >= LOOK_EVERY) {
     man.looked = 0;
@@ -195,12 +210,15 @@ function reach(self, tile) {
   if (held === undefined) return;
 
   delete self.waiting[tile];
-  held.forEach(function (letGo) {
+  held.letGo.forEach(function (letGo) {
     letGo();
   });
 
+  //gone: the tile is free to build on again, and bare
+  self.root.core.terrain.endClearing(tile);
   self.root.terrain.redraw([tile]);
   burst(self, tile);
+  Events.fire(self, events.reached, tile);
 }
 
 //a cloud of dust going up all over a tile
@@ -509,6 +527,12 @@ function work(self, d, dt) {
 
     if (left > 0.01) d.heading = View.headingOf(dx, dy);
 
+    //a tile off whatever is still coming down there, it waits
+    if (left <= 1.05 && notYet(self, next)) {
+      place(self, d);
+      return;
+    }
+
     //the blade gets to what stands there
     if (left <= BLADE) got(self, d, next);
 
@@ -553,6 +577,13 @@ function ahead(self, d) {
     queue.shift();
 
   return queue.length > 0;
+}
+
+//whether a tile is not to be driven onto yet (hold)
+function notYet(self, tile) {
+  var held = self.waiting[tile];
+
+  return held !== undefined && held.until > self.clock;
 }
 
 //a bulldozer's blade got to a tile

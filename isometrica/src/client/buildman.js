@@ -22,6 +22,7 @@ import ErrorCode from "../core/errorcode";
 import Numeral from "numeral";
 import Rotation from "../core/rotation";
 import CompoundBuilding from "./compoundbuilding";
+import Demolition from "./demolition";
 import * as RoadRules from "../core/roadrules";
 import { changed } from "./looks";
 
@@ -82,15 +83,21 @@ function removeBuilding(self, tile) {
 /**
  * Keeps a tree planted on a tile being cleared standing where it is until
  * the bulldozer clearing it gets to it (client/clearworks), the way a wild
- * one is (client/envman) - whether it is.
+ * one is (client/envman) - and brings a building cleared away down there
+ * and then, in its dust, into rubble for the bulldozer (client/demolition);
+ * a road just goes - whether it is either.
  */
 function hold(self, tile, building) {
-  var works = self.root.clearworks;
+  var works = self.root.clearworks,
+    classCode = building.staticData && building.staticData.classCode;
+
+  if (!works || !building.staticData || classCode === BuildingClassCode.road)
+    return false;
+
+  if (classCode !== BuildingClassCode.tree)
+    return Demolition.bringDown(self.root, building);
 
   if (
-    !works ||
-    building.staticData === null ||
-    building.staticData.classCode !== BuildingClassCode.tree ||
     !works.hold(tile, function () {
       delete self.held[tile];
       building.destroy();
@@ -471,6 +478,7 @@ errorText[ErrorCode.WRONG_RESOURCE_TILE] = "no deposit";
 errorText[ErrorCode.LAND_NOT_SUITABLE] = "too steep";
 errorText[ErrorCode.FLAT_LAND_REQUIRED] = "not flat";
 errorText[ErrorCode.TILE_TAKEN] = "occupied";
+errorText[ErrorCode.BEING_CLEARED] = "being cleared";
 errorText[ErrorCode.ON_SHORE] = "on shore";
 
 /**
