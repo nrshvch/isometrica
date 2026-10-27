@@ -13,6 +13,7 @@ import Rocks from "../data/rocks";
 import Tree from "./gameObjects/tree";
 import View from "./view";
 import Trees from "../data/trees";
+import { changed } from "./looks";
 
 //which way round a tree on a tile is, of its four: the same every time, and
 //any of them as likely as the others, with nothing to tell from the next
@@ -140,6 +141,7 @@ function plant(self, tile, spriteData) {
   self.root.game.scene.addGameObject(go);
 
   self._scenery[tile] = go;
+  changed();
 }
 
 function remove(self, tile) {
@@ -147,6 +149,7 @@ function remove(self, tile) {
   if (go !== undefined) {
     delete self._scenery[tile];
     Pool.returnObject(self.pool, go);
+    changed();
     self.root.game.scene.removeGameObject(go);
   }
 }

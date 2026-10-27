@@ -10,6 +10,7 @@ import Generated from "./generated";
 import View from "./view";
 import AnimatedSprite from "./animatedsprite";
 import TerrainGridRenderer from "./components/terraingridrenderer";
+import { changed } from "./looks";
 
 var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
@@ -322,6 +323,7 @@ Terrain.prototype.clear = function (x0, y0, w, l) {
       );
       delete tiles[index];
       delete gos[tile.instanceId];
+      changed();
     }
   }
 };
@@ -380,6 +382,8 @@ Terrain.prototype.draw0 = function (x0, y0, w, l) {
  * Puts tile t where the ground of tile index is, with the sprite of its shape.
  */
 function shapeTile(self, t, index) {
+  changed();
+
   var terrain = vkaria.core.world.terrain,
     x = Core.Terrain.extractX(index),
     y = Core.Terrain.extractY(index),

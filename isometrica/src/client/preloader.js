@@ -1,5 +1,6 @@
 import View from "./view";
 import Config from "./config";
+import looks from "./looks";
 import Core from "../core/main";
 import Rotation from "../core/rotation";
 
@@ -29,6 +30,16 @@ import Rotation from "../core/rotation";
  *
  * Nothing of it while the world is looked at from above, which is not
  * turned, nor while it is turning.
+ *
+ * Looking over all of it takes a while - a few hundred milliseconds of
+ * work, a frame's share at a time - so it is only done again once anything
+ * it goes by has changed: the camera, the light, or the look of anything
+ * standing in the world (client/looks - a tile, a tree, a building going up
+ * a stage, a road), or after a long while (REST) whatever. In between, the
+ * cars, which come and go all the while, are looked over every SURVEY_EVERY
+ * on their own, and what was found ready is kept on the pages as it would
+ * have been - so a still screen costs next to nothing, and a turn finds
+ * what it did.
  */
 
 //how often it looks over what would be seen from the other sides, ms; how
@@ -38,6 +49,16 @@ import Rotation from "../core/rotation";
 var SURVEY_EVERY = 1000,
   STEP_MS = 3,
   AGE = 240;
+
+//how long it may go between looks over all of it while nothing it goes by
+//has changed, ms
+var REST = 30000;
+
+//what a look over all of it goes by: where the camera is, how it is turned
+//and zoomed (its matrix, 16), how much of the world it takes in (2) and as
+//far as a turn's pictures do (1), which side it looks from (1), how the
+//city is lit (2), and how many times anything in it has had a new look (1)
+var SIGNATURE = 23;
 
 //how long it may go on looking over what would be seen, a frame, ms; and how
 //many tiles, or buildings, it looks at at a time
@@ -75,6 +96,14 @@ function Preloader(sprites) {
   this.pass = null;
   //how many there are to have ready, on the pages or not, for a look
   this.wanted = 0;
+  //what it found on the pages, or put in the queue, as it last looked:
+  //kept there while it rests (keepWarm)
+  this.kept = [];
+  //what it went by as it last looked over all of it, and when - and what
+  //there is to go by now
+  this.from = new Float64Array(SIGNATURE).fill(NaN);
+  this.now = new Float64Array(SIGNATURE);
+  this.lookedAll = -Infinity;
 }
 
 /**
@@ -95,7 +124,21 @@ Preloader.prototype.step = function (root) {
 
   if (this.pass === null && now - this.surveyed > SURVEY_EVERY) {
     this.surveyed = now;
-    this.begin(root);
+    signature(root, this.now);
+
+    //all of it again once anything it goes by has changed, or after a long
+    //while whatever; else the cars only, and what it has ready kept there
+    if (!same(this.now, this.from) || now - this.lookedAll > REST) {
+      this.begin(root);
+
+      if (this.pass !== null) {
+        this.lookedAll = now;
+        this.from.set(this.now);
+      }
+    } else {
+      rewarm(this);
+      this.begin(root, true);
+    }
   }
 
   if (this.pass !== null) this.work(SURVEY_MS);
@@ -166,9 +209,10 @@ Preloader.prototype.survey = function (root) {
 /**
  * Starts looking over what would be seen from the other sides: the camera
  * as it is now, and what there is to look at then, cut up into tasks - a
- * few tiles, a few buildings at a time - each for one side.
+ * few tiles, a few buildings at a time - each for one side. Only the cars,
+ * if carsOnly: what it finds of them put with what it found before.
  */
-Preloader.prototype.begin = function (root) {
+Preloader.prototype.begin = function (root, carsOnly) {
   var camera = root.camera && root.camera.camera,
     viewport = camera && camera.viewport;
 
@@ -180,9 +224,10 @@ Preloader.prototype.begin = function (root) {
     //as much more than the screen shows as a turn's pictures take in
     over = (root.cameraControl && root.cameraControl.turner.over) || 1,
     turns = View.turns(),
-    tiles = root.terrain ? root.terrain.tileKeys() : [],
-    scenery = root.envman ? root.envman.sceneryKeys() : [],
-    buildings = root.buildman ? root.buildman.getBuildingViews() : [],
+    tiles = root.terrain && !carsOnly ? root.terrain.tileKeys() : [],
+    scenery = root.envman && !carsOnly ? root.envman.sceneryKeys() : [],
+    buildings =
+      root.buildman && !carsOnly ? root.buildman.getBuildingViews() : [],
     tasks = [],
     i;
 
@@ -237,6 +282,7 @@ Preloader.prototype.begin = function (root) {
   });
 
   this.pass = {
+    carsOnly: !!carsOnly,
     turns: turns,
     tasks: tasks,
     at: 0,
@@ -244,6 +290,7 @@ Preloader.prototype.begin = function (root) {
     night: !!lighting && lighting.night,
     seen: new Set(),
     queue: [],
+    kept: [],
     sheets: {},
     wanted: 0,
   };
@@ -275,10 +322,12 @@ Preloader.prototype.work = function (ms) {
 
         if (e.slot >= 0) {
           cache.keepWarm(e);
+          pass.kept.push(e);
           return;
         }
 
         pass.queue.push(e);
+        pass.kept.push(e);
         e.sheets().forEach(function (sheet) {
           if (sheet.generated !== null)
             pass.sheets[sheet.generated.name] = true;
@@ -290,12 +339,64 @@ Preloader.prototype.work = function (ms) {
   if (pass.at < pass.tasks.length) return;
 
   this.pass = null;
+
+  //the cars' put with what was found of everything before
+  if (pass.carsOnly) {
+    for (var i = 0; i < pass.queue.length; i++) this.queue.push(pass.queue[i]);
+    for (i = 0; i < pass.kept.length; i++) this.kept.push(pass.kept[i]);
+    return;
+  }
+
   this.queue = pass.queue;
+  this.kept = pass.kept;
   this.at = 0;
   this.wanted = pass.wanted;
   //of the parts painted ahead, only those still to be put together kept
   this.generator.keep(pass.sheets);
 };
+
+/**
+ * Keeps what it found ready, as it last looked, on the pages a while more -
+ * as looking it over again would have (work).
+ */
+function rewarm(self) {
+  var cache = self.sprites.cache,
+    kept = self.kept;
+
+  for (var i = 0; i < kept.length; i++) cache.keepWarm(kept[i]);
+}
+
+//what a look over all of it goes by, into out (SIGNATURE)
+function signature(root, out) {
+  var camera = root.camera && root.camera.camera,
+    viewport = camera && camera.viewport,
+    lighting = root.lighting,
+    i;
+
+  if (!viewport) {
+    out.fill(NaN);
+    return;
+  }
+
+  var M = camera.getWorldToScreen();
+
+  for (i = 0; i < 16; i++) out[i] = M[i];
+  out[16] = viewport.width;
+  out[17] = viewport.height;
+  out[18] = (root.cameraControl && root.cameraControl.turner.over) || 1;
+  out[19] = View.turns();
+  out[20] = lighting && !lighting.plain ? 1 : 0;
+  out[21] = lighting && lighting.night ? 1 : 0;
+  out[22] = looks.changes;
+}
+
+//whether two of what it goes by are the same, every part of them (NaN, for
+//nothing to go by, never is)
+function same(a, b) {
+  for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+
+  return true;
+}
 
 /**
  * Whether any of a building's ground would be seen (near) - any corner of

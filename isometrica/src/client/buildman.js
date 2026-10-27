@@ -23,6 +23,7 @@ import Numeral from "numeral";
 import Rotation from "../core/rotation";
 import CompoundBuilding from "./compoundbuilding";
 import * as RoadRules from "../core/roadrules";
+import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -48,6 +49,7 @@ function setBuilding(self, tile, building) {
   if (self.buildingByXY[x] === undefined) self.buildingByXY[x] = [];
 
   self.buildingByXY[x][y] = building;
+  changed();
 
   //so a picked sprite can be traced back to the building it belongs to
   self.buildingByGO[building.view.gameObject.instanceId] = building;
@@ -63,6 +65,7 @@ function removeBuilding(self, tile) {
     self.buildingByXY[x][y] !== undefined
   ) {
     building = self.buildingByXY[x][y];
+    changed();
     Events.fire(self, self.events.buildingRemoved, building);
     delete self.buildingByGO[building.view.gameObject.instanceId];
     building.destroy();

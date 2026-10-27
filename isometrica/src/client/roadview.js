@@ -13,6 +13,7 @@ import * as RoadRules from "../core/roadrules";
 import View from "./view";
 import Lighting from "./lighting";
 import WorkLights from "./worklights";
+import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
 
@@ -288,8 +289,10 @@ BuildingView.prototype.seenSprites = function (out) {
 BuildingView.prototype.update = function () {
   var b = this.road;
 
-  if (b !== null && b.staticData !== null)
+  if (b !== null && b.staticData !== null) {
+    changed();
     draw(this, this.road.typeCode, this.road.surface());
+  }
 };
 
 //draws piece id of the road from scratch, on surface (client/road): the

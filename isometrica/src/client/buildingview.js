@@ -19,6 +19,7 @@ import WorkLights from "./worklights";
 import View from "./view";
 import BuildingClassCode from "../data/classcode";
 import Trees from "../data/trees";
+import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
 
@@ -249,6 +250,7 @@ BuildingView.prototype.update = function () {
     if (collecting === null) {
       clearTimeout(this.stageTimer);
       this.stageTimer = null;
+      changed();
     }
 
     //as it is seen, the camera turned the way it is (see drawnAt)
