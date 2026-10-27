@@ -134,22 +134,40 @@ var PROJECTIONS = {
   },
 };
 
+//where uniform name of program p is: asked of GL the first time, and kept
+//(uniforms, by program and by name) - asked every frame, it was forty
+//lookups a frame and a location made for each
+var uniforms = new Map();
+
+function uniform(gl, p, name) {
+  var of = uniforms.get(p),
+    at;
+
+  if (of === undefined) uniforms.set(p, (of = new Map()));
+
+  at = of.get(name);
+  if (at === undefined) {
+    at = gl.getUniformLocation(p, name);
+    of.set(name, at);
+  }
+
+  return at;
+}
+
 //the projection's uniforms into program p - those of them it has
 function project(gl, p, proj) {
   var u;
 
-  if ((u = gl.getUniformLocation(p, "onScreen")) !== null)
+  if ((u = uniform(gl, p, "onScreen")) !== null)
     gl.uniformMatrix2fv(u, false, proj.ground);
-  if ((u = gl.getUniformLocation(p, "unground")) !== null)
+  if ((u = uniform(gl, p, "unground")) !== null)
     gl.uniformMatrix2fv(u, false, proj.unground);
-  if ((u = gl.getUniformLocation(p, "toSide")) !== null)
+  if ((u = uniform(gl, p, "toSide")) !== null)
     gl.uniformMatrix2fv(u, false, proj.toSide);
-  if ((u = gl.getUniformLocation(p, "rise")) !== null)
-    gl.uniform2fv(u, proj.rise);
-  if ((u = gl.getUniformLocation(p, "depthWeights")) !== null)
+  if ((u = uniform(gl, p, "rise")) !== null) gl.uniform2fv(u, proj.rise);
+  if ((u = uniform(gl, p, "depthWeights")) !== null)
     gl.uniform2fv(u, proj.depthWeights);
-  if ((u = gl.getUniformLocation(p, "reach")) !== null)
-    gl.uniform2fv(u, proj.reach);
+  if ((u = uniform(gl, p, "reach")) !== null) gl.uniform2fv(u, proj.reach);
 }
 
 var SPRITE_VS = `#version 300 es
@@ -1321,14 +1339,10 @@ GLView.prototype.begin = function (w, h, night, shadows, margin) {
   gl.clearColor(0, 0, 0, 0);
   gl.clearDepth(1);
   gl.depthMask(true);
-  for (var f of [this.first, this.second]) {
-    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
-    gl.clear(
-      f === this.first
-        ? gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT
-        : gl.COLOR_BUFFER_BIT,
-    );
-  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, this.first);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, this.second);
+  gl.clear(gl.COLOR_BUFFER_BIT);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.COLOR_BUFFER_BIT);
@@ -1483,11 +1497,7 @@ GLView.prototype.flush = function (lit, flat, sight) {
   if (n > 0) {
     Stats.count(SQUARES, n);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.spriteBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      this.sprites.subarray(0, n * FLOATS),
-      gl.STREAM_DRAW,
-    );
+    gl.bufferData(gl.ARRAY_BUFFER, this.sprites, gl.STREAM_DRAW, 0, n * FLOATS);
 
     if (lit) {
       this.batch(this.first, this.spriteProgram, this.vaos[0][0], true, n, 3);
@@ -1531,8 +1541,10 @@ GLView.prototype.xray = function (sight) {
   gl.bindBuffer(gl.ARRAY_BUFFER, this.xrayBuffer);
   gl.bufferData(
     gl.ARRAY_BUFFER,
-    sight.floats.subarray(0, sight.count * FLOATS),
+    sight.floats,
     gl.STREAM_DRAW,
+    0,
+    sight.count * FLOATS,
   );
   gl.bindFramebuffer(gl.FRAMEBUFFER, this.first);
   drawBuffers(gl, 3);
@@ -1540,9 +1552,9 @@ GLView.prototype.xray = function (sight) {
   project(gl, p, this.projection);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
-  gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
-  gl.uniform2f(gl.getUniformLocation(p, "size"), this.width, this.height);
-  gl.uniform3f(gl.getUniformLocation(p, "tint"), t[0], t[1], t[2]);
+  gl.uniform1i(uniform(gl, p, "pages"), 0);
+  gl.uniform2f(uniform(gl, p, "size"), this.width, this.height);
+  gl.uniform3f(uniform(gl, p, "tint"), t[0], t[1], t[2]);
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.GREATER);
   gl.depthMask(false);
@@ -1568,13 +1580,9 @@ GLView.prototype.stamp = function (n) {
   project(gl, p, this.projection);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
-  gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
-  gl.uniform2f(
-    gl.getUniformLocation(p, "size"),
-    this.width + 2 * m,
-    this.height + 2 * m,
-  );
-  gl.uniform1f(gl.getUniformLocation(p, "margin"), m);
+  gl.uniform1i(uniform(gl, p, "pages"), 0);
+  gl.uniform2f(uniform(gl, p, "size"), this.width + 2 * m, this.height + 2 * m);
+  gl.uniform1f(uniform(gl, p, "margin"), m);
   gl.blendEquation(gl.MAX);
   gl.blendFunc(gl.ONE, gl.ONE);
   gl.bindVertexArray(this.stampVao);
@@ -1600,12 +1608,12 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
   project(gl, p, this.projection);
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
-  gl.uniform1i(gl.getUniformLocation(p, "pages"), 0);
-  gl.uniform2f(gl.getUniformLocation(p, "size"), this.width, this.height);
-  var loc = gl.getUniformLocation(p, "colours");
+  gl.uniform1i(uniform(gl, p, "pages"), 0);
+  gl.uniform2f(uniform(gl, p, "size"), this.width, this.height);
+  var loc = uniform(gl, p, "colours");
 
   if (loc !== null) gl.uniform1i(loc, colours ? 1 : 0);
-  loc = gl.getUniformLocation(p, "origin");
+  loc = uniform(gl, p, "origin");
   if (loc !== null) gl.uniform2f(loc, this.origin[0], this.origin[1]);
   gl.bindVertexArray(vao);
 
@@ -1659,7 +1667,7 @@ GLView.prototype.light = function (lamps, sky, origin) {
       project(gl, this.lampProgram, this.projection);
       bind(gl, this.lampProgram, "normals", t[NORMAL], 0);
       bind(gl, this.lampProgram, "heights", t[HEIGHT], 1);
-      gl.uniform2f(gl.getUniformLocation(this.lampProgram, "size"), w, h);
+      gl.uniform2f(uniform(gl, this.lampProgram, "size"), w, h);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE);
       gl.bindVertexArray(this.lampVao);
@@ -1686,15 +1694,15 @@ GLView.prototype.light = function (lamps, sky, origin) {
   bind(gl, p, "light", this.lightTex, 4);
   bind(gl, p, "heights", t[HEIGHT], 5);
   bind(gl, p, "ground", this.groundTex, 6);
-  gl.uniform1i(gl.getUniformLocation(p, "shadows"), this.shadows ? 1 : 0);
-  gl.uniform1f(gl.getUniformLocation(p, "margin"), this.margin);
-  gl.uniform3fv(gl.getUniformLocation(p, "sunStep"), sky.step || [0, 0, 1]);
-  gl.uniform2f(gl.getUniformLocation(p, "size"), w, h);
-  gl.uniform2f(gl.getUniformLocation(p, "origin"), origin[0], origin[1]);
-  gl.uniform3fv(gl.getUniformLocation(p, "ambient"), sky.ambient);
-  gl.uniform3fv(gl.getUniformLocation(p, "sunLight"), sky.sun);
-  gl.uniform3fv(gl.getUniformLocation(p, "sunDir"), sky.dir);
-  gl.uniform1i(gl.getUniformLocation(p, "night"), this.night ? 1 : 0);
+  gl.uniform1i(uniform(gl, p, "shadows"), this.shadows ? 1 : 0);
+  gl.uniform1f(uniform(gl, p, "margin"), this.margin);
+  gl.uniform3fv(uniform(gl, p, "sunStep"), sky.step || STRAIGHT_UP);
+  gl.uniform2f(uniform(gl, p, "size"), w, h);
+  gl.uniform2f(uniform(gl, p, "origin"), origin[0], origin[1]);
+  gl.uniform3fv(uniform(gl, p, "ambient"), sky.ambient);
+  gl.uniform3fv(uniform(gl, p, "sunLight"), sky.sun);
+  gl.uniform3fv(uniform(gl, p, "sunDir"), sky.dir);
+  gl.uniform1i(uniform(gl, p, "night"), this.night ? 1 : 0);
   weather(gl, p, sky.weather || NO_WEATHER, h);
   gl.bindVertexArray(this.fullVao);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -1708,6 +1716,9 @@ GLView.prototype.light = function (lamps, sky, origin) {
     gl.ONE_MINUS_SRC_ALPHA,
   );
 };
+
+//the way to the sun with none: straight up
+var STRAIGHT_UP = [0, 0, 1];
 
 //no weather at all: a clear day, dry
 var NO_WEATHER = {
@@ -1732,25 +1743,21 @@ var boltData = new Float32Array(BOLT * 2);
 
 //the weather into the lighting's uniforms (LIT_FS)
 function weather(gl, p, w) {
-  function f(name, v) {
-    gl.uniform1f(gl.getUniformLocation(p, name), v);
-  }
-
-  f("cloud", w.cloud);
-  gl.uniform2fv(gl.getUniformLocation(p, "cloudAt"), w.cloudAt);
-  gl.uniform4fv(gl.getUniformLocation(p, "clouds"), w.clouds);
-  gl.uniformMatrix2fv(gl.getUniformLocation(p, "unturn"), false, w.unturn);
-  f("grey", w.grey);
-  f("fog", w.fog);
-  gl.uniform3fv(gl.getUniformLocation(p, "fogColor"), w.fogColor);
-  f("haze", w.haze);
-  f("glowSky", w.glowSky);
-  f("wet", w.wet);
-  f("rain", w.rain);
-  f("slant", w.slant);
-  f("flash", w.flash);
-  f("time", w.time);
-  gl.uniform1i(gl.getUniformLocation(p, "bolted"), w.bolt ? 1 : 0);
+  gl.uniform1f(uniform(gl, p, "cloud"), w.cloud);
+  gl.uniform2fv(uniform(gl, p, "cloudAt"), w.cloudAt);
+  gl.uniform4fv(uniform(gl, p, "clouds"), w.clouds);
+  gl.uniformMatrix2fv(uniform(gl, p, "unturn"), false, w.unturn);
+  gl.uniform1f(uniform(gl, p, "grey"), w.grey);
+  gl.uniform1f(uniform(gl, p, "fog"), w.fog);
+  gl.uniform3fv(uniform(gl, p, "fogColor"), w.fogColor);
+  gl.uniform1f(uniform(gl, p, "haze"), w.haze);
+  gl.uniform1f(uniform(gl, p, "glowSky"), w.glowSky);
+  gl.uniform1f(uniform(gl, p, "wet"), w.wet);
+  gl.uniform1f(uniform(gl, p, "rain"), w.rain);
+  gl.uniform1f(uniform(gl, p, "slant"), w.slant);
+  gl.uniform1f(uniform(gl, p, "flash"), w.flash);
+  gl.uniform1f(uniform(gl, p, "time"), w.time);
+  gl.uniform1i(uniform(gl, p, "bolted"), w.bolt ? 1 : 0);
 
   if (w.bolt) {
     for (var i = 0; i < BOLT; i++) {
@@ -1759,7 +1766,7 @@ function weather(gl, p, w) {
       boltData[i * 2] = q[0];
       boltData[i * 2 + 1] = q[1];
     }
-    gl.uniform2fv(gl.getUniformLocation(p, "bolt"), boltData);
+    gl.uniform2fv(uniform(gl, p, "bolt"), boltData);
   }
 }
 
@@ -1800,8 +1807,10 @@ GLView.prototype.uploadLamps = function (lamps) {
   gl.bindBuffer(gl.ARRAY_BUFFER, this.lampBuffer);
   gl.bufferData(
     gl.ARRAY_BUFFER,
-    d.subarray(0, lamps.length * LAMP_FLOATS),
+    d,
     gl.STREAM_DRAW,
+    0,
+    lamps.length * LAMP_FLOATS,
   );
 };
 
@@ -1869,10 +1878,19 @@ function attach(gl, frame, textures) {
 
 //draws into the first n pictures of the framebuffer bound
 function drawBuffers(gl, n) {
-  var b = [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2];
+  if (attachments === null)
+    attachments = [
+      null,
+      [gl.COLOR_ATTACHMENT0],
+      [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1],
+      [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2],
+    ];
 
-  gl.drawBuffers(b.slice(0, n));
+  gl.drawBuffers(attachments[n]);
 }
+
+//the first n pictures of a framebuffer, by n (drawBuffers)
+var attachments = null;
 
 function attribute(gl, p, name, buffer, size, stride, offset, divisor) {
   var at = gl.getAttribLocation(p, name);
@@ -1887,7 +1905,7 @@ function attribute(gl, p, name, buffer, size, stride, offset, divisor) {
 function bind(gl, p, name, tex, unit) {
   gl.activeTexture(gl.TEXTURE0 + unit);
   gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.uniform1i(gl.getUniformLocation(p, name), unit);
+  gl.uniform1i(uniform(gl, p, name), unit);
 }
 
 GLView.FLOATS = FLOATS;
