@@ -961,6 +961,9 @@ function GLView(pageSize, maxPages) {
   //the lamps lighting the frame, LAMP_FLOATS a lamp (lamp), and how many
   this.lampData = new Float32Array(LAMP_FLOATS * 64);
   this.lampCount = 0;
+  //whether the lamps' light was left black by the frame before, all of it
+  //and every smaller copy of it - for the next with no lamps to leave it so
+  this.lightBlack = false;
 
   //what is drawn over the city as lines, shapes and words
   this.overlay = new GLCanvas(this);
@@ -1435,6 +1438,8 @@ GLView.prototype.resize = function (w, h, margin) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   attach(gl, this.second, [t[SHINE]]);
   attach(gl, this.lightFrame, [this.lightTex]);
+  //made again, it is clear, not black
+  this.lightBlack = false;
 };
 
 //where the world's origin is on the screen, this frame (client/lighting
@@ -1653,7 +1658,9 @@ GLView.prototype.light = function (count, sky, origin) {
 
   //the lamps' light, at any hour: by day there are fewer of them on - a
   //police car's, the cars' indicators and brake lights, the beacons
-  {
+  //- by day mostly none, and black it is still from the frame before, if
+  //that had none either: nothing to be done to it
+  if (count > 0 || !this.lightBlack) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightFrame);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -1678,6 +1685,7 @@ GLView.prototype.light = function (count, sky, origin) {
     //lamps in the fog, how lit the city is round about
     gl.bindTexture(gl.TEXTURE_2D, this.lightTex);
     gl.generateMipmap(gl.TEXTURE_2D);
+    this.lightBlack = count === 0;
   }
 
   var p = this.litProgram;
