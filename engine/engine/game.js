@@ -37,12 +37,12 @@ define(function (require) {
 
             requestAnimFrame(self.tick);
 
-            //at most FPS frames a second, whatever the screen's rate - a
+            //at most fps frames a second, whatever the screen's rate - a
             //frame of it now and then comes a hair early, so a little is
             //allowed for
             var now = performance.now();
 
-            if (now - last < 1000 / FPS - SLACK && !self.uncapped)
+            if (now - last < 1000 / self.fps - SLACK && !self.uncapped)
                 return;
             last = now;
 
@@ -59,10 +59,8 @@ define(function (require) {
         }
     }
 
-    //how many frames a second the game is drawn at, at most - and how many
-    //milliseconds early a frame may come and still be drawn
-    var FPS = 30,
-        SLACK = 4;
+    //how many milliseconds early a frame may come and still be drawn
+    var SLACK = 4;
 
     Engine.Game = Game;
 
@@ -99,7 +97,16 @@ define(function (require) {
     p.running = false;
 
     /**
-     * Whether it is drawn as often as the screen is, rather than at most FPS
+     * How many frames a second it is drawn at, at most - fewer to go easier
+     * on a phone's battery while less is going on (the game's to say).
+     * Whatever moves goes by the time gone, not by the frames, so it moves
+     * as far in a second however many there are.
+     * @type {number}
+     */
+    p.fps = 30;
+
+    /**
+     * Whether it is drawn as often as the screen is, rather than at most fps
      * frames a second - to see how much time a frame leaves (a debug panel's).
      * @type {boolean}
      */
