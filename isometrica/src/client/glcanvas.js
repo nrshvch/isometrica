@@ -166,8 +166,32 @@ function GLCanvas(view) {
     ]);
   }, this);
 
-  //what is to be drawn this layer, in order (see draw)
+  //where each program's uniforms are, asked for once
+  this.shapeUniforms = this.shapes.map(function (p) {
+    return {
+      size: gl.getUniformLocation(p, "size"),
+      glow: gl.getUniformLocation(p, "glow"),
+      standsAt: gl.getUniformLocation(p, "standsAt"),
+    };
+  });
+  this.wordsUniforms = this.words.map(function (p) {
+    return {
+      size: gl.getUniformLocation(p, "size"),
+      alpha: gl.getUniformLocation(p, "alpha"),
+      picture: gl.getUniformLocation(p, "picture"),
+    };
+  });
+  //the lit city's three pictures, drawn into at once
+  this.three = [
+    gl.COLOR_ATTACHMENT0,
+    gl.COLOR_ATTACHMENT1,
+    gl.COLOR_ATTACHMENT2,
+  ];
+
+  //what is to be drawn this layer, in order (see draw): so many of the ops
+  //kept, each filled in afresh (op) - made once, drawn again and again
   this.ops = [];
+  this.opCount = 0;
   //the corners of the shapes of it, and of the words
   this.data = new Float32Array(SHAPE_FLOATS * 3 * 256);
   this.used = 0;
@@ -471,7 +495,8 @@ p.fill = function () {
 
   var points = this.points,
     at,
-    n;
+    n,
+    o;
 
   //one that bulges out everywhere covers every pixel in it once, as a fan
   if (
@@ -505,7 +530,9 @@ p.fill = function () {
     }
   }
   n = finish(this, at, SHAPE_FLOATS);
-  this.ops.push({ kind: "count", tris: [at, n] });
+  o = nextOp(this, "count");
+  o.at = at;
+  o.n = n;
 
   //and a rectangle round all of it, to cover what is not at nothing
   x0 -= 1;
@@ -519,12 +546,11 @@ p.fill = function () {
   vertex(this, x0, y1, c);
   vertex(this, x1, y0, c);
   vertex(this, x1, y1, c);
-  this.ops.push({
-    kind: "cover",
-    tris: [at, finish(this, at, SHAPE_FLOATS)],
-    glow: this.glow,
-    z: this.standsAt,
-  });
+  o = nextOp(this, "cover");
+  o.at = at;
+  o.n = finish(this, at, SHAPE_FLOATS);
+  o.glow = this.glow;
+  o.z = this.standsAt;
 };
 
 /* --- Lines ------------------------------------------------------------- */
@@ -607,12 +633,12 @@ p.text = function (text, x, y, stroked) {
   corner(this, x1, y0, 1, 0);
   corner(this, x1, y1, 1, 1);
 
-  this.ops.push({
-    kind: "words",
-    tex: w.tex,
-    alpha: this.globalAlpha,
-    tris: [at, finish(this, at, WORDS_FLOATS)],
-  });
+  var o = nextOp(this, "words");
+
+  o.tex = w.tex;
+  o.alpha = this.globalAlpha;
+  o.at = at;
+  o.n = finish(this, at, WORDS_FLOATS);
 };
 
 /**
@@ -743,27 +769,60 @@ function parse(ctx, style) {
  * them once too ("hair").
  */
 p.shape = function (kind, c, at, n) {
-  var last = this.ops[this.ops.length - 1];
+  var last = this.opCount > 0 ? this.ops[this.opCount - 1] : null,
+    o;
 
   //run on with the shapes just before it that are drawn the same way
   if (
     kind === "plain" &&
-    last !== undefined &&
+    last !== null &&
     last.kind === "plain" &&
     last.glow === this.glow &&
     last.z === this.standsAt &&
     last.ground === this.ground
   )
-    last.tris[1] += n;
-  else
-    this.ops.push({
-      kind: kind,
-      tris: [at, n],
-      glow: this.glow,
-      z: this.standsAt,
-      ground: this.ground,
-    });
+    last.n += n;
+  else {
+    o = nextOp(this, kind);
+    o.at = at;
+    o.n = n;
+    o.glow = this.glow;
+    o.z = this.standsAt;
+    o.ground = this.ground;
+  }
 };
+
+/**
+ * The next op of the layer, of kind: the corners it draws from at, n of
+ * them; glowing, how high it stands (null for over everything) and whether
+ * it is part of the ground; and for words, their picture and how see-through
+ * they are. Made once, and filled in afresh every time it is used again.
+ */
+function nextOp(self, kind) {
+  var o = self.ops[self.opCount];
+
+  if (o === undefined)
+    o = self.ops[self.opCount] = {
+      kind: "",
+      at: 0,
+      n: 0,
+      glow: false,
+      z: null,
+      ground: false,
+      tex: null,
+      alpha: 1,
+    };
+
+  self.opCount++;
+  o.kind = kind;
+  o.glow = false;
+  o.z = null;
+  o.ground = false;
+  o.tex = null;
+  o.alpha = 1;
+
+  return o;
+}
 
 /**
  * Corners are written straight into the data, one after another: from where
@@ -829,12 +888,12 @@ function corner(self, x, y, u, v) {
 
 //whether there is anything drawn this layer
 p.any = function () {
-  return this.ops.length > 0;
+  return this.opCount > 0;
 };
 
 //what was drawn this layer, let go of undrawn (client/glview overlayShown)
 p.discard = function () {
-  this.ops.length = 0;
+  this.opCount = 0;
   this.used = 0;
 };
 
@@ -846,6 +905,7 @@ p.discard = function () {
 p.draw = function (frame, lit, bare) {
   var gl = this.gl,
     ops = this.ops,
+    count = this.opCount,
     view = this.view,
     k = lit ? 1 : 0,
     ids = 0;
@@ -853,46 +913,38 @@ p.draw = function (frame, lit, bare) {
   this.canvas.width = view.width;
   this.canvas.height = view.height;
 
-  if (ops.length === 0) return;
+  if (count === 0) return;
 
-  Stats.count(OPS, ops.length);
+  Stats.count(OPS, count);
   gl.bindFramebuffer(gl.FRAMEBUFFER, frame);
-  if (lit)
-    gl.drawBuffers([
-      gl.COLOR_ATTACHMENT0,
-      gl.COLOR_ATTACHMENT1,
-      gl.COLOR_ATTACHMENT2,
-    ]);
+  if (lit) gl.drawBuffers(this.three);
   gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    this.data.subarray(0, this.used),
-    gl.STREAM_DRAW,
-  );
+  //as much of the data as is used, no view made of it
+  gl.bufferData(gl.ARRAY_BUFFER, this.data, gl.STREAM_DRAW, 0, this.used);
 
   gl.clearStencil(0);
   gl.stencilMask(0xff);
   gl.clear(gl.STENCIL_BUFFER_BIT);
   gl.enable(gl.STENCIL_TEST);
 
-  for (var i = 0; i < ops.length; i++) {
+  for (var i = 0; i < count; i++) {
     var op = ops[i],
-      first = op.tris[0] / (op.kind === "words" ? WORDS_FLOATS : SHAPE_FLOATS),
-      n = op.tris[1];
+      first = op.at / (op.kind === "words" ? WORDS_FLOATS : SHAPE_FLOATS),
+      n = op.n;
 
     if (bare && !op.ground) continue;
 
     if (op.kind === "words") {
-      var w = this.words[k];
+      var wu = this.wordsUniforms[k];
 
       gl.disable(gl.DEPTH_TEST);
-      gl.useProgram(w);
+      gl.useProgram(this.words[k]);
       gl.bindVertexArray(this.wordsVaos[k]);
-      gl.uniform2f(gl.getUniformLocation(w, "size"), view.width, view.height);
-      gl.uniform1f(gl.getUniformLocation(w, "alpha"), op.alpha);
+      gl.uniform2f(wu.size, view.width, view.height);
+      gl.uniform1f(wu.alpha, op.alpha);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, op.tex);
-      gl.uniform1i(gl.getUniformLocation(w, "picture"), 0);
+      gl.uniform1i(wu.picture, 0);
       gl.stencilFunc(gl.ALWAYS, 0, 0xff);
       gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
       gl.drawArrays(gl.TRIANGLES, first, n);
@@ -901,16 +953,16 @@ p.draw = function (frame, lit, bare) {
       continue;
     }
 
-    var s = this.shapes[k];
+    var su = this.shapeUniforms[k];
 
-    gl.useProgram(s);
+    gl.useProgram(this.shapes[k]);
     gl.bindVertexArray(this.shapeVaos[k]);
-    gl.uniform2f(gl.getUniformLocation(s, "size"), view.width, view.height);
+    gl.uniform2f(su.size, view.width, view.height);
     if (lit) {
-      gl.uniform1f(gl.getUniformLocation(s, "glow"), op.glow ? 1 : 0);
+      gl.uniform1f(su.glow, op.glow ? 1 : 0);
       //hidden behind whatever stands nearer, if it says how high it stands
       gl.uniform1f(
-        gl.getUniformLocation(s, "standsAt"),
+        su.standsAt,
         op.z === null || op.z === undefined ? -1000 : op.z,
       );
       if (op.z === null || op.z === undefined) gl.disable(gl.DEPTH_TEST);
@@ -969,7 +1021,7 @@ p.draw = function (frame, lit, bare) {
   gl.disable(gl.DEPTH_TEST);
   gl.bindVertexArray(null);
 
-  ops.length = 0;
+  this.opCount = 0;
   this.used = 0;
 };
 
@@ -983,7 +1035,7 @@ p.begin = function () {
 
   //nothing left over from a frame that broke off half way, to turn up in
   //the wrong layer of this one
-  this.ops.length = 0;
+  this.opCount = 0;
   this.used = 0;
   this.reset();
 
