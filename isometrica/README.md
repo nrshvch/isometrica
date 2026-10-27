@@ -724,18 +724,25 @@ dev`) plays them the way a game would - all three weathers together, the
   is shared out afresh among the bulldozers already at it. A road taken up
   goes in a puff of dust there and then. None of it is kept - after a
   reload the ground is bare.
-- A building cleared away comes down whole, every tile of it, whichever was
+- A building cleared away is cleared whole, every tile of it, whichever was
   picked (`isometrica/src/core/city.js` clearTile), and is paid for by the
-  tile. It comes down there and then (`isometrica/src/client/demolition.js`):
-  each tile's picture taken apart into the parts it was put together out of
-  (`client/compoundbuilding.js`) - its ground storey, every storey on that,
-  its roof - it shakes, then its floors give, the top first, dropping onto
-  the ones under it and sinking into a cloud of grey dust
-  (`isometrica/src/shared/gen/smoke.js` debris) that goes up its face as it
-  falls and rolls out over everything round once it is down. It leaves a
-  heap of rubble on every tile (`isometrica/src/shared/gen/stones.js`
-  rubble: a mound of grit, slabs of concrete, brick and timber on it), and
-  the bulldozers wait for the dust to settle before they push it away.
+  tile. It stands till a bulldozer comes up to a tile of it
+  (`isometrica/src/client/clearworks.js` hold, knock): then that tile of it
+  comes down (`isometrica/src/client/demolition.js`), the bulldozer waiting
+  a moment off it. Its picture is taken apart into its floors - the parts it
+  was put together out of (`client/compoundbuilding.js`), or for a picture
+  painted whole, bands of it a storey high cut out of it
+  (`client/spritecache.js` getComposite clip), its foot staying on the
+  ground. It shakes; a floor some way up gives, and what is over it drops
+  onto the floor under it, which gives in turn - and so on down, every floor
+  crushed, the ones that fell crushed onto its foot in the end; nothing of
+  it goes into the ground. A floor crushed bursts into pieces of its own
+  picture, flung out and up, that fall round it, bounce and lie a while; and
+  goes, dithered away, in a puff of grey dust
+  (`isometrica/src/shared/gen/smoke.js` debris) that rolls out over the heap
+  of rubble it leaves (`isometrica/src/shared/gen/stones.js` rubble: a mound
+  of grit, slabs of concrete, brick and timber on it) - pushed away by the
+  bulldozer then.
 - Till a bulldozer has been over a tile it is being cleared still
   (`isometrica/src/core/terrain.js` beingCleared): nothing is built on it,
   no road laid, nor the ground moved under it - "being cleared".

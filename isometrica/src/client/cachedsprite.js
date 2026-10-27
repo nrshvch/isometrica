@@ -19,8 +19,9 @@ import Pixels from "./pixels";
 /**
  * @param sprites {SpriteCache} where the parts' sheets are loaded
  * @param key {string} what it is cached under
- * @param parts {{sheet: Object, frame: Object, x: number, y: number}[]}
- *        bottom first, each at x, y in the picture
+ * @param parts {{sheet: Object, frame: Object, x: number, y: number, clip:
+ *        Object}[]} bottom first, each at x, y in the picture - only so much
+ *        of it as clip says, {x, y, w, h} in it, where it says so
  */
 function CachedSprite(sprites, key, parts, width, height) {
   this.sprites = sprites;
@@ -130,7 +131,8 @@ CachedSprite.prototype.sheets = function () {
 CachedSprite.prototype.paint = function (pixels, w, x, y) {
   for (var i = 0; i < this.parts.length; i++) {
     var part = this.parts[i],
-      f = part.frame;
+      f = part.frame,
+      c = clipOf(part);
 
     //a painted picture used just now is the last to be let go of
     if (part.sheet.generated !== null) this.sprites.generator.use(part.sheet);
@@ -139,15 +141,34 @@ CachedSprite.prototype.paint = function (pixels, w, x, y) {
       pixels,
       w,
       part.sheet.image,
-      f.x,
-      f.y,
-      f.w,
-      f.h,
+      f.x + c.x,
+      f.y + c.y,
+      c.w,
+      c.h,
       x + part.x,
       y + part.y,
     );
   }
 };
+
+//how much of a part is drawn, and from where in it: all of it, but for a
+//part clipped (SpriteCache#getComposite)
+function clipOf(part) {
+  return (
+    part.clip || {
+      x: 0,
+      y: 0,
+      w: part.frame.w,
+      h: part.frame.h,
+    }
+  );
+}
+
+//where a part's foot is in the picture: as far down its own picture as its
+//pivot - 0, for one that does not say - from where the part is put
+function partFoot(part) {
+  return part.y - clipOf(part).y + (part.frame.pivotY || 0);
+}
 
 /* --- Lit -------------------------------------------------------------- */
 
@@ -177,6 +198,10 @@ var NIGHT = 7,
 
 //painted from straight above (SpriteCache#getTop)
 CachedSprite.prototype.fromAbove = false;
+
+//drawn as it is painted, lit, never lit as it is drawn (SpriteCache#
+//getComposite plain)
+CachedSprite.prototype.plain = false;
 
 //what it is painted as for the light to be worked out as it is drawn - its
 //colours and the ways it looks side by side, and its pictures for the
@@ -335,6 +360,9 @@ function swapped(part, i) {
 function layersOf(self, look) {
   if (self[look] !== undefined) return self[look];
 
+  //drawn as it is painted, whatever its parts have (CachedSprite plain)
+  if (self.plain) return (self[look] = null);
+
   var any = self.parts.some(function (part) {
     return self.sprites.lookSheet(part.sheet, look) !== null;
   });
@@ -406,11 +434,12 @@ Layers.prototype.paint = function (pixels, w, x, y) {
 
   //(a part that does not say where its foot is stands on the ground)
   for (i = 0; i < parts.length; i++)
-    ground = Math.max(ground, parts[i].y + (parts[i].frame.pivotY || 0));
+    ground = Math.max(ground, partFoot(parts[i]));
 
   for (i = 0; i < parts.length; i++) {
     var part = parts[i],
       f = part.frame,
+      c = clipOf(part),
       own = sprites.lookSheet(part.sheet, this.look);
 
     if (own !== null) {
@@ -427,28 +456,29 @@ Layers.prototype.paint = function (pixels, w, x, y) {
           pixels,
           w,
           own.image,
-          (k < DARK ? k ^ swap : k) * f.w,
-          0,
-          f.w,
-          f.h,
+          (k < DARK ? k ^ swap : k) * f.w + c.x,
+          c.y,
+          c.w,
+          c.h,
           x + k * W + part.x,
           y + part.y,
         );
 
       //laid up on others as the parts say from above, where it is laid
       //no higher on the picture for it
-      var up =
-        part.up !== undefined ? part.up : ground - (part.y + (f.pivotY || 0));
+      var up = part.up !== undefined ? part.up : ground - partFoot(part);
 
       if (night) {
-        lift(pixels, w, own.image, f, x + TALL * W + part.x, y + part.y, up);
-        if (own.lights) this.addLights(own.lights, part, up, swap);
+        lift(pixels, w, own.image, part, x + TALL * W + part.x, y + part.y, up);
+        //a piece of one has none of its lights
+        if (own.lights && part.clip === null)
+          this.addLights(own.lights, part, up, swap);
       } else
         lift(
           pixels,
           w,
           own.image,
-          f,
+          part,
           x + HIGH * W + part.x,
           y + part.y,
           up,
@@ -467,17 +497,27 @@ Layers.prototype.paint = function (pixels, w, x, y) {
         dy = y + part.y;
 
       if (!night && k === ALBEDO) {
-        Pixels.over(pixels, w, part.sheet.image, f.x, f.y, f.w, f.h, dx, dy);
+        Pixels.over(
+          pixels,
+          w,
+          part.sheet.image,
+          f.x + c.x,
+          f.y + c.y,
+          c.w,
+          c.h,
+          dx,
+          dy,
+        );
         this.sides |= 1 << ALBEDO;
       } else
         Pixels.silhouette(
           pixels,
           w,
           part.sheet.image,
-          f.x,
-          f.y,
-          f.w,
-          f.h,
+          f.x + c.x,
+          f.y + c.y,
+          c.w,
+          c.h,
           dx,
           dy,
           0,
@@ -523,17 +563,19 @@ Layers.prototype.addLights = function (packed, part, up, swap) {
  * on, a pixel a unit, wherever the part is (its picture in white, by
  * up / 255: the night's own, or its colours in white, deferred).
  */
-function lift(pixels, w, image, f, x, y, up, deferred) {
+function lift(pixels, w, image, part, x, y, up, deferred) {
   if (!(up > 0)) return;
+
+  var c = clipOf(part);
 
   Pixels.lighten(
     pixels,
     w,
     image,
-    deferred ? 0 : WHOLE * f.w,
-    0,
-    f.w,
-    f.h,
+    (deferred ? 0 : WHOLE * part.frame.w) + c.x,
+    c.y,
+    c.w,
+    c.h,
     x,
     y,
     Math.min(1, up / 255),

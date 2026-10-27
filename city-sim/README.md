@@ -61,8 +61,9 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   sweep the tiles cleared, the trees and stones going down in their dust as
   they get to them, and leave the ground bare earth - which the grass grows
   back over in half a game day (`isometrica/src/client/clearworks.js`). A
-  building comes down whole, every tile of it paid for, floor onto floor in
-  a cloud of grey dust, into rubble for the bulldozers
+  building is cleared whole, every tile of it paid for, and comes down a tile
+  at a time as the bulldozers come up to it - floor onto floor, bursting into
+  pieces, in a cloud of grey dust - into rubble for them to push away
   (`isometrica/src/client/demolition.js`); and nothing can be built on a
   tile till its bulldozer is done there.
 - Shaping the ground starts on the building that was being looked at, if

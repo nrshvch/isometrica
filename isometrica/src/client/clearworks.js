@@ -22,11 +22,11 @@ var Terrain = Core.Terrain,
  * bulldozer gets there: as its blade reaches it, it goes down in a cloud of
  * dust, and the tile is the bare earth the bulldozer leaves behind it
  * (client/terrain) - which the grass grows back over, in time. A building
- * comes down first, there and then, into a heap of rubble on every tile of
- * it (client/demolition), and the bulldozers wait for its dust to settle
- * before they push the rubble away. Till a bulldozer has been over a tile,
- * it is being cleared still (core/terrain beingCleared): nothing is built
- * on it.
+ * stands too, till a bulldozer comes up to a tile of it: then that tile of
+ * it comes down (client/demolition, knock), the bulldozer waiting a moment
+ * off it till it is down, and pushes its rubble away. Till a bulldozer has
+ * been over a tile, it is being cleared still (core/terrain beingCleared):
+ * nothing is built on it.
  *
  * The tiles cleared that hang together, corners touching, are a stretch of
  * ground worked as one, the way a road being laid is (client/roadworks):
@@ -56,8 +56,10 @@ var DRIVE = 0.9,
   SHOVE_MS = 1400;
 
 //how far ahead of its middle its blade is, tiles: what is on a tile goes as
-//the blade gets there
-var BLADE = 0.25;
+//the blade gets there; and how far off a tile's middle it is when it comes
+//up to it, for a building there to come down (hold knock)
+var BLADE = 0.25,
+  KNOCK = 0.85;
 
 //how long a bulldozer takes to come out of its dust, and to go off into it,
 //ms
@@ -92,8 +94,8 @@ var events = {
 function Clearworks(root) {
   this.root = root;
   //the tiles cleared no bulldozer has got to yet, by the tile - each with
-  //what is to go from it once one does, and till when on clock none may
-  //drive onto it (hold)
+  //what is to go from it once one does, what is to be done as one comes up
+  //to it, and till when on clock none may drive onto it (hold)
   this.waiting = {};
   this.dozers = [];
   this.looked = 0;
@@ -142,22 +144,23 @@ Clearworks.prototype.clear = function (tiles, clear) {
 function waitOn(self, tile) {
   return (
     self.waiting[tile] ||
-    (self.waiting[tile] = { letGo: [], until: self.clock })
+    (self.waiting[tile] = { letGo: [], knock: [], until: self.clock })
   );
 }
 
 /**
  * Holds what stood on a tile being cleared (core/terrain beingCleared) till
  * a bulldozer gets to it, when letGo() takes it away - if the tile is being
- * cleared at all; and has the bulldozer wait for so long first, for
- * whatever is coming down there to be down.
+ * cleared at all. As the bulldozer comes up to it, knock() says so - a
+ * building there comes down then - and how long to wait before driving onto
+ * it, ms.
  *
  * @param tile {number}
  * @param letGo {function}
- * @param [ms] {number} how long before a bulldozer may drive onto it
+ * @param [knock] {function(): number}
  * @returns {boolean} whether it is held
  */
-Clearworks.prototype.hold = function (tile, letGo, ms) {
+Clearworks.prototype.hold = function (tile, letGo, knock) {
   if (
     this.waiting[tile] === undefined &&
     !this.root.core.terrain.beingCleared(tile)
@@ -167,7 +170,7 @@ Clearworks.prototype.hold = function (tile, letGo, ms) {
   var held = waitOn(this, tile);
 
   held.letGo.push(letGo);
-  if (ms) held.until = Math.max(held.until, this.clock + ms);
+  if (knock) held.knock.push(knock);
 
   return true;
 };
@@ -527,6 +530,9 @@ function work(self, d, dt) {
 
     if (left > 0.01) d.heading = View.headingOf(dx, dy);
 
+    //come up to it: whatever is to come down there comes down
+    if (left <= KNOCK) knock(self, next);
+
     //a tile off whatever is still coming down there, it waits
     if (left <= 1.05 && notYet(self, next)) {
       place(self, d);
@@ -577,6 +583,19 @@ function ahead(self, d) {
     queue.shift();
 
   return queue.length > 0;
+}
+
+//a bulldozer has come up to a tile: it is told, and waits as long as it
+//says (hold)
+function knock(self, tile) {
+  var held = self.waiting[tile];
+
+  if (held === undefined || held.knock.length === 0) return;
+
+  held.knock.forEach(function (knock) {
+    held.until = Math.max(held.until, self.clock + knock());
+  });
+  held.knock = [];
 }
 
 //whether a tile is not to be driven onto yet (hold)

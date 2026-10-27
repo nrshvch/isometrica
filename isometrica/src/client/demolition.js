@@ -4,6 +4,7 @@ import Core from "../core/main";
 import Config from "./config";
 import View from "./view";
 import RenderLayer from "./renderlayer";
+import BuildingView from "./buildingview";
 import Trees from "../data/trees";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
@@ -12,23 +13,31 @@ import { changed } from "./looks";
 var Terrain = Core.Terrain;
 
 /**
- * A building coming down: cleared away (core/city clearTile), it is gone
- * from the world at once, but what it looked like comes down there and then
- * - in pieces, in a cloud of grey dust - into a heap of rubble on every tile
- * of it, which stays till a bulldozer pushes it away (client/clearworks).
+ * A building coming down. Cleared away (core/city clearTile), it is gone
+ * from the world at once, but what it looked like stands where it was, a
+ * tile at a time, till a bulldozer comes up to that tile (client/clearworks
+ * hold, knock) - and then that tile of it comes down, the bulldozer waiting
+ * for it, and leaves a heap of rubble for it to push away.
  *
- * Every tile of a building is drawn as one picture of the parts it is put
- * together out of - its ground storey, a storey on that for every one more,
- * its roof (client/compoundbuilding) - and it comes down as those parts: it
- * shakes a moment, then its floors give, the top first, each dropping onto
- * the ones under it as they go, the whole of it sinking into its own dust,
- * the parts on the outside drifting out a little as they fall. A building
- * drawn as a picture or two comes down the same, the picture whole. Its
- * dust goes up as it shakes, wherever a piece hits the ground, up its face
- * as it falls, and rolls out over everything round it once it is down -
- * whatever the pieces do going into the ground, the dust is over it.
+ * Every tile of a building is drawn as one picture (client/buildingview), of
+ * the parts it is put together out of - its ground storey, a storey on that
+ * for every one more, its roof (client/compoundbuilding) - or painted whole,
+ * a house. It comes down as its floors: the parts, or for a picture painted
+ * whole, bands of it a storey high cut out of it (SpriteCache#getComposite
+ * clip), its foot - the bottom of it, round the middle of its tile and in
+ * front - staying put on the ground. It shakes a moment; then a floor some
+ * way up gives, and everything over it drops onto the floor under it, which
+ * gives in turn as it comes down on it - and so on down, every floor
+ * crushed, to the ground, where the floors that fell crush one by one onto
+ * their foot; nothing of it goes down into the ground. A floor crushed
+ * bursts into pieces of itself - bits of the picture of it, flung out and up
+ * - that fall round the building, bounce, lie a while and go; and goes in a
+ * puff of grey dust, dithered away. The dust goes up as it shakes, wherever
+ * a floor gives, and rolls out over the heap of rubble it leaves once it is
+ * down, the rubble coming up under it as its foot goes.
  *
- * None of it is kept: the camera turned, it is down at once, in the rubble.
+ * Turned round, what is coming down is down at once, and what still stands
+ * stands as it is seen from the new side. None of it is kept.
  */
 
 //how far up the world a pixel up the screen is (a step of the ground is
@@ -36,26 +45,59 @@ var Terrain = Core.Terrain;
 var PER_PIXEL = Config.tileZStep / 8,
   TILE = Config.tileSize;
 
-//how long it shakes before it gives, ms; how long after the top starts down
-//the bottom does; and as much again, at most, between one tile and the next
-var SHAKE_MS = 500,
-  STAGGER_MS = 500,
-  JITTER_MS = 160;
+//a picture painted whole: how tall a floor of it is, pixels, at the most -
+//less for a low one, for it to have floors enough, but no less than the
+//least; how far up from the middle of its tile its foot reaches; and how
+//high it stands at the most for it to be all foot, flat on the ground (a
+//yard, a car park) - as far as how high it stands is known yet
+//(CachedSprite top), and how far over the back corner of its tile it may
+//reach otherwise
+var BAND = 13,
+  LEAST_BAND = 6,
+  FLOORS = 3,
+  FOOT = 5,
+  LOW = 8,
+  BACK = 16;
 
-//how fast a piece falls faster, world units a second each second; how far
-//it sinks into the ground at the least, going, world units - more for a
-//taller one; and how far out it drifts, world units a second
-var FALL = 170,
-  SINK = 14,
-  DRIFT = 7;
+//a picture of parts: no taller than this, the part at the bottom is its
+//foot, flat on the ground
+var FLAT = 44;
 
-//how often dust goes up as it shakes and as it falls, ms; how many puffs
-//where a piece hits the ground, and over every tile once it is down; and how
-//many in all at the most, for a big building
-var DUST_EVERY = 25,
-  HIT_PUFFS = 2,
-  DOWN_PUFFS = 7,
+//how long a tile of it shakes before it gives, ms; how much of its floors
+//are over the one that gives first; how fast what falls falls faster,
+//pixels a second each second; how much of its speed what falls keeps for
+//every floor it crushes; how far into a floor it gets before that gives,
+//of the floor's height; and how long a floor takes to go, crushed, ms
+var SHAKE_MS = 650,
+  FAILS = 0.4,
+  FALL = 100,
+  KEEP = 0.3,
+  BITE = 0.35,
+  CRUSH_MS = 320;
+
+//the pieces a floor bursts into: how many at most, how big, pixels; how fast
+//they are flung out and up, world units a second, at the least and the
+//most; how fast they fall faster; how long they lie, and take to go, ms;
+//and how many there are of a building at most
+var CHUNKS = 10,
+  CELL = 8,
+  THROW = [14, 56],
+  TOSS = [14, 52],
+  DROP = 300,
+  LIE_MS = [700, 1800],
+  GO_MS = 500,
+  MOST_CHUNKS = 240;
+
+//its dust: how many puffs where a floor gives, and where it first gives;
+//how many over a tile once it is down; how many of a building at most
+var CRUSH_PUFFS = 2,
+  FAIL_PUFFS = 5,
+  DOWN_PUFFS = 6,
   MOST_PUFFS = 320;
+
+//how long the rubble takes to come up under the dust, and the foot to go,
+//ms
+var SETTLE_MS = 450;
 
 //the rubble a tile is left under (shared/gen/stones), any of them
 var RUBBLE = [
@@ -71,14 +113,14 @@ var RUBBLE_PIVOT_X = 32,
   RUBBLE_PIVOT_Y = 24;
 
 /**
- * Brings a building down where it stood - if it was cleared away, its
- * tiles being cleared (core/terrain beingCleared) for the bulldozers to get
- * to (client/clearworks); its view is gone, and what it looked like comes
- * down in its place.
+ * Has a building cleared away stand till the bulldozers come to bring it
+ * down, a tile at a time - if it was cleared away, its tiles being cleared
+ * (core/terrain beingCleared); its view is gone, and what it looked like
+ * stands in its place.
  *
  * @param root {Vkaria}
  * @param building {Building} the client's, its view up still
- * @returns {boolean} whether it is coming down - its view let go of then
+ * @returns {boolean} whether it does - its view let go of then
  */
 function bringDown(root, building) {
   var works = root.clearworks,
@@ -103,83 +145,85 @@ function bringDown(root, building) {
 }
 
 function Demolition(root, building, tiles) {
-  var view = building.view.gameObject,
-    at = view.transform.getPosition([0, 0, 0]);
+  var self = this,
+    at = building.view.gameObject.transform.getPosition([0, 0, 0]);
 
   this.root = root;
-  this.tiles = tiles;
-  this.age = 0;
-  this.dusted = 0;
+  this.building = building;
   this.puffs = 0;
-  this.down = false;
-  this.turned = null;
-  //the heaps of rubble left, by the tile, while they are there - null once
-  //a bulldozer has pushed it away
-  this.rubble = {};
-
-  //the middle of it, in tiles
+  this.chunks = [];
+  this.chunked = 0;
+  //every tile of it, by the tile: what stands there, coming down, or down
+  this.columns = {};
+  //the middle of it, in the world
   this.mx = 0;
-  this.my = 0;
+  this.mz = 0;
+
   tiles.forEach(function (tile) {
-    this.mx += Terrain.extractX(tile) / tiles.length;
-    this.my += Terrain.extractY(tile) / tiles.length;
-  }, this);
+    self.mx += (Terrain.extractX(tile) * TILE) / tiles.length;
+    self.mz += (Terrain.extractY(tile) * TILE) / tiles.length;
+    self.columns[tile] = column(tile);
+  });
 
   this.go = new engine.GameObject("demolition");
   this.go.transform.setPosition(at[0], at[1], at[2]);
-  this.pieces = piecesOf(this, view);
-  //how many of them come down, rather than lie on the ground
-  this.coming = this.pieces.filter(function (p) {
-    return !p.ground;
-  }).length;
-
-  plan(this);
-
-  var self = this,
-    script = new DemolitionScript(this);
-
-  this.go.addComponent(script);
+  this.go.addComponent(new DemolitionScript(this));
   root.game.logic.world.addGameObject(this.go);
 
-  //every tile a heap of rubble till a bulldozer gets there - after the
-  //dust has settled a little
+  stand(this, building.view.gameObject, at);
+
+  //each tile brought down as a bulldozer comes to it, which waits for it
+  //to be down, and pushes its rubble away
   tiles.forEach(function (tile) {
     root.clearworks.hold(
       tile,
       function () {
         letGo(self, tile);
       },
-      self.ends,
+      function () {
+        return knock(self, tile);
+      },
     );
   });
 
-  //turned round, it is down at once: its pieces were the pictures of it
-  //from where it was seen
+  //turned round: what is coming down is down, and what stands stands as it
+  //is seen from the new side
   this.turned = Events.on(
     View,
     View.events.change,
     function () {
-      self.pieces.forEach(function (p) {
-        gone(self, p);
-      });
-      fall(self);
-      for (var tile in self.rubble)
-        if (self.rubble[tile] !== null) dress(self, +tile);
+      turn(self);
     },
     this,
   );
 }
 
+//a tile of it: standing, shaking, falling, down - or gone, its rubble
+//pushed away
+function column(tile) {
+  return {
+    tile: tile,
+    state: "standing",
+    t: 0,
+    //its floors, the lowest first, and its foot; how far the floors that
+    //fall have fallen, pixels, and how fast; and the lowest of them
+    floors: [],
+    feet: [],
+    drop: 0,
+    v: 0,
+    k: 0,
+    rubble: null,
+  };
+}
+
 /**
- * What the building was drawn with, as pieces to come down one by one -
- * every picture of it, every part of a picture put together out of parts,
- * each up where it was laid (client/compoundbuilding tilePieces) - and its
- * concrete base on the ground, which stays till it is down.
+ * Puts up what still stands of it as the pictures of view's children - x,
+ * y, z where view is drawn from - each tile's on that tile: its floors and
+ * its foot.
  */
-function piecesOf(self, view) {
-  var sprites = self.root.sprites,
-    out = [],
-    at = [0, 0, 0];
+function stand(self, view, at) {
+  var g = self.go.transform.getPosition([0, 0, 0]),
+    local = [0, 0, 0];
 
   view.transform.children.forEach(function (child) {
     var renderer = child.gameObject.spriteRenderer,
@@ -187,145 +231,315 @@ function piecesOf(self, view) {
 
     if (!sprite) return;
 
-    child.getLocalPosition(at);
+    child.getLocalPosition(local);
 
-    var parts = partsOf(sprites, sprite, renderer),
-      ground = renderer.layer !== RenderLayer.buildingsLayer;
+    var wx = at[0] + local[0],
+      wy = at[1] + local[1],
+      wz = at[2] + local[2],
+      tile = Terrain.convertToIndex(
+        Math.round(wx / TILE),
+        Math.round(wz / TILE),
+      ),
+      col = self.columns[tile];
 
-    parts.forEach(function (part) {
-      var go = new engine.GameObject(),
-        r = new engine.SpriteRenderer(),
-        lift = part.lift * PER_PIXEL;
+    if (col === undefined || col.state !== "standing") return;
 
-      r.layer = renderer.layer;
-      r.setSprite(part.sprite);
-      r.pivotX = part.pivotX;
-      r.pivotY = part.pivotY;
-      //lit at night as it was
-      r.windows = renderer.windows;
-      r.lights = renderer.lights;
-      r.variant = renderer.variant;
-      go.addComponent(r);
-      self.go.transform.addChild(go.transform);
-      go.transform.setLocalPosition(at[0], at[1] + lift, at[2]);
+    var where = [wx - g[0], wy - g[1], wz - g[2]];
 
-      out.push({
-        go: go,
-        x0: at[0],
-        y0: at[1] + lift,
-        z0: at[2],
-        tall: part.sprite.height * PER_PIXEL,
-        ground: ground,
-        //where the tile it is on is, for which way it drifts
-        tx: at[0],
-        tz: at[2],
-        start: 0,
-        hit: false,
-        gone: false,
-      });
-    });
+    //its concrete base: on the ground, its foot
+    if (renderer.layer !== RenderLayer.buildingsLayer) {
+      col.feet.push(piece(self, where, renderer, whole(sprite, renderer)));
+      return;
+    }
+
+    floorsOf(self, col, where, renderer, sprite);
   });
 
-  return out;
+  for (var tile in self.columns)
+    self.columns[tile].floors.sort(function (a, b) {
+      return a.base - b.base;
+    });
+}
+
+//a picture as it is, whole
+function whole(sprite, renderer) {
+  return {
+    sprite: sprite,
+    name: null,
+    pivotX: renderer.pivotX,
+    pivotY: renderer.pivotY,
+    clip: null,
+    lift: 0,
+  };
+}
+
+/**
+ * The floors of a tile's picture: the parts it is put together out of, each
+ * up where it is laid - the bottom one its foot if it is flat on the ground
+ * - or for one painted whole, bands of it a storey high, from its foot up.
+ */
+function floorsOf(self, col, where, renderer, sprite) {
+  var parts = partsOf(self.root.sprites, sprite, renderer);
+
+  if (parts.length > 1) {
+    parts.forEach(function (part, i) {
+      var next = parts[i + 1],
+        flat = i === 0 && part.frame.h <= FLAT;
+
+      if (flat) {
+        col.feet.push(piece(self, where, renderer, part));
+        return;
+      }
+
+      floor(
+        self,
+        col,
+        piece(self, where, renderer, part),
+        part.lift,
+        next ? Math.max(4, next.lift - part.lift) : BAND,
+        part,
+      );
+    });
+    return;
+  }
+
+  var one = parts[0];
+
+  //nothing to cut it out of: it comes down whole
+  if (one.name === null) {
+    floor(self, col, piece(self, where, renderer, one), 0, BAND, null);
+    return;
+  }
+
+  var f = one.frame,
+    foot = Math.min(f.h, Math.max(0, one.pivotY - FOOT)),
+    step = Math.max(LEAST_BAND, Math.min(BAND, Math.floor(foot / FLOORS)));
+
+  //flat on the ground, all of it
+  if (sprite.top ? sprite.top.h < LOW : one.pivotY - BACK < LEAST_BAND) {
+    col.feet.push(piece(self, where, renderer, one));
+    return;
+  }
+
+  if (foot < f.h)
+    col.feet.push(
+      piece(self, where, renderer, cut(one, 0, foot, f.w, f.h - foot)),
+    );
+
+  for (var y1 = foot; y1 > 0;) {
+    var y0 = Math.max(0, y1 - step);
+
+    //no sliver of a floor left over at the top
+    if (y0 < 5) y0 = 0;
+
+    var band = cut(one, 0, y0, f.w, y1 - y0);
+
+    floor(
+      self,
+      col,
+      piece(self, where, renderer, band),
+      one.pivotY - y1,
+      y1 - y0,
+      band,
+    );
+    y1 = y0;
+  }
+}
+
+//so much of a picture of one part, from x, y in it
+function cut(part, x, y, w, h) {
+  return {
+    sprite: null,
+    name: part.name,
+    frame: part.frame,
+    pivotX: part.pivotX,
+    pivotY: part.pivotY,
+    clip: { x: x, y: y, w: w, h: h },
+    lift: part.lift,
+  };
 }
 
 /**
  * The parts a picture is put together out of (SpriteCache#getComposite),
- * each where it is in it: its sprite, its pivot, and how far up it is laid
- * on the ones under it, in pixels - the picture whole for one of one part,
- * or one put together some way that is not that.
+ * each where it is in it: its name and frame, where the middle of its tile
+ * is in its own picture, and how far up it is laid on the ones under it, in
+ * pixels - the picture whole for one put together some way that is not that
+ * (from straight above), its name null then.
  */
 function partsOf(sprites, sprite, renderer) {
-  var whole = [
-      {
-        sprite: sprite,
-        pivotX: renderer.pivotX,
-        pivotY: renderer.pivotY,
-        lift: 0,
-      },
-    ],
-    keys = typeof sprite.key === "string" ? sprite.key.split("+") : [];
-
-  if (keys.length < 2) return whole;
-
-  var out = [];
+  var keys = typeof sprite.key === "string" ? sprite.key.split("+") : [],
+    out = [];
 
   for (var i = 0; i < keys.length; i++) {
-    var m = /^(.*?)(?:@(-?\d+),(-?\d+))?$/.exec(keys[i]),
-      name = m[1],
-      frame = sprites.frame(name);
+    var m = /^([^@#]*)(?:@(-?\d+),(-?\d+))?$/.exec(keys[i]),
+      frame = m ? sprites.frame(m[1]) : undefined;
 
-    if (frame === undefined) return whole;
+    if (frame === undefined) return [whole(sprite, renderer)];
 
     var x = +(m[2] || 0),
       y = +(m[3] || 0),
-      //where its own middle is - a generated part's - the rest of its
-      //place up the picture is how far it is laid up
-      lift =
-        frame.pivotY === undefined
-          ? 0
-          : Math.max(0, renderer.pivotY - y - frame.pivotY);
+      //where its own middle is - a generated part's - the rest of its place
+      //up the picture is how far it is laid up
+      pivotY = frame.pivotY === undefined ? renderer.pivotY - y : frame.pivotY,
+      lift = Math.max(0, renderer.pivotY - y - pivotY);
 
     out.push({
-      sprite: sprites.getSprite(name),
+      sprite: keys.length > 1 ? sprites.getSprite(m[1]) : sprite,
+      name: m[1],
+      frame: frame,
       pivotX: renderer.pivotX - x,
       pivotY: renderer.pivotY - y - lift,
+      clip: null,
       lift: lift,
     });
   }
 
-  return out;
+  return out.length > 0 ? out : [whole(sprite, renderer)];
 }
 
 /**
- * When each piece starts down - the higher, the sooner, each tile in a time
- * of its own - which way it drifts as it falls, and how far it sinks into
- * the ground going; and when the last of it is gone (ends), ms from now.
+ * A picture of what stands - a part, so much of one - drawn where it was,
+ * up as high as it is laid: {go, y0, x0, z0, ...}.
  */
-function plan(self) {
-  var tall = 0,
-    seeds = {},
-    ends = SHAKE_MS;
+function piece(self, where, renderer, part) {
+  var go = new engine.GameObject(),
+    r = new engine.SpriteRenderer(),
+    c = part.clip,
+    sprite =
+      c !== null
+        ? self.root.sprites.getComposite([{ name: part.name, clip: c }])
+        : part.sprite,
+    y = where[1] + part.lift * PER_PIXEL;
 
-  self.pieces.forEach(function (p) {
-    tall = Math.max(tall, p.y0);
-  });
+  r.layer = renderer.layer;
+  r.setSprite(sprite);
+  r.pivotX = part.pivotX - (c ? c.x : 0);
+  r.pivotY = part.pivotY - (c ? c.y : 0);
+  //lit at night as it was
+  r.windows = renderer.windows;
+  r.lights = renderer.lights;
+  r.variant = renderer.variant;
+  go.addComponent(r);
+  self.go.transform.addChild(go.transform);
+  go.transform.setLocalPosition(where[0], y, where[2]);
 
-  self.pieces.forEach(function (p) {
-    var key = Math.round(p.tx) + "," + Math.round(p.tz),
-      seed = seeds[key] || (seeds[key] = Math.random() * JITTER_MS),
-      out = outward(self, p),
-      fall;
-
-    p.start = SHAKE_MS + (tall > 0 ? (1 - p.y0 / tall) * STAGGER_MS : 0) + seed;
-    p.sink = Math.max(SINK, p.tall * 0.5);
-    p.vx = out[0] * DRIFT * (0.4 + 0.6 * (tall > 0 ? p.y0 / tall : 0.5));
-    p.vz = out[1] * DRIFT * (0.4 + 0.6 * (tall > 0 ? p.y0 / tall : 0.5));
-
-    fall = Math.sqrt((2 * (p.y0 + p.sink)) / FALL) * 1000;
-    ends = Math.max(ends, p.start + fall);
-  });
-
-  self.ends = ends;
+  return {
+    go: go,
+    x0: where[0],
+    y0: y,
+    z0: where[2],
+    part: part,
+    fade: -1,
+  };
 }
 
-//which way out from the middle of the building a piece is, along x and z
-function outward(self, p) {
-  var cx = 0,
-    cz = 0,
-    n = 0;
+//a floor of a tile: its piece, how high its foot is over the ground, and how
+//tall it is, pixels
+function floor(self, col, p, base, h, part) {
+  p.base = base;
+  p.h = h;
+  p.crushed = false;
+  p.cuttable = part !== null && part.name !== null;
+  col.floors.push(p);
+}
 
-  self.pieces.forEach(function (q) {
-    cx += q.tx;
-    cz += q.tz;
-    n++;
-  });
+/**
+ * A bulldozer has come to a tile: what stands there comes down - how long
+ * till it is down, ms, for the bulldozer to wait.
+ */
+function knock(self, tile) {
+  var col = self.columns[tile];
 
-  var dx = p.tx - cx / n + (Math.random() - 0.5) * 6,
-    dz = p.tz - cz / n + (Math.random() - 0.5) * 6,
-    l = Math.hypot(dx, dz) || 1;
+  if (col === undefined || col.state !== "standing") return 0;
 
-  return [dx / l, dz / l];
+  col.state = "shaking";
+  col.t = 0;
+
+  //nothing standing there: down at once
+  if (col.floors.length === 0) {
+    down(self, col);
+    return SETTLE_MS;
+  }
+
+  return SHAKE_MS + falls(col) + CRUSH_MS + SETTLE_MS;
+}
+
+//where a tile's floors first give: the lowest of those that fall
+function failsAt(col) {
+  var n = col.floors.length;
+
+  return n < 2 ? 0 : Math.max(1, Math.min(n - 1, Math.round(n * (1 - FAILS))));
+}
+
+/**
+ * How long a tile's floors take to come down once they fall, ms - worked
+ * out the way they do, without them.
+ */
+function falls(col) {
+  var floors = col.floors.map(function (f) {
+      return { base: f.base, h: f.h, crushed: false };
+    }),
+    s = { drop: 0, v: 0, k: failsAt(col) },
+    t = 0,
+    dt = 1 / 60;
+
+  while (s.k < floors.length && t < 30) {
+    t += dt;
+    fallBy(s, floors, ground(col), dt, null);
+  }
+
+  return t * 1000;
+}
+
+//how high a tile's ground is, pixels over the middle of it: the top of its
+//foot, cut out of a picture painted whole
+function ground(col) {
+  return col.feet.some(function (f) {
+    return f.part.clip !== null;
+  })
+    ? FOOT
+    : 0;
+}
+
+/**
+ * Has what falls of a tile fall dt seconds on: faster and faster, the floor
+ * under it giving as it gets far enough into it, slowing it - or at the
+ * ground, the lowest of what falls giving - crush(floor) told of each.
+ */
+function fallBy(s, floors, ground, dt, crush) {
+  s.v += FALL * dt;
+  s.drop += s.v * dt;
+
+  for (;;) {
+    var bottom = floors[s.k];
+
+    if (bottom === undefined) return;
+
+    var edge = bottom.base - s.drop,
+      below = null;
+
+    for (var j = s.k - 1; j >= 0; j--)
+      if (!floors[j].crushed) {
+        below = floors[j];
+        break;
+      }
+
+    if (below !== null) {
+      if (edge > below.base + below.h * (1 - BITE)) return;
+
+      below.crushed = true;
+      if (crush) crush(below);
+    } else {
+      if (edge > ground) return;
+
+      s.drop = bottom.base - ground;
+      bottom.crushed = true;
+      if (crush) crush(bottom);
+      s.k++;
+    }
+
+    s.v *= KEEP;
+  }
 }
 
 function DemolitionScript(demolition) {
@@ -338,129 +552,338 @@ DemolitionScript.prototype.profileName = "demolition";
 
 DemolitionScript.prototype.tick = function (time) {
   var self = this.demolition,
-    t = (self.age += time.dt),
-    left = 0,
-    hit = 0,
-    falling = 0,
-    //what still stands, where, and how high it reaches
-    standing = [];
+    dt = time.dt,
+    busy = false;
 
-  self.pieces.forEach(function (p) {
-    if (p.gone) return;
+  for (var tile in self.columns) {
+    var col = self.columns[tile];
 
-    //the concrete it stood on stays till it is down
-    if (p.ground) {
-      left++;
-      return;
-    }
+    if (col.state === "shaking") shake(self, col, dt);
+    else if (col.state === "falling") fallOn(self, col, dt);
+    else if (col.state === "down") settle(self, col, dt);
 
-    var shake = t < p.start ? (t / SHAKE_MS) * 0.9 : 0.4,
-      x = p.x0 + (Math.random() - 0.5) * shake,
-      z = p.z0 + (Math.random() - 0.5) * shake,
-      y = p.y0;
-
-    if (t > p.start) {
-      var s = (t - p.start) / 1000;
-
-      y = p.y0 - 0.5 * FALL * s * s;
-      x += p.vx * s;
-      z += p.vz * s;
-      falling++;
-    }
-
-    //on the ground: in a cloud of its own, and into it
-    if (y <= 0 && !p.hit) {
-      p.hit = true;
-      for (var k = 0; k < HIT_PUFFS; k++)
-        debris(self, x, z, Math.random() * 6, 14 + Math.random() * 10);
-    }
-
-    if (p.hit) hit++;
-
-    var below = Math.max(0, -y);
-
-    if (below >= p.sink) {
-      gone(self, p);
-      return;
-    }
-
-    left++;
-    if (y + p.tall > 0) standing.push([x, y + p.tall, z]);
-    p.go.spriteRenderer.opacity = 1 - below / p.sink;
-    p.go.transform.setLocalPosition(x, y, z);
-  });
-
-  //dust: at its foot as it shakes; and as it falls, a column of it where
-  //it still stands, as high as each piece reaches - thickest low down -
-  //and a skirt of it rolling out along the ground round its foot
-  self.dusted += time.dt;
-  while (self.dusted >= DUST_EVERY && !self.down) {
-    self.dusted -= DUST_EVERY;
-
-    var g = self.go.transform.getPosition([0, 0, 0]),
-      on = self.tiles[Math.floor(Math.random() * self.tiles.length)],
-      fx = (Terrain.extractX(on) + (Math.random() - 0.5) * 0.9) * TILE - g[0],
-      fz = (Terrain.extractY(on) + (Math.random() - 0.5) * 0.9) * TILE - g[2];
-
-    if (falling === 0 || standing.length === 0) {
-      debris(self, fx, fz, Math.random() * 3, 8);
-      continue;
-    }
-
-    var up = standing[Math.floor(Math.random() * standing.length)],
-      u = Math.random();
-
-    debris(
-      self,
-      up[0] + (Math.random() - 0.5) * TILE * 0.6,
-      up[2] + (Math.random() - 0.5) * TILE * 0.6,
-      u * u * up[1],
-      3,
-    );
-    debris(self, fx, fz, 1, 16 + Math.random() * 12);
+    if (col.state !== "gone") busy = true;
   }
 
-  //most of it down: the rubble under the dust
-  if (!self.down && hit * 5 >= self.coming * 3) fall(self);
+  flyOn(self, dt);
 
-  if (left === 0 || t > self.ends + 2000) end(self);
+  if (!busy && self.chunks.length === 0) end(self);
 };
 
-/**
- * Down: a heap of rubble on every tile, and the cloud rolling out over it
- * and round it.
- */
-function fall(self) {
-  if (self.down) return;
+//a tile shaking, before it gives - dust going up where it will
+function shake(self, col, dt) {
+  col.t += dt;
 
-  self.down = true;
+  var k = Math.min(1, col.t / SHAKE_MS) * 0.7;
 
-  var g = self.go.transform.getPosition([0, 0, 0]);
-
-  self.tiles.forEach(function (tile) {
-    var x = Terrain.extractX(tile),
-      y = Terrain.extractY(tile);
-
-    //gone already, a bulldozer there before it was down
-    if (self.root.core.terrain.beingCleared(tile)) rubble(self, tile);
-
-    for (var k = 0; k < DOWN_PUFFS; k++)
-      debris(
-        self,
-        (x + (Math.random() - 0.5) * 0.9) * Config.tileSize - g[0],
-        (y + (Math.random() - 0.5) * 0.9) * Config.tileSize - g[2],
-        Math.random() * 10,
-        30 + Math.random() * 20,
-      );
+  col.floors.forEach(function (f) {
+    f.go.transform.setLocalPosition(
+      f.x0 + (Math.random() - 0.5) * k,
+      f.y0,
+      f.z0 + (Math.random() - 0.5) * k,
+    );
   });
 
-  //and the concrete it stood on with it
-  self.pieces.forEach(function (p) {
-    if (p.ground) gone(self, p);
+  if (Math.random() < dt / 90) {
+    var at = col.floors[failsAt(col)] || col.floors[0];
+
+    debris(self, at.x0, at.z0, Math.random() * 4, 8);
+  }
+
+  if (col.t < SHAKE_MS) return;
+
+  //it gives: a burst where it does, and what is over it falls
+  col.state = "falling";
+  col.t = 0;
+  col.k = failsAt(col);
+
+  var gives = col.floors[col.k - 1] || col.floors[col.k];
+
+  for (var i = 0; i < FAIL_PUFFS; i++)
+    debris(
+      self,
+      gives.x0 + (Math.random() - 0.5) * TILE * 0.5,
+      gives.z0 + (Math.random() - 0.5) * TILE * 0.5,
+      bottomOf(gives, gives.y0) + Math.random() * 6,
+      12 + Math.random() * 12,
+    );
+  //where it gives, it bursts as much again
+  burst(self, col, gives);
+  burst(self, col, gives);
+}
+
+//a tile falling: the floors that fall where they have got to, and every
+//floor going that was crushed
+function fallOn(self, col, dt) {
+  var g = ground(col);
+
+  fallBy(col, col.floors, g, dt / 1000, function (f) {
+    crush(self, col, f);
+  });
+
+  col.floors.forEach(function (f, i) {
+    //what was crushed, where it was; what falls, where it has got to; what
+    //is under that, where it stands
+    var y =
+      f.at !== undefined
+        ? f.at
+        : i >= col.k
+          ? f.y0 - col.drop * PER_PIXEL
+          : f.y0;
+
+    if (f.fade >= 0) {
+      f.fade += dt;
+      f.go.spriteRenderer.opacity = Math.max(0, 1 - f.fade / CRUSH_MS);
+      if (f.fade >= CRUSH_MS) gone(f);
+    }
+
+    f.go.transform.setLocalPosition(f.x0, y, f.z0);
+  });
+
+  if (
+    col.k >= col.floors.length &&
+    col.floors.every(function (f) {
+      return f.fade < 0 || f.fade >= CRUSH_MS;
+    })
+  )
+    down(self, col);
+}
+
+//how high the foot of a floor is, its piece drawn y up - off where the
+//building is drawn from
+function bottomOf(f, y) {
+  return y + (f.base - f.part.lift) * PER_PIXEL;
+}
+
+/**
+ * A floor crushed: it goes, dithered away where it was crushed, in a puff of
+ * dust, bursting into pieces.
+ */
+function crush(self, col, f) {
+  f.at = f.go.transform.getLocalPosition([0, 0, 0])[1];
+  f.fade = 0;
+  f.go.spriteRenderer.dither = true;
+
+  var up = bottomOf(f, f.at) + f.h * 0.5 * PER_PIXEL;
+
+  for (var i = 0; i < CRUSH_PUFFS; i++)
+    debris(
+      self,
+      f.x0 + (Math.random() - 0.5) * TILE * 0.6,
+      f.z0 + (Math.random() - 0.5) * TILE * 0.6,
+      Math.max(0, up) + Math.random() * 4,
+      10 + Math.random() * 14,
+    );
+
+  burst(self, col, f);
+}
+
+/**
+ * A floor bursting into pieces of itself: bits of its picture - none of
+ * them nothing to see - flung out from the middle of the building and up,
+ * from where they are in it.
+ */
+function burst(self, col, f) {
+  if (!f.cuttable) return;
+
+  var part = f.part,
+    c = part.clip || { x: 0, y: 0, w: part.frame.w, h: part.frame.h },
+    sprites = self.root.sprites,
+    cells = [];
+
+  for (var y = 0; y + 3 <= c.h; y += CELL)
+    for (var x = 0; x + 3 <= c.w; x += CELL)
+      if (seen(sprites, part, c.x + x, c.y + y, CELL))
+        cells.push({
+          x: c.x + x,
+          y: c.y + y,
+          w: Math.min(CELL, c.w - x),
+          h: Math.min(CELL, c.h - y),
+        });
+
+  for (var n = 0; n < CHUNKS && cells.length > 0; n++) {
+    if (self.chunked >= MOST_CHUNKS) return;
+
+    var cell = cells.splice(Math.floor(Math.random() * cells.length), 1)[0];
+
+    chunk(self, f, cell);
+  }
+}
+
+//whether anything of a part's picture is there in a square of it, size
+//across from x, y - in its colours to be lit, which are what is drawn, or
+//as it is painted; as far as its pixels are in to tell, a guess otherwise
+function seen(sprites, part, x, y, size) {
+  var frame = part.frame,
+    sheet = sprites.sheets ? sprites.sheets[frame.sheet] : null,
+    lit = sheet ? sprites.lookSheet(sheet, "deferred") : null,
+    image = lit && lit.image ? lit.image : sheet ? sheet.image : null,
+    //the colours to be lit are the first of its pictures, at its corner
+    x0 = lit && lit.image ? 0 : frame.x,
+    y0 = lit && lit.image ? 0 : frame.y;
+
+  if (!image || !image.data) return Math.random() < 0.5;
+
+  for (var j = 0; j < size; j += 2)
+    for (var i = 0; i < size; i += 2) {
+      if (x + i >= frame.w || y + j >= frame.h) continue;
+
+      var px = x0 + x + i,
+        py = y0 + y + j;
+
+      if (image.data[(py * image.width + px) * 4 + 3] > 0) return true;
+    }
+
+  return false;
+}
+
+/**
+ * A piece of a floor flung off it: its bit of the picture, its foot where
+ * the bit's foot is, flung out and up.
+ */
+function chunk(self, f, cell) {
+  var part = f.part,
+    go = new engine.GameObject("debris"),
+    r = new engine.SpriteRenderer(),
+    p = f.go.transform.getLocalPosition([0, 0, 0]),
+    //how far up its foot is over where the floor is drawn from
+    up = (part.pivotY - (cell.y + cell.h)) * PER_PIXEL,
+    wx = self.go.transform.getPosition([0, 0, 0]),
+    ox = wx[0] + p[0] - self.mx + (Math.random() - 0.5) * TILE,
+    oz = wx[2] + p[2] - self.mz + (Math.random() - 0.5) * TILE,
+    l = Math.hypot(ox, oz) || 1,
+    out = THROW[0] + Math.random() * (THROW[1] - THROW[0]);
+
+  r.layer = RenderLayer.buildingsLayer;
+  //drawn as it is painted: lit as it is drawn, it would stand as high as
+  //it did in the building, and throw its shadow so
+  r.setSprite(
+    self.root.sprites.getComposite([
+      { name: part.name, clip: cell, plain: true },
+    ]),
+  );
+  r.pivotX = part.pivotX - cell.x;
+  r.pivotY = cell.h;
+  r.dither = true;
+  go.addComponent(r);
+  self.go.transform.addChild(go.transform);
+  go.transform.setLocalPosition(p[0], p[1] + up, p[2]);
+
+  self.chunked++;
+  self.chunks.push({
+    go: go,
+    x: p[0],
+    y: p[1] + up,
+    z: p[2],
+    vx: (ox / l) * out,
+    vz: (oz / l) * out,
+    vy: TOSS[0] + Math.random() * (TOSS[1] - TOSS[0]),
+    bounced: 0,
+    lie: LIE_MS[0] + Math.random() * (LIE_MS[1] - LIE_MS[0]),
+    t: -1,
   });
 }
 
-function gone(self, p) {
+//the pieces flying, landing, bouncing, lying and going
+function flyOn(self, dt) {
+  var s = dt / 1000,
+    g = self.go.transform.getPosition([0, 0, 0]);
+
+  self.chunks = self.chunks.filter(function (c) {
+    if (c.t >= 0) {
+      c.t += dt;
+
+      if (c.t > c.lie) {
+        var k = (c.t - c.lie) / GO_MS;
+
+        if (k >= 1) {
+          if (c.go.world !== null) c.go.world.removeGameObject(c.go);
+          return false;
+        }
+
+        c.go.spriteRenderer.opacity = 1 - k;
+      }
+
+      return true;
+    }
+
+    c.vy -= DROP * s;
+    c.x += c.vx * s;
+    c.y += c.vy * s;
+    c.z += c.vz * s;
+
+    var under = groundAt(self, g[0] + c.x, g[2] + c.z) - g[1];
+
+    if (c.y <= under) {
+      c.y = under;
+
+      //a bounce or two, lower each time, then it lies there
+      if (c.bounced++ < 2 && c.vy < -12) {
+        c.vy = -c.vy * 0.3;
+        c.vx *= 0.5;
+        c.vz *= 0.5;
+      } else c.t = 0;
+    }
+
+    c.go.transform.setLocalPosition(c.x, c.y, c.z);
+
+    return true;
+  });
+}
+
+//how high the ground is at x, z in the world, world units
+function groundAt(self, x, z) {
+  return (
+    self.root.core.terrain.getHeight(x / TILE + 0.5, z / TILE + 0.5) *
+    Config.tileZStep
+  );
+}
+
+/**
+ * A tile down: its rubble coming up under the dust rolling out over it, its
+ * foot going.
+ */
+function down(self, col) {
+  col.state = "down";
+  col.t = 0;
+
+  col.floors.forEach(gone);
+  col.feet.forEach(function (f) {
+    f.go.spriteRenderer.dither = true;
+  });
+
+  var x = Terrain.extractX(col.tile),
+    y = Terrain.extractY(col.tile),
+    g = self.go.transform.getPosition([0, 0, 0]);
+
+  for (var k = 0; k < DOWN_PUFFS; k++)
+    debris(
+      self,
+      (x + (Math.random() - 0.5) * 0.9) * TILE - g[0],
+      (y + (Math.random() - 0.5) * 0.9) * TILE - g[2],
+      Math.random() * 8,
+      24 + Math.random() * 20,
+    );
+
+  rubble(self, col);
+}
+
+//a tile's rubble coming up, its foot going, as it settles
+function settle(self, col, dt) {
+  if (col.t >= SETTLE_MS) return;
+
+  col.t += dt;
+
+  var k = Math.min(1, col.t / SETTLE_MS);
+
+  if (col.rubble !== null) col.rubble.spriteRenderer.opacity = k;
+  col.feet.forEach(function (f) {
+    f.go.spriteRenderer.opacity = 1 - k;
+    if (k >= 1) gone(f);
+  });
+}
+
+function gone(p) {
   if (p.gone) return;
 
   p.gone = true;
@@ -468,13 +891,74 @@ function gone(self, p) {
   changed();
 }
 
-//all of it down and gone: nothing left of it but its rubble
-function end(self) {
-  fall(self);
-  self.pieces.forEach(function (p) {
-    gone(self, p);
-  });
+/**
+ * A bulldozer got to a tile, and pushed what was left there away - down at
+ * once, if it was not yet.
+ */
+function letGo(self, tile) {
+  var col = self.columns[tile];
 
+  if (col === undefined || col.state === "gone") return;
+
+  if (col.state !== "down") down(self, col);
+
+  col.feet.forEach(gone);
+  if (col.rubble !== null && col.rubble.world !== null)
+    col.rubble.world.removeGameObject(col.rubble);
+  col.rubble = null;
+  col.state = "gone";
+  changed();
+}
+
+/**
+ * Turned round: what is coming down is down, and what still stands is put
+ * up again as it is seen now - the building drawn again from the new side
+ * for it (client/buildingview).
+ */
+function turn(self) {
+  var standing = false;
+
+  self.chunks.forEach(function (c) {
+    if (c.go.world !== null) c.go.world.removeGameObject(c.go);
+  });
+  self.chunks = [];
+
+  for (var tile in self.columns) {
+    var col = self.columns[tile];
+
+    if (col.state === "shaking" || col.state === "falling") down(self, col);
+    if (col.state === "down") {
+      col.t = SETTLE_MS;
+      col.feet.forEach(gone);
+      if (col.rubble !== null) {
+        col.rubble.spriteRenderer.opacity = 1;
+        dress(self, col);
+      }
+    }
+    if (col.state === "standing") {
+      col.floors.concat(col.feet).forEach(gone);
+      col.floors = [];
+      col.feet = [];
+      standing = true;
+    }
+  }
+
+  if (!standing) return;
+
+  var view = new BuildingView();
+
+  view.setBuilding(self.building);
+  view.update();
+  stand(
+    self,
+    view.gameObject,
+    view.gameObject.transform.getPosition([0, 0, 0]),
+  );
+  view.dispose();
+}
+
+//all of it down, and pushed away, and every piece of it gone
+function end(self) {
   if (self.go.world !== null) self.go.world.removeGameObject(self.go);
   if (self.turned !== null) {
     Events.off(View, View.events.change, self.turned);
@@ -483,9 +967,9 @@ function end(self) {
 }
 
 /**
- * A puff of grey dust x, z off where the building stood (world units), up
- * that high over the ground, thrown out from the middle of it - so many
- * puffs at the most.
+ * A puff of grey dust x, z off where the building is drawn from (world
+ * units), up that high over the ground there, thrown out from the middle of
+ * it - so many puffs at the most.
  */
 function debris(self, x, z, up, out) {
   if (self.puffs >= MOST_PUFFS) return;
@@ -495,8 +979,8 @@ function debris(self, x, z, up, out) {
   var g = self.go.transform.getPosition([0, 0, 0]),
     wx = g[0] + x,
     wz = g[2] + z,
-    dx = wx / Config.tileSize - self.mx,
-    dz = wz / Config.tileSize - self.my,
+    dx = wx - self.mx,
+    dz = wz - self.mz,
     l = Math.hypot(dx, dz) || 1;
 
   SmokeSource.puff(
@@ -511,28 +995,30 @@ function debris(self, x, z, up, out) {
 }
 
 /**
- * The heap of rubble on a tile, lying on the ground there the way stones do
- * (client/envman).
+ * The heap of rubble on a tile, coming up as it settles, lying on the ground
+ * there the way stones do (client/envman).
  */
-function rubble(self, tile) {
-  if (self.rubble[tile] !== undefined) return;
+function rubble(self, col) {
+  if (col.rubble !== null) return;
 
   var go = new engine.GameObject("rubble"),
     renderer = new engine.SpriteRenderer();
 
   renderer.layer = RenderLayer.buildingsLayer;
   go.addComponent(renderer);
-  self.rubble[tile] = go;
-  dress(self, tile);
+  renderer.dither = true;
+  renderer.opacity = 0;
+  col.rubble = go;
+  dress(self, col);
   self.root.game.logic.world.addGameObject(go);
   changed();
 }
 
 //the rubble on a tile, as it is seen, where the ground is
-function dress(self, tile) {
-  var go = self.rubble[tile],
-    x = Terrain.extractX(tile),
-    y = Terrain.extractY(tile),
+function dress(self, col) {
+  var go = col.rubble,
+    x = Terrain.extractX(col.tile),
+    y = Terrain.extractY(col.tile),
     pick = hash(x, y),
     name = Trees.turned(
       RUBBLE[pick % RUBBLE.length],
@@ -554,27 +1040,10 @@ function dress(self, tile) {
   }
 
   go.transform.setPosition(
-    x * Config.tileSize,
+    x * TILE,
     self.root.core.terrain.getHeight(x + 0.5, y + 0.5) * Config.tileZStep,
-    y * Config.tileSize,
+    y * TILE,
   );
-}
-
-//a bulldozer got to a tile: its rubble pushed away
-function letGo(self, tile) {
-  var go = self.rubble[tile];
-
-  if (go === undefined) {
-    //not down yet: nothing to leave there when it is
-    self.rubble[tile] = null;
-    return;
-  }
-
-  if (go === null) return;
-
-  self.rubble[tile] = null;
-  if (go.world !== null) go.world.removeGameObject(go);
-  changed();
 }
 
 //a number for a tile, the same every time

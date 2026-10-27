@@ -368,17 +368,28 @@ SpriteCache.prototype.getSprite = function (name) {
  * put together once and drawn as one - shared by everything that asks for the
  * same parts in the same places.
  *
- * @param parts {Array<string|{name: string, x: number, y: number}>} a name
- *        alone is at 0, 0; x, y are where the part's top left corner goes,
- *        never left of or above the picture's
+ * @param parts {Array<string|{name: string, x: number, y: number, clip:
+ *        Object}>} a name alone is at 0, 0; x, y are where the part's top
+ *        left corner goes, never left of or above the picture's; and clip,
+ *        {x, y, w, h}, only so much of the part, from x, y in it - its top
+ *        left corner the one put at x, y (a piece of a building coming down,
+ *        client/demolition); and plain, true for it drawn as it is painted,
+ *        lit, never lit as it is drawn - which goes by how high every pixel
+ *        of it stands where it was painted (a piece flung off a building)
  * @returns {CachedSprite}
  */
 SpriteCache.prototype.getComposite = function (parts) {
   var key = parts
       .map(function (part) {
-        return typeof part === "string" || (!part.x && !part.y)
-          ? part.name || part
-          : part.name + "@" + part.x + "," + part.y;
+        var c = part.clip;
+
+        return (
+          (typeof part === "string" || (!part.x && !part.y)
+            ? part.name || part
+            : part.name + "@" + part.x + "," + part.y) +
+          (c ? "#" + c.x + "," + c.y + "," + c.w + "," + c.h : "") +
+          (part.plain ? "!" : "")
+        );
       })
       .join("+"),
     sprite = this.sprites[key];
@@ -387,7 +398,8 @@ SpriteCache.prototype.getComposite = function (parts) {
 
   var resolved = [],
     width = 0,
-    height = 0;
+    height = 0,
+    plain = false;
 
   for (var i = 0; i < parts.length; i++) {
     var part = parts[i],
@@ -407,18 +419,24 @@ SpriteCache.prototype.getComposite = function (parts) {
       frame: frame,
       x: x,
       y: y,
+      clip: part.clip || null,
     });
-    width = Math.max(width, x + frame.w);
-    height = Math.max(height, y + frame.h);
+    width = Math.max(width, x + (part.clip ? part.clip.w : frame.w));
+    height = Math.max(height, y + (part.clip ? part.clip.h : frame.h));
+    if (part.plain) plain = true;
   }
 
-  return (this.sprites[key] = new CachedSprite(
+  sprite = this.sprites[key] = new CachedSprite(
     this,
     key,
     resolved,
     width,
     height,
-  ));
+  );
+
+  if (plain) sprite.plain = true;
+
+  return sprite;
 };
 
 /**
