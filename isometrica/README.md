@@ -341,7 +341,9 @@ dev`) plays them the way a game would - all three weathers together, the
   it is wanted, and kept - but only once the pictures on screen are all
   painted (`Soundman#painted`: the generator has painted some and waits on
   none): what is seen comes first, and what is to be heard waits for it,
-  the workers not even started before:
+  the workers not even started before. A loop (the places, the hum of the
+  town) made a while after it was first wanted fades in over three
+  seconds, not all at once:
 - the music (`audio/music.js`) - `city` when the screen is a good part
   town, `town` when there is a little of one on it, else `outside`; `day`
   or `night` by the hour; all three weathers of it playing together and

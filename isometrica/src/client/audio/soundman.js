@@ -92,6 +92,10 @@ var PLACES = [
   { name: "offshore/1", by: "sea", when: "rough" },
 ];
 
+//how long a loop takes to come in once it is made, s - it is turned up to
+//what is wanted of it while it is still being made, and would start loud
+var LOOP_FADE_IN = 3;
+
 //the old town's church bell: how long between one ringing and the next,
 //ms, from .. to - and before the first, once a church is first seen; how
 //likely it is tolled rather than rung; and how loud
@@ -815,11 +819,19 @@ Soundman.prototype.loop = function (name, gain, into) {
     l.gain.connect(into || this.buses.places);
 
     this.maker.get("sound", name).then(function (buf) {
-      var s = self.context.createBufferSource();
+      var s = self.context.createBufferSource(),
+        //from nothing, under the loop's own gain - which goes on going up
+        //and down meanwhile
+        fade = self.context.createGain(),
+        now = self.context.currentTime;
+
+      fade.gain.setValueAtTime(0, now);
+      fade.gain.linearRampToValueAtTime(1, now + LOOP_FADE_IN);
+      fade.connect(l.gain);
 
       s.buffer = buf;
       s.loop = true;
-      s.connect(l.gain);
+      s.connect(fade);
       //somewhere into it, so two of the same do not start together
       s.start(0, Math.random() * buf.duration);
       l.source = s;
