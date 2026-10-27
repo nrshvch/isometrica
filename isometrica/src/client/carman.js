@@ -151,7 +151,14 @@ var CARS_PER_ROAD = 1 / 4,
   //more often than out of a chimney
   BREAKDOWN_SMOKE_EVERY = 180,
   //how long a police car's lamp stays blue before it turns red, ms
-  LAMP_EVERY = 240;
+  LAMP_EVERY = 240,
+  //a car done for the day: how long it stands at the kerb before it is gone,
+  //and how long it takes to go - dissolving a pixel at a time, ms; and how
+  //far on past where it was going it drives at most for a straight bit of
+  //street to pull in at, tiles
+  LEAVE_STAND = 1500,
+  LEAVE_FADE = 1200,
+  LEAVE_ON = 6;
 
 //game time that goes by in a millisecond of the real thing - as long as a
 //tick of the clock is in the game played (core/vtime)
@@ -333,6 +340,57 @@ function pickDestination(root, start, city) {
   return ends.length === 0 ? -1 : ends[(Math.random() * ends.length) | 0];
 }
 
+//whether the road goes straight through tile: two roads joined to it,
+//across from each other - somewhere to pull in at the kerb
+function straightTile(roadman, tile) {
+  var ways = DIRECTIONS.filter(function (d) {
+    return (
+      Traffic.canDrive(roadman, tile, d) ||
+      Traffic.canDrive(roadman, tile + d[2], [-d[0], -d[1], -d[2]])
+    );
+  });
+
+  return (
+    ways.length === 2 &&
+    ways[0][0] === -ways[1][0] &&
+    ways[0][1] === -ways[1][1]
+  );
+}
+
+/**
+ * The tiles on from tile, come into it going din, to the first one the road
+ * goes straight through - none if tile is one - going straight on where it
+ * can; or null when there is none within LEAVE_ON tiles.
+ */
+function straightOn(roadman, tile, din) {
+  var out = [],
+    next = [];
+
+  for (var n = 0; n <= LEAVE_ON; n++) {
+    if (straightTile(roadman, tile)) return out;
+
+    next.length = 0;
+    Traffic.neighbours(roadman, tile, next);
+
+    var pick = null;
+
+    for (var i = 0; i < next.length; i++) {
+      var d = Traffic.direction(tile, next[i]);
+
+      if (d[0] === -din[0] && d[1] === -din[1]) continue;
+      if (pick === null || (d[0] === din[0] && d[1] === din[1])) pick = next[i];
+    }
+
+    if (pick === null) return null;
+
+    din = Traffic.direction(tile, pick);
+    tile = pick;
+    out.push(tile);
+  }
+
+  return null;
+}
+
 /**
  * The way from one road tile to another, or an empty array when there is
  * none - never turning back in the middle of a street (Traffic.route).
@@ -456,6 +514,11 @@ function CarScript(man) {
 }
 
 CarScript.prototype = Object.create(engine.Component.prototype);
+
+//on its way off the roads for the day, and how much longer it is there for
+//once it is parked, ms (leave)
+CarScript.prototype.leaving = false;
+CarScript.prototype.fading = 0;
 CarScript.prototype.profileName = "cars";
 
 CarScript.prototype.man = null;
@@ -560,6 +623,15 @@ CarScript.prototype.spawn = function (traffic) {
   //and does not puff in step with everything put out with it
   this.sinceSmoke = Math.random() * EXHAUST_EVERY;
   this.dress(traffic);
+
+  //all there again, if it was going
+  var renderer = this.gameObject.spriteRenderer;
+
+  this.leaving = false;
+  this.fading = 0;
+  renderer.opacity = 1;
+  renderer.dither = false;
+  if (renderer.lamps === undefined) renderer.lamps = Math.random();
 
   driver = this.driverFor();
   driver.passable = false;
@@ -678,6 +750,77 @@ CarScript.prototype.home = function (tile) {
 };
 
 /**
+ * Its last stretch planned again to pull in at the kerb at the end of it -
+ * on a straight bit of street, a little further on if it ends in a junction
+ * or round a bend, where what turns would cut through it. Where there is no
+ * such bit near, it is left as it is, to stop in its lane at the end.
+ */
+CarScript.prototype.parkToLeave = function () {
+  var driver = this.driver,
+    roadman = this.man.root.roadman,
+    wps = driver.wps,
+    here = driver.here(),
+    k = driver.target,
+    tiles = [],
+    i;
+
+  //past the tile it is on and the junctions it has been let into
+  while (
+    k < wps.length &&
+    (wps[k].tile === here || driver.grants.indexOf(wps[k].tile) !== -1)
+  )
+    k++;
+
+  if (k >= wps.length || wps[k].din === null || driver.passBack !== -1) return;
+
+  for (i = k; i < wps.length; i++)
+    if (tiles[tiles.length - 1] !== wps[i].tile) tiles.push(wps[i].tile);
+
+  var on = straightOn(
+    roadman,
+    tiles[tiles.length - 1],
+    wps[wps.length - 1].din,
+  );
+
+  if (on === null) return;
+
+  driver.divert(
+    k,
+    Traffic.routeWaypoints(tiles.concat(on), wps[k].din, true, true, 1),
+  );
+  driver.stopAtEnd = driver.pullIn = true;
+  this.leaving = true;
+};
+
+/**
+ * At the end of its last way, parked - or standing in its lane, where it
+ * could not pull in: its lamps off, and in a moment gone (fade).
+ */
+CarScript.prototype.leave = function () {
+  this.leaving = true;
+  //standing in its lane, it does not stand about in the way
+  this.fading = (this.driver.parked ? LEAVE_STAND : 0) + LEAVE_FADE;
+  this.signal = 0;
+  this.braking = false;
+
+  var renderer = this.gameObject.spriteRenderer;
+
+  //its lights off, as a parked car's are
+  renderer.lamps = undefined;
+  renderer.dither = true;
+};
+
+//standing a moment, then dissolving a pixel at a time; and gone
+CarScript.prototype.fade = function (dt) {
+  var renderer = this.gameObject.spriteRenderer;
+
+  this.fading -= dt;
+  renderer.opacity = Math.max(0, Math.min(1, this.fading / LEAVE_FADE));
+
+  if (this.fading <= 0) this.man.remove(this);
+};
+
+/**
  * Got there. A light car that arrives between midnight and six is off the
  * roads for the night; a bus stands at its stop; anything else sets off again
  * from where it stands - one that was still driving at six among them, which
@@ -689,10 +832,10 @@ CarScript.prototype.arrive = function () {
     route;
 
   //done for the night - or, the rush over, done for the day where it got to;
-  //or at work, or home, where it was going: parked there, and somebody else
-  //sets out in its place
-  if (this.retires() || this.done() || this.home(last.tile)) {
-    this.man.remove(this);
+  //or at work, or home, where it was going: parked there, and gone a moment
+  //later - somebody else sets out in its place
+  if (this.leaving || this.retires() || this.done() || this.home(last.tile)) {
+    this.leave();
     return;
   }
 
@@ -1075,16 +1218,15 @@ CarScript.prototype.extend = function () {
     last = wps[wps.length - 1],
     route;
 
-  //in the small hours nothing is joined on for a light car on its way home:
-  //it drives the last of this route and it is seen to when it gets there
-  if (
-    this.retires() ||
-    this.done() ||
-    this.home(last.tile) ||
-    this.traffic === SHUTTLE ||
-    last.din === null
-  )
+  if (this.traffic === SHUTTLE || last.din === null || this.leaving) return;
+
+  //in the small hours nothing is joined on for a light car on its way home -
+  //nor for one at work, or home, or one more than the hour wants: it pulls
+  //in at the kerb at the end of this route, and is gone from there (leave)
+  if (this.retires() || this.done() || this.home(last.tile)) {
+    this.parkToLeave();
     return;
+  }
 
   route = this.nextRoute(last.tile, last.din);
 
@@ -1449,6 +1591,12 @@ CarScript.prototype.tick = function (time) {
       this.place();
     }
 
+    return;
+  }
+
+  //done, and going: standing a moment, then dissolving
+  if (this.fading > 0) {
+    this.fade(time.dt);
     return;
   }
 
@@ -2180,7 +2328,13 @@ Carman.prototype.wantsTraffic = function () {
  * when they get where they are going.
  */
 Carman.prototype.surplus = function () {
-  return this.cars.length - this.target;
+  //not counting those on their way out already
+  var leaving = 0;
+
+  for (var i = 0; i < this.cars.length; i++)
+    if (this.cars[i].car.leaving) leaving++;
+
+  return this.cars.length - leaving - this.target;
 };
 
 /**

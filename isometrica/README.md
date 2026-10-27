@@ -146,7 +146,12 @@ engine in `engine/`.
   to another; a cab from any building to any other, at any hour; a truck or
   a lorry comes from anywhere - any road - into the city; a police car goes
   about the city's streets. After the rush the light cars more than the
-  hour wants are done when they get where they are going. A car
+  hour wants are done when they get where they are going. A car done for
+  the day - home, at work, or one too many - does not just vanish: it pulls
+  in at the kerb at the end of its way, on a straight bit of street a tile
+  or two on if it would end in a junction or round a bend, stands there a
+  moment with its lamps off, and dissolves a pixel at a time (`carman.js`
+  parkToLeave, leave). A car
   that has waited a minute in a queue that does not move turns off out of
   sight and is put on some other road - a queue behind a bus at its stop
   waits for it.
