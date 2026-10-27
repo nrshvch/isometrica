@@ -38,21 +38,6 @@ define(function (require) {
         return false;
     };
 
-    p.getUpdatableComponents = function () {
-        var components = this.components,
-            component,
-            len = this.componentsCount,
-            i, result = [];
-
-        for (i = 0; i < len; i++) {
-            component = components[i];
-            if (component.tick !== null)
-                result.push[component];
-        }
-
-        return result;
-    };
-
     p.updateSubscription = function () {
         if (!this.world)
             return;

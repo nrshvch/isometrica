@@ -296,8 +296,6 @@ Already so:
   a frame.
 - `sun()` and `weatherSky()` still make a few small arrays a frame.
 - Noticed on the way, not fixed here: `core/city/citystats.js`
-  `calculateResourceConsumption` adds each building, not its `demanding`;
-  `engine/engine/gameobject.js` `getUpdatableComponents` writes
-  `result.push[component]`, and nothing calls it.
+  `calculateResourceConsumption` adds each building, not its `demanding`.
 - Every drawing change was checked frame by frame against the frame before
   it: the same pictures drawn in the same places, pixel for pixel.
