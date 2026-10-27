@@ -57,6 +57,10 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 - Shaping the ground picks tiles straight away, and clears, raises or lowers
   them as toggled on along the bottom - priced over them as they are picked,
   done with the tick, and started out on what was toggled on last time.
+- Clearing is paid for at once, but takes a little while to do: bulldozers
+  sweep the tiles cleared, the trees and stones going down in their dust as
+  they get to them, and leave the ground bare earth - which the grass grows
+  back over in a few game days (`isometrica/src/client/clearworks.js`).
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

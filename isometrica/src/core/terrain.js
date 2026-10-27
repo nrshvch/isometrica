@@ -14,6 +14,11 @@ var events = {
   gridUpdate: 1,
 };
 
+//how long, of the game's time, the earth a tile was cleared down to lies
+//bare before the grass has grown back over it - the second half of that
+//growing back (client/terrain)
+var REGROWS = 3 * 86400000;
+
 /**
  * @type {TileIterator}
  */
@@ -193,7 +198,12 @@ function Terrain(world) {
   this.gridPoints = Object.create(null);
   //the tiles shaping the ground left empty
   this.clearedTiles = Object.create(null);
+  //and when, of the game's time, the ground of each was last cleared or
+  //moved, for as long as it lies bare (REGROWS)
+  this.bareSince = Object.create(null);
 }
+
+Terrain.REGROWS = REGROWS;
 
 Terrain.SlopeType = SlopeType;
 
@@ -350,6 +360,9 @@ Terrain.prototype.modify = function (plan, keep) {
     if (keep !== undefined && keep[tiles[i]] === true)
       this.clearedTiles[tiles[i]] = true;
     else if (this.clearedTiles[tiles[i]] !== true) this.clear(tiles[i]);
+
+    //and the earth that was moved lies bare, whatever stood on it
+    this.bareSince[tiles[i]] = now(this);
   }
 
   for (var p in plan.points) this.gridPoints[p] = plan.points[p];
@@ -386,25 +399,57 @@ Terrain.prototype.after = function (plan) {
  */
 Terrain.prototype.clear = function (tile) {
   this.clearedTiles[tile] = true;
+  this.bareSince[tile] = now(this);
   this.clearTile(tile);
+};
+
+//the game's time now, ms - 0 for a world with no clock
+function now(self) {
+  var time = self.world && self.world.time;
+
+  return time ? time.now : 0;
+}
+
+/**
+ * How long ago, of the game's time, the ground of a tile was cleared down
+ * to the earth - or moved - while it still lies bare: -1 once the grass has
+ * grown back over it (REGROWS), or where it never was.
+ *
+ * @param tile {number}
+ * @returns {number} ms
+ */
+Terrain.prototype.bareFor = function (tile) {
+  var since = this.bareSince[tile];
+
+  if (since === undefined) return -1;
+
+  var t = now(this) - since;
+
+  return t < REGROWS ? Math.max(0, t) : -1;
 };
 
 /**
  * Everything that overrides the generated world: the grid points that were
- * moved, and the tiles that were cleared.
+ * moved, the tiles that were cleared, and when the ground of those still
+ * bare was - the rest are grown over, and forgotten.
  *
- * @returns {{points: Array[], cleared: number[]}}
+ * @returns {{points: Array[], cleared: number[], bare: Array[]}}
  */
 Terrain.prototype.save = function () {
   var points = [],
     cleared = [],
+    bare = [],
     k;
 
   for (k in this.gridPoints) points.push([+k, this.gridPoints[k]]);
 
   for (k in this.clearedTiles) cleared.push(+k);
 
-  return { points: points, cleared: cleared };
+  for (k in this.bareSince)
+    if (this.bareFor(+k) >= 0) bare.push([+k, this.bareSince[k]]);
+    else delete this.bareSince[k];
+
+  return { points: points, cleared: cleared, bare: bare };
 };
 
 /**
@@ -412,15 +457,19 @@ Terrain.prototype.save = function () {
  * when a save is opened, so only whoever keeps track of what grows where
  * hears about it.
  *
- * @param data {{points: Array[], cleared: number[]}}
+ * @param data {{points: Array[], cleared: number[], bare: Array[]}} - a save
+ *        from before the bare ground was kept has every tile grown over
  */
 Terrain.prototype.load = function (data) {
   var points = data.points || [],
     cleared = data.cleared || [],
+    bare = data.bare || [],
     i;
 
   for (i = 0; i < points.length; i++)
     this.gridPoints[points[i][0]] = points[i][1];
+
+  for (i = 0; i < bare.length; i++) this.bareSince[bare[i][0]] = bare[i][1];
 
   for (i = 0; i < cleared.length; i++) {
     this.clearedTiles[cleared[i]] = true;

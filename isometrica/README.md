@@ -706,6 +706,26 @@ dev`) plays them the way a game would - all three weathers together, the
   behind it spreading it - a crew to every six tiles or so of a long stretch.
   Where they are is worked out from how far along the road is, so it is the
   same after a reload.
+- Ground cleared (`isometrica/src/client/clearworks.js`) is gone from the
+  world as soon as it is paid for, but what stood on it - the trees and
+  stones the world put there, a tree somebody planted - stays standing
+  (`envman.js`, `buildman.js` hold) till a bulldozer gets there
+  (`isometrica/src/shared/gen/vehicles.js` bulldozer): as its blade reaches
+  it, it goes down in a cloud of dust (`isometrica/src/shared/gen/smoke.js`
+  dust), and the tile is left bare earth. The tiles cleared that hang
+  together are swept as one, a row at a time along the longer way, a
+  bulldozer to every six tiles or so, each backing up and pushing on over
+  every tile it gets to; ground cleared next to ground still being cleared
+  is shared out afresh among the bulldozers already at it. A building
+  cleared away comes down in its dust there and then. None of it is kept -
+  after a reload the ground is bare.
+- The earth a tile was cleared down to, or moved by raising or lowering it,
+  lies bare for a while of the game's time (`isometrica/src/core/terrain.js`
+  REGROWS, bareFor - kept in the save), its edge churned up over the grass
+  round it (`isometrica/src/shared/gen/terrain.js` earth); then the grass
+  comes up through it, spilling in from the grass round it (earth_regrowing),
+  a tile at a time, and it is grass again (`isometrica/src/client/terrain.js`
+  groundOf, Regrowth).
 - The signs of a town's limits can stand by a road
   (`isometrica/src/shared/gen/roads.js` townSign, `gen/roads/limit/in0`-`3`
   and `out0`-`3`): at one side of its tile, a pair of them, each on a post

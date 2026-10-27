@@ -169,6 +169,8 @@ WorkLights.machine = function (heading, high, ahead, cab) {
 WorkLights.MACHINES = {
   excavator: { high: 11, cab: 2.5, ahead: 5 },
   lorry: { high: 10.5, cab: 6, ahead: 8 },
+  //its cab behind its middle, the lamps on the front of its hood
+  bulldozer: { high: 10.8, cab: -3.5, ahead: 4 },
 };
 
 /**

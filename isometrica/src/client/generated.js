@@ -18,23 +18,46 @@ import { tileName, shoreName, diffuseName } from "../shared/gen/names";
  * @param [spills] {string[]} for the shallows, the edges and corners deep
  *        water lies beyond, as the tile is seen - "ne", "n" - which it spills
  *        over them from
+ * @param [ground] {Object} for land cleared down to the earth, or next to
+ *        some: {set} - "earth", "regrowing" or nothing, for the grass - and
+ *        {grass} and {earth}, the edges and corners, as spills, the grass
+ *        and the earth lie beyond, which they spill over them from
  */
-function tileParts(terrain, kind, slope, x, y, spills) {
-  var set =
+function tileParts(terrain, kind, slope, x, y, spills, ground) {
+  var cleared = ground && terrain.earth ? ground : null,
+    set =
       kind === "water"
         ? terrain.water
         : kind === "deep"
           ? terrain.deep
-          : terrain.land,
+          : cleared === null || !cleared.set
+            ? terrain.land
+            : terrain[cleared.set],
     n = terrain.variants[set],
-    base = tileName(set, slope, n > 1 ? scatter(x, y) % n : 0);
+    base = tileName(set, slope, n > 1 ? scatter(x, y) % n : 0),
+    parts = [base];
+
+  //the grass round earth growing back over spilling over its edges, and
+  //the earth of a tile cleared over the edges of those round it - ragged,
+  //the same one along an edge whichever tile, so it runs on
+  if (cleared !== null && terrain.edges)
+    [terrain.land, terrain.earth].forEach(function (over, k) {
+      (k === 0 ? cleared.grass : cleared.earth).forEach(function (dir) {
+        parts.push(
+          diffuseName(
+            over,
+            slope,
+            dir,
+            scatter(x, y + dir.length) % terrain.edges.variants,
+          ),
+        );
+      });
+    });
 
   //the land with the water's shore over it - a flat shore has no water
   //painted on it
   if (kind === "shore" && terrain.shores[slope] === true)
-    return [base, shoreName(terrain.water, slope)];
-
-  var parts = [base];
+    return parts.concat([shoreName(terrain.water, slope)]);
 
   //deep water spilling over the edges it lies beyond, dithered as it thins
   //out - the same one along an edge whichever tile, so it runs on

@@ -136,11 +136,13 @@ var PRECEDENCE = [
   "rock_limestone",
   "rock_kopje",
   "rock_sandstone",
+  "earth_regrowing",
   "grass_tropical",
   "grass_boreal",
   "grass",
   "grass_south",
   "savannah",
+  "earth",
   "sand_dunes",
   "snow",
   "water_shallow",
@@ -490,6 +492,95 @@ var TILESETS = {
       lip: 0.92,
     },
   },
+  //the ground a tile was cleared down to (client/clearworks) - churned up
+  //over the edges of the grass round it - and the grass growing back over it
+  //(client/terrain), the grass round it spilling over its edges
+  earth: {
+    name: "Bare earth",
+    description:
+      "Ground a bulldozer has just been over: churned brown soil, ridged by its tracks, clods and stones turned up, a tuft of grass left here and there.",
+    kind: "land",
+    waterBody: "water_shallow",
+    variants: 3,
+    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1 },
+    //not far past the tile cleared: a ragged edge of soil pushed out over
+    //the grass, and clods thrown further
+    edge: {
+      depth: 0.2,
+      amp: 0.12,
+      waves: 6,
+      soft: 0.14,
+      grain: 0.6,
+      clump: 9,
+      specks: 0.55,
+      reach: 0.24,
+      lip: 0.85,
+    },
+    albedo: earthAlbedo,
+    decorations: [
+      //clods turned up, and the stones among them
+      {
+        density: 0.035,
+        cells: pebble([
+          [150, 116, 80],
+          [134, 102, 68],
+        ]),
+      },
+      {
+        density: 0.008,
+        cells: pebble([
+          [158, 152, 140],
+          [128, 124, 116],
+        ]),
+      },
+      //what is left of the grass
+      { density: 0.004, cells: tuft([84, 138, 52], [32, 76, 22]) },
+    ],
+  },
+  earth_regrowing: {
+    name: "Earth growing over",
+    description:
+      "Cleared ground a while after: the grass coming back over the soil in patches and tufts, the earth still showing between them.",
+    kind: "land",
+    waterBody: "water_shallow",
+    variants: 3,
+    look: { lit: 1, dark: 1, shadow: [1, 1, 1], rim: 1 },
+    edge: {
+      depth: 0.42,
+      amp: 0.14,
+      waves: 4,
+      soft: 0.14,
+      grain: 0.55,
+      clump: 11,
+      specks: 0.3,
+      reach: 0.22,
+      lip: 0.92,
+    },
+    albedo: function (s) {
+      var grown = s.noise("grown", 5, 2) + 0.35 * s.noise("tufts", 12, 1);
+
+      //patches of the grass back, the earth between them - shoots coming
+      //up all over it, thicker towards the patches
+      if (grown > 0.5) return TILESETS.grass.albedo(s);
+
+      var c = earthAlbedo(s);
+
+      return s.random(9) < 0.06 + Math.max(0, grown) * 1.2
+        ? mix(c, ramp(GRASS, 0.3 + s.random(10) * 0.6), 0.85)
+        : c;
+    },
+    decorations: [
+      { density: 0.035, cells: tuft([84, 138, 52], [32, 76, 22]) },
+      { density: 0.015, cells: tuft([70, 124, 42], [40, 86, 26]) },
+      {
+        density: 0.012,
+        cells: pebble([
+          [150, 116, 80],
+          [134, 102, 68],
+        ]),
+      },
+    ],
+  },
   grass_south: {
     name: "Southern European grassland",
     description:
@@ -715,6 +806,11 @@ var TILESETS = {
 };
 
 //the colours each ground is painted from, dark to light
+var EARTH = [
+  [0, [88, 62, 40]],
+  [0.5, [116, 86, 58]],
+  [1, [142, 108, 74]],
+];
 var GRASS = [
   [0, [40, 88, 26]],
   [0.5, [58, 110, 36]],
@@ -827,6 +923,26 @@ function ripples(s, palette, light, dark) {
     c = mix(c, light, 0.35);
 
   return grain(c, s, 0.03, 2);
+}
+
+/**
+ * Earth a bulldozer has been over: the soil darker where it is damp, and
+ * across it here and there the ridges its tracks left, one way over the
+ * tile - lit on top, a furrow of shade between.
+ */
+function earthAlbedo(s) {
+  var c = ramp(EARTH, 0.5 + 0.3 * s.noise("field", 3, 2)),
+    damp = s.noise("damp", 6, 2),
+    ridge = Math.sin(2 * Math.PI * (8 * s.v + 0.3 * s.noise("warp", 2, 1))),
+    tracked = smoothstep(-0.25, 0.15, s.noise("tracked", 3, 1));
+
+  if (damp > 0.3)
+    c = mix(c, [74, 52, 34], Math.min(1, (damp - 0.3) * 2.5) * 0.5);
+
+  if (ridge > 0.5) c = mix(c, [158, 124, 88], 0.4 * tracked);
+  else if (ridge < -0.55) c = mix(c, [70, 50, 32], 0.4 * tracked);
+
+  return grain(c, s, 0.08, 4);
 }
 
 //brightness and every channel a little off, pixel by pixel, the way the grass is

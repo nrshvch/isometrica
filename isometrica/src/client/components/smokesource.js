@@ -139,7 +139,8 @@ SmokeSourceScript.prototype.spawnSmoke = function () {
  * there - for whatever smokes on its own schedule rather than with a
  * SmokeSource on it, like a car.
  *
- * @param [kind] {Object} SmokeScript.steam, the default, or SmokeScript.soot
+ * @param [kind] {Object} SmokeScript.steam, the default, SmokeScript.soot or
+ *        SmokeScript.dust
  */
 SmokeSourceScript.puff = function (world, x, y, z, kind) {
   var smoke = getSmoke();

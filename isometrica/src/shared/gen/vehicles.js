@@ -468,6 +468,53 @@ var TYPES = {
       return b;
     },
   },
+  //a bulldozer on its tracks, its blade down in front of it and a ripper
+  //at the back: what clears the ground of its trees and stones
+  //(client/clearworks), never out on the roads either
+  bulldozer: {
+    length: 12,
+    width: 8,
+    speed: 0.25,
+    weight: 0,
+    street: false,
+    engine: [4.5, 2.6, 9],
+    tailpipe: [4.5, 2.6, 9],
+    colors: ["yellow"],
+    build: function (c) {
+      var b = [],
+        dark = darker(c, 0.25),
+        steel = darker(c, 0.12);
+      //the tracks, the frame between them, the mudguards over them
+      b.push(box(1.2, 11.8, 0, 2.2, 0, 2.8, TYRE));
+      b.push(box(1.2, 11.8, 5.8, 8, 0, 2.8, TYRE));
+      b.push(box(2, 11.4, 2.2, 5.8, 1.2, 3.2, CHASSIS));
+      b.push(box(1.4, 11.6, -0.1, 2.3, 2.8, 3.3, c));
+      b.push(box(1.4, 11.6, 5.7, 8.1, 2.8, 3.3, c));
+      //the engine under its hood in front, its grille and its stack
+      b.push(box(2.4, 7.6, 1.6, 6.4, 3.3, 6.4, c));
+      b.push(box(2.25, 2.4, 2.2, 5.8, 3.6, 6.0, CHASSIS));
+      b.push(box(4.2, 4.9, 2.3, 3.0, 6.4, 9.0, CHASSIS));
+      //the cab behind it, glazed all round, and its roof
+      b.push(box(7.6, 11.4, 1.2, 6.8, 3.3, 6.2, c));
+      b.push(box(7.8, 11.2, 1.4, 6.6, 6.2, 9.8, c));
+      windows(b, 7.8, 11.2, 1.4, 6.6, 6.6, 9.3, 0.5, [[8.3, 10.7]]);
+      b.push(box(7.5, 11.5, 1.1, 6.9, 9.8, 10.4, dark));
+      //the arms the blade is pushed by, along the outside of the tracks,
+      //and the rams that lift it
+      b.push(box(0, 6.4, -0.7, -0.1, 1, 2.4, dark));
+      b.push(box(0, 6.4, 8.1, 8.7, 1, 2.4, dark));
+      b.push(box(0, 2.6, 2, 2.6, 3, 4.8, BUMPER));
+      b.push(box(0, 2.6, 5.4, 6, 3, 4.8, BUMPER));
+      //the blade, wider than the tracks, its edge of steel along the ground
+      b.push(box(-1.3, 0, -0.9, 8.9, 0.5, 5, steel));
+      b.push(box(-1, 0.2, -0.9, 8.9, 5, 5.6, c));
+      b.push(box(-1.5, -0.1, -0.9, 8.9, 0, 0.6, BUCKET));
+      //and the ripper, its tooth down behind
+      b.push(box(11.4, 12.4, 2.2, 5.8, 2.6, 3.6, dark));
+      b.push(box(12, 12.8, 3.4, 4.6, 0.4, 3.6, BUCKET));
+      return b;
+    },
+  },
   bus: {
     length: 25,
     width: 7.5,

@@ -48,6 +48,16 @@ SmokeScript.soot = {
   thick: 1,
 };
 
+//brown, kicked up off the ground being cleared (client/clearworks): it hangs
+//low, hardly rising, and lingers as the wind takes it off
+SmokeScript.dust = {
+  looks: frames("dust"),
+  ttl: 3600,
+  rise: 2.5,
+  peak: 0.1,
+  thick: 0.9,
+};
+
 //what it is
 SmokeScript.prototype.kind = SmokeScript.steam;
 SmokeScript.prototype.startedAt = 0;

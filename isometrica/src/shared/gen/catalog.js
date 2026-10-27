@@ -36,6 +36,14 @@ var LAND = "grass",
   WATER = "water_shallow",
   DEEP = "water_deep";
 
+//and the land cleared down to the earth (client/clearworks) - spilling over
+//the edges and corners of the land round it - and growing back over
+//(client/terrain), the grass round it spilling over its edges and corners;
+//on every slope, and how many of each there are
+var EARTH = "earth",
+  REGROWING = "earth_regrowing",
+  EDGE_VARIANTS = 2;
+
 //the edges and corners deep water spills over the shallows from, and how
 //many of each there are (shared/gen/terrain DIRECTIONS, diffuseVariants)
 var SPILLS = ["ne", "se", "sw", "nw", "n", "e", "s", "w"],
@@ -187,7 +195,7 @@ function describeSide(gen, pixels) {
 
   if (gen === "terrain") {
     var terrain = Terrain.describe(null, {
-        tilesets: [LAND, WATER, DEEP],
+        tilesets: [LAND, WATER, DEEP, EARTH, REGROWING],
         diffuse: false,
       }),
       sets = terrain.manifest.tilesets;
@@ -196,6 +204,8 @@ function describeSide(gen, pixels) {
       land: LAND,
       water: WATER,
       deep: DEEP,
+      earth: EARTH,
+      regrowing: REGROWING,
       variants: {},
       shores: {},
       //deep water spilling over the shallows next to it, on the flat
@@ -203,9 +213,12 @@ function describeSide(gen, pixels) {
       //the water's ripples: how many frames there are, and how long each is
       //shown, in ms - frame f of a tile is its name with @t<f> after it
       waves: { frames: Terrain.WAVE_FRAMES, ms: Terrain.WAVE_MS },
+      //the earth spilling over the land round it, and the grass over the
+      //earth growing back over
+      edges: { variants: EDGE_VARIANTS },
     };
 
-    [LAND, WATER, DEEP].forEach(function (id) {
+    [LAND, WATER, DEEP, EARTH, REGROWING].forEach(function (id) {
       Object.keys(sets[id].base).forEach(function (slope) {
         sets[id].base[slope].forEach(function (rel, v) {
           add(tileName(id, slope, v), terrain.sizes[rel], rel);
@@ -232,6 +245,21 @@ function describeSide(gen, pixels) {
           { w: Terrain.WIDTH, h: Terrain.HEIGHT },
           DEEP + "/diffuse/" + Terrain.FLAT + "_" + dir + "_" + v + ".png",
         );
+    });
+
+    //the earth spilling over the land next to it, and the grass over the
+    //earth growing back over, on any slope
+    [EARTH, LAND].forEach(function (id) {
+      Object.keys(sets[id].base).forEach(function (slope) {
+        SPILLS.forEach(function (dir) {
+          for (var v = 0; v < EDGE_VARIANTS; v++)
+            add(
+              diffuseName(id, slope, dir, v),
+              { w: Terrain.WIDTH, h: Terrain.HEIGHT },
+              id + "/diffuse/" + slope + "_" + dir + "_" + v + ".png",
+            );
+        });
+      });
     });
   } else if (gen === "vehicles") {
     var vehicles = Vehicles.describe();

@@ -1,9 +1,11 @@
 /**
  * Puffs of smoke, a picture for every size a puff grows through as it rises
  * (client/components/smokeScript): "steam<f>" - white, out of a chimney -
- * and "soot<f>" - black, out of an engine on fire, greyer the higher it gets
- * - f from 0, the smallest, as it comes out, to FRAMES - 1, as big as it gets
- * before it is gone.
+ * "soot<f>" - black, out of an engine on fire, greyer the higher it gets -
+ * and "dust<f>" - the brown of the earth, kicked up where the ground is
+ * being cleared (client/clearworks), paler as it settles - f from 0, the
+ * smallest, as it comes out, to FRAMES - 1, as big as it gets before it is
+ * gone.
  *
  * A puff is a soft round lump: a little lumpy round its edge, lit from above
  * and from the left, darker under itself, its edge broken up every other
@@ -44,6 +46,22 @@ var KINDS = {
     //bigger than steam, as much more of it comes out at once
     sizes: [4, 6, 7, 9, 10, 12],
   },
+  dust: {
+    lit: [
+      [206, 178, 136],
+      [218, 204, 180],
+    ],
+    mid: [
+      [178, 146, 104],
+      [198, 182, 158],
+    ],
+    shade: [
+      [142, 112, 80],
+      [170, 154, 132],
+    ],
+    //a cloud of it, low and wide, spreading as it goes
+    sizes: [5, 7, 9, 11, 13, 15],
+  },
 };
 
 //a number 0..1 for x, y and a seed, always the same for them
@@ -73,7 +91,7 @@ function colourOf(list, f) {
  * One picture: "steam3", "soot0".
  */
 export function paint(name) {
-  var m = /^(steam|soot)(\d+)$/.exec(name),
+  var m = /^(steam|soot|dust)(\d+)$/.exec(name),
     kind = m ? KINDS[m[1]] : undefined,
     f = m ? +m[2] : -1;
 

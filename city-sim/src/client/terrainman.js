@@ -241,12 +241,16 @@ Terrainman.prototype.enter = function () {
     apply: function (tiles) {
       var c = city();
 
-      for (var i = 0; i < tiles.length; i++) {
+      //what stood on them stays standing until a bulldozer gets to it, and
+      //goes down in a cloud of dust (client/clearworks)
+      root.clearworks.clear(tiles, function (tile) {
         //every tile is charged on its own, so each one that goes gets
         //its own text
-        if (c.clearTile(tiles[i]))
-          buildman.showCost(tiles[i], 1, 1, Core.Config.clearTileCost);
-      }
+        if (!c.clearTile(tile)) return false;
+
+        buildman.showCost(tile, 1, 1, Core.Config.clearTileCost);
+        return true;
+      });
     },
   };
 

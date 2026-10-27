@@ -80,6 +80,10 @@ function dress(self, go, spriteData, tile) {
     turns = (tileTurns(tile) + View.turns()) & 3,
     name = Trees.turned(spriteData.path, turns);
 
+  //what it is, for as long as it stands after the world has let go of it
+  //(hold)
+  go.scenery = spriteData;
+
   //from straight above, its foot in the middle of it
   if (View.top()) {
     var top = self.root.sprites.topOf(name);
@@ -188,7 +192,35 @@ function onChunkRemove(sender, chunk, meta) {
 }
 
 function onSceneryRemove(sender, tile, self) {
-  remove(self, tile);
+  if (!hold(self, tile)) remove(self, tile);
+}
+
+/**
+ * Keeps what stands on a tile being cleared standing where it is until the
+ * bulldozer clearing it gets to it (client/clearworks) - whether it is.
+ */
+function hold(self, tile) {
+  var go = self._scenery[tile],
+    works = self.root.clearworks;
+
+  if (go === undefined || !works) return false;
+
+  if (
+    !works.hold(tile, function () {
+      if (self._held[tile] !== go) return;
+
+      delete self._held[tile];
+      Pool.returnObject(self.pool, go);
+      changed();
+      self.root.game.scene.removeGameObject(go);
+    })
+  )
+    return false;
+
+  delete self._scenery[tile];
+  self._held[tile] = go;
+
+  return true;
 }
 
 /**
@@ -209,6 +241,14 @@ function onGridUpdate(sender, args, self) {
 
   for (i = 0; i < tiles.length; i++) {
     tile = tiles[i];
+
+    //still standing till the bulldozer gets to it, on the ground as it is
+    if (self._held[tile] !== undefined) {
+      go = self._held[tile];
+      place(self, go, tile, go.scenery);
+      continue;
+    }
+
     go = self._scenery[tile];
     spriteData = sceneryOf(self, tile);
 
@@ -235,6 +275,9 @@ function onGridUpdate(sender, args, self) {
 function EnvMan(root) {
   this.root = root;
   this._scenery = {};
+  //what was cleared off a tile, still standing till the bulldozer gets to
+  //it (hold), by the tile
+  this._held = {};
   this.pool = new Pool(Tree);
 }
 
@@ -278,6 +321,13 @@ EnvMan.prototype.init = function () {
 
         dress(self, self._scenery[tile], spriteData, +tile);
         place(self, self._scenery[tile], +tile, spriteData);
+      }
+
+      for (tile in self._held) {
+        var go = self._held[tile];
+
+        dress(self, go, go.scenery, +tile);
+        place(self, go, +tile, go.scenery);
       }
     },
     this,

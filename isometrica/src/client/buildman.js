@@ -68,7 +68,8 @@ function removeBuilding(self, tile) {
     changed();
     Events.fire(self, self.events.buildingRemoved, building);
     delete self.buildingByGO[building.view.gameObject.instanceId];
-    building.destroy();
+
+    if (!hold(self, tile, building)) building.destroy();
 
     if (!building.data.permanent) building.data.dispose();
 
@@ -76,6 +77,30 @@ function removeBuilding(self, tile) {
   }
 
   return building;
+}
+
+/**
+ * Keeps a tree planted on a tile being cleared standing where it is until
+ * the bulldozer clearing it gets to it (client/clearworks), the way a wild
+ * one is (client/envman) - whether it is.
+ */
+function hold(self, tile, building) {
+  var works = self.root.clearworks;
+
+  if (
+    !works ||
+    building.staticData === null ||
+    building.staticData.classCode !== BuildingClassCode.tree ||
+    !works.hold(tile, function () {
+      delete self.held[tile];
+      building.destroy();
+    })
+  )
+    return false;
+
+  self.held[tile] = building;
+
+  return true;
 }
 
 function createBuilding(self, model) {
@@ -617,6 +642,9 @@ function Buildman(main) {
   this.buildingByXY = [];
   this.buildingByGO = {};
   this.root = main;
+  //the trees cleared away, still standing till the bulldozer gets to them
+  //(hold), by the tile
+  this.held = {};
 
   //what fadeAround last faded, by the tile it stands on, and how far the
   //tiles around the picked ones are from them - null while nothing is
@@ -691,6 +719,8 @@ Buildman.prototype.start = function () {
 
       for (var i = 0; i < views.length; i++)
         if (views[i].view) views[i].view.update();
+
+      for (var tile in self.held) self.held[tile].view.update();
     },
     this,
   );
