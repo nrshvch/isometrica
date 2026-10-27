@@ -16,9 +16,15 @@ remembered in `localStorage` as `isometrica.debug`. It lives in city-sim
 (`city-sim/src/ui/world/DebugPanel.jsx`); the world only keeps the numbers,
 in the engine's `Stats` (`engine/engine/stats.js`, `Engine.Stats`).
 
-- **CPU a frame**: the frame, its update and its render, the render's parts
-  (slots, cull, layers, sort, light, present) and each layer's draw and
-  submit - avg and worst over the last 60 frames - and FPS.
+- **At the top**: frames a second and the most there may be, **fewer
+  frames** - why fewer are drawn just now (see Battery) - the time between
+  frames, and **script** and **GPU, ms a second**: how long of every second
+  each is kept at it, which is what the battery goes on.
+- **CPU a frame**: the frame, its update and its render, and the render's
+  parts (slots, cull, layers, sort, light, present, preload) - avg and worst
+  over the last 60 frames.
+- **Layers**: what drawing and submitting each layer takes, a line each, in
+  the order they are drawn.
 - **Now and then**: what comes between frames - a pick, the city's tick and
   catching up, the traffic saved, sprites painted, the HUD read and drawn.
 - **Tickers**: what each kind of ticking component takes a frame (cars,
@@ -34,6 +40,16 @@ in the engine's `Stats` (`engine/engine/stats.js`, `Engine.Stats`).
   frame rate shows what is left.
 - **Memory** (Chrome only): the heap, how fast it fills, how often it
   drops (a collection), and the sprite pages.
+- **Save the battery**: off, every frame there is whatever is going on, to
+  compare.
+
+Every line stays where it is from one read to the next - in the order the
+frame goes in, never by what costs most - and is there whether or not
+anything was counted on it (a dash, dimmed); each figure has a column of its
+own. A figure is green while it is easy on a phone and red once it is too
+much (`LIMITS` in the panel: a frame at 30 a second has 33 ms, most of which
+the script should leave to the GPU, the browser and the page); only the
+lines that say most are ever green, the rest only ever red.
 
 Put away, nothing is timed: `Stats.begin`/`end` return after one branch, and
 every switch is back as it was.
@@ -210,8 +226,68 @@ What it says:
 - **Later.** `cityarea.js` sets as `{}` and `Object.keys().map(Number)`. Not
   changed here: the order the tiles come in sets where a ring starts, and
   so where its dashes fall.
-- **Later.** Full-screen screens blur the live canvas over a world still
-  drawn 30 times a second: draw it less under them.
+- **Done.** Full-screen screens blur the live canvas over a world that was
+  still drawn 30 times a second: now 10 (see Battery).
+
+## Battery
+
+The 30 frames a second cap (`Game#fps`) is there for a phone's battery, and
+so is everything here.
+
+Already so:
+
+- Out of sight - another tab, another app, the phone locked - the game
+  stops: the drawing, the world's clock and the audio
+  (`client/vkaria.js pauseHidden`, `audio/soundman.js`).
+- The canvas is CSS pixels over the zoom (`engine/engine/viewport.js`), never
+  the device's pixel ratio: a phone draws a quarter or a ninth of the pixels
+  it has, the cheapest there is.
+- Whatever moves - the traffic, the cars, smoke, water - goes by the time
+  gone, not by the frames: drawn fewer times a second, it moves as far,
+  only less smoothly.
+
+- **Done.** Getting the world ready for a turn (`client/preloader.js`)
+  looked everything over again from the other three sides every second -
+  every tile, tree, building and car, a few hundred milliseconds of work
+  done a frame's share at a time, which never ended before the next began:
+  3-4 ms of every frame, a still screen too. Now all of it is looked over
+  only once the camera, the light or the look of anything in the world has
+  changed (`client/looks.js`, counted where tiles, trees, buildings and
+  roads are drawn again), or every 30 s whatever; in between, the cars every
+  second, and what is ready kept on the pages as it was. With the camera
+  still: survey work in 164 frames of 755 rather than all of them, 0.55 ms
+  a frame rather than 3.4 - and a turn after it finds as much ready, the
+  frame after it the same to the pixel.
+- **Done.** By day, with no lamps lit, the lamps' light was still cleared
+  and its mipmaps made every frame (`glview.js light`); left black from
+  the frame before, nothing is done to it.
+- **Done.** With the music and the sounds both off, the audio was kept going
+  silent - the context running, its loops playing at nothing, the silence an
+  iPhone loops playing. Now it is put to sleep once it has faded out
+  (`audio/wake.js sleep`), and woken by the tap that turns either back on.
+- **Done.** The frame rate goes by what is going on (`city-sim client/pace.js`,
+  the fewest frames any reason asks for):
+  - a screen over the world, only seen dimmed and blurred behind it - a
+    blur redone every frame the world is drawn: **10** a second;
+  - left alone 10 s - no touch, click, key nor wheel, and nothing held down,
+    an edge pan with a finger kept still: **20**, back to 30 on the next
+    input;
+  - a battery running low (20%), not charging, where the browser tells
+    (`navigator.getBattery`, Chrome): **20**.
+
+  Each is a commit of its own, and the debug panel tells which is kept to
+  and can turn them off.
+
+- **Later.** `requestAnimationFrame` comes as often as the screen does - 120
+  times a second on some phones - and skips three frames out of four to keep
+  to 30: a wake-up every time, for nothing.
+- **Later.** The shadows (`LIT_FS`, 32 steps a sunlit pixel) worked out
+  again every frame while the sun, the camera and what stands in the light
+  have not moved: kept from frame to frame, with the cars' own drawn over.
+- **Later.** The city that stands still drawn once into a texture while the
+  camera does not move, and only what moves drawn over it every frame.
+- **Later.** Smoke as one buffer of particles, not a game object a puff.
+- **Later.** Fewer render targets: normal and height in one.
 
 ## Notes
 
