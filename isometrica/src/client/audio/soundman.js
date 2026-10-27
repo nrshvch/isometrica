@@ -94,7 +94,7 @@ var PLACES = [
 
 //how long a loop takes to come in once it is made, s - it is turned up to
 //what is wanted of it while it is still being made, and would start loud
-var LOOP_FADE_IN = 3;
+var LOOP_FADE_IN = 1;
 
 //the old town's church bell: how long between one ringing and the next,
 //ms, from .. to - and before the first, once a church is first seen; how
