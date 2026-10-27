@@ -7,7 +7,8 @@ import { Screen, cx } from "../kit";
 import { getClient, goWorld } from "../session";
 import { stats } from "./stats";
 
-//the city's stats, worked out again every time it updates
+//the city's stats, worked out again every time it updates - and drawn again
+//only when any of them has changed
 function useStats(city) {
   var [now, setNow] = useState(function () {
     return stats(city);
@@ -16,7 +17,11 @@ function useStats(city) {
   useEffect(
     function () {
       var token = city.update().on(function () {
-        setNow(stats(city));
+        var fresh = stats(city);
+
+        setNow(function (was) {
+          return same(was, fresh) ? was : fresh;
+        });
       });
 
       return function () {
@@ -27,6 +32,13 @@ function useStats(city) {
   );
 
   return now;
+}
+
+//whether two reads of the stats say the same, every one of them
+function same(a, b) {
+  for (var k in a) if (a[k] !== b[k]) return false;
+
+  return true;
 }
 
 function Section({ heading, className, children }) {
