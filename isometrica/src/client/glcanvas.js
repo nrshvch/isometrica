@@ -1042,7 +1042,14 @@ function fan(self, start, end, c) {
  * that the corners are filled.
  */
 function line(self, i, w, hair, c) {
-  var points = self.points,
+  var view = self.view,
+    //what of it is off the frame, by more than it is wide and then some,
+    //is not drawn: the dash goes on along it all the same, so what is on
+    //the frame is dashed as it was
+    pad = w + 2,
+    right = view.width + pad,
+    bottom = view.height + pad,
+    points = self.points,
     start = self.starts[i],
     count = (pieceEnd(self, i) - start) / 2,
     //and the first again, at the end of one that is closed
@@ -1055,6 +1062,10 @@ function line(self, i, w, hair, c) {
     j,
     x0,
     y0,
+    xa,
+    ya,
+    xb,
+    yb,
     o,
     dx,
     dy,
@@ -1082,10 +1093,23 @@ function line(self, i, w, hair, c) {
     while (t < len) {
       step = Math.min(left, len - t);
 
-      if (on) {
+      xa = x0 + ux * t;
+      ya = y0 + uy * t;
+      xb = x0 + ux * (t + step);
+      yb = y0 + uy * (t + step);
+
+      if (
+        on &&
+        !(
+          (xa < -pad && xb < -pad) ||
+          (xa > right && xb > right) ||
+          (ya < -pad && yb < -pad) ||
+          (ya > bottom && yb > bottom)
+        )
+      ) {
         if (hair) {
-          vertex(self, x0 + ux * t, y0 + uy * t, c);
-          vertex(self, x0 + ux * (t + step), y0 + uy * (t + step), c);
+          vertex(self, xa, ya, c);
+          vertex(self, xb, yb, c);
         } else
           quad(
             self,
