@@ -94,7 +94,7 @@ function calculateResourceConsumption(cityStats) {
     Resources.add(
       cityStats.resourceDemand,
       cityStats.resourceDemand,
-      buildings[i],
+      buildings[i].demanding,
     );
 
   return cityStats.resourceDemand;
