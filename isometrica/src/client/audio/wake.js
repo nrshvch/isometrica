@@ -55,11 +55,15 @@ export function wake() {
     } catch (e) {
       //not to be had: as it was
     }
-  } else if (apple() && quiet === null) {
-    quiet = new Audio(silence());
-    quiet.loop = true;
-    quiet.setAttribute("playsinline", "");
-    quiet.play().catch(function () {});
+  } else if (apple()) {
+    if (quiet === null) {
+      quiet = new Audio(silence());
+      quiet.loop = true;
+      quiet.setAttribute("playsinline", "");
+    }
+
+    //and again after it was put to sleep (sleep)
+    if (quiet.paused) quiet.play().catch(function () {});
   }
 
   if (context === null)
@@ -69,6 +73,17 @@ export function wake() {
   if (context.state !== "running") context.resume();
 
   return context;
+}
+
+/**
+ * Puts it to sleep while nothing is to be heard - the sound and the music
+ * both turned off: the context stopped, so that the phone's audio stops
+ * with it, and the silence looped for an iPhone paused. wake, from the tap
+ * that turns either back on, starts them again.
+ */
+export function sleep() {
+  if (quiet !== null) quiet.pause();
+  if (context !== null && context.state === "running") context.suspend();
 }
 
 //the context, as it is: for what plays after the tap that woke it

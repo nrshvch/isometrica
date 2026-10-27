@@ -46,7 +46,7 @@ import TerrainType from "../../core/terraintype";
 import Terrain from "../../core/terrain";
 import Maker from "./maker";
 import MusicPlayer from "./music";
-import { wake } from "./wake";
+import { sleep, wake } from "./wake";
 
 //what is kept quiet for now
 var QUIET = {
@@ -139,6 +139,10 @@ var HORNS = {
 
 //where each is kept on or off in the browser - and where both were, before
 //they were turned on and off on their own
+//how long turning it all off takes to fade out, ms, before it is put to
+//sleep (toggle)
+var FADE_OUT = 400;
+
 var STORE = { music: "isometrica.music", sounds: "isometrica.sounds" },
   STORE_BOTH = "isometrica.sound",
   vec3 = glMatrix.vec3,
@@ -283,8 +287,16 @@ Soundman.prototype.toggle = function (which, on) {
   store(STORE[which], this.wants[which] ? "on" : "off");
 
   if (this.on) this.start();
-  else if (this.context !== null)
+  else if (this.context !== null) {
+    var self = this;
+
     this.out.gain.setTargetAtTime(0, this.context.currentTime, 0.05);
+    //and with nothing to be heard, to sleep once it has faded - not kept
+    //going silent, on the battery; turned back on, start wakes it
+    setTimeout(function () {
+      if (!self.on) sleep();
+    }, FADE_OUT);
+  }
 
   this.listeners.forEach(function (fn) {
     fn();
