@@ -67,8 +67,10 @@ export function outline(tiles, terrain, padding) {
 function edges(tiles) {
   var yUnit = Terrain.convertToIndex(0, 1),
     out = {},
-    byKey = {},
-    seen = {},
+    //each edge by the grid point it goes from and its way out of it (the
+    //index of DIRECTIONS): from * 4 + way
+    byKey = new Map(),
+    seen = new Set(),
     tile,
     a,
     b,
@@ -76,8 +78,8 @@ function edges(tiles) {
     d,
     i;
 
-  function add(from, to) {
-    var back = byKey[to + ":" + from];
+  function add(from, to, way) {
+    var back = byKey.get(to * 4 + ((way + 2) % 4));
 
     //the tile on the other side claims this edge the other way round, so
     //it is an inside edge and neither of them keeps it
@@ -86,34 +88,38 @@ function edges(tiles) {
       return;
     }
 
-    var key = from + ":" + to;
+    var key = from * 4 + way,
+      kept = byKey.get(key);
 
-    if (byKey[key] !== undefined && !byKey[key].cancelled) return;
+    if (kept !== undefined && !kept.cancelled) return;
 
     var edge = { from: from, to: to, used: false, cancelled: false };
 
-    byKey[key] = edge;
+    byKey.set(key, edge);
     (out[from] = out[from] || []).push(edge);
   }
 
   for (i = 0; i < tiles.length; i++) {
-    tile = parseInt(tiles[i], 10);
+    tile = tiles[i];
+
+    //a tile given as a key, a string, read as a number
+    if (typeof tile !== "number") tile = parseInt(tile, 10);
 
     //the same tile twice would offer its edges twice, and the second lot
     //would put back the very edges the first lot cancelled
-    if (seen[tile] === true) continue;
+    if (seen.has(tile)) continue;
 
-    seen[tile] = true;
+    seen.add(tile);
 
     a = tile; // x,     y
     b = tile + 1; // x + 1, y
     c = tile + yUnit + 1; // x + 1, y + 1
     d = tile + yUnit; // x,     y + 1
 
-    add(a, b);
-    add(b, c);
-    add(c, d);
-    add(d, a);
+    add(a, b, 0);
+    add(b, c, 1);
+    add(c, d, 2);
+    add(d, a, 3);
   }
 
   return out;
@@ -234,6 +240,9 @@ function redundant(prev, curr, next) {
   );
 }
 
+//how far a point is pulled in, along x and y (corner)
+var inset = [0, 0];
+
 function points(paths, terrain, padding) {
   var ts = Config.tileSize,
     zStep = Config.tileZStep,
@@ -241,7 +250,6 @@ function points(paths, terrain, padding) {
     path,
     ring,
     tile,
-    inset,
     x,
     y,
     z,
@@ -261,7 +269,7 @@ function points(paths, terrain, padding) {
       //bay
       z = Math.max(terrain.getGridPointHeight(x, y), 0);
 
-      inset = corner(path, j, padding);
+      corner(inset, path, j, padding);
 
       ring.push(
         new Float32Array([
@@ -288,35 +296,41 @@ function points(paths, terrain, padding) {
  * wound the other way round, so the same sum pulls it towards the ground it
  * encloses.
  */
-function corner(path, at, padding) {
+function corner(out, path, at, padding) {
   var prev = path[(at - 1 + path.length) % path.length],
     curr = path[at],
     next = path[(at + 1) % path.length],
-    incoming = inward(prev, curr),
-    outgoing = inward(curr, next);
+    //the way in of each of the edges either side (inward)
+    in0 = -wayY(prev, curr),
+    in1 = wayX(prev, curr),
+    out0 = -wayY(curr, next),
+    out1 = wayX(curr, next);
 
-  if (incoming[0] === outgoing[0] && incoming[1] === outgoing[1])
-    return [incoming[0] * padding, incoming[1] * padding];
+  if (in0 === out0 && in1 === out1) {
+    out[0] = in0 * padding;
+    out[1] = in1 * padding;
+  } else {
+    out[0] = (in0 + out0) * padding;
+    out[1] = (in1 + out1) * padding;
+  }
 
-  return [
-    (incoming[0] + outgoing[0]) * padding,
-    (incoming[1] + outgoing[1]) * padding,
-  ];
+  return out;
 }
 
 /**
  * The way the enclosed ground lies from an edge running from one point to the
- * next: a quarter turn from the direction of travel.
+ * next is a quarter turn from the direction of travel: -wayY, wayX.
  *
  * Only the direction - the edge between two corners can be any number of tiles
  * long once the straight runs are dropped, and letting that length through
  * pulled the line in further the bigger the city got.
  */
-function inward(from, to) {
-  var dx = Math.sign(Terrain.extractX(to) - Terrain.extractX(from)),
-    dy = Math.sign(Terrain.extractY(to) - Terrain.extractY(from));
+function wayX(from, to) {
+  return Math.sign(Terrain.extractX(to) - Terrain.extractX(from));
+}
 
-  return [-dy, dx];
+function wayY(from, to) {
+  return Math.sign(Terrain.extractY(to) - Terrain.extractY(from));
 }
 
 export default outline;
