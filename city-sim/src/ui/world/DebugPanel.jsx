@@ -12,6 +12,11 @@
  * anything was counted on it (a dash, dimmed), each figure in a column of
  * its own, so an eye kept on one line finds it where it was.
  *
+ * A figure is green while it is easy on a phone, red once it is too much -
+ * against what a frame has at 30 a second, 33 ms, the GPU, the browser and
+ * the page's own work in it too (LIMITS) - and as it is between; only the
+ * lines that say most are ever green, the rest only ever red.
+ *
  * Only the script is timed. What the GPU does is not, but where the browser
  * can time it (the GPU lines), and the switches at the bottom draw the city
  * without its shadows, its lamps or what goes over it, or as often as the
@@ -44,6 +49,65 @@ var TOP = ["frame", "update", "render"],
 
 //nothing to show on a line, yet or this time
 var NONE = "–";
+
+/**
+ * How much is easy on a phone and how much too much, by line: for each of
+ * its figures, at most good is green and past bad is red (at least good and
+ * under bad, for higher) - no good, never green. A frame at 30 a second has
+ * 33 ms, of which the script should leave most to the GPU, the browser and
+ * the rest of the page.
+ */
+var LIMITS = {
+  "between frames": [null, { good: 40, bad: 50 }],
+  //how long of every second the script, and the GPU, are kept at it - what
+  //the battery goes on
+  "script a second": [{ good: 150, bad: 400 }],
+  "gpu a second": [{ good: 150, bad: 400 }],
+  frame: [
+    { good: 8, bad: 16 },
+    { good: 16, bad: 33 },
+  ],
+  update: [{ good: 2, bad: 6 }, { bad: 16 }],
+  render: [{ good: 6, bad: 12 }, { bad: 33 }],
+  pick: [{ good: 2, bad: 16 }, { bad: 33 }],
+  "city tick": [{ good: 4, bad: 16 }, { bad: 33 }],
+  "hud: render": [{ bad: 8 }, { bad: 16 }],
+  "pixels read back": [{ bad: 0 }, { bad: 0 }],
+  "sprites evicted": [{ bad: 0 }, { bad: 0 }],
+  "draw calls": [{ bad: 150 }, { bad: 150 }],
+  allocated: [{ good: 1, bad: 5 }],
+  "sprite pages": [null, { bad: 89 }],
+};
+
+//and for every line of a kind: a part of the render, a layer, anything else
+//between frames, a ticker, a part of the GPU's frame
+var PART = [{ bad: 4 }, { bad: 16 }],
+  LAYER = [{ bad: 4 }, { bad: 4 }],
+  BETWEEN = [{ bad: 16 }, { bad: 33 }],
+  TICKER = [{ bad: 2 }],
+  GPU = [{ good: 4, bad: 12 }, { bad: 16 }];
+
+//how a figure reads against its limit: "good", "bad", or as it is (null)
+function tone(v, limit) {
+  if (!limit || typeof v !== "number" || isNaN(v)) return null;
+
+  if (limit.higher) {
+    if (limit.bad !== undefined && v < limit.bad) return "bad";
+    if (limit.good !== undefined && v >= limit.good) return "good";
+    return null;
+  }
+
+  if (limit.bad !== undefined && v > limit.bad) return "bad";
+  if (limit.good !== undefined && v <= limit.good) return "good";
+  return null;
+}
+
+//each of a line's figures, read against its limits
+function tones(nums, limits) {
+  return nums.map(function (v, i) {
+    return tone(v, limits && limits[i]);
+  });
+}
 
 function ms(v) {
   return v >= 10 ? v.toFixed(1) : v.toFixed(2);
@@ -129,7 +193,7 @@ function Head({ children, cols }) {
  * as any of them, lined up with the line above - dimmed while there is
  * nothing on it, and set in a little under what it is part of.
  */
-function Line({ name, values, dim, part }) {
+function Line({ name, values, tones, dim, part }) {
   return (
     <div
       className={cx(
@@ -141,7 +205,14 @@ function Line({ name, values, dim, part }) {
       <span className="min-w-0 flex-1 truncate">{name}</span>
       {(values || []).map(function (v, i) {
         return (
-          <span key={i} className="w-[6ch] shrink-0 text-right tabular-nums">
+          <span
+            key={i}
+            className={cx(
+              "w-[6ch] shrink-0 text-right tabular-nums",
+              !dim && tones && tones[i] === "good" && "text-good",
+              !dim && tones && tones[i] === "bad" && "text-bad",
+            )}
+          >
             {v}
           </span>
         );
@@ -217,7 +288,22 @@ export default function DebugPanel() {
   }
 
   var timer = client && client.lighting ? client.lighting.view.timer : null,
-    shown = snap === null ? null : order(snap.sections);
+    shown = snap === null ? null : order(snap.sections),
+    //how many frames a second it may draw at most, and how well it keeps up
+    //with that
+    cap = passes.uncapped ? 0 : 30,
+    keepUp = cap
+      ? { higher: true, good: cap - 2, bad: (cap * 2) / 3 }
+      : { higher: true, good: 28, bad: 20 },
+    //how long of every second the script, and the GPU, are at it
+    frame = shown && shown.frame[0].s,
+    scriptSecond = frame ? frame.avg * snap.fps : 0,
+    gpuSecond = 0;
+
+  if (snap !== null)
+    snap.counters.forEach(function (c) {
+      if (/^gpu: /.test(c.name)) gpuSecond += c.avg * snap.fps;
+    });
 
   return (
     <div className="card pointer-events-auto fixed top-32 left-2.5 z-40 max-h-[calc(100svh-14rem)] w-72 overflow-y-auto overscroll-contain font-mono text-[11px] sm:left-4">
@@ -238,16 +324,36 @@ export default function DebugPanel() {
         <div className="px-3 pb-3 text-muted">…</div>
       ) : (
         <>
+          <div className="px-3 pb-1.5 text-muted">
+            <span className="text-good">green</span> easy on a phone ·{" "}
+            <span className="text-bad">red</span> too much
+          </div>
           <Line
             name="frames a second"
             values={[
               <b key="fps">{snap.fps.toFixed(1)}</b>,
-              passes.uncapped ? NONE : "30",
+              cap ? String(cap) : NONE,
             ]}
+            tones={[tone(snap.fps, keepUp)]}
           />
           <Line
             name="between frames, ms"
             values={[ms(snap.interval.avg), ms(snap.interval.max)]}
+            tones={tones(
+              [snap.interval.avg, snap.interval.max],
+              LIMITS["between frames"],
+            )}
+          />
+          <Line
+            name="script, ms a second"
+            values={[Math.round(scriptSecond)]}
+            tones={tones([scriptSecond], LIMITS["script a second"])}
+          />
+          <Line
+            name="GPU, ms a second"
+            dim={!timer}
+            values={[timer ? Math.round(gpuSecond) : NONE]}
+            tones={tones([gpuSecond], LIMITS["gpu a second"])}
           />
           <Head cols={["avg", "worst"]}>CPU a frame, ms</Head>
           {shown.frame.map(function (row) {
@@ -261,6 +367,10 @@ export default function DebugPanel() {
                 part={row.part}
                 dim={!on || (row.part && s.avg < 0.05)}
                 values={on ? [ms(s.avg), ms(s.max)] : [NONE, NONE]}
+                tones={
+                  on &&
+                  tones([s.avg, s.max], LIMITS[row.name] || (row.part && PART))
+                }
               />
             );
           })}
@@ -278,6 +388,16 @@ export default function DebugPanel() {
                 name={row.name}
                 part
                 dim={!on || little}
+                tones={
+                  on &&
+                  tones(
+                    [
+                      row.draw ? row.draw.avg : NaN,
+                      row.submit ? row.submit.avg : NaN,
+                    ],
+                    LAYER,
+                  )
+                }
                 values={
                   on
                     ? [
@@ -301,6 +421,9 @@ export default function DebugPanel() {
                 name={row.name}
                 dim={!on}
                 values={on ? [ms(s.last), ms(s.max)] : [NONE, NONE]}
+                tones={
+                  on && tones([s.last, s.max], LIMITS[row.name] || BETWEEN)
+                }
               />
             );
           })}
@@ -317,6 +440,7 @@ export default function DebugPanel() {
                 name={t.name}
                 dim={!on}
                 values={on ? [ms(t.avg), n(t.calls)] : [NONE, NONE]}
+                tones={on && tones([t.avg], TICKER)}
               />
             );
           })}
@@ -325,7 +449,12 @@ export default function DebugPanel() {
             if (/^gpu: /.test(c.name)) return null;
 
             return (
-              <Line key={c.name} name={c.name} values={[n(c.avg), n(c.last)]} />
+              <Line
+                key={c.name}
+                name={c.name}
+                values={[n(c.avg), n(c.last)]}
+                tones={tones([c.avg, c.last], LIMITS[c.name])}
+              />
             );
           })}
           <Head cols={["avg", "worst"]}>GPU, ms</Head>
@@ -338,6 +467,7 @@ export default function DebugPanel() {
                   key={c.name}
                   name={c.name.replace(/^gpu: /, "").replace(/ ms$/, "")}
                   values={[ms(c.avg), ms(c.max)]}
+                  tones={tones([c.avg, c.max], GPU)}
                 />
               );
             })
@@ -351,6 +481,7 @@ export default function DebugPanel() {
               <Line
                 name="allocated, MB a second"
                 values={[mb(snap.heap.alloc)]}
+                tones={tones([snap.heap.alloc / 1048576], LIMITS.allocated)}
               />
               <Line name="collections seen" values={[snap.heap.drops]} />
             </>
@@ -364,6 +495,10 @@ export default function DebugPanel() {
                 cache.pages + "/" + cache.maxPages,
                 Math.round(cache.used * 100) + "%",
               ]}
+              tones={tones(
+                [NaN, Math.round(cache.used * 100)],
+                LIMITS["sprite pages"],
+              )}
             />
           )}
           <Head>Draw</Head>
