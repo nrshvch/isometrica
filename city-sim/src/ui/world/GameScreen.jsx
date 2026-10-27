@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useMatch, useParams } from "react-router";
 import { LayeredLayout, cx } from "../kit";
 import { useGame } from "../store";
-import { reopen, showCaughtUp, start } from "../session";
+import { getClient, reopen, showCaughtUp, start } from "../session";
 import WorldCanvas from "./WorldCanvas";
 import Hud from "./Hud";
 import DebugPanel from "./DebugPanel";
@@ -47,6 +47,18 @@ export default function GameScreen() {
   useEffect(function () {
     start(asked);
   }, []);
+
+  //a screen over the world: the world, dimmed and blurred behind it, drawn
+  //fewer times a second (client/pace)
+  useEffect(
+    function () {
+      var client = getClient();
+
+      if (phase === "ready" && client && client.pace)
+        client.pace.ask("covered", covered);
+    },
+    [phase, covered],
+  );
 
   //changing the id in the address bar asks for another city, and the world
   //is only ever put together once, on the way up - so the page goes up
