@@ -13,6 +13,7 @@ import Rocks from "../data/rocks";
 import Tree from "./gameObjects/tree";
 import View from "./view";
 import Trees from "../data/trees";
+import Felling from "./felling";
 import { changed } from "./looks";
 
 //which way round a tree on a tile is, of its four: the same every time, and
@@ -206,14 +207,25 @@ function hold(self, tile) {
   if (go === undefined || !works) return false;
 
   if (
-    !works.hold(tile, function () {
-      if (self._held[tile] !== go) return;
+    !works.hold(
+      tile,
+      function (push) {
+        if (self._held[tile] !== go) return;
 
-      delete self._held[tile];
-      Pool.returnObject(self.pool, go);
-      changed();
-      self.root.game.scene.removeGameObject(go);
-    })
+        delete self._held[tile];
+        //a tree pushed over is drawn going over from here on (client/felling)
+        Felling.fell(self.root, go.renderer, push, tile);
+        Pool.returnObject(self.pool, go);
+        changed();
+        self.root.game.scene.removeGameObject(go);
+      },
+      function (push) {
+        //the bulldozer coming up to it: the pictures of it going over ready
+        Felling.expect(self.root, go.renderer, push, tile);
+
+        return 0;
+      },
+    )
   )
     return false;
 

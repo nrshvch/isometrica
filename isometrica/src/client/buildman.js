@@ -23,6 +23,7 @@ import Numeral from "numeral";
 import Rotation from "../core/rotation";
 import CompoundBuilding from "./compoundbuilding";
 import Demolition from "./demolition";
+import Felling from "./felling";
 import * as RoadRules from "../core/roadrules";
 import { changed } from "./looks";
 
@@ -83,31 +84,66 @@ function removeBuilding(self, tile) {
 /**
  * Keeps a tree planted on a tile being cleared standing where it is until
  * the bulldozer clearing it gets to it (client/clearworks), the way a wild
- * one is (client/envman) - and brings a building cleared away down there
- * and then, in its dust, into rubble for the bulldozer (client/demolition);
- * a road just goes - whether it is either.
+ * one is (client/envman), to go over the way it is pushed (client/felling);
+ * and a road there, till the bulldozer has driven over it and broken it up
+ * into the bare earth (client/roadman cleared). A building cleared away
+ * comes down there and then, a tile of it at a time as the bulldozers come
+ * up to it, in its dust, into rubble for them (client/demolition) - whether
+ * it is any of them.
  */
 function hold(self, tile, building) {
   var works = self.root.clearworks,
-    classCode = building.staticData && building.staticData.classCode;
+    classCode = building.staticData && building.staticData.classCode,
+    road = classCode === BuildingClassCode.road;
 
-  if (!works || !building.staticData || classCode === BuildingClassCode.road)
-    return false;
+  if (!works || !building.staticData) return false;
 
-  if (classCode !== BuildingClassCode.tree)
+  if (classCode !== BuildingClassCode.tree && !road)
     return Demolition.bringDown(self.root, building);
 
   if (
-    !works.hold(tile, function () {
-      delete self.held[tile];
-      building.destroy();
-    })
+    !works.hold(
+      tile,
+      function (push) {
+        delete self.held[tile];
+
+        //a tree pushed over is drawn going over from here on
+        if (!road) Felling.fell(self.root, treeOf(building), push, tile);
+
+        building.destroy();
+        if (road) self.root.roadman.cleared(tile);
+      },
+      function (push) {
+        //the bulldozer coming up to it: the pictures of it going over ready
+        if (!road) Felling.expect(self.root, treeOf(building), push, tile);
+
+        return 0;
+      },
+    )
   )
     return false;
 
   self.held[tile] = building;
 
   return true;
+}
+
+//what a tree planted is drawn with (client/buildingview), if anything
+function treeOf(building) {
+  var children = building.view.gameObject.transform.children;
+
+  for (var i = 0; i < children.length; i++) {
+    var renderer = children[i].gameObject.spriteRenderer;
+
+    if (
+      renderer &&
+      renderer.sprite &&
+      /^gen\/trees\//.test(renderer.sprite.key)
+    )
+      return renderer;
+  }
+
+  return null;
 }
 
 function createBuilding(self, model) {
@@ -144,6 +180,11 @@ function updateBuilding(self, data) {
     building;
 
   building = getBuilding(self, tile);
+
+  //one off the chunks loaded has nothing drawn to update: it is drawn as
+  //it is then once its chunk comes in
+  if (building === null) return null;
+
   building.setData(data);
 
   return building;
@@ -650,8 +691,8 @@ function Buildman(main) {
   this.buildingByXY = [];
   this.buildingByGO = {};
   this.root = main;
-  //the trees cleared away, still standing till the bulldozer gets to them
-  //(hold), by the tile
+  //the trees and the roads cleared away, still there till the bulldozer
+  //gets to them (hold), by the tile
   this.held = {};
 
   //what fadeAround last faded, by the tile it stands on, and how far the

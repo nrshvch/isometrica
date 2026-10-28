@@ -147,10 +147,13 @@ function onBuildingUnload(sender, building, self) {
 
     //the same event carries both a demolished road and one whose chunk is
     //just being unloaded; only a demolished one is gone from the core, and
-    //only then should the junctions around it fall back to simpler pieces
+    //only then should the junctions around it fall back to simpler pieces -
+    //once it is gone from sight too: one cleared away stays till the
+    //bulldozer gets to it (client/buildman hold, cleared)
     if (self.root.core.buildingService.get(model.tile) === null) {
-      updateRoadsNear(self, model.tile);
-      refreshSoon(self);
+      if (self.root.core.terrain.beingCleared(model.tile))
+        self._going[model.tile] = building;
+      else self.cleared(model.tile);
     }
   } else if (self.root.core.buildingService.get(model.tile) === null)
     updateRoadsAround(self, model);
@@ -165,6 +168,9 @@ function Roadman(root) {
   //and the ones still being laid, by tile
   this._works = {};
   this._refresh = null;
+  //the roads cleared away, still there till the bulldozer gets to them, by
+  //tile
+  this._going = {};
 }
 
 /**
@@ -186,6 +192,36 @@ Roadman.prototype.refile = function (road) {
     redrawNear(this, tile);
     refreshSoon(this);
   }
+};
+
+/**
+ * A road gone from tile is gone from sight too - taken up, or broken up by
+ * the bulldozer clearing it (client/clearworks): the roads that joined it
+ * fall back to the pieces they are without it.
+ */
+Roadman.prototype.cleared = function (tile) {
+  var going = this._going;
+
+  delete going[tile];
+  updateRoadsNear(this, tile);
+
+  //and the ones next to it still there, waiting for the bulldozer too
+  [1, -1, Terrain.dy, -Terrain.dy].forEach(function (d) {
+    if (going[tile + d] !== undefined) going[tile + d].updateProfile();
+  });
+
+  refreshSoon(this);
+};
+
+/**
+ * The road on tile as it is seen: finished, being laid, or cleared away and
+ * still there till the bulldozer gets to it (cleared) - for the pieces of
+ * the roads round it to join up with it till then - or null.
+ */
+Roadman.prototype.seenRoad = function (tile) {
+  var road = getRoad(this, tile);
+
+  return road !== null ? road : this._going[tile] || null;
 };
 
 Roadman.prototype.init = function () {

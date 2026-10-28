@@ -131,8 +131,8 @@ Clearworks.prototype.clear = function (tiles, clear) {
 
       cleared.push(t);
 
-      //nothing held, so nothing a bulldozer has to push over: a road was
-      //taken up - in its dust, there and then
+      //nothing held - nothing of it in sight - so nothing a bulldozer has
+      //to push over: in its dust, there and then
       if (held.letGo.length === 0) burst(self, t);
     });
   });
@@ -150,14 +150,16 @@ function waitOn(self, tile) {
 
 /**
  * Holds what stood on a tile being cleared (core/terrain beingCleared) till
- * a bulldozer gets to it, when letGo() takes it away - if the tile is being
- * cleared at all. As the bulldozer comes up to it, knock() says so - a
- * building there comes down then - and how long to wait before driving onto
- * it, ms.
+ * a bulldozer gets to it, when letGo(push) takes it away - push the way the
+ * bulldozer pushed it over, in the world ("x+", "y-" - client/view
+ * headingOf), or none for gone without one - if the tile is being cleared
+ * at all. As the bulldozer comes up to it, pushing on the way push goes,
+ * knock(push) says so - a building there comes down then - and how long to
+ * wait before driving onto it, ms.
  *
  * @param tile {number}
- * @param letGo {function}
- * @param [knock] {function(): number}
+ * @param letGo {function(string=)}
+ * @param [knock] {function(string): number}
  * @returns {boolean} whether it is held
  */
 Clearworks.prototype.hold = function (tile, letGo, knock) {
@@ -203,18 +205,19 @@ ClearworksScript.prototype.tick = function (time) {
 };
 
 /**
- * A bulldozer got to a tile - or something was built on it meanwhile:
- * whatever stood on it goes down in a cloud of dust, and the tile is the
- * bare earth left (client/terrain).
+ * A bulldozer got to a tile, pushing on the way `push` - or something was
+ * built on it meanwhile, and there is no push: whatever stood on it goes
+ * down in a cloud of dust, and the tile is the bare earth left
+ * (client/terrain).
  */
-function reach(self, tile) {
+function reach(self, tile, push) {
   var held = self.waiting[tile];
 
   if (held === undefined) return;
 
   delete self.waiting[tile];
   held.letGo.forEach(function (letGo) {
-    letGo();
+    letGo(push);
   });
 
   //gone: the tile is free to build on again, and bare
@@ -531,7 +534,7 @@ function work(self, d, dt) {
     if (left > 0.01) d.heading = View.headingOf(dx, dy);
 
     //come up to it: whatever is to come down there comes down
-    if (left <= KNOCK) knock(self, next);
+    if (left <= KNOCK) knock(self, next, d.heading);
 
     //a tile off whatever is still coming down there, it waits
     if (left <= 1.05 && notYet(self, next)) {
@@ -585,15 +588,15 @@ function ahead(self, d) {
   return queue.length > 0;
 }
 
-//a bulldozer has come up to a tile: it is told, and waits as long as it
-//says (hold)
-function knock(self, tile) {
+//a bulldozer has come up to a tile, pushing on the way push goes: it is
+//told, and waits as long as it says (hold)
+function knock(self, tile, push) {
   var held = self.waiting[tile];
 
   if (held === undefined || held.knock.length === 0) return;
 
   held.knock.forEach(function (knock) {
-    held.until = Math.max(held.until, self.clock + knock());
+    held.until = Math.max(held.until, self.clock + knock(push));
   });
   held.knock = [];
 }
@@ -605,10 +608,10 @@ function notYet(self, tile) {
   return held !== undefined && held.until > self.clock;
 }
 
-//a bulldozer's blade got to a tile
+//a bulldozer's blade got to a tile, pushing on the way it goes
 function got(self, d, tile) {
   d.got = tile;
-  reach(self, tile);
+  reach(self, tile, d.heading);
 }
 
 /**

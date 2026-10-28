@@ -12,7 +12,7 @@
     "build": "node tools/packsprites.js",
     "predev": "npm run build",
     "dev": "vite lab",
-    "prebuild:lab": "npm run build --prefix ../engine",
+    "prebuild:lab": "npm run build",
     "build:lab": "vite build lab",
     "pretest:traffic": "npm run build --prefix ../engine",
     "test:traffic": "node tools/traffictest.mjs",

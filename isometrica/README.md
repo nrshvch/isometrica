@@ -27,8 +27,9 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   opens them all from `/` - every sprite the generators paint, lit or at
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
   music at `/music.html`, the woods map at `/woods.html`, the traffic
-  testbed at `/traffic.html` and the lighting bench at `/lighting.html`.
-  Everything is painted and played in the page, nothing made beforehand.
+  testbed at `/traffic.html`, the demolition bench at `/demolition.html`
+  and the lighting bench at `/lighting.html`. Everything is painted and
+  played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
   painting workers, `woods/` the map, `lighting/` the bench...) - styled
@@ -219,6 +220,23 @@ engine in `engine/`.
 - So `traffic.js` loads with nothing of the game around it, the rules of the
   roads it goes by - where two roads join, which way a one-way road goes -
   are in `core/roadrules.js`, which `client/road` and `core/surface` use too.
+
+### Demolition bench
+
+- `lab/demolition.html` (`npm run dev` here, or the lab deployed) runs the
+  game's own client (`lab/demolition/bench.js`) on the city every new player
+  starts on (`src/data/initialcity.js`), in a save of its own thrown away
+  every time the page comes up, the world's clock stood still. Next to the
+  city is a stage of open ground: put up a building of any kind on it, nine
+  trees planted, a crossing of roads, or all of them, and clear it the way
+  the city builder clears ground - the bulldozers coming, a building coming
+  down a tile at a time, the trees going over the way they are pushed, the
+  roads broken up, one price floated over the lot - or put the last thing up
+  again and clear it a moment later ("again"). Any ground can be picked the
+  way the game picks it (`client/areaselector.js`) and cleared, and "woods"
+  picks the nearest patch of the world's own trees. It goes as slowly as
+  wanted - down to a tenth, or stopped - and turns round, or is seen from
+  above, in the middle of it all. `window.demolition.bench` in the console.
 
 ### Sounds
 
@@ -721,9 +739,22 @@ dev`) plays them the way a game would - all three weathers together, the
   together are swept as one, a row at a time along the longer way, a
   bulldozer to every six tiles or so, each backing up and pushing on over
   every tile it gets to; ground cleared next to ground still being cleared
-  is shared out afresh among the bulldozers already at it. A road taken up
-  goes in a puff of dust there and then. None of it is kept - after a
-  reload the ground is bare.
+  is shared out afresh among the bulldozers already at it. A tree standing
+  tall does not just go: as the bulldozer comes up to it, the pictures of it
+  going over are painted (`isometrica/src/shared/gen/trees.js` FALLS -
+  `gen/trees/oak-1/r1/x+/1` a third of the way over, `/2` two thirds,
+  `/3` lying, the same tree from the same side, tipped over about its foot
+  the way it is seen to fall, nothing of it under the ground); then it
+  shudders as the blade bites, goes over the way the bulldozer pushes it -
+  slowly, then faster - hits the ground in a puff of dust along it, lies
+  there a moment and is gone, dithered away
+  (`isometrica/src/client/felling.js`). A stump, the wood lying about, a
+  stone just goes. A road stays too (`buildman.js` hold), and the roads
+  joining it go on joining it (`roadman.js` seenRoad), till the bulldozer
+  has driven over it and broken it up into the bare earth. None of it is
+  kept - after a reload the ground is bare.
+- What clearing ground came to floats up once, over all of the ground
+  picked - not over every tile of it.
 - A building cleared away is cleared whole, every tile of it, whichever was
   picked (`isometrica/src/core/city.js` clearTile), and is paid for by the
   tile. It stands till a bulldozer comes up to a tile of it

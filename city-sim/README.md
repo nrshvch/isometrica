@@ -57,10 +57,13 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 - Shaping the ground picks tiles straight away, and clears, raises or lowers
   them as toggled on along the bottom - priced over them as they are picked,
   done with the tick, and started out on what was toggled on last time.
-- Clearing is paid for at once, but takes a little while to do: bulldozers
-  sweep the tiles cleared, the trees and stones going down in their dust as
-  they get to them, and leave the ground bare earth - which the grass grows
-  back over in half a game day (`isometrica/src/client/clearworks.js`). A
+- Clearing is paid for at once - what it came to floated up once, over the
+  ground picked - but takes a little while to do: bulldozers sweep the tiles
+  cleared, a tree going over the way it is pushed, lying a moment and gone
+  (`isometrica/src/client/felling.js`), the stones going down in their dust,
+  a road broken up as they drive over it, and leave the ground bare earth -
+  which the grass grows back over in half a game day
+  (`isometrica/src/client/clearworks.js`). A
   building is cleared whole, every tile of it paid for, and comes down a tile
   at a time as the bulldozers come up to it - floor onto floor, bursting into
   pieces, in a cloud of grey dust - into rubble for them to push away

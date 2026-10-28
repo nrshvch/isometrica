@@ -162,14 +162,17 @@ Road.surfaceOf = function (model) {
 
 /**
  * The roads loaded, as Road.profile goes by them: the surface of each, or
- * null where there is none.
+ * null where there is none - and if seen, the roads cleared away still
+ * there till the bulldozer gets to them, as the pieces drawn join up with
+ * them till then (Roadman#seenRoad).
  *
  * @param roadman {Roadman}
+ * @param [seen] {boolean}
  */
-Road.network = function (roadman) {
+Road.network = function (roadman, seen) {
   return {
     surface: function (tile) {
-      var road = roadman.anyRoad(tile);
+      var road = seen ? roadman.seenRoad(tile) : roadman.anyRoad(tile);
 
       return road !== null ? road.surface() : null;
     },
@@ -591,7 +594,7 @@ Road.prototype.updateProfile = function () {
   var roadman = this.root.roadman,
     id = Road.profile(
       this.data.tile,
-      Road.network(roadman),
+      Road.network(roadman, true),
       Road.kindOf(roadman, this.data),
       Road.wayOf(this.data),
     );

@@ -27,6 +27,13 @@
  * two trees of the same seed side by side need not show the same one
  * (data/trees turned).
  *
+ * One that stands tall enough to go over - not a stump, nor the wood lying
+ * on the ground already - is painted going over too, for the bulldozer
+ * clearing it (client/felling): from each of those sides, falling each of
+ * the four ways it can be seen to - "gen/trees/oak-1/r1/x+/1" - a third of
+ * the way over, two thirds, and lying on the ground (FALLS), in a bigger
+ * picture round its foot (FALL_FRAME), for the whole of it to be in it.
+ *
  * A tree is a trunk, a few branches and a crown of lobes, each a distance
  * from a point - the crown lumpy with a few big clumps of leaves, so its
  * outline is a tree's. A ray goes into it for every pixel, along the way the
@@ -54,9 +61,32 @@ var TOP_FRAME = { w: 96, h: 96, pivotX: 48, pivotY: 48 },
   SIDE = { w: W, h: H, pivotX: PIVOT_X, pivotY: PIVOT_Y },
   view = "iso";
 
-//paints from straight above from now on ("top"), or as the game sees it
-function setView(v) {
-  var f = v === "top" ? TOP_FRAME : SIDE;
+//one going over, as the game sees it: wide enough for the tallest lying
+//either way across, and high enough for one a third of the way over
+var FALL_FRAME = { w: 128, h: 104, pivotX: 64, pivotY: 66 };
+
+//the kinds that go over, pushed - whatever stands tall
+var FALLING = [
+  "oak",
+  "beech",
+  "ash",
+  "alder",
+  "birch",
+  "pine",
+  "spruce",
+  "snag",
+];
+
+//the ways one can be seen to fall, along the ground as it is painted (x - y
+//across, -(x + y) / 2 down); and how far over it is at each stage of it,
+//radians from standing - the last lying on the ground
+var WAYS = { "x+": [1, 0], "x-": [-1, 0], "y+": [0, 1], "y-": [0, -1] },
+  FALLS = [Math.PI / 6, Math.PI / 3, Math.PI / 2];
+
+//paints from straight above from now on ("top"), or as the game sees it -
+//in a picture of a size of its own, f, if it says
+function setView(v, f) {
+  f = f || (v === "top" ? TOP_FRAME : SIDE);
 
   view = v === "top" ? "top" : "iso";
   W = f.w;
@@ -917,8 +947,49 @@ function grow(kind, seed, turns) {
 
   tree.kind = k;
   tree.seed = seed;
+  //how thick it is at its foot, for it to lie on that much of itself
+  tree.foot = trunk ? trunk.foot * scale : 1;
 
   return tree;
+}
+
+/**
+ * A tree gone over the way `way` is (WAYS), `angle` from standing, about its
+ * foot - nothing of it under the ground, and lying on its trunk, as thick
+ * as that is, rather than through it.
+ */
+function felled(tree, way, angle) {
+  var u = WAYS[way],
+    cos = Math.cos(angle),
+    sin = Math.sin(angle),
+    lift = (tree.foot + 1) * sin,
+    out = { kind: tree.kind, seed: tree.seed, part: "leaves" };
+
+  //where q is on the tree as it stood: along the way it fell, across it,
+  //and up, turned back up
+  function stood(q) {
+    var a = q[0] * u[0] + q[1] * u[1],
+      b = q[1] * u[0] - q[0] * u[1],
+      c = q[2] - lift,
+      along = a * cos - c * sin,
+      up = a * sin + c * cos;
+
+    return [along * u[0] - b * u[1], along * u[1] + b * u[0], up];
+  }
+
+  out.shape = function (q) {
+    var d = tree.shape(stood(q));
+
+    out.part = tree.part;
+
+    return Math.max(d, -q[2]);
+  };
+
+  out.marked = function (q, n) {
+    return tree.marked(stood(q), n);
+  };
+
+  return out;
 }
 
 /* --- Painting -------------------------------------------------------- */
@@ -1155,20 +1226,33 @@ function flatten(tones, ns) {
 
 /**
  * Every tree from every side, by sprite name - "gen/trees/oak-1",
- * "gen/trees/oak-1/r1" - with its size and where
- * its foot is in it, without painting it.
+ * "gen/trees/oak-1/r1" - with its size and where its foot is in it, and
+ * every one that goes over going over - "gen/trees/oak-1/r1/x+/1" - without
+ * painting it.
  */
 export function describe() {
   var sizes = {};
 
   NAMES.forEach(function (name) {
+    var falls = FALLING.indexOf(name.split("-")[0]) !== -1;
+
     [0, 1, 2, 3].forEach(function (turns) {
-      sizes["gen/trees/" + name + (turns ? "/r" + turns : "")] = {
-        w: W,
-        h: H,
-        pivotX: PIVOT_X,
-        pivotY: PIVOT_Y,
-      };
+      var seen = "gen/trees/" + name + (turns ? "/r" + turns : "");
+
+      sizes[seen] = { w: W, h: H, pivotX: PIVOT_X, pivotY: PIVOT_Y };
+
+      if (!falls) return;
+
+      Object.keys(WAYS).forEach(function (way) {
+        FALLS.forEach(function (angle, stage) {
+          sizes[seen + "/" + way + "/" + (stage + 1)] = {
+            w: FALL_FRAME.w,
+            h: FALL_FRAME.h,
+            pivotX: FALL_FRAME.pivotX,
+            pivotY: FALL_FRAME.pivotY,
+          };
+        });
+      });
     });
   });
 
@@ -1181,17 +1265,26 @@ export function describe() {
  * @returns {{width, height, data}}
  */
 export function paint(name, look, v) {
-  var m = /^gen\/trees\/([a-z]+)-(\d+)(?:\/r([123]))?$/.exec(name);
+  var m =
+    /^gen\/trees\/([a-z]+)-(\d+)(?:\/r([123]))?(?:\/([xy][+-])\/([123]))?$/.exec(
+      name,
+    );
 
   if (m === null || KINDS[m[1]] === undefined)
     throw new Error("no such tree: " + name);
 
-  setView(v);
+  var tree = grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0));
+
+  //going over, in a picture big enough for it
+  if (m[4] !== undefined) {
+    if (FALLING.indexOf(m[1]) === -1) throw new Error("no such tree: " + name);
+
+    tree = felled(tree, m[4], FALLS[m[5] - 1]);
+  }
+
+  setView(v, m[4] !== undefined && v !== "top" ? FALL_FRAME : null);
   try {
-    return paintTree(
-      grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0)),
-      look,
-    );
+    return paintTree(tree, look);
   } finally {
     setView("iso");
   }
@@ -1273,4 +1366,4 @@ function hashSeed(s) {
   return Math.abs(h) % 10000;
 }
 
-export { W, H, PIVOT_X, PIVOT_Y, TOP_FRAME };
+export { W, H, PIVOT_X, PIVOT_Y, TOP_FRAME, FALL_FRAME };

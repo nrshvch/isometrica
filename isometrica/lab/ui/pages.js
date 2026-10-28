@@ -42,6 +42,16 @@ export var PAGES = [
       "standing too long, locking up.",
   },
   {
+    id: "demolition",
+    name: "Demolition bench",
+    about:
+      "The game itself on the city every player starts on, and a stage next " +
+      "to it: put a building, trees or roads up on it and clear them, as " +
+      "slowly as you like - the bulldozers coming, a building coming down a " +
+      "tile at a time, a tree going over, a road broken up - or pick any " +
+      "ground, the woods among it, and clear that.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

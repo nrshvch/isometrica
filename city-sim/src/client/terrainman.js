@@ -248,26 +248,27 @@ Terrainman.prototype.enter = function () {
       return city().quoteClear(tiles);
     },
     apply: function (tiles) {
-      var c = city();
+      var c = city(),
+        where = area(),
+        total = 0;
 
       //what stood on them stays standing until a bulldozer gets to it, and
-      //goes down in a cloud of dust - a building comes down whole first
-      //(client/clearworks, client/demolition)
+      //goes down in a cloud of dust - a building comes down a tile at a
+      //time (client/clearworks, client/demolition)
       root.clearworks.clear(tiles, function (tile) {
         var cleared = c.clearTile(tile);
 
-        //every tile picked is charged on its own, so each one that goes
-        //gets its own text - with the rest of a building on it
-        if (cleared.length > 0)
-          buildman.showCost(
-            tile,
-            1,
-            1,
-            cleared.length * Core.Config.clearTileCost,
-          );
+        //every tile is charged on its own - with the rest of a building on
+        //it
+        total += cleared.length * Core.Config.clearTileCost;
 
         return cleared;
       });
+
+      //and what it all came to goes up once, over the whole of the picked
+      //ground
+      if (total > 0)
+        buildman.showCost(where.tile, where.sizeX, where.sizeY, total);
     },
   };
 
