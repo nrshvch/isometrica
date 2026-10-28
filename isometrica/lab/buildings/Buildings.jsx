@@ -3,7 +3,7 @@
  * picked, turned, given another look, brought down and put back up.
  */
 import { useEffect, useRef, useState } from "react";
-import { open, buildings } from "../bench/world.js";
+import { open, buildings } from "../bench/stage.js";
 import { Stand } from "./stand.js";
 import { Button, Header, Select, Status, cx } from "../ui/kit.jsx";
 
@@ -51,18 +51,18 @@ export default function Buildings() {
     [said, setSaid] = useState(""),
     [seen, setSeen] = useState(null);
 
-  //the world, up once
+  //the stage, up once
   useEffect(function () {
     var looking = null;
 
     open(el.current).then(
-      function (world) {
-        world.speed = speed;
-        bench.current = new Stand(world, code);
+      function (stage) {
+        stage.speed = speed;
+        bench.current = new Stand(stage, code);
         window.bench.stand = bench.current;
         setReady(true);
         looking = setInterval(function () {
-          setSeen(world.status());
+          setSeen(stage.status());
         }, 250);
       },
       function (e) {
@@ -80,15 +80,16 @@ export default function Buildings() {
     return bench.current;
   }
 
-  //put up again some way: what to say if it did not go up
-  function shown(up) {
+  //put up again, some way
+  function shown() {
     setDown(false);
-    setSaid(up ? "" : "it does not fit");
+    setSaid("");
   }
 
   function pick(v) {
     setCode(v);
-    shown(stand().pick(v));
+    stand().pick(v);
+    shown();
   }
 
   var s = seen;
@@ -102,7 +103,7 @@ export default function Buildings() {
           value={speed}
           onChange={function (e) {
             setSpeed(+e.target.value);
-            if (stand()) stand().world.speed = +e.target.value;
+            if (stand()) stand().stage.speed = +e.target.value;
           }}
         />
         <Button
@@ -110,7 +111,7 @@ export default function Buildings() {
           title="turn the camera a quarter turn left"
           disabled={!ready || top}
           onClick={function () {
-            stand().world.turn(-1);
+            stand().stage.turn(-1);
           }}
         >
           ⟲
@@ -120,7 +121,7 @@ export default function Buildings() {
           title="turn the camera a quarter turn right"
           disabled={!ready || top}
           onClick={function () {
-            stand().world.turn(1);
+            stand().stage.turn(1);
           }}
         >
           ⟳
@@ -130,7 +131,7 @@ export default function Buildings() {
           on={top}
           disabled={!ready}
           onClick={function () {
-            stand().world.top(!top);
+            stand().stage.top(!top);
             setTop(!top);
           }}
         >
@@ -192,7 +193,7 @@ export default function Buildings() {
                   var any = stand().any();
 
                   setCode(String(any));
-                  shown(true);
+                  shown();
                 }}
               >
                 any
@@ -202,7 +203,8 @@ export default function Buildings() {
                 title="turn it a quarter turn left on its ground"
                 disabled={!ready}
                 onClick={function () {
-                  shown(stand().rotate(-1));
+                  stand().rotate(-1);
+                  shown();
                 }}
               >
                 rotate ⟲
@@ -212,7 +214,8 @@ export default function Buildings() {
                 title="turn it a quarter turn right on its ground"
                 disabled={!ready}
                 onClick={function () {
-                  shown(stand().rotate(1));
+                  stand().rotate(1);
+                  shown();
                 }}
               >
                 rotate ⟳
@@ -235,7 +238,8 @@ export default function Buildings() {
                 className="px-1.5 py-0.5"
                 disabled={!ready}
                 onClick={function () {
-                  shown(stand().restore());
+                  stand().restore();
+                  shown();
                 }}
               >
                 restore

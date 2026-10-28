@@ -2,35 +2,48 @@
  * The building bench (lab/buildings.html): one building, whole, put together
  * out of its parts the way the game puts it together (client/buildingview,
  * client/compoundbuilding), on a patch of flat grass a little bigger than it
- * and nothing else (lab/bench/world) - looked at from any side, turned any
- * way, a look of its own picked afresh, and brought down whole at the push
- * of a button the way it comes down in the game (client/demolition) -
- * fenced off, every tile of it at once, no bulldozer coming - and put back
- * up.
+ * and nothing else (lab/bench/stage) - looked at from any side, turned any
+ * way, a look of its own picked afresh - and brought down at the push of a
+ * button the way it comes down in the game (client/demolition Demolition):
+ * fenced off, every tile of it told to come down at once, and nothing else
+ * of the game about it; then put back up.
  */
+import Events from "events";
+import BuildingView from "../../src/client/buildingview";
+import Demolition from "../../src/client/demolition";
+import View from "../../src/client/view";
 import BuildingData from "../../src/data/buildings";
+import BuildingState from "../../src/core/buildingstate";
 import Rotation from "../../src/core/rotation";
-import { buildings } from "../bench/world.js";
+import Terrain from "../../src/core/terrain";
+import TileIterator from "../../src/core/tileiterator";
+import { buildings } from "../bench/stage.js";
 
-//the ground about it cleared of whatever went before, tiles a side; and
 //how far the grass it stands on reaches out round it, tiles
-var ROUND = 14,
-  MARGIN = 2;
+var MARGIN = 2;
 
 /**
- * @param world {World} the bench's world (lab/bench/world)
+ * @param stage {Stage} what it is drawn on (lab/bench/stage)
  * @param code {number|string} what stands
  */
-export function Stand(world, code) {
-  this.world = world;
+export function Stand(stage, code) {
+  var self = this;
+
+  this.stage = stage;
   this.code = +code;
   this.rotation = 0;
   //what it looks like - kept, put up again - or undefined for a look of its
-  //own, picked as it is first seen
+  //own, picked as it is first drawn
   this.look = undefined;
+  //what stands, drawn, while it does; and what is coming down of it once it
+  //is brought down
   this.building = null;
-  //the tiles it was brought down from, while it is down
-  this.down = null;
+  this.demolition = null;
+
+  //turned round: it stands as it is seen from the new side
+  Events.on(View, View.events.change, function () {
+    if (self.building !== null) self.building.view.update();
+  });
 
   this.show();
 }
@@ -50,31 +63,80 @@ function placed(self) {
 }
 
 /**
- * Puts it up as it is to stand now, in the middle of the world, over
- * whatever stood there - and the camera on it.
- *
- * @returns {boolean} whether it went up
+ * What stands, as the game's building is to what draws it (client/building,
+ * client/buildingview): its kind, and the game's own building as far as the
+ * drawing asks of it - where it stands, turned which way, looking which way,
+ * up, and in nobody's city.
+ */
+function building(self, at) {
+  var tile = self.stage.tile(at.x, at.y),
+    data = {
+      buildingCode: self.code,
+      tile: tile,
+      rotation: self.rotation,
+      look: self.look,
+      getState: function () {
+        return BuildingState.ready;
+      },
+      getProgress: function () {
+        return 1;
+      },
+      getCity: function () {
+        return null;
+      },
+      occupiedTiles: function () {
+        return new TileIterator(
+          tile,
+          tile + (at.sizeX - 1) + (at.sizeY - 1) * Terrain.dy,
+        );
+      },
+    },
+    out = {
+      data: data,
+      staticData: BuildingData[self.code],
+      view: new BuildingView(),
+    };
+
+  out.view.setBuilding(out);
+
+  return out;
+}
+
+//what stands let go of, and whatever is coming down gone at once
+function clear(self) {
+  if (self.demolition !== null) self.demolition.stop();
+  self.demolition = null;
+
+  if (self.building !== null) {
+    self.building.view.dispose();
+    self.building.view.gameObject.destroy();
+  }
+  self.building = null;
+}
+
+/**
+ * Puts it up as it is to stand now, in the middle of the stage, on its
+ * patch of grass - and the camera on it.
  */
 Stand.prototype.show = function () {
-  var world = this.world,
-    at = placed(this);
+  var at = placed(this);
 
-  this.down = null;
-  world.wipe(-ROUND / 2, -ROUND / 2, ROUND, ROUND);
-  world.ground(
+  clear(this);
+  this.stage.ground(
     at.x - MARGIN,
     at.y - MARGIN,
     at.sizeX + 2 * MARGIN,
     at.sizeY + 2 * MARGIN,
   );
-  this.building = world.put(this.code, at.x, at.y, this.rotation, this.look);
+
+  this.building = building(this, at);
+  this.building.view.update();
+  this.building.view.render();
 
   //the look it was given as it was first drawn, kept from here on
-  if (this.building !== null) this.look = this.building.look;
+  this.look = this.building.data.look;
 
-  world.look(at.x + (at.sizeX - 1) / 2, at.y + (at.sizeY - 1) / 2);
-
-  return this.building !== null;
+  this.stage.look(at.x + (at.sizeX - 1) / 2, at.y + (at.sizeY - 1) / 2);
 };
 
 /**
@@ -84,8 +146,7 @@ Stand.prototype.pick = function (code) {
   this.code = +code;
   this.look = undefined;
   this.rotation = 0;
-
-  return this.show();
+  this.show();
 };
 
 /**
@@ -120,29 +181,46 @@ Stand.prototype.any = function () {
  */
 Stand.prototype.rotate = function (by) {
   this.rotation = (((this.rotation + by) % 4) + 4) % 4;
-
-  return this.show();
+  this.show();
 };
 
 /**
- * Brought down, there and then - every tile of it at once.
+ * Brought down, there and then: what it looks like stood up in its place
+ * (Demolition), fenced off, and every tile of it told to come down at once.
  *
- * @returns {boolean} whether there was anything to bring down
+ * @returns {boolean} whether there was anything standing to bring down
  */
 Stand.prototype.demolish = function () {
-  if (this.building === null || this.down !== null) return false;
+  var b = this.building,
+    tiles = [];
 
-  this.down = this.world.bringDown(this.building.tile);
+  if (b === null) return false;
+
+  var iter = b.data.occupiedTiles();
+
+  while (!iter.done) tiles.push(iter.next());
+
+  var demolition = (this.demolition = new Demolition.Demolition(
+    this.stage.client,
+    b,
+    tiles,
+  ));
+
+  //its view let go of: the demolition stands in its place
+  b.view.dispose();
+  b.view.gameObject.destroy();
   this.building = null;
 
-  return this.down.length > 0;
+  tiles.forEach(function (tile) {
+    demolition.knock(tile);
+  });
+
+  return true;
 };
 
 /**
- * Put back up as it stood, its rubble and its fence gone.
+ * Put back up as it stood, whatever is left of it coming down gone.
  */
 Stand.prototype.restore = function () {
-  if (this.down !== null) this.world.rebuild(this.down);
-
-  return this.show();
+  this.show();
 };

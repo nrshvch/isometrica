@@ -224,28 +224,30 @@ engine in `engine/`.
 
 ### Benches
 
-- `lab/buildings.html` and `lab/demolition.html` (`npm run dev` here, or the
-  lab deployed) run the game's own client out in the open sea
-  (`lab/bench/world.js`), and draw of the world only the bench's own patch
-  of ground: flat grass, made so the way a save puts ground back
-  (`src/core/terrain.js` load), nothing of the world's own on it - a city of
-  nobody to own what is put up, the clock stood still at ten in the
-  morning, no traffic, nothing saved, nothing heard - going as fast as
-  asked, down to a tenth, or stopped, and turned round or seen from above.
-  `window.bench` in the console.
-- The building bench (`lab/buildings/stand.js`): one building of any kind,
-  whole, on a patch of grass two tiles wider than it all round, put together
-  out of its parts the way the game puts it together - "random" gives it
-  another look, "any" picks any building, it turns on its ground;
-  "demolish" brings it down the way it comes down in the game, fenced off,
-  every tile of it at once and no bulldozer coming (`client/clearworks.js`
-  knock), and "restore" puts it back up as it was (reach).
-- The demolition bench (`lab/demolition/scene.js`): a few buildings, trees
-  planted and a road along them; "destroy" clears it all the way the game
+- `lab/buildings.html` (`npm run dev` here, or the lab deployed) is the
+  building bench, a unit test of a building coming down: the game's own
+  drawing and nothing else (`lab/bench/stage.js` - its engine, pictures,
+  light and camera, over ground of its own laid flat the way a save lays
+  it, `src/core/terrain.js` load: no world ticking, no city, no
+  bulldozers), a patch of grass two tiles wider than the building all
+  round, and one building of any kind on it, whole, put together out of its
+  parts the way the game puts it together (`lab/buildings/stand.js`).
+  "random" gives it another look, "any" picks any building, it turns on its
+  ground; "demolish" brings it down the way it comes down in the game - the
+  game's own `Demolition` (`src/client/demolition.js`), fenced off and every
+  tile of it told to come down at once - and "restore" puts it back up.
+- `lab/demolition.html` is the demolition bench: the game's own client and
+  world out in the open sea (`lab/bench/world.js`), of all of it only its
+  own patch of flat grass drawn, a city of nobody on it, no traffic; a few
+  buildings, trees planted and a road along them
+  (`lab/demolition/scene.js`). "destroy" clears it all the way the game
   clears ground - fenced off, the bulldozers coming, a building coming down
   a tile at a time as they get to it, the trees going over, the road broken
-  up, one price floated over the lot - "reset" puts it up again, and
-  "again" does both.
+  up, one price floated over the lot - "reset" puts it up again once they
+  are done, and "again" does both.
+- Both go as fast as asked, down to a tenth, or stopped, at ten in the
+  morning in clear weather, nothing saved or heard, and turn round or are
+  seen from above. `window.bench` in the console.
 
 ### Sounds
 
@@ -766,7 +768,11 @@ dev`) plays them the way a game would - all three weathers together, the
   picked - not over every tile of it.
 - A building cleared away is cleared whole, every tile of it, whichever was
   picked (`isometrica/src/core/city.js` clearTile), and is paid for by the
-  tile. It is fenced off there and then, the way a building site is - the
+  tile. How it comes down is a unit of its own (`Demolition`, in
+  `isometrica/src/client/demolition.js`), told when each tile is to come
+  down and when its rubble is pushed away; in the game it is the bulldozers
+  that tell it (bringDown). It is fenced off there and then, the way a
+  building site is - the
   site's own blue tarp on posts (`isometrica/src/shared/gen/sites.js`
   fence), or for a small one its low timber rail, along every edge of it,
   a gate in the middle of its front - the stretch at the back of a tile

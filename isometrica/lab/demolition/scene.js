@@ -60,12 +60,17 @@ export function Scene(world) {
 }
 
 /**
- * Everything put up again, over whatever was left of it.
+ * Everything put up again, over whatever was left of it - once the
+ * bulldozers are done.
+ *
+ * @returns {boolean} whether it was
  */
 Scene.prototype.put = function () {
   var world = this.world;
 
-  world.wipe(X - 2, Y - 2, W + 4, H + 4);
+  if (!world.wipe(X - MARGIN, Y - MARGIN, W + 2 * MARGIN, H + 2 * MARGIN))
+    return false;
+
   world.road(ROAD.x, ROAD.y, ROAD.length, false, "asphalt");
   BUILDINGS.forEach(function (b) {
     world.put(b[0], b[1], b[2], b[3]);
@@ -73,6 +78,8 @@ Scene.prototype.put = function () {
   TREES.forEach(function (t) {
     world.plant(t[0], t[1]);
   });
+
+  return true;
 };
 
 /**

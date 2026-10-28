@@ -5,10 +5,11 @@
  * .github/workflows/isometrica.yml (wrangler.jsonc).
  *
  * Each page is an HTML file of its own, its UI in React, styled with
- * Tailwind (ui/lab.css). The benches run the game's own client on a world
- * of their own (bench/world.js: buildings.html, demolition.html), which
- * finds the pictures it paints listed in gfx/ - served and copied in as a
- * game's build does (isometrica/vite.mjs), after npm run build here.
+ * Tailwind (ui/lab.css). The benches draw with the game's own client - on a
+ * stage of nothing but its drawing (bench/stage.js: buildings.html), or on
+ * a world of its own (bench/world.js: demolition.html) - which finds the
+ * pictures it paints listed in gfx/, served and copied in as a game's build
+ * does (isometrica/vite.mjs), after npm run build here.
  */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";

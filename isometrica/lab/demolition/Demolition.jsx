@@ -85,7 +85,7 @@ export default function Demolition() {
       time = s.world.client.game.time,
       until;
 
-    s.put();
+    if (!s.put()) return;
     until = time.time + STANDS;
 
     var waiting = setInterval(function () {
@@ -96,7 +96,9 @@ export default function Demolition() {
     }, 30);
   }
 
-  var s = seen;
+  var s = seen,
+    //the bulldozers still at it: nothing to put up again till they are done
+    busy = !!s && (s.dozers > 0 || s.waiting > 0);
 
   return (
     <div className="flex h-screen flex-col text-xs">
@@ -175,8 +177,8 @@ export default function Demolition() {
               </Button>
               <Button
                 className="px-1.5 py-0.5"
-                title="put it all up again"
-                disabled={!ready}
+                title="put it all up again, once the bulldozers are done"
+                disabled={!ready || busy}
                 onClick={function () {
                   scene().put();
                 }}
@@ -186,7 +188,7 @@ export default function Demolition() {
               <Button
                 className="px-1.5 py-0.5"
                 title="put it all up again, and destroy it a moment after"
-                disabled={!ready}
+                disabled={!ready || busy}
                 onClick={again}
               >
                 again

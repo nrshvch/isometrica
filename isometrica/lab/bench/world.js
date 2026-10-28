@@ -1,6 +1,6 @@
 /**
- * The ground for the lab's benches (lab/buildings.html, lab/demolition.html):
- * the game's own client and world, out in the open sea, and of all of it
+ * The ground for the lab's demolition bench (lab/demolition.html): the
+ * game's own client and world, out in the open sea, and of all of it
  * only the bench's own patch drawn - flat grass, as a save puts ground back
  * (core/terrain load), with nothing of the world's own on it - and a city of
  * nobody to own what is put up, rich enough never to be short. The clock
@@ -15,7 +15,6 @@ import ReactiveProperty from "reactive-property";
 import Core from "../../src/core/main";
 import Client from "../../src/client/main";
 import BuildingCode from "../../src/data/buildingcode";
-import BuildingData from "../../src/data/buildings";
 import BuildingClassCode from "../../src/data/classcode";
 import CityBuildings from "../../src/core/city/citybuildings";
 import Resource from "../../src/core/resourcecode";
@@ -400,46 +399,6 @@ World.prototype.clear = function (tiles) {
   return count;
 };
 
-/**
- * Brings what stands on tile down whole, there and then - fenced off, every
- * tile of it shaking and coming down at once into its rubble - with no
- * bulldozer coming, and the ground under it left as it was (rebuild).
- *
- * @returns {number[]} the tiles it stood on - none if nothing did
- */
-World.prototype.bringDown = function (tile) {
-  var core = this.core,
-    building = core.buildingService.get(tile),
-    tiles = [];
-
-  if (building === null || building === undefined) return tiles;
-
-  var iter = building.occupiedTiles();
-
-  while (!iter.done) tiles.push(iter.next());
-
-  //being cleared, for what stood there to stand till it is brought down
-  //(client/demolition bringDown) - and gone from the world, the ground
-  //under it not bared
-  tiles.forEach(function (t) {
-    core.terrain.startClearing(t);
-  });
-  core.terrain.clearTile(tile);
-
-  this.client.clearworks.knock(tiles);
-
-  return tiles;
-};
-
-/**
- * Tiles brought down got to, as a bulldozer would - the rubble and the
- * fence gone, quietly - and grass again.
- */
-World.prototype.rebuild = function (tiles) {
-  this.client.clearworks.reach(tiles);
-  grass(this, tiles);
-};
-
 //tiles grass again, however they were cleared
 function grass(self, tiles) {
   var terrain = self.core.terrain;
@@ -452,27 +411,37 @@ function grass(self, tiles) {
 
 /**
  * Everything gone from the w by h tiles from dx, dy, at once and with
- * nothing to show for it - whatever is still being cleared got to and the
- * bulldozers sent off - and grass again: for the bench to start over.
+ * nothing to show for it, and grass again: for the bench to start over -
+ * once the bulldozers are done, not before.
+ *
+ * @returns {boolean} whether it was, nothing being cleared still
  */
 World.prototype.wipe = function (dx, dy, w, h) {
   var tiles = [],
-    core = this.core,
-    works = this.client.clearworks;
+    core = this.core;
+
+  if (this.busy()) return false;
 
   for (var i = 0; i < w; i++)
     for (var j = 0; j < h; j++) tiles.push(this.tile(dx + i, dy + j));
-
-  works.reach(Object.keys(works.waiting).map(Number));
-  works.dozers.forEach(function (d) {
-    d.queue = [];
-  });
 
   tiles.forEach(function (tile) {
     if (core.buildingService.get(tile)) core.terrain.clearTile(tile);
   });
 
   grass(this, tiles);
+
+  return true;
+};
+
+/**
+ * Whether anything is being cleared still - a bulldozer out, a tile it has
+ * not got to yet.
+ */
+World.prototype.busy = function () {
+  var works = this.client.clearworks;
+
+  return works.dozers.length > 0 || Object.keys(works.waiting).length > 0;
 };
 
 /**
@@ -516,41 +485,3 @@ World.prototype.status = function () {
     }).length,
   };
 };
-
-/**
- * What can be put up that comes down: every building there is but the
- * roads, the trees and the cliffs - one of each kind that comes in several
- * (data/buildings variants) - by name, the smallest first.
- *
- * @returns {{value: string, label: string}[]}
- */
-export function buildings() {
-  return Object.keys(BuildingData)
-    .map(function (code) {
-      return { code: +code, data: BuildingData[code] };
-    })
-    .filter(function (b) {
-      var c = b.data && b.data.classCode;
-
-      return (
-        b.data &&
-        b.data.name &&
-        !b.data.variants &&
-        c !== BuildingClassCode.road &&
-        c !== BuildingClassCode.tree &&
-        b.code !== BuildingCode.cliff
-      );
-    })
-    .sort(function (a, b) {
-      return (
-        a.data.sizeX * a.data.sizeY - b.data.sizeX * b.data.sizeY ||
-        a.data.name.localeCompare(b.data.name)
-      );
-    })
-    .map(function (b) {
-      return {
-        value: String(b.code),
-        label: b.data.name + " (" + b.data.sizeX + "×" + b.data.sizeY + ")",
-      };
-    });
-}

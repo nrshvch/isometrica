@@ -15,10 +15,17 @@ var Terrain = Core.Terrain;
 
 /**
  * A building coming down. Cleared away (core/city clearTile), it is gone
- * from the world at once, but what it looked like stands where it was, a
- * tile at a time, till a bulldozer comes up to that tile (client/clearworks
- * hold, knock) - and then that tile of it comes down, the bulldozer waiting
- * for it, and leaves a heap of rubble for it to push away.
+ * from the world at once, but what it looked like stands where it was,
+ * fenced off the way a building site is, a tile at a time, till a bulldozer
+ * comes up to that tile (client/clearworks hold, knock) - and then that tile
+ * of it comes down, the bulldozer waiting for it, and leaves a heap of
+ * rubble for it to push away (bringDown).
+ *
+ * How it comes down is a thing of its own (Demolition), told when each tile
+ * of it is to come down and when its rubble is pushed away by whoever has
+ * it - the bulldozers, in the game; a button, on a bench (lab/buildings) -
+ * and drawn with no more than the pictures, the world they are drawn in
+ * and the ground under it.
  *
  * Every tile of a building is drawn as one picture (client/buildingview), of
  * the parts it is put together out of - its ground storey, a storey on that
@@ -125,7 +132,8 @@ var FENCE_SHIFT = 14 / 32,
  * Has a building cleared away stand till the bulldozers come to bring it
  * down, a tile at a time - if it was cleared away, its tiles being cleared
  * (core/terrain beingCleared); its view is gone, and what it looked like
- * stands in its place.
+ * stands in its place. Each tile comes down as a bulldozer comes up to it,
+ * which waits for it to be down, and pushes its rubble away.
  *
  * @param root {Vkaria}
  * @param building {Building} the client's, its view up still
@@ -147,12 +155,40 @@ function bringDown(root, building) {
   )
     return false;
 
-  new Demolition(root, building, tiles);
+  var demolition = new Demolition(root, building, tiles);
+
   building.destroy();
+
+  tiles.forEach(function (tile) {
+    works.hold(
+      tile,
+      function () {
+        demolition.letGo(tile);
+      },
+      function () {
+        return demolition.knock(tile);
+      },
+    );
+  });
 
   return true;
 }
 
+/**
+ * A building coming down, from where it stands: what it looks like taken
+ * off its view - which whoever has it lets go of then - and stood up in
+ * its place, fenced off, every tile of it standing till it is told to come
+ * down (knock), and its rubble lying there till it is told it is pushed
+ * away (letGo); gone once all of it is (over).
+ *
+ * @param root {Vkaria} what it is drawn with: the pictures (sprites), the
+ *        world it is drawn in (game.logic.world) and the ground under it
+ *        (core.terrain)
+ * @param building {{view: BuildingView, staticData: Object, data: Object}}
+ *        the client's building (client/building), or anything drawn the
+ *        same way, its view up still
+ * @param tiles {number[]} every tile it stands on
+ */
 function Demolition(root, building, tiles) {
   var self = this,
     at = building.view.gameObject.transform.getPosition([0, 0, 0]);
@@ -186,20 +222,6 @@ function Demolition(root, building, tiles) {
   this.fences = {};
   fence(this);
 
-  //each tile brought down as a bulldozer comes to it, which waits for it
-  //to be down, and pushes its rubble away
-  tiles.forEach(function (tile) {
-    root.clearworks.hold(
-      tile,
-      function () {
-        letGo(self, tile);
-      },
-      function () {
-        return knock(self, tile);
-      },
-    );
-  });
-
   //turned round: what is coming down is down, and what stands stands as it
   //is seen from the new side
   this.turned = Events.on(
@@ -211,6 +233,58 @@ function Demolition(root, building, tiles) {
     this,
   );
 }
+
+/**
+ * Has a tile of it come down: shaking, its floors giving one onto the
+ * other, bursting into pieces in its dust, into its rubble.
+ *
+ * @param tile {number}
+ * @returns {number} how long till it is down, ms
+ */
+Demolition.prototype.knock = function (tile) {
+  return knock(this, tile);
+};
+
+/**
+ * Has a tile's rubble pushed away, and its stretch of the fence with it -
+ * down at once first, if it was not yet.
+ *
+ * @param tile {number}
+ */
+Demolition.prototype.letGo = function (tile) {
+  letGo(this, tile);
+};
+
+/**
+ * All of it gone there and then, with nothing shown of it going - for
+ * whoever puts back up what came down (a bench).
+ */
+Demolition.prototype.stop = function () {
+  for (var tile in this.columns) {
+    var col = this.columns[tile];
+
+    col.floors.concat(col.feet).forEach(gone);
+    if (col.rubble !== null && col.rubble.world !== null)
+      col.rubble.world.removeGameObject(col.rubble);
+    col.rubble = null;
+    col.state = "gone";
+  }
+
+  this.chunks.forEach(function (c) {
+    if (c.go.world !== null) c.go.world.removeGameObject(c.go);
+  });
+  this.chunks = [];
+
+  end(this);
+};
+
+/**
+ * Whether all of it is gone: every tile of it down and its rubble pushed
+ * away, and every piece of it gone.
+ */
+Demolition.prototype.over = function () {
+  return this.go.world === null;
+};
 
 //a tile of it: standing, shaking, falling, down - or gone, its rubble
 //pushed away
@@ -906,8 +980,8 @@ function gone(p) {
 }
 
 /**
- * A bulldozer got to a tile, and pushed what was left there away - down at
- * once, if it was not yet.
+ * A tile's rubble pushed away - by the bulldozer that got there - and what
+ * else was left there: down at once, if it was not yet.
  */
 function letGo(self, tile) {
   var col = self.columns[tile];
@@ -1192,4 +1266,4 @@ function hash(x, y) {
   return (h ^ (h >>> 13)) >>> 0;
 }
 
-export default { bringDown: bringDown };
+export default { bringDown: bringDown, Demolition: Demolition };
