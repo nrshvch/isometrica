@@ -1,18 +1,21 @@
 /**
  * The building bench (lab/buildings.html): one building, whole, put together
  * out of its parts the way the game puts it together (client/buildingview,
- * client/compoundbuilding), on flat grass with nothing else about
- * (lab/bench/world) - looked at from any side, turned any way, a look of
- * its own picked afresh, and brought down whole at the push of a button the
- * way it comes down in the game (client/demolition) - fenced off, every tile
- * of it at once, no bulldozer coming - and put back up.
+ * client/compoundbuilding), on a patch of flat grass a little bigger than it
+ * and nothing else (lab/bench/world) - looked at from any side, turned any
+ * way, a look of its own picked afresh, and brought down whole at the push
+ * of a button the way it comes down in the game (client/demolition) -
+ * fenced off, every tile of it at once, no bulldozer coming - and put back
+ * up.
  */
 import BuildingData from "../../src/data/buildings";
 import Rotation from "../../src/core/rotation";
 import { buildings } from "../bench/world.js";
 
-//the ground about it cleared of whatever went before, tiles a side
-var ROUND = 14;
+//the ground about it cleared of whatever went before, tiles a side; and
+//how far the grass it stands on reaches out round it, tiles
+var ROUND = 14,
+  MARGIN = 2;
 
 /**
  * @param world {World} the bench's world (lab/bench/world)
@@ -58,6 +61,12 @@ Stand.prototype.show = function () {
 
   this.down = null;
   world.wipe(-ROUND / 2, -ROUND / 2, ROUND, ROUND);
+  world.ground(
+    at.x - MARGIN,
+    at.y - MARGIN,
+    at.sizeX + 2 * MARGIN,
+    at.sizeY + 2 * MARGIN,
+  );
   this.building = world.put(this.code, at.x, at.y, this.rotation, this.look);
 
   //the look it was given as it was first drawn, kept from here on

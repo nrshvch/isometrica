@@ -225,20 +225,21 @@ engine in `engine/`.
 ### Benches
 
 - `lab/buildings.html` and `lab/demolition.html` (`npm run dev` here, or the
-  lab deployed) run the game's own client on a world of their own
-  (`lab/bench/world.js`): flat grass as far as can be seen, none of the
-  world's own woods or stones (`src/core/logic.js` ground and wild), a city
-  of nobody on it to own what is put up, the clock stood still at ten in the
-  morning, no traffic, nothing saved, nothing heard - going as fast as asked,
-  down to a tenth, or stopped, and turned round or seen from above.
+  lab deployed) run the game's own client out in the open sea
+  (`lab/bench/world.js`), and draw of the world only the bench's own patch
+  of ground: flat grass, made so the way a save puts ground back
+  (`src/core/terrain.js` load), nothing of the world's own on it - a city of
+  nobody to own what is put up, the clock stood still at ten in the
+  morning, no traffic, nothing saved, nothing heard - going as fast as
+  asked, down to a tenth, or stopped, and turned round or seen from above.
   `window.bench` in the console.
 - The building bench (`lab/buildings/stand.js`): one building of any kind,
-  whole, put together out of its parts the way the game puts it together -
-  "random" gives it another look, "any" picks any building, it turns on its
-  ground; "demolish" brings it down the way it comes down in the game,
-  fenced off, every tile of it at once and no bulldozer coming
-  (`client/clearworks.js` knock), and "restore" puts it back up as it was
-  (reach).
+  whole, on a patch of grass two tiles wider than it all round, put together
+  out of its parts the way the game puts it together - "random" gives it
+  another look, "any" picks any building, it turns on its ground;
+  "demolish" brings it down the way it comes down in the game, fenced off,
+  every tile of it at once and no bulldozer coming (`client/clearworks.js`
+  knock), and "restore" puts it back up as it was (reach).
 - The demolition bench (`lab/demolition/scene.js`): a few buildings, trees
   planted and a road along them; "destroy" clears it all the way the game
   clears ground - fenced off, the bulldozers coming, a building coming down

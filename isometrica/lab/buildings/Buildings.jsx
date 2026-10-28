@@ -151,7 +151,7 @@ export default function Buildings() {
         <aside className="w-80 flex-none overflow-y-auto border-l border-line px-2.5 py-2 max-[700px]:h-[45%] max-[700px]:w-auto max-[700px]:border-t max-[700px]:border-l-0">
           <Note>
             One building, whole - put together out of its parts the way the game
-            puts it together - on flat grass with nothing else about. Turn it,
+            puts it together - on a patch of flat grass, nothing else. Turn it,
             look at it from any side, give it another look; bring it down the
             way it comes down in the game, fenced off and every tile of it at
             once, and put it back up.

@@ -1,6 +1,6 @@
 /**
  * The demolition bench (lab/demolition.html): a few buildings, a few trees
- * planted and a road along them, on flat grass with nothing else about
+ * planted and a road along them, on a patch of flat grass and nothing else
  * (lab/bench/world) - and all of it cleared the way the game clears ground
  * (client/clearworks): fenced off, the bulldozers coming, a building
  * coming down a tile at a time as they get to it, the trees going over the
@@ -8,7 +8,7 @@
  * up once over the lot. Put up again as often as wanted.
  */
 
-//the ground the scene stands on, tiles from the middle of the world: its
+//the ground the scene stands on, tiles from the middle of the bench: its
 //corner with the least x and y, and how far it goes
 var X = -7,
   Y = -4,
@@ -45,11 +45,16 @@ var TREES = [
 //the road between them, along x
 var ROAD = { x: -7, y: 0, length: 15 };
 
+//how far the grass reaches out round it, tiles - room for the bulldozers to
+//come out of their dust on
+var MARGIN = 2;
+
 /**
  * @param world {World} the bench's world (lab/bench/world)
  */
 export function Scene(world) {
   this.world = world;
+  world.ground(X - MARGIN, Y - MARGIN, W + 2 * MARGIN, H + 2 * MARGIN);
   this.put();
   world.look(0, 0);
 }

@@ -155,8 +155,8 @@ export default function Demolition() {
 
         <aside className="w-80 flex-none overflow-y-auto border-l border-line px-2.5 py-2 max-[700px]:h-[45%] max-[700px]:w-auto max-[700px]:border-t max-[700px]:border-l-0">
           <Note>
-            A few buildings, trees and a road on flat grass, with nothing else
-            about, cleared the way the game clears ground: fenced off, the
+            A few buildings, trees and a road on a patch of flat grass, nothing
+            else, cleared the way the game clears ground: fenced off, the
             bulldozers coming, a building coming down a tile at a time as they
             get to it, the trees going over the way they are pushed, the road
             broken up into the bare earth.

@@ -17,14 +17,11 @@ namespace("Isometrica.Core").Logic = Logic;
 
 /**
  * @param [options] {{tick: number, saves: string, api: string,
- *        catchUp: boolean, ground: function, wild: boolean}} what the game
- *        played in the world wants of it: how much game time a tick of it is
- *        worth, ms (VTime.setTickLength), what its cities are saved under in
- *        localStorage (CityStore), where on its server they are kept as
- *        well, if it has one (CitySync), and whether its city goes on while
- *        the game is away (#catchUp) - and for a world of its own, a bench's
- *        (lab/), how high the ground is at every grid point (Terrain) and
- *        false for none of the world's own woods and stones (EnvService)
+ *        catchUp: boolean}} what the game played in the world wants of it:
+ *        how much game time a tick of it is worth, ms (VTime.setTickLength),
+ *        what its cities are saved under in localStorage (CityStore), where
+ *        on its server they are kept as well, if it has one (CitySync), and
+ *        whether its city goes on while the game is away (#catchUp)
  */
 function Logic(options) {
   options = options || {};
@@ -36,12 +33,12 @@ function Logic(options) {
 
   this.messagingService = new MessagingService(this);
   this.time = new VTime(this);
-  this.terrain = new Terrain(this, options.ground);
+  this.terrain = new Terrain(this);
   this.buildingService =
     this.constructionService =
     this.buildings =
       new Buildings(this);
-  this.envService = new EnvService(this, options.wild);
+  this.envService = new EnvService(this);
   this.tileParams = new TileParamsMan(this);
   this.marketService = new MarketService(this);
   this.cities = new CityService(this);

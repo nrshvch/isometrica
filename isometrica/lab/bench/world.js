@@ -1,15 +1,15 @@
 /**
- * A world of its own for the lab's benches (lab/buildings.html,
- * lab/demolition.html): the game's own client and world, and nothing else in
- * it - flat grass as far as can be seen, none of the world's own woods or
- * stones (core/logic ground, wild), and a city of nobody on it to own what is
- * put up, rich enough never to be short. The clock stands still at ten in the
- * morning in clear weather, no traffic drives its roads, nothing is saved,
- * nothing is heard; and the client goes as fast or as slowly as asked, or
- * not at all.
+ * The ground for the lab's benches (lab/buildings.html, lab/demolition.html):
+ * the game's own client and world, out in the open sea, and of all of it
+ * only the bench's own patch drawn - flat grass, as a save puts ground back
+ * (core/terrain load), with nothing of the world's own on it - and a city of
+ * nobody to own what is put up, rich enough never to be short. The clock
+ * stands still at ten in the morning in clear weather, no traffic drives
+ * its roads, nothing is saved, nothing is heard; and the client goes as
+ * fast or as slowly as asked, or not at all.
  *
  * What is put up goes up whole, there and then - unpaid, nothing floated
- * over it (put) - on tiles counted from the middle of the world.
+ * over it (put) - on tiles counted from the middle of the patch.
  */
 import ReactiveProperty from "reactive-property";
 import Core from "../../src/core/main";
@@ -28,11 +28,12 @@ var Terrain = Core.Terrain;
 //be saved (core/persistence)
 var SAVES = "lab.bench";
 
-//how high the ground is everywhere, steps - land, clear of the sea
+//how high the bench's ground is, steps - land, clear of the sea
 var GROUND = 2;
 
-//the middle of the world, a tile out in the open
-var MIDDLE = Terrain.convertToIndex(30000, 30000);
+//the middle of the bench, out in the open sea: deep water for thirty tiles
+//round it, nothing of the world's own anywhere near
+var MIDDLE = Terrain.convertToIndex(29960, 29960);
 
 //the hour it is, and the money the city has
 var TEN = 10 * 3600000,
@@ -101,14 +102,7 @@ function controls() {
 export function open(el) {
   Weather.override = "clear";
 
-  var core = new Core.Logic({
-      tick: 300000,
-      saves: SAVES,
-      ground: function () {
-        return GROUND;
-      },
-      wild: false,
-    }),
+  var core = new Core.Logic({ tick: 300000, saves: SAVES }),
     client = new Client.Vkaria(core, bridge(), {
       create: function (vkaria) {
         //nobody's city: no name over it
@@ -133,13 +127,45 @@ export function open(el) {
       resources: { money: PURSE },
     });
 
+    var world = new World(core, client, city);
+
     client.start();
     attach(client, el);
+    only(world);
     client.startServices();
     stopTraffic(client);
+    world.start();
 
-    return new World(core, client, city);
+    return world;
   });
+}
+
+/**
+ * Only the bench's own patch of ground drawn: whatever is to be drawn round
+ * the camera as it moves (client/tilesman) cut down to it, and the sea round
+ * it left undrawn.
+ */
+function only(self) {
+  var terrain = self.client.terrain,
+    draw = terrain.draw;
+
+  self.drawGround = function (x0, y0, w, h) {
+    draw.call(terrain, x0, y0, w, h);
+  };
+
+  terrain.draw = function (x0, y0, w, h) {
+    var a = self.area;
+
+    if (a === null) return;
+
+    var ax0 = Math.max(x0, a.x),
+      ay0 = Math.max(y0, a.y),
+      ax1 = Math.min(x0 + w, a.x + a.w),
+      ay1 = Math.min(y0 + h, a.y + a.h);
+
+    if (ax1 > ax0 && ay1 > ay0)
+      draw.call(terrain, ax0, ay0, ax1 - ax0, ay1 - ay0);
+  };
 }
 
 //no traffic on the roads: whatever puts the cars on (client/carman) taken
@@ -178,15 +204,66 @@ function World(core, client, city) {
   this.city = city;
   //how fast the client goes: 1 as the game goes, 0 stood still
   this.speed = 1;
-
-  pace(this);
+  //the patch of ground drawn, {x, y, w, h} in tiles of the world - none
+  //yet (ground)
+  this.area = null;
 
   //for the console: bench.world
   window.bench = { world: this };
-
-  this.look(0, 0);
-  client.camera.cameraScript.zoom(CLOSE);
 }
+
+//once the client is up: going at its own pace, the camera over the middle
+World.prototype.start = function () {
+  pace(this);
+  this.look(0, 0);
+  this.client.camera.cameraScript.zoom(CLOSE);
+};
+
+/**
+ * The patch of ground the bench stands on, w by h tiles from dx, dy off its
+ * middle: flat grass, made so the way a save puts ground back (core/terrain
+ * load) - its grid points all as high, and nothing of the world's own on
+ * any of its tiles - and drawn, and nothing else; the patch drawn before it
+ * gone where it is not this one.
+ */
+World.prototype.ground = function (dx, dy, w, h) {
+  var core = this.core,
+    client = this.client,
+    x0 = Terrain.extractX(MIDDLE) + dx,
+    y0 = Terrain.extractY(MIDDLE) + dy,
+    was = this.area,
+    points = [],
+    cleared = [],
+    tiles = [],
+    i,
+    j;
+
+  for (i = 0; i <= w; i++)
+    for (j = 0; j <= h; j++)
+      points.push([Terrain.convertToIndex(x0 + i, y0 + j), GROUND]);
+
+  for (i = 0; i < w; i++)
+    for (j = 0; j < h; j++) {
+      var tile = Terrain.convertToIndex(x0 + i, y0 + j);
+
+      tiles.push(tile);
+      if (core.terrain.clearedTiles[tile] !== true) cleared.push(tile);
+    }
+
+  core.terrain.load({ points: points, cleared: cleared });
+
+  this.area = { x: x0, y: y0, w: w, h: h };
+
+  //what was drawn of the patch before, and is not of this one, gone
+  if (was !== null)
+    for (i = was.x; i < was.x + was.w; i++)
+      for (j = was.y; j < was.y + was.h; j++)
+        if (i < x0 || i >= x0 + w || j < y0 || j >= y0 + h)
+          client.terrain.clear(i, j, 1, 1);
+
+  this.drawGround(x0, y0, w, h);
+  client.terrain.redraw(tiles);
+};
 
 //the client's clock going speed times as fast as the real one
 function pace(self) {
@@ -204,15 +281,15 @@ function pace(self) {
 }
 
 /**
- * The tile dx, dy from the middle of the world.
+ * The tile dx, dy from the middle of the bench.
  */
 World.prototype.tile = function (dx, dy) {
   return MIDDLE + dx + dy * Terrain.dy;
 };
 
 /**
- * The camera over the ground x, y tiles from the middle of the world -
- * a tile's middle for whole numbers.
+ * The camera over the ground x, y tiles from the middle of the bench - a
+ * tile's middle for whole numbers.
  */
 World.prototype.look = function (x, y) {
   this.client.camera.cameraScript.lookAt(
@@ -363,13 +440,12 @@ World.prototype.rebuild = function (tiles) {
   grass(this, tiles);
 };
 
-//tiles grass again, however they were cleared or moved
+//tiles grass again, however they were cleared
 function grass(self, tiles) {
   var terrain = self.core.terrain;
 
   tiles.forEach(function (tile) {
     delete terrain.bareSince[tile];
-    delete terrain.clearedTiles[tile];
   });
   self.client.terrain.redraw(tiles);
 }
