@@ -195,8 +195,15 @@ function contains(tile0, tile1, t) {
  * @param world
  * @constructor
  */
-function Terrain(world) {
+/**
+ * @param world {Logic}
+ * @param [ground] {function(number): number} how high the ground is at a
+ *        grid point, for a world of its own - a bench's flat land (lab/) -
+ *        rather than the noise's hills, sea and all (calcZ)
+ */
+function Terrain(world, ground) {
   this.world = world;
+  this.ground = ground || calcZ;
   //only the grid points that were edited - everything else is worked
   //out from the noise every time it is asked for
   this.gridPoints = Object.create(null);
@@ -557,7 +564,7 @@ Terrain.prototype.getGridPointHeight = function (indexOrX, y) {
   var gp = this.gridPoints[index];
 
   if (gp === undefined) {
-    gp = calcZ(index);
+    gp = this.ground(index);
     //gp = this.gridPoints[index] = calcZ(index);
   }
 

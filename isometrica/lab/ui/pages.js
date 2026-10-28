@@ -42,14 +42,22 @@ export var PAGES = [
       "standing too long, locking up.",
   },
   {
+    id: "buildings",
+    name: "Building bench",
+    about:
+      "One building, whole, put together out of its parts the way the game " +
+      "puts it together, on flat grass: turn it, look at it from any side, " +
+      "give it another look - and bring it down, fenced off and every tile " +
+      "of it at once, and put it back up.",
+  },
+  {
     id: "demolition",
     name: "Demolition bench",
     about:
-      "The game itself on the city every player starts on, and a stage next " +
-      "to it: put a building, trees or roads up on it and clear them, as " +
-      "slowly as you like - the bulldozers coming, a building coming down a " +
-      "tile at a time, a tree going over, a road broken up - or pick any " +
-      "ground, the woods among it, and clear that.",
+      "A few buildings, trees and a road on flat grass, and all of it " +
+      "cleared by the bulldozers at the push of a button - a building " +
+      "coming down a tile at a time as they get to it, the trees going " +
+      "over, the road broken up - as slowly as you like.",
   },
   {
     id: "lighting",

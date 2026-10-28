@@ -27,8 +27,9 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   opens them all from `/` - every sprite the generators paint, lit or at
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
   music at `/music.html`, the woods map at `/woods.html`, the traffic
-  testbed at `/traffic.html`, the demolition bench at `/demolition.html`
-  and the lighting bench at `/lighting.html`. Everything is painted and
+  testbed at `/traffic.html`, the building bench at `/buildings.html`, the
+  demolition bench at `/demolition.html` and the lighting bench at
+  `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
@@ -221,22 +222,29 @@ engine in `engine/`.
   roads it goes by - where two roads join, which way a one-way road goes -
   are in `core/roadrules.js`, which `client/road` and `core/surface` use too.
 
-### Demolition bench
+### Benches
 
-- `lab/demolition.html` (`npm run dev` here, or the lab deployed) runs the
-  game's own client (`lab/demolition/bench.js`) on the city every new player
-  starts on (`src/data/initialcity.js`), in a save of its own thrown away
-  every time the page comes up, the world's clock stood still. Next to the
-  city is a stage of open ground: put up a building of any kind on it, nine
-  trees planted, a crossing of roads, or all of them, and clear it the way
-  the city builder clears ground - the bulldozers coming, a building coming
-  down a tile at a time, the trees going over the way they are pushed, the
-  roads broken up, one price floated over the lot - or put the last thing up
-  again and clear it a moment later ("again"). Any ground can be picked the
-  way the game picks it (`client/areaselector.js`) and cleared, and "woods"
-  picks the nearest patch of the world's own trees. It goes as slowly as
-  wanted - down to a tenth, or stopped - and turns round, or is seen from
-  above, in the middle of it all. `window.demolition.bench` in the console.
+- `lab/buildings.html` and `lab/demolition.html` (`npm run dev` here, or the
+  lab deployed) run the game's own client on a world of their own
+  (`lab/bench/world.js`): flat grass as far as can be seen, none of the
+  world's own woods or stones (`src/core/logic.js` ground and wild), a city
+  of nobody on it to own what is put up, the clock stood still at ten in the
+  morning, no traffic, nothing saved, nothing heard - going as fast as asked,
+  down to a tenth, or stopped, and turned round or seen from above.
+  `window.bench` in the console.
+- The building bench (`lab/buildings/stand.js`): one building of any kind,
+  whole, put together out of its parts the way the game puts it together -
+  "random" gives it another look, "any" picks any building, it turns on its
+  ground; "demolish" brings it down the way it comes down in the game,
+  fenced off, every tile of it at once and no bulldozer coming
+  (`client/clearworks.js` knock), and "restore" puts it back up as it was
+  (reach).
+- The demolition bench (`lab/demolition/scene.js`): a few buildings, trees
+  planted and a road along them; "destroy" clears it all the way the game
+  clears ground - fenced off, the bulldozers coming, a building coming down
+  a tile at a time as they get to it, the trees going over, the road broken
+  up, one price floated over the lot - "reset" puts it up again, and
+  "again" does both.
 
 ### Sounds
 
@@ -757,7 +765,13 @@ dev`) plays them the way a game would - all three weathers together, the
   picked - not over every tile of it.
 - A building cleared away is cleared whole, every tile of it, whichever was
   picked (`isometrica/src/core/city.js` clearTile), and is paid for by the
-  tile. It stands till a bulldozer comes up to a tile of it
+  tile. It is fenced off there and then, the way a building site is - the
+  site's own blue tarp on posts (`isometrica/src/shared/gen/sites.js`
+  fence), or for a small one its low timber rail, along every edge of it,
+  a gate in the middle of its front - the stretch at the back of a tile
+  drawn just behind what stands on it and the one at its front just in
+  front, and a tile's stretches pushed over with its rubble as the bulldozer
+  gets there. It stands till a bulldozer comes up to a tile of it
   (`isometrica/src/client/clearworks.js` hold, knock): then that tile of it
   comes down (`isometrica/src/client/demolition.js`), the bulldozer waiting
   a moment off it. Its picture is taken apart into its floors - the parts it

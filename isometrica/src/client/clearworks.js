@@ -177,6 +177,44 @@ Clearworks.prototype.hold = function (tile, letGo, knock) {
   return true;
 };
 
+/**
+ * Has whatever is held on tiles come down, there and then, as it would as a
+ * bulldozer came up to it (hold knock) - and none comes: for a bench (lab/)
+ * to bring a building down whole at the push of a button.
+ *
+ * @param tiles {number[]}
+ * @returns {number} how long till all of it is down, ms
+ */
+Clearworks.prototype.knock = function (tiles) {
+  var self = this,
+    most = 0;
+
+  tiles.forEach(function (tile) {
+    knock(self, tile);
+
+    if (self.waiting[tile] !== undefined)
+      most = Math.max(most, self.waiting[tile].until - self.clock);
+  });
+
+  return most;
+};
+
+/**
+ * Has tiles cleared as a bulldozer getting to them would (reach) - what was
+ * held on them let go of, and they are free to build on again - but quietly,
+ * with no bulldozer and no dust: for a bench (lab/) to put back what it
+ * brought down.
+ *
+ * @param tiles {number[]}
+ */
+Clearworks.prototype.reach = function (tiles) {
+  var self = this;
+
+  tiles.forEach(function (tile) {
+    reach(self, tile, undefined, true);
+  });
+};
+
 function ClearworksScript(man) {
   engine.Component.call(this);
   this.man = man;
@@ -208,9 +246,9 @@ ClearworksScript.prototype.tick = function (time) {
  * A bulldozer got to a tile, pushing on the way `push` - or something was
  * built on it meanwhile, and there is no push: whatever stood on it goes
  * down in a cloud of dust, and the tile is the bare earth left
- * (client/terrain).
+ * (client/terrain) - with no dust, if quiet.
  */
-function reach(self, tile, push) {
+function reach(self, tile, push, quiet) {
   var held = self.waiting[tile];
 
   if (held === undefined) return;
@@ -223,7 +261,7 @@ function reach(self, tile, push) {
   //gone: the tile is free to build on again, and bare
   self.root.core.terrain.endClearing(tile);
   self.root.terrain.redraw([tile]);
-  burst(self, tile);
+  if (quiet !== true) burst(self, tile);
   Events.fire(self, events.reached, tile);
 }
 

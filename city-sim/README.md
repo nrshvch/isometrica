@@ -64,8 +64,9 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   a road broken up as they drive over it, and leave the ground bare earth -
   which the grass grows back over in half a game day
   (`isometrica/src/client/clearworks.js`). A
-  building is cleared whole, every tile of it paid for, and comes down a tile
-  at a time as the bulldozers come up to it - floor onto floor, bursting into
+  building is cleared whole, every tile of it paid for, is fenced off there
+  and then the way a building site is, and comes down a tile at a time as
+  the bulldozers come up to it - floor onto floor, bursting into
   pieces, in a cloud of grey dust - into rubble for them to push away
   (`isometrica/src/client/demolition.js`); and nothing can be built on a
   tile till its bulldozer is done there.

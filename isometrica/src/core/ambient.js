@@ -210,8 +210,14 @@ function onConstructionBuilt(buildman, building, self) {
   while (!tiles.done) clear(self, tiles.next());
 }
 
-function Ambient(root) {
+/**
+ * @param root {Logic}
+ * @param [wild] {boolean} false for a world with nothing of its own on it -
+ *        no woods, no stones: a bench's bare land (lab/)
+ */
+function Ambient(root, wild) {
   this.root = root;
+  this.wild = wild !== false;
   this._usedTiles = {};
 }
 
@@ -234,6 +240,7 @@ Ambient.prototype.getTree = function (tile) {
 
   //nothing grows where there are stones
   if (
+    this.wild &&
     terrainType !== TerrainType.water &&
     terrainType !== TerrainType.shore &&
     resource === null &&
@@ -258,7 +265,7 @@ Ambient.prototype.hasTree = function (tile) {
  * @returns {number|null}
  */
 Ambient.prototype.getRock = function (tile) {
-  return rockAt(this, tile);
+  return this.wild ? rockAt(this, tile) : null;
 };
 
 /**
@@ -269,7 +276,7 @@ Ambient.prototype.getRock = function (tile) {
  * @returns {boolean}
  */
 Ambient.prototype.hasScenery = function (tile) {
-  return this.getTree(tile) !== null || rockAt(this, tile) !== null;
+  return this.getTree(tile) !== null || this.getRock(tile) !== null;
 };
 
 Ambient.prototype.init = function () {

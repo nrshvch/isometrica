@@ -5,6 +5,7 @@ import Config from "./config";
 import View from "./view";
 import RenderLayer from "./renderlayer";
 import BuildingView from "./buildingview";
+import CompoundBuilding from "./compoundbuilding";
 import Trees from "../data/trees";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
@@ -112,6 +113,14 @@ var RUBBLE = [
 var RUBBLE_PIVOT_X = 32,
   RUBBLE_PIVOT_Y = 24;
 
+//how far back and forward of the middle of its tile, as it is seen, the
+//stretches of fence at the back and at the front of a tile are put, tiles
+//along both ways of the ground: behind what stands on the tile and in front
+//of it in the order things are drawn in, and short of the tiles next to
+//it; and how far up the screen a tile along both ways at once is, pixels
+var FENCE_SHIFT = 14 / 32,
+  TILE_PX = 32;
+
 /**
  * Has a building cleared away stand till the bulldozers come to bring it
  * down, a tile at a time - if it was cleared away, its tiles being cleared
@@ -171,6 +180,11 @@ function Demolition(root, building, tiles) {
   root.game.logic.world.addGameObject(this.go);
 
   stand(this, building.view.gameObject, at);
+
+  //fenced off, the way a building site is, the moment it is to come down
+  this.small = CompoundBuilding.smallSite(building.staticData);
+  this.fences = {};
+  fence(this);
 
   //each tile brought down as a bulldozer comes to it, which waits for it
   //to be down, and pushes its rubble away
@@ -907,6 +921,125 @@ function letGo(self, tile) {
     col.rubble.world.removeGameObject(col.rubble);
   col.rubble = null;
   col.state = "gone";
+  //its stretch of the fence pushed over with it
+  unfence(self, tile);
+  changed();
+}
+
+/**
+ * The fence round it, as a building site has (shared/gen/sites fence - for
+ * a small one its low rail; shared/gen/stacking fenced): along every edge
+ * of a tile of it that is an edge of it, with a gate in the middle of its
+ * front, the way it is seen now - on every tile not pushed away yet. The
+ * stretches at the back of a tile are drawn just behind what stands on it
+ * and the ones at its front just in front of it, so that the building is
+ * between them, as it would be within them.
+ */
+function fence(self) {
+  var x0 = Infinity,
+    x1 = -Infinity,
+    y0 = Infinity,
+    tile;
+
+  for (tile in self.columns) {
+    x0 = Math.min(x0, Terrain.extractX(+tile));
+    x1 = Math.max(x1, Terrain.extractX(+tile));
+    y0 = Math.min(y0, Terrain.extractY(+tile));
+  }
+
+  var gate = x0 + Math.floor((x1 - x0) / 2);
+
+  for (tile in self.columns) {
+    if (self.columns[tile].state === "gone") continue;
+
+    var t = +tile,
+      x = Terrain.extractX(t),
+      y = Terrain.extractY(t),
+      mask =
+        (self.columns[t - 1] ? "0" : "1") +
+        (self.columns[t - Terrain.dy]
+          ? "0"
+          : y === y0 && x === gate
+            ? "2"
+            : "1") +
+        (self.columns[t + 1] ? "0" : "1") +
+        (self.columns[t + Terrain.dy] ? "0" : "1");
+
+    unfence(self, t);
+    if (mask !== "0000") self.fences[t] = stretches(self, t, mask);
+  }
+}
+
+//a tile's stretches of the fence along the edges mask says (shared/gen/sites
+//PARTS), at its back and at its front, as they are seen
+function stretches(self, tile, mask) {
+  var sprites = self.root.sprites,
+    x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    ground =
+      self.root.core.terrain.getHeight(x + 0.5, y + 0.5) * Config.tileZStep,
+    away = View.unvector(FENCE_SHIFT, FENCE_SHIFT),
+    out = [];
+
+  ["back", "front"].forEach(function (side) {
+    var name =
+        "gen/sites/" +
+        (self.small ? "rail" : "fence") +
+        "/" +
+        mask +
+        "/" +
+        side +
+        "/r" +
+        View.turns(),
+      frame = sprites.frame(name);
+
+    //none of it on this side of the tile, as it is seen
+    if (frame === undefined || frame.w === 0) return;
+
+    var go = new engine.GameObject("fence"),
+      renderer = new engine.SpriteRenderer(),
+      //back or forward as it is seen, but where it was on the screen
+      by = View.top() ? 0 : side === "back" ? 1 : -1;
+
+    renderer.layer = RenderLayer.buildingsLayer;
+    go.addComponent(renderer);
+
+    if (View.top()) {
+      var top = sprites.topOf(name);
+
+      renderer.setSprite(top);
+      renderer.pivotX = top.pivotX;
+      renderer.pivotY = top.pivotY;
+    } else {
+      renderer.setSprite(sprites.getSprite(name));
+      renderer.pivotX = frame.pivotX;
+      renderer.pivotY = frame.pivotY - by * FENCE_SHIFT * TILE_PX;
+    }
+
+    go.transform.setPosition(
+      (x + by * away[0]) * TILE,
+      ground,
+      (y + by * away[1]) * TILE,
+    );
+    self.root.game.logic.world.addGameObject(go);
+    out.push(go);
+  });
+
+  changed();
+
+  return out;
+}
+
+//a tile's stretches of the fence gone
+function unfence(self, tile) {
+  var gos = self.fences[tile];
+
+  if (gos === undefined) return;
+
+  gos.forEach(function (go) {
+    if (go.world !== null) go.world.removeGameObject(go);
+  });
+  delete self.fences[tile];
   changed();
 }
 
@@ -917,6 +1050,9 @@ function letGo(self, tile) {
  */
 function turn(self) {
   var standing = false;
+
+  //the fence as it is seen from the new side
+  fence(self);
 
   self.chunks.forEach(function (c) {
     if (c.go.world !== null) c.go.world.removeGameObject(c.go);
@@ -959,6 +1095,7 @@ function turn(self) {
 
 //all of it down, and pushed away, and every piece of it gone
 function end(self) {
+  for (var tile in self.fences) unfence(self, +tile);
   if (self.go.world !== null) self.go.world.removeGameObject(self.go);
   if (self.turned !== null) {
     Events.off(View, View.events.change, self.turned);
