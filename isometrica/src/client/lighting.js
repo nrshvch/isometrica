@@ -460,6 +460,8 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
     top.h >= BEACON_MIN &&
     (top.spike >= BEACON_SPIKE || renderer.lights === undefined) &&
     renderer.lamps === undefined &&
+    //nothing lit of a building fenced off to come down (client/demolition)
+    renderer.dark !== true &&
     renderer.opacity > 0.99
   )
     keepTop(this, renderer, top, x0, y0);
@@ -1123,9 +1125,11 @@ Lighting.brakeLights = function (go, x, y, up) {
  * for more of them - a building's windows by its own hours (windows, see
  * windowsOn); a car's lamps by its own (lamps, see lampsOn), and a street
  * light's with every other one's (city, see cityOn), all or nothing;
- * anything else never.
+ * anything else never - nor a building fenced off to come down, dark.
  */
 Lighting.shines = function (renderer) {
+  //a building fenced off to come down: all of it dark (client/demolition)
+  if (renderer.dark === true) return 0;
   if (renderer.lamps !== undefined) return lampsOn(renderer.lamps) ? 2 : 0;
   if (renderer.windows !== undefined)
     return windowsOn(renderer.windows, renderer.lights);

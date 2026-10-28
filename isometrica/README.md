@@ -772,20 +772,24 @@ dev`) plays them the way a game would - all three weathers together, the
   `isometrica/src/client/demolition.js`), told when each tile is to come
   down and when its rubble is pushed away; in the game it is the bulldozers
   that tell it (bringDown). It is fenced off there and then, the way a
-  building site is - the
-  site's own blue tarp on posts (`isometrica/src/shared/gen/sites.js`
-  fence), or for a small one its low timber rail, along every edge of it,
-  a gate in the middle of its front - the stretch at the back of a tile
+  building site is - the site's own blue tarp on posts
+  (`isometrica/src/shared/gen/sites.js` fence), or for a small one its low
+  timber rail, along every edge of it, a gate in the middle of its front -
+  the stretch at the back of a tile
   drawn just behind what stands on it and the one at its front just in
   front, and a tile's stretches pushed over with its rubble as the bulldozer
-  gets there. It stands till a bulldozer comes up to a tile of it
+  gets there. It stands as it stood - every tile of it the one picture it
+  was drawn as, in the order things are drawn in and with its shadow - but
+  with all of its lights out, its windows and the warning light on its top
+  (`client/lighting.js` dark), till a bulldozer comes up to a tile of it
   (`isometrica/src/client/clearworks.js` hold, knock): then that tile of it
   comes down (`isometrica/src/client/demolition.js`), the bulldozer waiting
-  a moment off it. Its picture is taken apart into its floors - the parts it
-  was put together out of (`client/compoundbuilding.js`), or for a picture
-  painted whole, bands of it a storey high cut out of it
-  (`client/spritecache.js` getComposite clip), its foot staying on the
-  ground. It shakes; a floor some way up gives, and what is over it drops
+  a moment off it. Only then is its picture taken apart into its floors -
+  each still drawn where its tile is in the order things are drawn in,
+  however high up it is (seat) - the parts it was put together out of
+  (`client/compoundbuilding.js`), or for a picture painted whole, bands of
+  it a storey high cut out of it (`client/spritecache.js` getComposite
+  clip), its foot staying on the ground. It shakes; a floor some way up gives, and what is over it drops
   onto the floor under it, which gives in turn - and so on down, every floor
   crushed, the ones that fell crushed onto its foot in the end; nothing of
   it goes into the ground. A floor crushed bursts into pieces of its own

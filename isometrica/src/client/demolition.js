@@ -27,22 +27,26 @@ var Terrain = Core.Terrain;
  * and drawn with no more than the pictures, the world they are drawn in
  * and the ground under it.
  *
- * Every tile of a building is drawn as one picture (client/buildingview), of
- * the parts it is put together out of - its ground storey, a storey on that
- * for every one more, its roof (client/compoundbuilding) - or painted whole,
- * a house. It comes down as its floors: the parts, or for a picture painted
- * whole, bands of it a storey high cut out of it (SpriteCache#getComposite
- * clip), its foot - the bottom of it, round the middle of its tile and in
- * front - staying put on the ground. It shakes a moment; then a floor some
- * way up gives, and everything over it drops onto the floor under it, which
- * gives in turn as it comes down on it - and so on down, every floor
- * crushed, to the ground, where the floors that fell crush one by one onto
- * their foot; nothing of it goes down into the ground. A floor crushed
- * bursts into pieces of itself - bits of the picture of it, flung out and up
- * - that fall round the building, bounce, lie a while and go; and goes in a
- * puff of grey dust, dithered away. The dust goes up as it shakes, wherever
- * a floor gives, and rolls out over the heap of rubble it leaves once it is
- * down, the rubble coming up under it as its foot goes.
+ * Fenced off, it stands as it stood - every tile of it the one picture it
+ * was drawn as (client/buildingview), in the order things are drawn in and
+ * with the shadow it had - only with all of its lights out. Every tile of it
+ * is the parts it is put together out of - its ground storey, a storey on
+ * that for every one more, its roof (client/compoundbuilding) - or painted
+ * whole, a house; and once a tile is to come down it is taken apart into its
+ * floors (slice), each still drawn where its tile is in the order things are
+ * drawn in, however high up it is (seat): the parts, or for a picture
+ * painted whole, bands of it a storey high cut out of it
+ * (SpriteCache#getComposite clip), its foot - the bottom of it, round the
+ * middle of its tile and in front - staying put on the ground. It shakes a
+ * moment; then a floor some way up gives, and everything over it drops onto
+ * the floor under it, which gives in turn as it comes down on it - and so on
+ * down, every floor crushed, to the ground, where the floors that fell crush
+ * one by one onto their foot; nothing of it goes down into the ground. A
+ * floor crushed bursts into pieces of itself - bits of the picture of it,
+ * flung out and up - that fall round the building, bounce, lie a while and
+ * go; and goes in a puff of grey dust, dithered away. The dust goes up as it
+ * shakes, wherever a floor gives, and rolls out over the heap of rubble it
+ * leaves once it is down, the rubble coming up under it as its foot goes.
  *
  * Turned round, what is coming down is down at once, and what still stands
  * stands as it is seen from the new side. None of it is kept.
@@ -263,7 +267,9 @@ Demolition.prototype.stop = function () {
   for (var tile in this.columns) {
     var col = this.columns[tile];
 
-    col.floors.concat(col.feet).forEach(gone);
+    col.floors.concat(col.feet, col.whole).forEach(gone);
+    col.whole = [];
+    col.cuts = [];
     if (col.rubble !== null && col.rubble.world !== null)
       col.rubble.world.removeGameObject(col.rubble);
     col.rubble = null;
@@ -301,6 +307,10 @@ function column(tile) {
     v: 0,
     k: 0,
     rubble: null,
+    //what stands of it whole, till it is to come down - and what it is to
+    //be taken apart from then (slice)
+    whole: [],
+    cuts: [],
   };
 }
 
@@ -340,13 +350,42 @@ function stand(self, view, at) {
       return;
     }
 
-    floorsOf(self, col, where, renderer, sprite);
-  });
+    //the rest of it whole, the picture it was, till it is to come down -
+    //what of its view it is taken apart by kept, the view let go of
+    var kept = {
+      layer: renderer.layer,
+      pivotX: renderer.pivotX,
+      pivotY: renderer.pivotY,
+      lights: renderer.lights,
+      variant: renderer.variant,
+    };
 
-  for (var tile in self.columns)
-    self.columns[tile].floors.sort(function (a, b) {
-      return a.base - b.base;
-    });
+    col.whole.push(piece(self, where, kept, whole(sprite, kept)));
+    col.cuts.push({ where: where, renderer: kept, sprite: sprite });
+  });
+}
+
+/**
+ * A tile that is to come down taken apart into its floors (floorsOf), the
+ * lowest first, each drawn after the ones under it - where it stood whole
+ * till now.
+ */
+function slice(self, col) {
+  col.whole.forEach(gone);
+  col.whole = [];
+
+  col.cuts.forEach(function (c) {
+    floorsOf(self, col, c.where, c.renderer, c.sprite);
+  });
+  col.cuts = [];
+
+  col.floors.sort(function (a, b) {
+    return a.base - b.base;
+  });
+  col.floors.forEach(function (f, i) {
+    f.order = i + 1;
+    seat(f, f.x, f.y, f.z);
+  });
 }
 
 //a picture as it is, whole
@@ -502,23 +541,61 @@ function piece(self, where, renderer, part) {
   r.layer = renderer.layer;
   r.setSprite(sprite);
   r.pivotX = part.pivotX - (c ? c.x : 0);
-  r.pivotY = part.pivotY - (c ? c.y : 0);
-  //lit at night as it was
-  r.windows = renderer.windows;
+  //fenced off to come down: nothing of it lit, not its windows, not the
+  //warning light on its top (client/lighting dark)
   r.lights = renderer.lights;
   r.variant = renderer.variant;
+  r.dark = true;
   go.addComponent(r);
   self.go.transform.addChild(go.transform);
-  go.transform.setLocalPosition(where[0], y, where[2]);
 
-  return {
+  var p = {
     go: go,
     x0: where[0],
     y0: y,
     z0: where[2],
     part: part,
     fade: -1,
+    //where its tile's ground is, how high it is drawn from over that, and
+    //after how many of the tile's others it is drawn (seat)
+    ground: where[1],
+    pivotY: part.pivotY - (c ? c.y : 0),
+    order: 0,
   };
+
+  seat(p, p.x0, p.y0, p.z0);
+
+  return p;
+}
+
+//how much nearer each floor of a tile is drawn from, in the order things
+//are drawn in, than the one under it, world units - for it to be drawn
+//after it: enough to tell them apart there, the keys of that order kept to
+//16 bits over all that is in sight (engine Canvas2dRenderer depthSort),
+//and the ones that share a key drawn the last put in first - and far short
+//of the tile next to it
+var ORDER = 1;
+
+/**
+ * Puts a piece where it is drawn - x, y, z off where the building is drawn
+ * from - and records it there (x, y, z). Drawn from as high as it is, it is
+ * lit as high as it is; but higher up is later in the order things are
+ * drawn in (CameraComponent#depthAxes: away along the ground, less how
+ * high), and a floor up high would be drawn over what stands in front of
+ * its tile - so it is drawn from half as far back again, along the ground
+ * away from the camera, as it is high over its tile's ground: where its
+ * tile is in the order things are drawn in, after the ones under it - and
+ * where it was on the screen, by its pivot.
+ */
+function seat(p, x, y, z) {
+  var back = (y - p.ground) / 2 - p.order * ORDER,
+    away = View.unvector(1, 1);
+
+  p.x = x;
+  p.y = y;
+  p.z = z;
+  p.go.transform.setLocalPosition(x + away[0] * back, y, z + away[1] * back);
+  p.go.spriteRenderer.pivotY = p.pivotY - (back / TILE) * TILE_PX;
 }
 
 //a floor of a tile: its piece, how high its foot is over the ground, and how
@@ -540,6 +617,7 @@ function knock(self, tile) {
 
   if (col === undefined || col.state !== "standing") return 0;
 
+  slice(self, col);
   col.state = "shaking";
   col.t = 0;
 
@@ -665,7 +743,8 @@ function shake(self, col, dt) {
   var k = Math.min(1, col.t / SHAKE_MS) * 0.7;
 
   col.floors.forEach(function (f) {
-    f.go.transform.setLocalPosition(
+    seat(
+      f,
       f.x0 + (Math.random() - 0.5) * k,
       f.y0,
       f.z0 + (Math.random() - 0.5) * k,
@@ -725,7 +804,7 @@ function fallOn(self, col, dt) {
       if (f.fade >= CRUSH_MS) gone(f);
     }
 
-    f.go.transform.setLocalPosition(f.x0, y, f.z0);
+    seat(f, f.x0, y, f.z0);
   });
 
   if (
@@ -748,7 +827,7 @@ function bottomOf(f, y) {
  * dust, bursting into pieces.
  */
 function crush(self, col, f) {
-  f.at = f.go.transform.getLocalPosition([0, 0, 0])[1];
+  f.at = f.y;
   f.fade = 0;
   f.go.spriteRenderer.dither = true;
 
@@ -833,7 +912,7 @@ function chunk(self, f, cell) {
   var part = f.part,
     go = new engine.GameObject("debris"),
     r = new engine.SpriteRenderer(),
-    p = f.go.transform.getLocalPosition([0, 0, 0]),
+    p = [f.x, f.y, f.z],
     //how far up its foot is over where the floor is drawn from
     up = (part.pivotY - (cell.y + cell.h)) * PER_PIXEL,
     wx = self.go.transform.getPosition([0, 0, 0]),
@@ -935,6 +1014,9 @@ function down(self, col) {
   col.state = "down";
   col.t = 0;
 
+  col.whole.forEach(gone);
+  col.whole = [];
+  col.cuts = [];
   col.floors.forEach(gone);
   col.feet.forEach(function (f) {
     f.go.spriteRenderer.dither = true;
@@ -1146,9 +1228,11 @@ function turn(self) {
       }
     }
     if (col.state === "standing") {
-      col.floors.concat(col.feet).forEach(gone);
+      col.floors.concat(col.feet, col.whole).forEach(gone);
       col.floors = [];
       col.feet = [];
+      col.whole = [];
+      col.cuts = [];
       standing = true;
     }
   }
