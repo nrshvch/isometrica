@@ -20,6 +20,7 @@ import Game from "../../game";
 import { Container, HudButton, Icon, cx } from "../kit";
 import { store, useGame } from "../store";
 import {
+  bigCityName,
   getClient,
   goCity,
   goWorld,
@@ -340,14 +341,15 @@ function savedCities(client, cityId) {
 /**
  * The menu behind the button in the top right corner: what is switched on
  * and off for the whole game, the city's address shared - as the phone
- * shares things, or else copied - a new city: blank, or the one a new
- * player starts on - and, under them, the other cities saved here, to go
- * back to. Put away by a click anywhere else, or Escape.
+ * shares things, or else copied - a new city: blank, the one a new
+ * player starts on, or the big one - and, under them, the other cities
+ * saved here, to go back to. Put away by a click anywhere else, or Escape.
  */
 function Menu({ client, world, cityId, address, busy }) {
   var [open, setOpen] = useState(false),
-    //the city a new player starts on, to start over on
+    //the city a new player starts on, to start over on - and the big one
     initialName = client.core.persistence.initialName(),
+    bigName = bigCityName(),
     //read afresh whenever it opens
     cities = open ? savedCities(client, cityId) : [],
     [copied, setCopied] = useState(false),
@@ -474,6 +476,18 @@ function Menu({ client, world, cityId, address, busy }) {
               onClick={function () {
                 setOpen(false);
                 startFresh(true);
+              }}
+            />
+          )}
+          {bigName && (
+            <Row
+              icon="city"
+              label={"Start over on " + bigName}
+              sub="A big city, all built up"
+              disabled={busy}
+              onClick={function () {
+                setOpen(false);
+                startFresh("big");
               }}
             />
           )}

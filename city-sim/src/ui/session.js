@@ -15,27 +15,39 @@ import { store } from "./store";
 var START_AT_KEY = "isometrica.startAt",
   //the id of a new city to start from the initial city, rather than from
   //nothing - kept over the page going up again on it (startFreshCity)
-  FROM_INITIAL_KEY = "isometrica.fromInitial";
+  FROM_INITIAL_KEY = "isometrica.fromInitial",
+  //and of one to start from the big city, Peepstown (Game.bigCity)
+  FROM_BIG_KEY = "isometrica.fromBig";
 
-//whether the city asked for is a new one to start from the initial city -
-//asked once
-function fromInitial(id) {
-  var asked = null;
+//whether the city asked for is the one kept under the key - asked once
+function asked(key, id) {
+  var value = null;
 
   try {
-    asked = window.sessionStorage.getItem(FROM_INITIAL_KEY);
-    window.sessionStorage.removeItem(FROM_INITIAL_KEY);
+    value = window.sessionStorage.getItem(key);
+    window.sessionStorage.removeItem(key);
   } catch (e) {
     //no storage: nothing was asked
   }
 
-  return id !== null && asked === id;
+  return id !== null && value === id;
+}
+
+//whether the city asked for is a new one to start from the initial city -
+//or the big city, to start from in its place (CityPersistence#open)
+function fromInitial(id) {
+  var initial = asked(FROM_INITIAL_KEY, id),
+    big = asked(FROM_BIG_KEY, id);
+
+  return big && bigCity !== null ? bigCity : initial;
 }
 
 var core = null,
   client = null,
   router = null,
   starting = null,
+  //the big city to start over on, once loaded (Game.bigCity)
+  bigCity = null,
   //where the world is drawn, once the world screen has put it up - and who
   //is waiting for it
   container = null,
@@ -140,9 +152,12 @@ function load() {
     import("isometrica/core/main"),
     Game.client ? Game.client() : null,
     Game.initialCity ? Game.initialCity() : null,
+    Game.bigCity ? Game.bigCity() : null,
   ]).then(function (modules) {
     var Vkaria = modules[0].default.Vkaria,
       Core = modules[1].default;
+
+    bigCity = modules[4] ? modules[4].default : null;
 
     core = new Core.Logic({
       tick: Game.tick,
@@ -249,11 +264,22 @@ export function reopen(id) {
 }
 
 /**
- * Leaves the city behind and starts a new one under an id of its own: blank,
- * or the initial city every new player starts on. The old one stays in
- * storage, to be come back to by its own address.
+ * The name of the big city to start over on (Game.bigCity), or null for none -
+ * for the menu to say what starting over on it starts on.
  *
- * @param initial {boolean} from the initial city, rather than from nothing
+ * @returns {string|null}
+ */
+export function bigCityName() {
+  return (bigCity && bigCity.city.name) || null;
+}
+
+/**
+ * Leaves the city behind and starts a new one under an id of its own: blank,
+ * the initial city every new player starts on, or the big one. The old one
+ * stays in storage, to be come back to by its own address.
+ *
+ * @param initial {boolean|string} from the initial city, rather than from
+ *        nothing - or "big", from the big city
  */
 function startFreshCity(initial) {
   var id = core === null ? null : core.persistence.newCityId();
@@ -262,7 +288,10 @@ function startFreshCity(initial) {
   //asked of a city with no id to go by
   if (initial && id !== null)
     try {
-      window.sessionStorage.setItem(FROM_INITIAL_KEY, id);
+      window.sessionStorage.setItem(
+        initial === "big" ? FROM_BIG_KEY : FROM_INITIAL_KEY,
+        id,
+      );
     } catch (e) {
       //no storage - a blank city, then
     }
@@ -291,10 +320,12 @@ function startFreshCity(initial) {
 
 /**
  * Asks whether the player really means to leave this city behind, and starts
- * a new one under a new id if they do - blank, or the initial city. The city
- * they are on is kept - it stays in storage under its own address.
+ * a new one under a new id if they do - blank, the initial city, or the big
+ * one. The city they are on is kept - it stays in storage under its own
+ * address.
  *
- * @param [initial] {boolean} from the initial city, rather than from nothing
+ * @param [initial] {boolean|string} from the initial city, rather than from
+ *        nothing - or "big", from the big city, Peepstown
  */
 export function startFresh(initial) {
   var world = worldScreen(),
@@ -305,7 +336,7 @@ export function startFresh(initial) {
   world.showHint(
     initial
       ? "Do you really want to start over on " +
-          core.persistence.initialName() +
+          (initial === "big" ? bigCityName() : core.persistence.initialName()) +
           "?"
       : "Do you really want to start fresh?",
   );
@@ -314,7 +345,7 @@ export function startFresh(initial) {
   controls.canRotate(false);
   controls.onSubmit = function () {
     world.hideHint();
-    startFreshCity(initial === true);
+    startFreshCity(initial === "big" ? "big" : initial === true);
   };
   controls.onDiscard = function () {
     world.hideHint();

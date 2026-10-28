@@ -14,7 +14,8 @@
  *    (the game's own, or data/initialcity), opened under a fresh id of its
  *    own
  *  - asked to start from the initial city       -> the same, under the id
- *    the url names - one nobody has saved - or a fresh one
+ *    the url names - one nobody has saved - or a fresh one - or from
+ *    another city the game hands it, in its place
  *
  * With a server, #prepare goes first: it settles whether the save here or the
  * server's is the one to open, and puts the server's here if it is - so that
@@ -139,9 +140,10 @@ CityPersistence.prototype.prepare = function (requestedId) {
  * Picks the city to play and puts it into the world.
  *
  * @param [requestedId] {string} the city id out of the url, if there was one
- * @param [fromInitial] {boolean} a city nobody has saved to start from the
- *        initial city, rather than from nothing - a new game started over
- *        on it
+ * @param [fromInitial] {boolean|Object} a city nobody has saved to start
+ *        from the initial city, rather than from nothing - a new game
+ *        started over on it - or from the city given, in its place: a save
+ *        as data/initialcity is
  * @returns {string} the id the game is now playing under - for the address bar
  */
 CityPersistence.prototype.open = function (requestedId, fromInitial) {
@@ -163,8 +165,11 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
       data = store.read(activeId);
     } else {
       //nothing of the player's own to come back to - or the initial city
-      //asked for
-      var initial = this._initial;
+      //asked for, or another in its place
+      var initial =
+        fromInitial && typeof fromInitial === "object"
+          ? fromInitial
+          : this._initial;
 
       if (id === null) id = store.newId();
       //the template may be a whole save row or just the city in it

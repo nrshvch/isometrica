@@ -25,6 +25,12 @@ export default {
     return import("./initialcity");
   },
 
+  //and the big one, Peepstown - the delivery game's - to start over on from
+  //the menu as well
+  bigCity: function () {
+    return import("./peepstown");
+  },
+
   //land, and shaping the ground (play.js)
   client: function () {
     return import("./play");
