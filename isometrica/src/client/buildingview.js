@@ -211,6 +211,10 @@ BuildingView.prototype.building = null;
 BuildingView.prototype.opacity = 1;
 //the next redraw of a block going up, for when its site moves on a stage
 BuildingView.prototype.stageTimer = null;
+//what it was last drawn as, {state, progress} - for whatever stands in for
+//the building once the world has let go of it, and has it neither up nor
+//going up any more (client/demolition)
+BuildingView.prototype.drawnAs = null;
 
 BuildingView.prototype.setBuilding = function (building) {
   this.building = building;
@@ -251,6 +255,10 @@ BuildingView.prototype.update = function () {
       clearTimeout(this.stageTimer);
       this.stageTimer = null;
       changed();
+      this.drawnAs = {
+        state: b.data.getState(),
+        progress: b.data.getProgress(),
+      };
     }
 
     //as it is seen, the camera turned the way it is (see drawnAt)

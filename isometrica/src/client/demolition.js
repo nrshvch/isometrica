@@ -6,6 +6,7 @@ import View from "./view";
 import RenderLayer from "./renderlayer";
 import BuildingView from "./buildingview";
 import CompoundBuilding from "./compoundbuilding";
+import BuildingState from "../core/buildingstate";
 import Trees from "../data/trees";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
@@ -199,6 +200,13 @@ function Demolition(root, building, tiles) {
 
   this.root = root;
   this.building = building;
+  //the building as its view last drew it, to draw what stands of it again
+  //from another side (turn) - the world has let go of it, which has it
+  //neither up nor going up any more (core/building dispose)
+  this.standIn = {
+    data: asDrawn(building.data, building.view.drawnAs),
+    staticData: building.staticData,
+  };
   this.puffs = 0;
   this.chunks = [];
   this.chunked = 0;
@@ -236,6 +244,26 @@ function Demolition(root, building, tiles) {
     },
     this,
   );
+}
+
+/**
+ * A building's own as drawn - up, or so far along going up - whatever it is
+ * now: where it stands, turned which way, looking which way, the rest of
+ * it as it is.
+ */
+function asDrawn(data, drawn) {
+  var out = Object.create(data),
+    state = drawn ? drawn.state : BuildingState.ready,
+    progress = drawn ? drawn.progress : 1;
+
+  out.getState = function () {
+    return state;
+  };
+  out.getProgress = function () {
+    return progress;
+  };
+
+  return out;
 }
 
 /**
@@ -1202,7 +1230,8 @@ function unfence(self, tile) {
 /**
  * Turned round: what is coming down is down, and what still stands is put
  * up again as it is seen now - the building drawn again from the new side
- * for it (client/buildingview).
+ * for it (client/buildingview), as it was drawn when it was cleared away,
+ * whatever the world has made of it since (standIn).
  */
 function turn(self) {
   var standing = false;
@@ -1241,7 +1270,7 @@ function turn(self) {
 
   var view = new BuildingView();
 
-  view.setBuilding(self.building);
+  view.setBuilding(self.standIn);
   view.update();
   stand(
     self,
