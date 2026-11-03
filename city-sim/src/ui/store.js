@@ -43,6 +43,10 @@ export var store = createStore(function () {
     //asking the player for a word: {message, placeholder, submit(value),
     //discard()} - or null
     prompt: null,
+    //the player welcomed back, after a while away - what the city did
+    //meanwhile: {away, went (game time, ms), money, capped, name} - or null
+    //(session showCaughtUp)
+    welcome: null,
     //whether the debug panel is up over the world (DebugPanel)
     debug: debugWanted(),
   };

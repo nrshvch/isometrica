@@ -15,6 +15,7 @@ import Hud from "./Hud";
 import DebugPanel from "./DebugPanel";
 import Prompt from "./Prompt";
 import Splash from "./Splash";
+import Welcome from "./Welcome";
 
 //a city id in the address bar, as in /pA4b1cX9q2Rz - or one of the six
 //character ones of before, /pA4b1c (core/persistence/citystore)
@@ -32,6 +33,9 @@ export default function GameScreen() {
     prompt = useGame(function (s) {
       return s.prompt;
     }),
+    welcome = useGame(function (s) {
+      return s.welcome;
+    }),
     night = useGame(function (s) {
       return s.night;
     }),
@@ -41,7 +45,7 @@ export default function GameScreen() {
     onWorld = useMatch("/:city?") !== null,
     //a screen up over the world: the world dimmed behind it, and none of
     //it to be clicked
-    covered = prompt !== null || !onWorld,
+    covered = prompt !== null || welcome !== null || !onWorld,
     [splash, setSplash] = useState(true);
 
   useEffect(function () {
@@ -96,6 +100,8 @@ export default function GameScreen() {
         {/* the screens are of the city, and wait for it to be up */}
         {phase !== "ready" ? null : prompt ? (
           <Prompt prompt={prompt} />
+        ) : welcome ? (
+          <Welcome welcome={welcome} />
         ) : (
           <Outlet />
         )}
@@ -105,7 +111,8 @@ export default function GameScreen() {
         <Splash
           onGone={function () {
             setSplash(false);
-            //and what the city made meanwhile, if it was away
+            //and what the city made meanwhile, if it was away - the
+            //player welcomed back with it, after a while (Welcome)
             showCaughtUp();
           }}
         />

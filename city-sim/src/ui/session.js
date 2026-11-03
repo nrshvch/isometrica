@@ -252,19 +252,59 @@ export function start(requestedId) {
   return starting;
 }
 
+//how long the game has to have been away for the player to be welcomed back
+//(Welcome), real ms - a reload is no time away, and what it made then only
+//floats up
+var WELCOME_AFTER = 60000;
+
 /**
  * What the city made while the game was closed (isometrica core/persistence
- * caughtUp), floated up over the middle of it - once, when the splash is out
- * of the way of it.
+ * caughtUp) - once, when the splash is out of the way of it: the player
+ * welcomed back with it, after a while away (Welcome), or it floated up over
+ * the middle of the city.
  */
 export function showCaughtUp() {
   var caught = core === null ? null : core.persistence.caughtUp,
     city = core === null ? null : core.cities.getCity(0);
 
-  if (caught === null || !city || !(caught.money >= 1)) return;
+  if (caught === null || !city) return;
 
   core.persistence.caughtUp = null;
-  client.cityman.showIncome(city, Math.round(caught.money));
+
+  if (caught.away >= WELCOME_AFTER) {
+    store.setState({
+      welcome: {
+        away: caught.away,
+        //game time, ms
+        went: caught.ticks * Game.tick,
+        money: Math.round(caught.money),
+        //away longer than the city goes on for meanwhile
+        capped: caught.capped === true,
+        name: city.name(),
+      },
+    });
+    return;
+  }
+
+  floatIncome(caught.money);
+}
+
+/**
+ * Sees the player welcomed back (Welcome), and floats up over the city what
+ * it made meanwhile.
+ */
+export function closeWelcome() {
+  var welcome = store.getState().welcome;
+
+  store.setState({ welcome: null });
+
+  if (welcome) floatIncome(welcome.money);
+}
+
+function floatIncome(money) {
+  var city = core === null ? null : core.cities.getCity(0);
+
+  if (city && money >= 1) client.cityman.showIncome(city, Math.round(money));
 }
 
 /**

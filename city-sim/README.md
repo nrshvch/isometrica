@@ -51,9 +51,16 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   station first, then the parks - and then everything else: houses, then
   shops, a tier at a time, the cheaper first within one.
 - The city goes on while the game is closed or out of sight, up to a game
-  day of it: opened again, it plays out what it missed at once, and what
-  it made floats up over it once the splash is gone (`src/game.js`
-  catchUp).
+  day of it: opened again, it plays out what it missed at once, what was
+  going up going up with it - finished on the way, and earning from then on.
+  What it made floats up over it once the splash is gone (`src/game.js`
+  catchUp); after a minute or more away the player is welcomed back first,
+  on a card saying how long they were gone and what the city made
+  meanwhile, under its OK (`src/ui/world/Welcome.jsx`).
+- A save sent up as the game closed, that the server took but whose answer
+  never came back, is known for the game's own the next time: the city is
+  not taken for one saved from somewhere else, and nobody is asked which to
+  keep (`isometrica/src/core/persistence/citysync.js` ours).
 - Shaping the ground picks tiles straight away, and clears, raises or lowers
   them as toggled on along the bottom - priced over them as they are picked,
   done with the tick, and started out on what was toggled on last time.
