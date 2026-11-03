@@ -8,6 +8,7 @@
 import Events from "events";
 import BuildingData from "../data/buildings";
 import Building from "./building";
+import BuildingState from "./buildingstate";
 /**
  * @type {BuildingClassCode}
  */
@@ -237,6 +238,25 @@ Buildings.prototype.build = function (building) {
   Events.once(building, "dispose", onBuildingDispose, [sub1]);
 
   Events.fire(this, events.buildingBuilt, building);
+};
+
+/**
+ * Whatever is still going up.
+ *
+ * @returns {Building[]}
+ */
+Buildings.prototype.underConstruction = function () {
+  var r = [],
+    building;
+
+  for (var id in this.buildings) {
+    building = this.buildings[id];
+
+    if (building.getState() === BuildingState.underConstruction)
+      r.push(building);
+  }
+
+  return r;
 };
 
 Buildings.prototype.test = function (code, tile, rotation) {

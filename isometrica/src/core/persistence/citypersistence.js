@@ -29,6 +29,7 @@ import Events from "events";
 import CityStore from "./citystore";
 import CitySync from "./citysync";
 import CityService from "../citysrv";
+import Config from "../config";
 import InitialCity from "../../data/initialcity";
 import namespace from "namespace";
 
@@ -80,7 +81,7 @@ function CityPersistence(world, store, sync, initial) {
   this._onUnload = null;
   this._onHide = null;
   //what the city did while the game was closed, made up for when it was
-  //opened (#open): {ticks, money} - or null, for nothing
+  //opened (#open): {ticks, money, away, capped} - or null, for nothing
   this.caughtUp = null;
 }
 
@@ -389,8 +390,10 @@ CityPersistence.prototype.remove = function (id) {
  * but not the server's, so the shorter of the two where the server knows
  * when it last had it (CitySync#awayFor).
  *
- * @returns {{ticks: number, money: number}|null} what went by, and the money
- *          it brought in, less what it cost - or null, for nothing
+ * @returns {{ticks: number, money: number, away: number, capped: boolean}|null}
+ *          what went by, and the money it brought in, less what it cost; how
+ *          long the game was away, real ms, and whether that was longer than
+ *          the world goes on for meanwhile - or null, for nothing
  */
 function catchUp(self, data) {
   var now = Date.now(),
@@ -402,7 +405,8 @@ function catchUp(self, data) {
 
   if (server !== null) away = Math.min(away, server);
 
-  ticks = self.world.catchUp(away);
+  //what was going up stood still too, its progress kept in the save
+  ticks = self.world.catchUp(away, true);
 
   if (ticks === 0) return null;
 
@@ -411,6 +415,9 @@ function catchUp(self, data) {
   return {
     ticks: ticks,
     money: (self._city.resources.getResources().money || 0) - before,
+    away: away,
+    //away longer than the world goes on for meanwhile (Logic#catchUp)
+    capped: ticks < Math.floor(away / Config.tickDelay),
   };
 }
 

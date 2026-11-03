@@ -51,8 +51,10 @@ function start(self, progress) {
   self._state = ConstructionState.underConstruction;
   //as if it had started that long ago, so that it is timed the same
   self._startedAt = Date.now() - progress * time;
-  setTimeout(
+  clearTimeout(self._timer);
+  self._timer = setTimeout(
     function () {
+      self._timer = null;
       if (self._run !== run) return;
 
       self._state = ConstructionState.ready;
@@ -81,6 +83,8 @@ Construction.prototype._state = ConstructionState.none;
 Construction.prototype._startedAt = 0;
 //how many times it was set going up (start), for the timer of the last one
 Construction.prototype._run = 0;
+//the timer it is finished by
+Construction.prototype._timer = null;
 
 Construction.prototype.init = function (world, code, tile, rot, done) {
   return init(this, world, code, tile, rot, done);
@@ -93,6 +97,32 @@ Construction.prototype.init = function (world, code, tile, rot, done) {
  */
 Construction.prototype.rebuild = function () {
   start(this, 0);
+  Events.fire(this, events.stateChange, this._state);
+};
+
+/**
+ * Has it go up as far as it would have in ms more - for time that went by
+ * with the game closed, made up for at once (Logic#catchUp): the clock it is
+ * timed by stood still meanwhile, the save keeping only how far it had got.
+ * Finished, if that is far enough.
+ *
+ * @param ms {number} real time
+ */
+Construction.prototype.advance = function (ms) {
+  if (this._state !== ConstructionState.underConstruction || !(ms > 0)) return;
+
+  var time = this.data.constructionTime,
+    progress = Math.min(1, this.getProgress() + ms / time);
+
+  if (progress < 1) {
+    start(this, progress);
+    return;
+  }
+
+  this._run++;
+  clearTimeout(this._timer);
+  this._timer = null;
+  this._state = ConstructionState.ready;
   Events.fire(this, events.stateChange, this._state);
 };
 

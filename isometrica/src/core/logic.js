@@ -140,12 +140,22 @@ Logic.prototype.timed = null;
  * (Config tickDelay) and a game day's at most, so that the city grows and
  * earns as it would have, up to a day of it.
  *
+ * What is going up goes up with them, a tick's worth before every tick -
+ * so that what is finished on the way earns from then on - where it stood
+ * still meanwhile: the game closed, the save keeping only how far it had
+ * got. Not for a page out of sight, whose buildings went on going up on the
+ * real clock (core/construction).
+ *
  * @param ms {number} how long it was away, real time
+ * @param [building] {boolean} whether what is going up is to be made up for
+ *        as well
  * @returns {number} how many ticks were played out
  */
-Logic.prototype.catchUp = function (ms) {
+Logic.prototype.catchUp = function (ms, building) {
   var ticks = Math.min(Math.floor(ms / Config.tickDelay), VTime.ticksPerDay()),
-    i;
+    going,
+    i,
+    k;
 
   if (!this.catchesUp || !(ticks > 0)) return 0;
 
@@ -153,8 +163,14 @@ Logic.prototype.catchUp = function (ms) {
 
   var started = this.timed !== null ? performance.now() : 0;
 
+  going = building === true ? this.buildings.underConstruction() : [];
+
   try {
-    for (i = 0; i < ticks; i++) Events.fire(this, events.tick, this, null);
+    for (i = 0; i < ticks; i++) {
+      for (k = 0; k < going.length; k++) going[k].advance(Config.tickDelay);
+
+      Events.fire(this, events.tick, this, null);
+    }
   } finally {
     this.catchingUp = false;
   }
