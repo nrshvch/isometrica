@@ -21,6 +21,11 @@
  *  - here made on the server's latest     -> here: the same, or newer
  *  - here unchanged, the server has moved -> the server's
  *  - both changed                         -> the player chooses
+ *
+ * But for the save that went up last from here without an answer coming
+ * back - sent as the page closed, the browser quit before the server said it
+ * had it. The server's latest is then this very save (#ours): the save here
+ * was made on top of it, and nobody is asked anything.
  */
 import namespace from "namespace";
 
@@ -192,6 +197,34 @@ CitySync.prototype.awayFor = function (id) {
   return this._away !== null && this._away.id === id ? this._away.ms : null;
 };
 
+/**
+ * Whether the server's save is the one that went up from here last without
+ * an answer (CityStore#uploading) - the server took it, and the page was
+ * gone before it heard so. The save here is then made on top of it: as it
+ * was, or written again since and still to go up.
+ *
+ * @returns {boolean} whether it was - and the save here is now on top of it
+ */
+function ours(self, id, remote) {
+  var state = self.store.syncState(id),
+    data = remote !== null ? remote.data : null,
+    sent;
+
+  if (state === null || data === null || typeof data !== "object") return false;
+
+  sent = state.pending.find(function (p) {
+    return p.savedAt > 0 && p.savedAt === data.savedAt;
+  });
+
+  if (sent === undefined) return false;
+
+  self.store.synced(id, remote.rev, sent.writes);
+
+  return true;
+}
+
+CitySync.ours = ours;
+
 //the server's save, in place of the one here
 function keep(self, id, remote) {
   var data = remote.data,
@@ -236,6 +269,9 @@ CitySync.prototype.reconcile = function (id) {
 
       //what is here was made on the server's latest
       if (local.rev === remote.rev) return;
+
+      //or the server's latest is what last went up from here
+      if (ours(self, id, remote)) return;
 
       return self.ask().then(function (theirs) {
         if (theirs) keep(self, id, remote);
@@ -334,6 +370,9 @@ CitySync.prototype.flush = function (leaving) {
 
   if (data === null) return Promise.resolve(state !== null);
 
+  //before it goes: the answer may never come back
+  store.uploading(id, data.savedAt, state.writes);
+
   this._busy = encode(JSON.stringify(data))
     .then(function (body) {
       return request(self, id, {
@@ -415,6 +454,13 @@ function conflict(self, id, rev, leaving) {
     if (remote === null) {
       store.rebase(id, null);
       schedule(self, SOON);
+      return false;
+    }
+
+    //it is the one that went up from here before, unanswered: what is here
+    //goes up on top of it
+    if (ours(self, id, remote)) {
+      if (store.syncState(id).dirty) schedule(self, SOON);
       return false;
     }
 

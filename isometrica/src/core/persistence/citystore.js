@@ -232,6 +232,10 @@ CityStore.prototype.write = function (id, data, name, rev) {
     syncedWrites: rev !== undefined ? writes : was.syncedWrites || 0,
   };
 
+  //the upload still unanswered is still unanswered - unless this is the
+  //server's own copy, which settles it
+  if (rev === undefined && was.pending) index.cities[id].pending = was.pending;
+
   return writeIndex(this, index);
 };
 
@@ -239,10 +243,12 @@ CityStore.prototype.write = function (id, data, name, rev) {
  * Where a city's save stands with the server.
  *
  * @param id {string}
- * @returns {{rev: number|null, writes: number, dirty: boolean}|null} rev -
- *          the server's revision the save here was made on top of, null for
- *          one never on it; dirty - whether it has changed since; null when
- *          there is no save here at all
+ * @returns {{rev: number|null, writes: number, dirty: boolean,
+ *          pending: {savedAt: number, writes: number}[]}|null} rev - the
+ *          server's revision the save here was made on top of, null for one
+ *          never on it; dirty - whether it has changed since; pending - the
+ *          uploads made on top of rev that went without an answer
+ *          (#uploading); null when there is no save here at all
  */
 CityStore.prototype.syncState = function (id) {
   if (!this.has(id)) return null;
@@ -255,7 +261,42 @@ CityStore.prototype.syncState = function (id) {
     rev: rev,
     writes: writes,
     dirty: rev === null || writes !== (city.syncedWrites || 0),
+    pending: Array.isArray(city.pending) ? city.pending : [],
   };
+};
+
+//how many unanswered uploads are remembered (#uploading)
+var PENDING_MOST = 10;
+
+/**
+ * Records that the save is going up - before it goes, since the answer may
+ * never come back: the page closed, the browser quit, while it was on its
+ * way. The server may well have taken it all the same, and the next time
+ * the city is opened it can tell its latest is this one (CitySync#ours)
+ * rather than the city having been saved from somewhere else.
+ *
+ * @param id {string}
+ * @param savedAt {number} the save's own savedAt - which save it is
+ * @param writes {number} syncState().writes when it was read to go up
+ * @returns {boolean}
+ */
+CityStore.prototype.uploading = function (id, savedAt, writes) {
+  var index = this.index(),
+    city = index.cities[id],
+    pending;
+
+  if (city === undefined) return false;
+
+  //every one sent on top of the same revision, the server taking whichever
+  //got there first - a retry may go after one that got there unanswered
+  pending = Array.isArray(city.pending) ? city.pending : [];
+  pending = pending.filter(function (p) {
+    return p.savedAt !== savedAt;
+  });
+  pending.push({ savedAt: savedAt, writes: writes });
+  city.pending = pending.slice(-PENDING_MOST);
+
+  return writeIndex(this, index);
 };
 
 /**
@@ -276,6 +317,7 @@ CityStore.prototype.synced = function (id, rev, writes) {
 
   city.rev = rev;
   city.syncedWrites = writes;
+  delete city.pending;
 
   return writeIndex(this, index);
 };
@@ -299,6 +341,7 @@ CityStore.prototype.rebase = function (id, rev) {
   city.rev = rev;
   //changed, whatever it was: it has to go up
   city.syncedWrites = -1;
+  delete city.pending;
 
   return writeIndex(this, index);
 };
