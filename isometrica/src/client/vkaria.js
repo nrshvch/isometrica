@@ -87,7 +87,8 @@ function Vkaria(core, ui, play) {
   this.sprites = new SpriteCache(this.game.time, {
     //every picture painted out of boxes is kept as its colours and the ways
     //it looks too, and at night as what of it shines, the light it throws
-    //round it and how high it stands (see client/lighting) - room to spare
+    //round it and how high it stands (see client/lighting) - room to spare,
+    //made on the GPU all at once at the start (client/glview makePages)
     maxPages: 32,
   });
   //the light the city is drawn in, by the hour (client/lighting)

@@ -1065,10 +1065,10 @@ GLView.prototype.setup = function () {
   this.xrayBuffer = gl.createBuffer();
   this.lampBuffer = gl.createBuffer();
 
-  //the pages, as many as there are so far, and room for more (grow)
+  //the pages, all there can be, from the start (makePages)
   this.pages = null;
   this.depth = 0;
-  this.grow(4);
+  this.makePages();
 
   //the pictures of the screen, and the lamps' light
   this.targets = [0, 1, 2, 3].map(function () {
@@ -1248,39 +1248,43 @@ GLView.prototype.setup = function () {
 
 /* --- Pages ------------------------------------------------------------- */
 
+//the fewest pages there are, whatever the GPU has room for
+var MIN_PAGES = 4;
+
 /**
- * Makes room for at least n pages, keeping what is on those there are.
+ * Makes the pages, all there can be (maxPages) - or, where the GPU has not
+ * the room for them all, as many as it has: depth, which the canvas cache
+ * keeps to (client/lighting).
+ *
+ * Made once, never grown: growing them was making them again with more, and
+ * copying what was on the old ones over on the GPU, page by page - which on
+ * some phones' GPUs (Adreno: glCopyTexSubImage3D reads the first layer,
+ * whichever is asked for) put the first page onto every other. What was on
+ * those was drawn as pieces of whatever is on the first instead: the water
+ * most of all, its frames on pages of their own - a different piece every
+ * frame.
  */
-GLView.prototype.grow = function (n) {
+GLView.prototype.makePages = function () {
   var gl = this.gl,
     size = this.pageSize,
-    depth = Math.min(this.maxPages, Math.max(n, this.depth * 2, 4)),
-    old = this.pages,
+    depth = this.maxPages,
+    pages;
+
+  //nothing said before, for what is said after to be about this
+  gl.getError();
+
+  for (;;) {
     pages = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D_ARRAY, pages);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, gl.RGBA8, size, size, depth);
 
-  gl.bindTexture(gl.TEXTURE_2D_ARRAY, pages);
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, gl.RGBA8, size, size, depth);
+    if (gl.getError() !== gl.OUT_OF_MEMORY || depth <= MIN_PAGES) break;
 
-  //what was on the old pages, onto the new ones, page by page
-  if (old !== null) {
-    var read = gl.createFramebuffer();
-
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
-    for (var i = 0; i < this.depth; i++) {
-      gl.framebufferTextureLayer(
-        gl.READ_FRAMEBUFFER,
-        gl.COLOR_ATTACHMENT0,
-        old,
-        0,
-        i,
-      );
-      gl.copyTexSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, 0, 0, size, size);
-    }
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-    gl.deleteFramebuffer(read);
-    gl.deleteTexture(old);
+    //no room for them all: half as many
+    gl.deleteTexture(pages);
+    depth = Math.max(MIN_PAGES, depth >> 1);
   }
 
   this.pages = pages;
@@ -1293,8 +1297,6 @@ GLView.prototype.grow = function (n) {
  */
 GLView.prototype.upload = function (page, x, y, w, h, pixels) {
   var gl = this.gl;
-
-  if (page >= this.depth) this.grow(page + 1);
 
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, this.pages);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);

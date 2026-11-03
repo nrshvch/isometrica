@@ -187,6 +187,8 @@ var SHADOW_STEP = 2,
 function Lighting(root, cache) {
   this.root = root;
   this.view = new GLView(cache.pageSize, cache.maxPages);
+  //as many pages as the GPU had room for
+  cache.maxPages = Math.min(cache.maxPages, this.view.depth);
   //what the frame is drawn on, put on the page in the place of the world
   //screen's own canvas (engine Viewport)
   this.canvas = this.view.canvas;
