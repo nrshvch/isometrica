@@ -1263,12 +1263,31 @@ GLView.prototype.grow = function (n) {
   gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, gl.RGBA8, size, size, depth);
 
-  //what was on the old pages, onto the new ones, page by page
+  //what was on the old pages, onto the new ones, page by page - each by way
+  //of a picture of its own, not a layer (held): copied straight from one
+  //layer to another, some phones' GPUs (Adreno: glCopyTexSubImage3D reads
+  //the first layer, whichever is asked for) put the first page onto every
+  //other, and what was on those was drawn as pieces of whatever is on the
+  //first. Blitted into it from its layer, copied out of it onto the new
+  //one - the way round that WebRender found to work there
   if (old !== null) {
-    var read = gl.createFramebuffer();
+    var read = gl.createFramebuffer(),
+      through = gl.createFramebuffer(),
+      held = gl.createRenderbuffer(),
+      drawing = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
 
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, held);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA8, size, size);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, through);
+    gl.framebufferRenderbuffer(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.RENDERBUFFER,
+      held,
+    );
+
     for (var i = 0; i < this.depth; i++) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read);
       gl.framebufferTextureLayer(
         gl.READ_FRAMEBUFFER,
         gl.COLOR_ATTACHMENT0,
@@ -1276,10 +1295,28 @@ GLView.prototype.grow = function (n) {
         0,
         i,
       );
+      gl.blitFramebuffer(
+        0,
+        0,
+        size,
+        size,
+        0,
+        0,
+        size,
+        size,
+        gl.COLOR_BUFFER_BIT,
+        gl.NEAREST,
+      );
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, through);
       gl.copyTexSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, 0, 0, size, size);
     }
+
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, drawing);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
     gl.deleteFramebuffer(read);
+    gl.deleteFramebuffer(through);
+    gl.deleteRenderbuffer(held);
     gl.deleteTexture(old);
   }
 
