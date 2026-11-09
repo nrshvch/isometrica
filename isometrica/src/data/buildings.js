@@ -44,11 +44,11 @@ buildingData[BuildingCode.tree] = {
 //the heaps of rubble a building blown up leaves on every tile of it
 //(core/city explode, client/explosion) - of the same debris a building
 //coming down leaves for the bulldozers, but running on into the heaps on
-//the tiles next to it as one pile (shared/gen/stones pile, client/rubble),
-//two kinds of it. Of the tree class, as a tree planted is: nobody's,
-//nothing it makes or costs, lying on the ground as it is; gone as soon as
-//anything is built over it, or cleared away - a bulldozer pushing it off
-//(client/buildman hold) - and kept in the save till then
+//the tiles next to it as one pile, lying on the ground as it slopes
+//(shared/gen/stones pile, client/rubble). Of the tree class, as a tree
+//planted is: nobody's, nothing it makes or costs, no concrete under it;
+//gone as soon as anything is built over it, or cleared away - a bulldozer
+//pushing it off (client/buildman hold) - and kept in the save till then
 var RUBBLE_BASE = 6900;
 
 buildingData[BuildingCode.rubble] = {
@@ -64,28 +64,29 @@ buildingData[BuildingCode.rubble] = {
   constructionTime: 0,
   constructionCost: {},
   name: "rubble",
-  variants: ["rubble", "rubble0", "rubble", "rubble0"].map(
-    function (rubble, i) {
-      return {
-        buildingCode: RUBBLE_BASE + 1 + i,
-        sprites: [
-          {
-            x: 0,
-            y: 0,
-            z: 0,
-            //the middle of the tile, as for the stones (data/rocks)
-            pivotX: 32,
-            pivotY: 24,
-            //a heap on its own; the one drawn is the one as the heaps round
-            //it are (client/rubble)
-            path: "gen/scenery/pile/" + rubble + "/00000000",
-            pile: rubble,
-            layer: RenderLayer.buildingsLayer,
-          },
-        ],
-      };
-    },
-  ),
+  //one kind of it, under the four codes there were kinds of it once
+  variants: [1, 2, 3, 4].map(function (k) {
+    return {
+      buildingCode: RUBBLE_BASE + k,
+      sprites: [
+        {
+          x: 0,
+          y: 0,
+          z: 0,
+          //the middle of the tile at its lowest corner's height - a
+          //stone's, as much further down the picture as a tile can rise
+          //(shared/gen/stones PILE_RISE)
+          pivotX: 32,
+          pivotY: 40,
+          //a heap on its own on the flat; the one drawn is the one as the
+          //heaps round it are, on its slope (client/rubble)
+          path: "gen/scenery/pile/rubble/00000000/0000",
+          pile: "rubble",
+          layer: RenderLayer.buildingsLayer,
+        },
+      ],
+    };
+  }),
 };
 
 buildingData[BuildingCode.road] = {

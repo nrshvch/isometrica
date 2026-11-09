@@ -7,7 +7,8 @@
  * fireball, the heaps of rubble it leaves lying there till they are
  * cleared away - by the bulldozers, as clearing them does in the game. Or
  * two of it side by side, blown up one after the other: a pile of rubble
- * each, not one pile of the two (client/rubble).
+ * each, not one pile of the two (client/rubble). And all of it on a
+ * hillside, for the rubble to lie on it as it slopes.
  */
 import BuildingData from "../../src/data/buildings";
 import BuildingCode from "../../src/data/buildingcode";
@@ -43,6 +44,8 @@ export function Scene(world) {
   this.rotation = 0;
   //and another of it beside it, along the road
   this.beside = false;
+  //and the ground a hillside, rather than flat
+  this.hill = false;
   world.ground(X, Y, W, H);
   this.put();
   world.look(0, 0);
@@ -103,6 +106,30 @@ Scene.prototype.turn = function () {
   this.rotation = Rotation.next(this.rotation);
 
   if (!this.put()) this.rotation = (this.rotation + 3) & 3;
+};
+
+/**
+ * How much higher a grid point of the hillside is than its foot, steps, i,
+ * j from the corner of the ground: a step up every six along the diagonal,
+ * one of them across the middle - where what stands stands, on as much of
+ * a slope as anything can be put up on (core/surface fits).
+ */
+function hillside(i, j) {
+  return Math.max(0, Math.min(3, Math.floor((i + j - 6) / 6)));
+}
+
+/**
+ * On a hillside, or on the flat - put up again on it.
+ *
+ * @returns {boolean} whether it was
+ */
+Scene.prototype.setHill = function (on) {
+  if (this.world.busy()) return false;
+
+  this.hill = on;
+  this.world.ground(X, Y, W, H, on ? hillside : undefined);
+
+  return this.put();
 };
 
 /**

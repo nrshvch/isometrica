@@ -512,7 +512,13 @@ function addSprites(
     setSeenPosition(
       spriteGO,
       spriteData.x * tileSize,
-      spriteData.y * tileZStep,
+      //a heap of rubble lies on the ground, drawn from the lowest corner of
+      //its tile - not from the highest, as what stands on it is
+      (spriteData.y -
+        (spriteData.pile !== undefined && seed !== undefined
+          ? Rubble.dropOf(vkaria, seed)
+          : 0)) *
+        tileZStep,
       spriteData.z * tileSize,
     );
   }

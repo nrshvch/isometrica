@@ -56,7 +56,8 @@ export default function Explosion() {
     [standing, setStanding] = useState(null),
     [left, setLeft] = useState(0),
     [piles, setPiles] = useState(0),
-    [beside, setBeside] = useState(false);
+    [beside, setBeside] = useState(false),
+    [hill, setHill] = useState(false);
 
   //the world, up once
   useEffect(function () {
@@ -212,6 +213,17 @@ export default function Explosion() {
                 }}
               >
                 two side by side
+              </Button>
+              <Button
+                className="px-1.5 py-0.5"
+                title="the ground a hillside, for the rubble to lie on it as it slopes"
+                on={hill}
+                disabled={!ready || busy}
+                onClick={function () {
+                  if (scene().setHill(!hill)) setHill(!hill);
+                }}
+              >
+                on a slope
               </Button>
             </Row>
             <div>
