@@ -340,6 +340,9 @@ function pace(self) {
  */
 function sites(self, dt) {
   self.core.buildings.underConstruction().forEach(function (b) {
+    //its ground cleared first, as fast as the bulldozers go
+    if (b.clearing()) return;
+
     var was = self.progress.has(b) ? self.progress.get(b) : b.getProgress(),
       now = Math.min(1, was + (dt * self.sitePace) / b.data.constructionTime),
       seen = self.client.buildman.getBuilding(b.tile),

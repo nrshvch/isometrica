@@ -771,6 +771,27 @@ dev`) plays them the way a game would - all three weathers together, the
   joining it go on joining it (`roadman.js` seenRoad), till the bulldozer
   has driven over it and broken it up into the bare earth. None of it is
   kept - after a reload the ground is bare.
+- A bulldozer is not there to begin with: it drives out to its share
+  (`isometrica/src/client/clearworks.js` setOut) from somewhere on the
+  city's roads - near it, where there are any - in the traffic with
+  everything else (`isometrica/src/client/carman.js` send: on a job of its
+  own, never broken down, never off somewhere else), to the road nearest
+  the work, and leaves it there for the ground the rest of the way, round
+  whatever stands in its way and the water (groundPath). With no city's
+  road to set out from it sets out from a road ten tiles off, or from the
+  country that far off, over the ground all the way - and with no traffic
+  going (a lab bench), the same. Its share done, it drives back over the
+  ground to the nearest road and off home in the traffic, parked somewhere
+  in the city and gone, as a car done for the day is; with no road to get
+  back to, off into its dust.
+- A building put up is not put up till its ground is cleared, bare or not
+  (`isometrica/src/core/city/citybuildings.js` buildBuilding,
+  `isometrica/src/core/construction.js` awaitClearing): its tiles are being
+  cleared from then on, whatever is on them - trees, stones, rubble -
+  standing till the bulldozers get to it, and nothing of it is drawn but how
+  far along it is. That is the first tenth of the way up, as much of it as
+  is cleared, and the rest goes by its time from when it all is; put up in
+  the place of one that came down (Replace), its ground is cleared already.
 - What clearing ground came to floats up once, over all of the ground
   picked - not over every tile of it.
 - A building cleared away is demolished whole, every tile of it, whichever

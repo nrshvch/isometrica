@@ -65,8 +65,11 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   them as toggled on along the bottom - priced over them as they are picked,
   done with the tick, and started out on what was toggled on last time.
 - Clearing is paid for at once - what it came to floated up once, over the
-  ground picked - but takes a little while to do: bulldozers sweep the tiles
-  cleared, a tree going over the way it is pushed, lying a moment and gone
+  ground picked - but takes a little while to do: bulldozers driving out
+  from the city, by road in the traffic and over the ground the last of
+  the way, and back again after (`isometrica/src/client/clearworks.js`
+  setOut), sweep the tiles cleared, a tree going over the way it is
+  pushed, lying a moment and gone
   (`isometrica/src/client/felling.js`), the stones going down in their dust,
   a road broken up as they drive over it, and leave the ground bare earth -
   which the grass grows back over in half a game day
@@ -140,6 +143,11 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   the heaps round it a pile without it from then on - or anything is built
   over it (`isometrica/src/core/city.js` explode,
   `isometrica/src/data/buildings.js` rubble).
+- A building put up has its ground cleared first, bare or not - the trees,
+  stones or rubble on it standing till a bulldozer gets there, driving out
+  to it the same way - and only then goes up: the bulldozers are the first
+  tenth of how far along it is, shown from the start
+  (`isometrica/src/core/construction.js` awaitClearing).
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

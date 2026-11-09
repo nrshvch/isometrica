@@ -550,6 +550,9 @@ CarScript.prototype.traffic = COMMUTER;
 CarScript.prototype.nightRider = false;
 CarScript.prototype.type = null;
 CarScript.prototype.color = null;
+//sent out on a job of its own (Carman#send): {to, arrive} - where it
+//drives to, and what takes it over there, or null to park there and go
+CarScript.prototype.errand = null;
 //a bus's stops, in the order it calls at them, and which it is going to
 CarScript.prototype.stops = null;
 CarScript.prototype.stop = 0;
@@ -830,6 +833,14 @@ CarScript.prototype.arrive = function () {
   var driver = this.driver,
     last = driver.last(),
     route;
+
+  //on a job of its own: there - whatever takes it over takes it, or it is
+  //parked and gone (Carman#send)
+  if (this.errand !== null) {
+    if (this.errand.arrive !== null) handOver(this);
+    else this.leave();
+    return;
+  }
 
   //done for the night - or, the rush over, done for the day where it got to;
   //or at work, or home, where it was going: parked there, and gone a moment
@@ -1171,6 +1182,9 @@ CarScript.prototype.purpose = function () {
 CarScript.prototype.nextRoute = function (from, din) {
   var man = this.man;
 
+  //on a job of its own, there and nowhere else
+  if (this.errand !== null) return routeTo(man.root, from, this.errand.to, din);
+
   //come the morning the night's drivers are off to work like everybody else,
   //and at everybody else's speed
   if (lightAllowed(man.root)) this.nightRider = false;
@@ -1218,7 +1232,13 @@ CarScript.prototype.extend = function () {
     last = wps[wps.length - 1],
     route;
 
-  if (this.traffic === SHUTTLE || last.din === null || this.leaving) return;
+  if (
+    this.traffic === SHUTTLE ||
+    last.din === null ||
+    this.leaving ||
+    this.errand !== null
+  )
+    return;
 
   //in the small hours nothing is joined on for a light car on its way home -
   //nor for one at work, or home, or one more than the hour wants: it pulls
@@ -1637,14 +1657,20 @@ CarScript.prototype.tick = function (time) {
   if (this.waited > STUCK_FOR) {
     this.waited = 0;
     this.man.unstuck++;
-    this.man.respawn(this);
+    //on a job of its own, it goes on from here off the road (Carman#send)
+    if (this.errand !== null) this.man.remove(this);
+    else this.man.respawn(this);
     return;
   }
 
   //stood a while at a junction it cannot get out of the way it goes: off
-  //another way, if there is one clear
+  //another way, if there is one clear - not on a job of its own
   this.sinceDetour = this.waited > 0 ? this.sinceDetour + time.dt : 0;
-  if (this.waited > DETOUR_AFTER && this.sinceDetour > DETOUR_EVERY) {
+  if (
+    this.errand === null &&
+    this.waited > DETOUR_AFTER &&
+    this.sinceDetour > DETOUR_EVERY
+  ) {
     this.sinceDetour = 0;
     this.detour();
   }
@@ -1652,8 +1678,26 @@ CarScript.prototype.tick = function (time) {
   this.driven += Math.abs(driver.x - x) + Math.abs(driver.y - y);
   this.place();
 
-  if (this.driven >= BREAKDOWN_EVERY) this.breakDown();
+  //what is out on a job is looked after
+  if (this.driven >= BREAKDOWN_EVERY && this.errand === null) this.breakDown();
 };
+
+/**
+ * What is out on a job of its own handed over to whatever takes it over
+ * (Carman#send) - once, where it is now, the way it faces - and off the
+ * roads.
+ */
+function handOver(self) {
+  var errand = self.errand,
+    driver = self.driver;
+
+  self.errand = null;
+
+  if (errand !== null && errand.arrive !== null && driver !== null)
+    errand.arrive({ x: driver.x, y: driver.y, heading: self.heading });
+
+  self.man.remove(self);
+}
 
 /**
  * Draws a vehicle, and over it whatever gives off light of its own - a police
@@ -1959,6 +2003,12 @@ function Carman(root) {
   this.root = root;
   this.cars = [];
   this.types = null;
+  //what works on building sites, by name, to be sent out on jobs (send) -
+  //never out with the traffic otherwise; and those out on one now
+  this.works = {};
+  this.errands = [];
+  //what keeps the traffic going, once it is (running)
+  this.go = null;
   this.totalWeight = 0;
   //of that, what still runs between midnight and six
   this.nightWeight = 0;
@@ -1993,7 +2043,7 @@ function Carman(root) {
 }
 
 Carman.prototype.init = function () {
-  var go = new engine.GameObject("carman"),
+  var go = (this.go = new engine.GameObject("carman")),
     self = this;
 
   go.addComponent(new CarManScript(this));
@@ -2310,6 +2360,78 @@ Carman.prototype.respawn = function (script) {
 };
 
 /**
+ * Whether the traffic is going at all - not where whatever keeps it going
+ * was taken out of the world (a lab bench).
+ */
+Carman.prototype.running = function () {
+  return this.go !== null && this.go.world !== null && this.types !== null;
+};
+
+//how fast what works on building sites drives the roads, of a car's
+//speed - however slowly it crawls about a site
+var WORKS_SPEED = 0.5;
+
+/**
+ * Sends something that works on building sites (a bulldozer - data/
+ * vehicles street false) out on a job of its own: on the road at from, in
+ * the traffic with everything else, to to - and there handed over to
+ * arrive({x, y, heading}), off the roads; or, with no arrive, parked there
+ * and gone, as a car done for the day is. Stuck for good on the way, or its
+ * way gone, it is handed over wherever it got to.
+ *
+ * @param name {string} what it is
+ * @param from {number} the road tile it sets out from
+ * @param to {number} the road tile it goes to
+ * @param [arrive] {function(Object)|null}
+ * @returns {CarScript|null} null where it could not go - no traffic, no
+ *          such thing, no way there, or no room to set out
+ */
+Carman.prototype.send = function (name, from, to, arrive) {
+  var type = this.works[name],
+    root = this.root;
+
+  if (!this.running() || type === undefined || from === to) return null;
+
+  var route = routeTo(root, from, to);
+
+  if (route.length < 2) return null;
+
+  var wps = Traffic.routeWaypoints(route, null),
+    car = new Car(this),
+    s = car.car,
+    colors = Object.keys(type.frames),
+    driver;
+
+  s.type = type;
+  s.color = colors.indexOf("yellow") !== -1 ? "yellow" : colors[0];
+  s.looks = type.frames[s.color];
+  s.heading = null;
+  s.lamp = 0;
+  s.baseSpeed = SPEED * Math.max(type.speed, WORKS_SPEED);
+  s.traffic = ERRAND;
+  s.errand = { to: to, arrive: arrive || null };
+
+  driver = s.driverFor();
+  driver.passable = false;
+  //with nowhere to be handed over to, it pulls in at the end and is gone
+  driver.stopAtEnd = driver.pullIn = !arrive;
+
+  if (!this.traffic.roomAt(wps[0].x, wps[0].y, driver.length)) {
+    this.traffic.remove(driver);
+    return null;
+  }
+
+  driver.setPath(wps);
+  driver.v = driver.v0 * 0.5;
+  this.traffic.enter(driver);
+  this.errands.push(car);
+  root.game.logic.world.addGameObject(car);
+  s.place();
+
+  return s;
+};
+
+/**
  * What the next one out should be. By day they all take their turn; in the
  * small hours it is vans and lorries, and the few light cars driving about -
  * no bus, they are not running at that hour.
@@ -2404,7 +2526,22 @@ Carman.prototype.round = function (first, stops) {
  * goes out in its place when there is room for it.
  */
 Carman.prototype.remove = function (script) {
-  var i = this.cars.indexOf(script.gameObject);
+  //one on a job of its own goes on from wherever it got to
+  if (script.errand !== null && script.errand.arrive !== null) {
+    handOver(script);
+    return;
+  }
+
+  var i = this.cars.indexOf(script.gameObject),
+    k = this.errands.indexOf(script.gameObject);
+
+  if (k !== -1) {
+    this.errands.splice(k, 1);
+    if (script.driver !== null) this.traffic.remove(script.driver);
+    script.driver = null;
+    script.gameObject.destroy();
+    return;
+  }
 
   if (script.driver !== null) {
     this.traffic.remove(script.driver);
@@ -2635,9 +2772,6 @@ function loadTypes(self) {
   }
 
   Object.keys(generated.vehicles).forEach(function (name) {
-    //what works on building sites stays there
-    if (generated.vehicles[name].street === false) return;
-
     var data = generated.vehicles[name],
       type = {
         name: name,
@@ -2686,6 +2820,13 @@ function loadTypes(self) {
           return phase[heading];
         });
       });
+    }
+
+    //what works on building sites goes out only on its jobs (send)
+    if (data.street === false) {
+      type.traffic = ERRAND;
+      self.works[name] = type;
+      return;
     }
 
     types.push(type);

@@ -277,10 +277,15 @@ BuildingView.prototype.update = function () {
     //it, fenced off, as far down as it has come (client/demolition)
     if (b.data.demolishing) return;
 
+    //its ground still being cleared before it goes up (core/construction
+    //awaitClearing): nothing of it there yet, but the bulldozers at it
+    //(client/clearworks)
+    var waiting = b.data.clearing !== undefined && b.data.clearing();
+
     //a site laid out on the ground the building takes up in the world, and
     //turned as it is seen - the crane on the same tile from every side
     var lots =
-      b.data.getState() === BuildingState.underConstruction && !look
+      b.data.getState() === BuildingState.underConstruction && !look && !waiting
         ? CompoundBuilding.lotPieces(
             vkaria.sprites,
             Rotation.sizeX(staticData, b.data.rotation),
@@ -291,7 +296,9 @@ BuildingView.prototype.update = function () {
           )
         : null;
 
-    if (b.data.getState() === BuildingState.underConstruction && look) {
+    if (waiting) {
+      //nothing to draw - but drawn again once it goes up (cleared)
+    } else if (b.data.getState() === BuildingState.underConstruction && look) {
       drawSite(this, staticData, look, at.rotation);
     } else if (lots !== null) {
       //any other building goes up on a building site like the blocks' -

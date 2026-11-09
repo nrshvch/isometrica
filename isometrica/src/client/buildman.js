@@ -776,6 +776,11 @@ function onBuildingBuilt(sender, building, self) {
   showConstructionCost(self, building);
   rewall(self, building);
   repile(self, tilesOf(building));
+
+  //one waiting for its ground to be cleared before it goes up: the
+  //bulldozers out to it (client/clearworks sweep)
+  if (building.clearing && building.clearing() && self.root.clearworks)
+    self.root.clearworks.sweep(tilesOf(building));
 }
 
 function onBuildingUpdated(sender, building, self) {

@@ -9,6 +9,7 @@ import ErrorCode from "../errorcode";
 import Resource from "../resourcecode";
 import Config from "../config";
 import Building from "../building";
+import Construction from "../construction";
 import BuildingState from "../buildingstate";
 import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
@@ -29,6 +30,9 @@ function CityBuildings(city) {
   //what is to go up where something else is coming down for it, once the
   //ground is clear (replaceLater): {code, tile, rotation, look, tiles} each
   this._replacing = [];
+  //what went up waiting for its ground to be cleared first, the bulldozers
+  //out to it (buildBuilding): {building, tiles} each
+  this._clearing = [];
 }
 
 /**
@@ -240,6 +244,27 @@ CityBuildings.prototype.buildBuilding = function (
     building.init(city.world, code, tile, rotate);
     //a road laid as it was planned (client/road plan)
     if (Array.isArray(surface)) building.surface = surface.slice();
+
+    //its ground cleared first - bare, or whatever was on it, trees,
+    //stones, rubble - by the bulldozers, before it goes up (awaitClearing):
+    //being cleared from before what was on it goes, for whoever shows it
+    //going to show it there till then. Not a road, which is dug out by its
+    //own works (client/roadworks), nor what goes up at once
+    if (
+      data.classCode !== BuildingClassCode.road &&
+      building.getState() === BuildingState.underConstruction
+    ) {
+      var site = {
+        building: building,
+        tiles: footprint(code, tile, rotate),
+      };
+
+      site.tiles.forEach(function (t) {
+        city.world.terrain.startClearing(t);
+      });
+      building.awaitClearing();
+      this._clearing.push(site);
+    }
 
     //what the player pays for it, set before the build is announced so
     //that whoever shows it over the site has it in hand
@@ -694,11 +719,30 @@ function footprint(code, tile, rotation) {
  * Whatever was waiting for its ground (replaceLater) goes up, a building
  * site, on ground that is clear now: none of its tiles being cleared still,
  * nothing standing on any - the building it is to replace down to its last
- * tile.
+ * tile. And a building waiting for its ground to be cleared before it goes
+ * up (buildBuilding) has as much of it cleared as is, and goes up once it
+ * all is - one cleared away meanwhile let go of.
  */
 function settle(self) {
   var terrain = self.city.world.terrain,
     held = self.city.world.buildingService;
+
+  if (self._clearing.length > 0)
+    self._clearing = self._clearing.filter(function (site) {
+      var b = site.building;
+
+      if (held.get(b.tile) !== b || !b.clearing()) return false;
+
+      var done = site.tiles.filter(function (t) {
+        return !terrain.beingCleared(t);
+      }).length;
+
+      b.setCleared(done / site.tiles.length);
+      if (done < site.tiles.length) return true;
+
+      b.cleared();
+      return false;
+    });
 
   if (self._replacing.length === 0) return;
 
@@ -717,14 +761,22 @@ function settle(self) {
 }
 
 /**
- * Puts up what was waiting for its ground (replaceLater), a building site
- * from the start: paid for when it was asked for (City#replace), so with
- * nothing to show over it for what it cost.
+ * Puts up what was waiting for its ground (replaceLater), a building site:
+ * its ground cleared by the bulldozers bringing down what stood there - so
+ * that far up already (Construction CLEAR_SHARE) - and paid for when it was
+ * asked for (City#replace), so with nothing to show over it for what it
+ * cost.
  */
 function goUp(self, r) {
   var building = new Building();
 
-  building.init(self.city.world, r.code, r.tile, r.rotation, 0);
+  building.init(
+    self.city.world,
+    r.code,
+    r.tile,
+    r.rotation,
+    Construction.CLEAR_SHARE,
+  );
   if (r.look !== undefined && r.look !== null) building.look = r.look;
   building.expense = 0;
 

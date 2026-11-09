@@ -22,8 +22,9 @@ var events = {
 var REGROWS = 43200000;
 
 //how long a tile is being cleared at the most, real time, ms - should
-//whoever shows it being done never say it is (beingCleared)
-var CLEARING_MOST = 180000;
+//whoever shows it being done never say it is (beingCleared): long enough
+//for a bulldozer to drive out to it across a city (client/clearworks)
+var CLEARING_MOST = 300000;
 
 /**
  * @type {TileIterator}

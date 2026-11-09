@@ -5,6 +5,7 @@ import Config from "./config";
 import View from "./view";
 import RenderLayer from "./renderlayer";
 import Carman from "./carman";
+import BuildingClassCode from "../data/classcode";
 import WorkLights from "./worklights";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
@@ -40,17 +41,44 @@ var Terrain = Core.Terrain,
  * afresh, from wherever each of them is, with more of them to it if it is
  * big enough to need more.
  *
- * A bulldozer kicks up dust as it goes, comes out of the dust as it gets to
- * work, and goes off into it once its share is done; its amber beacon turns
- * on its roof, and after dark its lamps are on (client/worklights). The
- * bulldozers are not kept: after a reload, ground cleared is bare, and a
- * building being demolished stands as far down as it had come, fenced off,
- * for them to be sent again to the rest of it (client/buildman
- * demolitionOf).
+ * A bulldozer is not there to begin with: it drives out to its share from
+ * somewhere on the city's roads - near it, where there are any - in the
+ * traffic, with everything else on them (client/carman send), to the road
+ * nearest the work, and leaves it there for the ground the rest of the way,
+ * round whatever stands in its way and the water (groundPath). With no
+ * city's road to set out from, it sets out from a road FROM_AFAR off it, if
+ * there is one, or from the country that far off, over the ground all the
+ * way; with no traffic going at all (a lab bench), the same. Its share done,
+ * it drives back over the ground to the nearest road and off home in the
+ * traffic, parked somewhere and gone as a car done for the day is - or,
+ * with no road to get back to, off into its dust. It kicks up dust as it
+ * goes; its amber beacon turns on its roof, and after dark its lamps are on
+ * (client/worklights). The bulldozers are not kept: after a reload, ground
+ * cleared is bare, and a building being demolished stands as far down as it
+ * had come, fenced off, for them to be sent again to the rest of it
+ * (client/buildman demolitionOf).
+ *
+ * And a building put up is not put up till its ground is cleared - bare or
+ * not, whatever is on it held standing till then (sweep, core/city/
+ * citybuildings buildBuilding): the bulldozers out to it the same way.
  */
 
 //how many tiles of a stretch a bulldozer takes on, at most
 var SHARE = 6;
+
+//how fast a bulldozer drives over the ground on its way to its share and
+//back, tiles a second; how far off it sets out from where there is no
+//city's road to set out from - and the city's roads it sets out from, how
+//far off its share at the least and how near to be picked first; how far
+//off its share a road can be
+//for it to come by, the rest of the way over the ground; and how far round
+//the straight way there it looks for a way over the ground, tiles
+var TRAVEL = 1.6,
+  FROM_AFAR = 10,
+  NOT_BY = 6,
+  NEAR_CITY = 25,
+  ROAD_NEAR = 40,
+  MARGIN = 8;
 
 //how fast a bulldozer drives, tiles a second; and on every tile it gets to,
 //how far it backs up and pushes on over it again, tiles, and how long that
@@ -151,6 +179,24 @@ function waitOn(self, tile) {
     (self.waiting[tile] = { letGo: [], knock: [], until: self.clock })
   );
 }
+
+/**
+ * Has the bulldozers out to the tiles a building is to go up on, once they
+ * are cleared (core/city/citybuildings buildBuilding): being cleared, and
+ * whatever stood on them held standing till one gets there (hold) - every
+ * one of them swept, bare or not, before it goes up.
+ *
+ * @param tiles {number[]}
+ */
+Clearworks.prototype.sweep = function (tiles) {
+  var self = this;
+
+  tiles.forEach(function (tile) {
+    waitOn(self, tile);
+  });
+
+  if (tiles.length > 0) crew(this, tiles);
+};
 
 /**
  * Holds what stood on a tile being cleared (core/terrain beingCleared) till
@@ -254,7 +300,10 @@ function builtOver(self) {
   for (var tile in self.waiting) {
     var b = buildings.get(+tile);
 
-    if (b !== null && !b.demolishing) reach(self, +tile);
+    //not what waits for this very ground to be cleared before it goes up,
+    //nor a building being demolished, which stands there till it is down
+    if (b !== null && !b.demolishing && !(b.clearing && b.clearing()))
+      reach(self, +tile);
   }
 }
 
@@ -356,10 +405,12 @@ function share(self, tiles) {
     inStretch[tile] = true;
   });
 
-  //at it already: with any of its tiles still to get to
+  //at it already, or on its way to it: with any of its tiles still to get
+  //to - not one on its way back
   at = self.dozers.filter(function (d) {
     return (
       d.leaving === false &&
+      d.phase !== "home" &&
       d.queue.some(function (tile) {
         return inStretch[tile] === true;
       })
@@ -436,49 +487,21 @@ function nearEndFirst(d, s) {
 }
 
 /**
- * A new bulldozer for a share, coming out of its dust a tile off where it
- * starts - on the side away from where it goes next, on land - to drive on
- * to it.
+ * A new bulldozer for a share, on its way out to it (setOut).
  */
 function dozer(self, queue) {
-  var tile = queue[0],
-    x = Terrain.extractX(tile),
-    y = Terrain.extractY(tile),
-    next = queue.length > 1 ? queue[1] : tile,
-    away = [
-      Math.sign(x - Terrain.extractX(next)),
-      Math.sign(y - Terrain.extractY(next)),
-    ],
-    terrain = self.root.core.terrain,
-    from = [x, y],
-    go = new engine.GameObject("clearworks"),
-    renderer = new WorkLights.Renderer(),
-    tries = [away].concat(AROUND.slice(0, 4));
-
-  //coming the way the sweep goes - or from any side of it there is land on
-  for (var i = 0; i < tries.length; i++) {
-    var w = tries[i];
-
-    if (w[0] === 0 && w[1] === 0) continue;
-
-    if (
-      terrain.getTerrainType(x + w[0], y + w[1]) !== TerrainType.water &&
-      self.waiting[Terrain.convertToIndex(x + w[0], y + w[1])] === undefined
-    ) {
-      from = [x + w[0], y + w[1]];
-      break;
-    }
-  }
+  var go = new engine.GameObject("clearworks"),
+    renderer = new WorkLights.Renderer();
 
   renderer.layer = RenderLayer.buildingsLayer;
   go.addComponent(renderer);
 
   var d = {
     go: go,
-    x: from[0],
-    y: from[1],
+    x: 0,
+    y: 0,
     queue: queue,
-    heading: View.headingOf(x - from[0], y - from[1]) || "x+",
+    heading: "x+",
     //the tile it is on, and how far into backing up and pushing on over
     //it, ms - -1 while it drives
     on: -1,
@@ -493,17 +516,382 @@ function dozer(self, queue) {
     dusted: 0,
     //the picture it has, as it is seen
     seen: null,
+    //on its way out in the traffic ("car" - and what drives it there),
+    //over the ground ("coming", along path), at its share ("working"), or
+    //on its way back to a road ("home", the road it makes for)
+    phase: "coming",
+    car: null,
+    path: [],
+    road: -1,
   };
 
-  for (var k = 0; k < 3; k++)
-    dust(
-      self,
-      d.x + (Math.random() - 0.5) * 0.6,
-      d.y + (Math.random() - 0.5) * 0.6,
-      2,
-    );
+  setOut(self, d);
 
   return d;
+}
+
+//how far apart two tiles are, tiles
+function apart(a, b) {
+  return Math.hypot(
+    Terrain.extractX(a) - Terrain.extractX(b),
+    Terrain.extractY(a) - Terrain.extractY(b),
+  );
+}
+
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+/**
+ * Sends a bulldozer out to the first of its share: in the traffic from
+ * somewhere on the city's roads to the road nearest it, if it can, and over
+ * the ground from there (arrived) - or over the ground all the way, from a
+ * road or the country round about.
+ */
+function setOut(self, d) {
+  var target = d.queue[0],
+    start = startFor(self, target),
+    road = start === -1 ? -1 : roadNear(self, target, start),
+    from;
+
+  if (road !== -1 && road !== start) {
+    var car = self.root.carman.send("bulldozer", start, road, function (at) {
+      arrived(self, d, at);
+    });
+
+    if (car !== null) {
+      d.phase = "car";
+      d.car = car;
+      d.x = Terrain.extractX(start);
+      d.y = Terrain.extractY(start);
+      return;
+    }
+  }
+
+  //over the ground: from the road nearest it - no room in the traffic to
+  //set out in - or from the country
+  from =
+    road !== -1
+      ? [Terrain.extractX(road), Terrain.extractY(road)]
+      : groundStart(self, target);
+
+  d.x = from[0];
+  d.y = from[1];
+  d.path = approach(self, from, target);
+}
+
+/**
+ * Where a bulldozer sets out from for target: a road somewhere in a city -
+ * near it, where there are any - or, with no city's road, any road
+ * FROM_AFAR of it; -1 for none, or no traffic going to drive it in.
+ */
+function startFor(self, target) {
+  var carman = self.root.carman;
+
+  if (!carman || !carman.running()) return -1;
+
+  //not right by it, for it to be seen to drive out to it
+  var city = carman.cityRoads().filter(function (t) {
+      return apart(t, target) >= NOT_BY;
+    }),
+    near = city.filter(function (t) {
+      return apart(t, target) <= NEAR_CITY;
+    });
+
+  if (near.length > 0) return pick(near);
+  if (city.length > 0) return pick(city);
+  if (carman.cityRoads().length > 0) return pick(carman.cityRoads());
+
+  var roads = self.root.roadman.getRoadTiles().filter(function (t) {
+    return apart(t, target) <= FROM_AFAR;
+  });
+
+  return roads.length > 0 ? pick(roads) : -1;
+}
+
+/**
+ * The road nearest target that can be driven to from start - where a
+ * bulldozer leaves the road for the ground - or -1 for none ROAD_NEAR of it.
+ */
+function roadNear(self, target, start) {
+  var roads = self.root.roadman
+    .getRoadTiles()
+    .map(function (t) {
+      return { tile: t, far: apart(t, target) };
+    })
+    .filter(function (r) {
+      return r.far <= ROAD_NEAR;
+    })
+    .sort(function (a, b) {
+      return a.far - b.far;
+    });
+
+  for (var i = 0; i < Math.min(8, roads.length); i++) {
+    if (roads[i].tile === start) return start;
+    if (Carman.routeTo(self.root, start, roads[i].tile).length > 1)
+      return roads[i].tile;
+  }
+
+  return -1;
+}
+
+/**
+ * A spot in the country for a bulldozer with no road to come by to set out
+ * from: FROM_AFAR off target, any way there is land and nothing standing -
+ * nearer, where there is none that far.
+ */
+function groundStart(self, target) {
+  var tx = Terrain.extractX(target),
+    ty = Terrain.extractY(target);
+
+  for (var r = FROM_AFAR; r >= 2; r -= 2)
+    for (var k = 0; k < 16; k++) {
+      var a = Math.random() * 2 * Math.PI,
+        x = Math.round(tx + Math.cos(a) * r),
+        y = Math.round(ty + Math.sin(a) * r);
+
+      if (passable(self, Terrain.convertToIndex(x, y))) return [x, y];
+    }
+
+  return [tx, ty];
+}
+
+//whether a bulldozer can drive over a tile: land, with nothing on it but a
+//tree, rubble or a road - or being cleared
+function passable(self, tile) {
+  var terrain = self.root.core.terrain,
+    b = self.root.core.buildingService.get(tile);
+
+  if (terrain.getTerrainType(tile) === TerrainType.water) return false;
+  if (self.waiting[tile] !== undefined || b === null) return true;
+
+  return (
+    b.data.classCode === BuildingClassCode.tree ||
+    b.data.classCode === BuildingClassCode.road ||
+    (b.clearing !== undefined && b.clearing())
+  );
+}
+
+/**
+ * The way over the ground from x, y to tile - a tile at a time along x or
+ * along y, round what stands and the water - as the points of the tiles on
+ * it after the first, tile last; straight there where there is none to be
+ * found within MARGIN of the straight way.
+ *
+ * @param from {number[]} x, y in tiles
+ * @returns {number[][]}
+ */
+function groundPath(self, from, tile) {
+  var fx = Math.round(from[0]),
+    fy = Math.round(from[1]),
+    tx = Terrain.extractX(tile),
+    ty = Terrain.extractY(tile),
+    x0 = Math.min(fx, tx) - MARGIN,
+    y0 = Math.min(fy, ty) - MARGIN,
+    w = Math.abs(fx - tx) + 2 * MARGIN + 1,
+    h = Math.abs(fy - ty) + 2 * MARGIN + 1,
+    came = new Int32Array(w * h).fill(-2),
+    cost = new Float64Array(w * h).fill(Infinity),
+    open = [],
+    goal = (ty - y0) * w + (tx - x0),
+    first = (fy - y0) * w + (fx - x0);
+
+  cost[first] = 0;
+  came[first] = -1;
+  open.push({ i: first, f: Math.abs(fx - tx) + Math.abs(fy - ty) });
+
+  while (open.length > 0) {
+    //the nearest by what it has cost and has left to go
+    var best = 0;
+
+    for (var k = 1; k < open.length; k++)
+      if (open[k].f < open[best].f) best = k;
+
+    var cur = open.splice(best, 1)[0].i;
+
+    if (cur === goal) break;
+
+    var cx = cur % w,
+      cy = (cur - cx) / w;
+
+    [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ].forEach(function (s) {
+      var nx = cx + s[0],
+        ny = cy + s[1];
+
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
+
+      var n = ny * w + nx,
+        c = cost[cur] + 1;
+
+      if (c >= cost[n]) return;
+      if (
+        n !== goal &&
+        !passable(self, Terrain.convertToIndex(x0 + nx, y0 + ny))
+      )
+        return;
+
+      cost[n] = c;
+      came[n] = cur;
+      open.push({
+        i: n,
+        f: c + Math.abs(x0 + nx - tx) + Math.abs(y0 + ny - ty),
+      });
+    });
+  }
+
+  if (came[goal] === -2) return [[tx, ty]];
+
+  var out = [];
+
+  for (var at = goal; at !== first && at >= 0; at = came[at])
+    out.unshift([x0 + (at % w), y0 + Math.floor(at / w)]);
+
+  return out;
+}
+
+//the way over the ground from x, y up to a tile next to tile - the last of
+//the way it drives at its share (work)
+function approach(self, from, tile) {
+  var path = groundPath(self, from, tile);
+
+  path.pop();
+
+  return path;
+}
+
+/**
+ * Off the road where the traffic took it, at x, y, facing the way it did -
+ * over the ground the rest of the way to its share, or, with none of it
+ * left meanwhile, back home.
+ */
+function arrived(self, d, at) {
+  d.car = null;
+  d.x = at.x;
+  d.y = at.y;
+  if (at.heading) d.heading = at.heading;
+  //all there, rather than coming out of its dust
+  d.age = FADE_MS;
+  d.phase = "coming";
+
+  if (!ahead(self, d)) {
+    goHome(self, d);
+    return;
+  }
+
+  d.path = approach(self, [d.x, d.y], d.queue[0]);
+}
+
+/**
+ * Its share done: back over the ground to the nearest road to drive off
+ * home in the traffic (driveOff) - or, with no road to get to or no traffic
+ * going, off into its dust.
+ */
+function goHome(self, d) {
+  var carman = self.root.carman,
+    here = Terrain.convertToIndex(Math.round(d.x), Math.round(d.y)),
+    home = carman && carman.running() ? carman.cityRoads() : [],
+    road = -1;
+
+  if (home.length > 0) {
+    var roads = self.root.roadman
+      .getRoadTiles()
+      .filter(function (t) {
+        return apart(t, here) <= ROAD_NEAR;
+      })
+      .sort(function (a, b) {
+        return apart(a, here) - apart(b, here);
+      });
+
+    for (var i = 0; i < Math.min(6, roads.length) && road === -1; i++)
+      if (
+        home.indexOf(roads[i]) !== -1 ||
+        Carman.routeTo(self.root, roads[i], pick(home)).length > 1
+      )
+        road = roads[i];
+  }
+
+  d.phase = "home";
+
+  if (road === -1) {
+    d.leaving = true;
+    for (var p = 0; p < 3; p++)
+      dust(
+        self,
+        d.x + (Math.random() - 0.5) * 0.6,
+        d.y + (Math.random() - 0.5) * 0.6,
+        2,
+      );
+    return;
+  }
+
+  d.road = road;
+  d.path = groundPath(self, [d.x, d.y], road);
+}
+
+/**
+ * On the road again, its share done: off home in the traffic, somewhere in
+ * the city, parked there and gone (Carman#send) - itself gone from here.
+ *
+ * @returns {boolean} whether it went - off into its dust otherwise
+ */
+function driveOff(self, d) {
+  var carman = self.root.carman,
+    home = carman.cityRoads().filter(function (t) {
+      return t !== d.road;
+    }),
+    car = null;
+
+  for (var k = 0; k < 4 && car === null && home.length > 0; k++)
+    car = carman.send("bulldozer", d.road, pick(home), null);
+
+  if (car === null) {
+    d.leaving = true;
+    return false;
+  }
+
+  if (d.go.world !== null) d.go.world.removeGameObject(d.go);
+  d.go = null;
+
+  return true;
+}
+
+/**
+ * Drives a bulldozer on along its way over the ground, as far as dt takes
+ * it, kicking up dust behind it.
+ *
+ * @returns {boolean} whether it is at the end of it
+ */
+function travel(self, d, dt) {
+  var step = (TRAVEL * dt) / 1000;
+
+  while (step > 0 && d.path.length > 0) {
+    var p = d.path[0],
+      dx = p[0] - d.x,
+      dy = p[1] - d.y,
+      left = Math.hypot(dx, dy);
+
+    if (left > 0.01) d.heading = View.headingOf(dx, dy);
+
+    if (left <= step) {
+      d.x = p[0];
+      d.y = p[1];
+      d.path.shift();
+      step -= left;
+    } else {
+      d.x += (dx / left) * step;
+      d.y += (dy / left) * step;
+      step = 0;
+    }
+  }
+
+  kick(self, d, dt, -0.3);
+
+  return d.path.length === 0;
 }
 
 /**
@@ -514,12 +902,31 @@ function dozer(self, queue) {
 function work(self, d, dt) {
   d.age += dt;
 
+  //in the traffic: where it has got to, for what it is nearest
+  if (d.phase === "car") {
+    if (d.car !== null && d.car.driver !== null) {
+      d.x = d.car.driver.x;
+      d.y = d.car.driver.y;
+    }
+    return;
+  }
+
   if (d.leaving) {
     d.gone += dt;
     if (d.gone >= FADE_MS) {
       if (d.go.world !== null) d.go.world.removeGameObject(d.go);
       d.go = null;
       return;
+    }
+  } else if (d.phase === "coming" || d.phase === "home") {
+    //on its way over the ground: out to its share, or back to a road
+    if (travel(self, d, dt)) {
+      if (d.phase === "home") {
+        if (driveOff(self, d)) return;
+      } else {
+        d.phase = "working";
+        if (!ahead(self, d)) goHome(self, d);
+      }
     }
   } else if (d.shove >= 0) {
     var k = (d.shove += dt) / SHOVE_MS,
@@ -565,16 +972,7 @@ function work(self, d, dt) {
       d.y += (dy / left) * step;
       kick(self, d, dt, BLADE);
     }
-  } else {
-    d.leaving = true;
-    for (var p = 0; p < 3; p++)
-      dust(
-        self,
-        d.x + (Math.random() - 0.5) * 0.6,
-        d.y + (Math.random() - 0.5) * 0.6,
-        2,
-      );
-  }
+  } else goHome(self, d);
 
   place(self, d);
 }
