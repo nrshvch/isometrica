@@ -16,7 +16,7 @@ import { changed } from "./looks";
  * was a moment longer, its lights out, no fence round it and no bulldozer
  * coming: the charges go off at its foot, flashing, and it shakes; then it
  * goes up. Every floor of every tile of it is torn into pieces of itself
- * (client/demolition burst) flung out from the middle of it and high up,
+ * (client/demolition burst) flung out any way at all and high up,
  * to fall all round, bounce, lie a while and go; a fireball bursts out over
  * all of it, white-hot to orange to soot (SmokeScript fire), and grey dust
  * rolls out along the ground. Its foot goes
@@ -46,10 +46,18 @@ var TILE = Config.tileSize,
 var FUSE_MS = 500,
   CHARGE_EVERY = 160;
 
-//how its pieces go up: how many off every floor, how fast out from the
-//middle of it and up, world units a second, how long they lie where they
-//fall, ms - and how many of a building at most
-var FLING = { n: 18, out: [40, 150], up: [70, 210], lie: [2500, 5500] },
+//how its pieces go up: how many off every floor, how fast out and up,
+//world units a second - out any way at all, all round it, not just out
+//from the middle of it, which for a building a tile or two across is
+//along it only - how long they lie where they fall, ms - and how many of a
+//building at most
+var FLING = {
+    n: 18,
+    out: [40, 150],
+    up: [70, 210],
+    lie: [2500, 5500],
+    around: true,
+  },
   MOST = 480;
 
 //how long its foot takes to go in the blast, ms; and how long after the
