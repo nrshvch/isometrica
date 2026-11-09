@@ -28,7 +28,10 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   night, at `/sprites.html`, the sounds to listen to at `/sounds.html`, the
   music at `/music.html`, the woods map at `/woods.html`, the traffic
   testbed at `/traffic.html`, the building bench at `/buildings.html`, the
-  demolition bench at `/demolition.html` and the lighting bench at
+  demolition bench at `/demolition.html`, the replacement bench at
+  `/replace.html` - a building put up in the place of itself, another look
+  of it, or of whatever else covers its ground, coming down and going up
+  again the game's way, its site as fast as asked - and the lighting bench at
   `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder

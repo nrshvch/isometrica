@@ -126,6 +126,20 @@ Construction.prototype.advance = function (ms) {
   Events.fire(this, events.stateChange, this._state);
 };
 
+/**
+ * Has it go on from progress, 0..1 - finished, from 1 - however far it had
+ * got: for a bench that times it by a clock of its own, going as fast or as
+ * slowly as asked, or not at all (lab/bench/world).
+ *
+ * @param progress {number}
+ */
+Construction.prototype.setProgress = function (progress) {
+  if (this._state !== ConstructionState.underConstruction) return;
+
+  if (progress < 1) start(this, Math.max(0, progress));
+  else this.advance(this.data.constructionTime);
+};
+
 Construction.prototype.getState = function () {
   return this._state;
 };

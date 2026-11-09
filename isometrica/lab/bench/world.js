@@ -1,12 +1,13 @@
 /**
- * The ground for the lab's demolition bench (lab/demolition.html): the
- * game's own client and world, out in the open sea, and of all of it
- * only the bench's own patch drawn - flat grass, as a save puts ground back
- * (core/terrain load), with nothing of the world's own on it - and a city of
- * nobody to own what is put up, rich enough never to be short. The clock
- * stands still at ten in the morning in clear weather, no traffic drives
- * its roads, nothing is saved, nothing is heard; and the client goes as
- * fast or as slowly as asked, or not at all.
+ * The ground for the lab's benches that go the game's own way (lab/
+ * demolition.html, lab/replace.html): the game's own client and world, out
+ * in the open sea, and of all of it only the bench's own patch drawn - flat
+ * grass, as a save puts ground back (core/terrain load), with nothing of the
+ * world's own on it - and a city of nobody to own what is put up, rich
+ * enough never to be short. The clock stands still at ten in the morning in
+ * clear weather, no traffic drives its roads, nothing is saved, nothing is
+ * heard; and the client goes as fast or as slowly as asked, or not at all -
+ * and the building sites with it, sitePace times as fast again.
  *
  * What is put up goes up whole, there and then - unpaid, nothing floated
  * over it (put) - on tiles counted from the middle of the patch.
@@ -20,6 +21,8 @@ import CityBuildings from "../../src/core/city/citybuildings";
 import Resource from "../../src/core/resourcecode";
 import Config from "../../src/client/config";
 import Weather from "../../src/client/weather";
+import BuildingState from "../../src/core/buildingstate";
+import { stageOf } from "../../src/shared/gen/stacking";
 
 var Terrain = Core.Terrain;
 
@@ -203,6 +206,10 @@ function World(core, client, city) {
   this.city = city;
   //how fast the client goes: 1 as the game goes, 0 stood still
   this.speed = 1;
+  //and how much faster than that the building sites go up: 1 as the game
+  //has them - and how far along each is by the bench's clock
+  this.sitePace = 1;
+  this.progress = new WeakMap();
   //the patch of ground drawn, {x, y, w, h} in tiles of the world - none
   //yet (ground)
   this.area = null;
@@ -264,7 +271,8 @@ World.prototype.ground = function (dx, dy, w, h) {
   client.terrain.redraw(tiles);
 };
 
-//the client's clock going speed times as fast as the real one
+//the client's clock going speed times as fast as the real one - and the
+//building sites with it
 function pace(self) {
   var time = self.client.game.time;
 
@@ -276,7 +284,36 @@ function pace(self) {
     this.time += this.dt;
     this.now += this.dt;
     this.frame++;
+
+    sites(self, this.dt);
   };
+}
+
+/**
+ * Whatever is going up goes up by the bench's clock, sitePace times as fast,
+ * rather than by the real one the game times it by (core/construction) -
+ * stood still with it - and is drawn a stage on as it gets to one
+ * (client/buildingview drawSite), which it would otherwise be by the real
+ * clock too.
+ */
+function sites(self, dt) {
+  self.core.buildings.underConstruction().forEach(function (b) {
+    var was = self.progress.has(b) ? self.progress.get(b) : b.getProgress(),
+      now = Math.min(1, was + (dt * self.sitePace) / b.data.constructionTime),
+      seen = self.client.buildman.getBuilding(b.tile),
+      drawn = seen !== null && seen.view ? seen.view.drawnAs : null;
+
+    self.progress.set(b, now);
+    b.setProgress(now);
+
+    if (
+      now < 1 &&
+      drawn &&
+      drawn.state === BuildingState.underConstruction &&
+      stageOf(now) !== stageOf(drawn.progress)
+    )
+      seen.view.update();
+  });
 }
 
 /**
@@ -327,6 +364,33 @@ World.prototype.put = function (code, dx, dy, rotation, look) {
   });
 
   return building;
+};
+
+/**
+ * Puts code up in the place of the building dx, dy from the middle, the way
+ * the game does (client/buildman replace): fenced off, coming down as the
+ * bulldozers get to it, and a building site on its ground once they are
+ * done - code another variant of its own, or another look, for the kind of
+ * building it is.
+ *
+ * @returns {number} ErrorCode - 0 once it is under way
+ */
+World.prototype.replace = function (dx, dy, code) {
+  var city = this.city;
+
+  if (!city.resourcesService.hasEnoughResource(Resource.money, PURSE / 2))
+    city.resourcesModule.addResource(Resource.money, PURSE);
+
+  return this.client.buildman.replace(this.tile(dx, dy), code);
+};
+
+/**
+ * The building sites on the bench finished there and then.
+ */
+World.prototype.finish = function () {
+  this.core.buildings.underConstruction().forEach(function (b) {
+    b.setProgress(1);
+  });
 };
 
 /**
@@ -422,6 +486,9 @@ World.prototype.wipe = function (dx, dy, w, h) {
 
   if (this.busy()) return false;
 
+  //nothing waits to go up on it any more
+  this.city.buildings.dropReplacing();
+
   for (var i = 0; i < w; i++)
     for (var j = 0; j < h; j++) tiles.push(this.tile(dx + i, dy + j));
 
@@ -436,12 +503,16 @@ World.prototype.wipe = function (dx, dy, w, h) {
 
 /**
  * Whether anything is being cleared still - a bulldozer out, a tile it has
- * not got to yet.
+ * not got to yet - or waits to go up where it is (client/buildman replace).
  */
 World.prototype.busy = function () {
   var works = this.client.clearworks;
 
-  return works.dozers.length > 0 || Object.keys(works.waiting).length > 0;
+  return (
+    works.dozers.length > 0 ||
+    Object.keys(works.waiting).length > 0 ||
+    this.city.buildings.replacing().length > 0
+  );
 };
 
 /**
@@ -459,7 +530,9 @@ World.prototype.top = function (on) {
 /**
  * What is going on: the bulldozers out, the tiles still waiting for one,
  * the buildings coming down, the trees going over, the roads still to
- * break up and the heaps of rubble lying about.
+ * break up and the heaps of rubble lying about; what waits to go up where
+ * something is coming down for it, and the building sites going up, how far
+ * along each, 0..1.
  */
 World.prototype.status = function () {
   var root = this.client,
@@ -478,6 +551,10 @@ World.prototype.status = function () {
     falling: named.felling || 0,
     rubble: named.rubble || 0,
     fence: named.fence || 0,
+    replacing: this.city.buildings.replacing().length,
+    sites: this.core.buildings.underConstruction().map(function (b) {
+      return b.getProgress();
+    }),
     roads: Object.keys(root.buildman.held).filter(function (tile) {
       var b = root.buildman.held[tile];
 

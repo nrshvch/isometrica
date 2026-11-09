@@ -60,6 +60,15 @@ export var PAGES = [
       "over, the road broken up - as slowly as you like.",
   },
   {
+    id: "replace",
+    name: "Replacement bench",
+    about:
+      "One building on flat grass, put up in the place of itself - another " +
+      "look of the same - or of anything that covers its ground, the way " +
+      "the game replaces one: it comes down as the bulldozers get to it, " +
+      "and a building site goes up on its ground once they are done.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:
