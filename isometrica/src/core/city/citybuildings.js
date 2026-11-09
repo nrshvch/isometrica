@@ -555,14 +555,19 @@ CityBuildings.prototype.load = function (list) {
 
 /**
  * Leaves a heap of rubble lying on tile (data/buildings rubble): of any kind
- * of it, running on into the heaps round it (client/rubble) - unpaid, there
- * till it is cleared away or built over, and saved as anything standing is.
+ * of it, of pile - the one the heaps a building left are all of, which run
+ * on into each other and into no other pile's (client/rubble) - unpaid,
+ * there till it is cleared away or built over, and saved as anything
+ * standing is, its pile with it (look).
  *
  * @param tile {number}
+ * @param pile {number} the pile it is a heap of
  * @returns {Building}
  */
-CityBuildings.prototype.leaveRubble = function (tile) {
-  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true);
+CityBuildings.prototype.leaveRubble = function (tile, pile) {
+  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true, {
+    pile: pile,
+  });
 };
 
 /**
