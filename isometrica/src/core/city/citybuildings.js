@@ -554,6 +554,23 @@ CityBuildings.prototype.load = function (list) {
 };
 
 /**
+ * Leaves a heap of rubble lying on tile (data/buildings rubble): any of its
+ * pictures, turned any way - unpaid, there till it is cleared away or built
+ * over, and saved as anything standing is.
+ *
+ * @param tile {number}
+ * @returns {Building}
+ */
+CityBuildings.prototype.leaveRubble = function (tile) {
+  return this.restore(
+    variantOf(BuildingCode.rubble),
+    tile,
+    Math.floor(Math.random() * 4),
+    true,
+  );
+};
+
+/**
  * Has code go up on tile, turned rotation times, looking as look says, once
  * the ground under it is clear - what stood there being cleared away for it
  * (City#replace): its tiles kept for it meanwhile (core/buildings reserve),

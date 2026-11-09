@@ -90,8 +90,8 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   is going up, or what it makes a tick, who lives or works in it and what
   it goes without (`src/ui/world/WorldHud.jsx`,
   `isometrica/src/client/worth.js`) - and the bar has only what can be done
-  to it, Replace and Demolish, its tools back once it is put away with a
-  tap anywhere else. The words over the world stay as they are, the tapped one's too:
+  to it, Replace, Demolish and Explode, its tools back once it is put away
+  with a tap anywhere else. The words over the world stay as they are, the tapped one's too:
   how far along each site is, what each building goes without - in a word,
   "no road", the card saying what road it wants, "no road (gravel)".
 - Replace opens the catalogue on only what covers its ground, turned one
@@ -123,6 +123,15 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   floor inside its glass walls. And a building going up shows the inside
   of its shell through the openings left in its walls
   (`isometrica/src/shared/gen/isobox.js` interiors).
+- Explode blows the building up there and then, for nothing - no fence,
+  no bulldozer: the charges going off at its foot, flashing, it shakes and
+  goes up, every floor of it torn into pieces flung out and high, to fall
+  all round, in a fireball and a cloud of dust
+  (`isometrica/src/client/explosion.js`). It is gone at once, the ground
+  under it bare, and a heap of rubble lies on every tile of it - kept in
+  the save, there till Clear has the bulldozers push it away for the
+  clearing fee, or anything is built over it (`isometrica/src/core/city.js`
+  explode, `isometrica/src/data/buildings.js` rubble).
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

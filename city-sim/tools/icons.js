@@ -280,6 +280,21 @@ var WORLD = {
     line([3, 20], [21, 20]),
   ],
 
+  //a burst: a star of eight points, longer and shorter by turns, and bits
+  //flung off it - blown up
+  explode: [
+    shape(
+      Array.apply(null, Array(16)).map(function (_, i) {
+        var a = -Math.PI / 2 + (i * Math.PI) / 8,
+          r = i % 2 === 0 ? (i % 4 === 0 ? 8.5 : 6.5) : 3.4;
+
+        return [12 + r * Math.cos(a), 12.5 + r * Math.sin(a)];
+      }),
+    ),
+    dot(4, 4.5, 1),
+    dot(20.5, 20, 1),
+  ],
+
   //a house, two arrows going round it - put up again, as something else
   replace: [
     path("M4 12A8 8 0 0 1 17.66 6.34L20 8"),

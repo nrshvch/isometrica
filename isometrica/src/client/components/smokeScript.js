@@ -68,6 +68,16 @@ SmokeScript.dust = {
   thick: 0.9,
 };
 
+//a fireball, a building blown up (client/explosion): bursting out and gone
+//in a moment, going up fast as it goes
+SmokeScript.fire = {
+  looks: frames("fire"),
+  ttl: 1100,
+  rise: 18,
+  peak: 0.04,
+  thick: 1,
+};
+
 //what it is
 SmokeScript.prototype.kind = SmokeScript.steam;
 //which way it is thrown out as it comes out, world units a second, along x

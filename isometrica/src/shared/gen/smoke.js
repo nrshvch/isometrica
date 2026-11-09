@@ -4,7 +4,9 @@
  * "soot<f>" - black, out of an engine on fire, greyer the higher it gets -
  * "dust<f>" - the brown of the earth, kicked up where the ground is being
  * cleared (client/clearworks), paler as it settles - and "debris<f>" - the
- * grey of a building coming down, a cloud of it (client/demolition) - f from
+ * grey of a building coming down, a cloud of it (client/demolition) - and
+ * "fire<f>" - a fireball, white-hot yellow as it bursts out, orange, and
+ * dull red going to soot as it swells (client/explosion) - f from
  * 0, the smallest, as it comes out, to FRAMES - 1, as big as it gets before
  * it is gone.
  *
@@ -80,6 +82,22 @@ var KINDS = {
     //start, for a cloud of it to be one
     sizes: [14, 18, 22, 26, 31, 36],
   },
+  fire: {
+    lit: [
+      [255, 248, 196],
+      [214, 96, 40],
+    ],
+    mid: [
+      [255, 204, 84],
+      [168, 62, 32],
+    ],
+    shade: [
+      [246, 128, 36],
+      [96, 40, 30],
+    ],
+    //bursting out big, and swelling
+    sizes: [12, 18, 24, 30, 36, 42],
+  },
 };
 
 //a number 0..1 for x, y and a seed, always the same for them
@@ -109,7 +127,7 @@ function colourOf(list, f) {
  * One picture: "steam3", "soot0".
  */
 export function paint(name) {
-  var m = /^(steam|soot|dust|debris)(\d+)$/.exec(name),
+  var m = /^(steam|soot|dust|debris|fire)(\d+)$/.exec(name),
     kind = m ? KINDS[m[1]] : undefined,
     f = m ? +m[2] : -1;
 

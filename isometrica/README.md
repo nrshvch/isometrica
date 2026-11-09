@@ -31,8 +31,10 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   demolition bench at `/demolition.html`, the replacement bench at
   `/replace.html` - a building put up in the place of itself, another look
   of it, or of whatever else covers its ground, coming down and going up
-  again the game's way, its site as fast as asked - and the lighting bench at
-  `/lighting.html`. Everything is painted and
+  again the game's way, its site as fast as asked - the explosion bench at
+  `/explosion.html` - a building blown up, torn into pieces thrown all
+  round in a fireball, its rubble left lying till the bulldozers clear it -
+  and the lighting bench at `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its

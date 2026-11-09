@@ -69,6 +69,15 @@ export var PAGES = [
       "and a building site goes up on its ground once they are done.",
   },
   {
+    id: "explosion",
+    name: "Explosion bench",
+    about:
+      "One building on flat grass blown up the way the game blows one up - " +
+      "no fence, no bulldozer: torn into pieces thrown all round in a " +
+      "fireball, heaps of rubble left where it stood till they are cleared " +
+      "away - as slowly as you like.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

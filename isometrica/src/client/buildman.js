@@ -2,6 +2,7 @@
 import Core from "../core/main";
 import engine from "engine";
 import BuildingClassCode from "../data/classcode";
+import BuildingCode from "../data/buildingcode";
 import BuildingData from "../data/buildings";
 import Building from "./building";
 import BuildingView from "./buildingview";
@@ -23,6 +24,7 @@ import Numeral from "numeral";
 import Rotation from "../core/rotation";
 import CompoundBuilding from "./compoundbuilding";
 import Demolition from "./demolition";
+import Explosion from "./explosion";
 import Felling from "./felling";
 import Replacement from "../core/replacement";
 import * as RoadRules from "../core/roadrules";
@@ -87,14 +89,21 @@ function removeBuilding(self, tile) {
  * the bulldozer clearing it gets to it (client/clearworks), the way a wild
  * one is (client/envman), to go over the way it is pushed (client/felling);
  * and a road there, till the bulldozer has driven over it and broken it up
- * into the bare earth (client/roadman cleared) - whether it is either. A
- * building is no such thing: the world keeps it while it is demolished, a
- * tile at a time (onDemolish), and lets go of it once it is all down.
+ * into the bare earth (client/roadman cleared); and the rubble a building
+ * blown up left there (core/city explode), till the bulldozer pushes it off
+ * in its dust - whether it is any of them. A building is no such thing: the
+ * world keeps it while it is demolished, a tile at a time (onDemolish), and
+ * lets go of it once it is all down.
  */
 function hold(self, tile, building) {
   var works = self.root.clearworks,
     classCode = building.staticData && building.staticData.classCode,
-    road = classCode === BuildingClassCode.road;
+    road = classCode === BuildingClassCode.road,
+    rubble =
+      !!building.staticData &&
+      building.staticData.variantOf === BuildingCode.rubble,
+    //nothing to go over: pushed off flat
+    tree = !road && !rubble;
 
   if (!works || !building.staticData) return false;
 
@@ -107,14 +116,14 @@ function hold(self, tile, building) {
         delete self.held[tile];
 
         //a tree pushed over is drawn going over from here on
-        if (!road) Felling.fell(self.root, treeOf(building), push, tile);
+        if (tree) Felling.fell(self.root, treeOf(building), push, tile);
 
         building.destroy();
         if (road) self.root.roadman.cleared(tile);
       },
       function (push) {
         //the bulldozer coming up to it: the pictures of it going over ready
-        if (!road) Felling.expect(self.root, treeOf(building), push, tile);
+        if (tree) Felling.expect(self.root, treeOf(building), push, tile);
 
         return 0;
       },
@@ -1022,6 +1031,58 @@ Buildman.prototype.demolish = function (tile) {
   else clear(building.tile);
 
   if (total > 0) showCost(this, building.tile, sizeX, sizeY, total);
+
+  return ErrorCode.NONE;
+};
+
+/**
+ * Blows up the building standing on tile, for nothing (core/city explode):
+ * it is gone at once, a heap of rubble left on every tile of it - and what
+ * it looked like goes up where it stood, torn into pieces thrown all round
+ * in a fireball (client/explosion), no fence and no bulldozer about it.
+ *
+ * @param tile {number} any tile of the building
+ * @returns {number} ErrorCode - NONE once it has gone up
+ */
+Buildman.prototype.explode = function (tile) {
+  var root = this.root,
+    building = root.core.buildingService.get(tile),
+    city = building !== null ? building.getCity() : null,
+    seen,
+    blast = null,
+    result,
+    tiles = [];
+
+  if (!city || building === null || !Replacement.replaceable(building)) {
+    this.showError(tile, ErrorCode.NOTHING_TO_CLEAR);
+    return ErrorCode.NOTHING_TO_CLEAR;
+  }
+
+  var iter = building.occupiedTiles();
+
+  while (!iter.done) tiles.push(iter.next());
+
+  //it goes, and with it whatever was shown of it
+  if (root.serviceman) {
+    root.serviceman.hideCoverage();
+    root.serviceman.hideInfo();
+  }
+
+  //what it looks like, stood up in its place before the world lets go of
+  //it - if it is drawn at all
+  seen = getBuilding(this, building.tile);
+  if (seen !== null && seen.view && seen.view.gameObject)
+    blast = new Explosion.Explosion(root, seen, tiles);
+
+  result = city.explode(tile);
+
+  if (result.error !== ErrorCode.NONE) {
+    if (blast !== null) blast.stop();
+    this.showError(tile, result.error);
+    return result.error;
+  }
+
+  if (blast !== null) blast.light();
 
   return ErrorCode.NONE;
 };
