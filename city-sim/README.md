@@ -127,11 +127,16 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   no bulldozer: the charges going off at its foot, flashing, it shakes and
   goes up, every floor of it torn into pieces flung out and high, to fall
   all round, in a fireball and a cloud of dust
-  (`isometrica/src/client/explosion.js`). It is gone at once, the ground
-  under it bare, and a heap of rubble lies on every tile of it - kept in
-  the save, there till Clear has the bulldozers push it away for the
-  clearing fee, or anything is built over it (`isometrica/src/core/city.js`
-  explode, `isometrica/src/data/buildings.js` rubble).
+  (`isometrica/src/client/explosion.js`). Any building at all - a church,
+  a water tower, the town hall. It is gone at once, the ground under it
+  bare, and a heap of rubble lies on every tile of it, the heaps next to
+  each other one pile - running on into each other along their sides and
+  over the corners where four meet (`isometrica/src/client/rubble.js`,
+  `isometrica/src/shared/gen/stones.js` pile). Kept in the save, a heap is
+  there till Clear has the bulldozers push it away for the clearing fee -
+  the heaps round it a pile without it from then on - or anything is built
+  over it (`isometrica/src/core/city.js` explode,
+  `isometrica/src/data/buildings.js` rubble).
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

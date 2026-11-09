@@ -22,6 +22,13 @@
  * slabs of concrete, broken brick and splintered timber: flat-topped and
  * sharp-edged, the lumps a stone is but squared off.
  *
+ * And the heaps a building blown up leaves (client/explosion, data/buildings
+ * rubble), which run on into the heaps on the tiles next to them as one
+ * pile ("pile/<rubble>/<mask>"): its mound, a ridge on to every tile next
+ * to it along a side with a heap of its own, and where four heaps meet at a
+ * corner, a mound over it too - each tile's picture its own square of it,
+ * so that tiles side by side meet where they join.
+ *
  * Every picture is the size of a tile of the ground, its middle where the
  * tile's is (data/rocks: pivot 32, 24). It paints into plain pictures,
  * {width, height, data} with the pixels as RGBA, as it is asked for them.
@@ -124,6 +131,63 @@ var PLANS = {
   },
 };
 
+//the tiles next to a heap that a pile runs on into, as its mask has them:
+//its sides, -x, -y, +x, +y, then its corners, -x-y, +x-y, +x+y, -x+y -
+//corner k between sides k and k + 1, and only ever where both of them run
+//on, for it to make any odds
+var SIDES = [
+    [-1, 0],
+    [0, -1],
+    [1, 0],
+    [0, 1],
+  ],
+  CORNERS = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ];
+
+//how wide a ridge from one heap to the next is, either side of the line
+//between their middles, and how big round the mound where four meet -
+//short of the tiles round them that have none
+var RIDGE = 12,
+  MEET = 14;
+
+/**
+ * Every pile's mask there is: "0000" to "1111" for its sides, and for its
+ * corners "0000" but where both sides of one are "1".
+ *
+ * @returns {string[]}
+ */
+export function masks() {
+  var out = [];
+
+  for (var sides = 0; sides < 16; sides++) {
+    var both = [0, 1, 2, 3].filter(function (k) {
+      return (sides >> k) & 1 && (sides >> ((k + 1) % 4)) & 1;
+    });
+
+    for (var c = 0; c < 1 << both.length; c++) {
+      var corners = [0, 0, 0, 0];
+
+      both.forEach(function (k, i) {
+        corners[k] = (c >> i) & 1;
+      });
+
+      out.push(
+        [0, 1, 2, 3]
+          .map(function (k) {
+            return (sides >> k) & 1;
+          })
+          .join("") + corners.join(""),
+      );
+    }
+  }
+
+  return out;
+}
+
 function normalize(v) {
   var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 
@@ -152,6 +216,35 @@ function noise(x, y, s) {
     b = hash(x0 + 1, y0, s),
     c = hash(x0, y0 + 1, s),
     d = hash(x0 + 1, y0 + 1, s);
+
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
+//noise the same at either edge of a tile, so that what is lumpy by it on
+//a tile meets what is on the tile next to it: cells across the tile
+function wrapped(x, y, s, cells) {
+  var f = cells / TILE,
+    gx = x * f,
+    gy = y * f,
+    x0 = Math.floor(gx),
+    y0 = Math.floor(gy),
+    fx = gx - x0,
+    fy = gy - y0,
+    sx = fx * fx * (3 - 2 * fx),
+    sy = fy * fy * (3 - 2 * fy);
+
+  function at(i, j) {
+    return hash(
+      (((x0 + i) % cells) + cells) % cells,
+      (((y0 + j) % cells) + cells) % cells,
+      s,
+    );
+  }
+
+  var a = at(0, 0),
+    b = at(1, 0),
+    c = at(0, 1),
+    d = at(1, 1);
 
   return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
 }
@@ -254,16 +347,181 @@ function heapOf(plan, rnd) {
 }
 
 /**
- * How high the stones stand at x, y along the tile, and which of them it is
- * there: {z, stone}, z 0 and stone null where there are none.
+ * A heap of rubble that runs on into the heaps next to it, as mask says
+ * (masks): its mound - the mound of a heap - the ridges on to the heaps
+ * next to it and the mounds where four meet, all one ground of debris
+ * (field), and the pieces of the heap piled on it, thicker the higher it
+ * is. All of it on the tile, as the tile is in the world: what is seen of
+ * it from another side is turned round after.
  */
-function heightAt(stones, x, y) {
+function pileOf(plan, mask) {
+  var m = plan.mound,
+    c = TILE / 2,
+    shapes = [{ x: c, y: c, r: m.r }],
+    rnd = random(plan.seed * 131 + parseInt(mask, 2));
+
+  SIDES.forEach(function (d, k) {
+    if (mask[k] === "1")
+      shapes.push({
+        x: c,
+        y: c,
+        x1: c + d[0] * TILE,
+        y1: c + d[1] * TILE,
+        r: RIDGE,
+      });
+  });
+  CORNERS.forEach(function (d, k) {
+    if (mask[4 + k] === "1")
+      shapes.push({
+        x: c + (d[0] * TILE) / 2,
+        y: c + (d[1] * TILE) / 2,
+        r: MEET,
+      });
+  });
+
+  //how high the debris lies at x, y on the tile, as it is in the world -
+  //nothing off it, which is the tile next to it's to show
+  function exact(x, y) {
+    if (x < -PAST || y < -PAST || x > TILE + PAST || y > TILE + PAST) return 0;
+    var best = 0;
+
+    shapes.forEach(function (s) {
+      var px = x,
+        py = y;
+
+      //a ridge: how far from the line between the two middles
+      if (s.x1 !== undefined) {
+        var ex = s.x1 - s.x,
+          ey = s.y1 - s.y,
+          t = Math.max(
+            0,
+            Math.min(
+              1,
+              ((x - s.x) * ex + (y - s.y) * ey) / (ex * ex + ey * ey),
+            ),
+          );
+
+        px = x - (s.x + ex * t) + s.x;
+        py = y - (s.y + ey * t) + s.y;
+      }
+
+      var d =
+        (Math.hypot(px - s.x, py - s.y) / s.r) *
+        (1 + (wrapped(x, y, plan.seed, 24) - 0.5) * 0.22);
+
+      if (d < 1) best = Math.max(best, Math.sqrt(1 - Math.pow(d, 6)));
+    });
+
+    return best === 0
+      ? 0
+      : m.high * best * (0.92 + wrapped(x, y, plan.seed + 7, 16) * 0.16);
+  }
+
+  //worked out once every half a pixel across the tile and a little way
+  //past it, and read off that between - a ray looks for it at every step
+  //down. Past the tile, which way the debris slopes at its edge is worked
+  //out the way the tile next to it is (whole), but none of it is seen
+  //there, which is the tile next to it's to show
+  var PAST = 2,
+    N = (TILE + 2 * PAST) * 2 + 1,
+    grid = new Float32Array(N * N);
+
+  for (var gy = 0; gy < N; gy++)
+    for (var gx = 0; gx < N; gx++)
+      grid[gy * N + gx] = exact(gx / 2 - PAST, gy / 2 - PAST);
+
+  function field(x, y, whole) {
+    if (!whole && (x < 0 || y < 0 || x > TILE || y > TILE)) return 0;
+
+    var fx = Math.max(0, Math.min(N - 1.001, (x + PAST) * 2)),
+      fy = Math.max(0, Math.min(N - 1.001, (y + PAST) * 2)),
+      x0 = Math.floor(fx),
+      y0 = Math.floor(fy),
+      ax = fx - x0,
+      ay = fy - y0,
+      o = y0 * N + x0;
+
+    return (
+      (grid[o] * (1 - ax) + grid[o + 1] * ax) * (1 - ay) +
+      (grid[o + N] * (1 - ax) + grid[o + N + 1] * ax) * ay
+    );
+  }
+
+  var ground = {
+      x: c,
+      y: c,
+      turn: 0,
+      turns: 0,
+      colours: m.colours,
+      seed: plan.seed,
+      field: field,
+    },
+    out = [ground],
+    joins = mask.slice(0, 4).split("1").length - 1,
+    count = Math.round(plan.count * (1 + 0.15 * joins));
+
+  for (var tries = 0; out.length <= count && tries < count * 40; tries++) {
+    var r = plan.size[0] + rnd() * (plan.size[1] - plan.size[0]),
+      x = r + 1 + rnd() * (TILE - 2 * r - 2),
+      y = r + 1 + rnd() * (TILE - 2 * r - 2),
+      under = field(x, y);
+
+    //thicker the higher the debris is
+    if (under < m.high * (0.25 + 0.5 * rnd())) continue;
+
+    out.push({
+      x: x,
+      y: y,
+      r: r,
+      long: 1 + rnd() * 0.9,
+      turn: rnd() * Math.PI,
+      high: plan.high[0] + rnd() * (plan.high[1] - plan.high[0]),
+      colours: plan.palettes[Math.floor(rnd() * plan.palettes.length)],
+      seed: (rnd() * 1e6) | 0,
+      base: under * 0.8,
+      blocky: plan.blocky,
+    });
+  }
+
+  return out;
+}
+
+/**
+ * How high the stones stand at x, y along the tile, and which of them it is
+ * there: {z, stone}, z 0 and stone null where there are none - and for a
+ * pile, whole, the debris a little way past the tile too, for which way it
+ * slopes and what it shades at the edge of it.
+ */
+function heightAt(stones, x, y, whole) {
   var best = 0,
     which = null;
 
   for (var i = 0; i < stones.length; i++) {
-    var s = stones[i],
-      dx = x - s.x,
+    var s = stones[i];
+
+    //the ground of a pile, seen turned as many times as it is: where x, y
+    //is on it in the world
+    if (s.field) {
+      var wx = x,
+        wy = y;
+
+      for (var t = 0; t < s.turns; t++) {
+        var tx = wx;
+
+        wx = TILE - wy;
+        wy = tx;
+      }
+
+      var f = s.field(wx, wy, whole);
+
+      if (f > best) {
+        best = f;
+        which = s;
+      }
+      continue;
+    }
+
+    var dx = x - s.x,
       dy = y - s.y,
       c = Math.cos(s.turn),
       n = Math.sin(s.turn),
@@ -320,8 +578,10 @@ function cast(stones, px, py) {
 //which way the stones look at x, y
 function normalAt(stones, x, y) {
   var e = 0.5,
-    dx = heightAt(stones, x + e, y).z - heightAt(stones, x - e, y).z,
-    dy = heightAt(stones, x, y + e).z - heightAt(stones, x, y - e).z;
+    dx =
+      heightAt(stones, x + e, y, true).z - heightAt(stones, x - e, y, true).z,
+    dy =
+      heightAt(stones, x, y + e, true).z - heightAt(stones, x, y - e, true).z;
 
   return normalize([-dx / (2 * e), -dy / (2 * e), 1]);
 }
@@ -334,7 +594,7 @@ function shadowed(stones, x, y) {
       z = SHADOW_SUN[2] * t;
 
     if (z > TALLEST) return false;
-    if (heightAt(stones, sx, sy).z > z) return true;
+    if (heightAt(stones, sx, sy, true).z > z) return true;
   }
 
   return false;
@@ -344,17 +604,22 @@ function shadowed(stones, x, y) {
  * One picture: name "stone" or "stone0", "-m" after it for the other way
  * round - its stones laid out the other way across the tile, lit by the
  * same sun - and "/r1" to "/r3" after that for it seen from another side,
- * that many quarter turns round.
+ * that many quarter turns round. Or a pile, "pile/rubble/<mask>" (masks),
+ * seen from a side the same way.
  */
 export function paint(name) {
-  var m = /^([a-z0-9]+)(-m)?(?:\/r([123]))?$/.exec(name),
+  var pile = /^pile\/([a-z0-9]+)\/([01]{8})(?:\/r([123]))?$/.exec(name),
+    m = pile
+      ? [name, pile[1], undefined, pile[3]]
+      : /^([a-z0-9]+)(-m)?(?:\/r([123]))?$/.exec(name),
     plan = m && PLANS[m[1]];
 
-  if (!plan) throw new Error("no such stones: " + name);
+  if (!plan || (pile && !plan.mound))
+    throw new Error("no such stones: " + name);
 
   var turned = m[2] !== undefined,
     turns = +(m[3] || 0),
-    stones = stonesOf(plan),
+    stones = pile ? pileOf(plan, pile[2]) : stonesOf(plan),
     out = { width: W, height: H, data: new Uint8ClampedArray(W * H * 4) },
     hit = new Array(W * H),
     i,
@@ -374,6 +639,8 @@ export function paint(name) {
   //a quarter turn at a time, the way client/view turns what is seen -
   //(x, y) to (y, -x)
   stones.forEach(function (s) {
+    if (s.field) s.turns = turns;
+
     for (var t = 0; t < turns; t++) {
       var dx = s.x - TILE / 2,
         dy = s.y - TILE / 2;
@@ -421,8 +688,14 @@ export function paint(name) {
               ),
         below = py + 1 < H ? hit[(py + 1) * W + px] : null,
         c = h.stone.colours[tone],
-        //the edge at its foot a shade darker, to stand out on the grass
-        edge = below === null || below.stone !== h.stone ? 0.82 : 1,
+        //the edge at its foot a shade darker, to stand out on the grass -
+        //not where a pile runs on off the tile, into the heap next to it
+        on =
+          below !== null &&
+          below.stone === null &&
+          h.stone.field !== undefined &&
+          (below.x < 0 || below.y < 0 || below.x > TILE || below.y > TILE),
+        edge = !on && (below === null || below.stone !== h.stone) ? 0.82 : 1,
         speck = 1 + (hash(px, py, h.stone.seed) - 0.5) * 0.08;
 
       for (i = 0; i < 3; i++)
@@ -441,7 +714,15 @@ export function describe() {
   var sizes = {};
 
   Object.keys(PLANS).forEach(function (plan) {
-    [plan, plan + "-m"].forEach(function (name) {
+    var names = [plan, plan + "-m"];
+
+    //and its piles, for rubble
+    if (PLANS[plan].mound)
+      masks().forEach(function (mask) {
+        names.push("pile/" + plan + "/" + mask);
+      });
+
+    names.forEach(function (name) {
       ["", "/r1", "/r2", "/r3"].forEach(function (side) {
         sizes[name + side] = { w: W, h: H };
       });

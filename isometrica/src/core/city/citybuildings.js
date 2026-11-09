@@ -554,20 +554,15 @@ CityBuildings.prototype.load = function (list) {
 };
 
 /**
- * Leaves a heap of rubble lying on tile (data/buildings rubble): any of its
- * pictures, turned any way - unpaid, there till it is cleared away or built
- * over, and saved as anything standing is.
+ * Leaves a heap of rubble lying on tile (data/buildings rubble): of any kind
+ * of it, running on into the heaps round it (client/rubble) - unpaid, there
+ * till it is cleared away or built over, and saved as anything standing is.
  *
  * @param tile {number}
  * @returns {Building}
  */
 CityBuildings.prototype.leaveRubble = function (tile) {
-  return this.restore(
-    variantOf(BuildingCode.rubble),
-    tile,
-    Math.floor(Math.random() * 4),
-    true,
-  );
+  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true);
 };
 
 /**

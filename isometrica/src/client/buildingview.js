@@ -19,6 +19,7 @@ import WorkLights from "./worklights";
 import View from "./view";
 import BuildingClassCode from "../data/classcode";
 import Trees from "../data/trees";
+import Rubble from "./rubble";
 import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
@@ -470,7 +471,12 @@ function addSprites(
 
   for (var i = 0; i < len; i++) {
     var spriteData = spritesData[i],
-      name = Trees.turned(spriteData.path, rotation);
+      //a heap of rubble as the heaps round it are (client/rubble) - a
+      //tree, a stone from the side it is seen from (data/trees turned)
+      name =
+        spriteData.pile !== undefined && seed !== undefined
+          ? Rubble.pictureOf(vkaria, seed, spriteData.pile, rotation)
+          : Trees.turned(spriteData.path, rotation);
 
     if (collecting !== null) {
       collect(
