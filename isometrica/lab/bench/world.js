@@ -1,6 +1,7 @@
 /**
  * The ground for the lab's benches that go the game's own way (lab/
- * demolition.html, lab/replace.html): the game's own client and world, out
+ * demolition.html, replace.html, explosion.html): the game's own client and
+ * world, out
  * in the open sea, and of all of it only the bench's own patch drawn - flat
  * grass, as a save puts ground back (core/terrain load), with nothing of the
  * world's own on it - and a city of nobody to own what is put up, rich
@@ -22,6 +23,7 @@ import Resource from "../../src/core/resourcecode";
 import Config from "../../src/client/config";
 import Weather from "../../src/client/weather";
 import BuildingState from "../../src/core/buildingstate";
+import BuildingData from "../../src/data/buildings";
 import { stageOf } from "../../src/shared/gen/stacking";
 
 var Terrain = Core.Terrain;
@@ -93,6 +95,39 @@ function controls() {
     });
 
   return c;
+}
+
+/**
+ * Every building the catalogue offers, by its size and then its name:
+ * {value, label} each.
+ */
+export function kinds() {
+  return Object.keys(BuildingData)
+    .filter(function (code) {
+      var b = BuildingData[code];
+
+      return (
+        !b.hidden &&
+        b.classCode !== BuildingClassCode.road &&
+        b.classCode !== BuildingClassCode.tree
+      );
+    })
+    .sort(function (a, b) {
+      var x = BuildingData[a],
+        y = BuildingData[b];
+
+      return (
+        x.sizeX * x.sizeY - y.sizeX * y.sizeY || x.name.localeCompare(y.name)
+      );
+    })
+    .map(function (code) {
+      var b = BuildingData[code];
+
+      return {
+        value: code,
+        label: b.name + " (" + b.sizeX + "×" + b.sizeY + ")",
+      };
+    });
 }
 
 /**
@@ -385,6 +420,45 @@ World.prototype.replace = function (dx, dy, code) {
 };
 
 /**
+ * Blows up the building dx, dy from the middle, the way the game does
+ * (client/buildman explode): torn into pieces thrown all round in a
+ * fireball, and a heap of rubble left on every tile of it.
+ *
+ * @returns {number} ErrorCode - 0 once it has gone up
+ */
+World.prototype.explode = function (dx, dy) {
+  return this.client.buildman.explode(this.tile(dx, dy));
+};
+
+/**
+ * The heaps of rubble lying on the bench (data/buildings rubble), by the
+ * tile.
+ *
+ * @returns {number[]}
+ */
+World.prototype.rubble = function () {
+  return this.city.buildings
+    .getBuildings()
+    .filter(function (b) {
+      return b.data.variantOf === BuildingCode.rubble;
+    })
+    .map(function (b) {
+      return b.tile;
+    });
+};
+
+//what is blowing up on the bench still (client/explosion)
+function explosions(self) {
+  return self.client.game.logic.world.gameObjects
+    .filter(function (go) {
+      return go && go.explosion && go.world !== null;
+    })
+    .map(function (go) {
+      return go.explosion;
+    });
+}
+
+/**
  * The building sites on the bench finished there and then.
  */
 World.prototype.finish = function () {
@@ -506,7 +580,8 @@ World.prototype.wipe = function (dx, dy, w, h) {
 
 /**
  * Whether anything is being cleared still - a bulldozer out, a tile it has
- * not got to yet - or waits to go up where it is (client/buildman replace).
+ * not got to yet - or waits to go up where it is (client/buildman replace),
+ * or is blowing up (client/explosion).
  */
 World.prototype.busy = function () {
   var works = this.client.clearworks;
@@ -514,7 +589,8 @@ World.prototype.busy = function () {
   return (
     works.dozers.length > 0 ||
     Object.keys(works.waiting).length > 0 ||
-    this.city.buildings.replacing().length > 0
+    this.city.buildings.replacing().length > 0 ||
+    explosions(this).length > 0
   );
 };
 
@@ -533,7 +609,9 @@ World.prototype.top = function (on) {
 /**
  * What is going on: the bulldozers out, the tiles still waiting for one,
  * the buildings coming down, the trees going over, the roads still to
- * break up and the heaps of rubble lying about; what waits to go up where
+ * break up and the heaps of rubble lying about; what is blowing up, its
+ * pieces flying and lying about, and the heaps of rubble left lying there
+ * for good (data/buildings rubble); what waits to go up where
  * something is coming down for it, and the building sites going up, how far
  * along each, 0..1.
  */
@@ -555,6 +633,11 @@ World.prototype.status = function () {
     rubble: named.rubble || 0,
     fence: named.fence || 0,
     replacing: this.city.buildings.replacing().length,
+    blowing: explosions(this).length,
+    pieces: explosions(this).reduce(function (n, e) {
+      return n + e.pieces();
+    }, 0),
+    heaps: this.rubble().length,
     sites: this.core.buildings.underConstruction().map(function (b) {
       return b.getProgress();
     }),

@@ -850,9 +850,14 @@ function crush(self, col, f) {
 /**
  * A floor bursting into pieces of itself: bits of its picture - none of
  * them nothing to see - flung out from the middle of the building and up,
- * from where they are in it.
+ * from where they are in it: CHUNKS of them, as far and as high as a floor
+ * crushed throws them - or as fling says (client/explosion).
+ *
+ * @param [fling] {{n: number, out: number[], up: number[], lie: number[]}}
+ *        how many pieces, and how fast out and up, world units a second,
+ *        and how long they lie, ms - each from the first to the second
  */
-function burst(self, col, f) {
+function burst(self, col, f, fling) {
   if (!f.cuttable) return;
 
   var part = f.part,
@@ -870,12 +875,14 @@ function burst(self, col, f) {
           h: Math.min(CELL, c.h - y),
         });
 
-  for (var n = 0; n < CHUNKS && cells.length > 0; n++) {
-    if (self.chunked >= MOST_CHUNKS) return;
+  var most = fling ? fling.n : CHUNKS;
+
+  for (var n = 0; n < most && cells.length > 0; n++) {
+    if (self.chunked >= (self.most || MOST_CHUNKS)) return;
 
     var cell = cells.splice(Math.floor(Math.random() * cells.length), 1)[0];
 
-    chunk(self, f, cell);
+    chunk(self, f, cell, fling);
   }
 }
 
@@ -910,8 +917,11 @@ function seen(sprites, part, x, y, size) {
  * A piece of a floor flung off it: its bit of the picture, its foot where
  * the bit's foot is, flung out and up.
  */
-function chunk(self, f, cell) {
-  var part = f.part,
+function chunk(self, f, cell, fling) {
+  var throws = fling ? fling.out : THROW,
+    tosses = fling ? fling.up : TOSS,
+    lies = fling ? fling.lie : LIE_MS,
+    part = f.part,
     go = new engine.GameObject("debris"),
     r = new engine.SpriteRenderer(),
     p = [f.x, f.y, f.z],
@@ -921,7 +931,7 @@ function chunk(self, f, cell) {
     ox = wx[0] + p[0] - self.mx + (Math.random() - 0.5) * TILE,
     oz = wx[2] + p[2] - self.mz + (Math.random() - 0.5) * TILE,
     l = Math.hypot(ox, oz) || 1,
-    out = THROW[0] + Math.random() * (THROW[1] - THROW[0]);
+    out = throws[0] + Math.random() * (throws[1] - throws[0]);
 
   r.layer = RenderLayer.buildingsLayer;
   //drawn as it is painted: lit as it is drawn, it would stand as high as
@@ -946,9 +956,9 @@ function chunk(self, f, cell) {
     z: p[2],
     vx: (ox / l) * out,
     vz: (oz / l) * out,
-    vy: TOSS[0] + Math.random() * (TOSS[1] - TOSS[0]),
+    vy: tosses[0] + Math.random() * (tosses[1] - tosses[0]),
     bounced: 0,
-    lie: LIE_MS[0] + Math.random() * (LIE_MS[1] - LIE_MS[0]),
+    lie: lies[0] + Math.random() * (lies[1] - lies[0]),
     t: -1,
   });
 }
@@ -1341,4 +1351,22 @@ function hash(x, y) {
   return (h ^ (h >>> 13)) >>> 0;
 }
 
-export default { Demolition: Demolition };
+/**
+ * What a building coming down is taken apart and thrown about with, for
+ * whatever else brings one down (client/explosion) - each working on
+ * anything shaped like a Demolition: {root, go, columns, chunks, chunked,
+ * puffs, mx, mz} and, at the most, so many pieces (most).
+ */
+var pieces = {
+  column: column,
+  stand: stand,
+  slice: slice,
+  seat: seat,
+  burst: burst,
+  flyOn: flyOn,
+  debris: debris,
+  gone: gone,
+  bottomOf: bottomOf,
+};
+
+export default { Demolition: Demolition, pieces: pieces };

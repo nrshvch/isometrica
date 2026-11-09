@@ -41,6 +41,48 @@ buildingData[BuildingCode.tree] = {
   variants: Trees.variants(RenderLayer.buildingsLayer),
 };
 
+//the heaps of rubble a building blown up leaves on every tile of it
+//(core/city explode, client/explosion) - the same pictures a building
+//coming down leaves for the bulldozers (shared/gen/stones), each painted
+//from four sides, one of them picked for a tile. Of the tree class, as a
+//tree planted is: nobody's, nothing it makes or costs, lying on the ground
+//as it is; gone as soon as anything is built over it, or cleared away - a
+//bulldozer pushing it off (client/buildman hold) - and kept in the save till
+//then
+var RUBBLE_BASE = 6900;
+
+buildingData[BuildingCode.rubble] = {
+  hidden: true,
+  sizeX: 1,
+  sizeY: 1,
+  buildingCode: BuildingCode.rubble,
+  classCode: BuildingClassCode.tree,
+  producing: {},
+  demanding: {},
+  constructionTime: 0,
+  constructionCost: {},
+  name: "rubble",
+  variants: ["rubble", "rubble-m", "rubble0", "rubble0-m"].map(
+    function (picture, i) {
+      return {
+        buildingCode: RUBBLE_BASE + 1 + i,
+        sprites: [
+          {
+            x: 0,
+            y: 0,
+            z: 0,
+            //the middle of the tile, as for the stones (data/rocks)
+            pivotX: 32,
+            pivotY: 24,
+            path: "gen/scenery/" + picture,
+            layer: RenderLayer.buildingsLayer,
+          },
+        ],
+      };
+    },
+  ),
+};
+
 buildingData[BuildingCode.road] = {
   hidden: true,
   //a road's piece follows its neighbours, never the way it was put down

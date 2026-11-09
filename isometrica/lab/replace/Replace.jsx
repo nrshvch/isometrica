@@ -8,8 +8,8 @@
  */
 import { useEffect, useRef, useState } from "react";
 import BuildingData from "../../src/data/buildings";
-import { open } from "../bench/world.js";
-import { Scene, kinds } from "./scene.js";
+import { kinds, open } from "../bench/world.js";
+import { Scene } from "./scene.js";
 import { Button, Field, Header, Select, Status } from "../ui/kit.jsx";
 
 var SPEEDS = [

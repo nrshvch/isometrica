@@ -146,6 +146,17 @@ export function demolish(tile) {
 }
 
 /**
+ * Blows up the building on tile, for nothing: torn into pieces thrown all
+ * round in a fireball, heaps of rubble left where it stood till they are
+ * cleared away (isometrica client/buildman explode).
+ *
+ * @param tile {number}
+ */
+export function explode(tile) {
+  client.buildman.explode(tile);
+}
+
+/**
  * Builds what is picked, in the world: a building out of the catalogue, a
  * road.
  *

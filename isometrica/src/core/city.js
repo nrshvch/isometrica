@@ -597,6 +597,46 @@ City.prototype.replace = function (tile, code, rotation, look) {
 };
 
 /**
+ * Blows up what stands on tile, for nothing: the building is gone there and
+ * then, every tile of it - no fence, no bulldozer (client/explosion) - the
+ * ground under it bare earth, never grown over by the world again (Terrain
+ * clear), and a heap of rubble left lying on every tile of it
+ * (CityBuildings#leaveRubble), till it is cleared away or built over.
+ *
+ * @param tile {number} any tile of what stands there
+ * @returns {{error: number, tile: number, tiles: number[]}} error an
+ *          ErrorCode - NOTHING_TO_CLEAR for nothing there to blow up, a
+ *          tree or a road; tile the corner of what stood there, and tiles
+ *          every tile of it - none, for an error
+ */
+City.prototype.explode = function (tile) {
+  var building = this.world.buildingService.get(tile),
+    terrain = this.world.terrain,
+    tiles = [],
+    self = this;
+
+  if (
+    building === null ||
+    building.data.classCode === BuildingClassCode.tree ||
+    building.data.classCode === BuildingClassCode.road
+  )
+    return { error: ErrorCode.NOTHING_TO_CLEAR, tile: tile, tiles: tiles };
+
+  var iter = building.occupiedTiles();
+
+  while (!iter.done) tiles.push(iter.next());
+
+  tiles.forEach(function (t) {
+    terrain.clear(t);
+  });
+  tiles.forEach(function (t) {
+    self.buildingService.leaveRubble(t);
+  });
+
+  return { error: ErrorCode.NONE, tile: building.tile, tiles: tiles };
+};
+
+/**
  * Raises or lowers tiles as one piece of land, whatever shape they make - see
  * Terrain#planLevel for what that does to the ground - and pays for it. The
  * ground belongs to the world, not to the city, so it can be shaped anywhere;
