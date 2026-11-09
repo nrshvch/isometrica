@@ -601,7 +601,9 @@ City.prototype.replace = function (tile, code, rotation, look) {
  * then, every tile of it - no fence, no bulldozer (client/explosion) - the
  * ground under it bare earth, never grown over by the world again (Terrain
  * clear), and a heap of rubble left lying on every tile of it
- * (CityBuildings#leaveRubble), till it is cleared away or built over.
+ * (CityBuildings#leaveRubble), till it is cleared away or built over - all
+ * of them one pile, of its own: not one with the heaps of anything blown
+ * up next to it.
  *
  * @param tile {number} any tile of what stands there
  * @returns {{error: number, tile: number, tiles: number[]}} error an
@@ -629,8 +631,11 @@ City.prototype.explode = function (tile) {
   tiles.forEach(function (t) {
     terrain.clear(t);
   });
+  //which pile its heaps are, of all the piles there are
+  var pile = 1 + Math.floor(Math.random() * 2147483646);
+
   tiles.forEach(function (t) {
-    self.buildingService.leaveRubble(t);
+    self.buildingService.leaveRubble(t, pile);
   });
 
   return { error: ErrorCode.NONE, tile: building.tile, tiles: tiles };

@@ -3,11 +3,12 @@ import BuildingCode from "../data/buildingcode";
 
 /**
  * The heaps of rubble a building blown up leaves (data/buildings rubble,
- * core/city explode), drawn as one pile where they lie next to each other:
- * each tile's heap runs on into the heaps along its sides, and where four
- * meet at a corner, over it too (shared/gen/stones pile) - which it does is
- * its mask, as the tiles round it are now. A heap the bulldozers are still
- * to get to is there still (client/buildman held).
+ * core/city explode), drawn as one pile: each tile's heap runs on into the
+ * heaps of the same pile along its sides - what the same building left, not
+ * what one next to it did, blown up as well - and where four meet at a
+ * corner, over it too (shared/gen/stones pile). Which it does is its mask,
+ * as the tiles round it are now. A heap the bulldozers are still to get to
+ * is there still (client/buildman held).
  */
 
 var Terrain = Core.Terrain;
@@ -38,22 +39,46 @@ function isRubble(building) {
 }
 
 /**
- * Which of the tiles round tile have a heap of rubble on as well, as a
- * pile's mask has them (shared/gen/stones masks): "1" for a side that has,
- * and for a corner that has where both its sides have too.
+ * The pile a heap of rubble is of (core/city/citybuildings leaveRubble) -
+ * the core's heap, or the client's - or undefined, for none, or one left
+ * before heaps were told apart.
+ */
+function pileOf(building) {
+  var model = building && building.staticData ? building.data : building,
+    look = model && model.look;
+
+  return look ? look.pile : undefined;
+}
+
+//the heap of rubble on tile, if there is one: in the world, or still to be
+//pushed off by a bulldozer
+function heapOn(root, tile) {
+  var b = root.core.buildingService.get(tile);
+
+  if (isRubble(b)) return b;
+
+  b = root.buildman.held[tile];
+
+  return isRubble(b) ? b : null;
+}
+
+/**
+ * Which of the tiles round tile have a heap of the same pile of rubble on,
+ * as a pile's mask has them (shared/gen/stones masks): "1" for a side that
+ * has, and for a corner that has where both its sides have too.
  *
  * @param root {Vkaria}
  * @param tile {number}
  * @returns {string} eight of "0" and "1"
  */
 function maskOf(root, tile) {
-  function has(d) {
-    var t = tile + d[0] + d[1] * Terrain.dy;
+  var own = heapOn(root, tile),
+    pile = pileOf(own);
 
-    return (
-      isRubble(root.core.buildingService.get(t)) ||
-      isRubble(root.buildman.held[t])
-    );
+  function has(d) {
+    var next = heapOn(root, tile + d[0] + d[1] * Terrain.dy);
+
+    return next !== null && pileOf(next) === pile;
   }
 
   var sides = SIDES.map(function (d) {

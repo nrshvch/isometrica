@@ -53,7 +53,10 @@ export default function Explosion() {
     [top, setTop] = useState(false),
     [kind, setKind] = useState(""),
     [seen, setSeen] = useState(null),
-    [standing, setStanding] = useState(null);
+    [standing, setStanding] = useState(null),
+    [left, setLeft] = useState(0),
+    [piles, setPiles] = useState(0),
+    [beside, setBeside] = useState(false);
 
   //the world, up once
   useEffect(function () {
@@ -71,6 +74,8 @@ export default function Explosion() {
 
           setSeen(world.status());
           setStanding(b ? BuildingData[b.buildingCode].name : null);
+          setLeft(bench.current.left().length);
+          setPiles(bench.current.piles());
         }, 250);
       },
       function (e) {
@@ -197,6 +202,17 @@ export default function Explosion() {
               >
                 turn it
               </Button>
+              <Button
+                className="px-1.5 py-0.5"
+                title="another of it beside it, to blow up after it - a pile of rubble each"
+                on={beside}
+                disabled={!ready || busy}
+                onClick={function () {
+                  if (scene().setBeside(!beside)) setBeside(!beside);
+                }}
+              >
+                two side by side
+              </Button>
             </Row>
             <div>
               {standing ? standing : "blown up - its rubble lies there"}
@@ -207,7 +223,8 @@ export default function Explosion() {
             <Row>
               <Button
                 className="px-1.5 py-0.5"
-                disabled={!ready || busy || !standing}
+                title="blow up the one in the middle - and then the one beside it"
+                disabled={!ready || busy || left === 0}
                 onClick={function () {
                   scene().explode();
                 }}
@@ -252,7 +269,10 @@ export default function Explosion() {
               <>
                 <div>blowing up: {s.blowing}</div>
                 <div>pieces flying or lying about: {s.pieces}</div>
-                <div>heaps of rubble left: {s.heaps}</div>
+                <div>
+                  heaps of rubble left: {s.heaps}, in {piles}{" "}
+                  {piles === 1 ? "pile" : "piles"}
+                </div>
                 <div>bulldozers out: {s.dozers}</div>
                 <div>tiles waiting for one: {s.waiting}</div>
               </>

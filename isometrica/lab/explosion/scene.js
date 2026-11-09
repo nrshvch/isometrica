@@ -5,7 +5,9 @@
  * buildman explode): no fence, no bulldozer, the charges going off at its
  * foot and then all of it torn into pieces and thrown all round in a
  * fireball, the heaps of rubble it leaves lying there till they are
- * cleared away - by the bulldozers, as clearing them does in the game.
+ * cleared away - by the bulldozers, as clearing them does in the game. Or
+ * two of it side by side, blown up one after the other: a pile of rubble
+ * each, not one pile of the two (client/rubble).
  */
 import BuildingData from "../../src/data/buildings";
 import BuildingCode from "../../src/data/buildingcode";
@@ -39,6 +41,8 @@ export function Scene(world) {
   this.world = world;
   this.code = FIRST;
   this.rotation = 0;
+  //and another of it beside it, along the road
+  this.beside = false;
   world.ground(X, Y, W, H);
   this.put();
   world.look(0, 0);
@@ -73,6 +77,8 @@ Scene.prototype.put = function () {
 
   world.road(X, lot.y - 1, W, false, "asphalt");
   world.put(this.code, lot.x, lot.y, this.rotation);
+  if (this.beside)
+    world.put(this.code, lot.x + lot.sizeX, lot.y, this.rotation);
   TREES.forEach(function (t) {
     world.plant(t[0], t[1]);
   });
@@ -100,24 +106,74 @@ Scene.prototype.turn = function () {
 };
 
 /**
+ * With another of it beside it, or not - put up again.
+ *
+ * @returns {boolean} whether it was
+ */
+Scene.prototype.setBeside = function (on) {
+  var was = this.beside;
+
+  this.beside = on;
+  if (!this.put()) this.beside = was;
+
+  return this.beside === on;
+};
+
+//what stands so many lots along from the middle one, or null
+function standingAt(self, k) {
+  var lot = self.lot(),
+    b = self.world.core.buildingService.get(
+      self.world.tile(lot.x + k * lot.sizeX, lot.y),
+    );
+
+  return b !== null && b.data.variantOf !== BuildingCode.rubble ? b : null;
+}
+
+/**
  * What stands on the lot - or null, blown up, its rubble lying there.
  */
 Scene.prototype.standing = function () {
-  var lot = this.lot(),
-    b = this.world.core.buildingService.get(this.world.tile(lot.x, lot.y));
-
-  return b !== null && b.data.variantOf !== BuildingCode.rubble ? b : null;
+  return standingAt(this, 0);
 };
 
 /**
- * Blown up.
+ * Whatever still stands - the one in the middle, the one beside it.
  *
- * @returns {number} ErrorCode - 0 once it has gone up
+ * @returns {Building[]}
+ */
+Scene.prototype.left = function () {
+  return [standingAt(this, 0), this.beside ? standingAt(this, 1) : null].filter(
+    Boolean,
+  );
+};
+
+/**
+ * The first of what still stands blown up: the one in the middle, then the
+ * one beside it.
+ *
+ * @returns {number} ErrorCode - 0 once it has gone up, -1 for none left
  */
 Scene.prototype.explode = function () {
-  var lot = this.lot();
+  var b = this.left()[0];
 
-  return this.world.explode(lot.x, lot.y);
+  return b ? this.world.client.buildman.explode(b.tile) : -1;
+};
+
+/**
+ * How many piles of rubble lie there - the heaps of each building blown up
+ * one pile (core/city explode).
+ */
+Scene.prototype.piles = function () {
+  var core = this.world.core,
+    seen = {};
+
+  this.world.rubble().forEach(function (t) {
+    var b = core.buildingService.get(t);
+
+    seen[b && b.look ? b.look.pile : "?"] = true;
+  });
+
+  return Object.keys(seen).length;
 };
 
 /**
