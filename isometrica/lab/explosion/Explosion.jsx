@@ -229,7 +229,7 @@ export default function Explosion() {
                   scene().explode();
                 }}
               >
-                explode
+                blow up
               </Button>
               <Button
                 className="px-1.5 py-0.5"

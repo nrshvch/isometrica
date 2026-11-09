@@ -6,7 +6,7 @@
  * the middle on a desktop, where the top has the width of the screen.
  *
  * While a building is looked at - tapped, with nothing else going on - the
- * bar has only what can be done to it (Replace, Demolish, Explode), the tools back
+ * bar has only what can be done to it (Replace, Demolish, Blow up), the tools back
  * once it is put away with a tap anywhere else; and the card over it says
  * what it is and what it is worth: how far along it is going up, or the
  * money it makes a tick, who lives or works in it and what it goes without
@@ -210,7 +210,7 @@ function focusButtons(inspected) {
     },
     {
       icon: "explode",
-      label: "Explode",
+      label: "Blow up",
       action: function () {
         explode(inspected.tile);
       },
