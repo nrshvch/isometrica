@@ -77,11 +77,18 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   pieces, in a cloud of grey dust - into rubble for them to push away
   (`isometrica/src/client/demolition.js`); and nothing can be built on a
   tile till its bulldozer is done there.
-- A building tapped has a card of its own over the buttons along the
-  bottom, with its name and Replace (`src/ui/world/WorldHud.jsx`): the
-  catalogue opens on only what covers its ground, turned one way or
-  another - a 1x2 for a 2x1 as well - each at what it would come to, clearing
-  it away included, and the kind it is among them, for another look of it
+- A building tapped is outlined, and nothing is written over the world
+  for it: the card over the buttons along the bottom says what it is and
+  what it is worth, kept up to date as the city goes on - how far along it
+  is going up, or what it makes a tick, who lives or works in it and what
+  it goes without (`src/ui/world/WorldHud.jsx`,
+  `isometrica/src/client/worth.js`) - and the bar has Replace after its
+  tools. The words over the world stay as they are, the tapped one's too:
+  how far along each site is, what each building goes without.
+- Replace opens the catalogue on only what covers its ground, turned one
+  way or another - a 1x2 for a 2x1 as well - each at what it would come
+  to, clearing it away included, and the kind it is among them, for
+  another look of it
   (`src/ui/catalogue/Catalogue.jsx`, `isometrica/src/core/replacement.js`).
   The one picked is a shortcut for clearing it away and building on its
   ground: all of it paid for there and then, the building fenced off and

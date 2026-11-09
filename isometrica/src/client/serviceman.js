@@ -13,8 +13,11 @@
  *    anywhere else puts it away again; an outline of its own follows the
  *    selection while a tower is being placed (see buildman), so the towers
  *    already standing can be clicked to see how the two line up.
- *  - what a clicked building is worth: the money it makes or costs a tick,
- *    and how full it is - residents for a house, workers for a business.
+ *  - a clicked building outlined, drawn once more over its neighbours -
+ *    and what it is worth, the money it makes or costs a tick and how full
+ *    it is, how far along it is going up, what it goes without
+ *    (client/worth describe), left to the game played to show on its own
+ *    screens (its play's inspecting) rather than written over the world.
  *    It is put away the same way the outline is.
  *
  * Labels live and die with the building views themselves (buildman announces
@@ -27,15 +30,13 @@
  * its warnings, for a picture of it.
  */
 import engine from "engine";
-import Numeral from "numeral";
 import Events from "events";
 import Core from "../core/main";
-import ServiceCode from "../core/servicecode";
+import { wantOf, wordsFor } from "./worth";
 import CityWater from "../core/city/citywater";
 import Buildman from "./buildman";
 import WorldCamera from "./components/camerascript";
 import TileAreaBorderRenderer from "./components/tileareaborderrenderer";
-import MultilineTextRenderer from "./components/multilinetextrenderer";
 import BuildingClassCode from "../data/classcode";
 import RenderLayer from "./renderlayer";
 import Config from "./config";
@@ -45,21 +46,6 @@ import Rotation from "../core/rotation";
 import View from "./view";
 
 var Terrain = Core.Terrain;
-
-var text = {};
-text[ServiceCode.road] = "no road";
-text[ServiceCode.water] = "no water";
-//not a service, but the same kind of trouble: a business nobody works in
-var NO_WORKERS = "noWorkers";
-text[NO_WORKERS] = "no workers";
-//and a house whose people would have nowhere to work
-var NO_JOBS = "noJobs";
-text[NO_JOBS] = "no jobs";
-//and anything that wants to be part of the city and is not (core/city/
-//cityroads cutOff): abandoned, till it is joined up again
-var CUT_OFF = "cutOff";
-text[CUT_OFF] = "cut off";
-text[ServiceCode.linked] = text[CUT_OFF];
 
 //high enough to clear the roof of anything it sits over - and, over a
 //building still going up, just off the pit dug for it
@@ -144,21 +130,6 @@ function hide(self, tile) {
 }
 
 /**
- * What is said over a building going without: for a road, the least of one
- * it wants - "no road (cobble)" over a shop on a gravel lane.
- */
-function wordsFor(building, missing) {
-  var wants =
-    missing === ServiceCode.road && building.data.requires
-      ? building.data.requires[ServiceCode.road]
-      : undefined;
-
-  return typeof wants === "string"
-    ? text[missing] + " (" + wants + ")"
-    : text[missing];
-}
-
-/**
  * Goes over everything on screen and puts a word over whatever is going
  * without, and how far along it is over whatever is going up. Once a tick is
  * plenty - a street or a tower takes longer than that to build.
@@ -181,27 +152,15 @@ function refresh(self) {
   for (tile in views) {
     model = views[tile].model();
 
-    //nothing is missed before it is up - and the one clicked on says how
-    //far along it is with its name instead
+    //nothing is missed before it is up - how far along it is, clicked on
+    //or not
     if (model.getState() === BuildingState.underConstruction) {
-      if (model === self._infoBuilding) hide(self, tile);
-      else show(self, model, progressText(model), PROGRESS_COLOR);
+      show(self, model, progressText(model), PROGRESS_COLOR);
 
       continue;
     }
 
-    missing = city.missing(model);
-
-    //not part of the city at all comes before anything it has or not
-    if (city.roadService.cutOff(model) !== null) missing = CUT_OFF;
-    else if (
-      missing === null &&
-      model.jobs() > 0 &&
-      city.jobs.getWorkers(model) === 0
-    )
-      missing = NO_WORKERS;
-    else if (missing === null && city.population.isShortOfJobs(model))
-      missing = NO_JOBS;
+    missing = wantOf(city, model);
 
     if (missing === null) hide(self, tile);
     else show(self, model, wordsFor(model, missing), WARNING_COLOR);
@@ -244,55 +203,6 @@ function onTick(sender, args, self) {
   refreshInfo(self);
 }
 
-var INCOME_COLOR = "rgb(64,255,64)";
-var EXPENSE_COLOR = "rgb(255,64,64)";
-
-/**
- * @returns {{text: string, color: string}} green for what it brings in, red for
- *                                          what it costs, white for neither
- */
-function formatMoney(amount) {
-  var rounded = Math.round(amount);
-
-  return {
-    text:
-      (rounded > 0 ? "+" : rounded < 0 ? "-" : "") +
-      "$" +
-      Numeral(Math.abs(rounded)).format("0,0"),
-    color: rounded > 0 ? INCOME_COLOR : rounded < 0 ? EXPENSE_COLOR : "white",
-  };
-}
-
-/**
- * @returns {Array} what it is, then - going up - how far along it is, or -
- *                  standing - the money it makes or costs and how full it is
- *                  if anybody lives or works in it
- */
-function infoLines(city, building) {
-  var data = building.data,
-    //its name heads it, the way it heads its card in the catalogue
-    lines = [data.name.charAt(0).toUpperCase() + data.name.slice(1)];
-
-  if (building.getState() === BuildingState.underConstruction) {
-    lines.push(progressText(building));
-    return lines;
-  }
-
-  lines.push(formatMoney(city.getBuildingIncome(building)));
-
-  if (data.citizenCapacity)
-    lines.push(
-      "peeps " +
-        city.population.getResidents(building) +
-        "/" +
-        data.citizenCapacity,
-    );
-  else if (data.jobs)
-    lines.push("jobs " + city.jobs.getWorkers(building) + "/" + data.jobs);
-
-  return lines;
-}
-
 /**
  * Trees and rocks do nothing for anybody, and before a city is founded
  * nothing has a city to do it for. A road costs nothing to keep and what it
@@ -308,20 +218,15 @@ function hasInfo(building) {
   );
 }
 
+//the building looked at let go of, once it is bulldozed
 function refreshInfo(self) {
   var building = self._infoBuilding;
 
-  if (building === null) return;
-
-  //bulldozed while it was being looked at
-  if (self.root.core.buildings.get(building.tile) !== building) {
+  if (
+    building !== null &&
+    self.root.core.buildings.get(building.tile) !== building
+  )
     self.hideInfo();
-    return;
-  }
-
-  self._info.textRenderer.lines = infoLines(building.getCity(), building);
-  //down by the pit while it goes up, over the roof once it stands
-  placeOver(self, self._info, building);
 }
 
 function pickTile(root, screenX, screenY) {
@@ -375,7 +280,7 @@ function ServiceMan(root) {
   this._labels = {};
   this._coverage = null;
   this._placementCoverage = null;
-  this._info = null;
+  //the building whose worth the game played is showing, if any (showInfo)
   this._infoBuilding = null;
   //what a click is showing, info or reach or both - clicked again, it is
   //put away
@@ -452,9 +357,10 @@ ServiceMan.prototype.quiet = function () {
 };
 
 /**
- * Clicking a building shows what it is worth, and a water tower what it waters
- * as well. Clicking it again puts them away, and so does clicking anything
- * else - bare ground, a road, a tree, the sea.
+ * Clicking a building outlines it and has the game played show what it is
+ * worth (showInfo), and a water tower what it waters as well. Clicking it
+ * again puts them away, and so does clicking anything else - bare ground, a
+ * road, a tree, the sea.
  *
  * @param screenX {number} where the click was, in viewport pixels
  * @param screenY {number}
@@ -653,43 +559,18 @@ ServiceMan.prototype.hidePlacementCoverage = function () {
 };
 
 /**
- * Writes what the building is worth over the middle of it, and keeps it up to
- * date every tick until it is put away.
+ * Has the game played show what the building is worth (client/worth
+ * describe) - nothing
+ * is written over the world - till it is put away, or bulldozed.
  *
  * @param building {Building}
  */
 ServiceMan.prototype.showInfo = function (building) {
-  var info = this._info;
-
-  if (info === null) {
-    info = this._info = new engine.GameObject("buildingInfo");
-
-    var renderer = info.addComponent(new MultilineTextRenderer());
-
-    renderer.layer = RenderLayer.overlayLayer;
-    renderer.color = "white";
-    renderer.style = "bold 16px Courier New";
-    renderer.strokeStyle = "black";
-    renderer.lineWidth = 4;
-
-    this.root.game.scene.addGameObject(info);
-  }
-
   this._infoBuilding = building;
-  refreshInfo(this);
-  //its own label gives way to the info, rather than a tick later
-  refresh(this);
 };
 
 ServiceMan.prototype.hideInfo = function () {
-  if (this._info !== null) {
-    this._info.destroy();
-    this._info = null;
-    this._infoBuilding = null;
-    //and comes back as soon as the info goes
-    refresh(this);
-  }
-
+  this._infoBuilding = null;
   this._inspected = null;
   raise(this, null);
 };

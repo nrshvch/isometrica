@@ -5,15 +5,23 @@
  * a line of what to do. As wide as what is along the top on a phone; in
  * the middle on a desktop, where the top has the width of the screen.
  *
- * And right over the bar, while a building is looked at - tapped, with
- * nothing else going on - what can be done to it, on a card of its own:
- * its name, and putting something else up in its place (Replace).
+ * While a building is looked at - tapped, with nothing else going on - the
+ * bar has what can be done to it after the tools (Replace), and the card
+ * over it says what it is and what it is worth: how far along it is going
+ * up, or the money it makes a tick, who lives or works in it and what it
+ * goes without - kept up to date as the city goes on, and nothing of it
+ * written over the world (isometrica client/worth describe).
  */
+import { useEffect, useState } from "react";
+import Events from "events";
 import Data from "isometrica/data/buildings";
+import BuildingClassCode from "isometrica/data/classcode";
 import Replacement from "isometrica/core/replacement";
+import { describe } from "isometrica/client/worth";
+import Numeral from "numeral";
 import { displayName } from "../catalogue/buildings";
 import { BarButton, Container, Icon, cx } from "../kit";
-import { goReplace } from "../session";
+import { getClient, goReplace } from "../session";
 import { useGame } from "../store";
 
 //what a button says under it, when what puts it up does not say - the
@@ -55,29 +63,143 @@ function Hint({ text, on }) {
 }
 
 /**
- * What can be done to the building looked at: its name - the kind it is -
- * and its buttons, the bar's own kind, on a card over the bar.
+ * What the building looked at is worth (isometrica client/worth
+ * describe), read again every tick while it is looked at - or null, for
+ * none, or one gone.
+ *
+ * @param inspected {{tile: number, code: number}|null} (store)
  */
-function Actions({ inspected }) {
-  var data = Data[Replacement.kindOf(inspected.code)];
+function useDescribed(inspected) {
+  var [seen, setSeen] = useState(null);
+
+  useEffect(
+    function () {
+      var client = getClient();
+
+      if (!inspected || !client) {
+        setSeen(null);
+        return;
+      }
+
+      //on the world's tick, as the words over the world are read again
+      //(isometrica client/serviceman) - the same figures at the same time
+      var core = client.core;
+
+      function read() {
+        var b = client.core.buildingService.get(inspected.tile),
+          next = b !== null ? describe(b.getCity(), b) : null;
+
+        setSeen(function (was) {
+          return JSON.stringify(was) === JSON.stringify(next) ? was : next;
+        });
+      }
+
+      var ticked = Events.on(core, core.events.tick, read);
+
+      read();
+
+      return function () {
+        Events.off(core, core.events.tick, ticked);
+      };
+    },
+    [inspected],
+  );
+
+  return seen;
+}
+
+//what a tick of it comes to: +$100, -$40
+function perTick(amount) {
+  return (
+    (amount < 0 ? "-" : "+") + "$" + Numeral(Math.abs(amount)).format("0,0")
+  );
+}
+
+//a figure of the card, what it is of in front of it
+function Figure({ label, icon, className, children }) {
+  return (
+    <span className={cx("pill bg-inset px-2 py-1 text-xs", className)}>
+      {icon && <Icon name={icon} size={14} strokeWidth={2} />}
+      {label && <span className="font-semibold text-muted">{label}</span>}
+      {children}
+    </span>
+  );
+}
+
+/**
+ * The building looked at: what it is, and what it is worth - going up, how
+ * far along; standing, what it makes a tick, who lives or works in it and
+ * what it goes without.
+ */
+function Focus({ inspected, seen }) {
+  var data = Data[Replacement.kindOf(inspected.code)],
+    going = seen.progress !== null;
 
   return (
-    <div className="card pointer-events-auto flex max-w-full min-w-0 items-center gap-3 self-center py-1.5 pr-1 pl-3.5">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="label">Building</span>
-        <span className="truncate font-extrabold">
-          {data ? displayName(data) : ""}
+    <div className="card flex items-center gap-3 p-2.5 pr-3">
+      <span className={cx("tile", going ? "tile-gold" : "tile-home")}>
+        <Icon
+          name={
+            going
+              ? "build"
+              : seen.classCode === BuildingClassCode.house
+                ? "home"
+                : "city"
+          }
+          size={22}
+        />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="label">{going ? "Going up" : "Building"}</span>
+        <span className="truncate leading-snug font-extrabold">
+          {data ? displayName(data) : seen.name}
         </span>
       </div>
-      <BarButton
-        icon="replace"
-        label="Replace"
-        onClick={function () {
-          goReplace(inspected.tile);
-        }}
-      />
+      <div className="flex max-w-[60%] flex-wrap justify-end gap-1.5">
+        {going ? (
+          <Figure icon="clock">{Math.floor(seen.progress * 100) + "%"}</Figure>
+        ) : (
+          <>
+            <Figure
+              icon={seen.income < 0 ? "trend-down" : "trend-up"}
+              className={seen.income < 0 ? "text-bad" : "text-good"}
+            >
+              <span title="A tick">{perTick(seen.income)}</span>
+            </Figure>
+            {seen.capacity > 0 && (
+              <Figure icon="people">
+                {seen.residents + "/" + seen.capacity}
+              </Figure>
+            )}
+            {seen.jobs > 0 && (
+              <Figure label="Jobs">{seen.workers + "/" + seen.jobs}</Figure>
+            )}
+            {seen.wants && (
+              <Figure icon="alert" className="text-bad">
+                {seen.wants.charAt(0).toUpperCase() + seen.wants.slice(1)}
+              </Figure>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
+}
+
+/**
+ * What can be done to the building looked at, after the bar's own buttons:
+ * put something else up in its place.
+ */
+function focusButtons(inspected) {
+  return [
+    {
+      icon: "replace",
+      label: "Replace",
+      action: function () {
+        goReplace(inspected.tile);
+      },
+    },
+  ];
 }
 
 export default function WorldHud() {
@@ -91,7 +213,10 @@ export default function WorldHud() {
     inspected = useGame(function (s) {
       return s.busy ? null : s.inspected;
     }),
-    shown = buttons.filter(Boolean),
+    seen = useDescribed(inspected),
+    shown = buttons
+      .filter(Boolean)
+      .concat(inspected ? focusButtons(inspected) : []),
     on = shown.find(function (b) {
       return b.on;
     });
@@ -100,7 +225,7 @@ export default function WorldHud() {
     <Container className="flex flex-1 flex-col justify-end pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4">
       <div className="mx-auto flex w-full flex-col gap-2 sm:max-w-xl">
         {hint && <Hint text={hint} on={on} />}
-        {inspected && <Actions inspected={inspected} />}
+        {inspected && seen && <Focus inspected={inspected} seen={seen} />}
         {shown.length > 0 && (
           <div className="card flex w-full justify-center px-1 pt-2 pb-2.5">
             {shown.map(function (b) {
