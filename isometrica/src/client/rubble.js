@@ -8,7 +8,10 @@ import BuildingCode from "../data/buildingcode";
  * what one next to it did, blown up as well - and where four meet at a
  * corner, over it too (shared/gen/stones pile). Which it does is its mask,
  * as the tiles round it are now. A heap the bulldozers are still to get to
- * is there still (client/buildman held).
+ * is there still (client/buildman held). It lies on the ground as it is, not
+ * levelled - its picture the one for its tile's slope, drawn from the
+ * lowest corner of it - so that heaps on a hillside run on into each other
+ * as they do on the flat.
  */
 
 var Terrain = Core.Terrain;
@@ -91,9 +94,49 @@ function maskOf(root, tile) {
   return sides.join("") + corners.join("");
 }
 
+//the heights of tile's corners - x, y; x + 1, y; x, y + 1; x + 1, y + 1 -
+//in steps of the ground
+function cornersOf(root, tile) {
+  var terrain = root.core.terrain;
+
+  return [tile, tile + 1, tile + Terrain.dy, tile + Terrain.dy + 1].map(
+    function (p) {
+      return terrain.getGridPointHeight(p);
+    },
+  );
+}
+
 /**
- * The picture of the heap on tile, of the rubble it is (stones' "rubble" or
- * "rubble0"), seen with the camera turned so many times.
+ * The slope of tile as a pile's picture is named by it (shared/gen/stones
+ * slopes): how many steps over its lowest corner each of its corners is.
+ *
+ * @returns {string} "0000", "1100"...
+ */
+function slopeOf(root, tile) {
+  var z = cornersOf(root, tile),
+    low = Math.min.apply(null, z);
+
+  return z
+    .map(function (h) {
+      return Math.max(0, Math.min(2, h - low));
+    })
+    .join("");
+}
+
+/**
+ * How far below the highest corner of tile - where what stands on a tile is
+ * drawn from (client/buildingview drawnAt) - its lowest one is, steps: where
+ * a pile's picture is drawn from.
+ */
+function dropOf(root, tile) {
+  var z = cornersOf(root, tile);
+
+  return Math.max.apply(null, z) - Math.min.apply(null, z);
+}
+
+/**
+ * The picture of the heap on tile, of the rubble it is (stones' "rubble"),
+ * on its tile's slope, seen with the camera turned so many times.
  *
  * @returns {string}
  */
@@ -103,6 +146,8 @@ function pictureOf(root, tile, rubble, turns) {
     rubble +
     "/" +
     maskOf(root, tile) +
+    "/" +
+    slopeOf(root, tile) +
     (turns & 3 ? "/r" + (turns & 3) : "")
   );
 }
@@ -138,6 +183,8 @@ function around(tiles) {
 export default {
   isRubble: isRubble,
   maskOf: maskOf,
+  slopeOf: slopeOf,
+  dropOf: dropOf,
   pictureOf: pictureOf,
   around: around,
 };

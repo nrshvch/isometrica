@@ -27,7 +27,12 @@
  * pile ("pile/<rubble>/<mask>"): its mound, a ridge on to every tile next
  * to it along a side with a heap of its own, and where four heaps meet at a
  * corner, a mound over it too - each tile's picture its own square of it,
- * so that tiles side by side meet where they join.
+ * so that tiles side by side meet where they join. A pile lies on the
+ * ground as it is, not levelled: on a tile that slopes, its picture is of
+ * it on that slope ("pile/<rubble>/<mask>/<slope>"), the corners of the
+ * tile as high as they are and the tile folded along the diagonal the
+ * ground's own picture is (shared/gen/terrain fold) - taller than a stone's
+ * by as much as a tile can rise, PILE_RISE.
  *
  * Every picture is the size of a tile of the ground, its middle where the
  * tile's is (data/rocks: pivot 32, 24). It paints into plain pictures,
@@ -42,6 +47,13 @@ var W = 64,
   OX = 32,
   OY = 40,
   TILE = 32;
+
+//how far up the picture a step of the ground is, pixels (shared/gen/terrain
+//HEIGHT_STEP), and how far a tile's corners can rise over its lowest one,
+//steps - a pile's picture taller by as much, and the middle of its tile as
+//much further down it
+var GROUND_STEP = 8,
+  PILE_RISE = 2;
 
 //the boxes' sun (isobox SUN), and the one the shadows are cast by - higher,
 //so they fall short, under the stones
@@ -155,6 +167,70 @@ var RIDGE = 12,
   MEET = 14;
 
 /**
+ * Every slope a tile can have, as a pile's picture is named by it: how many
+ * steps over its lowest corner each of its corners is - x, y; x + 1, y;
+ * x, y + 1; x + 1, y + 1 - none more than a step over the ones next to it.
+ *
+ * @returns {string[]} "0000", "1000", "0112"...
+ */
+export function slopes() {
+  var out = [];
+
+  for (var k = 0; k < 81; k++) {
+    var z = [
+      k % 3,
+      Math.floor(k / 3) % 3,
+      Math.floor(k / 9) % 3,
+      Math.floor(k / 27),
+    ];
+
+    if (
+      Math.min.apply(null, z) === 0 &&
+      Math.abs(z[0] - z[1]) <= 1 &&
+      Math.abs(z[0] - z[2]) <= 1 &&
+      Math.abs(z[1] - z[3]) <= 1 &&
+      Math.abs(z[2] - z[3]) <= 1
+    )
+      out.push(z.join(""));
+  }
+
+  return out;
+}
+
+/**
+ * How high the ground of a tile of slope (slopes) is at x, y along it, as
+ * it is in the world, pixels over its lowest corner: the two flat faces it
+ * folds into, along the diagonal whose ends are as high as each other - of
+ * a saddle, where both are, the lower - as the ground's picture is folded
+ * (shared/gen/terrain fold), so that a pile lies on the ground drawn.
+ */
+function groundOf(slope) {
+  var z = slope.split("").map(function (c) {
+      return +c * GROUND_STEP;
+    }),
+    a = z[0],
+    b = z[1],
+    c = z[2],
+    d = z[3],
+    //along the diagonal from x, y to x + 1, y + 1 - or the other one
+    alongAD = a + d === b + c ? true : a === d && b === c ? a < b : a === d;
+
+  return function (x, y) {
+    var u = Math.max(0, Math.min(1, x / TILE)),
+      v = Math.max(0, Math.min(1, y / TILE));
+
+    if (alongAD)
+      return u >= v
+        ? a + (b - a) * u + (d - b) * v
+        : a + (c - a) * v + (d - c) * u;
+
+    return u + v <= 1
+      ? a + (b - a) * u + (c - a) * v
+      : d + (d - c) * (u - 1) + (d - b) * (v - 1);
+  };
+}
+
+/**
  * Every pile's mask there is: "0000" to "1111" for its sides, and for its
  * corners "0000" but where both sides of one are "1".
  *
@@ -219,6 +295,10 @@ function noise(x, y, s) {
 
   return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
 }
+
+//what the piles are of: one of the rubbles - pictures enough as it is,
+//with every mask on every slope
+var PILES = ["rubble"];
 
 //noise the same at either edge of a tile, so that what is lumpy by it on
 //a tile meets what is on the tile next to it: cells across the tile
@@ -354,7 +434,7 @@ function heapOf(plan, rnd) {
  * is. All of it on the tile, as the tile is in the world: what is seen of
  * it from another side is turned round after.
  */
-function pileOf(plan, mask) {
+function pileOf(plan, mask, slope) {
   var m = plan.mound,
     c = TILE / 2,
     shapes = [{ x: c, y: c, r: m.r }],
@@ -447,7 +527,8 @@ function pileOf(plan, mask) {
     );
   }
 
-  var ground = {
+  var under = groundOf(slope),
+    ground = {
       x: c,
       y: c,
       turn: 0,
@@ -455,6 +536,8 @@ function pileOf(plan, mask) {
       colours: m.colours,
       seed: plan.seed,
       field: field,
+      //and the ground it lies on, as high as it is there
+      under: under,
     },
     out = [ground],
     joins = mask.slice(0, 4).split("1").length - 1,
@@ -464,10 +547,10 @@ function pileOf(plan, mask) {
     var r = plan.size[0] + rnd() * (plan.size[1] - plan.size[0]),
       x = r + 1 + rnd() * (TILE - 2 * r - 2),
       y = r + 1 + rnd() * (TILE - 2 * r - 2),
-      under = field(x, y);
+      debris = field(x, y);
 
     //thicker the higher the debris is
-    if (under < m.high * (0.25 + 0.5 * rnd())) continue;
+    if (debris < m.high * (0.25 + 0.5 * rnd())) continue;
 
     out.push({
       x: x,
@@ -478,12 +561,25 @@ function pileOf(plan, mask) {
       high: plan.high[0] + rnd() * (plan.high[1] - plan.high[0]),
       colours: plan.palettes[Math.floor(rnd() * plan.palettes.length)],
       seed: (rnd() * 1e6) | 0,
-      base: under * 0.8,
+      base: under(x, y) + debris * 0.8,
       blocky: plan.blocky,
     });
   }
 
   return out;
+}
+
+//where x, y of a picture seen turned so many times is on its tile in the
+//world - turned back (paint turns (x, y) to (y, -x) round the middle)
+function unturned(x, y, turns) {
+  for (var t = 0; t < turns; t++) {
+    var tx = x;
+
+    x = TILE - y;
+    y = tx;
+  }
+
+  return [x, y];
 }
 
 /**
@@ -500,22 +596,13 @@ function heightAt(stones, x, y, whole) {
     var s = stones[i];
 
     //the ground of a pile, seen turned as many times as it is: where x, y
-    //is on it in the world
+    //is on it in the world - on the ground there
     if (s.field) {
-      var wx = x,
-        wy = y;
+      var w = unturned(x, y, s.turns),
+        f = s.field(w[0], w[1], whole);
 
-      for (var t = 0; t < s.turns; t++) {
-        var tx = wx;
-
-        wx = TILE - wy;
-        wy = tx;
-      }
-
-      var f = s.field(wx, wy, whole);
-
-      if (f > best) {
-        best = f;
+      if (f > 0 && f + s.under(w[0], w[1]) > best) {
+        best = f + s.under(w[0], w[1]);
         which = s;
       }
       continue;
@@ -555,25 +642,70 @@ function heightAt(stones, x, y, whole) {
 
 /**
  * Where the ray of pixel px, py meets the stones going down from as high as
- * they get: {x, y, z, stone}, or where it meets the ground, stone null.
+ * they get: {x, y, z, stone}, or where it meets the ground, stone null -
+ * in a picture of frame (FLAT, or a pile's: taller, its tile further down,
+ * and its ground, ground(x, y), as high as it is on the tile there).
  */
-function cast(stones, px, py) {
-  var a = px + 0.5 - OX;
+function cast(stones, px, py, frame) {
+  var a = px + 0.5 - OX,
+    oy = frame.oy;
 
-  for (var z = TALLEST; z >= 0; z -= STEP) {
-    var b = 2 * (OY - (py + 0.5) - z),
+  //what the ray meets that high, if anything
+  function at(z) {
+    var b = 2 * (oy - (py + 0.5) - z),
       x = (a + b) / 2,
       y = (b - a) / 2,
-      at = heightAt(stones, x, y);
+      h = heightAt(stones, x, y);
 
-    if (at.stone !== null && at.z >= z)
-      return { x: x, y: y, z: z, stone: at.stone };
+    if (h.stone !== null && h.z >= z)
+      return { x: x, y: y, z: z, stone: h.stone };
+
+    //the ground, on the tile, where it is that high
+    if (
+      frame.ground !== null &&
+      x >= 0 &&
+      y >= 0 &&
+      x <= TILE &&
+      y <= TILE &&
+      z <= frame.ground(x, y)
+    )
+      return { x: x, y: y, z: z, stone: null };
+
+    return null;
   }
 
-  var b0 = 2 * (OY - (py + 0.5));
+  //down a pile's taller picture in long steps first, then back over the
+  //last of them a STEP at a time, for where it meets it
+  var long = frame.ground !== null ? STEP * 3 : STEP,
+    z,
+    hit;
+
+  for (z = frame.tallest; z >= 0; z -= long) {
+    hit = at(z);
+
+    if (hit === null) continue;
+    if (long === STEP) return hit;
+
+    for (
+      var fine = Math.min(frame.tallest, z + long - STEP);
+      fine > z;
+      fine -= STEP
+    ) {
+      var first = at(fine);
+
+      if (first !== null) return first;
+    }
+
+    return hit;
+  }
+
+  var b0 = 2 * (oy - (py + 0.5));
 
   return { x: (a + b0) / 2, y: (b0 - a) / 2, z: 0, stone: null };
 }
+
+//a stone's picture: the tile, flat, and as high as a stone stands
+var FLAT = { height: H, oy: OY, tallest: TALLEST, ground: null };
 
 //which way the stones look at x, y
 function normalAt(stones, x, y) {
@@ -586,14 +718,17 @@ function normalAt(stones, x, y) {
   return normalize([-dx / (2 * e), -dy / (2 * e), 1]);
 }
 
-//whether the ground at x, y is in the shadow of a stone
-function shadowed(stones, x, y) {
+//whether the ground at x, y, as high as it is there, is in the shadow of a
+//stone
+function shadowed(stones, x, y, frame) {
+  var z0 = frame.ground !== null ? frame.ground(x, y) : 0;
+
   for (var t = STEP * 2; t < 14; t += STEP * 2) {
     var sx = x + SHADOW_SUN[0] * t,
       sy = y + SHADOW_SUN[1] * t,
-      z = SHADOW_SUN[2] * t;
+      z = z0 + SHADOW_SUN[2] * t;
 
-    if (z > TALLEST) return false;
+    if (z > frame.tallest) return false;
     if (heightAt(stones, sx, sy, true).z > z) return true;
   }
 
@@ -601,16 +736,38 @@ function shadowed(stones, x, y) {
 }
 
 /**
+ * A pile's picture, of a tile of slope seen turned so many times: taller
+ * than a stone's by as far as a tile can rise, its tile as much further
+ * down, and its ground as high as it is - in the picture, turned.
+ */
+function pileFrame(slope, turns) {
+  var ground = groundOf(slope);
+
+  return {
+    height: H + PILE_RISE * GROUND_STEP,
+    oy: OY + PILE_RISE * GROUND_STEP,
+    tallest: TALLEST + PILE_RISE * GROUND_STEP,
+    ground: function (x, y) {
+      var w = unturned(x, y, turns);
+
+      return ground(w[0], w[1]);
+    },
+  };
+}
+
+/**
  * One picture: name "stone" or "stone0", "-m" after it for the other way
  * round - its stones laid out the other way across the tile, lit by the
  * same sun - and "/r1" to "/r3" after that for it seen from another side,
- * that many quarter turns round. Or a pile, "pile/rubble/<mask>" (masks),
- * seen from a side the same way.
+ * that many quarter turns round. Or a pile, "pile/rubble/<mask>/<slope>"
+ * (masks, slopes), seen from a side the same way.
  */
 export function paint(name) {
-  var pile = /^pile\/([a-z0-9]+)\/([01]{8})(?:\/r([123]))?$/.exec(name),
+  var pile = /^pile\/([a-z0-9]+)\/([01]{8})\/([012]{4})(?:\/r([123]))?$/.exec(
+      name,
+    ),
     m = pile
-      ? [name, pile[1], undefined, pile[3]]
+      ? [name, pile[1], undefined, pile[4]]
       : /^([a-z0-9]+)(-m)?(?:\/r([123]))?$/.exec(name),
     plan = m && PLANS[m[1]];
 
@@ -619,7 +776,9 @@ export function paint(name) {
 
   var turned = m[2] !== undefined,
     turns = +(m[3] || 0),
-    stones = pile ? pileOf(plan, pile[2]) : stonesOf(plan),
+    stones = pile ? pileOf(plan, pile[2], pile[3]) : stonesOf(plan),
+    frame = pile ? pileFrame(pile[3], turns) : FLAT,
+    H = frame.height,
     out = { width: W, height: H, data: new Uint8ClampedArray(W * H * 4) },
     hit = new Array(W * H),
     i,
@@ -652,7 +811,7 @@ export function paint(name) {
   });
 
   for (py = 0; py < H; py++)
-    for (px = 0; px < W; px++) hit[py * W + px] = cast(stones, px, py);
+    for (px = 0; px < W; px++) hit[py * W + px] = cast(stones, px, py, frame);
 
   for (py = 0; py < H; py++)
     for (px = 0; px < W; px++) {
@@ -666,7 +825,7 @@ export function paint(name) {
           h.y >= 0 &&
           h.x < TILE &&
           h.y < TILE &&
-          shadowed(stones, h.x, h.y)
+          shadowed(stones, h.x, h.y, frame)
         )
           out.data[o + 3] = Math.round(SHADOW_ALPHA * 255);
         continue;
@@ -714,17 +873,23 @@ export function describe() {
   var sizes = {};
 
   Object.keys(PLANS).forEach(function (plan) {
-    var names = [plan, plan + "-m"];
-
-    //and its piles, for rubble
-    if (PLANS[plan].mound)
-      masks().forEach(function (mask) {
-        names.push("pile/" + plan + "/" + mask);
-      });
-
-    names.forEach(function (name) {
+    [plan, plan + "-m"].forEach(function (name) {
       ["", "/r1", "/r2", "/r3"].forEach(function (side) {
         sizes[name + side] = { w: W, h: H };
+      });
+    });
+  });
+
+  //and the piles of rubble, on every slope
+  PILES.forEach(function (plan) {
+    masks().forEach(function (mask) {
+      slopes().forEach(function (slope) {
+        ["", "/r1", "/r2", "/r3"].forEach(function (side) {
+          sizes["pile/" + plan + "/" + mask + "/" + slope + side] = {
+            w: W,
+            h: H + PILE_RISE * GROUND_STEP,
+          };
+        });
       });
     });
   });

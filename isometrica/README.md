@@ -34,7 +34,7 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   again the game's way, its site as fast as asked - the explosion bench at
   `/explosion.html` - a building blown up, torn into pieces thrown all
   round in a fireball, its rubble left lying till the bulldozers clear it,
-  or two of it side by side, a pile each -
+  or two of it side by side, a pile each, on the flat or on a slope -
   and the lighting bench at `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder

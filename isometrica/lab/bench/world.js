@@ -262,12 +262,16 @@ World.prototype.start = function () {
 
 /**
  * The patch of ground the bench stands on, w by h tiles from dx, dy off its
- * middle: flat grass, made so the way a save puts ground back (core/terrain
- * load) - its grid points all as high, and nothing of the world's own on
- * any of its tiles - and drawn, and nothing else; the patch drawn before it
- * gone where it is not this one.
+ * middle: grass, made so the way a save puts ground back (core/terrain
+ * load) - its grid points all as high, flat, or each as high as rise(i, j)
+ * says it is over that, i, j along the patch from its corner (no grid point
+ * more than a step over the ones next to it) - nothing of the world's own
+ * on any of its tiles, and drawn, and nothing else; the patch drawn before
+ * it gone where it is not this one.
+ *
+ * @param [rise] {function(number, number): number} steps
  */
-World.prototype.ground = function (dx, dy, w, h) {
+World.prototype.ground = function (dx, dy, w, h, rise) {
   var core = this.core,
     client = this.client,
     x0 = Terrain.extractX(MIDDLE) + dx,
@@ -281,7 +285,10 @@ World.prototype.ground = function (dx, dy, w, h) {
 
   for (i = 0; i <= w; i++)
     for (j = 0; j <= h; j++)
-      points.push([Terrain.convertToIndex(x0 + i, y0 + j), GROUND]);
+      points.push([
+        Terrain.convertToIndex(x0 + i, y0 + j),
+        GROUND + (rise ? rise(i, j) : 0),
+      ]);
 
   for (i = 0; i < w; i++)
     for (j = 0; j < h; j++) {

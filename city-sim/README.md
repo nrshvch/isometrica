@@ -131,7 +131,9 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   a water tower, the town hall. It is gone at once, the ground under it
   bare, and a heap of rubble lies on every tile of it, its heaps one pile -
   running on into each other along their sides and over the corners where
-  four meet, but not into the pile of a building next to it blown up too
+  four meet, but not into the pile of a building next to it blown up too -
+  and lying on the ground as it slopes, not levelled as the building was,
+  seamless over a hillside as on the flat
   (`isometrica/src/client/rubble.js`, `isometrica/src/shared/gen/stones.js`
   pile). Kept in the save, a heap is
   there till Clear has the bulldozers push it away for the clearing fee -
