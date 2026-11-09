@@ -853,9 +853,11 @@ function crush(self, col, f) {
  * from where they are in it: CHUNKS of them, as far and as high as a floor
  * crushed throws them - or as fling says (client/explosion).
  *
- * @param [fling] {{n: number, out: number[], up: number[], lie: number[]}}
- *        how many pieces, and how fast out and up, world units a second,
- *        and how long they lie, ms - each from the first to the second
+ * @param [fling] {{n: number, out: number[], up: number[], lie: number[],
+ *        around: boolean}} how many pieces, and how fast out and up, world
+ *        units a second, and how long they lie, ms - each from the first to
+ *        the second - and whether they go any way at all, all round, rather
+ *        than out from the middle of the building
  */
 function burst(self, col, f, fling) {
   if (!f.cuttable) return;
@@ -928,8 +930,17 @@ function chunk(self, f, cell, fling) {
     //how far up its foot is over where the floor is drawn from
     up = (part.pivotY - (cell.y + cell.h)) * PER_PIXEL,
     wx = self.go.transform.getPosition([0, 0, 0]),
-    ox = wx[0] + p[0] - self.mx + (Math.random() - 0.5) * TILE,
-    oz = wx[2] + p[2] - self.mz + (Math.random() - 0.5) * TILE,
+    //out from the middle of the building, more or less - or for one blown
+    //up, any way at all, all round it (fling around)
+    any = fling && fling.around ? Math.random() * 2 * Math.PI : null,
+    ox =
+      any !== null
+        ? Math.cos(any)
+        : wx[0] + p[0] - self.mx + (Math.random() - 0.5) * TILE,
+    oz =
+      any !== null
+        ? Math.sin(any)
+        : wx[2] + p[2] - self.mz + (Math.random() - 0.5) * TILE,
     l = Math.hypot(ox, oz) || 1,
     out = throws[0] + Math.random() * (throws[1] - throws[0]);
 
