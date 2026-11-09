@@ -33,7 +33,7 @@ export function displayName(b) {
     : name;
 }
 
-function formatMoney(amount) {
+export function formatMoney(amount) {
   return "$" + Numeral(amount).format("0,0");
 }
 

@@ -77,6 +77,20 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   pieces, in a cloud of grey dust - into rubble for them to push away
   (`isometrica/src/client/demolition.js`); and nothing can be built on a
   tile till its bulldozer is done there.
+- A building tapped has a card of its own over the buttons along the
+  bottom, with its name and Replace (`src/ui/world/WorldHud.jsx`): the
+  catalogue opens on only what covers its ground, turned one way or
+  another - a 1x2 for a 2x1 as well - each at what it would come to, clearing
+  it away included, and the kind it is among them, for another look of it
+  (`src/ui/catalogue/Catalogue.jsx`, `isometrica/src/core/replacement.js`).
+  The one picked is a shortcut for clearing it away and building on its
+  ground: all of it paid for there and then, the building fenced off and
+  coming down as the bulldozers get to it, and the new one going up as a
+  building site as soon as they are done - turned the way the old one
+  faced where it fits so, or else the way with the most road along its
+  front (`isometrica/src/client/buildman.js` replace). Its ground is kept
+  for it meanwhile, and in the save: closed, it goes up on it as the game
+  opens again (`isometrica/src/core/city/citybuildings.js` replaceLater).
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

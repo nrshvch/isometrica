@@ -37,6 +37,7 @@ export default {
   "people": { w: 24, h: 24, stroke: 1.5, body: "<circle cx=\"9\" cy=\"8\" r=\"3.25\"/><path d=\"M3 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h3a4.5 4.5 0 0 1 4.5 4.5V20\"/><path d=\"M15.5 4.9a3.25 3.25 0 0 1 0 6.2\"/><path d=\"M18 14.2a4.5 4.5 0 0 1 3 4.3V20\"/>" },
   "plus": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M12 5L12 19\"/><path d=\"M5 12L19 12\"/>" },
   "raise": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M8.6 13.7L2 17L12 22L22 17L15.4 13.7\"/><path d=\"M12 17L12 4\"/><path d=\"M8 7L12 3L16 7\"/>" },
+  "replace": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M4 12A8 8 0 0 1 17.66 6.34L20 8\"/><path d=\"M20 3.5L20 8L15.5 8\"/><path d=\"M20 12A8 8 0 0 1 6.34 17.66L4 16\"/><path d=\"M4 20.5L4 16L8.5 16\"/><path d=\"M8.5 13L12 9.75L15.5 13\"/><path d=\"M9.75 11.9L9.75 15.5L14.25 15.5L14.25 11.9\"/>" },
   "rotate": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M20 12a8 8 0 1 1-2.34-5.66L20 8\"/><path d=\"M20 3.5L20 8L15.5 8\"/>" },
   "share": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M8.5 9L5 9L5 20.5L19 20.5L19 9L15.5 9\"/><path d=\"M12 14.5L12 4\"/><path d=\"M8 7L12 3L16 7\"/>" },
   "sound-off": { w: 24, h: 24, stroke: 1.5, body: "<path d=\"M3 9L7 9L12 4.5L12 19.5L7 15L3 15Z\"/><path d=\"M16 9.5L21 14.5\"/><path d=\"M21 9.5L16 14.5\"/>" },

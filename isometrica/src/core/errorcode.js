@@ -20,6 +20,9 @@ var ErrorCode = {
   ON_SHORE: 13,
   //on ground still being cleared (core/terrain beingCleared)
   BEING_CLEARED: 14,
+  //a building put up in another's place that does not cover its ground,
+  //however it is turned (core/city quoteReplace)
+  WRONG_FOOTPRINT: 15,
 };
 
 export default ErrorCode;

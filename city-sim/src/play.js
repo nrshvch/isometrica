@@ -1,8 +1,11 @@
 /**
  * The city builder's own part of the client (client/vkaria): shaping the
  * ground, the city's border and the town's limits over its roads out, how
- * often the world is drawn - and no names over the cities.
+ * often the world is drawn - and no names over the cities; and the building
+ * looked at, for what can be done to it (ui/world/WorldHud).
  */
+import Replacement from "isometrica/core/replacement";
+import { store } from "./ui/store";
 import Terrainman from "./client/terrainman";
 import CityBorder from "./client/cityborder";
 import Pace from "./client/pace";
@@ -40,5 +43,13 @@ export default {
   //client/serviceman)
   inspecting: function (building) {
     if (border !== null) border.inspecting(building);
+
+    //and what can be done to it, over the buttons along the bottom
+    store.setState({
+      inspected:
+        building && Replacement.replaceable(building)
+          ? { tile: building.tile, code: building.buildingCode }
+          : null,
+    });
   },
 };

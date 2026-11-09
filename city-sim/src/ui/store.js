@@ -38,6 +38,10 @@ export var store = createStore(function () {
     //the buttons along the bottom, five slots: {icon, label, on, go,
     //disabled, action} each, or undefined for an empty one
     buttons: [],
+    //the building looked at in the world - tapped, its footprint outlined
+    //(isometrica client/serviceman) - for what can be done to it over the
+    //buttons (WorldHud): {tile, code} of the core's building, or null
+    inspected: null,
     //whether the world is drawn at night - the screens over it dark with it
     night: false,
     //asking the player for a word: {message, placeholder, submit(value),

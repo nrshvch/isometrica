@@ -12,6 +12,8 @@ namespace("Isometrica.Core").Terrain = Terrain;
 var events = {
   tileCleared: 0,
   gridUpdate: 1,
+  //what was on a tile being cleared is gone (endClearing): the tile
+  clearingEnded: 2,
 };
 
 //how long, of the game's time, the earth a tile was cleared down to lies
@@ -430,9 +432,14 @@ Terrain.prototype.startClearing = function (tile) {
   this.clearing[tile] = Date.now();
 };
 
-//what was on a tile is gone now (startClearing)
+//what was on a tile is gone now (startClearing) - and whoever waits for
+//the ground to build on it again told (clearingEnded: core/city/
+//citybuildings replacing)
 Terrain.prototype.endClearing = function (tile) {
+  if (this.clearing[tile] === undefined) return;
+
   delete this.clearing[tile];
+  Events.fire(this, events.clearingEnded, tile);
 };
 
 /**

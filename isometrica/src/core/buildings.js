@@ -105,8 +105,11 @@ function buildTest(self, code, tile, rotation) {
       !Surface.fits(terrain, tile, Surface.natural(terrain, tile))
     )
       return ErrorCode.LAND_NOT_SUITABLE;
-    //what was cleared off it is not all gone yet
-    else if (terrain.beingCleared(tile)) return ErrorCode.BEING_CLEARED;
+    //what was cleared off it is not all gone yet - or it is, but the rest
+    //of what stood there is not, and something is to go up in its place
+    //(reserve)
+    else if (terrain.beingCleared(tile) || self.reserved(tile))
+      return ErrorCode.BEING_CLEARED;
     else {
       var b = self.get(tile);
       if (
@@ -199,6 +202,9 @@ function Buildings(world) {
   this.world = world;
   this.buildings = Object.create(null);
   this.byTile = Object.create(null);
+  //the tiles kept for something to go up on once all of them are cleared
+  //(reserve), by the tile
+  this.held = Object.create(null);
 }
 
 Buildings.events = events;
@@ -261,6 +267,37 @@ Buildings.prototype.underConstruction = function () {
 
 Buildings.prototype.test = function (code, tile, rotation) {
   return buildTest(this, code, tile, rotation);
+};
+
+/**
+ * Keeps tiles for whatever is to go up on them once what stood there is
+ * cleared away (core/city/citybuildings replacing): nothing else is built
+ * on them meanwhile, nor the ground under them moved - not even on the
+ * ones the bulldozers are done with while they are still at the rest.
+ *
+ * @param tiles {number[]}
+ */
+Buildings.prototype.reserve = function (tiles) {
+  for (var i = 0; i < tiles.length; i++) this.held[tiles[i]] = true;
+};
+
+/**
+ * Lets go of tiles kept (reserve).
+ *
+ * @param tiles {number[]}
+ */
+Buildings.prototype.release = function (tiles) {
+  for (var i = 0; i < tiles.length; i++) delete this.held[tiles[i]];
+};
+
+/**
+ * Whether a tile is kept for something to go up on it (reserve).
+ *
+ * @param tile {number}
+ * @returns {boolean}
+ */
+Buildings.prototype.reserved = function (tile) {
+  return this.held[tile] === true;
 };
 
 export default Buildings;

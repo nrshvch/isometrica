@@ -332,6 +332,139 @@ City.prototype.clearTile = function (tile) {
 };
 
 /**
+ * What putting code up in the place of what stands on tile would come to -
+ * what stands there cleared away first, every tile of it, as clearing it
+ * would (#clearTile), and code going up on its ground once it is gone
+ * (#replace) - without doing any of it. code has to cover just the ground
+ * that stands on, turned rotation times.
+ *
+ * @param tile {number} any tile of what stands there
+ * @param code {number} a building, or a type - any of its variants
+ * @param rotation {number} quarter turns, 0..3
+ * @returns {{error: number, tile: number, cost: number, clearing: number}}
+ *          error an ErrorCode, tile the corner of what stands there; cost
+ *          all of it, clearing included - even when the city cannot
+ *          afford it (NOT_ENOUGH_RES)
+ */
+City.prototype.quoteReplace = function (tile, code, rotation) {
+  var building = this.world.buildingService.get(tile),
+    data = BuildingData[parseInt(code, 10)],
+    r = { error: ErrorCode.NONE, tile: tile, cost: 0, clearing: 0 };
+
+  if (
+    building === null ||
+    building.data.classCode === BuildingClassCode.tree ||
+    building.data.classCode === BuildingClassCode.road
+  ) {
+    r.error = ErrorCode.NOTHING_TO_CLEAR;
+    return r;
+  }
+
+  r.tile = building.tile;
+
+  if (data === undefined || data.classCode === BuildingClassCode.road) {
+    r.error = ErrorCode.BUILDING_NOT_AVAIL;
+    return r;
+  }
+
+  if (
+    Rotation.sizeX(data, rotation) !==
+      Rotation.sizeX(building.data, building.rotation) ||
+    Rotation.sizeY(data, rotation) !==
+      Rotation.sizeY(building.data, building.rotation)
+  ) {
+    r.error = ErrorCode.WRONG_FOOTPRINT;
+    return r;
+  }
+
+  var cost = CityBuildings.costOf(parseInt(code, 10)),
+    money;
+
+  r.clearing = clearedBy(this, tile).length * Config.clearTileCost;
+  money = (cost[Resource.money] || 0) + r.clearing;
+  r.cost = money;
+
+  if (this.laboratoryService.getAvailableBuildings()[code] !== true)
+    r.error = ErrorCode.BUILDING_NOT_AVAIL;
+  //one town hall to a city - unless it is the town hall going
+  else if (
+    parseInt(code, 10) === BuildingCode.cityHall &&
+    this.buildingService.cityHall !== null &&
+    this.buildingService.cityHall !== building
+  )
+    r.error = ErrorCode.CITY_HALL_ALREADY_BUILT;
+  else if (
+    !this.resourcesService.hasEnoughResource(Resource.money, money) ||
+    !this.resourcesService.hasEnough(withoutMoney(cost))
+  )
+    r.error = ErrorCode.NOT_ENOUGH_RES;
+
+  return r;
+};
+
+//a bill, but for the money on it
+function withoutMoney(cost) {
+  var out = {};
+
+  for (var key in cost) if (key !== Resource.money) out[key] = cost[key];
+
+  return out;
+}
+
+/**
+ * Puts code up in the place of what stands on tile: what stands there
+ * cleared away (#clearTile) - fenced off, coming down as the bulldozers get
+ * to it, in the game (client/clearworks, client/demolition) - and code
+ * going up on its ground, a building site, as soon as the last of it is
+ * gone (CityBuildings#replaceLater), its ground kept for it meanwhile. All
+ * of it paid for there and then - the clearing and code alike - so that
+ * what was asked for goes up whatever the money does meanwhile, and goes
+ * up from a save too (CityBuildings#saveReplacing).
+ *
+ * @param tile {number} any tile of what stands there
+ * @param code {number} a building, or a type - any of its variants
+ * @param rotation {number} quarter turns, 0..3
+ * @param [look] {Object} for one put together out of parts, what it looks
+ *        like (client/compoundbuilding) - one is picked for it otherwise
+ * @returns {{error: number, tile: number, cost: number, tiles: number[]}}
+ *          as #quoteReplace, and the tiles cleared - none, for an error
+ */
+City.prototype.replace = function (tile, code, rotation, look) {
+  code = CityBuildings.variantOf(parseInt(code, 10));
+
+  var quote = this.quoteReplace(tile, code, rotation),
+    tiles;
+
+  if (quote.error !== ErrorCode.NONE)
+    return {
+      error: quote.error,
+      tile: quote.tile,
+      cost: quote.cost,
+      tiles: [],
+    };
+
+  tiles = this.clearTile(tile);
+
+  if (tiles.length === 0)
+    return {
+      error: ErrorCode.NOT_ENOUGH_RES,
+      tile: quote.tile,
+      cost: quote.cost,
+      tiles: [],
+    };
+
+  this.resourcesService.sub(CityBuildings.costOf(code));
+  this.buildingService.replaceLater(code, quote.tile, rotation, look);
+
+  return {
+    error: ErrorCode.NONE,
+    tile: quote.tile,
+    cost: quote.cost,
+    tiles: tiles,
+  };
+};
+
+/**
  * Raises or lowers tiles as one piece of land, whatever shape they make - see
  * Terrain#planLevel for what that does to the ground - and pays for it. The
  * ground belongs to the world, not to the city, so it can be shaped anywhere;
@@ -425,8 +558,9 @@ City.prototype.quoteTerraform = function (tiles, direction) {
   for (i = 0; i < plan.tiles.length; i++) {
     tile = plan.tiles[i];
 
-    //not where the ground is still being cleared
-    if (terrain.beingCleared(tile))
+    //not where the ground is still being cleared - nor where something is
+    //to go up once the rest of it is (CityBuildings#replaceLater)
+    if (terrain.beingCleared(tile) || world.buildingService.reserved(tile))
       return { error: ErrorCode.BEING_CLEARED, tile: tile, cost: 0 };
 
     building = world.buildingService.get(tile);
@@ -607,6 +741,8 @@ City.prototype.save = function () {
     population: this.populationService.save(),
     research: this.laboratoryService.save(),
     buildings: this.buildingService.save(),
+    //what is to go up where something is coming down for it
+    replacing: this.buildingService.saveReplacing(),
   };
 };
 
@@ -631,6 +767,9 @@ City.prototype.load = function (data) {
   for (var i = 0; i < cleared.length; i++) this.world.terrain.clear(cleared[i]);
 
   this.buildingService.load(data.buildings || []);
+  //and what was to go up where something was coming down for it, on ground
+  //that is clear by now
+  this.buildingService.loadReplacing(data.replacing);
 
   //last, so that nothing the restoring did can show up on the bill
   if (data.resources !== undefined) this.resourcesService.load(data.resources);

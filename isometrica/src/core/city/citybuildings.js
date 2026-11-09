@@ -26,6 +26,9 @@ CityService.Buildings = CityBuildings;
 function CityBuildings(city) {
   this._buildings = [];
   this.city = this._city = city;
+  //what is to go up where something else is coming down for it, once the
+  //ground is clear (replaceLater): {code, tile, rotation, look, tiles} each
+  this._replacing = [];
 }
 
 /**
@@ -57,6 +60,28 @@ CityBuildings.prototype.init = function () {
     buildings,
     buildings.events.buildingRemoved,
     onBuildingRemoved,
+    this,
+  );
+
+  //what goes up in the place of what came down, as soon as the last of it
+  //is gone (replaceLater) - or, should nobody say so, once the ground is
+  //clear by the clock (core/terrain beingCleared)
+  var world = this.city.world;
+
+  Events.on(
+    world.terrain,
+    Terrain.events.clearingEnded,
+    function (sender, tile, self) {
+      settle(self);
+    },
+    this,
+  );
+  Events.on(
+    world,
+    world.events.tick,
+    function (sender, args, self) {
+      settle(self);
+    },
     this,
   );
 };
@@ -513,6 +538,162 @@ CityBuildings.prototype.load = function (list) {
       list[i].surface,
     );
 };
+
+/**
+ * Has code go up on tile, turned rotation times, looking as look says, once
+ * the ground under it is clear - what stood there being cleared away for it
+ * (City#replace): its tiles kept for it meanwhile (core/buildings reserve),
+ * and it paid for already. It goes up as a building site, there and then,
+ * as soon as the last of its tiles is clear (settle).
+ *
+ * @param code {number} a building - not a type
+ * @param tile {number} its corner with the least x and y
+ * @param rotation {number} quarter turns, 0..3
+ * @param [look] {Object|null} for one put together out of parts
+ */
+CityBuildings.prototype.replaceLater = function (code, tile, rotation, look) {
+  var r = {
+    code: code,
+    tile: tile,
+    rotation: rotation | 0,
+    look: look || undefined,
+    tiles: footprint(code, tile, rotation),
+  };
+
+  this._replacing.push(r);
+  this.city.world.buildingService.reserve(r.tiles);
+  settle(this);
+};
+
+/**
+ * What is to go up where something is coming down for it, still waiting
+ * for its ground (replaceLater).
+ *
+ * @returns {{code: number, tile: number, rotation: number, look: Object,
+ *          tiles: number[]}[]}
+ */
+CityBuildings.prototype.replacing = function () {
+  return this._replacing.slice();
+};
+
+/**
+ * What is waiting to go up, as it goes into a save - or undefined for
+ * nothing. The ground being cleared is not kept (core/terrain clearing): a
+ * save has it clear, and what waited for it goes up as it is loaded
+ * (loadReplacing).
+ *
+ * @returns {Object[]|undefined}
+ */
+CityBuildings.prototype.saveReplacing = function () {
+  if (this._replacing.length === 0) return undefined;
+
+  return this._replacing.map(function (r) {
+    return { code: r.code, tile: r.tile, rotation: r.rotation, look: r.look };
+  });
+};
+
+/**
+ * What a save says was waiting to go up where something was coming down
+ * for it: up now, a building site from the start, on ground that is clear
+ * by now - or nothing, for ground something else stands on.
+ *
+ * @param [list] {Object[]} as saveReplacing left it
+ */
+CityBuildings.prototype.loadReplacing = function (list) {
+  var self = this,
+    test = this.city.world.buildingService;
+
+  (list || []).forEach(function (r) {
+    var code = parseInt(r.code, 10);
+
+    if (
+      BuildingData[code] !== undefined &&
+      test.test(code, r.tile, r.rotation) === ErrorCode.NONE
+    )
+      goUp(self, {
+        code: code,
+        tile: r.tile,
+        rotation: r.rotation | 0,
+        look: r.look,
+      });
+  });
+};
+
+/**
+ * Lets go of whatever was waiting to go up (replaceLater) - for a bench
+ * starting its ground over.
+ */
+CityBuildings.prototype.dropReplacing = function () {
+  var held = this.city.world.buildingService;
+
+  this._replacing.forEach(function (r) {
+    held.release(r.tiles);
+  });
+  this._replacing = [];
+};
+
+//the tiles code stands on from tile, turned rotation times
+function footprint(code, tile, rotation) {
+  var data = BuildingData[code],
+    iter = new TileIterator(
+      tile,
+      tile +
+        (Rotation.sizeX(data, rotation) - 1) +
+        (Rotation.sizeY(data, rotation) - 1) * Terrain.dy,
+    ),
+    r = [];
+
+  while (!iter.done) r.push(TileIterator.next(iter));
+
+  return r;
+}
+
+/**
+ * Whatever was waiting for its ground (replaceLater) goes up, a building
+ * site, on ground that is clear now: none of its tiles being cleared still.
+ */
+function settle(self) {
+  var terrain = self.city.world.terrain,
+    held = self.city.world.buildingService;
+
+  if (self._replacing.length === 0) return;
+
+  self._replacing.slice().forEach(function (r) {
+    if (
+      r.tiles.some(function (tile) {
+        return terrain.beingCleared(tile);
+      })
+    )
+      return;
+
+    self._replacing.splice(self._replacing.indexOf(r), 1);
+    held.release(r.tiles);
+    goUp(self, r);
+  });
+}
+
+/**
+ * Puts up what was waiting for its ground (replaceLater), a building site
+ * from the start: paid for when it was asked for (City#replace), so with
+ * nothing to show over it for what it cost.
+ */
+function goUp(self, r) {
+  var building = new Building();
+
+  building.init(self.city.world, r.code, r.tile, r.rotation, 0);
+  if (r.look !== undefined && r.look !== null) building.look = r.look;
+  building.expense = 0;
+
+  self.city.root.buildings.build(building);
+
+  self._buildings.push(building);
+
+  if (r.code === BuildingCode.cityHall) self.cityHall = building;
+
+  Events.fire(self, events.new, building);
+
+  return building;
+}
 
 CityBuildings.prototype.destroyBuilding = function () {
   throw "Not implemented";

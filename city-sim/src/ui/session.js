@@ -112,6 +112,29 @@ export function goCity() {
 }
 
 /**
+ * The catalogue of what can go up in the place of the building on tile -
+ * whatever covers its ground, turned one way or another.
+ *
+ * @param tile {number} the corner of the building
+ */
+export function goReplace(tile) {
+  go("/replace/" + tile);
+}
+
+/**
+ * Puts code up in the place of the building on tile, back in the world: it
+ * comes down as the bulldozers get to it, and code goes up on its ground
+ * once they are done (isometrica client/buildman replace).
+ *
+ * @param tile {number}
+ * @param code {number|string} (isometrica data/buildingcode)
+ */
+export function replace(tile, code) {
+  go("");
+  client.buildman.replace(tile, code);
+}
+
+/**
  * Builds what is picked, in the world: a building out of the catalogue, a
  * road.
  *

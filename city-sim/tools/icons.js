@@ -280,6 +280,16 @@ var WORLD = {
     line([3, 20], [21, 20]),
   ],
 
+  //a house, two arrows going round it - put up again, as something else
+  replace: [
+    path("M4 12A8 8 0 0 1 17.66 6.34L20 8"),
+    line([20, 3.5], [20, 8], [15.5, 8]),
+    path("M20 12A8 8 0 0 1 6.34 17.66L4 16"),
+    line([4, 20.5], [4, 16], [8.5, 16]),
+    line([8.5, 13], [12, 9.75], [15.5, 13]),
+    line([9.75, 11.9], [9.75, 15.5], [14.25, 15.5], [14.25, 11.9]),
+  ],
+
   //a house, a plus by it - something new built
   build: [
     line([3, 11], [11, 4], [19, 11]),

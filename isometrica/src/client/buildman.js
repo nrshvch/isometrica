@@ -24,6 +24,7 @@ import Rotation from "../core/rotation";
 import CompoundBuilding from "./compoundbuilding";
 import Demolition from "./demolition";
 import Felling from "./felling";
+import Replacement from "../core/replacement";
 import * as RoadRules from "../core/roadrules";
 import { changed } from "./looks";
 
@@ -521,6 +522,8 @@ errorText[ErrorCode.FLAT_LAND_REQUIRED] = "not flat";
 errorText[ErrorCode.TILE_TAKEN] = "occupied";
 errorText[ErrorCode.BEING_CLEARED] = "being cleared";
 errorText[ErrorCode.ON_SHORE] = "on shore";
+errorText[ErrorCode.WRONG_FOOTPRINT] = "doesn't fit";
+errorText[ErrorCode.NOTHING_TO_CLEAR] = "nothing to replace";
 
 /**
  * Puts code down on each of anchors and tells the player why whatever did not
@@ -751,6 +754,123 @@ Buildman.prototype.showIncome = function (tile, amount) {
  */
 Buildman.prototype.showError = function (tile, reason) {
   showText(this, tile, 1, 1, errorText[reason] || "can't build");
+};
+
+/**
+ * What goes up in the place of building as code: a variant of code's own -
+ * for a type, any of them (data/buildings variants) - and, for one put
+ * together out of parts, a look of its own (client/compoundbuilding). For the
+ * kind of building it is, another variant than it is, or another look,
+ * where there is another to be had: replaced with itself, it goes up
+ * another way.
+ *
+ * @returns {{code: number, look: Object|undefined}}
+ */
+function replacementOf(self, code, building) {
+  var same =
+      Replacement.kindOf(code) === Replacement.kindOf(building.buildingCode),
+    was = JSON.stringify(building.look || null),
+    variant,
+    compound,
+    look,
+    tries;
+
+  for (tries = 0; tries < 8; tries++) {
+    variant = CityBuildings.variantOf(parseInt(code, 10));
+    if (!same || variant !== building.buildingCode) break;
+  }
+
+  compound = BuildingData[variant].compound;
+
+  for (tries = 0; compound !== undefined && tries < 8; tries++) {
+    look = CompoundBuilding.pickLook(self.root.sprites, compound);
+    if (
+      !same ||
+      variant !== building.buildingCode ||
+      JSON.stringify(look) !== was
+    )
+      break;
+  }
+
+  return { code: variant, look: look };
+}
+
+/**
+ * Puts code up in the place of the building standing on tile - a shortcut
+ * for clearing it away and building on its ground (core/city replace): it
+ * is fenced off and comes down as the bulldozers get to it, as clearing it
+ * would (client/clearworks, client/demolition), and code goes up on its
+ * ground, a building site, as soon as the last of it is gone - turned the
+ * way the building was, where it fits so, or the way that fits it with
+ * the most of a road along its front (core/replacement turnFor). What it
+ * all came to - the clearing and code - floats up over it once, or why it
+ * was turned down.
+ *
+ * @param tile {number} any tile of the building
+ * @param code {number|string} a building, or a type - another variant of
+ *        it, for the kind the building is
+ * @returns {number} ErrorCode - NONE once it is under way
+ */
+Buildman.prototype.replace = function (tile, code) {
+  var root = this.root,
+    core = root.core,
+    building = core.buildingService.get(tile),
+    //the world's city, whatever it stands in (core/construction getCity)
+    city = building !== null ? building.getCity() : null,
+    result = null,
+    rotation,
+    picked,
+    sizeX,
+    sizeY;
+
+  if (!city || building === null || !Replacement.replaceable(building)) {
+    this.showError(tile, ErrorCode.NOTHING_TO_CLEAR);
+    return ErrorCode.NOTHING_TO_CLEAR;
+  }
+
+  sizeX = Rotation.sizeX(building.data, building.rotation);
+  sizeY = Rotation.sizeY(building.data, building.rotation);
+  rotation = Replacement.turnFor(core, code, building);
+
+  if (rotation < 0) {
+    showText(
+      this,
+      building.tile,
+      sizeX,
+      sizeY,
+      errorText[ErrorCode.WRONG_FOOTPRINT],
+    );
+    return ErrorCode.WRONG_FOOTPRINT;
+  }
+
+  picked = replacementOf(this, code, building);
+
+  //it goes, and with it whatever was shown of it
+  if (root.serviceman) {
+    root.serviceman.hideCoverage();
+    root.serviceman.hideInfo();
+  }
+
+  function replace(t) {
+    result = city.replace(t, picked.code, rotation, picked.look);
+
+    return result.tiles;
+  }
+
+  if (root.clearworks) root.clearworks.clear([building.tile], replace);
+  else replace(building.tile);
+
+  if (result.error !== ErrorCode.NONE)
+    showText(
+      this,
+      result.tile,
+      sizeX,
+      sizeY,
+      errorText[result.error] || "can't build",
+    );
+  else showCost(this, result.tile, sizeX, sizeY, result.cost);
+
+  return result.error;
 };
 
 Buildman.prototype.events = events;
