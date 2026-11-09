@@ -27,6 +27,7 @@ import Demolition from "./demolition";
 import Explosion from "./explosion";
 import Felling from "./felling";
 import Replacement from "../core/replacement";
+import Rubble from "./rubble";
 import * as RoadRules from "../core/roadrules";
 import { changed } from "./looks";
 
@@ -120,6 +121,8 @@ function hold(self, tile, building) {
 
         building.destroy();
         if (road) self.root.roadman.cleared(tile);
+        //the heaps round it a pile without it from now on
+        if (rubble) repile(self, [tile]);
       },
       function (push) {
         //the bulldozer coming up to it: the pictures of it going over ready
@@ -745,10 +748,34 @@ function rewall(self, building) {
   );
 }
 
+/**
+ * The heaps of rubble round tiles drawn again (client/rubble): one next to
+ * them may run on into a heap that came, or not into one that went - and
+ * the ones the bulldozers are still to get to as well.
+ */
+function repile(self, tiles) {
+  Rubble.around(tiles).forEach(function (t) {
+    [getBuilding(self, t), self.held[t]].forEach(function (b) {
+      if (b && b.view && Rubble.isRubble(b)) b.view.update();
+    });
+  });
+}
+
+//every tile a building stands on
+function tilesOf(building) {
+  var tiles = [],
+    iter = building.occupiedTiles();
+
+  while (!iter.done) tiles.push(TileIterator.next(iter));
+
+  return tiles;
+}
+
 function onBuildingBuilt(sender, building, self) {
   createBuilding(self, building);
   showConstructionCost(self, building);
   rewall(self, building);
+  repile(self, tilesOf(building));
 }
 
 function onBuildingUpdated(sender, building, self) {
@@ -766,6 +793,7 @@ function onBuildingRemoved(sender, building, self) {
 
   removeBuilding(self, building.tile);
   rewall(self, building);
+  repile(self, tilesOf(building));
 }
 
 var events = {

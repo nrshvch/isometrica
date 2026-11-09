@@ -42,17 +42,19 @@ buildingData[BuildingCode.tree] = {
 };
 
 //the heaps of rubble a building blown up leaves on every tile of it
-//(core/city explode, client/explosion) - the same pictures a building
-//coming down leaves for the bulldozers (shared/gen/stones), each painted
-//from four sides, one of them picked for a tile. Of the tree class, as a
-//tree planted is: nobody's, nothing it makes or costs, lying on the ground
-//as it is; gone as soon as anything is built over it, or cleared away - a
-//bulldozer pushing it off (client/buildman hold) - and kept in the save till
-//then
+//(core/city explode, client/explosion) - of the same debris a building
+//coming down leaves for the bulldozers, but running on into the heaps on
+//the tiles next to it as one pile (shared/gen/stones pile, client/rubble),
+//two kinds of it. Of the tree class, as a tree planted is: nobody's,
+//nothing it makes or costs, lying on the ground as it is; gone as soon as
+//anything is built over it, or cleared away - a bulldozer pushing it off
+//(client/buildman hold) - and kept in the save till then
 var RUBBLE_BASE = 6900;
 
 buildingData[BuildingCode.rubble] = {
   hidden: true,
+  //it lies the way the heaps round it do
+  canRotate: false,
   sizeX: 1,
   sizeY: 1,
   buildingCode: BuildingCode.rubble,
@@ -62,8 +64,8 @@ buildingData[BuildingCode.rubble] = {
   constructionTime: 0,
   constructionCost: {},
   name: "rubble",
-  variants: ["rubble", "rubble-m", "rubble0", "rubble0-m"].map(
-    function (picture, i) {
+  variants: ["rubble", "rubble0", "rubble", "rubble0"].map(
+    function (rubble, i) {
       return {
         buildingCode: RUBBLE_BASE + 1 + i,
         sprites: [
@@ -74,7 +76,10 @@ buildingData[BuildingCode.rubble] = {
             //the middle of the tile, as for the stones (data/rocks)
             pivotX: 32,
             pivotY: 24,
-            path: "gen/scenery/" + picture,
+            //a heap on its own; the one drawn is the one as the heaps round
+            //it are (client/rubble)
+            path: "gen/scenery/pile/" + rubble + "/00000000",
+            pile: rubble,
             layer: RenderLayer.buildingsLayer,
           },
         ],
