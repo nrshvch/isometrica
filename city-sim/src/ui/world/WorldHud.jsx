@@ -6,11 +6,12 @@
  * the middle on a desktop, where the top has the width of the screen.
  *
  * While a building is looked at - tapped, with nothing else going on - the
- * bar has what can be done to it after the tools (Replace), and the card
- * over it says what it is and what it is worth: how far along it is going
- * up, or the money it makes a tick, who lives or works in it and what it
- * goes without - kept up to date as the city goes on, and nothing of it
- * written over the world (isometrica client/worth describe).
+ * bar has only what can be done to it (Replace), the tools back once it is
+ * put away with a tap anywhere else; and the card over it says what it is
+ * and what it is worth: how far along it is going up, or the money it
+ * makes a tick, who lives or works in it and what it goes without - kept
+ * up to date as the city goes on, and nothing of it written over the world
+ * (isometrica client/worth describe).
  */
 import { useEffect, useState } from "react";
 import Events from "events";
@@ -187,8 +188,8 @@ function Focus({ inspected, seen }) {
 }
 
 /**
- * What can be done to the building looked at, after the bar's own buttons:
- * put something else up in its place.
+ * What can be done to the building looked at, in the bar in the place of
+ * its tools: put something else up in its place.
  */
 function focusButtons(inspected) {
   return [
@@ -214,9 +215,7 @@ export default function WorldHud() {
       return s.busy ? null : s.inspected;
     }),
     seen = useDescribed(inspected),
-    shown = buttons
-      .filter(Boolean)
-      .concat(inspected ? focusButtons(inspected) : []),
+    shown = inspected ? focusButtons(inspected) : buttons.filter(Boolean),
     on = shown.find(function (b) {
       return b.on;
     });

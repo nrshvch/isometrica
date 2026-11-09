@@ -82,8 +82,9 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   what it is worth, kept up to date as the city goes on - how far along it
   is going up, or what it makes a tick, who lives or works in it and what
   it goes without (`src/ui/world/WorldHud.jsx`,
-  `isometrica/src/client/worth.js`) - and the bar has Replace after its
-  tools. The words over the world stay as they are, the tapped one's too:
+  `isometrica/src/client/worth.js`) - and the bar has only what can be done
+  to it, Replace, its tools back once it is put away with a tap anywhere
+  else. The words over the world stay as they are, the tapped one's too:
   how far along each site is, what each building goes without.
 - Replace opens the catalogue on only what covers its ground, turned one
   way or another - a 1x2 for a 2x1 as well - each at what it would come
