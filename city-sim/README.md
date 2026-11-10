@@ -77,8 +77,8 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   pieces, in a cloud of grey dust - into rubble for them to push away
   (`isometrica/src/client/demolition.js`); and nothing can be built on a
   tile till its bulldozer is done there.
-- A building tapped is outlined, and nothing is written over the world
-  for it: the card over the buttons along the bottom says what it is and
+- A building tapped - any building at all, a church, a water tower, the
+  town hall - is outlined, and nothing is written over the world for it: the card over the buttons along the bottom says what it is and
   what it is worth, kept up to date as the city goes on - how far along it
   is going up, or what it makes a tick, who lives or works in it and what
   it goes without (`src/ui/world/WorldHud.jsx`,

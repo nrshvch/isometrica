@@ -20,17 +20,20 @@ var FACES = [
 ];
 
 /**
- * Whether what stands can be replaced at all: a building of a city's - not
- * a tree, nor a road, which are ground to clear and to lay again.
+ * Whether what stands can be replaced at all: a building of a city's - a
+ * church, a water tower or the town hall as much as a house - not a tree,
+ * nor a road, which are ground to clear and to lay again.
  *
  * @param building {Building} the core's
  * @returns {boolean}
  */
 function replaceable(building) {
-  var classCode = building && building.data && building.data.classCode;
+  var classCode = building && building.data ? building.data.classCode : null;
 
+  //municipal is 0: a church, a water tower, a town hall, a park
   return (
-    !!classCode &&
+    classCode !== null &&
+    classCode !== undefined &&
     classCode !== BuildingClassCode.tree &&
     classCode !== BuildingClassCode.road
   );
