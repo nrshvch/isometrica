@@ -344,19 +344,22 @@ export function createPainter(loadPixels) {
           return p.paint(spec.key, look || undefined, spec.view);
 
         //a part of a building open on a side of its tile, its rooms
-        //showing - "@o" and which sides after its key (isobox setOpen)
-        var opened = /@o(\d)$/.exec(spec.key),
-          key = opened ? spec.key.slice(0, opened.index) : spec.key;
+        //showing - "@o" and which sides after its key (isobox setOpen) -
+        //or run down, "@w" and how (isobox setWorn)
+        var variant = /@([ow])(\d)$/.exec(spec.key),
+          key = variant ? spec.key.slice(0, variant.index) : spec.key;
 
         iso.setView(spec.view);
         if (look !== null) iso.setMode(look);
-        if (opened) iso.setOpen(+opened[1]);
+        if (variant && variant[1] === "o") iso.setOpen(+variant[2]);
+        if (variant && variant[1] === "w") iso.setWorn(+variant[2]);
         try {
           return p.paint(key);
         } finally {
           iso.setMode("lit");
           iso.setView("iso");
           iso.setOpen(0);
+          iso.setWorn(0);
         }
       });
     },

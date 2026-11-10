@@ -255,7 +255,7 @@ function demolitionOf(self, building) {
   var terrain = self.world.terrain;
 
   return {
-    tiles: building.standingTiles().filter(function (t) {
+    tiles: building.tilesLeft().filter(function (t) {
       return !terrain.beingCleared(t);
     }),
     cost: building.demolishing
@@ -448,7 +448,7 @@ City.prototype.tileDown = function (tile) {
   building.down.push(tile);
   terrain.bare(tile);
 
-  if (building.standingTiles().length === 0)
+  if (building.tilesLeft().length === 0)
     building.tiles().forEach(function (t) {
       terrain.clear(t);
     });
@@ -596,26 +596,48 @@ City.prototype.replace = function (tile, code, rotation, look) {
   };
 };
 
-//how hard a blast hits what stands so many tiles off the ground of what
-//went up, out of its health (core/building damage): next to it, and across
-//a road from it, all of it - down it comes - and less and less of it
-//further off
-var BLAST = [100, 100, 100, 50, 20];
+//how hard a blast hits a part of a building so many tiles off the nearest
+//part of what went up, out of its health (core/building damage): next to
+//it, and across a road from it, all of it - down that part comes - and
+//less and less of it further off; and how far off a tree goes over
+var BLAST = [100, 100, 100, 50, 20],
+  TREES_FALL = 2;
+
+//the nearest of tiles to a tile, and how far it is: the fewest across or
+//along - [distance, the tile]
+function nearest(tile, tiles) {
+  var x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    best = [Infinity, null];
+
+  tiles.forEach(function (u) {
+    var d = Math.max(
+      Math.abs(x - Terrain.extractX(u)),
+      Math.abs(y - Terrain.extractY(u)),
+    );
+
+    if (d < best[0]) best = [d, u];
+  });
+
+  return best;
+}
 
 /**
- * What stood on tiles that went up hits round it (explode) - its ground,
- * the tiles of its yard too: every building within reach of them - nothing
- * that is nobody's, a tree, a heap of rubble, nor a road; nothing burnt
- * down already - and how hard, and how far off it is, tiles: the fewest
- * across or along from the nearest of them to the nearest of its own
- * (BLAST).
+ * What a blast off tiles hits round it (explode) - its parts, the tiles of
+ * the building that went up, not its yard: every building within reach of
+ * them - nothing that is nobody's, a tree, a heap of rubble, nor a road;
+ * nothing burnt down already - every tile of it in reach, and how hard each
+ * is hit; a part of the building itself, how hard by how far off it is
+ * (BLAST); its yard, if it gets as hard, wrecked.
  *
  * @param tiles {number[]} where it went up
  * @param [except] {Building} what went up
- * @returns {{building: Building, distance: number, damage: number}[]}
- *          nearest first
+ * @param [yard] {function(number): boolean} whether a tile is only a yard,
+ *        as whoever draws it knows - as each building knows, without
+ * @returns {{building: Building, distance: number, parts: Object[]}[]}
+ *          parts {tile, distance, damage, yard} each; nearest first
  */
-City.prototype.blast = function (tiles, except) {
+City.prototype.blast = function (tiles, except, yard) {
   var service = this.world.buildingService,
     reach = BLAST.length - 1,
     x0 = Infinity,
@@ -650,31 +672,92 @@ City.prototype.blast = function (tiles, except) {
 
       seen.push(b);
 
-      var d = Infinity,
-        iter = b.occupiedTiles();
+      var parts = [],
+        d = Infinity;
 
-      while (!iter.done) {
-        var t = iter.next(),
-          tx = Terrain.extractX(t),
-          ty = Terrain.extractY(t);
+      b.tiles().forEach(function (t) {
+        var n = nearest(t, tiles)[0];
 
-        tiles.forEach(function (u) {
-          d = Math.min(
-            d,
-            Math.max(
-              Math.abs(tx - Terrain.extractX(u)),
-              Math.abs(ty - Terrain.extractY(u)),
-            ),
-          );
+        if (n > reach || b.isDown(t)) return;
+
+        parts.push({
+          tile: t,
+          distance: n,
+          damage: BLAST[n],
+          yard: yard ? yard(t) : b.isYard(t),
         });
-      }
+        d = Math.min(d, n);
+      });
 
-      if (d <= reach) out.push({ building: b, distance: d, damage: BLAST[d] });
+      //only its yard in reach, and that not hard enough to be wrecked
+      if (
+        parts.filter(function (p) {
+          return !p.yard || p.damage >= 100;
+        }).length > 0
+      )
+        out.push({ building: b, distance: d, parts: parts });
     }
 
   return out.sort(function (a, b) {
     return a.distance - b.distance;
   });
+};
+
+/**
+ * The trees a blast off tiles knocks down (explode): every tree within
+ * TREES_FALL of them - one the world grew, one planted - and the way each
+ * goes over, away from the nearest of them: {tile, way, code, rotation,
+ * world} each, way "x+", "x-", "y+", "y-".
+ *
+ * @param tiles {number[]}
+ * @returns {Object[]}
+ */
+City.prototype.treesIn = function (tiles) {
+  var service = this.world.buildingService,
+    env = this.world.envService,
+    seen = {},
+    out = [];
+
+  tiles.forEach(function (t) {
+    for (var dx = -TREES_FALL; dx <= TREES_FALL; dx++)
+      for (var dy = -TREES_FALL; dy <= TREES_FALL; dy++) {
+        var u = t + dx + dy * Terrain.dy;
+
+        if (seen[u]) continue;
+        seen[u] = true;
+
+        var b = service.get(u),
+          planted =
+            b !== null &&
+            b.data.classCode === BuildingClassCode.tree &&
+            b.data.variantOf !== BuildingCode.rubble,
+          code = planted ? b.buildingCode : b === null ? env.getTree(u) : null;
+
+        if (code === null || code === undefined) continue;
+
+        var from = nearest(u, tiles)[1],
+          wx = Terrain.extractX(u) - Terrain.extractX(from),
+          wy = Terrain.extractY(u) - Terrain.extractY(from),
+          way =
+            Math.abs(wx) >= Math.abs(wy)
+              ? wx >= 0
+                ? "x+"
+                : "x-"
+              : wy >= 0
+                ? "y+"
+                : "y-";
+
+        out.push({
+          tile: u,
+          way: way,
+          code: code,
+          rotation: planted ? b.rotation || 0 : 0,
+          world: !planted,
+        });
+      }
+  });
+
+  return out;
 };
 
 /**
@@ -687,24 +770,21 @@ City.prototype.blast = function (tiles, except) {
  * there till cleared away or built over.
  *
  * @param yard {function(number): boolean} whether a tile of it was only its
- *        yard - as whoever draws it knows; none, without
+ *        yard - as whoever draws it knows; as it knows, without
  * @param [smoke] {number} the game's time its rubble was left smouldering
  * @returns {number[]} every tile of it
  */
 function bringDown(self, building, yard, smoke) {
   var terrain = self.world.terrain,
-    tiles = [],
-    iter = building.occupiedTiles(),
+    tiles = building.tiles(),
     //a site going up has no yard yet to wreck: bare ground
     wrecks = building.getState() !== BuildingState.underConstruction,
     //which pile its heaps are, of all the piles there are
     pile = 1 + Math.floor(Math.random() * 2147483646);
 
-  while (!iter.done) tiles.push(iter.next());
-
   //which is which, while it still stands to be told
   var yards = tiles.map(function (t) {
-    return !!(yard && yard(t));
+    return yard ? !!yard(t) : building.isYard(t);
   });
 
   tiles.forEach(function (t) {
@@ -723,21 +803,26 @@ function bringDown(self, building, yard, smoke) {
 /**
  * Blows up what stands on tile, for nothing - any building at all, a church,
  * a water tower or the town hall as much as a house: it comes down (see
- * bringDown), its rubble smouldering a while, and the blast off it knocks
- * the health out of whatever stands round it (blast) - next to it or across
- * a road from it, all of it: that comes down too, rubble and wrecked yards
- * of its own; further off, less of it, to stand on as it is.
+ * bringDown), its rubble smouldering a while, and the blast off it - off
+ * the building itself, not its yard - knocks the health out of whatever
+ * stands round it (blast), a part of it at a time: a part next to it or
+ * across a road from it comes down, a yard as near is wrecked (Building
+ * knock), and the rest stands; what has no part of it left standing comes
+ * down altogether, rubble and wrecked yards of its own; further off, less of
+ * it. And the trees round it go over (treesIn), to lie there till they are
+ * cleared away (CityBuildings#leaveFallen).
  *
  * @param tile {number} any tile of what stands there
  * @param [yard] {function(number): boolean} whether a tile is only a yard
- *        of what stands on it - as whoever draws it knows: no rubble there;
- *        none, without
- * @returns {{error: number, tile: number, tiles: number[], fell: Object[],
- *          hit: Object[]}} error an ErrorCode - NOTHING_TO_CLEAR for nothing
- *          there to blow up, a tree or a road; tile the corner of what stood
- *          there, and tiles every tile of it - none, for an error; fell what
- *          came down with it, hit what was knocked about and stands -
- *          {tile, tiles, distance, health} each
+ *        of what stands on it - as whoever draws it knows: no rubble there,
+ *        and no blast off it; as each building knows, without
+ * @returns {{error: number, tile: number, tiles: number[], hit: Object[],
+ *          trees: Object[]}} error an ErrorCode - NOTHING_TO_CLEAR for
+ *          nothing there to blow up, a tree or a road; tile the corner of
+ *          what stood there, and tiles every tile of it - none, for an
+ *          error; hit what the blast got to, {tile, tiles, distance,
+ *          health, whole} each - tiles the parts of it that came down, and
+ *          whole whether all of it did; trees the ones that went over
  */
 City.prototype.explode = function (tile, yard) {
   var building = this.world.buildingService.get(tile),
@@ -753,44 +838,39 @@ City.prototype.explode = function (tile, yard) {
       error: ErrorCode.NOTHING_TO_CLEAR,
       tile: tile,
       tiles: [],
-      fell: [],
       hit: [],
+      trees: [],
     };
 
-  var all = [],
-    iter = building.occupiedTiles();
-
-  while (!iter.done) all.push(iter.next());
-
-  //all its ground, its yard as much as the building
-  var round = this.blast(all, building),
+  var all = building.tiles(),
+    //off the building itself - a park, all of it
+    built = all.filter(function (t) {
+      return !(yard ? yard(t) : building.isYard(t));
+    }),
+    from = built.length > 0 ? built : all,
+    round = this.blast(from, building, yard),
+    trees = this.treesIn(from),
     corner = building.tile,
-    fell = [],
     hit = [];
 
   building.damage(100);
   bringDown(this, building, yard, now);
 
   round.forEach(function (r) {
-    var b = r.building;
+    hit.push(self.hit(r.building, r.parts, yard));
+  });
 
-    b.damage(r.damage);
+  trees.forEach(function (t) {
+    var b = self.world.buildingService.get(t.tile);
 
-    if (b.getHealth(now) > 0) {
-      hit.push({
-        tile: b.tile,
-        tiles: [],
-        distance: r.distance,
-        health: b.getHealth(now),
-      });
-      return;
-    }
+    if (t.world) self.world.terrain.fell(t.tile);
+    else if (b !== null) self.world.terrain.clearTile(t.tile);
 
-    fell.push({
-      tile: b.tile,
-      tiles: bringDown(self, b, yard),
-      distance: r.distance,
-      health: 0,
+    self.buildingService.leaveFallen(t.tile, {
+      code: t.code,
+      rotation: t.rotation,
+      world: t.world,
+      way: t.way,
     });
   });
 
@@ -798,9 +878,100 @@ City.prototype.explode = function (tile, yard) {
     error: ErrorCode.NONE,
     tile: corner,
     tiles: all,
-    fell: fell,
     hit: hit,
+    trees: trees,
   };
+};
+
+/**
+ * A building hit by a blast (explode), parts of it as hard as parts say:
+ * which of its tiles are only its yard told it, if it is; every part hit
+ * as hard as can be down (Building knock), and its health down by as much
+ * of it as the blast took out of all its parts together - down
+ * altogether, none of the building itself left standing (bringDown), or
+ * any of one that is not put together a tile at a time.
+ *
+ * @param parts {{tile, damage, yard}[]} (blast)
+ * @returns {{tile, tiles, distance, health, whole}}
+ */
+City.prototype.hit = function (building, parts, yard) {
+  var tile = building.tile,
+    now = this.world.time.now,
+    distance = Infinity,
+    lost = 0;
+
+  if (yard) building.yards = building.tiles().filter(yard);
+
+  var built = building.builtTiles().length || building.tiles().length,
+    down = parts.filter(function (p) {
+      distance = Math.min(distance, p.distance);
+      if (!p.yard) lost += p.damage;
+
+      return p.damage >= 100;
+    }),
+    knocked = building.knock(
+      down.map(function (p) {
+        return p.tile;
+      }),
+    );
+
+  building.damage(lost / built);
+
+  //nothing of it left standing - or, for one painted whole, not put
+  //together a tile at a time, any part of it down (data/buildings compound)
+  var ofIt = building.builtTiles().length;
+
+  if (
+    //a park, all of it yard, wrecked all over
+    (ofIt === 0 && (building.down || []).length === building.tiles().length) ||
+    (ofIt > 0 && building.standingTiles().length === 0) ||
+    (!building.data.compound &&
+      down.some(function (p) {
+        return !p.yard;
+      }))
+  ) {
+    building.damage(100);
+    return {
+      tile: tile,
+      tiles: bringDown(this, building, yard),
+      distance: distance,
+      health: 0,
+      whole: true,
+    };
+  }
+
+  return {
+    tile: tile,
+    tiles: knocked,
+    distance: distance,
+    health: building.getHealth(now),
+    whole: false,
+  };
+};
+
+/**
+ * A building come down by itself, so little health left it (core/building
+ * hazards) - all of it there is left, no fence, no bulldozer: rubble on
+ * what was the building, its yard wrecked (bringDown). Whoever shows it is
+ * told first (core/buildings buildingCollapse), what it looks like still
+ * there to show coming down, and then once it is down (buildingCollapsed).
+ *
+ * @param building {Building}
+ */
+City.prototype.collapse = function (building) {
+  var tiles = building.standingTiles(),
+    service = this.world.buildingService;
+
+  Events.fire(service, service.events.buildingCollapse, {
+    building: building,
+    tiles: tiles,
+  });
+  building.damage(100);
+  bringDown(this, building, null);
+  Events.fire(service, service.events.buildingCollapsed, {
+    tile: building.tile,
+    tiles: tiles,
+  });
 };
 
 /**

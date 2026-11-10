@@ -9,6 +9,7 @@ import BuildingState from "./buildingstate";
 import Resources from "./resources";
 import Resource from "./resourcecode";
 import Events from "events";
+import VTime from "./vtime";
 /**
  * @type {BuildingClassCode}
  */
@@ -69,6 +70,25 @@ Building.prototype.health = 100;
 //for a heap of rubble a building blown up left (City#explode): when it was
 //left smouldering, of the game's time - kept in the save - or null
 Building.prototype.smoke = null;
+
+//the tiles of it that are down - a part of the building come down, a heap
+//of rubble there now; a yard wrecked - knocked down by a blast next to it
+//(City#explode, knock), the rest of it standing; kept in the save - or
+//null for none
+Building.prototype.down = null;
+
+//the tiles of it that are only its yard - a car park, a playground, a
+//garden - as whoever draws it has said (City#explode); kept in the save -
+//or null, not known
+Building.prototype.yards = null;
+
+//how likely it is to come down by itself, or catch fire, by how little
+//health it has (hazards): none at all over HAZARD; the hours it stands,
+//on average, with none left, and the hours it goes before catching fire
+//with next to none
+var HAZARD = 50,
+  COLLAPSES = 4,
+  CATCHES = 36;
 
 var HOUR = 3600000;
 
@@ -171,6 +191,104 @@ Building.prototype.damage = function (amount) {
 };
 
 /**
+ * Whether a tile of it is down (knock): a part of the building come down,
+ * a yard wrecked.
+ */
+Building.prototype.isDown = function (tile) {
+  return this.down !== null && this.down.indexOf(tile) >= 0;
+};
+
+/**
+ * Whether a tile of it is only its yard, as far as is known (yards).
+ */
+Building.prototype.isYard = function (tile) {
+  return this.yards !== null && this.yards.indexOf(tile) >= 0;
+};
+
+/**
+ * Every tile of it, and of those the ones of the building itself - not its
+ * yard - and of those the ones still standing.
+ *
+ * @returns {number[]}
+ */
+Building.prototype.tiles = function () {
+  var out = [],
+    iter = this.occupiedTiles();
+
+  while (!iter.done) out.push(iter.next());
+
+  return out;
+};
+
+Building.prototype.builtTiles = function () {
+  var self = this;
+
+  return this.tiles().filter(function (t) {
+    return !self.isYard(t);
+  });
+};
+
+Building.prototype.standingTiles = function () {
+  var self = this;
+
+  return this.builtTiles().filter(function (t) {
+    return !self.isDown(t);
+  });
+};
+
+/**
+ * Knocks tiles of it down - parts of the building come down to heaps of
+ * rubble, yards wrecked - the rest standing as it was; drawn so at once.
+ *
+ * @param tiles {number[]}
+ * @returns {number[]} the ones that were not down already
+ */
+Building.prototype.knock = function (tiles) {
+  var self = this,
+    now = tiles.filter(function (t) {
+      return !self.isDown(t);
+    });
+
+  if (now.length === 0) return now;
+
+  this.down = (this.down || []).concat(now);
+  Events.fire(this, Construction.events.stateChange, this._state);
+
+  return now;
+};
+
+/**
+ * Whether, so little health left, it comes down by itself or catches fire
+ * this tick - more likely the less health it has, and none of it over
+ * HAZARD: with none, it stands COLLAPSES hours or so; with next to none it
+ * catches fire in CATCHES or so. Coming down, the city brings it down
+ * (City#collapse); on fire, it burns (ignite).
+ *
+ * @param hours {number} how long a tick is, hours
+ * @returns {boolean} whether it came down
+ */
+function hazards(self, hours) {
+  var health = self.health;
+
+  if (self._state !== BuildingState.ready || health >= HAZARD) return false;
+
+  var k = 1 - health / HAZARD,
+    city = self.getCity(),
+    collapse = health <= 0 ? 1 / COLLAPSES : (k * k * k) / (COLLAPSES * 6),
+    fire = (k * k) / CATCHES;
+
+  if (city !== null && Math.random() < 1 - Math.exp(-collapse * hours)) {
+    city.collapse(self);
+    return true;
+  }
+
+  if (health > 0 && Math.random() < 1 - Math.exp(-fire * hours))
+    self.ignite(self.world.time.now);
+
+  return false;
+}
+
+/**
  * Put back on fire as a save has it, set at at - burning still, or burnt
  * down by now.
  */
@@ -190,41 +308,20 @@ Building.prototype.restoreFire = function (at) {
 Building.prototype.surface = null;
 //a demolition under way (City#clearTile): paid for, fenced off, the building
 //coming down a tile at a time as the bulldozers get to it - nobody in it,
-//nothing made or wanted of it - and which of its tiles are down already
+//nothing made or wanted of it - its tiles down already as down has them
 //(City#tileDown), the ground bare there. Kept in the save: after a reload it
 //stands as far down as it had come, fenced off still, till the bulldozers
 //are sent to the rest of it - which is paid for already
 Building.prototype.demolishing = false;
-Building.prototype.down = null;
 Building.prototype.events = events;
 
 /**
- * Every tile it stands on.
+ * Its tiles not down - its yard as well as the building itself: what of it a
+ * demolition is still to bring down (City#clearTile).
  *
  * @returns {number[]}
  */
-Building.prototype.tiles = function () {
-  var out = [],
-    iter = this.occupiedTiles();
-
-  while (!iter.done) out.push(TileIterator.next(iter));
-
-  return out;
-};
-
-/**
- * Whether a tile of it is down, a demolition under way (City#tileDown).
- */
-Building.prototype.isDown = function (tile) {
-  return this.down !== null && this.down.indexOf(tile) !== -1;
-};
-
-/**
- * Its tiles still standing - every one, but for a demolition under way.
- *
- * @returns {number[]}
- */
-Building.prototype.standingTiles = function () {
+Building.prototype.tilesLeft = function () {
   var self = this;
 
   return this.tiles().filter(function (tile) {
@@ -381,6 +478,8 @@ function updateEffectOnTileParams(self) {
 function onTick(sender, args, self) {
   self.getCity();
   self.burn(self.world.time.now);
+  //come down by itself: gone
+  if (hazards(self, VTime.millisecondsPerTick / HOUR)) return;
 
   //coming down: nothing made, nothing wanted
   if (self.demolishing) {

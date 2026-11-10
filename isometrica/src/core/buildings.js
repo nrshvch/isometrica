@@ -42,10 +42,13 @@ var events = {
   buildingUpdated: 1,
   buildingRemoved: 2,
   buildingStateChange: 3,
+  //a building about to come down by itself, and come down (City#collapse)
+  buildingCollapse: 4,
+  buildingCollapsed: 5,
   //a building to be demolished, its tiles still standing being cleared
   //(City#clearTile): {building, tiles} - for whoever shows it to send the
   //bulldozers to them, and tell the city as each is down (City#tileDown)
-  buildingDemolish: 4,
+  buildingDemolish: 6,
 };
 
 /**

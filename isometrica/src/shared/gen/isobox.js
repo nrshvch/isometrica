@@ -137,7 +137,6 @@ function clip(b, x0, x1, y0, y1) {
   return r;
 }
 
-
 /**
  * The boxes of something standing on sizeX by sizeY tiles, turned a quarter
  * turn at a time on the spot. Whatever looked towards -y looks, after one
@@ -245,7 +244,6 @@ function opening(b) {
 
   return b;
 }
-
 
 //how thin a box squeezed onto what it lies on is (see snap)
 var SKIN = 1 / 64;
@@ -1113,7 +1111,52 @@ function finish(color, face, normal, f, x, y, z) {
     c = tint(c, m(u, v, side, luma(color) < 120, f));
   }
 
+  //run down (setWorn): cracked, stained, dusty or sooted
+  if (f.worn) c = wear(c, side, x, y, z, f.worn);
+
   return c;
+}
+
+//noise over x, y, smooth between whole steps, 0..1
+function smooth(x, y, k) {
+  var x0 = Math.floor(x),
+    y0 = Math.floor(y),
+    fx = x - x0,
+    fy = y - y0,
+    sx = fx * fx * (3 - 2 * fx),
+    sy = fy * fy * (3 - 2 * fy),
+    a = hash(x0, y0, k),
+    b = hash(x0 + 1, y0, k),
+    c = hash(x0, y0 + 1, k),
+    d = hash(x0 + 1, y0 + 1, k);
+
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
+//the dust a blast leaves over everything, and the soot a fire does
+var DUST = [176, 168, 154],
+  SOOT = [34, 30, 28];
+
+/**
+ * A point of a surface run down (setWorn), x, y, z where it is: on the
+ * ground, cracks running through it, a pothole here and there, stains - and
+ * over everything, in drifts, the dust a blast left (worn 1), or the soot of
+ * a fire (2); on a wall, grime run down it.
+ */
+function wear(c, side, x, y, z, worn) {
+  var drift = smooth(x / 7, y / 7, 311 + worn);
+
+  if (side === "top") {
+    var crack = Math.abs(smooth(x / 5, y / 5, 301) - 0.5),
+      crack2 = Math.abs(smooth(x / 3 + 17, y / 9, 303) - 0.5);
+
+    if (crack < 0.025 || crack2 < 0.018) c = darker(c, 0.45);
+    else if (smooth(x / 4, y / 4, 305) > 0.82) c = darker(c, 0.22);
+  } else if (hash(Math.floor(x + y), 0, 307) < 0.3) c = darker(c, 0.12);
+
+  return worn === 2
+    ? mix(c, SOOT, 0.25 + 0.45 * drift)
+    : mix(c, DUST, 0.1 + 0.3 * drift);
 }
 
 function luma(c) {
@@ -1347,6 +1390,164 @@ function inside(r) {
   }
 
   return out;
+}
+
+/* --- Run down -------------------------------------------------------- */
+
+//what is painted next run down (setWorn): 1 wrecked by a blast, 2 burnt -
+//0 as it is
+var worn = 0;
+
+/**
+ * Has what is painted next (render) run down: a yard, a park, a garden of a
+ * building blown up (1) or burnt down (2) - 0 as it is (client/spritecache
+ * wornName). The same picture, as big, as it would be.
+ */
+function setWorn(kind) {
+  worn = kind | 0;
+}
+
+//dried leaves, a dead tree's; grass gone dry; water gone murky; what is
+//burnt black; and the colour things go dull to
+var DRIED = [118, 98, 70],
+  DRY_GRASS = [156, 146, 96],
+  BURNT_GRASS = [58, 50, 42],
+  MURK = [92, 96, 70],
+  CHARRED = [40, 34, 30],
+  DULL = [128, 124, 118];
+
+//what lies strewn about a yard wrecked: lumps of concrete, brick, timber,
+//glass - or, burnt, char and ash
+var WRECKAGE = [
+    [150, 146, 138],
+    [140, 72, 52],
+    [104, 76, 52],
+    [196, 204, 206],
+    [118, 114, 108],
+  ],
+  ASHES = [
+    [40, 34, 30],
+    [110, 104, 96],
+    [96, 56, 44],
+    [62, 56, 52],
+  ];
+
+//a number 0..1 for a box, the same for the same box every time
+function boxHash(b, k) {
+  return hash(
+    Math.round(b.x0 * 4 + b.x1 * 7),
+    Math.round(b.y0 * 5 + b.y1 * 3),
+    Math.round(b.z0 * 11 + b.z1 * 13) + k,
+  );
+}
+
+function brown(c) {
+  return c !== undefined && c[0] > c[2] + 20 && c[1] > c[2] && c[0] < 170;
+}
+
+function blue(c) {
+  return c !== undefined && c[2] > c[0] + 30 && c[2] > c[1] + 5;
+}
+
+/**
+ * The boxes of what is painted run down (worn): what lies on the ground -
+ * the lot, paving, asphalt, sand - cracked, stained, the grass gone dry or
+ * burnt (wear); a tree dead, a bare trunk and a few dried leaves, or burnt
+ * black; water gone murky; what stood on it - swings, a slide, benches,
+ * lamps, bins - some of it gone, some knocked flat, the rest dull, or
+ * charred; and lumps of what was blown over it strewn about.
+ */
+function rundown(boxes, kind) {
+  var out = [],
+    seed = 0;
+
+  boxes.forEach(function (b) {
+    seed = (seed + Math.round(b.x0 * 31 + b.y1 * 17 + b.z1 * 7)) | 0;
+  });
+
+  boxes.forEach(function (b) {
+    var dx = b.x1 - b.x0,
+      dy = b.y1 - b.y0,
+      dz = b.z1 - b.z0,
+      h = boxHash(b, kind),
+      ground = b.z0 <= 1.5 && dz <= 1.5 && dx >= 3 && dy >= 3,
+      c = copy(b);
+
+    c.finish = Object.assign({}, b.finish || {}, { worn: kind });
+    if (kind === 2 && c.finish.sheen) c.finish.sheen = false;
+
+    if (ground) {
+      if (green(b.color))
+        c.color = mix(b.color, kind === 2 ? BURNT_GRASS : DRY_GRASS, 0.55);
+      else if (blue(b.color)) c.color = mix(b.color, MURK, 0.6);
+      out.push(c);
+      return;
+    }
+
+    //a tree's crown: a few dried leaves left, or none, burnt
+    if (green(b.color)) {
+      if (h < (kind === 2 ? 0.05 : 0.16)) {
+        c.color = mix(b.color, kind === 2 ? CHARRED : DRIED, 0.85);
+        out.push(c);
+      }
+      return;
+    }
+
+    //a trunk, a post: standing, bare, or charred
+    if (brown(b.color) && dx <= 1.5 && dy <= 1.5 && dz >= 2) {
+      c.color = kind === 2 ? mix(b.color, CHARRED, 0.8) : darker(b.color, 0.1);
+      out.push(c);
+      return;
+    }
+
+    if (blue(b.color)) {
+      c.color = mix(b.color, MURK, 0.6);
+      out.push(c);
+      return;
+    }
+
+    //what stood there: some of it gone, some knocked flat, the rest dull
+    if (h < 0.28) return;
+
+    if (h < 0.55 && dz >= 3 && dz > 2 * Math.max(dx, dy)) {
+      var along = h < 0.42,
+        long = Math.min(dz, along ? TILE - b.x0 : TILE - b.y0);
+
+      c.z1 = c.z0 + Math.max(1, Math.min(dx, dy));
+      if (along) c.x1 = c.x0 + long;
+      else c.y1 = c.y0 + long;
+    }
+
+    c.color = mix(b.color, kind === 2 ? CHARRED : DULL, kind === 2 ? 0.6 : 0.3);
+    out.push(c);
+  });
+
+  //and lumps of what was blown over it, or burnt, lying about
+  var lumps = kind === 2 ? ASHES : WRECKAGE,
+    n = kind === 2 ? 8 : 12;
+
+  for (var i = 0; i < n; i++) {
+    var x = 2 + Math.floor(hash(seed, i, 401) * 27),
+      y = 2 + Math.floor(hash(seed, i, 403) * 27),
+      w = 1 + Math.floor(hash(seed, i, 405) * 2),
+      d = 1 + Math.floor(hash(seed, i, 407) * 2),
+      lump = box(x, x + w, y, y + d, 1, 2, lumps[i % lumps.length]);
+
+    lump.finish = { worn: kind };
+    out.push(lump);
+  }
+
+  return out;
+}
+
+//a box as it is, its own
+function copy(b) {
+  var c = box(b.x0, b.x1, b.y0, b.y1, b.z0, b.z1, b.color, b.finish);
+
+  if (b.cuts !== undefined) c.cuts = b.cuts;
+  if (b.seams) c.seams = b.seams;
+
+  return c;
 }
 
 /* --- Interiors ------------------------------------------------------ */
@@ -1787,6 +1988,7 @@ function render(boxes) {
   boxes = withoutIndoors(boxes);
 
   if (open !== 0 && view !== "top") boxes = hollow(boxes, open);
+  if (worn !== 0) boxes = rundown(boxes, worn);
 
   //as it is built, inside as well as out - the same size as it would be
   //solid; what is seen of it from straight above is its top all the same
@@ -2044,6 +2246,7 @@ export {
   setView,
   getView,
   setOpen,
+  setWorn,
   sections,
   heightOf,
   normalOf,

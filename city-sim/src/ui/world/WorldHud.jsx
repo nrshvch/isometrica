@@ -210,6 +210,11 @@ function Focus({ inspected, seen }) {
             >
               <span title="A tick">{perTick(seen.income)}</span>
             </Figure>
+            {seen.parts > 0 && seen.standing < seen.parts && (
+              <Figure label="Standing" className="text-bad">
+                {seen.standing + "/" + seen.parts}
+              </Figure>
+            )}
             {seen.capacity > 0 && (
               <Figure icon="people">
                 {seen.residents + "/" + seen.capacity}

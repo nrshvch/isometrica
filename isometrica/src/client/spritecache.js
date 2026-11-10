@@ -351,58 +351,82 @@ var ROOMS = {
   utilities: true,
 };
 
+//the generators whose parts can be painted run down (wornName): whatever
+//stands on a tile of a city's
+var WORN = Object.assign({ parks: true, sites: true }, ROOMS);
+
+/**
+ * The name of a generated picture painted another way, tag after it -
+ * "o1", "w2" - made drawable the first time it is asked for: the same size
+ * and pivot, painted by the same generator, with @<tag> after its key; the
+ * name as it is, for anything not painted by one of gens.
+ */
+function variantName(self, name, tag, gens) {
+  var base = name.replace(/\/[ow]\d$/, ""),
+    frame = self.frames[base];
+
+  if (frame === undefined) return base;
+
+  var g = self.sheets[frame.sheet].generated,
+    out = base + "/" + tag;
+
+  if (g === null || gens[g.gen] !== true) return base;
+
+  if (self.frames[out] === undefined) {
+    self.sheets[out] = new Sheet(null, {
+      name: out,
+      gen: g.gen,
+      key: g.key + "@" + tag,
+      faced: g.faced,
+    });
+    self.frames[out] = Object.assign({}, frame, { sheet: out });
+  }
+
+  return out;
+}
+
 /**
  * The name of a generated part of a building painted open on sides of its
  * tile (shared/gen/isobox setOpen) - its rooms showing where the wall on
  * that side was, a tile of it in front having come down: 1 the side to the
- * -x of it as it is seen, 2 to the -y, 3 both. Made drawable the first time
- * it is asked for: the same size and pivot, painted by the same generator,
- * with @o<sides> after its key; the name itself for 0, or anything that is
- * no such part.
+ * -x of it as it is seen, 2 to the -y, 3 both. The name itself for 0, or
+ * anything that is no such part.
  */
 SpriteCache.prototype.openName = function (name, sides) {
-  var base = name.replace(/\/o\d$/, ""),
-    frame = this.frames[base];
+  return sides > 0
+    ? variantName(this, name, "o" + sides, ROOMS)
+    : name.replace(/\/[ow]\d$/, "");
+};
 
-  if (frame === undefined || !(sides > 0)) return base;
-
-  var g = this.sheets[frame.sheet].generated,
-    out = base + "/o" + sides;
-
-  if (g === null || ROOMS[g.gen] !== true) return base;
-
-  if (this.frames[out] === undefined) {
-    this.sheets[out] = new Sheet(null, {
-      name: out,
-      gen: g.gen,
-      key: g.key + "@o" + sides,
-      faced: g.faced,
-    });
-    this.frames[out] = Object.assign({}, frame, { sheet: out });
-  }
-
-  return out;
+/**
+ * The name of a generated part painted run down (shared/gen/isobox
+ * setWorn): a yard, a park, a garden wrecked by a blast (1) or burnt (2) -
+ * cracked, the grass dry, the trees dead, broken, strewn with what fell.
+ */
+SpriteCache.prototype.wornName = function (name, kind) {
+  return kind > 0
+    ? variantName(this, name, "w" + kind, WORN)
+    : name.replace(/\/[ow]\d$/, "");
 };
 
 /**
  * The same picture as sprite, put together out of the same parts in the same
- * places, burnt as they were - each part of a building open on sides of its
- * tile (openName); or sprite itself, for one not put together here.
+ * places, burnt as they were - each part of it named anew as rename says
+ * (openName, wornName); or sprite itself, for one not put together here.
  *
  * @returns {CachedSprite}
  */
-SpriteCache.prototype.opened = function (sprite, sides) {
+function renamed(self, sprite, rename) {
   if (!sprite || typeof sprite.key !== "string") return sprite;
 
-  var self = this,
-    parts = [],
+  var parts = [],
     whole = sprite.key.split("+").every(function (key) {
       var m = PART_KEY.exec(key);
 
       if (m === null || self.frames[m[1]] === undefined) return false;
 
       parts.push({
-        name: self.openName(m[1], sides),
+        name: rename(m[1]),
         x: +(m[2] || 0),
         y: +(m[3] || 0),
         clip:
@@ -416,7 +440,34 @@ SpriteCache.prototype.opened = function (sprite, sides) {
       return true;
     });
 
-  return whole && parts.length > 0 ? this.getComposite(parts) : sprite;
+  return whole && parts.length > 0 ? self.getComposite(parts) : sprite;
+}
+
+/**
+ * The same picture as sprite with every part of a building in it open on
+ * sides of its tile (openName).
+ *
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.opened = function (sprite, sides) {
+  var self = this;
+
+  return renamed(this, sprite, function (name) {
+    return self.openName(name, sides);
+  });
+};
+
+/**
+ * The same picture as sprite with every part in it run down (wornName).
+ *
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.worn = function (sprite, kind) {
+  var self = this;
+
+  return renamed(this, sprite, function (name) {
+    return self.wornName(name, kind);
+  });
 };
 
 SpriteCache.prototype.has = function (name) {
