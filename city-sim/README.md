@@ -83,8 +83,8 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   is going up, or what it makes a tick, who lives or works in it and what
   it goes without (`src/ui/world/WorldHud.jsx`,
   `isometrica/src/client/worth.js`) - and the bar has only what can be done
-  to it, Replace, its tools back once it is put away with a tap anywhere
-  else. The words over the world stay as they are, the tapped one's too:
+  to it, Replace and Demolish, its tools back once it is put away with a
+  tap anywhere else. The words over the world stay as they are, the tapped one's too:
   how far along each site is, what each building goes without.
 - Replace opens the catalogue on only what covers its ground, turned one
   way or another - a 1x2 for a 2x1 as well - each at what it would come
@@ -99,6 +99,11 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   front (`isometrica/src/client/buildman.js` replace). Its ground is kept
   for it meanwhile, and in the save: closed, it goes up on it as the game
   opens again (`isometrica/src/core/city/citybuildings.js` replaceLater).
+- Demolish clears the building away the way clearing its ground does:
+  one clearing charge for every tile of it, paid at once and floated over
+  it, the building fenced off and brought down where it stands by the
+  bulldozers, and the ground left clear (`isometrica/src/client/buildman.js`
+  demolish).
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

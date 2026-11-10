@@ -6,12 +6,12 @@
  * the middle on a desktop, where the top has the width of the screen.
  *
  * While a building is looked at - tapped, with nothing else going on - the
- * bar has only what can be done to it (Replace), the tools back once it is
- * put away with a tap anywhere else; and the card over it says what it is
- * and what it is worth: how far along it is going up, or the money it
- * makes a tick, who lives or works in it and what it goes without - kept
- * up to date as the city goes on, and nothing of it written over the world
- * (isometrica client/worth describe).
+ * bar has only what can be done to it (Replace, Demolish), the tools back
+ * once it is put away with a tap anywhere else; and the card over it says
+ * what it is and what it is worth: how far along it is going up, or the
+ * money it makes a tick, who lives or works in it and what it goes without
+ * - kept up to date as the city goes on, and nothing of it written over the
+ * world (isometrica client/worth describe).
  */
 import { useEffect, useState } from "react";
 import Events from "events";
@@ -22,7 +22,7 @@ import { describe } from "isometrica/client/worth";
 import Numeral from "numeral";
 import { displayName } from "../catalogue/buildings";
 import { BarButton, Container, Icon, cx } from "../kit";
-import { getClient, goReplace } from "../session";
+import { demolish, getClient, goReplace } from "../session";
 import { useGame } from "../store";
 
 //what a button says under it, when what puts it up does not say - the
@@ -189,7 +189,8 @@ function Focus({ inspected, seen }) {
 
 /**
  * What can be done to the building looked at, in the bar in the place of
- * its tools: put something else up in its place.
+ * its tools: put something else up in its place, or clear it away - the
+ * bulldozers bringing it down where it stands.
  */
 function focusButtons(inspected) {
   return [
@@ -198,6 +199,13 @@ function focusButtons(inspected) {
       label: "Replace",
       action: function () {
         goReplace(inspected.tile);
+      },
+    },
+    {
+      icon: "clear",
+      label: "Demolish",
+      action: function () {
+        demolish(inspected.tile);
       },
     },
   ];

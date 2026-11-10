@@ -135,6 +135,17 @@ export function replace(tile, code) {
 }
 
 /**
+ * Clears the building on tile away, as clearing its ground does - paid for
+ * at once, fenced off and brought down by the bulldozers where it stands,
+ * the ground left clear (isometrica client/buildman demolish).
+ *
+ * @param tile {number}
+ */
+export function demolish(tile) {
+  client.buildman.demolish(tile);
+}
+
+/**
  * Builds what is picked, in the world: a building out of the catalogue, a
  * road.
  *

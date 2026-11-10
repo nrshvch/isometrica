@@ -523,7 +523,7 @@ errorText[ErrorCode.TILE_TAKEN] = "occupied";
 errorText[ErrorCode.BEING_CLEARED] = "being cleared";
 errorText[ErrorCode.ON_SHORE] = "on shore";
 errorText[ErrorCode.WRONG_FOOTPRINT] = "doesn't fit";
-errorText[ErrorCode.NOTHING_TO_CLEAR] = "nothing to replace";
+errorText[ErrorCode.NOTHING_TO_CLEAR] = "nothing there";
 
 /**
  * Puts code down on each of anchors and tells the player why whatever did not
@@ -871,6 +871,70 @@ Buildman.prototype.replace = function (tile, code) {
   else showCost(this, result.tile, sizeX, sizeY, result.cost);
 
   return result.error;
+};
+
+/**
+ * Clears away the building standing on tile, as clearing its ground does
+ * (core/city clearTile): paid for there and then, one clearing charge for
+ * every tile of it - what it came to floated up over it once - fenced off,
+ * and brought down by the bulldozers where it stands, a tile at a time,
+ * the ground left clear (client/clearworks, client/demolition).
+ *
+ * @param tile {number} any tile of the building
+ * @returns {number} ErrorCode - NONE once the bulldozers are at it
+ */
+Buildman.prototype.demolish = function (tile) {
+  var root = this.root,
+    building = root.core.buildingService.get(tile),
+    city = building !== null ? building.getCity() : null,
+    total = 0,
+    tiles = [],
+    quote;
+
+  if (!city || building === null || !Replacement.replaceable(building)) {
+    this.showError(tile, ErrorCode.NOTHING_TO_CLEAR);
+    return ErrorCode.NOTHING_TO_CLEAR;
+  }
+
+  var iter = building.occupiedTiles(),
+    sizeX = Rotation.sizeX(building.data, building.rotation),
+    sizeY = Rotation.sizeY(building.data, building.rotation);
+
+  while (!iter.done) tiles.push(TileIterator.next(iter));
+
+  quote = city.quoteClear(tiles);
+
+  if (quote.error !== ErrorCode.NONE) {
+    showText(
+      this,
+      building.tile,
+      sizeX,
+      sizeY,
+      errorText[quote.error] || "can't clear",
+    );
+    return quote.error;
+  }
+
+  //it goes, and with it whatever was shown of it
+  if (root.serviceman) {
+    root.serviceman.hideCoverage();
+    root.serviceman.hideInfo();
+  }
+
+  function clear(t) {
+    var cleared = city.clearTile(t);
+
+    total += cleared.length * Core.Config.clearTileCost;
+
+    return cleared;
+  }
+
+  if (root.clearworks) root.clearworks.clear([building.tile], clear);
+  else clear(building.tile);
+
+  if (total > 0) showCost(this, building.tile, sizeX, sizeY, total);
+
+  return ErrorCode.NONE;
 };
 
 Buildman.prototype.events = events;
