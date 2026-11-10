@@ -610,19 +610,33 @@ CityBuildings.prototype.load = function (list) {
  * of it, of pile - the one the heaps a building left are all of, which run
  * on into each other and into no other pile's (client/rubble) - unpaid,
  * there till it is cleared away or built over, and saved as anything
- * standing is, its pile with it (look).
+ * standing is, its pile with it (look) - and what it is the rubble of, to
+ * be drawn as that come down (client/buildingview rubble of).
  *
  * @param tile {number}
  * @param pile {number} the pile it is a heap of
+ * @param [smoke] {number} the game's time it was left smouldering
+ * @param [of] {Building} what it is the rubble of
  * @returns {Building}
  */
-CityBuildings.prototype.leaveRubble = function (tile, pile, smoke) {
+CityBuildings.prototype.leaveRubble = function (tile, pile, smoke, of) {
+  var look = { pile: pile };
+
+  //what it is the rubble of, to be drawn as that come down
+  if (of)
+    look.of = {
+      code: of.buildingCode,
+      tile: of.tile,
+      rotation: of.rotation || 0,
+      look: of.look || undefined,
+    };
+
   return this.restore(
     variantOf(BuildingCode.rubble),
     tile,
     0,
     true,
-    { pile: pile },
+    look,
     undefined,
     undefined,
     { smoke: smoke },

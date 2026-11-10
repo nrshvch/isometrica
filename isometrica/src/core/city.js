@@ -794,7 +794,7 @@ function bringDown(self, building, yard, smoke) {
   tiles.forEach(function (t, i) {
     if (yards[i]) {
       if (wrecks) self.buildingService.leaveWreck(t, building);
-    } else self.buildingService.leaveRubble(t, pile, smoke);
+    } else self.buildingService.leaveRubble(t, pile, smoke, building);
   });
 
   return tiles;

@@ -366,10 +366,9 @@ BuildingView.prototype.update = function () {
               at.rotation,
               b.data.tile,
             ),
-            b.data.tile,
-          ).filter(function (p) {
-            return !p.empty;
-          }),
+            //burnt out and standing, or fallen in
+            Ruin.fallsIn(staticData, b.data.tile) ? "b" : "s",
+          ),
           this.opacity,
           undefined,
           b.data.tile,
@@ -377,6 +376,10 @@ BuildingView.prototype.update = function () {
     } else if (b.data.look && b.data.look.wreck) {
       //the yard of a building blown up, wrecked (core/city explode)
       drawWreck(this, b.data.look.wreck, b.data.tile);
+    } else if (b.data.look && b.data.look.of && ofCompound(b.data.look.of)) {
+      //the rubble of a building come down, of what it was built of
+      //(client/ruin "c")
+      drawRubbleOf(this, b.data.look.of, b.data.tile);
     } else if (b.data.look && b.data.look.fallen) {
       //a tree knocked down by a blast, lying (core/city explode)
       drawFallen(this, b.data.look.fallen, b.data.tile);
@@ -487,11 +490,44 @@ BuildingView.prototype.update = function () {
  *        Object}} what it was a yard of
  */
 function drawWreck(self, wreck, tile) {
-  var data = BuildingData[wreck.code];
+  drawPieceOf(self, wreck, tile, function (p) {
+    return vkaria.sprites.worn(p.sprite, WORN_BLAST);
+  });
+}
 
-  if (!data || !data.compound || !wreck.look || !wreck.look.tiles) return;
+//whether what a heap of rubble is of was put together out of parts, a tile
+//of it to be drawn as rubble of itself (drawRubbleOf)
+function ofCompound(of) {
+  var data = BuildingData[of.code];
 
-  var at = drawnAt(data, wreck.tile, wreck.rotation),
+  return !!data && !!data.compound && !!of.look && !!of.look.tiles;
+}
+
+/**
+ * A heap of rubble a building left come down (core/city/citybuildings
+ * leaveRubble): the tile of it as it would be drawn there, come down - the
+ * rubble of what it was built of, as high as there were storeys of it on
+ * that tile (client/ruin model "c").
+ *
+ * @param of {{code: number, tile: number, rotation: number, look: Object}}
+ */
+function drawRubbleOf(self, of, tile) {
+  drawPieceOf(self, of, tile, function (p) {
+    return Ruin.model(vkaria.sprites, p.sprite, "c");
+  });
+}
+
+/**
+ * The piece of a building that stood on tile - as of says it was - drawn on
+ * that tile on its own, its picture as as says.
+ */
+function drawPieceOf(self, of, tile, as) {
+  var data = BuildingData[of.code];
+
+  if (!data || !data.compound || !of.look || !of.look.tiles) return;
+
+  var wreck = of,
+    at = drawnAt(data, wreck.tile, wreck.rotation),
     pieces = CompoundBuilding.pieces(
       vkaria.sprites,
       wreck.look,
@@ -521,7 +557,7 @@ function drawWreck(self, wreck, tile) {
         pivotX: p.pivotX,
         pivotY: p.pivotY,
         overlays: [],
-        sprite: vkaria.sprites.worn(p.sprite, WORN_BLAST),
+        sprite: as(p),
       };
     }),
     self.opacity,
@@ -616,11 +652,8 @@ function damaged(self, pieces, model, at) {
         return out;
       }
 
-      out.sprite = sprites.getSprite(
-        Rubble.pictureWith(rubble, tile, "rubble", View.turns()),
-      );
-      out.pivotX = Rubble.PIVOT_X;
-      out.pivotY = Rubble.PIVOT_Y;
+      //the rubble of what it was built of (client/ruin "c")
+      out.sprite = Ruin.model(sprites, p.sprite, "c");
       out.overlays = [];
       out.down = true;
       return out;

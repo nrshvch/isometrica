@@ -163,7 +163,13 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   and fallen trees are there till Clear has the bulldozers push them away
   for the clearing fee - the heaps round one a pile without it from then
   on - or anything is built over them (`isometrica/src/core/city.js`
-  explode, `isometrica/src/data/buildings.js` rubble).
+  explode, `isometrica/src/data/buildings.js` rubble). A heap of rubble of a
+  building put together a tile at a time is painted out of its own model
+  as it came down (`isometrica/src/client/ruin.js` "c"): its ground floor's
+  walls broken off, in its own colours, round a heap of what it was built
+  of, as high as there were storeys of it on that tile - its floors fallen
+  in on each other where it was concrete, beams across it - and the same
+  for a part of a building a blast took down, in its place.
 - Every building has its health, shown as a bar on its card, and how
   many of its parts still stand (`isometrica/src/core/building.js`
   getHealth, down): knocked out of it by a blast near it, burning away as
@@ -188,31 +194,36 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   taken parts off stands open so (`isometrica/src/client/buildingview.js`
   damaged).
 - Fire up sets the building on fire, for nothing, and it burns through
-  most of a day of the game's time (`isometrica/src/client/fires.js`). It
-  catches in a window of a floor low down, glowing within, and the fire
-  spreads window by window - up faster than down, slower along a floor -
-  till flames lick up out of every window, white-hot to orange to red, and
-  off its roof; the wall over each is blackened, sparks fly, and the
-  building chars all over as it goes on (`isometrica/src/client/burnt.js`
-  char). Smoke pours out of its windows, and black smoke rolls up off the
-  top of it - thicker the more of it burns, as big a column as the
-  building is, billowing as it goes up and bending off the way the wind
-  blows high up, a stream of it across the sky over the city
-  (`isometrica/src/shared/gen/smoke.js` plume). After dark the fire lights
-  the ground round it and the smoke over it. Seven hours on it comes down
-  the way a building does, floor onto floor in a cloud of dust and smoke,
-  no fence and no bulldozer - and what is left of it burns on among its
-  charred walls, the smoke thinning, then smoulders, embers glowing, a
-  wisp of smoke here and there, and by the end of the day is a cold ruin
-  (`isometrica/src/client/ruin.js`): its ground floor's walls charred and
-  broken off, the posts of its frame standing up out of them, its concrete
-  base kept where it had one, and its yard, its car park, its playground
-  sooted and strewn with what fell. It is out of service from the moment it
-  catches - no one lives or works in it, nothing is made of it - and the
-  card says it is on fire, then burnt down; the ruin stands till it is
-  cleared, replaced or blown up. Kept in the save, the fire as far along
-  after a reload as it would have been (`isometrica/src/core/building.js`
-  ignite, burn).
+  most of a day of the game's time (`isometrica/src/client/fires.js`) -
+  the building only: its yard, its car park, its playground, the cars on
+  it, are as they were all through. It catches in a window of a floor low
+  down, glowing within, and the fire spreads window by window - up faster
+  than down, slower along a floor - and out of every window ablaze the
+  flames lick up, a storey and more as it takes hold, white-hot at their
+  roots through yellow and orange to red tongues; where the flames of one
+  window run into the next, up the wall from floor to floor and along it,
+  they burn as one sheet of fire, and off its roof too. The building chars
+  as it goes on (`isometrica/src/client/burnt.js` char), sparks fly, and
+  black smoke rolls up off the top of it - thicker the more of it burns,
+  as big a column as the building is, billowing as it goes up and bending
+  off the way the wind blows high up, a stream of it across the sky over
+  the city (`isometrica/src/shared/gen/smoke.js` plume). After dark the
+  fire lights the ground round it and the smoke over it. Seven hours on
+  it is burnt out: one built of timber more likely falls in, floor onto
+  floor in a cloud of dust and smoke; one of brick or concrete more likely
+  stands, its roof fallen in in a burst of sparks. What is left of it is
+  painted so out of its own model (`isometrica/src/shared/gen/isobox.js`
+  setRuin, `isometrica/src/client/ruin.js`): standing, every storey of it
+  roofless, charred, darker up it, black holes where its windows and doors
+  were with soot up the wall over them, ash and fallen beams inside;
+  fallen in, its ground floor's walls broken off any height up to a storey
+  or so round a heap of charred beams and rubble. It burns on among them,
+  the smoke thinning, then smoulders, embers glowing, and by the end of the
+  day is a cold ruin, there till it is cleared. It is out of service from
+  the moment it catches - no one lives or works in it, nothing is made of
+  it - and the card says it is on fire, then burnt down. Kept in the save,
+  the fire as far along after a reload as it would have been
+  (`isometrica/src/core/building.js` ignite, burn).
 - A building put up has its ground cleared first, bare or not - the trees,
   stones or rubble on it standing till a bulldozer gets there, driving out
   to it the same way - and only then goes up: the bulldozers are the first

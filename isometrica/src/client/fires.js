@@ -9,6 +9,8 @@ import Config from "./config";
 import View from "./view";
 import RenderLayer from "./renderlayer";
 import Demolition from "./demolition";
+import Ruin from "./ruin";
+import Yards from "./yards";
 import Carman from "./carman";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
@@ -99,7 +101,7 @@ var KNOCK_APART = 340,
 //the black smoke off the top of it: puffs a second at the most, thick as it
 //is ablaze; out of a window ablaze, a puff of it now and then, ms
 var PLUME_MOST = 5,
-  WINDOW_PUFF = [900, 2400];
+  WINDOW_PUFF = [3500, 7000];
 
 //sparks: how many at once at the most, how fast they go up, pixels a
 //second, and how long they last, ms
@@ -121,13 +123,20 @@ var FLAME = [
 var GLOW = [1, 0.5, 0.18],
   REACH = 34;
 
-//the soot over a window ablaze, blacker as it burns
-var SOOT = [
-  "rgba(24,20,18,0.35)",
-  "rgba(20,17,15,0.5)",
-  "rgba(16,13,12,0.65)",
-  "rgba(12,10,9,0.8)",
+//a window alight within, before flames are out of it: bright, flickering
+var GLOWING = [
+  [255, 214, 110],
+  [255, 172, 56],
+  [255, 136, 40],
 ];
+
+//how far ablaze a window is before flames are out of it; how much bigger a
+//roof's are than a window's, and what is left of it, once it is down; and
+//how many of its flames light what is round them at night
+var FLAMES_FROM = 0.15,
+  ROOF_BIG = 1.5,
+  EMBER_BIG = 0.75,
+  LIGHTS = 6;
 
 var css = {};
 
@@ -315,6 +324,14 @@ function Blaze(fires, building) {
   this.model = model;
   this.tiles = [];
   while (!iter.done) this.tiles.push(iter.next());
+
+  //the building itself, not its yard: what burns, and comes down
+  var yard = Yards.yards(fires.root, building);
+
+  this.built = this.tiles.filter(function (t) {
+    return yard[t] !== true;
+  });
+  if (this.built.length === 0) this.built = this.tiles.slice();
   this.seed = (model.tile * 2654435761) >>> 0;
   //its windows, once known (gather): each {go, renderer, x, y, z, floor,
   //catches, seed}
@@ -402,7 +419,7 @@ Blaze.prototype.end = function () {
   if (this.collapse !== null) {
     var c = this.collapse;
 
-    this.tiles.forEach(function (t) {
+    this.built.forEach(function (t) {
       c.letGo(t);
     });
     this.collapse = null;
@@ -472,7 +489,14 @@ function gather(self, dt) {
     var r = child.gameObject.spriteRenderer,
       sprite = r ? r.sprite : null;
 
-    if (!sprite || !sprite.windows) return;
+    //its yard, its car park, its playground does not burn
+    if (
+      !sprite ||
+      !sprite.windows ||
+      child.gameObject.down === true ||
+      Yards.yardPicture(sprite)
+    )
+      return;
 
     var ws = sprite.windows();
 
@@ -611,7 +635,9 @@ function char(self, h) {
       !r ||
       !r.sprite ||
       r.layer !== RenderLayer.buildingsLayer ||
-      r.charred === words
+      r.charred === words ||
+      child.gameObject.down === true ||
+      Yards.yardPicture(r.unburnt || r.sprite)
     )
       return;
 
@@ -663,16 +689,18 @@ function burning(self, h, dt) {
 
     w.puff = between(WINDOW_PUFF) / k;
 
-    var at = worldOf(w);
+    var at = worldOf(w),
+      //over the tips of its flames
+      over = (6 + 12 * k) * PER_PIXEL;
 
-    //pouring out of it, the worst of it billowing out to join what rolls
-    //up off the top of it
+    //pouring out of it over its flames, billowing up to join what rolls up
+    //off the top of it
     SmokeSource.puff(
       world,
       at[0],
-      at[1] + 2,
+      at[1] + over,
       at[2],
-      k > 0.6 && Math.random() < 0.06 ? plumeOf(self) : SmokeScript.soot,
+      plumeOf(self),
       (Math.random() - 0.5) * 4,
       (Math.random() - 0.5) * 4,
     );
@@ -694,7 +722,7 @@ function burning(self, h, dt) {
  * (SmokeScript plume) - by its ground and how tall it stands.
  */
 function plumeOf(self) {
-  var size = Math.sqrt(self.tiles.length) * (0.6 + self.high / 50),
+  var size = Math.sqrt(self.built.length) * (0.6 + self.high / 50),
     s = Math.max(0.4, Math.min(1, size / 2.6)),
     key = Math.round(s * 10);
 
@@ -714,7 +742,7 @@ function plumeOf(self) {
  * of it, as tall as it stands (pixels), more of them the bigger it is.
  */
 function plume(self, share, high, dt) {
-  var size = Math.sqrt(self.tiles.length) * (0.7 + high / 60),
+  var size = Math.sqrt(self.built.length) * (0.7 + high / 60),
     rate = Math.min(PLUME_MOST, (0.4 + 2.6 * share) * size);
 
   self.plumed += (dt / 1000) * rate;
@@ -722,7 +750,7 @@ function plume(self, share, high, dt) {
   while (self.plumed >= 1) {
     self.plumed--;
 
-    var t = self.tiles[Math.floor(Math.random() * self.tiles.length)],
+    var t = self.built[Math.floor(Math.random() * self.built.length)],
       x = Terrain.extractX(t) + (Math.random() - 0.5) * 0.8,
       y = Terrain.extractY(t) + (Math.random() - 0.5) * 0.8,
       ground = Carman.groundHeight(self.root, x, y) * Config.tileZStep;
@@ -747,19 +775,27 @@ function plume(self, share, high, dt) {
  */
 Blaze.prototype.fall = function () {
   var self = this,
-    view = this.building.view;
+    view = this.building.view,
+    //it falls in, or stands a shell, its roof fallen in (client/ruin)
+    falls = Ruin.fallsIn(this.building.staticData, this.model.tile);
 
   this.down = true;
+
+  if (!falls) {
+    this.model.burn(this.model.fire + CoreBuilding.BURNS);
+    roofFalls(this);
+    return;
+  }
 
   if (view && view.gameObject.transform.children.length > 0) {
     this.collapse = new Demolition.Demolition(
       this.root,
       this.building,
-      this.tiles,
+      this.built,
       { fence: false, rubble: false },
     );
     this.since = 0;
-    this.knocks = this.tiles.map(function (t, k) {
+    this.knocks = this.built.map(function (t, k) {
       return { tile: t, at: k * KNOCK_APART * (0.7 + 0.6 * Math.random()) };
     });
     view.setOpacity(0);
@@ -769,7 +805,7 @@ Blaze.prototype.fall = function () {
 
   //a burst of smoke and dust as it goes
   for (var i = 0; i < 18; i++) {
-    var t = self.tiles[i % self.tiles.length];
+    var t = self.built[i % self.built.length];
 
     SmokeSource.puff(
       this.root.game.logic.world,
@@ -784,6 +820,33 @@ Blaze.prototype.fall = function () {
     );
   }
 };
+
+//its roof fallen in, the shell of it left standing: sparks and black smoke
+//bursting up out of it, and the dust of it
+function roofFalls(self) {
+  var world = self.root.game.logic.world;
+
+  self.built.forEach(function (t) {
+    var x = Terrain.extractX(t),
+      y = Terrain.extractY(t),
+      g = Carman.groundHeight(self.root, x, y) * Config.tileZStep;
+
+    for (var i = 0; i < 6; i++)
+      SmokeSource.puff(
+        world,
+        (x + (Math.random() - 0.5) * 0.8) * TILE,
+        g + self.high * PER_PIXEL * (0.6 + Math.random() * 0.4),
+        (y + (Math.random() - 0.5) * 0.8) * TILE,
+        i % 2 === 0 ? plumeOf(self) : SmokeScript.debris,
+        (Math.random() - 0.5) * 20,
+        (Math.random() - 0.5) * 20,
+      );
+  });
+
+  (self.windows || []).forEach(function (w) {
+    if (w.roof || Math.random() < 0.6) spark(self, w);
+  });
+}
 
 //coming down: each tile in its turn, then what is left of it coming up
 //under the dust, and all of it let go of
@@ -814,7 +877,7 @@ Blaze.prototype.coming = function (dt) {
     this.knocks.length === 0 &&
     ((fallen && c.chunks.length === 0 && k >= 1) || this.since > FALL_MOST)
   ) {
-    this.tiles.forEach(function (t) {
+    this.built.forEach(function (t) {
       c.letGo(t);
     });
     this.collapse = null;
@@ -828,9 +891,9 @@ function middleOf(self) {
   var x = 0,
     y = 0;
 
-  self.tiles.forEach(function (t) {
-    x += Terrain.extractX(t) / self.tiles.length;
-    y += Terrain.extractY(t) / self.tiles.length;
+  self.built.forEach(function (t) {
+    x += Terrain.extractX(t) / self.built.length;
+    y += Terrain.extractY(t) / self.built.length;
   });
 
   return [
@@ -845,7 +908,7 @@ function middleOf(self) {
 function embersOf(self) {
   var out = [];
 
-  self.tiles.forEach(function (t, i) {
+  self.built.forEach(function (t, i) {
     for (var k = 0; k < 4; k++)
       out.push({
         x: Terrain.extractX(t) + (hash(i, k, self.seed) - 0.5) * 0.8,
@@ -889,7 +952,7 @@ function remains(self, h, dt) {
     var cool = cooled(self, h);
 
     self.plumed +=
-      (dt / 1000) * 1.2 * (1 - cool) * Math.sqrt(self.tiles.length);
+      (dt / 1000) * 1.2 * (1 - cool) * Math.sqrt(self.built.length);
 
     while (self.plumed >= 1) {
       self.plumed--;
@@ -902,7 +965,7 @@ function remains(self, h, dt) {
         e.x * TILE,
         ground + 2,
         e.y * TILE,
-        cool < 0.4 ? SmokeScript.soot : SmokeScript.steam,
+        cool < 0.4 ? plumeOf(self) : SmokeScript.steam,
         0,
         0,
       );
@@ -972,7 +1035,10 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
     h = blaze.hours(),
     now = blaze.clock,
     up = View.top() ? Math.cos(Math.PI / 6) : -M[5],
-    lights = 0;
+    //what burns: {x, y, ground, z, k, big, seed} each - a window, a stretch
+    //of its roof, what is left of it, on the screen
+    sources = [],
+    glows = [];
 
   function project(x, y, z) {
     return [
@@ -981,14 +1047,8 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
     ];
   }
 
-  layer.save();
-
   if (!blaze.down && blaze.windows !== null) {
-    //the windows, by how ablaze each is: the soot over them first, then
-    //each glowing within, and the flames out of it, the brightest lighting
-    //what is round them
-    var shown = [],
-      spots = new Map();
+    var spots = new Map();
 
     blaze.windows.forEach(function (w) {
       var k = intensity(w, h);
@@ -1007,112 +1067,22 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
       }
 
       var x = Math.floor(base[0] - w.renderer.pivotX + w.x + 0.5),
-        y = Math.floor(base[1] - w.renderer.pivotY + w.y + 0.5),
-        ground = base[2],
-        tall = 2 + Math.round(9 * k);
+        y = Math.floor(base[1] - w.renderer.pivotY + w.y + 0.5);
 
-      shown.push({ w: w, k: k, x: x, y: y, ground: ground });
+      //the room behind it alight, before the flames are out of it
+      if (!w.roof)
+        glows.push({ x: x, y: y, z: base[2] + w.z, k: k, seed: w.seed });
 
-      //the roof: nothing over it to blacken
-      if (w.roof) return;
-
-      //the wall over it blackened as it burns, wider and higher up
-      layer.glow = false;
-      layer.standsAt = ground + w.z + tall;
-      layer.fillStyle = SOOT[Math.min(SOOT.length - 1, Math.floor(k * 4))];
-      layer.fillRect(
-        x - 1 - (k > 0.5 ? 1 : 0) - (k > 0.85 ? 1 : 0),
-        y - tall - 1,
-        3 + (k > 0.5 ? 2 : 0) + (k > 0.85 ? 2 : 0),
-        tall,
-      );
-    });
-
-    layer.glow = true;
-
-    shown.forEach(function (s) {
-      //off the roof, once it has caught: taller than out of a window
-      if (s.w.roof) {
-        flame(layer, s.x, s.y, s.ground + s.w.z, s.k, s.w.seed, now, 1.5);
-        return;
-      }
-
-      //the room inside it ablaze, flickering red to yellow as it takes
-      var flick = 0.5 + 0.5 * Math.sin(now / 60 + s.w.seed * 1.7),
-        heat = Math.min(
-          FLAME.length - 1,
-          Math.floor((1 - s.k * (0.6 + 0.4 * flick)) * 4),
-        );
-
-      layer.standsAt = s.ground + s.w.z + 1;
-      layer.fillStyle = rgb(FLAME[heat]);
-      layer.fillRect(s.x - 1, s.y - 1, 2, 2);
-
-      //and out of it, once it has taken
-      if (s.k > 0.2)
-        flame(
-          layer,
-          s.x,
-          s.y - 1,
-          s.ground + s.w.z,
-          (s.k - 0.2) / 0.8,
-          s.w.seed,
-          now,
-        );
-    });
-
-    //the brightest of them light what is round them, after dark
-    shown
-      .sort(function (a, b) {
-        return b.k - a.k;
-      })
-      .forEach(function (s) {
-        if (lights >= 6 || !gl.workLight) return;
-        lights++;
-        gl.workLight(
-          s.x,
-          s.y + s.w.z,
-          s.w.z,
-          REACH * (0.6 + 0.4 * s.k),
-          GLOW,
-          0.7 * s.k * (0.85 + 0.15 * Math.sin(now / 90 + s.w.seed)),
-        );
-      });
-
-    //and over all of it, the smoke rolling up off it lit from under by
-    //the fire, after dark - as much as it is ablaze, as big as it is
-    if (gl.workLight && blaze.share > 0.05) {
-      var m = blaze.middle,
-        c = project(m[0], m[1], m[2]);
-
-      gl.workLight(
-        c[0],
-        c[1],
-        blaze.high + 14,
-        (50 + 30 * Math.sqrt(blaze.tiles.length)) * (0.6 + 0.4 * blaze.share),
-        GLOW,
-        0.55 * blaze.share * (0.9 + 0.1 * Math.sin(now / 130)),
-      );
-    }
-
-    //sparks off them
-    layer.fillStyle = rgb(FLAME[1]);
-    blaze.sparks.forEach(function (p) {
-      var w = p.w,
-        q = w.go.transform.getPosition([0, 0, 0]),
-        b = project(q[0], q[1], q[2]),
-        fade = 1 - p.t / p.ttl;
-
-      if (fade < 0.3 && Math.random() < 0.5) return;
-
-      layer.fillStyle = rgb(fade > 0.6 ? FLAME[1] : FLAME[2]);
-      layer.standsAt = up * q[1] + w.z - p.dy;
-      layer.fillRect(
-        Math.floor(b[0] - w.renderer.pivotX + w.x + p.dx),
-        Math.floor(b[1] - w.renderer.pivotY + w.y + p.dy),
-        1,
-        1,
-      );
+      if (k > FLAMES_FROM)
+        sources.push({
+          x: x,
+          y: y,
+          ground: base[2],
+          z: w.z,
+          k: (k - FLAMES_FROM) / (1 - FLAMES_FROM),
+          big: w.roof ? ROOF_BIG : 1,
+          seed: w.seed,
+        });
     });
   }
 
@@ -1122,65 +1092,225 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
       cool = cooled(blaze, h),
       ramp = blaze.collapse !== null ? Math.min(1, blaze.since / 2500) : 1;
 
-    layer.glow = true;
-
     blaze.embers.forEach(function (e) {
       var g = Carman.groundHeight(blaze.root, e.x, e.y) * Config.tileZStep,
-        s = project(e.x * TILE, g, e.y * TILE),
-        x = Math.floor(s[0] + 0.5),
-        y = Math.floor(s[1] + 0.5),
+        q = project(e.x * TILE, g, e.y * TILE),
+        x = Math.floor(q[0] + 0.5),
+        y = Math.floor(q[1] + 0.5) - Math.round(e.z),
         k = r > 0 ? Math.min(1, (r / e.lasts) * ramp) : 0;
 
-      if (k > 0.05) {
-        flame(layer, x, y - Math.round(e.z), up * g + e.z, k, e.seed, now);
-
-        if (lights < 6 && gl.workLight) {
-          lights++;
-          gl.workLight(x, y, e.z, REACH * 0.8 * k, GLOW, 0.6 * k);
-        }
-      } else if (cool < 1 - e.lasts * 0.5) {
-        //an ember glowing, pulsing
-        var pulse = 0.5 + 0.5 * Math.sin(now / 400 + e.seed);
-
-        layer.standsAt = up * g + 1;
-        layer.fillStyle = rgb(pulse > 0.5 ? FLAME[3] : FLAME[4]);
-        layer.fillRect(x, y - 1, 1, 1);
-      }
+      if (k > 0.05)
+        sources.push({
+          x: x,
+          y: y,
+          ground: up * g,
+          z: e.z,
+          k: k,
+          big: EMBER_BIG,
+          seed: e.seed,
+        });
+      else if (cool < 1 - e.lasts * 0.5)
+        glows.push({ x: x, y: y + 1, z: up * g + 1, k: 0.3, seed: e.seed });
     });
   }
+
+  layer.save();
+  layer.glow = true;
+
+  //windows alight within, flickering - bright, never dark
+  glows.forEach(function (g) {
+    var f = 0.5 + 0.5 * Math.sin(now / 55 + g.seed * 1.7);
+
+    layer.standsAt = g.z + 1;
+    layer.fillStyle = rgb(GLOWING[Math.floor(f * 2.99)]);
+    layer.fillRect(g.x - 1, g.y - 1, g.k > 0.5 ? 3 : 2, 2);
+  });
+
+  fire(layer, sources, now);
+
+  //the brightest of it lights what is round it, after dark
+  if (gl.workLight)
+    sources
+      .slice()
+      .sort(function (a, b) {
+        return b.k * b.big - a.k * a.big;
+      })
+      .slice(0, LIGHTS)
+      .forEach(function (s) {
+        gl.workLight(
+          s.x,
+          s.y + s.z,
+          s.z,
+          REACH * (0.6 + 0.4 * s.k) * s.big,
+          GLOW,
+          0.7 * s.k * (0.85 + 0.15 * Math.sin(now / 90 + s.seed)),
+        );
+      });
+
+  //and over all of it, the smoke rolling up off it lit from under by the
+  //fire, after dark - as much as it is ablaze, as big as it is
+  if (!blaze.down && gl.workLight && blaze.share > 0.05) {
+    var m = blaze.middle,
+      c = project(m[0], m[1], m[2]);
+
+    gl.workLight(
+      c[0],
+      c[1],
+      blaze.high + 14,
+      (50 + 30 * Math.sqrt(blaze.built.length)) * (0.6 + 0.4 * blaze.share),
+      GLOW,
+      0.55 * blaze.share * (0.9 + 0.1 * Math.sin(now / 130)),
+    );
+  }
+
+  //sparks off it
+  blaze.sparks.forEach(function (p) {
+    var w = p.w,
+      q = w.go.transform.getPosition([0, 0, 0]),
+      b = project(q[0], q[1], q[2]),
+      fade = 1 - p.t / p.ttl;
+
+    if (fade < 0.3 && Math.random() < 0.5) return;
+
+    layer.fillStyle = rgb(fade > 0.6 ? FLAME[1] : FLAME[2]);
+    layer.standsAt = up * q[1] + w.z - p.dy;
+    layer.fillRect(
+      Math.floor(b[0] - w.renderer.pivotX + w.x + p.dx),
+      Math.floor(b[1] - w.renderer.pivotY + w.y + p.dy),
+      1,
+      1,
+    );
+  });
 
   layer.restore();
 };
 
+//noise over x, y, smooth between whole steps, 0..1
+function smooth(x, y, k) {
+  var x0 = Math.floor(x),
+    y0 = Math.floor(y),
+    fx = x - x0,
+    fy = y - y0,
+    sx = fx * fx * (3 - 2 * fx),
+    sy = fy * fy * (3 - 2 * fy),
+    a = hash(x0, y0, k),
+    b = hash(x0 + 1, y0, k),
+    c = hash(x0, y0 + 1, k),
+    d = hash(x0 + 1, y0 + 1, k);
+
+  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy;
+}
+
 /**
- * A flame from x, y up - k ablaze, 0..1 - flickering: as tall and as wide
- * at its root as it is ablaze, white-hot there, yellow, orange and red up
- * it to its smoky tip, licking this way and that; standing at standsAt.
+ * The fire of everything that burns, as one: a flame up out of every
+ * source - as wide and tall as it is ablaze, a storey and more at its
+ * height, licking up in tongues that flicker and run up it - and where the
+ * flames of one run into another's, up a wall from floor to floor, along it
+ * from window to window, one sheet of fire, white-hot at its root, yellow,
+ * orange, and red up it to its tips.
  */
-function flame(layer, x, y, standsAt, k, seed, now, scale) {
-  var big = scale || 1,
-    flick =
-      0.75 +
-      0.25 * Math.sin(now / 70 + seed) * Math.sin(now / 113 + seed * 0.7),
-    tall = Math.max(2, Math.round((3 + 10 * k) * flick * big)),
-    wide = Math.max(1, Math.round(1 + 2.2 * k * Math.sqrt(big)));
+function fire(layer, sources, now) {
+  var columns = new Map();
 
-  for (var j = 0; j < tall; j++) {
-    var f = j / tall,
-      w = Math.max(1, Math.round(wide * (1 - f * 0.85))),
-      lick = Math.round(
-        Math.sin(now / 95 + seed + j * 0.7) * f * (1 + 1.4 * k),
-      ),
-      c = FLAME[Math.min(FLAME.length - 1, Math.floor(f * FLAME.length))];
+  sources.forEach(function (s) {
+    var wide = Math.max(2, Math.round((3 + 4 * s.k) * s.big)),
+      high = (5 + 12 * s.k) * s.big,
+      x0 = s.x - (wide >> 1);
 
-    //its tip broken off, a pixel here and there
-    if (f > 0.7 && hash(j, Math.floor(now / 80), seed) < 0.35) continue;
+    for (var c = x0; c < x0 + wide; c++) {
+      var e = 1 - Math.pow((c + 0.5 - s.x) / (wide / 2 + 0.5), 2);
 
-    layer.fillStyle = rgb(c);
-    //a few rows at a time as high as the highest of them: in front of the
-    //wall it licks up, and no more of a batch to draw than that (glcanvas)
-    layer.standsAt = standsAt + 3 + j - (j % 3);
-    layer.fillRect(x - (w >> 1) + lick, y - j, w, 1);
+      if (e <= 0) continue;
+
+      //tongues: higher and lower along it, running up it as they flicker
+      var n = smooth(c * 0.45 + (s.seed % 97), now * 0.006 - c * 0.07, 7),
+        top = s.y - Math.max(2, high * Math.sqrt(e) * (0.4 + 0.6 * n)),
+        list = columns.get(c);
+
+      if (list === undefined) columns.set(c, (list = []));
+      list.push({
+        top: top,
+        bottom: s.y + 1,
+        ground: s.ground,
+        z: s.z,
+        k: s.k,
+      });
+    }
+  });
+
+  columns.forEach(function (spans, c) {
+    //from the lowest up: one that reaches the next runs on into it
+    spans.sort(function (a, b) {
+      return b.bottom - a.bottom;
+    });
+
+    var at = spans[0];
+
+    for (var i = 1; i < spans.length; i++) {
+      var next = spans[i];
+
+      if (next.bottom >= at.top - 2) {
+        at.top = Math.min(at.top, next.top);
+        at.k = Math.max(at.k, next.k);
+      } else {
+        column(layer, c, at, now);
+        at = next;
+      }
+    }
+
+    column(layer, c, at, now);
+  });
+}
+
+//the bands up a column of fire, from its root: how far up it each starts,
+//and its colour
+var BANDS = [0, 0.1, 0.38, 0.66, 0.88],
+  FIRE = [
+    [255, 248, 214],
+    [255, 214, 92],
+    [255, 152, 40],
+    [236, 88, 24],
+    [178, 48, 18],
+  ];
+
+//a column of fire, x c on the screen, as span says - each band of it in
+//front of the wall it is up, where one ends and the next begins wavering
+//up and down it as it flickers; a gap in it now and then, where the flames
+//part, and its tip broken off
+function column(layer, c, span, now) {
+  var len = span.bottom - span.top,
+    //a fire just taken has no white-hot root to it
+    from = span.k > 0.6 ? 0 : 1,
+    t = Math.floor(now / 60);
+
+  for (var i = from; i < BANDS.length; i++) {
+    var wob = function (b) {
+        return b <= 0 || b >= 1
+          ? b
+          : b + (smooth(c * 0.6, now * 0.008 + b * 5, 11) - 0.5) * 0.16;
+      },
+      y1 = Math.round(span.bottom - len * wob(BANDS[i])),
+      y0 = Math.round(
+        span.bottom - len * wob(BANDS[i + 1] !== undefined ? BANDS[i + 1] : 1),
+      );
+
+    //its tip broken off, here and there, as it flickers
+    if (i === BANDS.length - 1 && hash(c, t, 13) < 0.45) continue;
+    if (y1 <= y0) continue;
+
+    layer.fillStyle = rgb(FIRE[i]);
+    layer.standsAt = span.ground + span.z + (span.bottom - (y0 + y1) / 2) + 2;
+
+    //the flames parting up it, a pixel or two, now and then
+    var gap =
+      i >= 2 && hash(c, t + i * 7, 17) < 0.18
+        ? y0 + Math.floor((y1 - y0) / 2)
+        : -1;
+
+    if (gap > y0 && gap < y1 - 1) {
+      layer.fillRect(c, y0, 1, gap - y0);
+      layer.fillRect(c, gap + 1, 1, y1 - gap - 1);
+    } else layer.fillRect(c, y0, 1, y1 - y0);
   }
 }
 
