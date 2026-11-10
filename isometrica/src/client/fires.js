@@ -20,9 +20,12 @@ import { changed } from "./looks";
  * Buildings on fire (core/building ignite), as they burn down over a day of
  * the game's time.
  *
- * It catches in a window of a floor low down, and spreads from there,
- * window by window - up faster than down, along a floor slower than up -
- * till every window of it is ablaze (Blaze). Flames lick up out of every
+ * It catches in a window of a floor low down, and spreads from there the
+ * way fire goes through a building: along that floor of that tile first,
+ * window by window, then on at once to the same floor of the tiles next to
+ * it and the floor over it, and on from each of those the same way - up
+ * and across, down only slowly - till every window of it is ablaze
+ * (Blaze). Flames lick up out of every
  * window that is (FireRenderer), from a white-hot root to orange and red
  * tongues, flickering, bright whatever the light and lighting what is round
  * them after dark; the wall over each is blackened with soot as it burns;
@@ -60,15 +63,16 @@ var PER_PIXEL = Config.tileZStep / 8,
   TILE = Config.tileSize;
 
 //how high a floor is, pixels; how long a window takes from catching to
-//ablaze, hours; how long the fire takes to go up a floor, down one, and
-//along one past a window's width (STRIDE pixels), hours - and how late, at
-//the most, the last window catches
+//ablaze, hours; how long the fire takes to go from a floor of a tile to the
+//one over it, the one under it, and the same floor of the tile next to it,
+//hours; along a floor of a tile, a tile's width, at the most - and how late,
+//at the most, the last window catches
 var STOREY = 13,
   FLARE = 0.9,
-  UP = 0.5,
-  DOWN = 1.1,
-  STRIDE = 14,
-  ALONG = 0.4,
+  UP = 0.6,
+  DOWN = 1.3,
+  ACROSS = 0.65,
+  FILLS = 0.5,
   LATEST = 5.4;
 
 //how often the buildings on fire are looked for afresh, ms
@@ -519,8 +523,11 @@ function gather(self, dt) {
         y: w.y,
         z: w.z,
         roof: w.roof === true,
-        //across the screen from the middle of what it is on
-        across: w.x - r.pivotX,
+        //the tile it is on - the building's, for one drawn whole
+        tile:
+          child.gameObject.tile !== undefined
+            ? child.gameObject.tile
+            : self.model.tile,
         floor: Math.max(0, Math.round(w.z / STOREY)),
       });
     });
@@ -540,6 +547,32 @@ function gather(self, dt) {
     pool = low.length > 0 ? low : out,
     first = pool[Math.floor(hash(pool.length, 3, self.seed) * pool.length)];
 
+  //each floor of each tile, when the fire gets to it: from the first, a
+  //tile across and a floor up or down at a time (ACROSS, UP, DOWN) - and
+  //where along it, the nearest window of it to where it caught
+  var fx = Terrain.extractX(first.tile),
+    fy = Terrain.extractY(first.tile),
+    at = worldOf(first),
+    cells = {};
+
+  out.forEach(function (w) {
+    var p = worldOf(w),
+      key = w.tile + ":" + w.floor,
+      floors = w.floor - first.floor,
+      tiles =
+        Math.abs(Terrain.extractX(w.tile) - fx) +
+        Math.abs(Terrain.extractY(w.tile) - fy),
+      //how far it is from where it caught, across the ground, tiles
+      off = (w.off = Math.hypot(p[0] - at[0], p[2] - at[2]) / TILE);
+
+    if (cells[key] === undefined)
+      cells[key] = {
+        at: (floors > 0 ? UP : DOWN) * Math.abs(floors) + ACROSS * tiles,
+        from: off,
+      };
+    else cells[key].from = Math.min(cells[key].from, off);
+  });
+
   out.forEach(function (w, i) {
     w.seed = Math.floor(hash(i, 5, self.seed) * 1e6);
 
@@ -548,12 +581,10 @@ function gather(self, dt) {
       return;
     }
 
-    var floors = w.floor - first.floor,
-      t =
-        (floors > 0 ? UP : DOWN) * Math.abs(floors) +
-        (Math.abs(w.across - first.across) / STRIDE) * ALONG +
-        0.15 +
-        0.6 * hash(i, 7, self.seed);
+    //along its floor from where the fire got into it, window by window
+    var cell = cells[w.tile + ":" + w.floor],
+      along = Math.min(FILLS, (w.off - cell.from) * FILLS),
+      t = cell.at + along + 0.05 + 0.25 * hash(i, 7, self.seed);
 
     w.catches =
       Math.min(LATEST + 0.4 * hash(i, 9, self.seed), t) +
@@ -768,22 +799,26 @@ function plume(self, share, high, dt) {
 }
 
 /**
- * Down it comes: what it looks like stood up in its place and brought down
- * a tile at a time, floor onto floor - no fence, and no heaps of rubble but
- * what is left of it (client/demolition) - its view hidden meanwhile, the
- * ruin coming up under the dust; the core told.
+ * Burnt out, it goes the way what it is built of goes (client/ruin kindOf,
+ * core/burning): gutted to its frame, it stands, roof and all; its walls
+ * standing, its roof falls in, in a burst of sparks (roofFalls); fallen in,
+ * down it comes - what it looks like stood up in its place and brought down
+ * a tile at a time, floor onto floor, no fence, and no heaps of rubble but
+ * what is left of it (client/demolition), its view hidden meanwhile, the
+ * ruin coming up under the dust. The core told, either way.
  */
 Blaze.prototype.fall = function () {
   var self = this,
     view = this.building.view,
-    //it falls in, or stands a shell, its roof fallen in (client/ruin)
-    falls = Ruin.fallsIn(this.building.staticData, this.model.tile);
+    //it falls in; or stands, its roof fallen in; or stands gutted, its
+    //roof on it - by what it is built of (client/ruin, core/burning)
+    kind = Ruin.kindOf(this.model);
 
   this.down = true;
 
-  if (!falls) {
+  if (kind !== "b") {
     this.model.burn(this.model.fire + CoreBuilding.BURNS);
-    roofFalls(this);
+    if (kind === "s") roofFalls(this);
     return;
   }
 

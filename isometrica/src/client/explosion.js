@@ -8,7 +8,6 @@ import Collapse from "./collapse";
 import Felling from "./felling";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
-import BuildingClassCode from "../data/classcode";
 import { changed } from "./looks";
 
 /**
@@ -28,9 +27,8 @@ import { changed } from "./looks";
  * while after (client/fires). Its yard, its car park, its playground, a
  * park, all of it, is the wreck of itself in the dust.
  *
- * And a cloud of dust rolls out of it over everything round it, and down
- * the streets from it a road at a time, hanging over all of it a long
- * while (SmokeScript cloud) - while whatever the blast took the health out
+ * And a cloud of dust rolls out of it over everything round it, hanging
+ * there a long while (SmokeScript cloud) - while whatever the blast took the health out
  * of round it comes down too, the nearest first (client/buildman explode).
  *
  * Turned round, it is down at once, and the rubble there. None of it is
@@ -77,16 +75,10 @@ var FIRE_EACH = 6,
   FIRE_MIDDLE = 8,
   MOST_PUFFS = 220;
 
-//the dust: puffs of it rolling out of every tile of it, how fast; down the
-//streets from it, how many tiles along them at the most, how long it takes
-//to roll a tile further, ms, how fast it rolls to begin with and how many
-//puffs of it over every tile it gets to
-var RING_EACH = 7,
-  RING = [26, 64],
-  STREETS = 9,
-  STREET_MS = 150,
-  ROLL = [20, 36],
-  STREET_PUFFS = 2;
+//the dust: puffs of it rolling out of every tile of it, and how fast - to
+//hang round where it stood, not off across the city
+var RING_EACH = 5,
+  RING = [14, 36];
 
 /**
  * A building about to go up, from where it stands: what it looks like
@@ -114,8 +106,6 @@ function Explosion(root, building, tiles, yards) {
   this.chunked = 0;
   this.most = MOST;
   this.puffs = 0;
-  //the dust rolling down the streets, still to come: {at, tile, from}
-  this.waves = [];
   //the trees it knocks over, still to go: {at, tile, push, letGo}
   this.trees = [];
   //the middle of it, in the world
@@ -207,7 +197,6 @@ Explosion.prototype.stop = function () {
     if (c.go.world !== null) c.go.world.removeGameObject(c.go);
   });
   this.chunks = [];
-  this.waves = [];
   this.trees.forEach(function (t) {
     if (!t.gone) t.letGo(t.push);
     lying(this, t.tile, 1);
@@ -280,17 +269,13 @@ ExplosionScript.prototype.tick = function (time) {
   if (self.state === "fuse") {
     fuse(self, dt);
     if (self.t >= FUSE_MS) blast(self);
-  } else if (self.state === "blown") {
-    roll(self);
-    trees(self);
-  }
+  } else if (self.state === "blown") trees(self);
 
   P.flyOn(self, dt);
 
   if (
     self.state === "blown" &&
     self.chunks.length === 0 &&
-    self.waves.length === 0 &&
     self.trees.length === 0 &&
     self.collapse.over()
   )
@@ -335,8 +320,7 @@ function fuse(self, dt) {
 /**
  * It goes up: a fireball bursting out of it, pieces of it torn off every
  * floor of every tile and flung out and up - what is left of it blackened,
- * to come down after (client/collapse) - and the dust rolling out of it
- * and down the streets.
+ * to come down after (client/collapse) - and the dust rolling out of it.
  */
 function blast(self) {
   var g = self.go.transform.getPosition([0, 0, 0]),
@@ -401,7 +385,6 @@ function blast(self) {
     );
 
   ring(self);
-  self.waves = streets(self);
 
   changed();
 }
@@ -432,97 +415,6 @@ function ring(self) {
         Math.sin(a) * v,
       );
     }
-  });
-}
-
-/**
- * The roads the dust rolls down from it: every tile of road next to it,
- * and the road on from those a tile at a time, STREETS at most - when the
- * dust gets to each (at, ms after it goes up), and from which tile: {at,
- * tile, from, step}.
- */
-function streets(self) {
-  var service = self.root.core.buildingService,
-    seen = {},
-    queue = [],
-    out = [];
-
-  function road(t) {
-    var b = service.get(t);
-
-    return b !== null && b.data.classCode === BuildingClassCode.road;
-  }
-
-  self.tiles.forEach(function (t) {
-    seen[t] = true;
-  });
-
-  self.tiles.forEach(function (t) {
-    for (var dx = -1; dx <= 1; dx++)
-      for (var dy = -1; dy <= 1; dy++) {
-        var n = t + dx + dy * Terrain.dy;
-
-        if (seen[n] || !road(n)) continue;
-        seen[n] = true;
-        queue.push({ tile: n, from: t, step: 0 });
-      }
-  });
-
-  for (var i = 0; i < queue.length; i++) {
-    var q = queue[i];
-
-    out.push({
-      at: q.step * STREET_MS,
-      tile: q.tile,
-      from: q.from,
-      step: q.step,
-    });
-
-    if (q.step >= STREETS) continue;
-
-    [1, -1, Terrain.dy, -Terrain.dy].forEach(function (d) {
-      var n = q.tile + d;
-
-      if (seen[n] || !road(n)) return;
-      seen[n] = true;
-      queue.push({ tile: n, from: q.tile, step: q.step + 1 });
-    });
-  }
-
-  return out;
-}
-
-//the dust rolling down the streets, as it gets to each tile of them -
-//rolling on the way it came, slower the further it has rolled
-function roll(self) {
-  var world = self.root.game.logic.world;
-
-  self.waves = self.waves.filter(function (w) {
-    if (self.t < w.at) return true;
-
-    var x = Terrain.extractX(w.tile),
-      y = Terrain.extractY(w.tile),
-      dx = x - Terrain.extractX(w.from),
-      dy = y - Terrain.extractY(w.from),
-      l = Math.hypot(dx, dy) || 1,
-      slow = 1 - w.step / (STREETS + 3),
-      ground = groundAt(self, x, y);
-
-    for (var k = 0; k < STREET_PUFFS; k++) {
-      var v = (ROLL[0] + Math.random() * (ROLL[1] - ROLL[0])) * slow;
-
-      SmokeSource.puff(
-        world,
-        (x + (Math.random() - 0.5) * 0.6) * TILE,
-        ground + 1 + Math.random() * 8,
-        (y + (Math.random() - 0.5) * 0.6) * TILE,
-        SmokeScript.cloud,
-        (dx / l) * v + (Math.random() - 0.5) * 6,
-        (dy / l) * v + (Math.random() - 0.5) * 6,
-      );
-    }
-
-    return false;
   });
 }
 

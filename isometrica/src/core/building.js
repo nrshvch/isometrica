@@ -10,6 +10,7 @@ import Resources from "./resources";
 import Resource from "./resourcecode";
 import Events from "events";
 import VTime from "./vtime";
+import Burning from "./burning";
 /**
  * @type {BuildingClassCode}
  */
@@ -289,6 +290,26 @@ function hazards(self, hours) {
 }
 
 /**
+ * Whether, gutted by fire to its frame of concrete, it comes down now - as
+ * a building of it may some hours after (core/burning collapsesAt): the
+ * city brings it down (City#collapse).
+ *
+ * @returns {boolean} whether it came down
+ */
+function fallsLater(self) {
+  if (self._state !== BuildingState.ruin) return false;
+
+  var at = Burning.collapsesAt(self),
+    city = self.getCity();
+
+  if (at === null || city === null || self.world.time.now < at) return false;
+
+  city.collapse(self);
+
+  return true;
+}
+
+/**
  * Put back on fire as a save has it, set at at - burning still, or burnt
  * down by now.
  */
@@ -480,6 +501,7 @@ function onTick(sender, args, self) {
   self.burn(self.world.time.now);
   //come down by itself: gone
   if (hazards(self, VTime.millisecondsPerTick / HOUR)) return;
+  if (fallsLater(self)) return;
 
   //coming down: nothing made, nothing wanted
   if (self.demolishing) {

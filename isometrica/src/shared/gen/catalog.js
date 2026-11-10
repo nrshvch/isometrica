@@ -346,16 +346,17 @@ export function createPainter(loadPixels) {
         //a part of a building open on a side of its tile, its rooms
         //showing - "@o" and which sides after its key (isobox setOpen) -
         //or run down, "@w" and how (isobox setWorn)
-        var variant = /@([owsbc])(\d+)$/.exec(spec.key),
+        var variant = /@([owsbck])(\d+)$/.exec(spec.key),
           key = variant ? spec.key.slice(0, variant.index) : spec.key;
 
         iso.setView(spec.view);
         if (look !== null) iso.setMode(look);
         if (variant && variant[1] === "o") iso.setOpen(+variant[2]);
         if (variant && variant[1] === "w") iso.setWorn(+variant[2]);
-        //or a ruin of itself: "@s" burnt out, "@b" burnt and fallen in,
-        //"@c" fallen in - and how many storeys came down onto it
-        if (variant && "sbc".indexOf(variant[1]) >= 0)
+        //or a ruin of itself: "@k" gutted, its roof on, "@s" burnt out,
+        //"@b" burnt and fallen in, "@c" fallen in - and how many storeys
+        //came down onto it
+        if (variant && "sbck".indexOf(variant[1]) >= 0)
           iso.setRuin(variant[1], +variant[2]);
         try {
           return p.paint(key);

@@ -1,13 +1,17 @@
 import Yards from "./yards";
+import Burning from "../core/burning";
 
 /**
  * What is left of a building burnt down (core/building ruin) or come down
  * (core/city explode, collapse) as it is drawn, tile by tile as it stood
  * (client/compoundbuilding pieces) - painted so by the generators that
  * painted it (shared/gen/isobox setRuin), out of its own boxes, in its own
- * colours, lit as anything is:
+ * colours, lit as anything is - as it burns down by what it is built of
+ * (core/burning outcome):
  *
- *   - burnt out but standing ("s"): every storey of it as it stood, its
+ *   - gutted to its frame ("k"): concrete, every storey of it standing, its
+ *     roof on it, charred black, black holes where its windows were;
+ *   - burnt out, its walls standing ("s"): every storey of it as it stood, its
  *     roof gone, its walls charred, black holes where its windows and doors
  *     were, soot up the wall over them, ash and fallen beams inside;
  *   - burnt and fallen in ("b"): its ground storey's walls broken off any
@@ -34,38 +38,24 @@ var PART = /^([^@#!~]*)(?:@(-?[\d.]+),(-?[\d.]+))?/;
 //(shared/gen/stacking kindOf)
 var STOREYS = { ground: true, upper: true };
 
-//how likely a building is to fall in as it burns down, rather than stand a
-//shell: one of timber, more likely, by what it is
-var FALLS_IN = { houses: 0.7, oldtown: 0.6 },
-  FALLS_IN_ELSE = 0.35;
-
-//a number 0..1 for a tile, the same every time
-function hash(tile) {
-  var h = Math.imul(tile | 0, 0x9e3779b1) ^ 0x5bd1e995;
-
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
-
-  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
-}
+//the ruin a building burns down to, by what it burns down to (core/burning
+//outcome): gutted to its frame, its roof on; its walls standing, roofless;
+//fallen in
+var KINDS = { frame: "k", walls: "s", fallen: "b" };
 
 /**
- * Whether a building burnt down falls in ("b") rather than stands a shell
- * ("s") - the same every time for the same building.
+ * The ruin a building burnt down is, by what it was built of (core/burning
+ * outcome): "k" gutted to its frame, "s" its walls standing, "b" fallen in.
  *
- * @param staticData {Object} what it is (data/buildings)
- * @param tile {number} its corner
- * @returns {boolean}
+ * @param model {Building} the core's
+ * @returns {string}
  */
-function fallsIn(staticData, tile) {
-  var gen = staticData && staticData.compound ? staticData.compound.gen : "";
-
-  return (
-    hash(tile) < (FALLS_IN[gen] !== undefined ? FALLS_IN[gen] : FALLS_IN_ELSE)
-  );
+function kindOf(model) {
+  return KINDS[Burning.outcome(model)] || "s";
 }
 
 //the kind of a part, by its name: "ground" for gen/flats/ground/...
-function kindOf(name) {
+function partOf(name) {
   var p = name.split("/");
 
   return p[p[0] === "gen" ? 2 : 1];
@@ -73,8 +63,9 @@ function kindOf(name) {
 
 /**
  * A tile of a building - its parts put together (SpriteCache#getComposite)
- * - as a ruin of itself, kind "s", "b" or "c": burnt out, all of it; fallen
- * in, its ground storey only, as many storeys come down onto it as it had.
+ * - as a ruin of itself, kind "k", "s", "b" or "c": gutted or burnt out,
+ * all of it; fallen in, its ground storey only, as many storeys come down
+ * onto it as it had.
  * Itself, for one whose parts are not painted that way.
  *
  * @returns {CachedSprite}
@@ -91,7 +82,7 @@ function model(sprites, sprite, kind) {
     if (m === null || sprites.frame(m[1]) === undefined) ok = false;
     else {
       parts.push({ name: m[1], x: +(m[2] || 0), y: +(m[3] || 0) });
-      if (STOREYS[kindOf(m[1])]) storeys++;
+      if (STOREYS[partOf(m[1])]) storeys++;
     }
   });
 
@@ -100,11 +91,15 @@ function model(sprites, sprite, kind) {
   var laid = parts
     .filter(function (p, i) {
       //fallen in: what is on the ground of it, the rest come down onto it
-      return kind === "s" || i === 0;
+      return kind === "s" || kind === "k" || i === 0;
     })
     .map(function (p) {
       return {
-        name: sprites.ruinName(p.name, kind, kind === "s" ? 1 : storeys),
+        name: sprites.ruinName(
+          p.name,
+          kind,
+          kind === "s" || kind === "k" ? 1 : storeys,
+        ),
         x: p.x,
         y: p.y,
       };
@@ -120,7 +115,7 @@ function model(sprites, sprite, kind) {
  *
  * @param sprites {SpriteCache}
  * @param pieces {Object[]} as client/compoundbuilding pieces made them
- * @param kind {string} "s", "b" or "c"
+ * @param kind {string} "k", "s", "b" or "c"
  * @returns {Object[]} pieces, the same way
  */
 function pieces(sprites, pieces, kind) {
@@ -156,6 +151,6 @@ export default {
   pieces: pieces,
   model: model,
   whole: whole,
-  fallsIn: fallsIn,
+  kindOf: kindOf,
   KEEP: KEEP,
 };

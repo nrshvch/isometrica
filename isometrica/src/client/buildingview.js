@@ -266,6 +266,10 @@ BuildingView.prototype.setTileOpacity = function (tile, k) {
 var WORN_BLAST = 1,
   WORN_BURNT = 2;
 
+//how charred the rubble of a building burnt out before it came down is
+//(client/burnt c)
+var CHARRED = 80;
+
 //a part of it open where one in front of it is down, not painted yet when
 //it was drawn: drawn again a while after (damaged)
 var RETRY_MS = 400;
@@ -366,8 +370,9 @@ BuildingView.prototype.update = function () {
               at.rotation,
               b.data.tile,
             ),
-            //burnt out and standing, or fallen in
-            Ruin.fallsIn(staticData, b.data.tile) ? "b" : "s",
+            //gutted to its frame, its walls standing, or fallen in - by
+            //what it was built of (core/burning)
+            Ruin.kindOf(b.data),
           ),
           this.opacity,
           undefined,
@@ -507,13 +512,19 @@ function ofCompound(of) {
  * A heap of rubble a building left come down (core/city/citybuildings
  * leaveRubble): the tile of it as it would be drawn there, come down - the
  * rubble of what it was built of, as high as there were storeys of it on
- * that tile (client/ruin model "c").
+ * that tile (client/ruin model "c") - charred, if it burnt out first.
  *
- * @param of {{code: number, tile: number, rotation: number, look: Object}}
+ * @param of {{code: number, tile: number, rotation: number, look: Object,
+ *        burnt: boolean}}
  */
 function drawRubbleOf(self, of, tile) {
   drawPieceOf(self, of, tile, function (p) {
-    return Ruin.model(vkaria.sprites, p.sprite, "c");
+    var heap = Ruin.model(vkaria.sprites, p.sprite, "c");
+
+    //burnt out before it came down: charred black
+    return of.burnt
+      ? vkaria.sprites.burnt(heap, "c:" + (of.tile % 100000) + ":" + CHARRED)
+      : heap;
   });
 }
 
@@ -591,6 +602,12 @@ function drawFallen(self, fallen, tile) {
     name = Trees.turned(spriteData.path, turns) + "/" + seen + "/3";
 
   if (seen === undefined || !vkaria.sprites.has(name)) return;
+
+  //only the picture wanted, as it would be seen from another side
+  if (collecting !== null) {
+    collect(vkaria.sprites.getSprite(name));
+    return;
+  }
 
   var renderer = new engine.SpriteRenderer(),
     go = new engine.GameObject();

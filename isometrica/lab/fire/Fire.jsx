@@ -1,9 +1,11 @@
 /**
  * The fire bench's page (scene.js): one building on flat grass, a road along
  * its front and a few trees about it, set on fire the way the game sets one
- * on fire - catching in a window low down, the fire spreading window by
- * window, floor by floor, black smoke rolling up off it, till it comes down
- * and what is left of it burns on and smoulders, a burnt-out ruin - over a
+ * on fire - catching in a window low down, the fire spreading along that
+ * floor of that tile, then to the next tile and the floor over it, black
+ * smoke rolling up off it, till it is burnt out - gutted, its walls
+ * standing or fallen in, by what it is built of - and what is left of it
+ * burns on and smoulders, a burnt-out ruin - over a
  * day of the game's time, as fast as wanted, by day or at night, turned
  * round or from above; and put up again.
  */
@@ -168,10 +170,15 @@ export default function Fire() {
           <Note>
             One building on a patch of flat grass, a road along its front and a
             few trees about it, set on fire the way the game sets one on fire:
-            it catches in a window low down and spreads window by window, up
-            faster than down, black smoke rolling up off it - thicker as more of
-            it burns - till it comes down, seven hours on, and what is left of
-            it burns on and smoulders, a burnt-out ruin by the end of the day.
+            it catches in a window low down and spreads along that floor of that
+            tile, then on to the same floor of the next tile and to the floor
+            over it, and so on - down only slowly - black smoke rolling up off
+            it, thicker as more of it burns, till it is burnt out, seven hours
+            on: a block on a frame of concrete gutted, roof and all, and likely
+            to come down some hours after; one of brick or stone its walls
+            standing, roofless; one of timber, or a house of two storeys under a
+            roof of tiles, fallen in. What is left of it burns on and smoulders,
+            a burnt-out ruin by the end of the day.
           </Note>
 
           <Section title="What stands">

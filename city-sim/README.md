@@ -135,8 +135,7 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   after another, floor onto floor (`isometrica/src/client/explosion.js`,
   `isometrica/src/client/collapse.js`). Any building at all - a church, a
   water tower, the town hall. A cloud of dust rolls out of it over
-  everything round it and down the streets from it, a road at a time, and
-  hangs there a long while. The blast comes off the building itself, not
+  everything round it and hangs there a while. The blast comes off the building itself, not
   its yard, and hits a building round it a part at a time - a tile of what
   is the building, not its yard (`isometrica/src/core/city.js` blast, hit):
   a part next to it or across a road from it comes down, a moment later, the
@@ -169,7 +168,10 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   walls broken off, in its own colours, round a heap of what it was built
   of, as high as there were storeys of it on that tile - its floors fallen
   in on each other where it was concrete, beams across it - and the same
-  for a part of a building a blast took down, in its place.
+  for a part of a building a blast took down, in its place. Where it stood
+  on a frame of concrete, a block of three storeys or more, the broken
+  stumps of its columns stand up out of the heap, the steel in them
+  sticking out.
 - Every building has its health, shown as a bar on its card, and how
   many of its parts still stand (`isometrica/src/core/building.js`
   getHealth, down): knocked out of it by a blast near it, burning away as
@@ -182,7 +184,10 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 - A tile of a building that comes down before the one behind it - a
   bulldozer at it, a blast, a fire - leaves that one open on its side:
   empty rooms where the wall between them was, a bare concrete floor to
-  every storey, plastered walls, a wall across where it is wide. Painted
+  every storey, plastered walls, a wall across where it is wide - and its
+  windows on the walls left, from inside and out, panes of glass seen
+  through, every other pixel of them glass; a building all of glass, an
+  open floor inside glass walls seen through all round. Painted
   as the building is, not drawn over it: the generators paint a part open
   on a side of its tile, its storeys hollow and the wall on that side gone
   (`isometrica/src/shared/gen/isobox.js` setOpen, `@o` after its key), and
@@ -197,8 +202,11 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   most of a day of the game's time (`isometrica/src/client/fires.js`) -
   the building only: its yard, its car park, its playground, the cars on
   it, are as they were all through. It catches in a window of a floor low
-  down, glowing within, and the fire spreads window by window - up faster
-  than down, slower along a floor - and out of every window ablaze the
+  down, glowing within, and the fire spreads the way it goes through a
+  building: along that floor of that tile first, window by window, then on
+  at once to the same floor of the tiles next to it and to the floor over
+  it, and on from each of those the same way - down only slowly - and out
+  of every window ablaze the
   flames lick up, a storey and more as it takes hold, white-hot at their
   roots through yellow and orange to red tongues; where the flames of one
   window run into the next, up the wall from floor to floor and along it,
@@ -209,15 +217,25 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   off the way the wind blows high up, a stream of it across the sky over
   the city (`isometrica/src/shared/gen/smoke.js` plume). After dark the
   fire lights the ground round it and the smoke over it. Seven hours on
-  it is burnt out: one built of timber more likely falls in, floor onto
-  floor in a cloud of dust and smoke; one of brick or concrete more likely
-  stands, its roof fallen in in a burst of sparks. What is left of it is
+  it is burnt out, and what is left of it goes by what it was built of
+  (`isometrica/src/core/burning.js`): a block of flats or offices, a
+  department store, the waterworks - a frame of concrete - is gutted, its
+  frame and floors and roof standing, charred black, black holes where its
+  windows were; and some hours later, most likely, it gives and comes down
+  of itself, floor onto floor, to charred rubble and the broken stumps of
+  its columns. A bungalow, a shop, a supermarket, a mall, a church, the
+  town hall - walls of brick or stone under a roof of timber or steel -
+  stands, its roof fallen in in a burst of sparks. A cottage, a farm, the
+  old town's houses, and a house of two storeys under a pitched roof of
+  tiles fall in, roof and floors, floor onto floor in a cloud of dust and
+  smoke. Most of a kind go its way, a few another. What is left of it is
   painted so out of its own model (`isometrica/src/shared/gen/isobox.js`
-  setRuin, `isometrica/src/client/ruin.js`): standing, every storey of it
-  roofless, charred, darker up it, black holes where its windows and doors
-  were with soot up the wall over them, ash and fallen beams inside;
-  fallen in, its ground floor's walls broken off any height up to a storey
-  or so round a heap of charred beams and rubble. It burns on among them,
+  setRuin, `isometrica/src/client/ruin.js`): gutted, all of it there,
+  roof and all; standing, every storey of it roofless, charred, darker up
+  it, black holes where its windows and doors were with soot up the wall
+  over them, ash and fallen beams inside; fallen in, its ground floor's
+  walls broken off any height up to a storey or so round a heap of
+  charred beams and rubble. It burns on among them,
   the smoke thinning, then smoulders, embers glowing, and by the end of the
   day is a cold ruin, there till it is cleared. It is out of service from
   the moment it catches - no one lives or works in it, nothing is made of

@@ -438,6 +438,8 @@ function cast(boxes, sx, sy) {
   for (i = 0; i < boxes.length; i++) {
     b = boxes[i];
     if (sx < b.sMinX || sx > b.sMaxX || sy < b.sMinY || sy > b.sMaxY) continue;
+    //glass to be seen through (see): every other pixel of it not there
+    if (b.see && (Math.floor(sx) + Math.floor(sy)) & 1) continue;
 
     tin = b.x0 - x;
     f = 0;
@@ -1251,9 +1253,17 @@ var WALL = 2,
 var FLOOR = [146, 142, 134],
   PLASTER = [208, 202, 192];
 
-//whether a colour is leaves, grass - a tree's crown is not a room
-function green(c) {
-  return c !== undefined && c[1] > c[0] + 18 && c[1] > c[2] + 18;
+//whether a box is leaves, grass - a tree's crown is not a room - by its
+//colour: not green glass, which shines
+function green(b) {
+  var c = b.color;
+
+  return (
+    c !== undefined &&
+    !(b.finish !== undefined && b.finish.sheen) &&
+    c[1] > c[0] + 18 &&
+    c[1] > c[2] + 18
+  );
 }
 
 /**
@@ -1263,12 +1273,16 @@ function green(c) {
  * was on it, its walls on the other sides, its floor and its ceiling left;
  * and in it empty rooms, a bare floor, plastered walls, a wall across it
  * where it is wide, a floor between storeys where it is more than one high.
+ * Its windows, on the walls left, panes of glass to be seen through, from
+ * inside and out (see) - a hole through the wall, every other pixel of it
+ * glass; a wall all of glass, a curtain wall, the same all over, nothing
+ * plastered behind it.
  */
 function hollow(boxes, sides) {
   var rooms = [];
 
   boxes.forEach(function (b) {
-    if ((b.cuts !== undefined && b.cuts.length > 0) || green(b.color)) return;
+    if ((b.cuts !== undefined && b.cuts.length > 0) || green(b)) return;
     if (b.x1 - b.x0 < ROOMY || b.y1 - b.y0 < ROOMY || b.z1 - b.z0 < ROOMY)
       return;
 
@@ -1279,6 +1293,7 @@ function hollow(boxes, sides) {
 
     var r = {
       b: b,
+      glass: glassy(b),
       openX: openX,
       openY: openY,
       x0: openX ? -1 : b.x0 + WALL,
@@ -1312,11 +1327,97 @@ function hollow(boxes, sides) {
       });
       pieces = left;
     });
+
+    //a curtain wall: what is left of it, its walls, glass seen through
+    rooms.forEach(function (r) {
+      if (r.b === b && r.glass)
+        pieces.forEach(function (p) {
+          if (p.z1 - p.z0 > SLAB + CEIL + 1)
+            p.finish = Object.assign({}, p.finish || {}, { see: true });
+        });
+    });
     out = out.concat(pieces);
   });
 
   rooms.forEach(function (r) {
     out = out.concat(inside(r));
+  });
+
+  //its windows, holes through its walls, panes in them seen through
+  var panes = [];
+
+  rooms.forEach(function (r) {
+    if (r.glass) return;
+    windowsOf(r, boxes).forEach(function (w) {
+      var left = [];
+
+      out.forEach(function (p) {
+        left = left.concat(subtract(p, w.hole));
+      });
+      out = left;
+      panes.push(w.pane);
+    });
+  });
+
+  return out.concat(panes);
+}
+
+//the windows on the walls left of a room opened up (hollow): each the hole
+//it is through its wall, and the pane of glass in it, seen through
+function windowsOf(r, boxes) {
+  var b = r.b,
+    y0 = Math.max(r.y0, b.y0),
+    x0 = Math.max(r.x0, b.x0),
+    out = [];
+
+  boxes.forEach(function (g) {
+    if (g === b || !glassy(g)) return;
+
+    var z0 = Math.max(g.z0, r.z0),
+      z1 = Math.min(g.z1, r.z1),
+      thinX = g.x1 - g.x0 <= 1.5,
+      thinY = g.y1 - g.y0 <= 1.5,
+      hole = null;
+
+    if (z1 - z0 < 1) return;
+
+    //on a wall along y: at its back, or at its front where it is not open
+    if (thinX && g.y1 > y0 && g.y0 < r.y1) {
+      var ya = Math.max(g.y0, y0),
+        yb = Math.min(g.y1, r.y1);
+
+      if (g.x0 >= b.x1 - WALL && g.x0 <= b.x1 + 0.5)
+        hole = [r.x1 - 0.01, Math.max(b.x1, g.x1) + 0.01, ya, yb];
+      else if (!r.openX && g.x1 <= b.x0 + WALL && g.x1 >= b.x0 - 0.5)
+        hole = [Math.min(b.x0, g.x0) - 0.01, r.x0 + 0.01, ya, yb];
+    }
+
+    //on a wall along x
+    if (hole === null && thinY && g.x1 > x0 && g.x0 < r.x1) {
+      var xa = Math.max(g.x0, x0),
+        xb = Math.min(g.x1, r.x1);
+
+      if (g.y0 >= b.y1 - WALL && g.y0 <= b.y1 + 0.5)
+        hole = [xa, xb, r.y1 - 0.01, Math.max(b.y1, g.y1) + 0.01];
+      else if (!r.openY && g.y1 <= b.y0 + WALL && g.y1 >= b.y0 - 0.5)
+        hole = [xa, xb, Math.min(b.y0, g.y0) - 0.01, r.y0 + 0.01];
+    }
+
+    if (hole === null || hole[0] >= hole[1] || hole[2] >= hole[3]) return;
+
+    out.push({
+      hole: {
+        x0: hole[0],
+        x1: hole[1],
+        y0: hole[2],
+        y1: hole[3],
+        z0: z0,
+        z1: z1,
+      },
+      pane: box(hole[0], hole[1], hole[2], hole[3], z0, z1, g.color, {
+        see: true,
+      }),
+    });
   });
 
   return out;
@@ -1369,12 +1470,22 @@ function inside(r) {
     out = [
       box(x0, r.x1, y0, r.y1, b.z0, r.z0, FLOOR),
       box(x0, r.x1, y0, r.y1, r.z1, b.z1, FLOOR),
-      //the walls it is seen to have: at its back, and along its far side
-      box(r.x1, r.x1 + 1, y0, r.y1, r.z0, r.z1, PLASTER),
-      box(x0, r.x1, r.y1, r.y1 + 1, r.z0, r.z1, PLASTER),
     ],
     z,
     c;
+
+  //the walls it is seen to have: at its back, and along its far side - but
+  //in glass, an open floor, glass round it
+  if (r.glass) {
+    for (z = b.z0 + STOREY_Z; z + SLAB < r.z1 - 3; z += STOREY_Z)
+      out.push(box(x0, r.x1, y0, r.y1, z, z + SLAB, FLOOR));
+    return out;
+  }
+
+  out.push(
+    box(r.x1, r.x1 + 1, y0, r.y1, r.z0, r.z1, PLASTER),
+    box(x0, r.x1, r.y1, r.y1 + 1, r.z0, r.z1, PLASTER),
+  );
 
   for (z = b.z0 + STOREY_Z; z + SLAB < r.z1 - 3; z += STOREY_Z)
     out.push(box(x0, r.x1, y0, r.y1, z, z + SLAB, FLOOR));
@@ -1477,7 +1588,7 @@ function rundown(boxes, kind) {
     if (kind === 2 && c.finish.sheen) c.finish.sheen = false;
 
     if (ground) {
-      if (green(b.color))
+      if (green(b))
         c.color = mix(b.color, kind === 2 ? BURNT_GRASS : DRY_GRASS, 0.55);
       else if (blue(b.color)) c.color = mix(b.color, MURK, 0.6);
       out.push(c);
@@ -1485,7 +1596,7 @@ function rundown(boxes, kind) {
     }
 
     //a tree's crown: a few dried leaves left, or none, burnt
-    if (green(b.color)) {
+    if (green(b)) {
       if (h < (kind === 2 ? 0.05 : 0.16)) {
         c.color = mix(b.color, kind === 2 ? CHARRED : DRIED, 0.85);
         out.push(c);
@@ -1552,15 +1663,18 @@ function copy(b) {
 
 /* --- Ruins ----------------------------------------------------------- */
 
-//what is painted next as a ruin (setRuin): "s" burnt out and standing, "b"
-//burnt and fallen in, "c" fallen in, rubble - null as it is; and how many
+//what is painted next as a ruin (setRuin): "k" gutted, its frame standing
+//and its roof on, "s" burnt out and standing, "b" burnt and fallen in, "c"
+//fallen in, rubble - null as it is; and how many
 //storeys of it came down onto what is painted, for how high its heap is
 var ruin = null,
   ruinStoreys = 0;
 
 /**
  * Has what is painted next (render) a ruin of itself - a part of a building
- * burnt down or come down (client/ruin, client/buildingview): "s" its
+ * burnt down or come down (client/ruin, client/buildingview): "k" gutted,
+ * concrete that stands, its roof on, every storey of it charred black, black
+ * holes where its windows were, soot up the wall over them; "s" its
  * shell, burnt out but standing, no roof, black holes where its windows and
  * doors were; "b" burnt and fallen in, its walls broken off about a storey
  * up and a heap of charred beams and rubble in them; "c" come down, the
@@ -1629,15 +1743,9 @@ function touches(b, m) {
  * it, a garden, a fence, left as it was.
  */
 function ruined(boxes, kind, storeys) {
-  var masses = boxes.filter(function (b) {
-    return (
-      (b.cuts === undefined || b.cuts.length === 0) &&
-      !green(b.color) &&
-      b.x1 - b.x0 >= ROOMY &&
-      b.y1 - b.y0 >= ROOMY &&
-      b.z1 - b.z0 >= ROOMY - 2
-    );
-  });
+  if (kind === "k") return gutted(boxes);
+
+  var masses = massesOf(boxes);
 
   //no building on it: a roof laid on one (gone), or what is round one
   if (masses.length === 0)
@@ -1659,15 +1767,19 @@ function ruined(boxes, kind, storeys) {
     seed = (seed + Math.round(m.x0 * 7 + m.y1 * 13 + m.z0 * 3)) | 0;
   });
 
-  //how high what is left of it stands, here: all of it, or a stub
+  //how high what is left of it stands, here: all of it; burnt and fallen
+  //in, the stub of its walls, up to a storey or so; knocked down, next to
+  //nothing of them, but here and there a corner, a pier
   function cap(x, y, m) {
     if (!fallen) return Infinity;
+
+    var n = smooth(x / 3 + 5, y / 3 + 9, seed & 1023),
+      stub = Math.min(m.z1 - m.z0, STUB);
 
     return (
       m.z0 +
       SLAB +
-      Math.min(m.z1 - m.z0, STUB) *
-        (0.3 + 0.7 * smooth(x / 3 + 5, y / 3 + 9, seed & 1023))
+      stub * (burnt ? 0.3 + 0.7 * n : n > 0.78 ? 0.55 : 0.05 + 0.25 * n)
     );
   }
 
@@ -1679,9 +1791,15 @@ function ruined(boxes, kind, storeys) {
     return null;
   }
 
-  //what it was built of, for its heap
+  //what it was built of, for its heap - not its glass, its doors
   boxes.forEach(function (b) {
-    if (b.color !== undefined && !green(b.color) && on(b) !== null)
+    if (
+      b.color !== undefined &&
+      !green(b) &&
+      !glassy(b) &&
+      !doorish(b) &&
+      on(b) !== null
+    )
       colours.push(b.color);
   });
 
@@ -1701,7 +1819,7 @@ function ruined(boxes, kind, storeys) {
       return;
 
     //its plants: burnt away, or as they were
-    if (green(b.color)) {
+    if (green(b)) {
       if (!burnt) out.push(b);
       return;
     }
@@ -1815,8 +1933,86 @@ function ruined(boxes, kind, storeys) {
   return shell;
 }
 
-//the soot over a window or a door of a shell burnt out (ruined): a stain up
-//the wall from it, a step proud of it, a few pixels up
+//of the boxes of a part, the ones that are its building: big enough to be
+//rooms - the storeys of a block, the body of a house
+function massesOf(boxes) {
+  return boxes.filter(function (b) {
+    return (
+      (b.cuts === undefined || b.cuts.length === 0) &&
+      !green(b) &&
+      b.x1 - b.x0 >= ROOMY &&
+      b.y1 - b.y0 >= ROOMY &&
+      b.z1 - b.z0 >= ROOMY - 2
+    );
+  });
+}
+
+/**
+ * The boxes of a part of a building gutted by fire (setRuin "k"): concrete
+ * - its frame, its floors, its roof - that stood it, all of it there, but
+ * charred black, the more the higher up, and where its windows were, black
+ * holes, the soot the fire left coming out of them up the wall over them.
+ * Its plants burnt away. What is round it, a garden, a fence, as it was; a
+ * roof laid on one, charred.
+ */
+function gutted(boxes) {
+  var masses = massesOf(boxes),
+    roof =
+      masses.length === 0 &&
+      boxes.every(function (b) {
+        return b.z0 >= 4;
+      }),
+    top = -Infinity,
+    base = Infinity,
+    out = [];
+
+  if (masses.length === 0 && !roof) return boxes;
+
+  masses.forEach(function (m) {
+    top = Math.max(top, m.z1);
+    base = Math.min(base, m.z0);
+  });
+
+  boxes.forEach(function (b) {
+    var on =
+      roof ||
+      (b.z1 > base + 0.5 &&
+        masses.some(function (m) {
+          return touches(b, m);
+        }));
+
+    //round it, and the ground it stands on: as it was
+    if (!on) {
+      out.push(b);
+      return;
+    }
+
+    if (green(b)) return;
+
+    var c = copy(b);
+
+    c.finish = Object.assign({}, b.finish || {}, { worn: 2, sheen: false });
+
+    if (glassy(b) || doorish(b)) {
+      c.color = HOLE;
+      c.finish = undefined;
+      out.push(c);
+      if (!roof) out.push(soot(b, top));
+      return;
+    }
+
+    //charred, the more the higher up - the roof most of all
+    var up = roof ? 1 : Math.min(1, (b.z0 - base) / 30);
+
+    c.color = mix(b.color, CHARRED, 0.1 + 0.25 * up);
+    out.push(c);
+  });
+
+  return out;
+}
+
+//the soot over a window or a door of a shell burnt out (ruined, gutted): a
+//stain up the wall from it, proud of it, a few pixels up
 function soot(b, top) {
   var thinX = b.x1 - b.x0 < b.y1 - b.y0,
     up = Math.min(top - b.z1, 5),
@@ -1826,8 +2022,14 @@ function soot(b, top) {
   stain.z1 = b.z1 + Math.max(1, up);
   stain.color = CHAR_BLACK;
   stain.finish = { worn: 2 };
-  if (thinX) stain.x0 = stain.x1 - 0.5;
-  else stain.y0 = stain.y1 - 0.5;
+  //proud of the wall, whichever face of it the window is on
+  if (thinX) {
+    stain.x0 = b.x0 - 0.25;
+    stain.x1 = b.x1 + 0.25;
+  } else {
+    stain.y0 = b.y0 - 0.25;
+    stain.y1 = b.y1 + 0.25;
+  }
 
   return stain;
 }
@@ -1944,6 +2146,32 @@ function heap(r, burnt, storeys, colours, seed) {
         ),
       );
     }
+
+  //a block that stood on a frame of concrete: the stumps of its columns
+  //standing up out of the heap, broken off, the steel in them sticking out
+  if (stone && n >= 3)
+    for (x = r.x0 + 2; x < r.x1 - 1; x += 9)
+      for (y = r.y0 + 2; y < r.y1 - 1; y += 9) {
+        if (hash(x, y, seed + 561) < 0.35) continue;
+
+        var stump =
+            r.z0 + Math.round(high * 0.5 + 3 + 9 * hash(x, y, seed + 563)),
+          grey = burnt ? mix(CONCRETE_GREY, CHARRED, 0.5) : CONCRETE_GREY;
+
+        out.push(box(x, x + 2, y, y + 2, r.z0, stump, grey));
+        if (hash(x, y, seed + 565) < 0.7)
+          out.push(
+            box(
+              x + 0.5,
+              x + 1,
+              y + 0.5,
+              y + 1,
+              stump,
+              stump + 2 + Math.round(3 * hash(x, y, seed + 567)),
+              STEEL,
+            ),
+          );
+      }
 
   //beams across it, out over its walls
   for (i = 0; i < 3 + n; i++) {
@@ -2446,6 +2674,7 @@ function render(boxes) {
       color: b.color,
       finish: b.finish,
       cuts: b.cuts,
+      see: b.finish !== undefined && !!b.finish.see,
       sMinX: r.minX,
       sMaxX: r.maxX,
       sMinY: r.minY,
