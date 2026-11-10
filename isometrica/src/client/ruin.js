@@ -1,109 +1,148 @@
 import Yards from "./yards";
 
 /**
- * A building burnt down as it is drawn (core/building ruin), tile by tile
- * as it stood (client/compoundbuilding pieces): its ground storey only -
- * every part of it laid on the ground - charred, broken off about a storey
- * up and the posts of its frame standing up out of it (client/burnt);
- * whatever was laid higher, its storeys and its roof, gone - drawn as it is
- * painted (getComposite plain): nothing of it is lit any more, and it
- * stands no higher than it does. Its yard, its car park, its garden, as it
- * was but burnt, painted so: the grass black, the trees charred, the
- * asphalt cracked and sooted, ash strewn about (shared/gen/isobox setWorn).
+ * What is left of a building burnt down (core/building ruin) or come down
+ * (core/city explode, collapse) as it is drawn, tile by tile as it stood
+ * (client/compoundbuilding pieces) - painted so by the generators that
+ * painted it (shared/gen/isobox setRuin), out of its own boxes, in its own
+ * colours, lit as anything is:
+ *
+ *   - burnt out but standing ("s"): every storey of it as it stood, its
+ *     roof gone, its walls charred, black holes where its windows and doors
+ *     were, soot up the wall over them, ash and fallen beams inside;
+ *   - burnt and fallen in ("b"): its ground storey's walls broken off any
+ *     height up to a storey or so, and in them a heap of charred beams and
+ *     rubble, as high as there were storeys to come down;
+ *   - come down ("c"): the same, not burnt - the rubble of what it was
+ *     built of, its floors fallen in on each other where it was concrete,
+ *     beams across it.
+ *
+ * Its yard - a car park, a playground, a garden - is as it was: the fire
+ * does not spread to it. A building painted whole, not put together a tile
+ * at a time - a church, a water tower - is its picture burnt down
+ * (client/burnt "r") instead.
  */
 
-//how high its walls stand at the most, pixels - about a storey
+//how high a ruin painted whole stands at the most, pixels - about a storey
 var KEEP = 15;
-
-//how a yard is run down, burnt (shared/gen/isobox setWorn)
-var BURNT = 2;
 
 //a part's name and where it is in the picture, out of the key of what it is
 //put together out of (SpriteCache#getComposite)
-var PART = /^([^@#!~]*)(?:@(-?\d+),(-?\d+))?/;
+var PART = /^([^@#!~]*)(?:@(-?[\d.]+),(-?[\d.]+))?/;
+
+//of the parts of a block of flats or offices, the ones that are its storeys
+//(shared/gen/stacking kindOf)
+var STOREYS = { ground: true, upper: true };
+
+//how likely a building is to fall in as it burns down, rather than stand a
+//shell: one of timber, more likely, by what it is
+var FALLS_IN = { houses: 0.7, oldtown: 0.6 },
+  FALLS_IN_ELSE = 0.35;
+
+//a number 0..1 for a tile, the same every time
+function hash(tile) {
+  var h = Math.imul(tile | 0, 0x9e3779b1) ^ 0x5bd1e995;
+
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+}
+
+/**
+ * Whether a building burnt down falls in ("b") rather than stands a shell
+ * ("s") - the same every time for the same building.
+ *
+ * @param staticData {Object} what it is (data/buildings)
+ * @param tile {number} its corner
+ * @returns {boolean}
+ */
+function fallsIn(staticData, tile) {
+  var gen = staticData && staticData.compound ? staticData.compound.gen : "";
+
+  return (
+    hash(tile) < (FALLS_IN[gen] !== undefined ? FALLS_IN[gen] : FALLS_IN_ELSE)
+  );
+}
+
+//the kind of a part, by its name: "ground" for gen/flats/ground/...
+function kindOf(name) {
+  var p = name.split("/");
+
+  return p[p[0] === "gen" ? 2 : 1];
+}
+
+/**
+ * A tile of a building - its parts put together (SpriteCache#getComposite)
+ * - as a ruin of itself, kind "s", "b" or "c": burnt out, all of it; fallen
+ * in, its ground storey only, as many storeys come down onto it as it had.
+ * Itself, for one whose parts are not painted that way.
+ *
+ * @returns {CachedSprite}
+ */
+function model(sprites, sprite, kind) {
+  var keys = typeof sprite.key === "string" ? sprite.key.split("+") : [],
+    parts = [],
+    storeys = 0,
+    ok = keys.length > 0;
+
+  keys.forEach(function (key) {
+    var m = PART.exec(key);
+
+    if (m === null || sprites.frame(m[1]) === undefined) ok = false;
+    else {
+      parts.push({ name: m[1], x: +(m[2] || 0), y: +(m[3] || 0) });
+      if (STOREYS[kindOf(m[1])]) storeys++;
+    }
+  });
+
+  if (!ok) return sprite;
+
+  var laid = parts
+    .filter(function (p, i) {
+      //fallen in: what is on the ground of it, the rest come down onto it
+      return kind === "s" || i === 0;
+    })
+    .map(function (p) {
+      return {
+        name: sprites.ruinName(p.name, kind, kind === "s" ? 1 : storeys),
+        x: p.x,
+        y: p.y,
+      };
+    });
+
+  return sprites.getComposite(laid);
+}
 
 /**
  * The tiles of what is left of a building, each as a tile of it was drawn
- * standing (client/compoundbuilding pieces) - the same tile, put together
- * out of its parts laid on the ground only, burnt.
+ * standing (client/compoundbuilding pieces) - its yard as it was, the rest
+ * a ruin of itself (model).
  *
  * @param sprites {SpriteCache}
  * @param pieces {Object[]} as client/compoundbuilding pieces made them
- * @param seed {number} the same for the same building every time
+ * @param kind {string} "s", "b" or "c"
  * @returns {Object[]} pieces, the same way
  */
-function pieces(sprites, pieces, seed) {
-  return pieces.map(function (piece, k) {
-    //its yard, its car park, its garden: as it was, burnt - painted so
-    //(shared/gen/isobox setWorn)
-    if (Yards.yardPicture(piece.sprite))
-      return {
-        x: piece.x,
-        z: piece.z,
-        pivotX: piece.pivotX,
-        pivotY: piece.pivotY,
-        overlays: [],
-        sprite: sprites.worn(piece.sprite, BURNT),
-        empty: false,
-      };
+function pieces(sprites, pieces, kind) {
+  return pieces.map(function (piece) {
+    if (Yards.yardPicture(piece.sprite)) return piece;
 
-    var keys =
-        typeof piece.sprite.key === "string" ? piece.sprite.key.split("+") : [],
-      parts = [];
-
-    keys.forEach(function (key, i) {
-      var m = PART.exec(key),
-        frame = m ? sprites.frame(m[1]) : undefined;
-
-      if (frame === undefined) return;
-
-      var x = +(m[2] || 0),
-        y = +(m[3] || 0),
-        //how far it is laid up on the ones under it: its foot as far over
-        //the tile's middle
-        lift =
-          frame.pivotY === undefined
-            ? 0
-            : Math.max(0, piece.pivotY - y - frame.pivotY);
-
-      //a storey on one under it, a roof: gone
-      if (lift > 1) return;
-
-      parts.push({
-        name: m[1],
-        x: x,
-        y: y,
-        plain: true,
-        burnt:
-          "r:" +
-          ((((seed | 0) * 131 + k * 17 + i * 7) >>> 0) % 100000) +
-          ":" +
-          KEEP,
-      });
-    });
-
-    return {
-      x: piece.x,
-      z: piece.z,
-      pivotX: piece.pivotX,
-      pivotY: piece.pivotY,
+    return Object.assign({}, piece, {
       overlays: [],
-      sprite: parts.length > 0 ? sprites.getComposite(parts) : piece.sprite,
-      //nothing to it, for one with nothing left on the ground
-      empty: parts.length === 0,
-    };
+      sprite: model(sprites, piece.sprite, kind),
+    });
   });
 }
 
-//what a building leaves burnt as its seed says: its walls broken off
-//KEEP high
+//what a building painted whole leaves burnt, as its seed says: its walls
+//broken off KEEP high
 function words(seed) {
   return "r:" + ((seed >>> 0) % 100000) + ":" + KEEP;
 }
 
 /**
  * What is left of a building painted whole - a church, a water tower - its
- * picture as it is, burnt down: drawn as painted, as the pieces are.
+ * picture as it is, burnt down: drawn as painted.
  *
  * @param sprite {CachedSprite} as its view drew it standing
  * @param seed {number} the same for the same building every time
@@ -113,4 +152,10 @@ function whole(sprites, sprite, seed) {
   return sprites.burnt(sprite, words(seed), true);
 }
 
-export default { pieces: pieces, whole: whole, KEEP: KEEP };
+export default {
+  pieces: pieces,
+  model: model,
+  whole: whole,
+  fallsIn: fallsIn,
+  KEEP: KEEP,
+};

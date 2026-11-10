@@ -362,7 +362,7 @@ var WORN = Object.assign({ parks: true, sites: true }, ROOMS);
  * name as it is, for anything not painted by one of gens.
  */
 function variantName(self, name, tag, gens) {
-  var base = name.replace(/\/[ow]\d$/, ""),
+  var base = name.replace(/\/[owsbc]\d+$/, ""),
     frame = self.frames[base];
 
   if (frame === undefined) return base;
@@ -395,7 +395,7 @@ function variantName(self, name, tag, gens) {
 SpriteCache.prototype.openName = function (name, sides) {
   return sides > 0
     ? variantName(this, name, "o" + sides, ROOMS)
-    : name.replace(/\/[ow]\d$/, "");
+    : name.replace(/\/[owsbc]\d+$/, "");
 };
 
 /**
@@ -406,7 +406,17 @@ SpriteCache.prototype.openName = function (name, sides) {
 SpriteCache.prototype.wornName = function (name, kind) {
   return kind > 0
     ? variantName(this, name, "w" + kind, WORN)
-    : name.replace(/\/[ow]\d$/, "");
+    : name.replace(/\/[owsbc]\d+$/, "");
+};
+
+/**
+ * The name of a generated part of a building painted as a ruin of itself
+ * (shared/gen/isobox setRuin): "s" burnt out, standing; "b" burnt and fallen
+ * in; "c" fallen in, the rubble of it - storeys how many storeys came down
+ * onto it (0 for as many as it has).
+ */
+SpriteCache.prototype.ruinName = function (name, kind, storeys) {
+  return variantName(this, name, kind + (storeys | 0), ROOMS);
 };
 
 /**
