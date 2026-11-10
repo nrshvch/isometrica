@@ -137,6 +137,7 @@ function clip(b, x0, x1, y0, y1) {
   return r;
 }
 
+
 /**
  * The boxes of something standing on sizeX by sizeY tiles, turned a quarter
  * turn at a time on the spot. Whatever looked towards -y looks, after one
@@ -244,6 +245,7 @@ function opening(b) {
 
   return b;
 }
+
 
 //how thin a box squeezed onto what it lies on is (see snap)
 var SKIN = 1 / 64;
@@ -1175,6 +1177,178 @@ function tiles(minX, maxX, minY, maxY) {
   };
 }
 
+/* --- Open ------------------------------------------------------------ */
+
+//which sides of the tile what is painted is open on (setOpen): 1 its side
+//towards -x, 2 towards -y, 3 both - 0 for none
+var open = 0;
+
+/**
+ * Has what is painted next (render) open on sides of its tile - a tile of a
+ * building whose tile in front of it has come down (client/demolition
+ * open): 1 towards -x, 2 towards -y, 3 both, 0 none. Only those sides can
+ * be seen; the picture is as big as it would be shut.
+ */
+function setOpen(sides) {
+  open = sides | 0;
+}
+
+//a room's walls, how thick, and its floor and its ceiling; how high a storey
+//is, for the floors of something more than a storey high; how wide a room is
+//at the most, before a wall across it; how big a box has to be every way to
+//be rooms rather than a detail of something
+var WALL = 2,
+  SLAB = 2,
+  CEIL = 1,
+  STOREY_Z = 12,
+  ROOM_W = 17,
+  ROOMY = 8;
+
+//inside: a bare concrete floor, plastered walls
+var FLOOR = [146, 142, 134],
+  PLASTER = [208, 202, 192];
+
+//whether a colour is leaves, grass - a tree's crown is not a room
+function green(c) {
+  return c !== undefined && c[1] > c[0] + 18 && c[1] > c[2] + 18;
+}
+
+/**
+ * The boxes as they are with the sides of the tile it says open (open):
+ * every box big enough to be rooms that reaches that side - a storey, the
+ * body of a house - hollow inside, its wall on that side gone and whatever
+ * was on it, its walls on the other sides, its floor and its ceiling left;
+ * and in it empty rooms, a bare floor, plastered walls, a wall across it
+ * where it is wide, a floor between storeys where it is more than one high.
+ */
+function hollow(boxes, sides) {
+  var rooms = [];
+
+  boxes.forEach(function (b) {
+    if ((b.cuts !== undefined && b.cuts.length > 0) || green(b.color)) return;
+    if (b.x1 - b.x0 < ROOMY || b.y1 - b.y0 < ROOMY || b.z1 - b.z0 < ROOMY)
+      return;
+
+    var openX = (sides & 1) !== 0 && b.x0 <= 0.5,
+      openY = (sides & 2) !== 0 && b.y0 <= 0.5;
+
+    if (!openX && !openY) return;
+
+    var r = {
+      b: b,
+      openX: openX,
+      openY: openY,
+      x0: openX ? -1 : b.x0 + WALL,
+      x1: b.x1 - WALL,
+      y0: openY ? -1 : b.y0 + WALL,
+      y1: b.y1 - WALL,
+      z0: b.z0 + SLAB,
+      z1: b.z1 - CEIL,
+    };
+
+    if (
+      r.x1 - Math.max(r.x0, b.x0) >= 4 &&
+      r.y1 - Math.max(r.y0, b.y0) >= 4 &&
+      r.z1 - r.z0 >= 5
+    )
+      rooms.push(r);
+  });
+
+  if (rooms.length === 0) return boxes;
+
+  var out = [];
+
+  boxes.forEach(function (b) {
+    var pieces = [b];
+
+    rooms.forEach(function (r) {
+      var left = [];
+
+      pieces.forEach(function (p) {
+        left = left.concat(subtract(p, r));
+      });
+      pieces = left;
+    });
+    out = out.concat(pieces);
+  });
+
+  rooms.forEach(function (r) {
+    out = out.concat(inside(r));
+  });
+
+  return out;
+}
+
+//what is left of box b with room r taken out of it - in up to six pieces
+function subtract(b, r) {
+  if (
+    b.x1 <= r.x0 ||
+    b.x0 >= r.x1 ||
+    b.y1 <= r.y0 ||
+    b.y0 >= r.y1 ||
+    b.z1 <= r.z0 ||
+    b.z0 >= r.z1
+  )
+    return [b];
+
+  var out = [],
+    mx0 = Math.max(b.x0, r.x0),
+    mx1 = Math.min(b.x1, r.x1),
+    my0 = Math.max(b.y0, r.y0),
+    my1 = Math.min(b.y1, r.y1);
+
+  function piece(x0, x1, y0, y1, z0, z1) {
+    if (!(x0 < x1 && y0 < y1 && z0 < z1)) return;
+
+    var c = box(x0, x1, y0, y1, z0, z1, b.color, b.finish);
+
+    if (b.cuts !== undefined) c.cuts = b.cuts;
+    out.push(c);
+  }
+
+  piece(b.x0, r.x0, b.y0, b.y1, b.z0, b.z1);
+  piece(r.x1, b.x1, b.y0, b.y1, b.z0, b.z1);
+  piece(mx0, mx1, b.y0, r.y0, b.z0, b.z1);
+  piece(mx0, mx1, r.y1, b.y1, b.z0, b.z1);
+  piece(mx0, mx1, my0, my1, b.z0, r.z0);
+  piece(mx0, mx1, my0, my1, r.z1, b.z1);
+
+  return out;
+}
+
+//what is in a room opened up: its floor and its ceiling, concrete where
+//they were cut through; its walls plastered; a wall across it, where it is
+//wide; and the floors between its storeys
+function inside(r) {
+  var b = r.b,
+    x0 = Math.max(r.x0, b.x0),
+    y0 = Math.max(r.y0, b.y0),
+    out = [
+      box(x0, r.x1, y0, r.y1, b.z0, r.z0, FLOOR),
+      box(x0, r.x1, y0, r.y1, r.z1, b.z1, FLOOR),
+      //the walls it is seen to have: at its back, and along its far side
+      box(r.x1, r.x1 + 1, y0, r.y1, r.z0, r.z1, PLASTER),
+      box(x0, r.x1, r.y1, r.y1 + 1, r.z0, r.z1, PLASTER),
+    ],
+    z,
+    c;
+
+  for (z = b.z0 + STOREY_Z; z + SLAB < r.z1 - 3; z += STOREY_Z)
+    out.push(box(x0, r.x1, y0, r.y1, z, z + SLAB, FLOOR));
+
+  //a wall across it, from the back of it to near the opening
+  if (r.openX && r.y1 - y0 >= ROOM_W) {
+    c = Math.round((y0 + r.y1) / 2);
+    out.push(box(x0 + 2, r.x1, c, c + 1, r.z0, r.z1, PLASTER));
+  }
+  if (r.openY && r.x1 - x0 >= ROOM_W) {
+    c = Math.round((x0 + r.x1) / 2);
+    out.push(box(c, c + 1, y0 + 2, r.y1, r.z0, r.z1, PLASTER));
+  }
+
+  return out;
+}
+
 /* --- Interiors ------------------------------------------------------ */
 
 //a building's rooms as it is built: how thick its walls are, its floor and
@@ -1584,7 +1758,8 @@ function pierce(boxes) {
 
 /**
  * The picture of the boxes, with pivotX/pivotY where the world's origin lands
- * in it - from above, the whole tiles it is on.
+ * in it - from above, the whole tiles it is on. Open on the sides setOpen
+ * says, as big a picture as it would be shut.
  */
 function render(boxes) {
   var minX = Infinity,
@@ -1608,9 +1783,13 @@ function render(boxes) {
     maxY = Math.max(maxY, r.maxY);
   });
 
+  //the spaces indoors laid with it out of it, first (isobox indoor)
+  boxes = withoutIndoors(boxes);
+
+  if (open !== 0 && view !== "top") boxes = hollow(boxes, open);
+
   //as it is built, inside as well as out - the same size as it would be
   //solid; what is seen of it from straight above is its top all the same
-  boxes = withoutIndoors(boxes);
   if (view !== "top") boxes = interiors(boxes);
 
   boxes = boxes.map(function (b) {
@@ -1864,6 +2043,7 @@ export {
   getMode,
   setView,
   getView,
+  setOpen,
   sections,
   heightOf,
   normalOf,
