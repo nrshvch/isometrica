@@ -5,9 +5,10 @@
  * the city, and why a house is standing empty:
  *
  *  - a red word over anything going without, "no road" before "no water" -
- *    and the least of a road it wants, "no road (gravel)", "no road
- *    (cobble)" - because a street is the first thing to put right. Without it a house
- *    nobody moves into looks like a bug rather than a missing street.
+ *    because a street is the first thing to put right. Without it a house
+ *    nobody moves into looks like a bug rather than a missing street. The
+ *    least of a road it wants, "no road (gravel)", "no road (cobble)", is
+ *    on its card, looked at (client/worth describe).
  *  - the ground a water tower waters, outlined in one continuous line.
  *    Clicking a tower shows its reach and clicking
  *    anywhere else puts it away again; an outline of its own follows the
@@ -32,7 +33,7 @@
 import engine from "engine";
 import Events from "events";
 import Core from "../core/main";
-import { wantOf, wordsFor } from "./worth";
+import { wantOf, wordFor } from "./worth";
 import CityWater from "../core/city/citywater";
 import Buildman from "./buildman";
 import WorldCamera from "./components/camerascript";
@@ -163,7 +164,7 @@ function refresh(self) {
     missing = wantOf(city, model);
 
     if (missing === null) hide(self, tile);
-    else show(self, model, wordsFor(model, missing), WARNING_COLOR);
+    else show(self, model, wordFor(missing), WARNING_COLOR);
   }
 }
 

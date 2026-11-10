@@ -85,7 +85,8 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   `isometrica/src/client/worth.js`) - and the bar has only what can be done
   to it, Replace and Demolish, its tools back once it is put away with a
   tap anywhere else. The words over the world stay as they are, the tapped one's too:
-  how far along each site is, what each building goes without.
+  how far along each site is, what each building goes without - in a word,
+  "no road", the card saying what road it wants, "no road (gravel)".
 - Replace opens the catalogue on only what covers its ground, turned one
   way or another - a 1x2 for a 2x1 as well - each at what it would come
   to, clearing it away included, and the kind it is among them, for

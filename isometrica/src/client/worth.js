@@ -1,8 +1,8 @@
 /**
  * What a building is worth to its city, as the player is told it: what it
- * goes without, said over it while it does (client/serviceman), and, while
- * it is looked at, all of it - for the game played to show on its own
- * screens (describe). It draws nothing and takes nothing of the client
+ * goes without, said over it while it does, in a word (client/serviceman),
+ * and, while it is looked at, all of it - for the game played to show on
+ * its own screens (describe). It draws nothing and takes nothing of the client
  * with it, so a game's screens can show it without loading the client.
  */
 import ServiceCode from "../core/servicecode";
@@ -24,8 +24,16 @@ text[CUT_OFF] = "cut off";
 text[ServiceCode.linked] = text[CUT_OFF];
 
 /**
- * What is said over a building going without: for a road, the least of one
- * it wants - "no road (cobble)" over a shop on a gravel lane.
+ * What is said over a building going without, on the world: only what it
+ * goes without - "no road", whatever road it wants (wordsFor says which).
+ */
+export function wordFor(missing) {
+  return text[missing];
+}
+
+/**
+ * What a building goes without, all of it, on its card: for a road, the
+ * least of one it wants - "no road (cobble)" for a shop on a gravel lane.
  */
 export function wordsFor(building, missing) {
   var wants =

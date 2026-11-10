@@ -524,7 +524,8 @@ dev`) plays them the way a game would - all three weathers together, the
   Everything has to stand with the city (`core/city/cityroads` linked); the
   houses in town, the shops and offices and the town hall want a cobbled
   street at least right alongside them as well - asphalt will do - and say
-  "no road (cobble)" over them till they have one (`core/roadrules` serves,
+  "no road" over them till they have one, "no road (cobble)" on their card
+  when tapped (`core/roadrules` serves,
   `core/city/cityroads` reaches); the village, its old town, the church, a
   square, a park, a water tower and a pump station want no road at all. What a building of a tier holds or employs,
   makes and costs goes by how many tiles it covers and nothing else - a
