@@ -780,7 +780,9 @@ function bringDown(self, building, yard, smoke) {
     //a site going up has no yard yet to wreck: bare ground
     wrecks = building.getState() !== BuildingState.underConstruction,
     //which pile its heaps are, of all the piles there are
-    pile = 1 + Math.floor(Math.random() * 2147483646);
+    pile = 1 + Math.floor(Math.random() * 2147483646),
+    //burnt out, its rubble charred
+    burnt = building.getState() === BuildingState.ruin;
 
   //which is which, while it still stands to be told
   var yards = tiles.map(function (t) {
@@ -794,7 +796,7 @@ function bringDown(self, building, yard, smoke) {
   tiles.forEach(function (t, i) {
     if (yards[i]) {
       if (wrecks) self.buildingService.leaveWreck(t, building);
-    } else self.buildingService.leaveRubble(t, pile, smoke, building);
+    } else self.buildingService.leaveRubble(t, pile, smoke, building, burnt);
   });
 
   return tiles;

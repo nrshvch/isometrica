@@ -4,7 +4,7 @@
  * one up - no fence, no bulldozer: the charges at its foot, then all of it
  * torn off it in a fireball, what is left of it coming down a tile at a
  * time, heaps of rubble left where it stood and its yard wrecked, dust
- * rolling down the road - as slowly as wanted, turned round or from above;
+ * hanging over it - as slowly as wanted, turned round or from above;
  * with its neighbours round it, the blast bringing down the near ones; the
  * rubble cleared away by the bulldozers, and all of it put up again.
  */
@@ -183,11 +183,11 @@ export default function Explosion() {
             few trees about it, blown up the way the game blows one up: no
             fence, no bulldozer - the charges going off at its foot, a fireball
             and pieces torn off it thrown all round, then what is left of it,
-            blackened, coming down a tile at a time, a cloud of dust rolling out
-            and down the road. Heaps of rubble are left where the building
-            stood, smouldering, and its yard wrecked, till the bulldozers clear
-            them away. With its neighbours, the blast off the building itself -
-            not its yard - brings down the parts of what is round it within two
+            blackened, coming down a tile at a time in a cloud of dust that
+            hangs over it. Heaps of rubble are left where the building stood,
+            smouldering, and its yard wrecked, till the bulldozers clear them
+            away. With its neighbours, the blast off the building itself - not
+            its yard - brings down the parts of what is round it within two
             tiles of it, the rest of each standing, open where its parts came
             down; knocks the health out of what is further off; and knocks the
             trees round it over, to lie there.

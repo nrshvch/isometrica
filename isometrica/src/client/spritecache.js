@@ -362,7 +362,7 @@ var WORN = Object.assign({ parks: true, sites: true }, ROOMS);
  * name as it is, for anything not painted by one of gens.
  */
 function variantName(self, name, tag, gens) {
-  var base = name.replace(/\/[owsbc]\d+$/, ""),
+  var base = name.replace(/\/[owsbck]\d+$/, ""),
     frame = self.frames[base];
 
   if (frame === undefined) return base;
@@ -395,7 +395,7 @@ function variantName(self, name, tag, gens) {
 SpriteCache.prototype.openName = function (name, sides) {
   return sides > 0
     ? variantName(this, name, "o" + sides, ROOMS)
-    : name.replace(/\/[owsbc]\d+$/, "");
+    : name.replace(/\/[owsbck]\d+$/, "");
 };
 
 /**
@@ -406,7 +406,7 @@ SpriteCache.prototype.openName = function (name, sides) {
 SpriteCache.prototype.wornName = function (name, kind) {
   return kind > 0
     ? variantName(this, name, "w" + kind, WORN)
-    : name.replace(/\/[owsbc]\d+$/, "");
+    : name.replace(/\/[owsbck]\d+$/, "");
 };
 
 /**
