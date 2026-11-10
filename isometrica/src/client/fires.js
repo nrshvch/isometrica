@@ -536,6 +536,8 @@ function gather(self, dt) {
         x: w.x,
         y: w.y,
         z: w.z,
+        //which way the wall it is in goes down the screen, a pixel across
+        slope: w.slope || 0,
         roof: w.roof === true,
         //the tile it is on - the building's, for one drawn whole
         tile:
@@ -1153,7 +1155,14 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
 
       //the room behind it alight, before the flames are out of it
       if (!w.roof)
-        glows.push({ x: x, y: y, z: base[2] + w.z, k: k, seed: w.seed });
+        glows.push({
+          x: x,
+          y: y,
+          z: base[2] + w.z,
+          k: k,
+          slope: w.slope,
+          seed: w.seed,
+        });
 
       if (k > FLAMES_FROM)
         sources.push({
@@ -1163,6 +1172,7 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
           z: w.z,
           k: (k - FLAMES_FROM) / (1 - FLAMES_FROM),
           big: w.roof ? ROOF_BIG : 1,
+          slope: w.slope,
           seed: w.seed,
         });
     });
@@ -1199,13 +1209,21 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
   layer.save();
   layer.glow = true;
 
-  //windows alight within, flickering - bright, never dark
+  //windows alight within, flickering - bright, never dark - a column of
+  //pixels at a time, down the wall as it goes
   glows.forEach(function (g) {
-    var f = 0.5 + 0.5 * Math.sin(now / 55 + g.seed * 1.7);
+    var f = 0.5 + 0.5 * Math.sin(now / 55 + g.seed * 1.7),
+      wide = g.k > 0.5 ? 3 : 2;
 
     layer.standsAt = g.z + 1;
     layer.fillStyle = rgb(GLOWING[Math.floor(f * 2.99)]);
-    layer.fillRect(g.x - 1, g.y - 1, g.k > 0.5 ? 3 : 2, 2);
+    for (var i = 0; i < wide; i++)
+      layer.fillRect(
+        g.x - 1 + i,
+        g.y - 1 + Math.round((g.slope || 0) * (i - 0.5)),
+        1,
+        2,
+      );
   });
 
   fire(layer, sources, now);
@@ -1285,11 +1303,12 @@ function smooth(x, y, k) {
 
 /**
  * The fire of everything that burns, as one: a flame up out of every
- * source - as wide as a window at its height, and most of a storey tall,
- * licking up in tongues that flicker and run up it - and where the flames
- * of one run into another's, along a wall from window to window, one sheet
- * of fire, white-hot at its root, yellow, orange, and red up it to its
- * tips.
+ * source - as wide as a window at its height, along the wall it is in, its
+ * root down the screen as the wall goes (slope), and most of a storey
+ * tall, licking straight up in tongues that flicker and run up it - and
+ * where the flames of one run into another's, along a wall from window to
+ * window, one sheet of fire, white-hot at its root, yellow, orange, and
+ * red up it to its tips.
  */
 function fire(layer, sources, now) {
   var columns = new Map();
@@ -1304,15 +1323,17 @@ function fire(layer, sources, now) {
 
       if (e <= 0) continue;
 
-      //tongues: higher and lower along it, running up it as they flicker
+      //tongues: higher and lower along it, running up it as they flicker,
+      //out of the wall where it is in this column
       var n = smooth(c * 0.45 + (s.seed % 97), now * 0.006 - c * 0.07, 7),
-        top = s.y - Math.max(2, high * Math.sqrt(e) * (0.4 + 0.6 * n)),
+        root = s.y + Math.round((s.slope || 0) * (c + 0.5 - s.x)),
+        top = root - Math.max(2, high * Math.sqrt(e) * (0.4 + 0.6 * n)),
         list = columns.get(c);
 
       if (list === undefined) columns.set(c, (list = []));
       list.push({
         top: top,
-        bottom: s.y + 1,
+        bottom: root + 1,
         ground: s.ground,
         z: s.z,
         k: s.k,
