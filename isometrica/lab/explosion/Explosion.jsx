@@ -186,8 +186,11 @@ export default function Explosion() {
             blackened, coming down a tile at a time, a cloud of dust rolling out
             and down the road. Heaps of rubble are left where the building
             stood, smouldering, and its yard wrecked, till the bulldozers clear
-            them away. With its neighbours, the blast brings down whatever is
-            next to it or across the road, and knocks about what is further off.
+            them away. With its neighbours, the blast off the building itself -
+            not its yard - brings down the parts of what is round it within two
+            tiles of it, the rest of each standing, open where its parts came
+            down; knocks the health out of what is further off; and knocks the
+            trees round it over, to lie there.
           </Note>
 
           <Section title="What stands">
@@ -227,7 +230,7 @@ export default function Explosion() {
               </Button>
               <Button
                 className="px-1.5 py-0.5"
-                title="a house next to it, a park on its other side, a house across the road and one further along - for the blast to bring down the near ones"
+                title="a terrace next to it, a park on its other side, a house across the road and one further along, trees round it - for the blast to bring down what is near"
                 on={around}
                 disabled={!ready || busy}
                 onClick={function () {
@@ -309,11 +312,22 @@ export default function Explosion() {
                   {piles === 1 ? "pile" : "piles"}
                 </div>
                 <div>wrecked yards: {s.wrecks}</div>
+                <div>trees knocked down: {s.fallen}</div>
                 {near.map(function (n) {
                   return (
                     <div key={n.what}>
                       {n.what} ({n.name}):{" "}
-                      {n.health === null ? "down" : n.health + "% sound"}
+                      {n.health === null
+                        ? "down"
+                        : n.health +
+                          "% sound" +
+                          (n.left < n.parts
+                            ? ", " +
+                              n.left +
+                              " of " +
+                              n.parts +
+                              " parts standing"
+                            : "")}
                     </div>
                   );
                 })}

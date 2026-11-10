@@ -514,6 +514,9 @@ function copyBuilding(self, building) {
     RenderLayer.inspectedLayer,
     building.look,
     building.tile,
+    undefined,
+    //as knocked about as it is, parts of it down
+    building,
   );
   BuildingView.addFoundations(
     go,

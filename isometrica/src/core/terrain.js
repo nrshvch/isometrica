@@ -413,6 +413,18 @@ Terrain.prototype.clear = function (tile) {
   this.clearTile(tile);
 };
 
+/**
+ * A tile whose tree is knocked down (City#explode): the tree the world grew
+ * there gone for good, as cleared - but the ground under it the grass it
+ * was, not the bare earth a bulldozer leaves.
+ *
+ * @param tile {number}
+ */
+Terrain.prototype.fell = function (tile) {
+  this.clearedTiles[tile] = true;
+  this.clearTile(tile);
+};
+
 //the game's time now, ms - 0 for a world with no clock
 function now(self) {
   var time = self.world && self.world.time;

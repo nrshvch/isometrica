@@ -241,6 +241,35 @@ BuildingView.prototype.setOpacity = function (opacity) {
   }
 };
 
+/**
+ * What is drawn of it on tile as see-through as k says, 0 not to be seen,
+ * 1 as it is - kept for whenever it is drawn anew: the heap of rubble a
+ * part of it come down leaves, under the dust of it coming down
+ * (client/collapse).
+ */
+BuildingView.prototype.setTileOpacity = function (tile, k) {
+  var children = this.gameObject.transform.children;
+
+  this.tileOpacity = this.tileOpacity || {};
+  this.tileOpacity[tile] = k;
+
+  for (var i = 0; i < children.length; i++) {
+    var go = children[i].gameObject;
+
+    if (go.tile === tile && go.spriteRenderer)
+      go.spriteRenderer.opacity = this.opacity * k;
+  }
+};
+
+//how a yard is run down (shared/gen/isobox setWorn): wrecked by a blast,
+//or burnt
+var WORN_BLAST = 1,
+  WORN_BURNT = 2;
+
+//a part of it open where one in front of it is down, not painted yet when
+//it was drawn: drawn again a while after (damaged)
+var RETRY_MS = 400;
+
 BuildingView.prototype.update = function () {
   var b = this.building;
   if (b !== null && b.staticData !== null) {
@@ -348,6 +377,9 @@ BuildingView.prototype.update = function () {
     } else if (b.data.look && b.data.look.wreck) {
       //the yard of a building blown up, wrecked (core/city explode)
       drawWreck(this, b.data.look.wreck, b.data.tile);
+    } else if (b.data.look && b.data.look.fallen) {
+      //a tree knocked down by a blast, lying (core/city explode)
+      drawFallen(this, b.data.look.fallen, b.data.tile);
     } else if (
       b.data.getState() === BuildingState.ready ||
       b.data.getState() === BuildingState.burning
@@ -374,6 +406,8 @@ BuildingView.prototype.update = function () {
           : look,
         b.data.tile,
         burning ? undefined : lightsOf(staticData),
+        b.data,
+        this,
       );
 
       //smoke out of the chimneys of a house put together out of parts
@@ -427,13 +461,26 @@ BuildingView.prototype.update = function () {
       at.z * tileZStep,
       at.y * tileSize,
     );
+
+    //a part of it to be open, not painted yet: drawn again soon
+    if (this.retry === true && collecting === null) {
+      var self = this;
+
+      this.retry = false;
+      clearTimeout(this.retryTimer);
+      this.retryTimer = setTimeout(function () {
+        if (self.building !== null && self.gameObject.world !== null)
+          self.update();
+      }, RETRY_MS);
+    }
   }
 };
 
 /**
  * A tile of a yard wrecked by a blast (core/city/citybuildings leaveWreck):
  * the tile of what it was a yard of, as it would be drawn there (client/
- * compoundbuilding pieces), wrecked (client/ruin wreck). Nothing, for what
+ * compoundbuilding pieces), run down - painted so, its asphalt cracked, its
+ * trees dead, what stood on it broken (WORN_BLAST). Nothing, for what
  * was not put together out of parts.
  *
  * @param wreck {{code: number, tile: number, rotation: number, look:
@@ -468,12 +515,156 @@ function drawWreck(self, wreck, tile) {
   addPieces(
     self.gameObject,
     mine.map(function (p) {
-      return Ruin.wreck(vkaria.sprites, p, tile);
+      return {
+        x: 0,
+        z: 0,
+        pivotX: p.pivotX,
+        pivotY: p.pivotY,
+        overlays: [],
+        sprite: vkaria.sprites.worn(p.sprite, WORN_BLAST),
+      };
     }),
     self.opacity,
     undefined,
     tile,
   );
+}
+
+/**
+ * A tree knocked down by a blast (core/city/citybuildings leaveFallen),
+ * lying on the ground the way it went over: the picture of it painted
+ * lying (shared/gen/trees FALLS, the last of them, client/felling), from
+ * the side it is seen - nothing, for one that has none.
+ *
+ * @param fallen {{code: number, rotation: number, world: boolean, way:
+ *        string}}
+ */
+function drawFallen(self, fallen, tile) {
+  var data = BuildingData[fallen.code],
+    spriteData = data && data.sprites ? data.sprites[0] : null;
+
+  if (!spriteData || View.top()) return;
+
+  var turns =
+      ((fallen.world
+        ? Trees.tileTurns(tile)
+        : Rotation.turns(fallen.rotation)) +
+        View.turns()) &
+      3,
+    seen = View.heading(fallen.way),
+    name = Trees.turned(spriteData.path, turns) + "/" + seen + "/3";
+
+  if (seen === undefined || !vkaria.sprites.has(name)) return;
+
+  var renderer = new engine.SpriteRenderer(),
+    go = new engine.GameObject();
+
+  renderer.layer = spriteData.layer;
+  renderer.pivotX = spriteData.pivotX;
+  renderer.pivotY = spriteData.pivotY;
+  renderer.setSprite(vkaria.sprites.getSprite(name));
+  go.addComponent(renderer);
+  renderer.opacity = self.opacity;
+  self.gameObject.transform.addChild(go.transform);
+  setSeenPosition(
+    go,
+    spriteData.x * Config.tileSize,
+    spriteData.y * Config.tileZStep,
+    spriteData.z * Config.tileSize,
+  );
+}
+
+/**
+ * The tiles of a building put together out of parts as it stands, knocked
+ * about by a blast (core/building down): a part of it come down a heap of
+ * rubble, as the heaps of the parts of it round it are (client/rubble),
+ * flat on its level; a yard wrecked, run down (WORN_BLAST); a part still
+ * standing in front of which one has come down open on that side, its
+ * rooms showing (SpriteCache opened) - once that is painted, shut till
+ * then (retry). Each piece told which tile it is on, and whether it is what
+ * is left of a part come down.
+ *
+ * @param model {Building} the core's
+ * @param at {Object} where it is drawn from (drawnAt)
+ */
+function damaged(self, pieces, model, at) {
+  var sprites = vkaria.sprites;
+
+  function tileOf(p) {
+    var off = View.unvector(p.x, p.z);
+
+    return Terrain.convertToIndex(
+      Math.round(at.x + off[0]),
+      Math.round(at.y + off[1]),
+    );
+  }
+
+  function rubble(t) {
+    return model.isDown(t) && !model.isYard(t);
+  }
+
+  return pieces.map(function (p) {
+    var tile = tileOf(p),
+      out = Object.assign({}, p, { tile: tile, down: false });
+
+    if (model.down === null) return out;
+
+    if (model.isDown(tile)) {
+      if (model.isYard(tile)) {
+        out.sprite = sprites.worn(p.sprite, WORN_BLAST);
+        out.overlays = [];
+        return out;
+      }
+
+      out.sprite = sprites.getSprite(
+        Rubble.pictureWith(rubble, tile, "rubble", View.turns()),
+      );
+      out.pivotX = Rubble.PIVOT_X;
+      out.pivotY = Rubble.PIVOT_Y;
+      out.overlays = [];
+      out.down = true;
+      return out;
+    }
+
+    if (model.isYard(tile)) return out;
+
+    //open where a part of it in front has come down
+    var sides = 0,
+      x = Terrain.extractX(tile),
+      y = Terrain.extractY(tile);
+
+    [
+      [-1, 0, 1],
+      [0, -1, 2],
+    ].forEach(function (d) {
+      var w = View.unvector(d[0], d[1]),
+        n = Terrain.convertToIndex(x + w[0], y + w[1]);
+
+      if (rubble(n)) sides |= d[2];
+    });
+
+    if (sides > 0 && !View.top()) {
+      var open = sprites.opened(p.sprite, sides);
+
+      if (painted(open)) out.sprite = open;
+      else self.retry = true;
+    }
+
+    return out;
+  });
+}
+
+//whether a picture is painted, as it is drawn - asked for, if not
+function painted(sprite) {
+  var gl = engine.Config.gl,
+    ready = sprite.ready ? sprite.ready() : true;
+
+  if (sprite.entries)
+    sprite.entries(!!gl, true).forEach(function (e) {
+      if (e !== sprite && e.ready && !e.ready()) ready = false;
+    });
+
+  return ready;
 }
 
 /**
@@ -548,6 +739,8 @@ function addSprites(
   look,
   seed,
   lights,
+  model,
+  view,
 ) {
   if (staticData.compound) {
     addParts(
@@ -559,6 +752,8 @@ function addSprites(
       look,
       seed,
       lights,
+      model,
+      view,
     );
     return;
   }
@@ -653,7 +848,18 @@ function mirrored(staticData, rotation) {
  * Hangs a building put together out of parts under parent: a sprite for each
  * of its tiles, each the parts of that tile put together.
  */
-function addParts(parent, compound, turns, opacity, layer, look, seed, lights) {
+function addParts(
+  parent,
+  compound,
+  turns,
+  opacity,
+  layer,
+  look,
+  seed,
+  lights,
+  model,
+  view,
+) {
   var sprites = vkaria.sprites;
 
   look = look || CompoundBuilding.sampleLook(sprites, compound);
@@ -661,14 +867,18 @@ function addParts(parent, compound, turns, opacity, layer, look, seed, lights) {
   //nothing to put it together out of
   if (look === null) return;
 
-  addPieces(
-    parent,
-    CompoundBuilding.pieces(sprites, look, compound, turns, seed),
-    opacity,
-    layer,
-    seed,
-    lights,
-  );
+  var pieces = CompoundBuilding.pieces(sprites, look, compound, turns, seed);
+
+  //knocked about: parts of it down, open where they are
+  if (model && model.down !== null && model.down !== undefined)
+    pieces = damaged(
+      view || {},
+      pieces,
+      model,
+      drawnAt(model.data, model.tile, model.rotation, model.surface),
+    );
+
+  addPieces(parent, pieces, opacity, layer, seed, lights, view);
 }
 
 /**
@@ -705,7 +915,7 @@ function lightsOf(staticData) {
  * at night, a toss of its own (client/cachedsprite nightSection). A building
  * site, or a building being placed, has no lights on at all.
  */
-function addPieces(parent, pieces, opacity, layer, seed, lights) {
+function addPieces(parent, pieces, opacity, layer, seed, lights, view) {
   //only the pictures wanted: each tile's, and what goes over it
   if (collecting !== null) {
     pieces.forEach(function (piece) {
@@ -750,8 +960,16 @@ function addPieces(parent, pieces, opacity, layer, seed, lights) {
         : 1;
 
     go.addComponent(renderer);
+    //which tile it is on, and whether it is what is left of a part of the
+    //building come down (damaged) - and as see-through as that tile is
+    //wanted (setTileOpacity)
+    go.tile = piece.tile;
+    go.down = piece.down === true;
     //the renderer resets its opacity once it is attached
-    renderer.opacity = opacity;
+    renderer.opacity =
+      view && view.tileOpacity && view.tileOpacity[piece.tile] !== undefined
+        ? opacity * view.tileOpacity[piece.tile]
+        : opacity;
     parent.transform.addChild(go.transform);
     setSeenPosition(
       go,

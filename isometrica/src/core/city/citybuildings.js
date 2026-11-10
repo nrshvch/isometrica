@@ -517,11 +517,20 @@ CityBuildings.prototype.restore = function (
   //knocked about, and a heap of rubble smouldering since then
   if (more && typeof more.health === "number") building.health = more.health;
   if (more && typeof more.smoke === "number") building.smoke = more.smoke;
+  //parts of it down, and which tiles are only its yard
+  if (more && Array.isArray(more.down)) building.down = more.down.slice();
+  if (more && Array.isArray(more.yards)) building.yards = more.yards.slice();
+  //being demolished, and the tiles of it down by then - with any a blast
+  //took
   if (demolition && typeof demolition === "object") {
     building.demolishing = true;
-    building.down = Array.isArray(demolition.down)
-      ? demolition.down.slice()
-      : [];
+    building.down = (building.down || []).concat(
+      (Array.isArray(demolition.down) ? demolition.down : []).filter(
+        function (t) {
+          return !building.isDown(t);
+        },
+      ),
+    );
   }
 
   this.city.root.buildings.build(building);
@@ -565,6 +574,9 @@ CityBuildings.prototype.save = function () {
       //rubble has smouldered
       health: building.health < 100 ? building.health : undefined,
       smoke: building.smoke !== null ? building.smoke : undefined,
+      //parts of it down, and which tiles are only its yard
+      down: building.down !== null ? building.down : undefined,
+      yards: building.yards !== null ? building.yards : undefined,
       //being demolished, and how far down it has come
       demolition: building.demolishing
         ? { down: (building.down || []).slice() }
@@ -615,6 +627,21 @@ CityBuildings.prototype.leaveRubble = function (tile, pile, smoke) {
     undefined,
     { smoke: smoke },
   );
+};
+
+/**
+ * Leaves a tree knocked down lying on tile, the way it fell, till it is
+ * cleared away (client/buildingview fallen): a tree the world grew there,
+ * or one planted - which it was, how it was turned, and which way it fell.
+ *
+ * @param tile {number}
+ * @param tree {{code: number, rotation: number, world: boolean, way:
+ *        string}} way "x+", "x-", "y+" or "y-" (client/view headings)
+ */
+CityBuildings.prototype.leaveFallen = function (tile, tree) {
+  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true, {
+    fallen: tree,
+  });
 };
 
 /**

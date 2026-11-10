@@ -1,16 +1,22 @@
+import Yards from "./yards";
+
 /**
  * A building burnt down as it is drawn (core/building ruin), tile by tile
  * as it stood (client/compoundbuilding pieces): its ground storey only -
  * every part of it laid on the ground - charred, broken off about a storey
- * up and the posts of its frame standing up out of it, and whatever lay on
- * the ground round it, its yard, its car park, its garden, sooted and
- * strewn with debris (client/burnt); whatever was laid higher, its storeys
- * and its roof, gone. Drawn as it is painted (getComposite plain): nothing
- * of it is lit any more, and it stands no higher than it does.
+ * up and the posts of its frame standing up out of it (client/burnt);
+ * whatever was laid higher, its storeys and its roof, gone - drawn as it is
+ * painted (getComposite plain): nothing of it is lit any more, and it
+ * stands no higher than it does. Its yard, its car park, its garden, as it
+ * was but burnt, painted so: the grass black, the trees charred, the
+ * asphalt cracked and sooted, ash strewn about (shared/gen/isobox setWorn).
  */
 
 //how high its walls stand at the most, pixels - about a storey
 var KEEP = 15;
+
+//how a yard is run down, burnt (shared/gen/isobox setWorn)
+var BURNT = 2;
 
 //a part's name and where it is in the picture, out of the key of what it is
 //put together out of (SpriteCache#getComposite)
@@ -28,6 +34,19 @@ var PART = /^([^@#!~]*)(?:@(-?\d+),(-?\d+))?/;
  */
 function pieces(sprites, pieces, seed) {
   return pieces.map(function (piece, k) {
+    //its yard, its car park, its garden: as it was, burnt - painted so
+    //(shared/gen/isobox setWorn)
+    if (Yards.yardPicture(piece.sprite))
+      return {
+        x: piece.x,
+        z: piece.z,
+        pivotX: piece.pivotX,
+        pivotY: piece.pivotY,
+        overlays: [],
+        sprite: sprites.worn(piece.sprite, BURNT),
+        empty: false,
+      };
+
     var keys =
         typeof piece.sprite.key === "string" ? piece.sprite.key.split("+") : [],
       parts = [];
@@ -94,37 +113,4 @@ function whole(sprites, sprite, seed) {
   return sprites.burnt(sprite, words(seed), true);
 }
 
-//how high what stood on a yard is broken off at the most, wrecked by a
-//blast, pixels
-var WRECK = 5;
-
-/**
- * A tile of a yard wrecked by a blast (core/city/citybuildings leaveWreck)
- * - as a tile of what it was a yard of was drawn (client/compoundbuilding
- * pieces), put together out of its parts laid on the ground only, wrecked
- * (client/burnt "w"), its own place in the picture kept but stood on its
- * own tile: nothing parked on it any more.
- *
- * @param piece {Object} as client/compoundbuilding pieces made it
- * @param seed {number}
- * @returns {Object} a piece, the same way, on its own tile
- */
-function wreck(sprites, piece, seed) {
-  var sprite = sprites.burnt(
-    piece.sprite,
-    "w:" + ((seed >>> 0) % 100000) + ":" + WRECK,
-    true,
-  );
-
-  return {
-    x: 0,
-    z: 0,
-    pivotX: piece.pivotX,
-    pivotY: piece.pivotY,
-    overlays: [],
-    sprite: sprite,
-    empty: false,
-  };
-}
-
-export default { pieces: pieces, whole: whole, wreck: wreck, KEEP: KEEP };
+export default { pieces: pieces, whole: whole, KEEP: KEEP };

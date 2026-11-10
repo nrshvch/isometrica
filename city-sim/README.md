@@ -136,28 +136,43 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   `isometrica/src/client/collapse.js`). Any building at all - a church, a
   water tower, the town hall. A cloud of dust rolls out of it over
   everything round it and down the streets from it, a road at a time, and
-  hangs there a long while. The blast knocks the health out of whatever
-  stands round it, measured from its whole lot (`isometrica/src/core/city.js`
-  blast): next to it or across a road from it, all of it - that comes down
-  too, a moment later, the nearest first, the same way, no fence, no
-  bulldozer - and further off less of it, to stand on knocked about. A
-  heap of rubble lies on every tile of what was a building - its heaps one
-  pile, running on into each other along their sides and over the corners
-  where four meet, but not into the pile of a building next to it, lying
-  on the ground as it slopes (`isometrica/src/client/rubble.js`,
+  hangs there a long while. The blast comes off the building itself, not
+  its yard, and hits a building round it a part at a time - a tile of what
+  is the building, not its yard (`isometrica/src/core/city.js` blast, hit):
+  a part next to it or across a road from it comes down, a moment later, the
+  nearest first, no fence, no bulldozer, to a heap of rubble in the
+  building's place, and a yard as near is wrecked; the rest of the building
+  stands, open on its side where a part in front of it has come down, its
+  health down by as much as it lost; with no part of it left standing it is
+  all down. Further off a building is only knocked about, its health down.
+  The trees within two tiles of it go over, away from it, the way a
+  bulldozer pushes them, and lie there till they are cleared away
+  (`isometrica/src/core/city/citybuildings.js` leaveFallen). A heap of
+  rubble lies on every tile of what was a building - its heaps one pile,
+  running on into each other along their sides and over the corners where
+  four meet, but not into the pile of a building next to it, lying on the
+  ground as it slopes (`isometrica/src/client/rubble.js`,
   `isometrica/src/shared/gen/stones.js` pile) - the blown-up one's
-  smouldering a while, flames among it and smoke, then wisps. What was
-  only a yard - a car park, a playground, a garden, a park all of it - is
-  no rubble but the wreck of itself, grey with dust, what stood on it
-  broken off (`isometrica/src/client/ruin.js` wreck). Kept in the save,
-  heaps and wrecks are there till Clear has the bulldozers push them away
+  smouldering a while, flames among it and smoke, then wisps. What was only
+  a yard - a car park, a playground, a garden, a park all of it - is no
+  rubble but the wreck of itself: painted run down, its asphalt and paving
+  cracked and stained, its grass dried out, its trees dead, its swings and
+  benches broken or gone, its pond murky, lumps of what was blown over it
+  lying about, grey with the dust (`isometrica/src/shared/gen/isobox.js`
+  setWorn); burnt down, the same but black. Kept in the save, heaps, wrecks
+  and fallen trees are there till Clear has the bulldozers push them away
   for the clearing fee - the heaps round one a pile without it from then
   on - or anything is built over them (`isometrica/src/core/city.js`
   explode, `isometrica/src/data/buildings.js` rubble).
-- Every building has its health, shown as a bar on its card
-  (`isometrica/src/core/building.js` getHealth): knocked out of it by a
-  blast near it, burning away as it burns; none left, it comes down. Kept
-  in the save.
+- Every building has its health, shown as a bar on its card, and how
+  many of its parts still stand (`isometrica/src/core/building.js`
+  getHealth, down): knocked out of it by a blast near it, burning away as
+  it burns. The less of it there is, the likelier it is to catch fire by
+  itself or to come down - with none left, within a few hours of the game's
+  time, unless it is demolished first: all of it there is left comes down
+  a tile at a time in its dust, no fence, no bulldozer (`hazards`,
+  `isometrica/src/core/city.js` collapse). Its parts down, its health and
+  which of its tiles are only yard are kept in the save.
 - A tile of a building that comes down before the one behind it - a
   bulldozer at it, a blast, a fire - leaves that one open on its side:
   empty rooms where the wall between them was, a bare concrete floor to
@@ -165,11 +180,13 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   as the building is, not drawn over it: the generators paint a part open
   on a side of its tile, its storeys hollow and the wall on that side gone
   (`isometrica/src/shared/gen/isobox.js` setOpen, `@o` after its key), and
-  the demolition puts that in place of what stood as soon as it is painted
-  - asked for as soon as the building is to come down - and brings it down
-    in the same pictures, open as it falls
-    (`isometrica/src/client/demolition.js` open,
-    `isometrica/src/client/spritecache.js` openName).
+  the demolition puts that in place of what stood as soon as it is painted,
+  having asked for it as soon as the building was to come down, and brings
+  it down in the same pictures, open as it falls
+  (`isometrica/src/client/demolition.js` open,
+  `isometrica/src/client/spritecache.js` openName). A building a blast has
+  taken parts off stands open so (`isometrica/src/client/buildingview.js`
+  damaged).
 - Fire up sets the building on fire, for nothing, and it burns through
   most of a day of the game's time (`isometrica/src/client/fires.js`). It
   catches in a window of a floor low down, glowing within, and the fire

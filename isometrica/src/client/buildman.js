@@ -111,6 +111,26 @@ function hold(self, tile, building) {
 
   if (classCode !== BuildingClassCode.tree && !road) return false;
 
+  //a tree a blast knocks over: standing till the blast gets to it, then
+  //going over the way it pushes it (client/explosion)
+  var blast = self.root.blasted ? self.root.blasted[tile] : undefined;
+
+  if (blast !== undefined && tree) {
+    delete self.root.blasted[tile];
+    self.held[tile] = building;
+    blast(
+      function (push) {
+        delete self.held[tile];
+        Felling.fell(self.root, treeOf(building), push, tile);
+        building.destroy();
+      },
+      function (push) {
+        Felling.expect(self.root, treeOf(building), push, tile);
+      },
+    );
+    return true;
+  }
+
   if (
     !works.hold(
       tile,
@@ -1078,10 +1098,13 @@ Buildman.prototype.demolish = function (tile) {
  * Blows up the building standing on tile, for nothing (core/city explode):
  * it is gone at once, rubble left on every tile of the building itself and
  * its yard wrecked - and what it looked like goes up where it stood
- * (client/explosion), no fence and no bulldozer about it, and comes down;
- * and whatever the blast takes all the health out of round it - next to
- * it, across a road from it - comes down after it, the nearest first, as
- * the blast gets to it (client/collapse).
+ * (client/explosion), no fence and no bulldozer about it, and comes down.
+ * The blast off it - off the building, not its yard - brings down the
+ * parts of whatever stands round it it takes all the health out of, next
+ * to it or across a road from it, as it gets to them, the nearest first
+ * (client/collapse), the rest of each standing; a building with no part of
+ * it left standing, all of it. And the trees round it go over, to lie
+ * there.
  *
  * @param tile {number} any tile of the building
  * @returns {number} ErrorCode - NONE once it has gone up
@@ -1091,22 +1114,16 @@ Buildman.prototype.explode = function (tile) {
     root = this.root,
     building = root.core.buildingService.get(tile),
     city = building !== null ? building.getCity() : null,
-    now = root.core.time.now,
     yard = {},
     seen,
     blast = null,
     falls = [],
-    result,
-    tiles = [];
+    result;
 
   if (!city || building === null || !Replacement.replaceable(building)) {
     this.showError(tile, ErrorCode.NOTHING_TO_CLEAR);
     return ErrorCode.NOTHING_TO_CLEAR;
   }
-
-  var iter = building.occupiedTiles();
-
-  while (!iter.done) tiles.push(iter.next());
 
   //it goes, and with it whatever was shown of it
   if (root.serviceman) {
@@ -1122,70 +1139,105 @@ Buildman.prototype.explode = function (tile) {
     for (var t in y) yard[t] = true;
   }
 
+  function isYard(t) {
+    return yard[t] === true;
+  }
+
   seen = getBuilding(this, building.tile);
   know(seen);
 
-  var built = tiles.filter(function (t) {
-      return yard[t] !== true;
+  var tiles = building.tiles(),
+    built = tiles.filter(function (t) {
+      return !isYard(t);
     }),
-    round = city.blast(tiles, building);
+    from = built.length > 0 ? built : tiles;
 
-  round.forEach(function (r) {
+  city.blast(from, building).forEach(function (r) {
     know(getBuilding(self, r.building.tile));
   });
+
+  var round = city.blast(from, building, isYard),
+    trees = city.treesIn(from);
 
   //what it looks like, stood up in its place before the world lets go of
   //it - if it is drawn at all
   if (seen !== null && seen.view && seen.view.gameObject)
-    blast = new Explosion.Explosion(
-      root,
-      seen,
-      built,
-      tiles.filter(function (t) {
-        return yard[t] === true;
-      }),
-    );
+    blast = new Explosion.Explosion(root, seen, built, tiles.filter(isYard));
 
-  //and what comes down with it, as it stands, the blast getting to it a
-  //moment after it goes up - further off, later
+  //and what of what is round it comes down, as it stands, the blast getting
+  //to it a moment after it goes up - further off, later
   round.forEach(function (r) {
-    if (r.building.healthAfter(r.damage, now) > 0) return;
+    var b = r.building,
+      view = getBuilding(self, b.tile),
+      lethal = r.parts.filter(function (p) {
+        return p.damage >= 100;
+      });
 
-    var b = getBuilding(self, r.building.tile),
-      own = [],
-      it = r.building.occupiedTiles();
+    if (lethal.length === 0 || view === null || !view.view) return;
 
-    if (b === null || !b.view || !b.view.gameObject) return;
-
-    while (!it.done) own.push(it.next());
+    var own = b.tiles(),
+      builtOf = own.filter(function (t) {
+        return !isYard(t);
+      }),
+      hit = function (t) {
+        return lethal.some(function (p) {
+          return p.tile === t;
+        });
+      },
+      left = builtOf.filter(function (t) {
+        return !b.isDown(t) && !hit(t);
+      }),
+      whole =
+        left.length === 0 ||
+        (!b.data.compound &&
+          builtOf.some(function (t) {
+            return hit(t);
+          })),
+      fall = builtOf.filter(function (t) {
+        return !b.isDown(t) && (whole || hit(t));
+      }),
+      wrecked = own.filter(function (t) {
+        return isYard(t) && !b.isDown(t) && (whole || hit(t));
+      });
 
     falls.push(
-      new Collapse.Collapse(
-        root,
-        b,
-        own.filter(function (t) {
-          return yard[t] !== true;
-        }),
-        {
-          delay:
-            Explosion.Explosion.FUSE_MS +
-            BLAST_GETS +
-            r.distance * BLAST_STEP +
-            Math.random() * BLAST_STEP,
-          apart: FALL_APART,
-          from: blast !== null ? [blast.mx, blast.mz] : null,
-          yards: own.filter(function (t) {
-            return yard[t] === true;
-          }),
-          yardsAt: Explosion.Explosion.FUSE_MS + r.distance * 60,
-        },
-      ),
+      new Collapse.Collapse(root, view, fall, {
+        delay:
+          Explosion.Explosion.FUSE_MS +
+          BLAST_GETS +
+          r.distance * BLAST_STEP +
+          Math.random() * BLAST_STEP,
+        apart: FALL_APART,
+        from: blast !== null ? [blast.mx, blast.mz] : null,
+        yards: wrecked,
+        yardsAt: Explosion.Explosion.FUSE_MS + r.distance * 60,
+      }),
     );
   });
 
-  result = city.explode(tile, function (t) {
-    return yard[t] === true;
-  });
+  //the trees round it, held standing as the world lets go of them, to go
+  //over as the blast gets to them
+  root.blasted = {};
+  if (blast !== null)
+    trees.forEach(function (t) {
+      root.blasted[t.tile] = function (letGo, expect) {
+        var d = Math.max(
+          Math.abs(Terrain.extractX(t.tile) * Config.tileSize - blast.mx),
+          Math.abs(Terrain.extractY(t.tile) * Config.tileSize - blast.mz),
+        );
+
+        expect(t.way);
+        blast.fell(
+          t.tile,
+          t.way,
+          BLAST_GETS + (d / Config.tileSize) * BLAST_STEP * 0.6,
+          letGo,
+        );
+      };
+    });
+
+  result = city.explode(tile, isYard);
+  root.blasted = null;
 
   if (result.error !== ErrorCode.NONE) {
     if (blast !== null) blast.stop();
@@ -1203,6 +1255,41 @@ Buildman.prototype.explode = function (tile) {
 
   return ErrorCode.NONE;
 };
+
+/**
+ * A building coming down by itself, so little health left (core/city
+ * collapse): what it looks like stood up in its place, all of it there is
+ * left coming down a tile at a time, no fence, no bulldozer (client/
+ * collapse) - set going once the world has let go of it.
+ */
+function onCollapse(sender, args, self) {
+  var b = getBuilding(self, args.building.tile),
+    model = args.building;
+
+  if (b === null || !b.view || !b.view.gameObject) return;
+
+  if (self.root.serviceman && self.root.serviceman.inspected() === model)
+    self.root.serviceman.hideInfo();
+
+  self.falling = self.falling || [];
+  self.falling.push(
+    new Collapse.Collapse(self.root, b, args.tiles, {
+      delay: 120,
+      apart: FALL_APART,
+      yards: model.tiles().filter(function (t) {
+        return model.isYard(t) && !model.isDown(t);
+      }),
+      yardsAt: 120,
+    }),
+  );
+}
+
+function onCollapsed(sender, args, self) {
+  (self.falling || []).forEach(function (f) {
+    f.start();
+  });
+  self.falling = [];
+}
 
 /**
  * Sets the building on tile on fire (core/city fireUp): it burns, the fire
@@ -1283,6 +1370,19 @@ Buildman.prototype.start = function () {
     core.constructionService,
     ConstructionService.events.buildingRemoved,
     onBuildingRemoved,
+    this,
+  );
+  //what comes down by itself, so little health left (core/city collapse)
+  Events.on(
+    core.constructionService,
+    ConstructionService.events.buildingCollapse,
+    onCollapse,
+    this,
+  );
+  Events.on(
+    core.constructionService,
+    ConstructionService.events.buildingCollapsed,
+    onCollapsed,
     this,
   );
   Events.on(

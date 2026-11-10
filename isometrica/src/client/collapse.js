@@ -2,7 +2,7 @@ import engine from "engine";
 import Core from "../core/main";
 import Config from "./config";
 import Demolition from "./demolition";
-import RenderLayer from "./renderlayer";
+import Yards from "./yards";
 import BuildingCode from "../data/buildingcode";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
@@ -34,16 +34,6 @@ var Terrain = Core.Terrain,
 //ms; and puffs of dust over a tile then, to hang there
 var SHOW_MS = 700,
   DUST_DOWN = 4;
-
-//how many pixels of a tile's picture stand at least STANDS high for it to
-//be the building rather than its yard - a house, not a tree in a garden
-var STANDS = 10,
-  STANDING = 260;
-
-//what the parts of a block of flats or offices are (shared/gen/stacking
-//kindOf): the building, or its yard
-var BUILT = { ground: 1, upper: 1, roof: 1, frame: 1, mast: 1, cranetop: 1 },
-  YARD = { yard: 1, lot: 1, site: 1 };
 
 /**
  * @param root {Vkaria}
@@ -216,20 +206,20 @@ CollapseScript.prototype.tick = function (time) {
   }
 };
 
-//a tile's rubble, as see-through as k says - and k kept
+//a tile's rubble, or its yard wrecked, as see-through as k says - and k
+//kept: the world's heap of rubble there, or what is left of a part of a
+//building still standing (client/buildingview damaged)
 function show(self, tile, k) {
   var b = self.root.buildman.getBuilding(tile);
 
   self.shown[tile] = k;
 
-  if (
-    b !== null &&
-    b.view &&
-    b.staticData &&
-    b.staticData.variantOf === BuildingCode.rubble &&
-    b.view.opacity !== k
-  )
-    b.view.setOpacity(k);
+  if (b === null || !b.view || !b.staticData) return;
+
+  if (b.staticData.variantOf === BuildingCode.rubble) {
+    if (b.view.opacity !== k) b.view.setOpacity(k);
+  } else if (b.data && b.data.isDown && b.data.isDown(tile))
+    b.view.setTileOpacity(tile, k);
 }
 
 //dust over a tile come down, rolling out slowly and hanging there
@@ -265,90 +255,4 @@ function end(self) {
   changed();
 }
 
-/**
- * Which tiles of a building are only its yard - its car park, its
- * playground, its garden, a park all of it - and not the building itself:
- * for a block of flats or offices, the tiles with nothing but its yard on
- * them; for a park, all of it; for anything else put together out of a
- * picture painted whole - a house, a farm, a church - the tiles on which
- * little of what it shows stands much over the ground; for a building
- * drawn whole, none. As it is drawn: none, for one that is not.
- *
- * @param building {{view: BuildingView, staticData: Object, data: Object}}
- * @returns {Object} true by the tile, for every tile that is only its yard
- */
-function yards(root, building) {
-  var out = {},
-    staticData = building.staticData,
-    compound = staticData ? staticData.compound : null;
-
-  if (!compound || !building.view || !building.data) return out;
-
-  if (compound.gen === "parks") {
-    var iter = building.data.occupiedTiles();
-
-    while (!iter.done) out[iter.next()] = true;
-    return out;
-  }
-
-  var at = building.view.gameObject.transform.getPosition([0, 0, 0]),
-    local = [0, 0, 0],
-    seen = {};
-
-  building.view.gameObject.transform.children.forEach(function (child) {
-    var r = child.gameObject.spriteRenderer,
-      sprite = r ? r.sprite : null;
-
-    if (
-      !sprite ||
-      typeof sprite.key !== "string" ||
-      r.layer !== RenderLayer.buildingsLayer
-    )
-      return;
-
-    child.getLocalPosition(local);
-
-    var tile = Terrain.convertToIndex(
-      Math.round((at[0] + local[0]) / TILE),
-      Math.round((at[2] + local[2]) / TILE),
-    );
-
-    if (seen[tile] === false) return;
-
-    var yard = yardPicture(sprite);
-
-    //anything of the building on it: the building
-    seen[tile] = seen[tile] === undefined ? yard : seen[tile] && yard;
-  });
-
-  for (var tile in seen) if (seen[tile]) out[tile] = true;
-
-  return out;
-}
-
-//whether a tile's picture is only of a yard
-function yardPicture(sprite) {
-  var kinds = sprite.key.split("+").map(function (key) {
-    var name = key.split(/[@#!~]/)[0],
-      p = name.split("/");
-
-    return p[p[0] === "gen" ? 2 : 1];
-  });
-
-  //a block's: by what its parts are
-  if (
-    kinds.every(function (k) {
-      return BUILT[k] || YARD[k];
-    })
-  )
-    return kinds.every(function (k) {
-      return YARD[k];
-    });
-
-  //painted whole: by how much of it stands
-  var n = sprite.standing ? sprite.standing(STANDS) : null;
-
-  return n !== null && n < STANDING;
-}
-
-export default { Collapse: Collapse, yards: yards, P: P };
+export default { Collapse: Collapse, yards: Yards.yards, P: P };

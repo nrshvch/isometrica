@@ -14,10 +14,6 @@
  *     the posts of its frame standing on up out of them, and what is on the
  *     ground round it - its yard, its car park, its garden - grey with soot
  *     and strewn with what fell, charred wood, broken brick, ash, glass;
- *   - "w:seed:keep", wrecked by a blast (core/city explode, a yard left as
- *     it was): whatever stood on it broken off `keep` pixels up, stumps and
- *     posts standing, the colours of it under a coat of grey dust, and the
- *     ground strewn with lumps of concrete, brick and glass;
  *   - "y:seed", all of it ground, sooted.
  *
  * And done to the whole of a picture once it is put together (wholly, the
@@ -48,18 +44,6 @@ var DEBRIS = [
   [146, 142, 134],
   [64, 54, 42],
 ];
-
-//the dust of a blast over everything, and what it strews: lumps of
-//concrete, brick, timber, glass
-var DUST = [164, 156, 144],
-  WRECKAGE = [
-    [150, 146, 138],
-    [118, 114, 108],
-    [140, 72, 52],
-    [104, 76, 52],
-    [196, 204, 206],
-    [84, 80, 76],
-  ];
 
 //how high a pixel can stand and still be the ground, pixels
 var GROUND = 1.5;
@@ -159,10 +143,9 @@ function burn(pixels, w, h, specs, height) {
   });
 }
 
-//a ruin, a wreck, the ground (r, w, y)
+//a ruin, the ground (r, y)
 function broken(pixels, w, h, s, height) {
   var seed = s.seed,
-    wreck = s.kind === "w",
     i,
     j;
 
@@ -177,8 +160,8 @@ function broken(pixels, w, h, s, height) {
           ? 0.15 + 0.2 * wave(i / 2, seed + 2)
           : 0.45 + 0.55 * wave(i / 4, seed)),
       post =
-        s.kind !== "y" && hash(i, 11, seed) < (wreck ? 0.08 : 0.12)
-          ? cut + 4 + (wreck ? 6 : 14) * hash(i, 13, seed)
+        s.kind !== "y" && hash(i, 11, seed) < 0.12
+          ? cut + 4 + 14 * hash(i, 13, seed)
           : -1;
 
     for (j = 0; j < h; j++) {
@@ -192,17 +175,14 @@ function broken(pixels, w, h, s, height) {
       if (z === null) z = Math.max(0, (h - 1 - j) * 0.6 - 4);
 
       if (z <= GROUND) {
-        if (wreck) dusty(pixels, o, i, j, seed);
-        else ground(pixels, o, i, j, seed);
+        ground(pixels, o, i, j, seed);
         continue;
       }
 
       //broken off: gone - but for a post, as far as it went
       if (z > cut) {
         if (post > 0 && z <= post) {
-          var p = wreck
-            ? WRECKAGE[z > post - 1.5 ? 5 : 3]
-            : CHAR[z > post - 1.5 ? 2 : 0];
+          var p = CHAR[z > post - 1.5 ? 2 : 0];
 
           pixels[o] = p[0];
           pixels[o + 1] = p[1];
@@ -211,8 +191,7 @@ function broken(pixels, w, h, s, height) {
         continue;
       }
 
-      if (wreck) dusted(pixels, o, i, j, seed, cut - z < 1.5);
-      else wall(pixels, o, i, j, seed, cut - z < 1.5);
+      wall(pixels, o, i, j, seed, cut - z < 1.5);
     }
   }
 }
@@ -250,36 +229,6 @@ function wall(pixels, o, i, j, seed, edge) {
 
   for (var k = 0; k < 3; k++)
     pixels[o + k] = pixels[o + k] * keep + tone[k] * (1 - keep);
-}
-
-//a pixel of the ground of a yard wrecked by a blast: grey with its dust in
-//drifts, and lumps of what was blown over it strewn about
-function dusty(pixels, o, i, j, seed) {
-  var r = hash(i, j, seed + 3);
-
-  if (r < 0.09 || (r < 0.13 && hash(i - 1, j, seed + 3) < 0.09)) {
-    var d = WRECKAGE[Math.floor(hash(i, j, seed + 5) * WRECKAGE.length)];
-
-    pixels[o] = d[0];
-    pixels[o + 1] = d[1];
-    pixels[o + 2] = d[2];
-    return;
-  }
-
-  var a = 0.25 + 0.5 * patch(i / 6, j / 4, seed + 29),
-    dark = 0.85 + 0.15 * hash(i, j, seed + 31);
-
-  for (var k = 0; k < 3; k++)
-    pixels[o + k] = (pixels[o + k] * (1 - a) + DUST[k] * a) * dark;
-}
-
-//a pixel of what stood on a wrecked yard, left standing: its own colours
-//under the dust, broken and paler where it broke off
-function dusted(pixels, o, i, j, seed, edge) {
-  var a = edge ? 0.6 : 0.3 + 0.25 * patch(i / 3, j / 4, seed + 37);
-
-  for (var k = 0; k < 3; k++)
-    pixels[o + k] = pixels[o + k] * (1 - a) + DUST[k] * a * 0.9;
 }
 
 /**

@@ -5,6 +5,7 @@ import Config from "./config";
 import View from "./view";
 import Demolition from "./demolition";
 import Collapse from "./collapse";
+import Felling from "./felling";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
 import BuildingClassCode from "../data/classcode";
@@ -115,6 +116,8 @@ function Explosion(root, building, tiles, yards) {
   this.puffs = 0;
   //the dust rolling down the streets, still to come: {at, tile, from}
   this.waves = [];
+  //the trees it knocks over, still to go: {at, tile, push, letGo}
+  this.trees = [];
   //the middle of it, in the world
   this.mx = 0;
   this.mz = 0;
@@ -177,6 +180,12 @@ Explosion.prototype.light = function () {
   this.state = "fuse";
   this.t = 0;
   this.collapse.start();
+
+  var self = this;
+
+  this.trees.forEach(function (t) {
+    lying(self, t.tile, 0);
+  });
 };
 
 /**
@@ -199,10 +208,43 @@ Explosion.prototype.stop = function () {
   });
   this.chunks = [];
   this.waves = [];
+  this.trees.forEach(function (t) {
+    if (!t.gone) t.letGo(t.push);
+    lying(this, t.tile, 1);
+  }, this);
+  this.trees = [];
   this.collapse.stop();
 
   end(this);
 };
+
+/**
+ * A tree it knocks over (core/city explode), so long after it goes up -
+ * the way push goes - from where it stands (client/envman, client/buildman
+ * hold, letGo); lying for good once it is down (client/buildingview
+ * fallen), not to be seen till then.
+ *
+ * @param tile {number}
+ * @param push {string} "x+", "x-", "y+", "y-"
+ * @param after {number} ms after it goes up
+ * @param letGo {function(string)}
+ */
+Explosion.prototype.fell = function (tile, push, after, letGo) {
+  this.trees.push({
+    tile: tile,
+    push: push,
+    at: after,
+    letGo: letGo,
+    gone: false,
+  });
+};
+
+//the tree knocked down lying on tile, as see-through as k says
+function lying(self, tile, k) {
+  var b = self.root.buildman.getBuilding(tile);
+
+  if (b !== null && b.view && b.view.opacity !== k) b.view.setOpacity(k);
+}
 
 /**
  * Whether all of it is over: blown up, every piece of it gone, the rubble
@@ -238,7 +280,10 @@ ExplosionScript.prototype.tick = function (time) {
   if (self.state === "fuse") {
     fuse(self, dt);
     if (self.t >= FUSE_MS) blast(self);
-  } else if (self.state === "blown") roll(self);
+  } else if (self.state === "blown") {
+    roll(self);
+    trees(self);
+  }
 
   P.flyOn(self, dt);
 
@@ -246,6 +291,7 @@ ExplosionScript.prototype.tick = function (time) {
     self.state === "blown" &&
     self.chunks.length === 0 &&
     self.waves.length === 0 &&
+    self.trees.length === 0 &&
     self.collapse.over()
   )
     end(self);
@@ -477,6 +523,24 @@ function roll(self) {
     }
 
     return false;
+  });
+}
+
+//the trees going over as the blast gets to them, and lying there for good
+//once they are down
+function trees(self) {
+  self.trees = self.trees.filter(function (t) {
+    if (!t.gone && self.t >= t.at) {
+      t.gone = true;
+      t.letGo(t.push);
+    }
+
+    if (t.gone && self.t >= t.at + Felling.LANDS) {
+      lying(self, t.tile, 1);
+      return false;
+    }
+
+    return true;
   });
 }
 

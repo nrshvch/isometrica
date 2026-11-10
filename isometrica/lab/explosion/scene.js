@@ -10,10 +10,11 @@
  * each, not one pile of the two (client/rubble). And all of it on a
  * hillside, for the rubble to lie on it as it slopes.
  *
- * Or with its neighbours round it (setAround): a town house next to it, a
- * park on its other side, another across the road, and one further off
- * along the street - the blast bringing down the ones near it, the park
- * wrecked, and the one further off knocked about but standing.
+ * Or with its neighbours round it (setAround): a terrace of three houses
+ * next to it, the nearest two of them close enough for the blast to bring
+ * down, the third not; a park on its other side, wrecked; a house across
+ * the road and one further along, knocked about but standing; and trees
+ * round it, knocked over to lie there.
  */
 import BuildingData from "../../src/data/buildings";
 import BuildingCode from "../../src/data/buildingcode";
@@ -35,10 +36,18 @@ var FIRST = 430;
 //along the street - from the corner of its lot, as far along x as its lot
 //is wide where "wide" says so, and back across the road from its front
 var NEIGHBOURS = [
-  { code: 4112, x: -1, y: 0, what: "next to it" },
+  { code: 4131, x: -1, y: 0, back: true, what: "the terrace next to it" },
   { code: 5012, x: 0, y: 0, wide: 1, what: "the park beside it" },
   { code: 4112, x: 0, y: 0, across: true, what: "across the road" },
   { code: 4112, x: 3, y: 0, wide: 1, what: "further along" },
+];
+
+//and the trees round it, near enough to go over, when it has neighbours:
+//off the corner of its lot at its back
+var NEAR_TREES = [
+  [-1, 2],
+  [1, 2],
+  [2, 1],
 ];
 
 //the trees round it, off its corners and along the far side of the road
@@ -100,10 +109,14 @@ Scene.prototype.put = function () {
   world.put(this.code, lot.x, lot.y, this.rotation);
   if (this.beside && !this.around)
     world.put(this.code, lot.x + lot.sizeX, lot.y, this.rotation);
-  if (this.around)
+  if (this.around) {
     this.neighbours().forEach(function (n) {
       world.put(n.code, n.x, n.y, 0);
     });
+    NEAR_TREES.forEach(function (t) {
+      world.plant(lot.x + t[0], lot.y + lot.sizeY - 1 + t[1]);
+    });
+  }
   TREES.forEach(function (t) {
     world.plant(t[0], t[1]);
   });
@@ -168,7 +181,13 @@ Scene.prototype.neighbours = function () {
       code: n.code,
       x:
         lot.x + n.x + (n.wide ? lot.sizeX : 0) - (n.x < 0 ? data.sizeX - 1 : 0),
-      y: n.across ? lot.y - 1 - data.sizeY : lot.y + n.y,
+      //across the road; along its back row, where the building itself is,
+      //not its yard; or level with its front
+      y: n.across
+        ? lot.y - 1 - data.sizeY
+        : n.back
+          ? lot.y + lot.sizeY - data.sizeY
+          : lot.y + n.y,
       what: n.what,
     };
   });
@@ -208,6 +227,8 @@ Scene.prototype.neighbourhood = function () {
       what: n.what,
       name: BuildingData[n.code].name,
       health: standing ? Math.round(b.getHealth(core.time.now)) : null,
+      parts: standing ? b.builtTiles().length : 0,
+      left: standing ? b.standingTiles().length : 0,
     };
   });
 };

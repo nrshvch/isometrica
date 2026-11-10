@@ -180,11 +180,48 @@ function around(tiles) {
   return out;
 }
 
+/**
+ * The picture of a heap on tile running on into the heaps round it that has
+ * says are of the same pile, flat - what is left of a part of a building
+ * come down, on the building's level (client/buildingview damaged) - seen
+ * with the camera turned so many times.
+ *
+ * @param has {function(number): boolean}
+ * @returns {string}
+ */
+function pictureWith(has, tile, rubble, turns) {
+  var sides = SIDES.map(function (d) {
+      return has(tile + d[0] + d[1] * Terrain.dy) ? 1 : 0;
+    }),
+    corners = CORNERS.map(function (d, k) {
+      return sides[k] &&
+        sides[(k + 1) % 4] &&
+        has(tile + d[0] + d[1] * Terrain.dy)
+        ? 1
+        : 0;
+    });
+
+  return (
+    "gen/scenery/pile/" +
+    rubble +
+    "/" +
+    sides.join("") +
+    corners.join("") +
+    "/0000" +
+    (turns & 3 ? "/r" + (turns & 3) : "")
+  );
+}
+
 export default {
   isRubble: isRubble,
   maskOf: maskOf,
   slopeOf: slopeOf,
   dropOf: dropOf,
   pictureOf: pictureOf,
+  pictureWith: pictureWith,
   around: around,
+  //where a heap's picture is drawn from: the middle of its tile, at its
+  //lowest corner (data/buildings rubble)
+  PIVOT_X: 32,
+  PIVOT_Y: 40,
 };

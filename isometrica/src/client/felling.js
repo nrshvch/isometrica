@@ -288,4 +288,8 @@ FellingScript.prototype.end = function () {
   if (go !== null && go.world !== null) go.world.removeGameObject(go);
 };
 
+//how long after it is pushed it lies on the ground, ms - for what is left
+//lying for good to be drawn from then (client/explosion)
+Felling.LANDS = SHUDDER_MS + FALL_MS;
+
 export default Felling;

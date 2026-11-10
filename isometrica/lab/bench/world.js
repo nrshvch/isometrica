@@ -444,7 +444,8 @@ World.prototype.explode = function (dx, dy) {
  * its heaps of rubble and its wrecked yards, by the tile - or only the one
  * or the other.
  *
- * @param [only] {string} "heaps", "wrecks"
+ * @param [only] {string} "heaps", "wrecks", "fallen" - the trees knocked
+ *        down, lying
  * @returns {number[]}
  */
 World.prototype.rubble = function (only) {
@@ -453,9 +454,16 @@ World.prototype.rubble = function (only) {
     .filter(function (b) {
       if (b.data.variantOf !== BuildingCode.rubble) return false;
 
-      var wreck = !!(b.look && b.look.wreck);
+      var wreck = !!(b.look && b.look.wreck),
+        fallen = !!(b.look && b.look.fallen);
 
-      return only === "heaps" ? !wreck : only === "wrecks" ? wreck : true;
+      return only === "heaps"
+        ? !wreck && !fallen
+        : only === "wrecks"
+          ? wreck
+          : only === "fallen"
+            ? fallen
+            : true;
     })
     .map(function (b) {
       return b.tile;
@@ -665,6 +673,7 @@ World.prototype.status = function () {
     }, 0),
     heaps: this.rubble("heaps").length,
     wrecks: this.rubble("wrecks").length,
+    fallen: this.rubble("fallen").length,
     collapsing: collapses(this).length,
     sites: this.core.buildings.underConstruction().map(function (b) {
       return b.getProgress();
