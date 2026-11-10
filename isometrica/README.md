@@ -35,7 +35,10 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   `/explosion.html` - a building blown up, torn into pieces thrown all
   round in a fireball, its rubble left lying till the bulldozers clear it,
   or two of it side by side, a pile each, on the flat or on a slope -
-  and the lighting bench at `/lighting.html`. Everything is painted and
+  the fire bench at `/fire.html` - a building set on fire, spreading
+  window by window, black smoke rolling up off it, coming down and left a
+  burnt-out ruin, a day of it as fast as asked, by day or at night - and
+  the lighting bench at `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its

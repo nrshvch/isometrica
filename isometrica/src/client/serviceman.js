@@ -167,6 +167,15 @@ function refresh(self) {
       continue;
     }
 
+    //on fire, or burnt down: nothing more to want (client/fires)
+    if (
+      model.getState() === BuildingState.burning ||
+      model.getState() === BuildingState.ruin
+    ) {
+      hide(self, tile);
+      continue;
+    }
+
     missing = wantOf(city, model);
 
     if (missing === null) hide(self, tile);
@@ -532,6 +541,16 @@ function hideCoverage(self, key) {
     self[key] = null;
   }
 }
+
+/**
+ * The building looked at shown as it is now, still looked at - set on fire
+ * (client/buildman fireUp): no copy of it standing drawn over the fire, and
+ * none of the reach it no longer has.
+ */
+ServiceMan.prototype.reinspect = function () {
+  hideCoverage(this, "_coverage");
+  if (this._inspected !== null) raise(this, this._inspected);
+};
 
 /**
  * What a tower that was clicked waters.

@@ -491,6 +491,7 @@ CityBuildings.prototype.restore = function (
   progress,
   look,
   surface,
+  fire,
   demolition,
 ) {
   //saves written before the codes were made numbers carry them as strings
@@ -510,6 +511,8 @@ CityBuildings.prototype.restore = function (
 
   if (look !== undefined) building.look = look;
   if (Array.isArray(surface)) building.surface = surface.slice();
+  //on fire, or burnt down, since then (core/building ignite)
+  if (typeof fire === "number") building.restoreFire(fire);
   if (demolition && typeof demolition === "object") {
     building.demolishing = true;
     building.down = Array.isArray(demolition.down)
@@ -552,6 +555,8 @@ CityBuildings.prototype.save = function () {
       look: building.look,
       //what it stands on (core/surface)
       surface: building.surface || undefined,
+      //when it was set on fire, if it was
+      fire: building.fire !== null ? building.fire : undefined,
       //being demolished, and how far down it has come
       demolition: building.demolishing
         ? { down: (building.down || []).slice() }
@@ -574,6 +579,7 @@ CityBuildings.prototype.load = function (list) {
       list[i].progress,
       list[i].look,
       list[i].surface,
+      list[i].fire,
       list[i].demolition,
     );
 };

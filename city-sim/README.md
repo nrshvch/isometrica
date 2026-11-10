@@ -93,10 +93,11 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   is going up, or what it makes a tick, who lives or works in it and what
   it goes without (`src/ui/world/WorldHud.jsx`,
   `isometrica/src/client/worth.js`) - and the bar has only what can be done
-  to it, Replace, Demolish and Blow up, its tools back once it is put away
-  with a tap anywhere else. The words over the world stay as they are, the tapped one's too:
-  how far along each site is, what each building goes without - in a word,
-  "no road", the card saying what road it wants, "no road (gravel)".
+  to it, Replace, Demolish, Blow up and Fire up, its tools back once it is
+  put away with a tap anywhere else. The words over the world stay as they
+  are, the tapped one's too: how far along each site is, what each building
+  goes without - in a word, "no road", the card saying what road it wants,
+  "no road (gravel)" - nothing over one on fire or burnt down.
 - Replace opens the catalogue on only what covers its ground, turned one
   way or another - a 1x2 for a 2x1 as well - each at what it would come
   to, clearing it away included, and the kind it is among them, for
@@ -143,6 +144,32 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   the heaps round it a pile without it from then on - or anything is built
   over it (`isometrica/src/core/city.js` explode,
   `isometrica/src/data/buildings.js` rubble).
+- Fire up sets the building on fire, for nothing, and it burns through
+  most of a day of the game's time (`isometrica/src/client/fires.js`). It
+  catches in a window of a floor low down, glowing within, and the fire
+  spreads window by window - up faster than down, slower along a floor -
+  till flames lick up out of every window, white-hot to orange to red, and
+  off its roof; the wall over each is blackened, sparks fly, and the
+  building chars all over as it goes on (`isometrica/src/client/burnt.js`
+  char). Smoke pours out of its windows, and black smoke rolls up off the
+  top of it - thicker the more of it burns, as big a column as the
+  building is, billowing as it goes up and bending off the way the wind
+  blows high up, a stream of it across the sky over the city
+  (`isometrica/src/shared/gen/smoke.js` plume). After dark the fire lights
+  the ground round it and the smoke over it. Seven hours on it comes down
+  the way a building does, floor onto floor in a cloud of dust and smoke,
+  no fence and no bulldozer - and what is left of it burns on among its
+  charred walls, the smoke thinning, then smoulders, embers glowing, a
+  wisp of smoke here and there, and by the end of the day is a cold ruin
+  (`isometrica/src/client/ruin.js`): its ground floor's walls charred and
+  broken off, the posts of its frame standing up out of them, its concrete
+  base kept where it had one, and its yard, its car park, its playground
+  sooted and strewn with what fell. It is out of service from the moment it
+  catches - no one lives or works in it, nothing is made of it - and the
+  card says it is on fire, then burnt down; the ruin stands till it is
+  cleared, replaced or blown up. Kept in the save, the fire as far along
+  after a reload as it would have been (`isometrica/src/core/building.js`
+  ignite, burn).
 - A building put up has its ground cleared first, bare or not - the trees,
   stones or rubble on it standing till a bulldozer gets there, driving out
   to it the same way - and only then goes up: the bulldozers are the first

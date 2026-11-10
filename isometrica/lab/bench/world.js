@@ -1,11 +1,10 @@
 /**
  * The ground for the lab's benches that go the game's own way (lab/
- * demolition.html, replace.html, explosion.html): the game's own client and
- * world, out
- * in the open sea, and of all of it only the bench's own patch drawn - flat
- * grass, as a save puts ground back (core/terrain load), with nothing of the
- * world's own on it - and a city of nobody to own what is put up, rich
- * enough never to be short. The clock stands still at ten in the morning in
+ * demolition.html, replace.html, explosion.html, fire.html): the game's own
+ * client and world, out in the open sea, and of all of it only the bench's
+ * own patch drawn - flat grass, as a save puts ground back (core/terrain
+ * load), with nothing of the world's own on it - and a city of nobody to
+ * own what is put up, rich enough never to be short. The clock stands still at ten in the morning in
  * clear weather, no traffic drives its roads, nothing is saved, nothing is
  * heard; and the client goes as fast or as slowly as asked, or not at all -
  * and the building sites with it, sitePace times as fast again.
@@ -591,7 +590,7 @@ World.prototype.wipe = function (dx, dy, w, h) {
 /**
  * Whether anything is being cleared still - a bulldozer out, a tile it has
  * not got to yet - or waits to go up where it is (client/buildman replace),
- * or is blowing up (client/explosion).
+ * or is blowing up (client/explosion), or coming down burnt (client/fires).
  */
 World.prototype.busy = function () {
   var works = this.client.clearworks;
@@ -600,7 +599,8 @@ World.prototype.busy = function () {
     works.dozers.length > 0 ||
     Object.keys(works.waiting).length > 0 ||
     this.city.buildings.replacing().length > 0 ||
-    explosions(this).length > 0
+    explosions(this).length > 0 ||
+    this.client.fires.falling()
   );
 };
 

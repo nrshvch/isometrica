@@ -68,6 +68,22 @@ SmokeScript.dust = {
   thick: 0.9,
 };
 
+//the black smoke of a building on fire (client/fires): rolling up out of it
+//hot and fast, and on up high over the city, levelling off up there,
+//thinning and greying slowly - and the wind high up taking it off across
+//the sky, a stream of it over the city, however still it is down below
+//(aloft: as hard as that at the least, world units a second, the higher
+//the more)
+SmokeScript.plume = {
+  looks: frames("plume"),
+  ttl: 42000,
+  rise: 14,
+  cools: 0.9,
+  peak: 0.04,
+  thick: 0.95,
+  aloft: 12,
+};
+
 //a fireball, a building blown up (client/explosion): bursting out and gone
 //in a moment, going up fast as it goes
 SmokeScript.fire = {
@@ -178,8 +194,23 @@ SmokeScript.prototype.tick = function (time) {
     w = Wind(now, blowing),
     //the higher, the slower it rises and the more the wind has it - and
     //the harder it blows, the lower it bends it over
-    rise = kind.rise * (1 - 0.65 * t) * (1 - 0.55 * Wind.strength(w)),
-    blown = 0.3 + t,
+    rise =
+      kind.rise *
+      (1 - (kind.cools || 0.65) * t) *
+      (1 - 0.55 * Wind.strength(w));
+
+  //up high, where the wind blows harder than down here
+  if (kind.aloft) {
+    var m = Math.hypot(w[0], w[1]) || 1,
+      aloft = Math.max(kind.aloft, m * 3) / m;
+
+    w[0] *= aloft;
+    w[1] *= aloft;
+  }
+
+  //and what goes up high goes up straight, then over, the stream of it
+  //bending away the higher it gets (aloft)
+  var blown = kind.aloft ? 0.1 + 1.8 * t * t : 0.3 + t,
     //thrown out, and slowing
     thrown = (1 - t) * (1 - t);
 

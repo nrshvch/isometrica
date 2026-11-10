@@ -1,3 +1,4 @@
+import Burnt from "./burnt";
 import CanvasCache from "./canvascache";
 import CachedSprite from "./cachedsprite";
 import Generator from "./generator";
@@ -388,7 +389,8 @@ SpriteCache.prototype.getComposite = function (parts) {
             ? part.name || part
             : part.name + "@" + part.x + "," + part.y) +
           (c ? "#" + c.x + "," + c.y + "," + c.w + "," + c.h : "") +
-          (part.plain ? "!" : "")
+          (part.plain ? "!" : "") +
+          (part.burnt ? "~" + part.burnt : "")
         );
       })
       .join("+"),
@@ -420,6 +422,8 @@ SpriteCache.prototype.getComposite = function (parts) {
       x: x,
       y: y,
       clip: part.clip || null,
+      //burnt down, as its words say (client/burnt)
+      burnt: part.burnt ? Burnt.spec(part.burnt) : null,
     });
     width = Math.max(width, x + (part.clip ? part.clip.w : frame.w));
     height = Math.max(height, y + (part.clip ? part.clip.h : frame.h));
@@ -435,8 +439,64 @@ SpriteCache.prototype.getComposite = function (parts) {
   );
 
   if (plain) sprite.plain = true;
+  if (
+    resolved.some(function (part) {
+      return part.burnt !== null;
+    })
+  )
+    sprite.burnt = true;
+
+  //charred, all of it as one (client/burnt char)
+  resolved.forEach(function (part) {
+    if (part.burnt !== null && part.burnt.kind === "c")
+      sprite.charred = part.burnt;
+  });
 
   return sprite;
+};
+
+//a part of what a picture is put together out of, as its key has it
+//(getComposite): its name, where it is in it, the piece of it, drawn as
+//painted, burnt
+var PART_KEY =
+  /^([^@#!~]*)(?:@(-?[\d.]+),(-?[\d.]+))?(?:#(-?[\d.]+),(-?[\d.]+),([\d.]+),([\d.]+))?(!)?(?:~.*)?$/;
+
+/**
+ * The same picture as sprite, put together out of the same parts in the same
+ * places, every one of them burnt as words say (client/burnt) - and drawn as
+ * painted, if plain - or sprite itself, for one not put together here.
+ *
+ * @param sprite {CachedSprite}
+ * @param words {string} "c:seed:level", "r:seed:keep", "y:seed"
+ * @param [plain] {boolean}
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.burnt = function (sprite, words, plain) {
+  if (!sprite || typeof sprite.key !== "string") return sprite;
+
+  var frames = this.frames,
+    parts = [],
+    whole = sprite.key.split("+").every(function (key) {
+      var m = PART_KEY.exec(key);
+
+      if (m === null || frames[m[1]] === undefined) return false;
+
+      parts.push({
+        name: m[1],
+        x: +(m[2] || 0),
+        y: +(m[3] || 0),
+        clip:
+          m[4] !== undefined
+            ? { x: +m[4], y: +m[5], w: +m[6], h: +m[7] }
+            : undefined,
+        plain: !!plain || m[8] === "!",
+        burnt: words,
+      });
+
+      return true;
+    });
+
+  return whole && parts.length > 0 ? this.getComposite(parts) : sprite;
 };
 
 /**

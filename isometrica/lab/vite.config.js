@@ -8,7 +8,7 @@
  * Tailwind (ui/lab.css). The benches draw with the game's own client - on a
  * stage of nothing but its drawing (bench/stage.js: buildings.html), or on
  * a world of its own (bench/world.js: demolition.html, replace.html,
- * explosion.html) - which finds the pictures it paints listed in gfx/,
+ * explosion.html, fire.html) - which finds the pictures it paints listed in gfx/,
  * served and copied in as a game's build does (isometrica/vite.mjs), after
  * npm run build here.
  */
@@ -41,6 +41,7 @@ export default defineConfig({
         demolition: path.join(here, "demolition.html"),
         replace: path.join(here, "replace.html"),
         explosion: path.join(here, "explosion.html"),
+        fire: path.join(here, "fire.html"),
       },
     },
   },

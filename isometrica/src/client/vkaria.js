@@ -22,6 +22,7 @@ import CameraMan from "./cameraman";
 import Carman from "./carman";
 import Roadworks from "./roadworks";
 import Clearworks from "./clearworks";
+import Fires from "./fires";
 import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
 import Soundman from "./audio/soundman";
@@ -110,6 +111,8 @@ function Vkaria(core, ui, play) {
   this.roadworks = new Roadworks(this);
   //the ground being cleared, and the bulldozers clearing it
   this.clearworks = new Clearworks(this);
+  //buildings on fire, burning down
+  this.fires = new Fires.Fires(this);
   this.cameraControl = new CameraControl(this);
   this.cameraman = new CameraMan(this);
   this.player = new Player(this);
@@ -263,6 +266,7 @@ Vkaria.prototype.startServices = function () {
   this.carman.init();
   this.roadworks.init();
   this.clearworks.init();
+  this.fires.init();
   this.sound.init();
 
   if (this.play.start) this.play.start(this);

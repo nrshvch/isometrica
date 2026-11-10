@@ -206,12 +206,9 @@ function demolitionOf(self, model) {
   if (d === undefined || d.over()) {
     if (b === null || !b.view) return null;
 
-    d = new Demolition.Demolition(
-      self.root,
-      b,
-      model.tiles(),
-      model.down || [],
-    );
+    d = new Demolition.Demolition(self.root, b, model.tiles(), {
+      down: model.down || [],
+    });
     self.demolitions[model.tile] = d;
   } else
     model.tiles().forEach(function (t) {
@@ -611,6 +608,7 @@ errorText[ErrorCode.BEING_CLEARED] = "being cleared";
 errorText[ErrorCode.ON_SHORE] = "on shore";
 errorText[ErrorCode.WRONG_FOOTPRINT] = "doesn't fit";
 errorText[ErrorCode.NOTHING_TO_CLEAR] = "nothing there";
+errorText[ErrorCode.CANT_BURN] = "won't burn";
 
 /**
  * Puts code down on each of anchors and tells the player why whatever did not
@@ -1116,6 +1114,38 @@ Buildman.prototype.explode = function (tile) {
   }
 
   if (blast !== null) blast.light();
+
+  return ErrorCode.NONE;
+};
+
+/**
+ * Sets the building on tile on fire (core/city fireUp): it burns, the fire
+ * spreading through it, over most of a day, comes down, and what is left of
+ * it smoulders on a while - a burnt-out ruin then, till it is cleared
+ * (client/fires). Looked at, it is looked at still, as it burns.
+ *
+ * @returns {number} ErrorCode
+ */
+Buildman.prototype.fireUp = function (tile) {
+  var building = this.root.core.buildingService.get(tile),
+    city = building !== null ? building.getCity() : null,
+    error;
+
+  if (!city || building === null || !Replacement.replaceable(building)) {
+    this.showError(tile, ErrorCode.NOTHING_TO_CLEAR);
+    return ErrorCode.NOTHING_TO_CLEAR;
+  }
+
+  error = city.fireUp(tile);
+
+  if (error !== ErrorCode.NONE) {
+    this.showError(tile, error);
+    return error;
+  }
+
+  //looked at still, as it is now: what it gave the city it gives no more
+  if (this.root.serviceman) this.root.serviceman.reinspect();
+  changed();
 
   return ErrorCode.NONE;
 };

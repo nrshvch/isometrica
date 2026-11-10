@@ -20,6 +20,7 @@ import View from "./view";
 import BuildingClassCode from "../data/classcode";
 import Trees from "../data/trees";
 import Rubble from "./rubble";
+import Ruin from "./ruin";
 import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
@@ -304,8 +305,53 @@ BuildingView.prototype.update = function () {
       //any other building goes up on a building site like the blocks' -
       //the same all the while
       addPieces(this.gameObject, lots, this.opacity, undefined, b.data.tile);
-    } else if (b.data.getState() === BuildingState.ready) {
-      //drawn the way it was painted, see addSprites
+    } else if (b.data.getState() === BuildingState.ruin) {
+      //burnt down: what is left of it (client/ruin) - of one painted whole,
+      //its picture burnt down as it is
+      if (!look) {
+        addSprites(
+          this.gameObject,
+          staticData,
+          at.rotation,
+          this.opacity,
+          undefined,
+          undefined,
+          b.data.tile,
+        );
+        this.gameObject.transform.children.forEach(function (child, k) {
+          var r = child.gameObject.spriteRenderer;
+
+          if (r && r.sprite && r.layer === RenderLayer.buildingsLayer)
+            r.setSprite(Ruin.whole(vkaria.sprites, r.sprite, b.data.tile + k));
+        });
+      } else
+        addPieces(
+          this.gameObject,
+          Ruin.pieces(
+            vkaria.sprites,
+            CompoundBuilding.pieces(
+              vkaria.sprites,
+              look,
+              staticData.compound,
+              at.rotation,
+              b.data.tile,
+            ),
+            b.data.tile,
+          ).filter(function (p) {
+            return !p.empty;
+          }),
+          this.opacity,
+          undefined,
+          b.data.tile,
+        );
+    } else if (
+      b.data.getState() === BuildingState.ready ||
+      b.data.getState() === BuildingState.burning
+    ) {
+      var burning = b.data.getState() === BuildingState.burning;
+
+      //drawn the way it was painted, see addSprites - on fire, with none of
+      //its lights on (client/fires)
       addSprites(
         this.gameObject,
         staticData,
@@ -323,11 +369,11 @@ BuildingView.prototype.update = function () {
             )
           : look,
         b.data.tile,
-        lightsOf(staticData),
+        burning ? undefined : lightsOf(staticData),
       );
 
       //smoke out of the chimneys of a house put together out of parts
-      if (look && collecting === null)
+      if (look && collecting === null && !burning)
         CompoundBuilding.chimneys(
           vkaria.sprites,
           look,
