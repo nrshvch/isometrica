@@ -66,7 +66,8 @@ function partOf(name) {
  * - as a ruin of itself, kind "k", "s", "b" or "c": gutted or burnt out,
  * all of it; fallen in, its ground storey only, as many storeys come down
  * onto it as it had.
- * Itself, for one whose parts are not painted that way.
+ * For one whose parts are not painted that way: itself, standing; its
+ * picture broken off low (whole), come down.
  *
  * @returns {CachedSprite}
  */
@@ -86,7 +87,10 @@ function model(sprites, sprite, kind) {
     }
   });
 
-  if (!ok) return sprite;
+  if (!ok)
+    return kind === "s" || kind === "k"
+      ? sprite
+      : whole(sprites, sprite, seedOf(sprite.key));
 
   var laid = parts
     .filter(function (p, i) {
@@ -127,6 +131,17 @@ function pieces(sprites, pieces, kind) {
       sprite: model(sprites, piece.sprite, kind),
     });
   });
+}
+
+//a number for a picture, out of its key, the same every time
+function seedOf(key) {
+  var h = 0,
+    k = String(key);
+
+  for (var i = 0; i < k.length; i++)
+    h = (Math.imul(h, 31) + k.charCodeAt(i)) | 0;
+
+  return h >>> 0;
 }
 
 //what a building painted whole leaves burnt, as its seed says: its walls

@@ -438,8 +438,6 @@ function cast(boxes, sx, sy) {
   for (i = 0; i < boxes.length; i++) {
     b = boxes[i];
     if (sx < b.sMinX || sx > b.sMaxX || sy < b.sMinY || sy > b.sMaxY) continue;
-    //glass to be seen through (see): every other pixel of it not there
-    if (b.see && (Math.floor(sx) + Math.floor(sy)) & 1) continue;
 
     tin = b.x0 - x;
     f = 0;
@@ -1253,16 +1251,18 @@ var WALL = 2,
 var FLOOR = [146, 142, 134],
   PLASTER = [208, 202, 192];
 
-//whether a box is leaves, grass - a tree's crown is not a room - by its
-//colour: not green glass, which shines
+//whether a box is leaves, grass - a tree's crown, a hedge, a lawn is not a
+//room - by its colour: green, and not glass, which shines, nor a wall
+//painted green, which is made of something
 function green(b) {
-  var c = b.color;
+  var c = b.color,
+    f = b.finish;
 
-  return (
-    c !== undefined &&
-    !(b.finish !== undefined && b.finish.sheen) &&
-    c[1] > c[0] + 18 &&
-    c[1] > c[2] + 18
+  if (c === undefined || !(c[1] > c[0] + 18 && c[1] > c[2] + 18)) return false;
+
+  return !(
+    f !== undefined &&
+    (f.sheen || (f.material !== undefined && f.material !== "grass"))
   );
 }
 
@@ -1273,10 +1273,8 @@ function green(b) {
  * was on it, its walls on the other sides, its floor and its ceiling left;
  * and in it empty rooms, a bare floor, plastered walls, a wall across it
  * where it is wide, a floor between storeys where it is more than one high.
- * Its windows, on the walls left, panes of glass to be seen through, from
- * inside and out (see) - a hole through the wall, every other pixel of it
- * glass; a wall all of glass, a curtain wall, the same all over, nothing
- * plastered behind it.
+ * A storey all of glass, a curtain wall: an open floor, glass round it,
+ * nothing plastered.
  */
 function hollow(boxes, sides) {
   var rooms = [];
@@ -1327,97 +1325,11 @@ function hollow(boxes, sides) {
       });
       pieces = left;
     });
-
-    //a curtain wall: what is left of it, its walls, glass seen through
-    rooms.forEach(function (r) {
-      if (r.b === b && r.glass)
-        pieces.forEach(function (p) {
-          if (p.z1 - p.z0 > SLAB + CEIL + 1)
-            p.finish = Object.assign({}, p.finish || {}, { see: true });
-        });
-    });
     out = out.concat(pieces);
   });
 
   rooms.forEach(function (r) {
     out = out.concat(inside(r));
-  });
-
-  //its windows, holes through its walls, panes in them seen through
-  var panes = [];
-
-  rooms.forEach(function (r) {
-    if (r.glass) return;
-    windowsOf(r, boxes).forEach(function (w) {
-      var left = [];
-
-      out.forEach(function (p) {
-        left = left.concat(subtract(p, w.hole));
-      });
-      out = left;
-      panes.push(w.pane);
-    });
-  });
-
-  return out.concat(panes);
-}
-
-//the windows on the walls left of a room opened up (hollow): each the hole
-//it is through its wall, and the pane of glass in it, seen through
-function windowsOf(r, boxes) {
-  var b = r.b,
-    y0 = Math.max(r.y0, b.y0),
-    x0 = Math.max(r.x0, b.x0),
-    out = [];
-
-  boxes.forEach(function (g) {
-    if (g === b || !glassy(g)) return;
-
-    var z0 = Math.max(g.z0, r.z0),
-      z1 = Math.min(g.z1, r.z1),
-      thinX = g.x1 - g.x0 <= 1.5,
-      thinY = g.y1 - g.y0 <= 1.5,
-      hole = null;
-
-    if (z1 - z0 < 1) return;
-
-    //on a wall along y: at its back, or at its front where it is not open
-    if (thinX && g.y1 > y0 && g.y0 < r.y1) {
-      var ya = Math.max(g.y0, y0),
-        yb = Math.min(g.y1, r.y1);
-
-      if (g.x0 >= b.x1 - WALL && g.x0 <= b.x1 + 0.5)
-        hole = [r.x1 - 0.01, Math.max(b.x1, g.x1) + 0.01, ya, yb];
-      else if (!r.openX && g.x1 <= b.x0 + WALL && g.x1 >= b.x0 - 0.5)
-        hole = [Math.min(b.x0, g.x0) - 0.01, r.x0 + 0.01, ya, yb];
-    }
-
-    //on a wall along x
-    if (hole === null && thinY && g.x1 > x0 && g.x0 < r.x1) {
-      var xa = Math.max(g.x0, x0),
-        xb = Math.min(g.x1, r.x1);
-
-      if (g.y0 >= b.y1 - WALL && g.y0 <= b.y1 + 0.5)
-        hole = [xa, xb, r.y1 - 0.01, Math.max(b.y1, g.y1) + 0.01];
-      else if (!r.openY && g.y1 <= b.y0 + WALL && g.y1 >= b.y0 - 0.5)
-        hole = [xa, xb, Math.min(b.y0, g.y0) - 0.01, r.y0 + 0.01];
-    }
-
-    if (hole === null || hole[0] >= hole[1] || hole[2] >= hole[3]) return;
-
-    out.push({
-      hole: {
-        x0: hole[0],
-        x1: hole[1],
-        y0: hole[2],
-        y1: hole[3],
-        z0: z0,
-        z1: z1,
-      },
-      pane: box(hole[0], hole[1], hole[2], hole[3], z0, z1, g.color, {
-        see: true,
-      }),
-    });
   });
 
   return out;
@@ -2674,7 +2586,6 @@ function render(boxes) {
       color: b.color,
       finish: b.finish,
       cuts: b.cuts,
-      see: b.finish !== undefined && !!b.finish.see,
       sMinX: r.minX,
       sMaxX: r.maxX,
       sMinY: r.minY,

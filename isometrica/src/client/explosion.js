@@ -76,9 +76,9 @@ var FIRE_EACH = 6,
   MOST_PUFFS = 220;
 
 //the dust: puffs of it rolling out of every tile of it, and how fast - to
-//hang round where it stood, not off across the city
-var RING_EACH = 5,
-  RING = [14, 36];
+//hang round where it stood, not off along the streets
+var RING_EACH = 4,
+  RING = [4, 11];
 
 /**
  * A building about to go up, from where it stands: what it looks like

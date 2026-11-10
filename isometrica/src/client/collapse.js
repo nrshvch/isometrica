@@ -31,9 +31,12 @@ var Terrain = Core.Terrain,
   P = Demolition.pieces;
 
 //how long the rubble takes to come up under the dust once a tile is down,
-//ms; and puffs of dust over a tile then, to hang there
+//ms; and puffs of dust over a tile then, to hang there - and how fast they
+//roll out, world units a second, at the least and at the most: hardly off
+//the tile
 var SHOW_MS = 700,
-  DUST_DOWN = 4;
+  DUST_DOWN = 3,
+  DUST_OUT = [1.5, 5];
 
 /**
  * @param root {Vkaria}
@@ -233,7 +236,7 @@ function cloud(self, tile) {
 
   for (var i = 0; i < self.dust; i++) {
     var a = Math.random() * Math.PI * 2,
-      v = 6 + Math.random() * 14;
+      v = DUST_OUT[0] + Math.random() * (DUST_OUT[1] - DUST_OUT[0]);
 
     SmokeSource.puff(
       world,
