@@ -315,13 +315,43 @@ function heightsIn(sprite) {
   };
 }
 
+//which wall a pixel i, j of a part is on, by which way it looks (its
+//picture to be lit of that, shared/gen/looks normal): how far down the
+//screen the wall goes a pixel across - 0.5 for one looking -x, left of the
+//corner nearest, -0.5 for one looking -y, 0 for anything else (a roof, the
+//ground) - by most of the pixels round it
+function slopeAt(own, part, i, j) {
+  var image = own.image,
+    w = part.frame.w,
+    left = 0,
+    right = 0;
+
+  for (var dj = -1; dj <= 1; dj++)
+    for (var di = -1; di <= 1; di++) {
+      var x = Math.round(i) + di,
+        y = Math.round(j) + dj;
+
+      if (x < 0 || y < 0 || x >= w || y >= image.height) continue;
+
+      var o = (y * image.width + w + x) * 4;
+
+      if (image.data[o + 3] === 0 || Math.abs(image.data[o + 2] - 128) > 40)
+        continue;
+      if (image.data[o] < 64) left++;
+      else if (image.data[o + 1] < 64) right++;
+    }
+
+  return left > right ? 0.5 : right > left ? -0.5 : 0;
+}
+
 /**
  * Where its windows are - what of it shines at night (client/generatorcore
  * lightsOf), every part's where it is in it, lifted as it is laid higher:
- * {x, y, z} each, x, y in it and z how high over the ground, pixels - for a
- * building on fire, its flames out of them (client/fires). Asked for its
- * pictures for the night, by day too, and null till they are in; none for a
- * picture with no such pictures.
+ * {x, y, z, slope} each, x, y in it and z how high over the ground, pixels,
+ * and slope which way the wall it is in goes (slopeAt) - for a building on
+ * fire, its flames out of them (client/fires). Asked for its pictures for
+ * the night, and to be lit, by day too, and null till they are in; none
+ * for a picture with no such pictures.
  *
  * @returns {Object[]|null}
  */
@@ -341,7 +371,10 @@ CachedSprite.prototype.windows = function () {
   )
     return (this._windows = out);
 
-  if (!wantAll(sprites, parts, "night")) return null;
+  var night = wantAll(sprites, parts, "night"),
+    lit = wantAll(sprites, parts, "deferred");
+
+  if (!night || !lit) return null;
 
   for (i = 0; i < parts.length; i++)
     ground = Math.max(ground, partFoot(parts[i]));
@@ -349,6 +382,7 @@ CachedSprite.prototype.windows = function () {
   for (i = 0; i < parts.length; i++) {
     var part = parts[i],
       own = sprites.lookSheet(part.sheet, "night"),
+      deferred = sprites.lookSheet(part.sheet, "deferred"),
       up = part.up !== undefined ? part.up : ground - partFoot(part);
 
     if (own === null || !own.lights || part.clip !== null) continue;
@@ -358,6 +392,10 @@ CachedSprite.prototype.windows = function () {
         x: part.x + own.lights[k],
         y: part.y + own.lights[k + 1],
         z: own.lights[k + 2] + Math.max(0, up),
+        slope:
+          deferred !== null && deferred.image && deferred.image.data
+            ? slopeAt(deferred, part, own.lights[k], own.lights[k + 1])
+            : 0,
       });
   }
 
