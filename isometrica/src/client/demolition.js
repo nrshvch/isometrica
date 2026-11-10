@@ -214,6 +214,7 @@ function Demolition(root, building, tiles, options) {
 
   stand(this, view.gameObject, at);
   if (!live) view.dispose();
+  ahead(this);
 
   //fenced off the moment it is to come down - every tile of it, till the
   //last of it is down and pushed away (end)
@@ -331,9 +332,11 @@ function column(tile) {
     whole: [],
     cuts: [],
     //what it was last seen to be doing, and the sides of it opened up where
-    //a tile of it in front has fallen (open)
+    //a tile of it in front has fallen (open) - and still to be, once they
+    //are painted
     was: "standing",
     open: 0,
+    opening: 0,
   };
 }
 
@@ -526,16 +529,8 @@ function partsOf(sprites, sprite, renderer) {
 
     if (frame === undefined) return [whole(sprite, renderer)];
 
-    //burnt as the whole was - but for what was opened up of it, which
-    //goes by where the whole was
-    var burnt = m[4]
-        ? m[4]
-            .split(";")
-            .filter(function (one) {
-              return one.charAt(0) !== "e";
-            })
-            .join(";")
-        : "",
+    //burnt as the whole was
+    var burnt = m[4] || "",
       x = +(m[2] || 0),
       y = +(m[3] || 0),
       //where its own middle is - a generated part's - the rest of its place
@@ -771,6 +766,8 @@ DemolitionScript.prototype.tick = function (time) {
       col.was = col.state;
     }
 
+    if (col.opening > 0 && col.state === "standing") opening(self, col);
+
     if (col.state === "shaking") shake(self, col, dt);
     else if (col.state === "falling") fallOn(self, col, dt);
     else if (col.state === "down") settle(self, col, dt);
@@ -787,14 +784,15 @@ DemolitionScript.prototype.tick = function (time) {
 
 /**
  * Every tile of it still standing whole, open on its sides where a tile of
- * it in front of it there has fallen away: the inside of it showing - its
- * floors, its rooms - where the wall between them was (client/burnt
- * expose). Only the sides to the front, as it is seen: what is behind it
- * leaves nothing of it to be seen.
+ * it in front of it there has fallen away: its storeys painted open there
+ * (SpriteCache opened, shared/gen/isobox setOpen) - empty rooms, their
+ * floors and walls, where the wall between them was - and what it is to
+ * come down in too, so it comes down open. Only the sides to the front, as
+ * it is seen: what is behind it leaves nothing of it to be seen. Put in
+ * the place of what it was as soon as they are painted (opening), shut
+ * meanwhile, never not there.
  */
 function open(self) {
-  var sprites = self.root.sprites;
-
   if (View.top()) return;
 
   for (var tile in self.columns) {
@@ -802,46 +800,101 @@ function open(self) {
 
     if (col.state !== "standing" || col.whole.length === 0) continue;
 
-    var sides = 0,
-      x = Terrain.extractX(+tile),
-      y = Terrain.extractY(+tile);
+    var sides = frontSides(self, +tile, function (o) {
+      return o.state !== "standing" && o.state !== "shaking";
+    });
 
-    for (var other in self.columns) {
-      var o = self.columns[other];
-
-      if (o.state === "standing" || o.state === "shaking") continue;
-
-      var seen = View.vector(
-        Terrain.extractX(+other) - x,
-        Terrain.extractY(+other) - y,
-      );
-
-      if (seen[0] === -1 && seen[1] === 0) sides |= 1;
-      else if (seen[0] === 0 && seen[1] === -1) sides |= 2;
+    if (sides !== (col.open || 0)) {
+      col.open = sides;
+      col.opening = sides;
     }
+  }
+}
 
-    if (sides === (col.open || 0)) continue;
+//the sides of tile, as it is seen, that a tile of it which is - as which
+//says - is in front of: 1 to the -x of it, 2 to the -y
+function frontSides(self, tile, which) {
+  var sides = 0,
+    x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile);
 
-    col.open = sides;
+  for (var other in self.columns) {
+    if (!which(self.columns[other])) continue;
 
-    col.whole.forEach(function (p, k) {
-      var r = p.go.spriteRenderer;
+    var seen = View.vector(
+      Terrain.extractX(+other) - x,
+      Terrain.extractY(+other) - y,
+    );
 
-      if (p.base === undefined) p.base = r.sprite;
+    if (seen[0] === -1 && seen[1] === 0) sides |= 1;
+    else if (seen[0] === 0 && seen[1] === -1) sides |= 2;
+  }
 
-      r.setSprite(
-        sprites.burnt(
-          p.base,
-          "e:" +
-            ((+tile * 31 + k) % 100000) +
-            ":" +
-            sides +
-            ":" +
-            p.part.pivotX +
-            ":" +
-            p.part.pivotY,
-        ),
-      );
+  return sides;
+}
+
+//a tile of it to be opened up (open), once what it is opened up as is
+//painted, every part of it, as it is drawn - lit, and at night
+function opening(self, col) {
+  var sprites = self.root.sprites,
+    gl = engine.Config.gl,
+    sides = col.opening,
+    ready = true,
+    whole = col.whole.map(function (p) {
+      var s = sprites.opened(p.go.spriteRenderer.sprite, sides);
+
+      if (!painted(s, gl)) ready = false;
+      return s;
+    });
+
+  if (!ready) return;
+
+  col.whole.forEach(function (p, k) {
+    p.go.spriteRenderer.setSprite(whole[k]);
+  });
+  col.cuts.forEach(function (c) {
+    c.sprite = sprites.opened(c.sprite, sides);
+  });
+  col.opening = 0;
+  changed();
+}
+
+//whether a picture is painted, as it is drawn - asked for, if not
+function painted(sprite, gl) {
+  var ready = sprite.ready ? sprite.ready() : true;
+
+  if (sprite.entries)
+    sprite.entries(!!gl, true).forEach(function (e) {
+      if (e !== sprite && e.ready && !e.ready()) ready = false;
+    });
+
+  return ready;
+}
+
+/**
+ * Every side of every tile of it that may be opened up, as it comes down -
+ * where there is a tile of it in front of it - painted ahead (open), so
+ * that it is ready by the time it is.
+ */
+function ahead(self) {
+  var sprites = self.root.sprites,
+    gl = engine.Config.gl;
+
+  if (View.top()) return;
+
+  for (var tile in self.columns) {
+    var col = self.columns[tile],
+      sides = frontSides(self, +tile, function () {
+        return true;
+      });
+
+    if (sides === 0) continue;
+
+    col.whole.forEach(function (p) {
+      [sides & 1, sides & 2, sides].forEach(function (s, k) {
+        if (s > 0 && (k < 2 || sides === 3))
+          painted(sprites.opened(p.go.spriteRenderer.sprite, s), gl);
+      });
     });
   }
 }
@@ -864,7 +917,6 @@ Demolition.prototype.burn = function (words) {
     col.whole.forEach(function (p) {
       var r = p.go.spriteRenderer;
 
-      p.base = sprites.burnt(p.base !== undefined ? p.base : r.sprite, words);
       r.setSprite(sprites.burnt(r.sprite, words));
     });
     col.cuts.forEach(function (c) {
@@ -1400,6 +1452,7 @@ function turn(self) {
   //burnt as it was, and open where it was, from the new side
   if (self.words !== null) self.burn(self.words);
   for (tile in self.columns) self.columns[tile].open = 0;
+  ahead(self);
   open(self);
 }
 

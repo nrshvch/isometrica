@@ -159,9 +159,17 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   blast near it, burning away as it burns; none left, it comes down. Kept
   in the save.
 - A tile of a building that comes down before the one behind it - a
-  bulldozer at it, a blast - leaves that one open on its side: its floors,
-  the rooms on each, papered, partitioned and furnished, where the wall
-  between them was (`isometrica/src/client/burnt.js` expose).
+  bulldozer at it, a blast, a fire - leaves that one open on its side:
+  empty rooms where the wall between them was, a bare concrete floor to
+  every storey, plastered walls, a wall across where it is wide. Painted
+  as the building is, not drawn over it: the generators paint a part open
+  on a side of its tile, its storeys hollow and the wall on that side gone
+  (`isometrica/src/shared/gen/isobox.js` setOpen, `@o` after its key), and
+  the demolition puts that in place of what stood as soon as it is painted
+  - asked for as soon as the building is to come down - and brings it down
+    in the same pictures, open as it falls
+    (`isometrica/src/client/demolition.js` open,
+    `isometrica/src/client/spritecache.js` openName).
 - Fire up sets the building on fire, for nothing, and it burns through
   most of a day of the game's time (`isometrica/src/client/fires.js`). It
   catches in a window of a floor low down, glowing within, and the fire

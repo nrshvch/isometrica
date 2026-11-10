@@ -339,6 +339,86 @@ SpriteCache.prototype.frameName = function (name, f) {
   return out;
 };
 
+//the generators whose parts are rooms, storeys - which can be painted open
+//on a side (openName): the buildings'
+var ROOMS = {
+  flats: true,
+  offices: true,
+  shops: true,
+  houses: true,
+  civic: true,
+  oldtown: true,
+  utilities: true,
+};
+
+/**
+ * The name of a generated part of a building painted open on sides of its
+ * tile (shared/gen/isobox setOpen) - its rooms showing where the wall on
+ * that side was, a tile of it in front having come down: 1 the side to the
+ * -x of it as it is seen, 2 to the -y, 3 both. Made drawable the first time
+ * it is asked for: the same size and pivot, painted by the same generator,
+ * with @o<sides> after its key; the name itself for 0, or anything that is
+ * no such part.
+ */
+SpriteCache.prototype.openName = function (name, sides) {
+  var base = name.replace(/\/o\d$/, ""),
+    frame = this.frames[base];
+
+  if (frame === undefined || !(sides > 0)) return base;
+
+  var g = this.sheets[frame.sheet].generated,
+    out = base + "/o" + sides;
+
+  if (g === null || ROOMS[g.gen] !== true) return base;
+
+  if (this.frames[out] === undefined) {
+    this.sheets[out] = new Sheet(null, {
+      name: out,
+      gen: g.gen,
+      key: g.key + "@o" + sides,
+      faced: g.faced,
+    });
+    this.frames[out] = Object.assign({}, frame, { sheet: out });
+  }
+
+  return out;
+};
+
+/**
+ * The same picture as sprite, put together out of the same parts in the same
+ * places, burnt as they were - each part of a building open on sides of its
+ * tile (openName); or sprite itself, for one not put together here.
+ *
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.opened = function (sprite, sides) {
+  if (!sprite || typeof sprite.key !== "string") return sprite;
+
+  var self = this,
+    parts = [],
+    whole = sprite.key.split("+").every(function (key) {
+      var m = PART_KEY.exec(key);
+
+      if (m === null || self.frames[m[1]] === undefined) return false;
+
+      parts.push({
+        name: self.openName(m[1], sides),
+        x: +(m[2] || 0),
+        y: +(m[3] || 0),
+        clip:
+          m[4] !== undefined
+            ? { x: +m[4], y: +m[5], w: +m[6], h: +m[7] }
+            : undefined,
+        plain: m[8] === "!",
+        burnt: m[9] || undefined,
+      });
+
+      return true;
+    });
+
+  return whole && parts.length > 0 ? this.getComposite(parts) : sprite;
+};
+
 SpriteCache.prototype.has = function (name) {
   return this.frames[name] !== undefined;
 };
@@ -446,7 +526,7 @@ SpriteCache.prototype.getComposite = function (parts) {
   )
     sprite.burnt = true;
 
-  //charred, opened up, all of it as one (client/burnt wholly)
+  //charred, all of it as one (client/burnt wholly)
   resolved.forEach(function (part) {
     if (part.burnt !== null && Burnt.wholly(part.burnt).length > 0)
       sprite.wholly = Burnt.wholly(part.burnt);

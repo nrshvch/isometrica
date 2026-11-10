@@ -167,8 +167,8 @@ CachedSprite.prototype.paint = function (pixels, w, x, y) {
     if (part.sheet.generated !== null) this.sprites.generator.use(part.sheet);
 
     //burnt down: a copy of it burnt on its own first, so as to leave what
-    //it is put over alone (client/burnt) - charred or opened up, all of it
-    //at once once it is all there (below)
+    //it is put over alone (client/burnt) - charred, all of it at once once
+    //it is all there (below)
     if (part.burnt && Burnt.partly(part.burnt).length > 0) {
       var own = {
         width: Math.round(c.w),
@@ -222,7 +222,7 @@ CachedSprite.prototype.paint = function (pixels, w, x, y) {
     );
   }
 
-  //charred, opened up: all of it, by how high every pixel of it stands -
+  //charred: all of it, by how high every pixel of it stands -
   //its picture to be lit's heights of that, where it has one
   if (this.wholly !== null)
     Burnt.whole(
@@ -419,7 +419,7 @@ CachedSprite.prototype.plain = false;
 //burnt down, some part of it (SpriteCache#getComposite burnt, client/burnt)
 CachedSprite.prototype.burnt = false;
 
-//charred, opened up - what client/burnt does to all of it at once
+//charred - what client/burnt does to all of it at once
 //(wholly), made out - or null
 CachedSprite.prototype.wholly = null;
 
@@ -747,9 +747,8 @@ Layers.prototype.paint = function (pixels, w, x, y) {
     }
   }
 
-  //charred, opened up, all of it at once - its colours, by how high every
-  //pixel of it stands - and what is opened up of it, which way it looks
-  //and how high (client/burnt whole)
+  //charred, all of it at once - its colours, by how high every pixel of it
+  //stands (client/burnt whole)
   var wholly = this.sprite.wholly;
 
   if (!night && wholly !== null)
@@ -766,7 +765,6 @@ Layers.prototype.paint = function (pixels, w, x, y) {
 
         return pixels[o + 3] === 0 ? null : pixels[o];
       },
-      { normal: (NORMAL - ALBEDO) * W, high: (HIGH - ALBEDO) * W },
     );
 };
 

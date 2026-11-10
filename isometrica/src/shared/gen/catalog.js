@@ -328,7 +328,9 @@ export function createPainter(loadPixels) {
     /**
      * @param spec {{gen: string, key: string, look: string, view: string}}
      *        the generator, and what it calls the picture - the key describe
-     *        gives - and for one of the FACED, how it is to be painted, if
+     *        gives, and for a part of a building open on a side of its tile
+     *        "@o" and its sides after it (isobox setOpen, client/spritecache
+     *        openName) - and for one of the FACED, how it is to be painted, if
      *        not lit: as isobox setMode has it, "deferred" or "night"; and
      *        "top" for it seen from straight above (describe top), as the
      *        game sees it otherwise
@@ -341,13 +343,20 @@ export function createPainter(loadPixels) {
         if (OWN_LOOKS[spec.gen] || spec.gen === "terrain")
           return p.paint(spec.key, look || undefined, spec.view);
 
+        //a part of a building open on a side of its tile, its rooms
+        //showing - "@o" and which sides after its key (isobox setOpen)
+        var opened = /@o(\d)$/.exec(spec.key),
+          key = opened ? spec.key.slice(0, opened.index) : spec.key;
+
         iso.setView(spec.view);
         if (look !== null) iso.setMode(look);
+        if (opened) iso.setOpen(+opened[1]);
         try {
-          return p.paint(spec.key);
+          return p.paint(key);
         } finally {
           iso.setMode("lit");
           iso.setView("iso");
+          iso.setOpen(0);
         }
       });
     },
