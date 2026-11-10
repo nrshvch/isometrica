@@ -140,10 +140,14 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   is the building, not its yard (`isometrica/src/core/city.js` blast, hit):
   a part next to it or across a road from it comes down, a moment later, the
   nearest first, no fence, no bulldozer, to a heap of rubble in the
-  building's place, and a yard as near is wrecked; the rest of the building
-  stands, open on its side where a part in front of it has come down, its
-  health down by as much as it lost; with no part of it left standing it is
-  all down. Further off a building is only knocked about, its health down.
+  building's place, and a yard as near is wrecked; a part a tile further
+  off as likely as not (`isometrica/src/core/city.js` falls). The rest of
+  the building stands, open on its side where a part in front of it has
+  come down, its health down by as much as it lost - all of it down, with
+  less than half of it left standing. A building burnt out, a shell, comes
+  down altogether at anything that reaches it, its rubble charred. Further
+  off a building is only knocked about, its health down. Its lights
+  flicker as it goes, and go out.
   The trees within two tiles of it go over, away from it, the way a
   bulldozer pushes them, and lie there till they are cleared away
   (`isometrica/src/core/city/citybuildings.js` leaveFallen). A heap of
@@ -184,10 +188,8 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 - A tile of a building that comes down before the one behind it - a
   bulldozer at it, a blast, a fire - leaves that one open on its side:
   empty rooms where the wall between them was, a bare concrete floor to
-  every storey, plastered walls, a wall across where it is wide - and its
-  windows on the walls left, from inside and out, panes of glass seen
-  through, every other pixel of them glass; a building all of glass, an
-  open floor inside glass walls seen through all round. Painted
+  every storey, plastered walls, a wall across where it is wide - a
+  storey all of glass an open floor inside its glass walls. Painted
   as the building is, not drawn over it: the generators paint a part open
   on a side of its tile, its storeys hollow and the wall on that side gone
   (`isometrica/src/shared/gen/isobox.js` setOpen, `@o` after its key), and
@@ -206,13 +208,17 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   building: along that floor of that tile first, window by window, then on
   at once to the same floor of the tiles next to it and to the floor over
   it, and on from each of those the same way - down only slowly - and out
-  of every window ablaze the
-  flames lick up, a storey and more as it takes hold, white-hot at their
-  roots through yellow and orange to red tongues; where the flames of one
-  window run into the next, up the wall from floor to floor and along it,
-  they burn as one sheet of fire, and off its roof too. The building chars
-  as it goes on (`isometrica/src/client/burnt.js` char), sparks fly, and
-  black smoke rolls up off the top of it - thicker the more of it burns,
+  of every window ablaze a flame licks up, as wide as the window and most
+  of a storey tall, white-hot at its root through yellow and orange to red
+  tongues; where the flames of windows side by side run into each other
+  they burn as one, and off its roof too where it is not concrete. A window
+  burns a while and dies down to a glow as the fire moves on - a floor of
+  concrete soon, one under a timber roof longer, a house of timber till it
+  falls in - so it burns through the building rather than all of it at
+  once. Its lights stay on where the fire has not got to, till it is burnt
+  out. The building chars as it goes on (`isometrica/src/client/burnt.js`
+  char), sparks fly, and black smoke rolls up off the top of it, too thick
+  to see through - thicker the more of it burns,
   as big a column as the building is, billowing as it goes up and bending
   off the way the wind blows high up, a stream of it across the sky over
   the city (`isometrica/src/shared/gen/smoke.js` plume). After dark the

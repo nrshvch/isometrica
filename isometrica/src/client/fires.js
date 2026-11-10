@@ -34,10 +34,12 @@ import { changed } from "./looks";
  * (SmokeScript plume), on up high and off the way the wind blows, over the
  * city - thicker as more of it burns.
  *
- * Its lights out, its people gone, it comes down in the end
- * (core/building BURNS) the way a building comes down (client/demolition),
- * no fence round it, no bulldozer: floor onto floor in a cloud of dust and
- * smoke - and what is left of it (client/ruin) burns on, flames among the
+ * Its people gone, its lights on still where the wires hold, it burns out in
+ * the end (core/building BURNS), its lights with it - and stands gutted, or
+ * a roofless shell, or comes down the way a building comes down (client/
+ * demolition), its lights flickering out, no fence round it, no bulldozer:
+ * floor onto floor in a cloud of dust and smoke (fall) - and what is left
+ * of it (client/ruin) burns on, flames among the
  * charred walls, the smoke thinning (REMAINS), then smoulders a while, a
  * wisp of smoke here and there, embers glowing (SMOULDERS) - and then it
  * is a cold ruin, there till it is cleared away.
@@ -69,11 +71,19 @@ var PER_PIXEL = Config.tileZStep / 8,
 //at the most, the last window catches
 var STOREY = 13,
   FLARE = 0.9,
-  UP = 0.6,
-  DOWN = 1.3,
-  ACROSS = 0.65,
-  FILLS = 0.5,
+  UP = 0.9,
+  DOWN = 1.9,
+  ACROSS = 1,
+  FILLS = 0.8,
   LATEST = 5.4;
+
+//how long a window burns at its height, hours, by what it burns down to
+//(client/ruin kindOf) - a floor of concrete burns out and the fire moves on,
+//one under a timber roof longer, one of timber till it falls in - and then
+//how long it takes to die down to its embers, and how bright they are
+var LASTS = { k: 1.5, s: 2.6, b: Infinity },
+  DIES = 0.8,
+  EMBERS = 0.12;
 
 //how often the buildings on fire are looked for afresh, ms
 var LOOK_EVERY = 1000;
@@ -138,7 +148,7 @@ var GLOWING = [
 //roof's are than a window's, and what is left of it, once it is down; and
 //how many of its flames light what is round them at night
 var FLAMES_FROM = 0.15,
-  ROOF_BIG = 1.5,
+  ROOF_BIG = 1.3,
   EMBER_BIG = 0.75,
   LIGHTS = 6;
 
@@ -484,6 +494,8 @@ Blaze.prototype.tick = function (dt) {
  */
 function gather(self, dt) {
   var children = self.building.view.gameObject.transform.children,
+    //what it burns down to, for how its windows burn
+    kind = Ruin.kindOf(self.model),
     out = [],
     waiting = false;
 
@@ -509,11 +521,13 @@ function gather(self, dt) {
       return;
     }
 
-    //none of its own, or none to be had: made up from its shape
-    if (ws.length === 0) ws = madeUp(sprite, r);
+    //none of its own, or none to be had: made up from its shape - and of
+    //its own, one to a window
+    ws = ws.length === 0 ? madeUp(sprite, r) : oneEach(ws);
 
-    //and its roof, over its windows - a building's, not its yard's
-    if (ws.length > 0) ws = ws.concat(roofOf(sprite, r, ws));
+    //and its roof, over its windows - a building's, not its yard's; not
+    //one of concrete, which does not burn
+    if (ws.length > 0 && kind !== "k") ws = ws.concat(roofOf(sprite, r, ws));
 
     ws.forEach(function (w) {
       out.push({
@@ -575,6 +589,7 @@ function gather(self, dt) {
 
   out.forEach(function (w, i) {
     w.seed = Math.floor(hash(i, 5, self.seed) * 1e6);
+    w.lasts = LASTS[kind] * (0.75 + 0.5 * hash(i, 11, self.seed));
 
     if (w === first) {
       w.catches = 0;
@@ -592,6 +607,32 @@ function gather(self, dt) {
   });
 
   self.windows = out;
+}
+
+//how far apart, across and up, the points of light a picture has are still
+//the same window, pixels
+var SAME_ACROSS = 3,
+  SAME_UP = STOREY - 2;
+
+//the windows of a picture as its points of light say (CachedSprite
+//windows) - a point for every lit pixel of them, so many to a window - one
+//to a window: its lowest, for the fire to come out of
+function oneEach(ws) {
+  var out = [];
+
+  ws.slice()
+    .sort(function (a, b) {
+      return a.z - b.z || a.x - b.x;
+    })
+    .forEach(function (w) {
+      for (var i = 0; i < out.length; i++)
+        if (Math.abs(out[i].x - w.x) <= SAME_ACROSS && w.z - out[i].z < SAME_UP)
+          return;
+
+      out.push(w);
+    });
+
+  return out;
 }
 
 //windows made up from a picture's shape where it says of none: a few to a
@@ -678,9 +719,15 @@ function char(self, h) {
   });
 }
 
-//how far ablaze a window is, hours h in, 0..1
+//how far ablaze a window is, hours h in, 0..1: flaring up, burning, and
+//dying down to its embers once it has burnt as long as it does (LASTS)
 function intensity(w, h) {
-  return Math.max(0, Math.min(1, (h - w.catches) / FLARE));
+  var k = Math.max(0, Math.min(1, (h - w.catches) / FLARE)),
+    out = h - w.catches - FLARE - w.lasts;
+
+  if (out > 0) k = Math.max(EMBERS, 1 - (out / DIES) * (1 - EMBERS));
+
+  return k;
 }
 
 //where in the world a window is - x, y, z world units - the point of its
@@ -1238,18 +1285,18 @@ function smooth(x, y, k) {
 
 /**
  * The fire of everything that burns, as one: a flame up out of every
- * source - as wide and tall as it is ablaze, a storey and more at its
- * height, licking up in tongues that flicker and run up it - and where the
- * flames of one run into another's, up a wall from floor to floor, along it
- * from window to window, one sheet of fire, white-hot at its root, yellow,
- * orange, and red up it to its tips.
+ * source - as wide as a window at its height, and most of a storey tall,
+ * licking up in tongues that flicker and run up it - and where the flames
+ * of one run into another's, along a wall from window to window, one sheet
+ * of fire, white-hot at its root, yellow, orange, and red up it to its
+ * tips.
  */
 function fire(layer, sources, now) {
   var columns = new Map();
 
   sources.forEach(function (s) {
-    var wide = Math.max(2, Math.round((3 + 4 * s.k) * s.big)),
-      high = (5 + 12 * s.k) * s.big,
+    var wide = Math.max(2, Math.round((2 + 2.6 * s.k) * s.big)),
+      high = (3 + 8 * s.k) * s.big,
       x0 = s.x - (wide >> 1);
 
     for (var c = x0; c < x0 + wide; c++) {
@@ -1284,7 +1331,7 @@ function fire(layer, sources, now) {
     for (var i = 1; i < spans.length; i++) {
       var next = spans[i];
 
-      if (next.bottom >= at.top - 2) {
+      if (next.bottom >= at.top) {
         at.top = Math.min(at.top, next.top);
         at.k = Math.max(at.k, next.k);
       } else {

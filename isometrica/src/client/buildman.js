@@ -1169,36 +1169,15 @@ Buildman.prototype.explode = function (tile) {
   round.forEach(function (r) {
     var b = r.building,
       view = getBuilding(self, b.tile),
-      lethal = r.parts.filter(function (p) {
-        return p.damage >= 100;
-      });
+      //what of it comes down, as the world will have it (core/city falls)
+      gives = city.falls(b, r.parts, isYard, building.tile);
 
-    if (lethal.length === 0 || view === null || !view.view) return;
+    if (gives.tiles.length === 0 || view === null || !view.view) return;
 
-    var own = b.tiles(),
-      builtOf = own.filter(function (t) {
+    var fall = gives.tiles.filter(function (t) {
         return !isYard(t);
       }),
-      hit = function (t) {
-        return lethal.some(function (p) {
-          return p.tile === t;
-        });
-      },
-      left = builtOf.filter(function (t) {
-        return !b.isDown(t) && !hit(t);
-      }),
-      whole =
-        left.length === 0 ||
-        (!b.data.compound &&
-          builtOf.some(function (t) {
-            return hit(t);
-          })),
-      fall = builtOf.filter(function (t) {
-        return !b.isDown(t) && (whole || hit(t));
-      }),
-      wrecked = own.filter(function (t) {
-        return isYard(t) && !b.isDown(t) && (whole || hit(t));
-      });
+      wrecked = gives.tiles.filter(isYard);
 
     falls.push(
       new Collapse.Collapse(root, view, fall, {

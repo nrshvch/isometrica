@@ -600,8 +600,24 @@ City.prototype.replace = function (tile, code, rotation, look) {
 //part of what went up, out of its health (core/building damage): next to
 //it, and across a road from it, all of it - down that part comes - and
 //less and less of it further off; and how far off a tree goes over
-var BLAST = [100, 100, 100, 50, 20],
+var BLAST = [100, 100, 100, 70, 35],
   TREES_FALL = 2;
+
+//a part hit less hard than that may come down all the same, the harder the
+//likelier: from how hard; and a building burnt out, a shell, comes down
+//altogether, hit as hard as that
+var GIVES_FROM = 40,
+  RUIN_GIVES = 30;
+
+//a number 0..1 for a tile and a salt, the same every time
+function hashOf(tile, salt) {
+  var h = Math.imul((tile | 0) ^ Math.imul(salt | 0, 0x27d4eb2d), 0x9e3779b1);
+
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
 //the nearest of tiles to a tile, and how far it is: the fewest across or
 //along - [distance, the tile]
@@ -625,10 +641,10 @@ function nearest(tile, tiles) {
 /**
  * What a blast off tiles hits round it (explode) - its parts, the tiles of
  * the building that went up, not its yard: every building within reach of
- * them - nothing that is nobody's, a tree, a heap of rubble, nor a road;
- * nothing burnt down already - every tile of it in reach, and how hard each
- * is hit; a part of the building itself, how hard by how far off it is
- * (BLAST); its yard, if it gets as hard, wrecked.
+ * them - nothing that is nobody's, a tree, a heap of rubble, nor a road -
+ * every tile of it in reach, and how hard each is hit; a part of the
+ * building itself, how hard by how far off it is (BLAST); its yard, if it
+ * gets as hard, wrecked. What of each comes down, falls says.
  *
  * @param tiles {number[]} where it went up
  * @param [except] {Building} what went up
@@ -665,8 +681,7 @@ City.prototype.blast = function (tiles, except, yard) {
         b === except ||
         seen.indexOf(b) >= 0 ||
         b.data.classCode === BuildingClassCode.tree ||
-        b.data.classCode === BuildingClassCode.road ||
-        b.getState() === BuildingState.ruin
+        b.data.classCode === BuildingClassCode.road
       )
         continue;
 
@@ -689,10 +704,13 @@ City.prototype.blast = function (tiles, except, yard) {
         d = Math.min(d, n);
       });
 
-      //only its yard in reach, and that not hard enough to be wrecked
+      //only its yard in reach, and that not hard enough to be wrecked - a
+      //burnt-out shell, anything of it
       if (
         parts.filter(function (p) {
-          return !p.yard || p.damage >= 100;
+          return (
+            !p.yard || p.damage >= 100 || b.getState() === BuildingState.ruin
+          );
         }).length > 0
       )
         out.push({ building: b, distance: d, parts: parts });
@@ -859,7 +877,7 @@ City.prototype.explode = function (tile, yard) {
   bringDown(this, building, yard, now);
 
   round.forEach(function (r) {
-    hit.push(self.hit(r.building, r.parts, yard));
+    hit.push(self.hit(r.building, r.parts, yard, corner));
   });
 
   trees.forEach(function (t) {
@@ -886,51 +904,107 @@ City.prototype.explode = function (tile, yard) {
 };
 
 /**
- * A building hit by a blast (explode), parts of it as hard as parts say:
- * which of its tiles are only its yard told it, if it is; every part hit
- * as hard as can be down (Building knock), and its health down by as much
- * of it as the blast took out of all its parts together - down
- * altogether, none of the building itself left standing (bringDown), or
- * any of one that is not put together a tile at a time.
+ * What of a building a blast hits (blast) comes down: every part of it hit
+ * as hard as can be, and of the rest hit less hard, some - the harder, the
+ * likelier, the same every time for the same part and the same blast (from)
+ * - and its yard, where it is hit as hard as can be, wrecked. And all of it
+ * - whole - where none of it would be left standing, or less than half of
+ * it; where it is not put together a tile at a time (data/buildings
+ * compound) and any of it comes down; where it is burnt out, a shell,
+ * anything of it hit at all hard (RUIN_GIVES). What draws it coming down
+ * asks first, as the world does after.
  *
  * @param parts {{tile, damage, yard}[]} (blast)
+ * @param [yard] {function(number): boolean} whether a tile is only a yard,
+ *        as whoever draws it knows - as it knows itself, without
+ * @param [from] {number} the tile of what went up
+ * @returns {{tiles: number[], whole: boolean}} tiles: its parts and its
+ *          yards coming down, that are not down already - every one of
+ *          them, whole
+ */
+City.prototype.falls = function (building, parts, yard, from) {
+  var isYard = function (t) {
+      return yard ? yard(t) : building.isYard(t);
+    },
+    own = building.tiles(),
+    builtOf = own.filter(function (t) {
+      return !isYard(t);
+    }),
+    burnt = building.getState() === BuildingState.ruin,
+    hit = {};
+
+  parts.forEach(function (p) {
+    var gives =
+      p.damage >= 100 ||
+      (!p.yard &&
+        p.damage >= GIVES_FROM &&
+        hashOf(p.tile, from || 0) <
+          (p.damage - GIVES_FROM) / (100 - GIVES_FROM));
+
+    if (gives) hit[p.tile] = true;
+  });
+
+  var down = builtOf.filter(function (t) {
+      return hit[t] === true && !building.isDown(t);
+    }),
+    left = builtOf.filter(function (t) {
+      return hit[t] !== true && !building.isDown(t);
+    }),
+    whole =
+      (burnt &&
+        parts.some(function (p) {
+          return p.damage >= RUIN_GIVES;
+        })) ||
+      (down.length > 0 &&
+        (left.length === 0 ||
+          !building.data.compound ||
+          left.length < builtOf.length / 2));
+
+  return {
+    tiles: own.filter(function (t) {
+      return !building.isDown(t) && (whole || hit[t] === true);
+    }),
+    whole: whole,
+  };
+};
+
+/**
+ * A building hit by a blast (explode), parts of it as hard as parts say:
+ * which of its tiles are only its yard told it, if it is; the parts of it
+ * that come down (falls) down (Building knock), and its health down by as
+ * much of it as the blast took out of all its parts together - or down
+ * altogether (bringDown), as falls says.
+ *
+ * @param parts {{tile, damage, yard}[]} (blast)
+ * @param [from] {number} the tile of what went up
  * @returns {{tile, tiles, distance, health, whole}}
  */
-City.prototype.hit = function (building, parts, yard) {
+City.prototype.hit = function (building, parts, yard, from) {
   var tile = building.tile,
     now = this.world.time.now,
     distance = Infinity,
-    lost = 0;
+    lost = 0,
+    falls = this.falls(building, parts, yard, from);
 
   if (yard) building.yards = building.tiles().filter(yard);
 
-  var built = building.builtTiles().length || building.tiles().length,
-    down = parts.filter(function (p) {
-      distance = Math.min(distance, p.distance);
-      if (!p.yard) lost += p.damage;
+  parts.forEach(function (p) {
+    distance = Math.min(distance, p.distance);
+    if (!p.yard) lost += p.damage;
+  });
 
-      return p.damage >= 100;
-    }),
-    knocked = building.knock(
-      down.map(function (p) {
-        return p.tile;
-      }),
-    );
+  var built = building.builtTiles().length || building.tiles().length,
+    knocked = falls.whole ? [] : building.knock(falls.tiles);
 
   building.damage(lost / built);
 
-  //nothing of it left standing - or, for one painted whole, not put
-  //together a tile at a time, any part of it down (data/buildings compound)
+  //all of it coming down (falls) - or a park, all of it yard, wrecked all
+  //over
   var ofIt = building.builtTiles().length;
 
   if (
-    //a park, all of it yard, wrecked all over
-    (ofIt === 0 && (building.down || []).length === building.tiles().length) ||
-    (ofIt > 0 && building.standingTiles().length === 0) ||
-    (!building.data.compound &&
-      down.some(function (p) {
-        return !p.yard;
-      }))
+    falls.whole ||
+    (ofIt === 0 && (building.down || []).length === building.tiles().length)
   ) {
     building.damage(100);
     return {

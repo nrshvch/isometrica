@@ -394,8 +394,8 @@ BuildingView.prototype.update = function () {
     ) {
       var burning = b.data.getState() === BuildingState.burning;
 
-      //drawn the way it was painted, see addSprites - on fire, with none of
-      //its lights on (client/fires)
+      //drawn the way it was painted, see addSprites - on fire, its lights
+      //on still till it is burnt out (client/fires)
       addSprites(
         this.gameObject,
         staticData,
@@ -413,7 +413,7 @@ BuildingView.prototype.update = function () {
             )
           : look,
         b.data.tile,
-        burning ? undefined : lightsOf(staticData),
+        lightsOf(staticData),
         b.data,
         this,
       );

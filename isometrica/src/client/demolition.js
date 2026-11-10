@@ -110,6 +110,11 @@ var CRUSH_PUFFS = 2,
   DOWN_PUFFS = 6,
   MOST_PUFFS = 320;
 
+//how fast the dust a tile comes down in is thrown out from the middle of
+//it, world units a second, at the least and at the most - over the tiles
+//round it, not off down the street
+var DOWN_OUT = [8, 18];
+
 //how long the rubble takes to come up under the dust, and the foot to go,
 //ms
 var SETTLE_MS = 450;
@@ -175,6 +180,10 @@ function Demolition(root, building, tiles, options) {
     staticData: building.staticData,
   };
   this.puffs = 0;
+  //its windows flickering, the wires to them torn (flicker) - and how long
+  //it has been at it, ms
+  this.flickers = [];
+  this.since = 0;
   this.chunks = [];
   this.chunked = 0;
   //every tile of it, by the tile: what stands there, coming down, or down
@@ -383,10 +392,15 @@ function stand(self, view, at) {
       pivotX: renderer.pivotX,
       pivotY: renderer.pivotY,
       lights: renderer.lights,
+      windows: renderer.windows,
       variant: renderer.variant,
     };
 
     col.whole.push(piece(self, where, kept, whole(sprite, kept)));
+    //come down by itself, blown up, burnt: lit still as it stands - for a
+    //moment, flickering (what an explosion tears off it is not lit)
+    if (self.flickers !== undefined && !self.fenced)
+      flicker(self, col.whole[col.whole.length - 1], kept);
     col.cuts.push({ where: where, renderer: kept, sprite: sprite });
   });
 }
@@ -744,6 +758,51 @@ function fallBy(s, floors, ground, dt, crush) {
   }
 }
 
+//how long the lights of what comes down by itself flicker before they go
+//out for good, ms, at the least and at the most; and how long each flicker
+//is, on or off, at the most
+var FLICKER = [250, 750],
+  FLICKER_EACH = 110;
+
+/**
+ * The lights of a tile of it coming down by itself - blown up, hit by a
+ * blast, fallen in as it burnt (no fence round it, the people still in it)
+ * - on as they were, its windows lit as its view had them (client/lighting
+ * windowsOn), then flickering as the wires to them are torn, and out a
+ * moment on. What falls of it is dark (slice).
+ */
+function flicker(self, p, kept) {
+  var r = p.go.spriteRenderer;
+
+  if (kept.windows === undefined || kept.lights === undefined) return;
+
+  r.windows = kept.windows;
+  r.dark = false;
+  self.flickers.push({
+    r: r,
+    out: self.since + FLICKER[0] + Math.random() * (FLICKER[1] - FLICKER[0]),
+    next: self.since + Math.random() * FLICKER_EACH,
+  });
+}
+
+function flickering(self) {
+  self.flickers = self.flickers.filter(function (f) {
+    if (self.since >= f.out || f.r.gameObject.world === null) {
+      f.r.dark = true;
+      return false;
+    }
+
+    if (self.since >= f.next) {
+      //off more and more of the time, as it goes
+      f.r.dark = !f.r.dark;
+      f.next =
+        self.since + (f.r.dark ? 1.5 : 0.6) * Math.random() * FLICKER_EACH + 15;
+    }
+
+    return true;
+  });
+}
+
 function DemolitionScript(demolition) {
   engine.Component.call(this);
   this.demolition = demolition;
@@ -757,6 +816,9 @@ DemolitionScript.prototype.tick = function (time) {
     dt = time.dt,
     busy = false,
     fell = false;
+
+  self.since += dt;
+  if (self.flickers.length > 0) flickering(self);
 
   for (var tile in self.columns) {
     var col = self.columns[tile];
@@ -1242,7 +1304,7 @@ function down(self, col) {
       (x + (Math.random() - 0.5) * 0.9) * TILE - g[0],
       (y + (Math.random() - 0.5) * 0.9) * TILE - g[2],
       Math.random() * 8,
-      24 + Math.random() * 20,
+      DOWN_OUT[0] + Math.random() * (DOWN_OUT[1] - DOWN_OUT[0]),
     );
 
   if (self.rubbles) rubble(self, col);
