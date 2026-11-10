@@ -22,7 +22,7 @@ import { describe } from "isometrica/client/worth";
 import Numeral from "numeral";
 import { displayName } from "../catalogue/buildings";
 import { BarButton, Container, Icon, cx } from "../kit";
-import { demolish, explode, getClient, goReplace } from "../session";
+import { demolish, explode, fireUp, getClient, goReplace } from "../session";
 import { useGame } from "../store";
 
 //what a button says under it, when what puts it up does not say - the
@@ -134,30 +134,46 @@ function Figure({ label, icon, className, children }) {
  */
 function Focus({ inspected, seen }) {
   var data = Data[Replacement.kindOf(inspected.code)],
-    going = seen.progress !== null;
+    going = seen.progress !== null,
+    fire = seen.fire;
 
   return (
     <div className="card flex items-center gap-3 p-2.5 pr-3">
-      <span className={cx("tile", going ? "tile-gold" : "tile-home")}>
+      <span
+        className={cx(
+          "tile",
+          fire ? "tile-red" : going ? "tile-gold" : "tile-home",
+        )}
+      >
         <Icon
           name={
-            going
-              ? "build"
-              : seen.classCode === BuildingClassCode.house
-                ? "home"
-                : "city"
+            fire
+              ? "fire"
+              : going
+                ? "build"
+                : seen.classCode === BuildingClassCode.house
+                  ? "home"
+                  : "city"
           }
           size={22}
         />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="label">{going ? "Going up" : "Building"}</span>
+        <span className="label">
+          {fire === "burning"
+            ? "On fire"
+            : fire === "ruin"
+              ? "Burnt down"
+              : going
+                ? "Going up"
+                : "Building"}
+        </span>
         <span className="truncate leading-snug font-extrabold">
           {data ? displayName(data) : seen.name}
         </span>
       </div>
       <div className="flex max-w-[60%] flex-wrap justify-end gap-1.5">
-        {going ? (
+        {fire ? null : going ? (
           <Figure icon="clock">{Math.floor(seen.progress * 100) + "%"}</Figure>
         ) : (
           <>
@@ -190,9 +206,12 @@ function Focus({ inspected, seen }) {
 /**
  * What can be done to the building looked at, in the bar in the place of
  * its tools: put something else up in its place, clear it away - the
- * bulldozers bringing it down where it stands - or blow it up.
+ * bulldozers bringing it down where it stands - blow it up, or set it on
+ * fire; on fire or burnt down already, all but that.
  */
-function focusButtons(inspected) {
+function focusButtons(inspected, seen) {
+  var standing = !seen || !seen.fire;
+
   return [
     {
       icon: "replace",
@@ -215,7 +234,14 @@ function focusButtons(inspected) {
         explode(inspected.tile);
       },
     },
-  ];
+    standing && {
+      icon: "fire",
+      label: "Fire up",
+      action: function () {
+        fireUp(inspected.tile);
+      },
+    },
+  ].filter(Boolean);
 }
 
 export default function WorldHud() {
@@ -230,7 +256,7 @@ export default function WorldHud() {
       return s.busy ? null : s.inspected;
     }),
     seen = useDescribed(inspected),
-    shown = inspected ? focusButtons(inspected) : buttons.filter(Boolean),
+    shown = inspected ? focusButtons(inspected, seen) : buttons.filter(Boolean),
     on = shown.find(function (b) {
       return b.on;
     });

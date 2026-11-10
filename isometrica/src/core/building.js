@@ -57,6 +57,72 @@ Building.prototype.permanent = true;
 //by whoever first draws it, and kept in the save with the rest of it - the
 //core only keeps it, see client/compoundbuilding
 Building.prototype.look = null;
+//when it was set on fire, of the game's time (ignite) - kept in the save -
+//or null for one that never was
+Building.prototype.fire = null;
+
+var HOUR = 3600000;
+
+/**
+ * How a fire goes, of the game's time from when it was set: the building
+ * burns, a window at a time and then a floor, till it comes down (BURNS);
+ * what is left of it burns on (REMAINS), then smoulders (SMOULDERS) - and
+ * after that it is a cold ruin, till it is cleared away. A day in all.
+ */
+Building.BURNS = 7 * HOUR;
+Building.REMAINS = 15 * HOUR;
+Building.SMOULDERS = 24 * HOUR;
+
+/**
+ * Sets it on fire at the game's time at: nobody lives or works in it from
+ * then on, it makes nothing and costs nothing (BuildingState burning) -
+ * and it burns down (burn).
+ *
+ * @param at {number} the game's time, ms
+ */
+Building.prototype.ignite = function (at) {
+  this.fire = at;
+  //going up no further
+  this._run++;
+  clearTimeout(this._timer);
+  this._timer = null;
+  this._state = BuildingState.burning;
+  Events.fire(this, Construction.events.stateChange, this._state);
+};
+
+/**
+ * Has it come down, if it has burnt long enough by now - the game's time,
+ * ms: a ruin from then on (BuildingState ruin). Told every tick, and by
+ * whoever shows it burning, by its own clock.
+ *
+ * @param now {number}
+ */
+Building.prototype.burn = function (now) {
+  if (
+    this._state !== BuildingState.burning ||
+    this.fire === null ||
+    now - this.fire < Building.BURNS
+  )
+    return;
+
+  this._state = BuildingState.ruin;
+  Events.fire(this, Construction.events.stateChange, this._state);
+};
+
+/**
+ * Put back on fire as a save has it, set at at - burning still, or burnt
+ * down by now.
+ */
+Building.prototype.restoreFire = function (at) {
+  this.fire = at;
+  this._run++;
+  clearTimeout(this._timer);
+  this._timer = null;
+  this._state =
+    this.world.time.now - at >= Building.BURNS
+      ? BuildingState.ruin
+      : BuildingState.burning;
+};
 //what it stands on (core/surface): a road's own, a building's flat at the
 //highest corner under it as it went up - kept as the ground is shaped under
 //it (City#terraform), and in the save. Null for a tree
@@ -253,6 +319,7 @@ function updateEffectOnTileParams(self) {
 
 function onTick(sender, args, self) {
   self.getCity();
+  self.burn(self.world.time.now);
 
   //coming down: nothing made, nothing wanted
   if (self.demolishing) {

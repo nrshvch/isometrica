@@ -6,7 +6,9 @@
  * cleared (client/clearworks), paler as it settles - and "debris<f>" - the
  * grey of a building coming down, a cloud of it (client/demolition) - and
  * "fire<f>" - a fireball, white-hot yellow as it bursts out, orange, and
- * dull red going to soot as it swells (client/explosion) - f from
+ * dull red going to soot as it swells (client/explosion) - and
+ * "plume<f>", the black smoke of a building on fire, billowing out of it
+ * and up over the city, greying as it goes (client/fires) - f from
  * 0, the smallest, as it comes out, to FRAMES - 1, as big as it gets before
  * it is gone.
  *
@@ -82,6 +84,24 @@ var KINDS = {
     //start, for a cloud of it to be one
     sizes: [14, 18, 22, 26, 31, 36],
   },
+  plume: {
+    lit: [
+      [58, 54, 52],
+      [120, 118, 116],
+    ],
+    mid: [
+      [36, 33, 32],
+      [96, 94, 93],
+    ],
+    shade: [
+      [20, 18, 18],
+      [74, 73, 72],
+    ],
+    //billowing, big from the start and huge as it spreads up there - and
+    //not a lump but a cauliflower of them, every one lit of its own (billows)
+    sizes: [18, 30, 44, 60, 78, 98],
+    billows: true,
+  },
   fire: {
     lit: [
       [255, 248, 196],
@@ -127,12 +147,14 @@ function colourOf(list, f) {
  * One picture: "steam3", "soot0".
  */
 export function paint(name) {
-  var m = /^(steam|soot|dust|debris|fire)(\d+)$/.exec(name),
+  var m = /^(steam|soot|dust|debris|fire|plume)(\d+)$/.exec(name),
     kind = m ? KINDS[m[1]] : undefined,
     f = m ? +m[2] : -1;
 
   if (kind === undefined || f < 0 || f >= FRAMES)
     throw new Error("no such smoke: " + name);
+
+  if (kind.billows) return billows(kind, f);
 
   var d = (kind.sizes || SIZES)[f],
     up = f / (FRAMES - 1),
@@ -173,6 +195,96 @@ export function paint(name) {
       //lit from above and the left, in shade under itself
       var towards = (-dx * 0.6 - dy * 0.8) / r,
         c = towards > 0.25 ? lit : towards > -0.3 ? mid : shade,
+        o = (y * d + x) * 4;
+
+      out.data[o] = c[0];
+      out.data[o + 1] = c[1];
+      out.data[o + 2] = c[2];
+      out.data[o + 3] = 255;
+    }
+
+  return out;
+}
+
+/**
+ * A puff of a kind that billows (plume): a heap of round lumps of every
+ * size, rolled over each other - the ones to the front and up over the rest
+ * - every one lit from above and the left on its own and darker where it
+ * tucks in under the next, so it reads as smoke rolling over itself; its
+ * edge broken, more so the higher it is.
+ */
+function billows(kind, f) {
+  var d = kind.sizes[f],
+    up = f / (FRAMES - 1),
+    r = d / 2,
+    out = { width: d, height: d, data: new Uint8ClampedArray(d * d * 4) },
+    tones = [
+      colourOf(kind.shade, up),
+      colourOf(kind.mid, up),
+      colourOf(kind.lit, up),
+    ],
+    //a lump in the middle, one ring of them round it and another round
+    //that, smaller - lower down drawn first, the ones up top over them
+    lumps = [[r, r * 1.05, r * 0.5]],
+    rings = d >= 26 ? 2 : 1,
+    k,
+    i;
+
+  for (k = 0; k < rings; k++) {
+    var n = k === 0 ? 6 : 9,
+      far = k === 0 ? 0.42 : 0.68,
+      big = k === 0 ? 0.36 : 0.25;
+
+    for (i = 0; i < n; i++) {
+      var a = ((i + hash(i, k, f + 7) * 0.6) / n) * Math.PI * 2,
+        reach = r * far * (0.85 + 0.3 * hash(i, k, f + 11));
+
+      lumps.push([
+        r + Math.cos(a) * reach,
+        r + Math.sin(a) * reach * 0.9,
+        r * big * (0.8 + 0.45 * hash(i, k, f + 13)),
+      ]);
+    }
+  }
+
+  //the bottom first, the top over it
+  lumps.sort(function (a, b) {
+    return b[1] - a[1];
+  });
+
+  for (var y = 0; y < d; y++)
+    for (var x = 0; x < d; x++) {
+      var px = x + 0.5,
+        py = y + 0.5,
+        on = -1;
+
+      for (i = lumps.length - 1; i >= 0; i--)
+        if (Math.hypot(px - lumps[i][0], py - lumps[i][1]) < lumps[i][2]) {
+          on = i;
+          break;
+        }
+
+      if (on < 0) continue;
+
+      var l = lumps[on],
+        dx = (px - l[0]) / l[2],
+        dy = (py - l[1]) / l[2],
+        edge = Math.hypot(dx, dy),
+        //its rim, high up and thinning, broken
+        rim = Math.hypot(px - r, py - r) / r;
+
+      if (rim > 0.8 && hash(x, y, f + 3) < 0.25 + 0.35 * up) continue;
+
+      //lit from above and the left on the lump, and the whole of it
+      //darker underneath; tucked in dark at its own edge low down
+      var lit =
+          -dx * 0.55 -
+          dy * 0.85 -
+          ((py - r) / r) * 0.6 -
+          (edge > 0.8 && dy > 0 ? 0.6 : 0),
+        //dithered between one tone and the next
+        t = lit + (((x + y) & 1) === 0 ? 0.12 : -0.12),
+        c = tones[t > 0.35 ? 2 : t > -0.4 ? 1 : 0],
         o = (y * d + x) * 4;
 
       out.data[o] = c[0];

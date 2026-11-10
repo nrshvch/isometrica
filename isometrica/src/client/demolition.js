@@ -149,12 +149,19 @@ var FENCE_SHIFT = 14 / 32,
  *        the client's building (client/building), or anything drawn the
  *        same way, its view up still
  * @param tiles {number[]} every tile it stands on
- * @param [down] {number[]} the tiles of it down already, a demolition
- *        under way (core/building down): nothing of it there - and fenced
- *        off all the same
+ * @param [options] {{fence: boolean, rubble: boolean, down: number[]}}
+ *        fence and rubble false for no fence round it, and no heaps of
+ *        rubble of its own where it comes down - a building burnt down,
+ *        what is left of it its own (client/fires); down the tiles of it
+ *        down already, a demolition under way (core/building down): nothing
+ *        of it there - and fenced off all the same
  */
-function Demolition(root, building, tiles, down) {
-  var self = this;
+function Demolition(root, building, tiles, options) {
+  var self = this,
+    down = options && options.down ? options.down : null;
+
+  this.fenced = !options || options.fence !== false;
+  this.rubbles = !options || options.rubble !== false;
 
   this.root = root;
   this.building = building;
@@ -182,12 +189,20 @@ function Demolition(root, building, tiles, down) {
     if (down && down.indexOf(tile) !== -1) self.columns[tile].state = "gone";
   });
 
-  //what stands of it, drawn as it is
-  var view = new BuildingView(),
+  //what stands of it: the pictures its view has up - charred, say, by a
+  //fire (client/fires) - or, its view drawing nothing of it, being
+  //demolished, drawn afresh as it is
+  var live =
+      building.view &&
+      building.view.gameObject &&
+      building.view.gameObject.transform.children.length > 0,
+    view = live ? building.view : new BuildingView(),
     at;
 
-  view.setBuilding(this.standIn);
-  view.update();
+  if (!live) {
+    view.setBuilding(this.standIn);
+    view.update();
+  }
   at = view.gameObject.transform.getPosition([0, 0, 0]);
 
   this.go = new engine.GameObject("demolition");
@@ -196,12 +211,12 @@ function Demolition(root, building, tiles, down) {
   root.game.logic.world.addGameObject(this.go);
 
   stand(this, view.gameObject, at);
-  view.dispose();
+  if (!live) view.dispose();
 
   //fenced off the moment it is to come down - every tile of it, till the
   //last of it is down and pushed away (end)
   this.fences = {};
-  fence(this);
+  if (this.fenced) fence(this);
 
   //turned round: what is coming down is down, and what stands stands as it
   //is seen from the new side
@@ -1058,7 +1073,7 @@ function down(self, col) {
       24 + Math.random() * 20,
     );
 
-  rubble(self, col);
+  if (self.rubbles) rubble(self, col);
 }
 
 //a tile's rubble coming up, its foot going, as it settles
@@ -1220,7 +1235,7 @@ function turn(self) {
   var standing = false;
 
   //the fence as it is seen from the new side
-  fence(self);
+  if (self.fenced) fence(self);
 
   self.chunks.forEach(function (c) {
     if (c.go.world !== null) c.go.world.removeGameObject(c.go);
@@ -1369,6 +1384,7 @@ function hash(x, y) {
  * puffs, mx, mz} and, at the most, so many pieces (most).
  */
 var pieces = {
+  partsOf: partsOf,
   column: column,
   stand: stand,
   slice: slice,

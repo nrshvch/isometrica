@@ -70,25 +70,37 @@ export function wantOf(city, model) {
  * at (its play's inspecting): its name, as it heads its card in the
  * catalogue; going up, how far along it is; standing, the money it makes or
  * costs a tick, how full it is - residents for a house, workers for a
- * business - and what it goes without, said as it is over it.
+ * business - and what it goes without, said as it is over it; on fire or
+ * burnt down (client/fires), only that.
  *
  * @param city {City}
  * @param building {Building} the core's
  * @returns {{name: string, classCode: number, progress: number|null,
  *          income: number, residents: number, capacity: number,
- *          workers: number, jobs: number, wants: string|null}} progress
- *          0..1 while it is going up, null once it stands; income money a
- *          tick, rounded; capacity and jobs 0 for none
+ *          workers: number, jobs: number, wants: string|null,
+ *          fire: string|null}} progress 0..1 while it is going up, null
+ *          once it stands; income money a tick, rounded; capacity and jobs
+ *          0 for none; fire "burning" or "ruin", or null
  */
 export function describe(city, building) {
   var data = building.data,
-    up = building.getState() !== BuildingState.underConstruction,
+    state = building.getState(),
+    //on fire, or burnt down: nothing in it, nothing made of it
+    fire =
+      state === BuildingState.burning
+        ? "burning"
+        : state === BuildingState.ruin
+          ? "ruin"
+          : null,
+    going = state === BuildingState.underConstruction,
+    up = !going && fire === null,
     missing = up && city ? wantOf(city, building) : null;
 
   return {
     name: data.name.charAt(0).toUpperCase() + data.name.slice(1),
     classCode: data.classCode,
-    progress: up ? null : building.getProgress(),
+    progress: going ? building.getProgress() : null,
+    fire: fire,
     income: up && city ? Math.round(city.getBuildingIncome(building)) : 0,
     residents:
       up && city && data.citizenCapacity

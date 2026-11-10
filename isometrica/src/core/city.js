@@ -642,6 +642,33 @@ City.prototype.explode = function (tile) {
 };
 
 /**
+ * Sets what stands on tile on fire, for nothing (core/building ignite): it
+ * burns down over a day of the game's time - nobody in it, nothing made or
+ * paid for meanwhile - into a ruin, there till it is cleared away. Only
+ * something standing finished: not a tree nor a road, not one going up, on
+ * fire already or burnt down.
+ *
+ * @param tile {number} any tile of what stands there
+ * @returns {number} ErrorCode
+ */
+City.prototype.fireUp = function (tile) {
+  var building = this.world.buildingService.get(tile);
+
+  if (
+    building === null ||
+    building.data.classCode === BuildingClassCode.tree ||
+    building.data.classCode === BuildingClassCode.road
+  )
+    return ErrorCode.NOTHING_TO_CLEAR;
+
+  if (building.getState() !== BuildingState.ready) return ErrorCode.CANT_BURN;
+
+  building.ignite(this.world.time.now);
+
+  return ErrorCode.NONE;
+};
+
+/**
  * Raises or lowers tiles as one piece of land, whatever shape they make - see
  * Terrain#planLevel for what that does to the ground - and pays for it. The
  * ground belongs to the world, not to the city, so it can be shaped anywhere;

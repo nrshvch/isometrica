@@ -78,6 +78,15 @@ export var PAGES = [
       "away - as slowly as you like.",
   },
   {
+    id: "fire",
+    name: "Fire bench",
+    about:
+      "One building on flat grass set on fire the way the game sets one on " +
+      "fire: it spreads window by window, floor by floor, black smoke " +
+      "rolling up off it, till it comes down and what is left of it burns " +
+      "on and smoulders - a day of it, as fast as you like, by day or night.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

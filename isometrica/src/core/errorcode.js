@@ -23,6 +23,9 @@ var ErrorCode = {
   //a building put up in another's place that does not cover its ground,
   //however it is turned (core/city quoteReplace)
   WRONG_FOOTPRINT: 15,
+  //set on fire, what is not standing finished - going up, on fire already,
+  //burnt down (core/city fireUp)
+  CANT_BURN: 16,
 };
 
 export default ErrorCode;
