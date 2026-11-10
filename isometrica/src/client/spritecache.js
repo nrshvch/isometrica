@@ -446,10 +446,10 @@ SpriteCache.prototype.getComposite = function (parts) {
   )
     sprite.burnt = true;
 
-  //charred, all of it as one (client/burnt char)
+  //charred, opened up, all of it as one (client/burnt wholly)
   resolved.forEach(function (part) {
-    if (part.burnt !== null && part.burnt.kind === "c")
-      sprite.charred = part.burnt;
+    if (part.burnt !== null && Burnt.wholly(part.burnt).length > 0)
+      sprite.wholly = Burnt.wholly(part.burnt);
   });
 
   return sprite;
@@ -459,7 +459,31 @@ SpriteCache.prototype.getComposite = function (parts) {
 //(getComposite): its name, where it is in it, the piece of it, drawn as
 //painted, burnt
 var PART_KEY =
-  /^([^@#!~]*)(?:@(-?[\d.]+),(-?[\d.]+))?(?:#(-?[\d.]+),(-?[\d.]+),([\d.]+),([\d.]+))?(!)?(?:~.*)?$/;
+  /^([^@#!~]*)(?:@(-?[\d.]+),(-?[\d.]+))?(?:#(-?[\d.]+),(-?[\d.]+),([\d.]+),([\d.]+))?(!)?(?:~(.*))?$/;
+
+//what a part was burnt as already, with words on top - a kind of burning
+//once only, the newer words for it (client/burnt spec)
+function merged(was, words) {
+  if (!was) return words;
+
+  var kinds = {},
+    out = [];
+
+  was
+    .split(";")
+    .concat(String(words).split(";"))
+    .filter(Boolean)
+    .forEach(function (one) {
+      var kind = one.split(":")[0];
+
+      if (kinds[kind] === undefined) {
+        kinds[kind] = out.length;
+        out.push(one);
+      } else out[kinds[kind]] = one;
+    });
+
+  return out.join(";");
+}
 
 /**
  * The same picture as sprite, put together out of the same parts in the same
@@ -490,7 +514,7 @@ SpriteCache.prototype.burnt = function (sprite, words, plain) {
             ? { x: +m[4], y: +m[5], w: +m[6], h: +m[7] }
             : undefined,
         plain: !!plain || m[8] === "!",
-        burnt: words,
+        burnt: merged(m[9], words),
       });
 
       return true;

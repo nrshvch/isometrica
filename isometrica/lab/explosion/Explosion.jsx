@@ -2,8 +2,10 @@
  * The explosion bench's page (scene.js): one building on flat grass, a road
  * along its front and a few trees about it, blown up the way the game blows
  * one up - no fence, no bulldozer: the charges at its foot, then all of it
- * torn into pieces and thrown all round in a fireball, heaps of rubble left
- * where it stood - as slowly as wanted, turned round or from above; the
+ * torn off it in a fireball, what is left of it coming down a tile at a
+ * time, heaps of rubble left where it stood and its yard wrecked, dust
+ * rolling down the road - as slowly as wanted, turned round or from above;
+ * with its neighbours round it, the blast bringing down the near ones; the
  * rubble cleared away by the bulldozers, and all of it put up again.
  */
 import { useEffect, useRef, useState } from "react";
@@ -57,7 +59,9 @@ export default function Explosion() {
     [left, setLeft] = useState(0),
     [piles, setPiles] = useState(0),
     [beside, setBeside] = useState(false),
-    [hill, setHill] = useState(false);
+    [hill, setHill] = useState(false),
+    [around, setAround] = useState(false),
+    [near, setNear] = useState([]);
 
   //the world, up once
   useEffect(function () {
@@ -77,6 +81,7 @@ export default function Explosion() {
           setStanding(b ? BuildingData[b.buildingCode].name : null);
           setLeft(bench.current.left().length);
           setPiles(bench.current.piles());
+          setNear(bench.current.neighbourhood());
         }, 250);
       },
       function (e) {
@@ -113,7 +118,9 @@ export default function Explosion() {
 
   var s = seen,
     //something going on still: nothing to put up again till it is over
-    busy = !!s && (s.blowing > 0 || s.dozers > 0 || s.waiting > 0);
+    busy =
+      !!s &&
+      (s.blowing > 0 || s.collapsing > 0 || s.dozers > 0 || s.waiting > 0);
 
   return (
     <div className="flex h-screen flex-col text-xs">
@@ -174,9 +181,13 @@ export default function Explosion() {
           <Note>
             One building on a patch of flat grass, a road along its front and a
             few trees about it, blown up the way the game blows one up: no
-            fence, no bulldozer - the charges going off at its foot, then all of
-            it torn into pieces thrown all round in a fireball, and heaps of
-            rubble left where it stood, till the bulldozers clear them away.
+            fence, no bulldozer - the charges going off at its foot, a fireball
+            and pieces torn off it thrown all round, then what is left of it,
+            blackened, coming down a tile at a time, a cloud of dust rolling out
+            and down the road. Heaps of rubble are left where the building
+            stood, smouldering, and its yard wrecked, till the bulldozers clear
+            them away. With its neighbours, the blast brings down whatever is
+            next to it or across the road, and knocks about what is further off.
           </Note>
 
           <Section title="What stands">
@@ -207,12 +218,23 @@ export default function Explosion() {
                 className="px-1.5 py-0.5"
                 title="another of it beside it, to blow up after it - a pile of rubble each"
                 on={beside}
-                disabled={!ready || busy}
+                disabled={!ready || busy || around}
                 onClick={function () {
                   if (scene().setBeside(!beside)) setBeside(!beside);
                 }}
               >
                 two side by side
+              </Button>
+              <Button
+                className="px-1.5 py-0.5"
+                title="a house next to it, a park on its other side, a house across the road and one further along - for the blast to bring down the near ones"
+                on={around}
+                disabled={!ready || busy}
+                onClick={function () {
+                  if (scene().setAround(!around)) setAround(!around);
+                }}
+              >
+                neighbours
               </Button>
               <Button
                 className="px-1.5 py-0.5"
@@ -280,11 +302,21 @@ export default function Explosion() {
             {s && (
               <>
                 <div>blowing up: {s.blowing}</div>
+                <div>coming down by itself: {s.collapsing}</div>
                 <div>pieces flying or lying about: {s.pieces}</div>
                 <div>
                   heaps of rubble left: {s.heaps}, in {piles}{" "}
                   {piles === 1 ? "pile" : "piles"}
                 </div>
+                <div>wrecked yards: {s.wrecks}</div>
+                {near.map(function (n) {
+                  return (
+                    <div key={n.what}>
+                      {n.what} ({n.name}):{" "}
+                      {n.health === null ? "down" : n.health + "% sound"}
+                    </div>
+                  );
+                })}
                 <div>bulldozers out: {s.dozers}</div>
                 <div>tiles waiting for one: {s.waiting}</div>
               </>

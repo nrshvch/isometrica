@@ -32,9 +32,13 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   `/replace.html` - a building put up in the place of itself, another look
   of it, or of whatever else covers its ground, coming down and going up
   again the game's way, its site as fast as asked - the explosion bench at
-  `/explosion.html` - a building blown up, torn into pieces thrown all
-  round in a fireball, its rubble left lying till the bulldozers clear it,
-  or two of it side by side, a pile each, on the flat or on a slope -
+  `/explosion.html` - a building blown up, pieces torn off it in a
+  fireball and the rest of it coming down a tile at a time, dust rolling
+  down the road, its rubble left lying till the bulldozers clear it and its
+  yard wrecked; or two of it side by side, a pile each, on the flat or on
+  a slope; or with its neighbours round it, the blast bringing down the
+  ones next to it and across the road and knocking about the one further
+  off -
   the fire bench at `/fire.html` - a building set on fire, spreading
   window by window, black smoke rolling up off it, coming down and left a
   burnt-out ruin, a day of it as fast as asked, by day or at night - and

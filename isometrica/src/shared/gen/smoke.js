@@ -8,7 +8,9 @@
  * "fire<f>" - a fireball, white-hot yellow as it bursts out, orange, and
  * dull red going to soot as it swells (client/explosion) - and
  * "plume<f>", the black smoke of a building on fire, billowing out of it
- * and up over the city, greying as it goes (client/fires) - f from
+ * and up over the city, greying as it goes (client/fires) - and
+ * "cloud<f>", the dust a building blown up raises, rolling out round it and
+ * down the streets (client/explosion) - f from
  * 0, the smallest, as it comes out, to FRAMES - 1, as big as it gets before
  * it is gone.
  *
@@ -84,6 +86,25 @@ var KINDS = {
     //start, for a cloud of it to be one
     sizes: [14, 18, 22, 26, 31, 36],
   },
+  //the dust a building blown up raises (client/explosion): a cloud of it
+  //billowing out over everything round it and rolling down the streets,
+  //the grey-brown of concrete and plaster, hanging there a long while
+  cloud: {
+    lit: [
+      [196, 190, 178],
+      [208, 204, 196],
+    ],
+    mid: [
+      [172, 165, 152],
+      [190, 186, 178],
+    ],
+    shade: [
+      [138, 131, 120],
+      [164, 160, 152],
+    ],
+    sizes: [20, 30, 40, 52, 64, 76],
+    billows: true,
+  },
   plume: {
     lit: [
       [58, 54, 52],
@@ -147,7 +168,7 @@ function colourOf(list, f) {
  * One picture: "steam3", "soot0".
  */
 export function paint(name) {
-  var m = /^(steam|soot|dust|debris|fire|plume)(\d+)$/.exec(name),
+  var m = /^(steam|soot|dust|debris|fire|plume|cloud)(\d+)$/.exec(name),
     kind = m ? KINDS[m[1]] : undefined,
     f = m ? +m[2] : -1;
 

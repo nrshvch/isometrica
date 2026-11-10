@@ -78,9 +78,10 @@ export function wantOf(city, model) {
  * @returns {{name: string, classCode: number, progress: number|null,
  *          income: number, residents: number, capacity: number,
  *          workers: number, jobs: number, wants: string|null,
- *          fire: string|null}} progress 0..1 while it is going up, null
- *          once it stands; income money a tick, rounded; capacity and jobs
- *          0 for none; fire "burning" or "ruin", or null
+ *          fire: string|null, health: number}} progress 0..1 while it is
+ *          going up, null once it stands; income money a tick, rounded;
+ *          capacity and jobs 0 for none; fire "burning" or "ruin", or null;
+ *          health 0..100, rounded
  */
 export function describe(city, building) {
   var data = building.data,
@@ -101,6 +102,12 @@ export function describe(city, building) {
     classCode: data.classCode,
     progress: going ? building.getProgress() : null,
     fire: fire,
+    //how sound it is (core/building getHealth)
+    health: building.getHealth
+      ? Math.round(
+          building.getHealth(building.world ? building.world.time.now : 0),
+        )
+      : 100,
     income: up && city ? Math.round(city.getBuildingIncome(building)) : 0,
     residents:
       up && city && data.citizenCapacity

@@ -84,6 +84,18 @@ SmokeScript.plume = {
   aloft: 12,
 };
 
+//the dust a building blown up raises (client/explosion): rolling out low
+//and slow to rise, a cloud of it over everything round it and down the
+//streets - and hanging there a long while, thinning only slowly
+SmokeScript.cloud = {
+  looks: frames("cloud"),
+  ttl: 30000,
+  rise: 1.6,
+  cools: 0.6,
+  peak: 0.05,
+  thick: 0.96,
+};
+
 //a fireball, a building blown up (client/explosion): bursting out and gone
 //in a moment, going up fast as it goes
 SmokeScript.fire = {

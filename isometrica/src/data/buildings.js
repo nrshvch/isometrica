@@ -41,12 +41,14 @@ buildingData[BuildingCode.tree] = {
   variants: Trees.variants(RenderLayer.buildingsLayer),
 };
 
-//the heaps of rubble a building blown up leaves on every tile of it
-//(core/city explode, client/explosion) - of the same debris a building
-//coming down leaves for the bulldozers, but running on into the heaps on
-//the tiles next to it as one pile, lying on the ground as it slopes
-//(shared/gen/stones pile, client/rubble). Of the tree class, as a tree
-//planted is: nobody's, nothing it makes or costs, no concrete under it;
+//the heaps of rubble a building blown up leaves on every tile of the
+//building itself (core/city explode, client/explosion) - of the same debris
+//a building coming down leaves for the bulldozers, but running on into the
+//heaps on the tiles next to it as one pile, lying on the ground as it
+//slopes (shared/gen/stones pile, client/rubble); and, the same kind, the
+//wreck of what was only its yard, no heap on it, what it was kept to be
+//drawn wrecked (look.wreck, client/buildingview). Of the tree class, as a
+//tree planted is: nobody's, nothing it makes or costs, no concrete under it;
 //gone as soon as anything is built over it, or cleared away - a bulldozer
 //pushing it off (client/buildman hold) - and kept in the save till then
 var RUBBLE_BASE = 6900;
