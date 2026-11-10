@@ -167,9 +167,9 @@ CachedSprite.prototype.paint = function (pixels, w, x, y) {
     if (part.sheet.generated !== null) this.sprites.generator.use(part.sheet);
 
     //burnt down: a copy of it burnt on its own first, so as to leave what
-    //it is put over alone (client/burnt) - charred, all of it at once once
-    //it is all there (below)
-    if (part.burnt && part.burnt.kind !== "c") {
+    //it is put over alone (client/burnt) - charred or opened up, all of it
+    //at once once it is all there (below)
+    if (part.burnt && Burnt.partly(part.burnt).length > 0) {
       var own = {
         width: Math.round(c.w),
         height: Math.round(c.h),
@@ -192,7 +192,7 @@ CachedSprite.prototype.paint = function (pixels, w, x, y) {
         own.data,
         own.width,
         own.height,
-        part.burnt,
+        Burnt.partly(part.burnt),
         heightsOf(this.sprites, part, c),
       );
       Pixels.over(
@@ -222,45 +222,98 @@ CachedSprite.prototype.paint = function (pixels, w, x, y) {
     );
   }
 
-  //charred: all of it, by how high every pixel of it stands - its picture
-  //to be lit's heights of that, where it has one
-  if (this.charred !== null) {
-    var lit = layersOf(this, "deferred"),
-      sprites = this.sprites,
-      parts = this.parts;
-
-    Burnt.char(
+  //charred, opened up: all of it, by how high every pixel of it stands -
+  //its picture to be lit's heights of that, where it has one
+  if (this.wholly !== null)
+    Burnt.whole(
       pixels,
       w,
       x,
       y,
       this.width,
       this.height,
-      this.charred,
-      lit === null
-        ? null
-        : function (i, j) {
-            //the highest part over it there, by its own heights
-            var z = null;
-
-            for (var k = parts.length - 1; k >= 0 && z === null; k--) {
-              var p = parts[k],
-                c = clipOf(p),
-                pi = i - p.x,
-                pj = j - p.y;
-
-              if (pi < 0 || pj < 0 || pi >= c.w || pj >= c.h) continue;
-
-              var h = heightsOf(sprites, p, c);
-
-              if (h !== null) z = h(pi, pj);
-            }
-
-            return z;
-          },
+      this.wholly,
+      layersOf(this, "deferred") === null ? null : heightsIn(this),
     );
-  }
 };
+
+/**
+ * How many of its pixels stand at least min over the ground (heightsIn) -
+ * how much of what it shows is something standing, not a yard, a garden -
+ * or null while its pictures to be lit are not in.
+ *
+ * @param min {number} pixels
+ * @returns {number|null}
+ */
+CachedSprite.prototype.standing = function (min) {
+  if (layersOf(this, "deferred") === null) return 0;
+  if (!wantAll(this.sprites, this.parts, "deferred")) return null;
+
+  var h = heightsIn(this),
+    n = 0;
+
+  for (var j = 0; j < this.height; j++)
+    for (var i = 0; i < this.width; i++) {
+      var z = h(i, j);
+
+      if (z !== null && z >= min) n++;
+    }
+
+  return n;
+};
+
+/**
+ * How high every pixel i, j of what sprite is put together out of stands
+ * over the ground - by its highest part there, its own heights lifted as it
+ * is laid higher - or null where nothing of a part with heights is.
+ *
+ * @returns {function(number, number): number|null}
+ */
+function heightsIn(sprite) {
+  var parts = sprite.parts,
+    ground = -Infinity,
+    laid = [],
+    i;
+
+  for (i = 0; i < parts.length; i++)
+    ground = Math.max(ground, partFoot(parts[i]));
+
+  for (i = 0; i < parts.length; i++) {
+    var p = parts[i],
+      c = clipOf(p),
+      own = sprite.sprites.lookSheet(p.sheet, "deferred"),
+      image = own !== null ? own.image : null;
+
+    if (image !== null && image.data)
+      laid.push({
+        part: p,
+        c: c,
+        image: image,
+        x0: HIGH * p.frame.w + Math.round(c.x),
+        y0: Math.round(c.y),
+        up: Math.max(0, p.up !== undefined ? p.up : ground - partFoot(p)),
+      });
+  }
+
+  return function (i, j) {
+    for (var k = laid.length - 1; k >= 0; k--) {
+      var l = laid[k],
+        pi = i - l.part.x,
+        pj = j - l.part.y;
+
+      if (pi < 0 || pj < 0 || pi >= l.c.w || pj >= l.c.h) continue;
+
+      var o = ((l.y0 + pj) * l.image.width + l.x0 + pi) * 4;
+
+      //nothing of it there: the one under it, if any
+      if (l.image.data[o + 3] === 0) continue;
+
+      return l.image.data[o] + l.up;
+    }
+
+    return null;
+  };
+}
 
 /**
  * Where its windows are - what of it shines at night (client/generatorcore
@@ -366,8 +419,9 @@ CachedSprite.prototype.plain = false;
 //burnt down, some part of it (SpriteCache#getComposite burnt, client/burnt)
 CachedSprite.prototype.burnt = false;
 
-//charred, as client/burnt char has it ("c:seed:level", made out) - or null
-CachedSprite.prototype.charred = null;
+//charred, opened up - what client/burnt does to all of it at once
+//(wholly), made out - or null
+CachedSprite.prototype.wholly = null;
 
 //what it is painted as for the light to be worked out as it is drawn - its
 //colours and the ways it looks side by side, and its pictures for the
@@ -693,22 +747,26 @@ Layers.prototype.paint = function (pixels, w, x, y) {
     }
   }
 
-  //charred, all of it at once - its colours, by how high every pixel of it
-  //stands (client/burnt char)
-  var charred = this.sprite.charred;
+  //charred, opened up, all of it at once - its colours, by how high every
+  //pixel of it stands - and what is opened up of it, which way it looks
+  //and how high (client/burnt whole)
+  var wholly = this.sprite.wholly;
 
-  if (!night && charred !== null)
-    Burnt.char(
+  if (!night && wholly !== null)
+    Burnt.whole(
       pixels,
       w,
       x + ALBEDO * W,
       y,
       W,
       this.height,
-      charred,
+      wholly,
       function (i, j) {
-        return pixels[((y + j) * w + x + HIGH * W + i) * 4];
+        var o = ((y + j) * w + x + HIGH * W + i) * 4;
+
+        return pixels[o + 3] === 0 ? null : pixels[o];
       },
+      { normal: (NORMAL - ALBEDO) * W, high: (HIGH - ALBEDO) * W },
     );
 };
 

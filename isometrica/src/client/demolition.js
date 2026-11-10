@@ -162,6 +162,8 @@ function Demolition(root, building, tiles, options) {
 
   this.fenced = !options || options.fence !== false;
   this.rubbles = !options || options.rubble !== false;
+  //what it is burnt as, all of it still standing (burn) - or null
+  this.words = null;
 
   this.root = root;
   this.building = building;
@@ -328,6 +330,10 @@ function column(tile) {
     //be taken apart from then (slice)
     whole: [],
     cuts: [],
+    //what it was last seen to be doing, and the sides of it opened up where
+    //a tile of it in front has fallen (open)
+    was: "standing",
+    open: 0,
   };
 }
 
@@ -515,12 +521,22 @@ function partsOf(sprites, sprite, renderer) {
     out = [];
 
   for (var i = 0; i < keys.length; i++) {
-    var m = /^([^@#]*)(?:@(-?\d+),(-?\d+))?$/.exec(keys[i]),
+    var m = /^([^@#~!]*)(?:@(-?[\d.]+),(-?[\d.]+))?(?:~(.*))?$/.exec(keys[i]),
       frame = m ? sprites.frame(m[1]) : undefined;
 
     if (frame === undefined) return [whole(sprite, renderer)];
 
-    var x = +(m[2] || 0),
+    //burnt as the whole was - but for what was opened up of it, which
+    //goes by where the whole was
+    var burnt = m[4]
+        ? m[4]
+            .split(";")
+            .filter(function (one) {
+              return one.charAt(0) !== "e";
+            })
+            .join(";")
+        : "",
+      x = +(m[2] || 0),
       y = +(m[3] || 0),
       //where its own middle is - a generated part's - the rest of its place
       //up the picture is how far it is laid up
@@ -528,8 +544,14 @@ function partsOf(sprites, sprite, renderer) {
       lift = Math.max(0, renderer.pivotY - y - pivotY);
 
     out.push({
-      sprite: keys.length > 1 ? sprites.getSprite(m[1]) : sprite,
+      sprite:
+        keys.length === 1
+          ? sprite
+          : burnt
+            ? sprites.getComposite([{ name: m[1], burnt: burnt }])
+            : sprites.getSprite(m[1]),
       name: m[1],
+      burnt: burnt || undefined,
       frame: frame,
       pivotX: renderer.pivotX - x,
       pivotY: renderer.pivotY - y - lift,
@@ -551,7 +573,9 @@ function piece(self, where, renderer, part) {
     c = part.clip,
     sprite =
       c !== null
-        ? self.root.sprites.getComposite([{ name: part.name, clip: c }])
+        ? self.root.sprites.getComposite([
+            { name: part.name, clip: c, burnt: part.burnt },
+          ])
         : part.sprite,
     y = where[1] + part.lift * PER_PIXEL;
 
@@ -736,10 +760,16 @@ DemolitionScript.prototype.profileName = "demolition";
 DemolitionScript.prototype.tick = function (time) {
   var self = this.demolition,
     dt = time.dt,
-    busy = false;
+    busy = false,
+    fell = false;
 
   for (var tile in self.columns) {
     var col = self.columns[tile];
+
+    if (col.state !== col.was) {
+      if (col.state === "falling") fell = true;
+      col.was = col.state;
+    }
 
     if (col.state === "shaking") shake(self, col, dt);
     else if (col.state === "falling") fallOn(self, col, dt);
@@ -750,7 +780,97 @@ DemolitionScript.prototype.tick = function (time) {
 
   flyOn(self, dt);
 
+  if (fell) open(self);
+
   if (!busy && self.chunks.length === 0) end(self);
+};
+
+/**
+ * Every tile of it still standing whole, open on its sides where a tile of
+ * it in front of it there has fallen away: the inside of it showing - its
+ * floors, its rooms - where the wall between them was (client/burnt
+ * expose). Only the sides to the front, as it is seen: what is behind it
+ * leaves nothing of it to be seen.
+ */
+function open(self) {
+  var sprites = self.root.sprites;
+
+  if (View.top()) return;
+
+  for (var tile in self.columns) {
+    var col = self.columns[tile];
+
+    if (col.state !== "standing" || col.whole.length === 0) continue;
+
+    var sides = 0,
+      x = Terrain.extractX(+tile),
+      y = Terrain.extractY(+tile);
+
+    for (var other in self.columns) {
+      var o = self.columns[other];
+
+      if (o.state === "standing" || o.state === "shaking") continue;
+
+      var seen = View.vector(
+        Terrain.extractX(+other) - x,
+        Terrain.extractY(+other) - y,
+      );
+
+      if (seen[0] === -1 && seen[1] === 0) sides |= 1;
+      else if (seen[0] === 0 && seen[1] === -1) sides |= 2;
+    }
+
+    if (sides === (col.open || 0)) continue;
+
+    col.open = sides;
+
+    col.whole.forEach(function (p, k) {
+      var r = p.go.spriteRenderer;
+
+      if (p.base === undefined) p.base = r.sprite;
+
+      r.setSprite(
+        sprites.burnt(
+          p.base,
+          "e:" +
+            ((+tile * 31 + k) % 100000) +
+            ":" +
+            sides +
+            ":" +
+            p.part.pivotX +
+            ":" +
+            p.part.pivotY,
+        ),
+      );
+    });
+  }
+}
+
+/**
+ * Every tile of it still standing burnt as words say (client/burnt) -
+ * charred, a building blown up: what stands of it, and what it will come
+ * down in.
+ *
+ * @param words {string}
+ */
+Demolition.prototype.burn = function (words) {
+  var sprites = this.root.sprites;
+
+  this.words = words;
+
+  for (var tile in this.columns) {
+    var col = this.columns[tile];
+
+    col.whole.forEach(function (p) {
+      var r = p.go.spriteRenderer;
+
+      p.base = sprites.burnt(p.base !== undefined ? p.base : r.sprite, words);
+      r.setSprite(sprites.burnt(r.sprite, words));
+    });
+    col.cuts.forEach(function (c) {
+      c.sprite = sprites.burnt(c.sprite, words);
+    });
+  }
 };
 
 //a tile shaking, before it gives - dust going up where it will
@@ -1276,6 +1396,11 @@ function turn(self) {
     view.gameObject.transform.getPosition([0, 0, 0]),
   );
   view.dispose();
+
+  //burnt as it was, and open where it was, from the new side
+  if (self.words !== null) self.burn(self.words);
+  for (tile in self.columns) self.columns[tile].open = 0;
+  open(self);
 }
 
 //all of it down, and pushed away, and every piece of it gone

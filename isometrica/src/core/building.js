@@ -61,6 +61,15 @@ Building.prototype.look = null;
 //or null for one that never was
 Building.prototype.fire = null;
 
+//how sound it is, 0..100 (getHealth): knocked about by a blast next to it
+//(City#explode, damage) - kept in the save - and down once there is none
+//of it left
+Building.prototype.health = 100;
+
+//for a heap of rubble a building blown up left (City#explode): when it was
+//left smouldering, of the game's time - kept in the save - or null
+Building.prototype.smoke = null;
+
 var HOUR = 3600000;
 
 /**
@@ -107,6 +116,58 @@ Building.prototype.burn = function (now) {
 
   this._state = BuildingState.ruin;
   Events.fire(this, Construction.events.stateChange, this._state);
+};
+
+/**
+ * How sound it is now, 0..100 - the game's time now, ms: as sound as it has
+ * been left by whatever has knocked it about (damage), and on fire, less and
+ * less of that as it burns, none once it is down (BURNS); burnt down, none.
+ *
+ * @param now {number}
+ * @returns {number}
+ */
+Building.prototype.getHealth = function (now) {
+  if (this._state === BuildingState.ruin) return 0;
+
+  if (this._state === BuildingState.burning && this.fire !== null)
+    return (
+      this.health *
+      Math.max(0, Math.min(1, 1 - (now - this.fire) / Building.BURNS))
+    );
+
+  return this.health;
+};
+
+/**
+ * How sound it would be now (getHealth) with so much more knocked off it -
+ * for whoever shows it coming down to know before it does.
+ *
+ * @param amount {number} 0..100
+ * @param now {number} the game's time, ms
+ * @returns {number}
+ */
+Building.prototype.healthAfter = function (amount, now) {
+  var was = this.health,
+    out;
+
+  this.health = Math.max(0, was - Math.max(0, amount));
+  out = this.getHealth(now);
+  this.health = was;
+
+  return out;
+};
+
+/**
+ * Knocks so much of its health off it (getHealth) - none left, it is to
+ * come down.
+ *
+ * @param amount {number} 0..100
+ * @returns {number} how much of it is left
+ */
+Building.prototype.damage = function (amount) {
+  this.health = Math.max(0, this.health - Math.max(0, amount));
+
+  return this.health;
 };
 
 /**

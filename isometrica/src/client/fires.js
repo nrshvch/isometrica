@@ -48,6 +48,11 @@ var Terrain = Core.Terrain,
   REMAINS = CoreBuilding.REMAINS / HOUR,
   SMOULDERS = CoreBuilding.SMOULDERS / HOUR;
 
+//a heap of rubble left by a building blown up (core/city explode, smoke):
+//how long the fire in it burns on, and it smoulders, hours
+var PILE_REMAINS = 1.5,
+  PILE_SMOULDERS = 7;
+
 //how far up the world a pixel up the screen is, and a tile across
 var PER_PIXEL = Config.tileZStep / 8,
   TILE = Config.tileSize;
@@ -82,10 +87,11 @@ var CHARS = [
 var ROOF_AFTER = 0.5,
   ROOF_EVERY = 6;
 
-//coming down: how far apart its tiles give, ms, at the most; when what is
-//left of it starts to show through the dust, and takes to; and how long it
-//takes at the most, whatever is still falling then
-var KNOCK_APART = 260,
+//coming down: how far apart its tiles give, ms, about - one after another,
+//not all at once; when what is left of it starts to show through the dust,
+//and takes to; and how long it takes at the most, whatever is still falling
+//then
+var KNOCK_APART = 340,
   RUIN_AT = 900,
   RUIN_MS = 2200,
   FALL_MOST = 14000;
@@ -223,6 +229,17 @@ Fires.prototype.falling = function () {
   return false;
 };
 
+//whether something is on fire, or smouldering still, by now: a building
+//set on fire, and a heap of rubble a building blown up left
+function alight(model, now) {
+  if (typeof model.fire === "number")
+    return now - model.fire < CoreBuilding.SMOULDERS;
+  if (typeof model.smoke === "number")
+    return now - model.smoke < PILE_SMOULDERS * HOUR;
+
+  return false;
+}
+
 //every building on fire in sight with a blaze, and none for what is not
 function look(self) {
   var views = self.root.buildman.getBuildingViews(),
@@ -232,14 +249,7 @@ function look(self) {
   views.forEach(function (b) {
     var model = b.data;
 
-    if (
-      !model ||
-      model.fire === null ||
-      model.fire === undefined ||
-      !b.view ||
-      now - model.fire >= CoreBuilding.SMOULDERS
-    )
-      return;
+    if (!model || !b.view || !alight(model, now)) return;
 
     seen[model.tile] = true;
 
@@ -318,7 +328,14 @@ function Blaze(fires, building) {
   this.collapse = null;
   this.since = 0;
   this.knocks = [];
-  this.down = model.getState() === BuildingState.ruin;
+  //a heap of rubble smouldering, down from the start - and from when, and
+  //how long what is left burns on and smoulders, hours
+  this.pile = typeof model.fire !== "number";
+  this.start = this.pile ? model.smoke : model.fire;
+  this.remains = this.pile ? 0 : BURNS;
+  this.burnsOn = this.pile ? PILE_REMAINS : REMAINS;
+  this.smoulders = this.pile ? PILE_SMOULDERS : SMOULDERS;
+  this.down = this.pile || model.getState() === BuildingState.ruin;
   this.over = false;
   this.clock = 0;
   //how tall it stands, pixels - as its windows say, once they do
@@ -345,9 +362,17 @@ function Blaze(fires, building) {
   });
 }
 
+//whether it is not to be seen yet: a heap of rubble under the dust of what
+//it was, coming down still (client/collapse)
+function hidden(self) {
+  var view = self.building.view;
+
+  return !view || view.opacity < 1;
+}
+
 //how long it has burnt, of the game's time, hours
 Blaze.prototype.hours = function () {
-  return (this.fires.now() - this.model.fire) / HOUR;
+  return (this.fires.now() - this.start) / HOUR;
 };
 
 Blaze.prototype.status = function () {
@@ -364,7 +389,7 @@ Blaze.prototype.status = function () {
     phase:
       h < BURNS && !this.down
         ? "burning"
-        : h < REMAINS
+        : h < this.burnsOn
           ? "remains burning"
           : "smouldering",
     windows: this.windows ? this.windows.length : 0,
@@ -395,7 +420,10 @@ Blaze.prototype.tick = function (dt) {
 
   this.clock += dt;
 
-  if (h >= SMOULDERS) {
+  //a heap of rubble not come up yet, under a building coming down
+  if (this.pile && hidden(this)) return;
+
+  if (h >= this.smoulders) {
     this.over = true;
     return;
   }
@@ -732,7 +760,7 @@ Blaze.prototype.fall = function () {
     );
     this.since = 0;
     this.knocks = this.tiles.map(function (t, k) {
-      return { tile: t, at: k * KNOCK_APART * Math.random() };
+      return { tile: t, at: k * KNOCK_APART * (0.7 + 0.6 * Math.random()) };
     });
     view.setOpacity(0);
   }
@@ -833,8 +861,18 @@ function embersOf(self) {
 }
 
 //how much of what is left of it burns still, 0..1, hours h in
-function remainsBurn(h) {
-  return Math.max(0, Math.min(1, 1 - (h - BURNS) / (REMAINS - BURNS)));
+function remainsBurn(self, h) {
+  return Math.max(
+    0,
+    Math.min(1, 1 - (h - self.remains) / (self.burnsOn - self.remains)),
+  );
+}
+
+//how far it has cooled smouldering, 0..1, hours h in
+function cooled(self, h) {
+  return h < self.burnsOn
+    ? 0
+    : Math.min(1, (h - self.burnsOn) / (self.smoulders - self.burnsOn));
 }
 
 /**
@@ -842,13 +880,13 @@ function remainsBurn(h) {
  * wisp of smoke now and then.
  */
 function remains(self, h, dt) {
-  var r = remainsBurn(h),
+  var r = remainsBurn(self, h),
     world = self.root.game.logic.world;
 
   if (r > 0) plume(self, 0.04 + 0.32 * r, 10, dt);
   else {
     //smouldering: a wisp here and there, fewer as it cools
-    var cool = (h - REMAINS) / (SMOULDERS - REMAINS);
+    var cool = cooled(self, h);
 
     self.plumed +=
       (dt / 1000) * 1.2 * (1 - cool) * Math.sqrt(self.tiles.length);
@@ -928,7 +966,7 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
   var gl = engine.Config.gl,
     blaze = this.blaze;
 
-  if (!gl || !layer.fillRect) return;
+  if (!gl || !layer.fillRect || (blaze.pile && hidden(blaze))) return;
 
   var M = viewportRenderer.M,
     h = blaze.hours(),
@@ -1080,8 +1118,8 @@ FireRenderer.prototype.render = function (layer, viewportRenderer) {
 
   if (blaze.down) {
     //what is left of it burning on, then its embers glowing
-    var r = remainsBurn(h),
-      cool = h < REMAINS ? 0 : (h - REMAINS) / (SMOULDERS - REMAINS),
+    var r = remainsBurn(blaze, h),
+      cool = cooled(blaze, h),
       ramp = blaze.collapse !== null ? Math.min(1, blaze.since / 2500) : 1;
 
     layer.glow = true;

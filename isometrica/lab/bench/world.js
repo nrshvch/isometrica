@@ -440,21 +440,34 @@ World.prototype.explode = function (dx, dy) {
 };
 
 /**
- * The heaps of rubble lying on the bench (data/buildings rubble), by the
- * tile.
+ * What lies on the bench left by what was blown up (data/buildings rubble):
+ * its heaps of rubble and its wrecked yards, by the tile - or only the one
+ * or the other.
  *
+ * @param [only] {string} "heaps", "wrecks"
  * @returns {number[]}
  */
-World.prototype.rubble = function () {
+World.prototype.rubble = function (only) {
   return this.city.buildings
     .getBuildings()
     .filter(function (b) {
-      return b.data.variantOf === BuildingCode.rubble;
+      if (b.data.variantOf !== BuildingCode.rubble) return false;
+
+      var wreck = !!(b.look && b.look.wreck);
+
+      return only === "heaps" ? !wreck : only === "wrecks" ? wreck : true;
     })
     .map(function (b) {
       return b.tile;
     });
 };
+
+//what is coming down on the bench by itself still (client/collapse)
+function collapses(self) {
+  return self.client.game.logic.world.gameObjects.filter(function (go) {
+    return go && go.collapse && go.world !== null;
+  });
+}
 
 //what is blowing up on the bench still (client/explosion)
 function explosions(self) {
@@ -590,7 +603,8 @@ World.prototype.wipe = function (dx, dy, w, h) {
 /**
  * Whether anything is being cleared still - a bulldozer out, a tile it has
  * not got to yet - or waits to go up where it is (client/buildman replace),
- * or is blowing up (client/explosion), or coming down burnt (client/fires).
+ * or is blowing up (client/explosion), or coming down by itself, blown up
+ * or hit by the blast (client/collapse), or burnt (client/fires).
  */
 World.prototype.busy = function () {
   var works = this.client.clearworks;
@@ -600,6 +614,7 @@ World.prototype.busy = function () {
     Object.keys(works.waiting).length > 0 ||
     this.city.buildings.replacing().length > 0 ||
     explosions(this).length > 0 ||
+    collapses(this).length > 0 ||
     this.client.fires.falling()
   );
 };
@@ -620,8 +635,9 @@ World.prototype.top = function (on) {
  * What is going on: the bulldozers out, the tiles still waiting for one,
  * the buildings coming down, the trees going over, the roads still to
  * break up and the heaps of rubble lying about; what is blowing up, its
- * pieces flying and lying about, and the heaps of rubble left lying there
- * for good (data/buildings rubble); what waits to go up where
+ * pieces flying and lying about, what is coming down by itself, and the
+ * heaps of rubble and the wrecked yards left lying there for good
+ * (data/buildings rubble); what waits to go up where
  * something is coming down for it, and the building sites going up, how far
  * along each, 0..1.
  */
@@ -647,7 +663,9 @@ World.prototype.status = function () {
     pieces: explosions(this).reduce(function (n, e) {
       return n + e.pieces();
     }, 0),
-    heaps: this.rubble().length,
+    heaps: this.rubble("heaps").length,
+    wrecks: this.rubble("wrecks").length,
+    collapsing: collapses(this).length,
     sites: this.core.buildings.underConstruction().map(function (b) {
       return b.getProgress();
     }),

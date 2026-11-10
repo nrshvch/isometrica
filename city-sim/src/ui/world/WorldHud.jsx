@@ -128,9 +128,35 @@ function Figure({ label, icon, className, children }) {
 }
 
 /**
- * The building looked at: what it is, and what it is worth - going up, how
- * far along; standing, what it makes a tick, who lives or works in it and
- * what it goes without.
+ * How sound the building looked at is (isometrica core/building
+ * getHealth): a bar of it, green, gold as it gets low, red when it is
+ * nearly gone - knocked about by a blast, burning down.
+ */
+function Health({ value }) {
+  var v = Math.max(0, Math.min(100, value === undefined ? 100 : value));
+
+  return (
+    <span className="mt-0.5 flex items-center gap-1.5" title="Health">
+      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
+        <span
+          className={cx(
+            "block h-full rounded-full",
+            v >= 60 ? "bg-green" : v >= 30 ? "bg-gold" : "bg-red",
+          )}
+          style={{ width: v + "%" }}
+        />
+      </span>
+      <span className="text-[11px] font-bold text-muted tabular-nums">
+        {v + "%"}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * The building looked at: what it is, how sound it is, and what it is
+ * worth - going up, how far along; standing, what it makes a tick, who
+ * lives or works in it and what it goes without.
  */
 function Focus({ inspected, seen }) {
   var data = Data[Replacement.kindOf(inspected.code)],
@@ -171,6 +197,7 @@ function Focus({ inspected, seen }) {
         <span className="truncate leading-snug font-extrabold">
           {data ? displayName(data) : seen.name}
         </span>
+        {!going && <Health value={seen.health} />}
       </div>
       <div className="flex max-w-[60%] flex-wrap justify-end gap-1.5">
         {fire ? null : going ? (

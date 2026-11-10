@@ -492,6 +492,7 @@ CityBuildings.prototype.restore = function (
   look,
   surface,
   fire,
+  more,
   demolition,
 ) {
   //saves written before the codes were made numbers carry them as strings
@@ -513,6 +514,9 @@ CityBuildings.prototype.restore = function (
   if (Array.isArray(surface)) building.surface = surface.slice();
   //on fire, or burnt down, since then (core/building ignite)
   if (typeof fire === "number") building.restoreFire(fire);
+  //knocked about, and a heap of rubble smouldering since then
+  if (more && typeof more.health === "number") building.health = more.health;
+  if (more && typeof more.smoke === "number") building.smoke = more.smoke;
   if (demolition && typeof demolition === "object") {
     building.demolishing = true;
     building.down = Array.isArray(demolition.down)
@@ -557,6 +561,10 @@ CityBuildings.prototype.save = function () {
       surface: building.surface || undefined,
       //when it was set on fire, if it was
       fire: building.fire !== null ? building.fire : undefined,
+      //how sound it is, knocked about by a blast, and since when a heap of
+      //rubble has smouldered
+      health: building.health < 100 ? building.health : undefined,
+      smoke: building.smoke !== null ? building.smoke : undefined,
       //being demolished, and how far down it has come
       demolition: building.demolishing
         ? { down: (building.down || []).slice() }
@@ -580,6 +588,7 @@ CityBuildings.prototype.load = function (list) {
       list[i].look,
       list[i].surface,
       list[i].fire,
+      list[i],
       list[i].demolition,
     );
 };
@@ -595,9 +604,36 @@ CityBuildings.prototype.load = function (list) {
  * @param pile {number} the pile it is a heap of
  * @returns {Building}
  */
-CityBuildings.prototype.leaveRubble = function (tile, pile) {
+CityBuildings.prototype.leaveRubble = function (tile, pile, smoke) {
+  return this.restore(
+    variantOf(BuildingCode.rubble),
+    tile,
+    0,
+    true,
+    { pile: pile },
+    undefined,
+    undefined,
+    { smoke: smoke },
+  );
+};
+
+/**
+ * Leaves what was a yard of building on tile - its car park, its playground,
+ * its garden, a park - wrecked, and nothing on it put up again (client/
+ * buildingview wreck): what it was kept for it to be drawn, wrecked, the
+ * way the rubble is (data/buildings rubble), but none of the heaps of it.
+ *
+ * @param tile {number}
+ * @param building {Building} what it was a yard of, as it stood
+ */
+CityBuildings.prototype.leaveWreck = function (tile, building) {
   return this.restore(variantOf(BuildingCode.rubble), tile, 0, true, {
-    pile: pile,
+    wreck: {
+      code: building.buildingCode,
+      tile: building.tile,
+      rotation: building.rotation || 0,
+      look: building.look || undefined,
+    },
   });
 };
 

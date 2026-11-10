@@ -21,6 +21,7 @@ import BuildingClassCode from "../data/classcode";
 import Trees from "../data/trees";
 import Rubble from "./rubble";
 import Ruin from "./ruin";
+import BuildingData from "../data/buildings";
 import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
@@ -344,6 +345,9 @@ BuildingView.prototype.update = function () {
           undefined,
           b.data.tile,
         );
+    } else if (b.data.look && b.data.look.wreck) {
+      //the yard of a building blown up, wrecked (core/city explode)
+      drawWreck(this, b.data.look.wreck, b.data.tile);
     } else if (
       b.data.getState() === BuildingState.ready ||
       b.data.getState() === BuildingState.burning
@@ -425,6 +429,52 @@ BuildingView.prototype.update = function () {
     );
   }
 };
+
+/**
+ * A tile of a yard wrecked by a blast (core/city/citybuildings leaveWreck):
+ * the tile of what it was a yard of, as it would be drawn there (client/
+ * compoundbuilding pieces), wrecked (client/ruin wreck). Nothing, for what
+ * was not put together out of parts.
+ *
+ * @param wreck {{code: number, tile: number, rotation: number, look:
+ *        Object}} what it was a yard of
+ */
+function drawWreck(self, wreck, tile) {
+  var data = BuildingData[wreck.code];
+
+  if (!data || !data.compound || !wreck.look || !wreck.look.tiles) return;
+
+  var at = drawnAt(data, wreck.tile, wreck.rotation),
+    pieces = CompoundBuilding.pieces(
+      vkaria.sprites,
+      wreck.look,
+      data.compound,
+      at.rotation,
+      wreck.tile,
+    ),
+    mine = pieces.filter(function (p) {
+      var off = View.unvector(p.x, p.z);
+
+      return (
+        Terrain.convertToIndex(
+          Math.round(at.x + off[0]),
+          Math.round(at.y + off[1]),
+        ) === tile
+      );
+    });
+
+  if (mine.length === 0) return;
+
+  addPieces(
+    self.gameObject,
+    mine.map(function (p) {
+      return Ruin.wreck(vkaria.sprites, p, tile);
+    }),
+    self.opacity,
+    undefined,
+    tile,
+  );
+}
 
 /**
  * A block going up, as the building site it is at the moment - and the

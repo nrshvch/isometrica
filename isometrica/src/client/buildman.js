@@ -25,6 +25,7 @@ import Rotation from "../core/rotation";
 import CompoundBuilding from "./compoundbuilding";
 import Demolition from "./demolition";
 import Explosion from "./explosion";
+import Collapse from "./collapse";
 import Felling from "./felling";
 import Replacement from "../core/replacement";
 import Rubble from "./rubble";
@@ -594,6 +595,13 @@ function showCost(self, tile, sizeX, sizeY, amount) {
 /**
  * What the player is told when a build is turned down, keyed by ErrorCode.
  */
+//what a blast brings down round what went up: how long after it goes up
+//the first of it gives, and how much later for every tile further off it
+//is, ms; and how far apart its tiles give, about
+var BLAST_GETS = 220,
+  BLAST_STEP = 240,
+  FALL_APART = 300;
+
 var errorText = {};
 errorText[ErrorCode.CITY_HALL_ALREADY_BUILT] = "town hall exists";
 errorText[ErrorCode.BUILDING_NOT_AVAIL] = "not available";
@@ -1068,19 +1076,26 @@ Buildman.prototype.demolish = function (tile) {
 
 /**
  * Blows up the building standing on tile, for nothing (core/city explode):
- * it is gone at once, a heap of rubble left on every tile of it - and what
- * it looked like goes up where it stood, torn into pieces thrown all round
- * in a fireball (client/explosion), no fence and no bulldozer about it.
+ * it is gone at once, rubble left on every tile of the building itself and
+ * its yard wrecked - and what it looked like goes up where it stood
+ * (client/explosion), no fence and no bulldozer about it, and comes down;
+ * and whatever the blast takes all the health out of round it - next to
+ * it, across a road from it - comes down after it, the nearest first, as
+ * the blast gets to it (client/collapse).
  *
  * @param tile {number} any tile of the building
  * @returns {number} ErrorCode - NONE once it has gone up
  */
 Buildman.prototype.explode = function (tile) {
-  var root = this.root,
+  var self = this,
+    root = this.root,
     building = root.core.buildingService.get(tile),
     city = building !== null ? building.getCity() : null,
+    now = root.core.time.now,
+    yard = {},
     seen,
     blast = null,
+    falls = [],
     result,
     tiles = [];
 
@@ -1099,21 +1114,92 @@ Buildman.prototype.explode = function (tile) {
     root.serviceman.hideInfo();
   }
 
+  //which tiles are only yards - of it, and of what stands round it - as
+  //they are drawn, while they stand to be told
+  function know(b) {
+    var y = b !== null && b.view ? Collapse.yards(root, b) : {};
+
+    for (var t in y) yard[t] = true;
+  }
+
+  seen = getBuilding(this, building.tile);
+  know(seen);
+
+  var built = tiles.filter(function (t) {
+      return yard[t] !== true;
+    }),
+    round = city.blast(tiles, building);
+
+  round.forEach(function (r) {
+    know(getBuilding(self, r.building.tile));
+  });
+
   //what it looks like, stood up in its place before the world lets go of
   //it - if it is drawn at all
-  seen = getBuilding(this, building.tile);
   if (seen !== null && seen.view && seen.view.gameObject)
-    blast = new Explosion.Explosion(root, seen, tiles);
+    blast = new Explosion.Explosion(
+      root,
+      seen,
+      built,
+      tiles.filter(function (t) {
+        return yard[t] === true;
+      }),
+    );
 
-  result = city.explode(tile);
+  //and what comes down with it, as it stands, the blast getting to it a
+  //moment after it goes up - further off, later
+  round.forEach(function (r) {
+    if (r.building.healthAfter(r.damage, now) > 0) return;
+
+    var b = getBuilding(self, r.building.tile),
+      own = [],
+      it = r.building.occupiedTiles();
+
+    if (b === null || !b.view || !b.view.gameObject) return;
+
+    while (!it.done) own.push(it.next());
+
+    falls.push(
+      new Collapse.Collapse(
+        root,
+        b,
+        own.filter(function (t) {
+          return yard[t] !== true;
+        }),
+        {
+          delay:
+            Explosion.Explosion.FUSE_MS +
+            BLAST_GETS +
+            r.distance * BLAST_STEP +
+            Math.random() * BLAST_STEP,
+          apart: FALL_APART,
+          from: blast !== null ? [blast.mx, blast.mz] : null,
+          yards: own.filter(function (t) {
+            return yard[t] === true;
+          }),
+          yardsAt: Explosion.Explosion.FUSE_MS + r.distance * 60,
+        },
+      ),
+    );
+  });
+
+  result = city.explode(tile, function (t) {
+    return yard[t] === true;
+  });
 
   if (result.error !== ErrorCode.NONE) {
     if (blast !== null) blast.stop();
+    falls.forEach(function (f) {
+      f.stop();
+    });
     this.showError(tile, result.error);
     return result.error;
   }
 
   if (blast !== null) blast.light();
+  falls.forEach(function (f) {
+    f.start();
+  });
 
   return ErrorCode.NONE;
 };

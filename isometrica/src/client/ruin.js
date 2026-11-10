@@ -94,4 +94,37 @@ function whole(sprites, sprite, seed) {
   return sprites.burnt(sprite, words(seed), true);
 }
 
-export default { pieces: pieces, whole: whole, KEEP: KEEP };
+//how high what stood on a yard is broken off at the most, wrecked by a
+//blast, pixels
+var WRECK = 5;
+
+/**
+ * A tile of a yard wrecked by a blast (core/city/citybuildings leaveWreck)
+ * - as a tile of what it was a yard of was drawn (client/compoundbuilding
+ * pieces), put together out of its parts laid on the ground only, wrecked
+ * (client/burnt "w"), its own place in the picture kept but stood on its
+ * own tile: nothing parked on it any more.
+ *
+ * @param piece {Object} as client/compoundbuilding pieces made it
+ * @param seed {number}
+ * @returns {Object} a piece, the same way, on its own tile
+ */
+function wreck(sprites, piece, seed) {
+  var sprite = sprites.burnt(
+    piece.sprite,
+    "w:" + ((seed >>> 0) % 100000) + ":" + WRECK,
+    true,
+  );
+
+  return {
+    x: 0,
+    z: 0,
+    pivotX: piece.pivotX,
+    pivotY: piece.pivotY,
+    overlays: [],
+    sprite: sprite,
+    empty: false,
+  };
+}
+
+export default { pieces: pieces, whole: whole, wreck: wreck, KEEP: KEEP };
