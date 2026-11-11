@@ -236,6 +236,34 @@ City.prototype.onTick = function (sender, args, meta) {
   Events.fire(self, self.events.update, self);
 };
 
+//whether what stands is a building that is demolished - brought down a
+//tile at a time, the world keeping it till its last tile is down - rather
+//than cleared away at once: anything but a tree or a road
+function demolished(building) {
+  return (
+    building !== null &&
+    building.data.classCode !== BuildingClassCode.tree &&
+    building.data.classCode !== BuildingClassCode.road
+  );
+}
+
+//what of a building demolishing it would clear (demolished): its tiles still
+//standing that are not being cleared already - and what it comes to, one
+//clearTileCost for every tile of it, but nothing for one being demolished,
+//paid for already
+function demolitionOf(self, building) {
+  var terrain = self.world.terrain;
+
+  return {
+    tiles: building.standingTiles().filter(function (t) {
+      return !terrain.beingCleared(t);
+    }),
+    cost: building.demolishing
+      ? 0
+      : building.tiles().length * Config.clearTileCost,
+  };
+}
+
 /**
  * The tiles clearing the tile clears: every tile of whatever stands on it -
  * a building comes down whole - or the tile, for a tree or stones the world
@@ -273,7 +301,28 @@ City.prototype.quoteClear = function (tiles) {
     busy = false,
     i;
 
+  var buildings = [],
+    paid = 0,
+    more = false;
+
   for (i = 0; i < tiles.length; i++) {
+    var building = this.world.buildingService.get(tiles[i]);
+
+    //a building, demolished: what of it is left to clear, once
+    if (demolished(building)) {
+      if (buildings.indexOf(building) !== -1) continue;
+      buildings.push(building);
+
+      var d = demolitionOf(this, building);
+
+      if (d.tiles.length === 0) busy = true;
+      else {
+        paid += d.cost;
+        more = true;
+      }
+      continue;
+    }
+
     clearedBy(this, tiles[i]).forEach(function (tile) {
       if (cleared[tile] === true) return;
 
@@ -284,11 +333,11 @@ City.prototype.quoteClear = function (tiles) {
     if (this.world.terrain.beingCleared(tiles[i])) busy = true;
   }
 
-  var cost = count * Config.clearTileCost;
+  var cost = count * Config.clearTileCost + paid;
 
   return {
     error:
-      cost === 0
+      cost === 0 && !more
         ? busy
           ? ErrorCode.BEING_CLEARED
           : ErrorCode.NOTHING_TO_CLEAR
@@ -301,16 +350,25 @@ City.prototype.quoteClear = function (tiles) {
 };
 
 /**
- * Clears a tile - and every tile of a building standing on it, which comes
- * down whole - and pays one clearTileCost for each. They are being cleared
- * from then on (Terrain#beingCleared) - nothing built on them, nor the
- * ground moved under them - until whoever shows it being done says it is.
+ * Clears a tile, and pays one clearTileCost for it - a tree, a road, stones
+ * the world put there, gone there and then. A building standing on it is
+ * demolished instead: paid for once, one clearTileCost for every tile of it,
+ * and kept, being demolished (Building demolishing), till its last tile is
+ * down (#tileDown) - asked again, after a reload say, it is only its tiles
+ * still standing sent for again, for nothing (buildingDemolish). The tiles
+ * cleared are being cleared from then on (Terrain#beingCleared) - nothing
+ * built on them, nor the ground moved under them - until whoever shows it
+ * being done says it is.
  *
  * @param tile {number}
  * @returns {number[]} the tiles cleared - none where there was nothing to
- *          clear, or not the money to
+ *          clear, or not the money to - with what it came to, cost
  */
 City.prototype.clearTile = function (tile) {
+  var building = this.world.buildingService.get(tile);
+
+  if (demolished(building)) return demolish(this, building);
+
   var tiles = clearedBy(this, tile),
     terrain = this.world.terrain,
     cost = tiles.length * Config.clearTileCost,
@@ -327,8 +385,74 @@ City.prototype.clearTile = function (tile) {
   for (i = 0; i < tiles.length; i++) terrain.clear(tiles[i]);
 
   this.resourcesModule.subResource(Resource.money, cost);
+  tiles.cost = cost;
 
   return tiles;
+};
+
+/**
+ * Demolishes a building (#clearTile): its tiles still standing being cleared
+ * - paid for the first time it is asked, every tile of it - and whoever shows
+ * it told to send the bulldozers to them (buildingDemolish), the building
+ * kept till they have brought it down, a tile at a time (#tileDown).
+ */
+function demolish(self, building) {
+  var d = demolitionOf(self, building),
+    terrain = self.world.terrain,
+    service = self.world.buildingService,
+    tiles = d.tiles;
+
+  if (
+    tiles.length === 0 ||
+    !self.resourcesService.hasEnoughResource(Resource.money, d.cost)
+  )
+    return [];
+
+  var first = !building.demolishing;
+
+  if (first) {
+    building.demolishing = true;
+    building.down = building.down || [];
+    self.resourcesModule.subResource(Resource.money, d.cost);
+  }
+
+  tiles.forEach(function (t) {
+    terrain.startClearing(t);
+  });
+  Events.fire(service, service.events.buildingDemolish, {
+    building: building,
+    tiles: tiles,
+  });
+  //out of service from now on
+  if (first)
+    Events.fire(building, building.events.stateChange, building.getState());
+  tiles.cost = d.cost;
+
+  return tiles;
+}
+
+/**
+ * A tile of a building being demolished is down, its rubble pushed away
+ * (client/demolition): the ground there bare - and the building gone once
+ * its last tile is.
+ *
+ * @param tile {number}
+ */
+City.prototype.tileDown = function (tile) {
+  var building = this.world.buildingService.get(tile),
+    terrain = this.world.terrain;
+
+  if (building === null || !building.demolishing || building.isDown(tile))
+    return;
+
+  building.down.push(tile);
+  terrain.bare(tile);
+
+  if (building.standingTiles().length === 0)
+    building.tiles().forEach(function (t) {
+      terrain.clear(t);
+    });
+  else Events.fire(building, building.events.stateChange, building.getState());
 };
 
 /**
@@ -380,7 +504,15 @@ City.prototype.quoteReplace = function (tile, code, rotation) {
   var cost = CityBuildings.costOf(parseInt(code, 10)),
     money;
 
-  r.clearing = clearedBy(this, tile).length * Config.clearTileCost;
+  //demolished, paid for already; being brought down, nothing more to send
+  var d = demolitionOf(this, building);
+
+  if (d.tiles.length === 0) {
+    r.error = ErrorCode.BEING_CLEARED;
+    return r;
+  }
+
+  r.clearing = d.cost;
   money = (cost[Resource.money] || 0) + r.clearing;
   r.cost = money;
 

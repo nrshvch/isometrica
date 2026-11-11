@@ -153,6 +153,12 @@ function refresh(self) {
   for (tile in views) {
     model = views[tile].model();
 
+    //nothing is missed of one coming down
+    if (model.demolishing) {
+      hide(self, tile);
+      continue;
+    }
+
     //nothing is missed before it is up - how far along it is, clicked on
     //or not
     if (model.getState() === BuildingState.underConstruction) {

@@ -260,7 +260,10 @@ Terrainman.prototype.enter = function () {
 
         //every tile is charged on its own - with the rest of a building on
         //it
-        total += cleared.length * Core.Config.clearTileCost;
+        total +=
+          cleared.cost !== undefined
+            ? cleared.cost
+            : cleared.length * Core.Config.clearTileCost;
 
         return cleared;
       });

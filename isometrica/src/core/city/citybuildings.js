@@ -455,6 +455,8 @@ CityBuildings.prototype.buildRoad = function (code, tile0, tile1) {
  *        parts - as whoever drew it first picked it (client/compoundbuilding)
  * @param [surface] {number[]} what it stands on (core/surface) - as it went
  *        up, unless kept
+ * @param [demolition] {{down: number[]}} for one being demolished, the tiles
+ *        of it down already (Building demolishing, down)
  * @returns {Building}
  */
 CityBuildings.prototype.restore = function (
@@ -464,6 +466,7 @@ CityBuildings.prototype.restore = function (
   progress,
   look,
   surface,
+  demolition,
 ) {
   //saves written before the codes were made numbers carry them as strings
   code = parseInt(code, 10);
@@ -482,6 +485,12 @@ CityBuildings.prototype.restore = function (
 
   if (look !== undefined) building.look = look;
   if (Array.isArray(surface)) building.surface = surface.slice();
+  if (demolition && typeof demolition === "object") {
+    building.demolishing = true;
+    building.down = Array.isArray(demolition.down)
+      ? demolition.down.slice()
+      : [];
+  }
 
   this.city.root.buildings.build(building);
 
@@ -518,6 +527,10 @@ CityBuildings.prototype.save = function () {
       look: building.look,
       //what it stands on (core/surface)
       surface: building.surface || undefined,
+      //being demolished, and how far down it has come
+      demolition: building.demolishing
+        ? { down: (building.down || []).slice() }
+        : undefined,
     });
   }
 
@@ -536,6 +549,7 @@ CityBuildings.prototype.load = function (list) {
       list[i].progress,
       list[i].look,
       list[i].surface,
+      list[i].demolition,
     );
 };
 
@@ -604,18 +618,29 @@ CityBuildings.prototype.loadReplacing = function (list) {
     test = this.city.world.buildingService;
 
   (list || []).forEach(function (r) {
-    var code = parseInt(r.code, 10);
-
-    if (
-      BuildingData[code] !== undefined &&
-      test.test(code, r.tile, r.rotation) === ErrorCode.NONE
-    )
-      goUp(self, {
+    var code = parseInt(r.code, 10),
+      w = {
         code: code,
         tile: r.tile,
         rotation: r.rotation | 0,
         look: r.look,
-      });
+      };
+
+    if (BuildingData[code] === undefined) return;
+
+    if (test.test(code, r.tile, r.rotation) === ErrorCode.NONE) goUp(self, w);
+    //what it was waiting for is coming down still, as far as it had come -
+    //and it waits on for it
+    else if (
+      (w.tiles = footprint(code, r.tile, w.rotation)).every(function (t) {
+        var b = test.get(t);
+
+        return b === null || b.demolishing;
+      })
+    ) {
+      self._replacing.push(w);
+      test.reserve(w.tiles);
+    }
   });
 };
 
@@ -650,7 +675,9 @@ function footprint(code, tile, rotation) {
 
 /**
  * Whatever was waiting for its ground (replaceLater) goes up, a building
- * site, on ground that is clear now: none of its tiles being cleared still.
+ * site, on ground that is clear now: none of its tiles being cleared still,
+ * nothing standing on any - the building it is to replace down to its last
+ * tile.
  */
 function settle(self) {
   var terrain = self.city.world.terrain,
@@ -661,7 +688,7 @@ function settle(self) {
   self._replacing.slice().forEach(function (r) {
     if (
       r.tiles.some(function (tile) {
-        return terrain.beingCleared(tile);
+        return terrain.beingCleared(tile) || held.get(tile) !== null;
       })
     )
       return;

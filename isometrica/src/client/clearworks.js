@@ -22,9 +22,11 @@ var Terrain = Core.Terrain,
  * bulldozer gets there: as its blade reaches it, it goes down in a cloud of
  * dust, and the tile is the bare earth the bulldozer leaves behind it
  * (client/terrain) - which the grass grows back over, in time. A building
- * stands too, till a bulldozer comes up to a tile of it: then that tile of
- * it comes down (client/demolition, knock), the bulldozer waiting a moment
- * off it till it is down, and pushes its rubble away. Till a bulldozer has
+ * is demolished, and stands, in the world as well, till a bulldozer comes up
+ * to a tile of it: then that tile of it comes down (client/demolition,
+ * knock), the bulldozer waiting a moment off it till it is down, and pushes
+ * its rubble away - and the world is told that tile is down (core/city
+ * tileDown), the building gone once its last tile is. Till a bulldozer has
  * been over a tile, it is being cleared still (core/terrain beingCleared):
  * nothing is built on it.
  *
@@ -40,9 +42,11 @@ var Terrain = Core.Terrain,
  *
  * A bulldozer kicks up dust as it goes, comes out of the dust as it gets to
  * work, and goes off into it once its share is done; its amber beacon turns
- * on its roof, and after dark its lamps are on (client/worklights). None of
- * it is kept: the world has cleared the ground already, and after a reload
- * it is bare.
+ * on its roof, and after dark its lamps are on (client/worklights). The
+ * bulldozers are not kept: after a reload, ground cleared is bare, and a
+ * building being demolished stands as far down as it had come, fenced off,
+ * for them to be sent again to the rest of it (client/buildman
+ * demolitionOf).
  */
 
 //how many tiles of a stretch a bulldozer takes on, at most
@@ -241,13 +245,17 @@ function burst(self, tile) {
 /**
  * Whatever stood on a tile waiting goes at once once anything is built on it
  * - a building site, a road - rather than stand in the middle of it till the
- * bulldozer gets there; and the bulldozer leaves that tile out.
+ * bulldozer gets there; and the bulldozer leaves that tile out. A building
+ * being demolished is no such thing: it stands there till it is down.
  */
 function builtOver(self) {
   var buildings = self.root.core.buildingService;
 
-  for (var tile in self.waiting)
-    if (buildings.get(+tile) !== null) reach(self, +tile);
+  for (var tile in self.waiting) {
+    var b = buildings.get(+tile);
+
+    if (b !== null && !b.demolishing) reach(self, +tile);
+  }
 }
 
 /**

@@ -71,12 +71,19 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   a road broken up as they drive over it, and leave the ground bare earth -
   which the grass grows back over in half a game day
   (`isometrica/src/client/clearworks.js`). A
-  building is cleared whole, every tile of it paid for, is fenced off there
-  and then the way a building site is, and comes down a tile at a time as
-  the bulldozers come up to it - floor onto floor, bursting into
+  building is demolished whole, every tile of it paid for, is fenced off
+  there and then with blue tarp on posts, and comes down a tile at a time
+  as the bulldozers come up to it - floor onto floor, bursting into
   pieces, in a cloud of grey dust - into rubble for them to push away
   (`isometrica/src/client/demolition.js`); and nothing can be built on a
-  tile till its bulldozer is done there.
+  tile till its bulldozer is done there. It takes as long as it takes, and
+  what is done of it is kept: the building stands, out of service, nobody
+  living or working in it, as far down as it has come - each tile down for
+  good once its rubble is pushed away, the ground bare there
+  (`isometrica/src/core/city.js` tileDown) - and fenced off all round till
+  the last of it is gone. Reloaded halfway, it is there as far down as it
+  had come, fenced off still, the bulldozers not sent yet: Demolish, or
+  clearing any tile of it, sends them for the rest, paid for already.
 - A building tapped - any building at all, a church, a water tower, the
   town hall - is outlined, and nothing is written over the world for it: the card over the buttons along the bottom says what it is and
   what it is worth, kept up to date as the city goes on - how far along it
@@ -104,7 +111,9 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   one clearing charge for every tile of it, paid at once and floated over
   it, the building fenced off and brought down where it stands by the
   bulldozers, and the ground left clear (`isometrica/src/client/buildman.js`
-  demolish).
+  demolish) - one being demolished already, reloaded halfway, the
+  bulldozers sent for the rest of it, for nothing. Replace waits for the
+  last tile of the old one to be down before the new one goes up.
 - A building is built inside as well as out, so a tile of it that comes
   down before the one behind it - the bulldozers bringing it down a tile
   at a time - leaves that one showing its rooms on that side, not a flat

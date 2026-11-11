@@ -5,7 +5,6 @@ import Config from "./config";
 import View from "./view";
 import RenderLayer from "./renderlayer";
 import BuildingView from "./buildingview";
-import CompoundBuilding from "./compoundbuilding";
 import BuildingState from "../core/buildingstate";
 import Trees from "../data/trees";
 import SmokeSource from "./components/smokesource";
@@ -15,12 +14,15 @@ import { changed } from "./looks";
 var Terrain = Core.Terrain;
 
 /**
- * A building coming down. Cleared away (core/city clearTile), it is gone
- * from the world at once, but what it looked like stands where it was,
- * fenced off the way a building site is, a tile at a time, till a bulldozer
- * comes up to that tile (client/clearworks hold, knock) - and then that tile
- * of it comes down, the bulldozer waiting for it, and leaves a heap of
- * rubble for it to push away (bringDown).
+ * A building coming down. Demolished (core/city clearTile), it is fenced off
+ * with blue tarp - every tile of it, till the last of it is down - and stays
+ * standing, in the world as well, till a bulldozer comes up to a tile of it
+ * (client/clearworks hold, knock): then that tile of it comes down, the
+ * bulldozer waiting for it, and leaves a heap of rubble for it to push away,
+ * the ground bare there - the world told it is down (core/city tileDown).
+ * What is down stays down: after a reload it stands as far down as it had
+ * come, fenced off still, the bulldozers to be sent again for the rest
+ * (client/buildman demolitionOf).
  *
  * How it comes down is a thing of its own (Demolition), told when each tile
  * of it is to come down and when its rubble is pushed away by whoever has
@@ -134,52 +136,6 @@ var FENCE_SHIFT = 14 / 32,
   TILE_PX = 32;
 
 /**
- * Has a building cleared away stand till the bulldozers come to bring it
- * down, a tile at a time - if it was cleared away, its tiles being cleared
- * (core/terrain beingCleared); its view is gone, and what it looked like
- * stands in its place. Each tile comes down as a bulldozer comes up to it,
- * which waits for it to be down, and pushes its rubble away.
- *
- * @param root {Vkaria}
- * @param building {Building} the client's, its view up still
- * @returns {boolean} whether it does - its view let go of then
- */
-function bringDown(root, building) {
-  var works = root.clearworks,
-    terrain = root.core.terrain,
-    tiles = [],
-    iter = building.data.occupiedTiles();
-
-  while (!iter.done) tiles.push(iter.next());
-
-  if (
-    !works ||
-    !tiles.every(function (tile) {
-      return terrain.beingCleared(tile);
-    })
-  )
-    return false;
-
-  var demolition = new Demolition(root, building, tiles);
-
-  building.destroy();
-
-  tiles.forEach(function (tile) {
-    works.hold(
-      tile,
-      function () {
-        demolition.letGo(tile);
-      },
-      function () {
-        return demolition.knock(tile);
-      },
-    );
-  });
-
-  return true;
-}
-
-/**
  * A building coming down, from where it stands: what it looks like taken
  * off its view - which whoever has it lets go of then - and stood up in
  * its place, fenced off, every tile of it standing till it is told to come
@@ -193,18 +149,20 @@ function bringDown(root, building) {
  *        the client's building (client/building), or anything drawn the
  *        same way, its view up still
  * @param tiles {number[]} every tile it stands on
+ * @param [down] {number[]} the tiles of it down already, a demolition
+ *        under way (core/building down): nothing of it there - and fenced
+ *        off all the same
  */
-function Demolition(root, building, tiles) {
-  var self = this,
-    at = building.view.gameObject.transform.getPosition([0, 0, 0]);
+function Demolition(root, building, tiles, down) {
+  var self = this;
 
   this.root = root;
   this.building = building;
-  //the building as its view last drew it, to draw what stands of it again
-  //from another side (turn) - the world has let go of it, which has it
-  //neither up nor going up any more (core/building dispose)
+  //the building as its view last drew it, to draw what stands of it
+  //(stand) - its own view draws nothing of it while it is being demolished
+  //(client/buildingview) - and again from another side (turn)
   this.standIn = {
-    data: asDrawn(building.data, building.view.drawnAs),
+    data: asDrawn(building.data, building.view ? building.view.drawnAs : null),
     staticData: building.staticData,
   };
   this.puffs = 0;
@@ -220,17 +178,28 @@ function Demolition(root, building, tiles) {
     self.mx += (Terrain.extractX(tile) * TILE) / tiles.length;
     self.mz += (Terrain.extractY(tile) * TILE) / tiles.length;
     self.columns[tile] = column(tile);
+    //down already: gone, but for its stretch of the fence
+    if (down && down.indexOf(tile) !== -1) self.columns[tile].state = "gone";
   });
+
+  //what stands of it, drawn as it is
+  var view = new BuildingView(),
+    at;
+
+  view.setBuilding(this.standIn);
+  view.update();
+  at = view.gameObject.transform.getPosition([0, 0, 0]);
 
   this.go = new engine.GameObject("demolition");
   this.go.transform.setPosition(at[0], at[1], at[2]);
   this.go.addComponent(new DemolitionScript(this));
   root.game.logic.world.addGameObject(this.go);
 
-  stand(this, building.view.gameObject, at);
+  stand(this, view.gameObject, at);
+  view.dispose();
 
-  //fenced off, the way a building site is, the moment it is to come down
-  this.small = CompoundBuilding.smallSite(building.staticData);
+  //fenced off the moment it is to come down - every tile of it, till the
+  //last of it is down and pushed away (end)
   this.fences = {};
   fence(this);
 
@@ -255,6 +224,11 @@ function asDrawn(data, drawn) {
   var out = Object.create(data),
     state = drawn ? drawn.state : BuildingState.ready,
     progress = drawn ? drawn.progress : 1;
+
+  //whole, as it stood: what of it is down, or coming down, is the
+  //demolition's to show
+  out.demolishing = false;
+  out.down = null;
 
   out.getState = function () {
     return state;
@@ -1105,8 +1079,6 @@ function letGo(self, tile) {
     col.rubble.world.removeGameObject(col.rubble);
   col.rubble = null;
   col.state = "gone";
-  //its stretch of the fence pushed over with it
-  unfence(self, tile);
   changed();
 }
 
@@ -1134,8 +1106,6 @@ function fence(self) {
   var gate = x0 + Math.floor((x1 - x0) / 2);
 
   for (tile in self.columns) {
-    if (self.columns[tile].state === "gone") continue;
-
     var t = +tile,
       x = Terrain.extractX(t),
       y = Terrain.extractY(t),
@@ -1166,15 +1136,7 @@ function stretches(self, tile, mask) {
     out = [];
 
   ["back", "front"].forEach(function (side) {
-    var name =
-        "gen/sites/" +
-        (self.small ? "rail" : "fence") +
-        "/" +
-        mask +
-        "/" +
-        side +
-        "/r" +
-        View.turns(),
+    var name = "gen/sites/fence/" + mask + "/" + side + "/r" + View.turns(),
       frame = sprites.frame(name);
 
     //none of it on this side of the tile, as it is seen
@@ -1379,4 +1341,4 @@ function hash(x, y) {
   return (h ^ (h >>> 13)) >>> 0;
 }
 
-export default { bringDown: bringDown, Demolition: Demolition };
+export default { Demolition: Demolition };

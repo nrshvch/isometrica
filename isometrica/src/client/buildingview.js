@@ -272,6 +272,10 @@ BuildingView.prototype.update = function () {
         children[i].gameObject.destroy();
     }
 
+    //being demolished: nothing of its own - the demolition stands in for
+    //it, fenced off, as far down as it has come (client/demolition)
+    if (b.data.demolishing) return;
+
     //a site laid out on the ground the building takes up in the world, and
     //turned as it is seen - the crane on the same tile from every side
     var lots =

@@ -420,6 +420,18 @@ function now(self) {
 }
 
 /**
+ * Has the ground of a tile bare earth, the grass to grow back over it (as
+ * #clear has it) - whatever stands there left standing: a tile of a
+ * building being demolished, down (City#tileDown).
+ *
+ * @param tile {number}
+ */
+Terrain.prototype.bare = function (tile) {
+  this.clearedTiles[tile] = true;
+  this.bareSince[tile] = now(this);
+};
+
+/**
  * Has a tile being cleared - from before whatever is on it goes until
  * whoever shows it going says it is gone (endClearing): nothing is built on
  * it, nor the ground under it moved, meanwhile. A building takes a while to

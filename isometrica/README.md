@@ -770,19 +770,26 @@ dev`) plays them the way a game would - all three weathers together, the
   kept - after a reload the ground is bare.
 - What clearing ground came to floats up once, over all of the ground
   picked - not over every tile of it.
-- A building cleared away is cleared whole, every tile of it, whichever was
-  picked (`isometrica/src/core/city.js` clearTile), and is paid for by the
-  tile. How it comes down is a unit of its own (`Demolition`, in
-  `isometrica/src/client/demolition.js`), told when each tile is to come
-  down and when its rubble is pushed away; in the game it is the bulldozers
-  that tell it (bringDown). It is fenced off there and then, the way a
-  building site is - the site's own blue tarp on posts
-  (`isometrica/src/shared/gen/sites.js` fence), or for a small one its low
-  timber rail, along every edge of it, a gate in the middle of its front -
-  the stretch at the back of a tile
+- A building cleared away is demolished whole, every tile of it, whichever
+  was picked (`isometrica/src/core/city.js` clearTile), and is paid for by
+  the tile, once. The world keeps it while it comes down: being demolished
+  (`isometrica/src/core/building.js` demolishing) - out of service, nobody
+  living or working in it - and which of its tiles are down, each told it
+  is once its rubble is pushed away (`city.js` tileDown), the ground bare
+  there; it is gone once its last tile is. Both are kept in the save, so a
+  reload halfway finds it as far down as it had come; asked again, only its
+  tiles still standing are sent for, for nothing. How it comes down is a
+  unit of its own (`Demolition`, in `isometrica/src/client/demolition.js`),
+  told when each tile is to come down and when its rubble is pushed away;
+  in the game it is the bulldozers that tell it (`client/buildman.js`
+  onDemolish), and it stands in for the building, as far down as it has
+  come, its own view drawing nothing (demolitionOf). It is fenced off there
+  and then with the blue tarp on posts of a building site
+  (`isometrica/src/shared/gen/sites.js` fence) along every edge of it, a
+  gate in the middle of its front - the stretch at the back of a tile
   drawn just behind what stands on it and the one at its front just in
-  front, and a tile's stretches pushed over with its rubble as the bulldozer
-  gets there. It stands as it stood - every tile of it the one picture it
+  front - and stays fenced off, tiles down and all, till the last of it is
+  gone. It stands as it stood - every tile of it the one picture it
   was drawn as, in the order things are drawn in and with its shadow - but
   with all of its lights out, its windows and the warning light on its top
   (`client/lighting.js` dark), till a bulldozer comes up to a tile of it
@@ -813,7 +820,10 @@ dev`) plays them the way a game would - all three weathers together, the
   (`isometrica/src/shared/gen/terrain.js` earth); then the grass comes up
   through it, spilling in from the grass round it (earth_regrowing), a tile
   at a time, and it is grass again (`isometrica/src/client/terrain.js`
-  groundOf, Regrowth).
+  groundOf, Regrowth). A tile whose ground changes so, the rest of it as it
+  was, is drawn as it was till the new picture of it is painted - never
+  gone black meanwhile (`isometrica/src/client/terrain.js` Meanwhile), the
+  way the sea's frames are.
 - The signs of a town's limits can stand by a road
   (`isometrica/src/shared/gen/roads.js` townSign, `gen/roads/limit/in0`-`3`
   and `out0`-`3`): at one side of its tile, a pair of them, each on a post

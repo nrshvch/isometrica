@@ -87,10 +87,9 @@ function removeBuilding(self, tile) {
  * the bulldozer clearing it gets to it (client/clearworks), the way a wild
  * one is (client/envman), to go over the way it is pushed (client/felling);
  * and a road there, till the bulldozer has driven over it and broken it up
- * into the bare earth (client/roadman cleared). A building cleared away
- * comes down there and then, a tile of it at a time as the bulldozers come
- * up to it, in its dust, into rubble for them (client/demolition) - whether
- * it is any of them.
+ * into the bare earth (client/roadman cleared) - whether it is either. A
+ * building is no such thing: the world keeps it while it is demolished, a
+ * tile at a time (onDemolish), and lets go of it once it is all down.
  */
 function hold(self, tile, building) {
   var works = self.root.clearworks,
@@ -99,8 +98,7 @@ function hold(self, tile, building) {
 
   if (!works || !building.staticData) return false;
 
-  if (classCode !== BuildingClassCode.tree && !road)
-    return Demolition.bringDown(self.root, building);
+  if (classCode !== BuildingClassCode.tree && !road) return false;
 
   if (
     !works.hold(
@@ -173,7 +171,81 @@ function createBuilding(self, model) {
 
   Events.fire(self, self.events.buildingAdded, building);
 
+  //being demolished, as far down as it has come
+  if (model.demolishing) demolitionOf(self, model);
+
   return building;
+}
+
+/**
+ * The demolition standing in for a building being demolished (core/building
+ * demolishing) - every tile of it still standing as it stands, fenced off
+ * all round, its own view drawing nothing (client/buildingview) - made the
+ * first time it is asked for once the building is in sight, the same one
+ * after for as long as there is any of it; and the tiles of it down by now,
+ * its rubble pushed away, gone from it. Picked, its pictures are the
+ * building's - to be demolished again, say, the bulldozers sent for the rest
+ * of it after a reload. Null, out of sight.
+ */
+function demolitionOf(self, model) {
+  var d = self.demolitions[model.tile],
+    b = getBuilding(self, model.tile);
+
+  if (d === undefined || d.over()) {
+    if (b === null || !b.view) return null;
+
+    d = new Demolition.Demolition(
+      self.root,
+      b,
+      model.tiles(),
+      model.down || [],
+    );
+    self.demolitions[model.tile] = d;
+  } else
+    model.tiles().forEach(function (t) {
+      if (model.isDown(t)) d.letGo(t);
+    });
+
+  if (b !== null) self.buildingByGO[d.go.instanceId] = b;
+
+  return d;
+}
+
+/**
+ * A building to be demolished (core/city clearTile): the bulldozers sent to
+ * its tiles still standing (client/clearworks) - each tile coming down as one
+ * comes up to it, the world told it is down once its rubble is pushed away
+ * (core/city tileDown); in sight or not, the demolition standing in for it
+ * shown doing so whenever it is.
+ */
+function onDemolish(sender, args, self) {
+  var model = args.building,
+    city = model.getCity(),
+    works = self.root.clearworks,
+    b = getBuilding(self, model.tile);
+
+  demolitionOf(self, model);
+  //nothing of its own drawn from now on: the demolition stands in for it
+  if (b !== null && b.view) b.view.update();
+
+  if (!works) return;
+
+  args.tiles.forEach(function (tile) {
+    works.hold(
+      tile,
+      function () {
+        var d = self.demolitions[model.tile];
+
+        if (d !== undefined) d.letGo(tile);
+        if (city !== null) city.tileDown(tile);
+      },
+      function () {
+        var d = self.demolitions[model.tile];
+
+        return d !== undefined && !d.over() ? d.knock(tile) : 0;
+      },
+    );
+  });
 }
 
 function updateBuilding(self, data) {
@@ -187,6 +259,9 @@ function updateBuilding(self, data) {
   if (building === null) return null;
 
   building.setData(data);
+
+  //being demolished: the tiles of it down by now gone from it
+  if (data.demolishing) demolitionOf(self, data);
 
   return building;
 }
@@ -672,6 +747,14 @@ function onBuildingUpdated(sender, building, self) {
 }
 
 function onBuildingRemoved(sender, building, self) {
+  var d = self.demolitions[building.tile];
+
+  //all of it down: the demolition is over once its rubble is pushed away
+  if (d !== undefined) {
+    delete self.buildingByGO[d.go.instanceId];
+    delete self.demolitions[building.tile];
+  }
+
   removeBuilding(self, building.tile);
   rewall(self, building);
 }
@@ -693,6 +776,9 @@ function Buildman(main) {
 
   this.buildingByXY = [];
   this.buildingByGO = {};
+  //the demolitions standing in for buildings being demolished, by the tile
+  //of the building (demolitionOf)
+  this.demolitions = {};
   this.root = main;
   //the trees and the roads cleared away, still there till the bulldozer
   //gets to them (hold), by the tile
@@ -924,7 +1010,10 @@ Buildman.prototype.demolish = function (tile) {
   function clear(t) {
     var cleared = city.clearTile(t);
 
-    total += cleared.length * Core.Config.clearTileCost;
+    total +=
+      cleared.cost !== undefined
+        ? cleared.cost
+        : cleared.length * Core.Config.clearTileCost;
 
     return cleared;
   }
@@ -984,6 +1073,12 @@ Buildman.prototype.start = function () {
     core.constructionService,
     ConstructionService.events.buildingRemoved,
     onBuildingRemoved,
+    this,
+  );
+  Events.on(
+    core.constructionService,
+    ConstructionService.events.buildingDemolish,
+    onDemolish,
     this,
   );
 };

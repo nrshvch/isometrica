@@ -61,7 +61,49 @@ Building.prototype.look = null;
 //highest corner under it as it went up - kept as the ground is shaped under
 //it (City#terraform), and in the save. Null for a tree
 Building.prototype.surface = null;
+//a demolition under way (City#clearTile): paid for, fenced off, the building
+//coming down a tile at a time as the bulldozers get to it - nobody in it,
+//nothing made or wanted of it - and which of its tiles are down already
+//(City#tileDown), the ground bare there. Kept in the save: after a reload it
+//stands as far down as it had come, fenced off still, till the bulldozers
+//are sent to the rest of it - which is paid for already
+Building.prototype.demolishing = false;
+Building.prototype.down = null;
 Building.prototype.events = events;
+
+/**
+ * Every tile it stands on.
+ *
+ * @returns {number[]}
+ */
+Building.prototype.tiles = function () {
+  var out = [],
+    iter = this.occupiedTiles();
+
+  while (!iter.done) out.push(TileIterator.next(iter));
+
+  return out;
+};
+
+/**
+ * Whether a tile of it is down, a demolition under way (City#tileDown).
+ */
+Building.prototype.isDown = function (tile) {
+  return this.down !== null && this.down.indexOf(tile) !== -1;
+};
+
+/**
+ * Its tiles still standing - every one, but for a demolition under way.
+ *
+ * @returns {number[]}
+ */
+Building.prototype.standingTiles = function () {
+  var self = this;
+
+  return this.tiles().filter(function (tile) {
+    return !self.isDown(tile);
+  });
+};
 
 Building.prototype.init = function (world, code, tile, rot, done) {
   Construction.init(this, world, code, tile, rot, done);
@@ -89,7 +131,7 @@ Building.prototype.dispose = function () {
 Building.prototype.citizenCapacity = function () {
   var data = BuildingData[this.buildingCode];
 
-  if (this._state !== BuildingState.ready) return 0;
+  if (this._state !== BuildingState.ready || this.demolishing) return 0;
 
   //nobody moves into a house that is not part of the city, or has no street
   //to it or no water in it
@@ -107,7 +149,8 @@ Building.prototype.citizenCapacity = function () {
 Building.prototype.jobs = function () {
   var data = BuildingData[this.buildingCode];
 
-  if (!data.jobs || this._state !== BuildingState.ready) return 0;
+  if (!data.jobs || this._state !== BuildingState.ready || this.demolishing)
+    return 0;
 
   var city = this.getCity();
 
@@ -210,6 +253,13 @@ function updateEffectOnTileParams(self) {
 
 function onTick(sender, args, self) {
   self.getCity();
+
+  //coming down: nothing made, nothing wanted
+  if (self.demolishing) {
+    Resources.clear(self.producing);
+    Resources.clear(self.demanding);
+    return;
+  }
 
   produce(self);
   demand(self);

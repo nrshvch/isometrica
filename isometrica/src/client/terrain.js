@@ -269,6 +269,69 @@ function waves(parts, w, index) {
   return moving[key];
 }
 
+/**
+ * What a tile of the ground is drawn as while the picture of it as it is now
+ * - cleared to the earth, the grass growing back over it - is still being
+ * painted: the picture it had till then, rather than nothing, gone black,
+ * the way the sea's frames are (client/animatedsprite); the new one as soon
+ * as it is there. Drawn as any picture is (engine SpriteRenderer).
+ *
+ * @param next {CachedSprite} as it is now
+ * @param was {CachedSprite} as it was drawn till now - the same size
+ */
+function Meanwhile(next, was) {
+  this.next = next;
+  this.was = was;
+  this.width = next.width;
+  this.height = next.height;
+  this.sourceImage = null;
+  this.offsetX = 0;
+  this.offsetY = 0;
+}
+
+Meanwhile.prototype.acquire = function () {
+  var s = this.next.acquire()
+    ? this.next
+    : this.was.acquire()
+      ? this.was
+      : null;
+
+  if (s === null) return false;
+
+  this.sourceImage = s.sourceImage;
+  this.offsetX = s.offsetX;
+  this.offsetY = s.offsetY;
+
+  return true;
+};
+
+Meanwhile.prototype.keep = function () {
+  this.next.keep();
+};
+
+Meanwhile.prototype.nightLights = function () {
+  return this.next.nightLights();
+};
+
+Meanwhile.prototype.hitAt = function (x, y, lit) {
+  return this.next.hitAt(x, y, lit);
+};
+
+Meanwhile.prototype.glQuad = function (renderer, flat, lit, night, d, o) {
+  return (
+    this.next.glQuad(renderer, flat, lit, night, d, o) ||
+    this.was.glQuad(renderer, flat, lit, night, d, o)
+  );
+};
+
+//what a picture a tile was drawn as shows - of one drawn meanwhile, the new
+//one once it is there, or what it had till then
+function shownOf(sprite) {
+  if (!(sprite instanceof Meanwhile)) return sprite;
+
+  return sprite.next.ready() ? sprite.next : sprite.was;
+}
+
 var events = {};
 
 function CreateTile(self) {
@@ -575,6 +638,30 @@ function shapeTile(self, t, index) {
   );
 
   sprite = tileSprite(x, y, type, slope);
+
+  //only the ground of it changed - cleared, the grass growing back over it -
+  //the same shape, as high, seen from the same side: drawn as it was till
+  //the new picture of it is painted, rather than nothing (Meanwhile)
+  var shape = [
+      index,
+      type,
+      slope,
+      z,
+      View.turns(),
+      View.top() ? "top" : "side",
+    ].join(":"),
+    was = shownOf(t.renderer.sprite);
+
+  if (
+    t.shape === shape &&
+    was &&
+    was !== sprite &&
+    sprite.ready &&
+    was.ready &&
+    !sprite.ready()
+  )
+    sprite = new Meanwhile(sprite, was);
+  t.shape = shape;
 
   //the earth on it, for the grass to grow back over (Regrowth)
   var ground = type === TerrainType.water ? GRASS : groundOf(x, y);

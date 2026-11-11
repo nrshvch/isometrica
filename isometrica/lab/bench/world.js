@@ -447,7 +447,10 @@ World.prototype.clear = function (tiles) {
     var cleared = city.clearTile(tile);
 
     count += cleared.length;
-    total += cleared.length * Core.Config.clearTileCost;
+    total +=
+      cleared.cost !== undefined
+        ? cleared.cost
+        : cleared.length * Core.Config.clearTileCost;
 
     return cleared;
   });
