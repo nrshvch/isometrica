@@ -1298,7 +1298,7 @@ function paneOf(b) {
  * at a seam - where the tile next to it has gone - or through an opening.
  */
 function interiors(boxes) {
-  boxes = pierce(withoutIndoors(boxes));
+  boxes = pierce(boxes);
 
   var rooms = [];
 
@@ -1610,7 +1610,8 @@ function render(boxes) {
 
   //as it is built, inside as well as out - the same size as it would be
   //solid; what is seen of it from straight above is its top all the same
-  boxes = view !== "top" ? interiors(boxes) : withoutIndoors(boxes);
+  boxes = withoutIndoors(boxes);
+  if (view !== "top") boxes = interiors(boxes);
 
   boxes = boxes.map(function (b) {
     var r = screenBounds(b);
