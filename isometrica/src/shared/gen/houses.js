@@ -1512,23 +1512,29 @@ function site(W, D, specs, stage, rnd) {
 
     if (stage === 1) return;
 
-    //the openings, the joists over it all
+    //inside the shell, out of the sun (isobox indoor)
+    b.push(iso.indoor(r.x0 + t, r.x1 - t, r.y0 + t, r.y1 - t, z0, z0 + h));
+
+    //the openings - holes through the walls, into the shell (isobox
+    //opening) - the joists over it all
     FACES.forEach(function (f) {
       var sp = span(r, f);
 
       for (var st = 0; st < s.storeys; st++)
         for (var a = sp[0] + 3; a < sp[1] - 5; a += 7)
           b.push(
-            face(
-              r,
-              f,
-              a,
-              a + 3,
-              z0 + st * SH + 3,
-              z0 + st * SH + 7,
-              0,
-              0.05,
-              hole,
+            iso.opening(
+              face(
+                r,
+                f,
+                a,
+                a + 3,
+                z0 + st * SH + 3,
+                z0 + st * SH + 7,
+                0,
+                0.05,
+                hole,
+              ),
             ),
           );
     });

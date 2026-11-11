@@ -1095,13 +1095,18 @@ function site(W, D, specs, stage, rnd) {
       top = 1 + s.storeys * SH,
       alongX = r.x1 - r.x0 >= r.y1 - r.y0;
 
-    //the ground floor's stone, the door and windows left open in it
+    //the ground floor's stone, the door and windows left open in it -
+    //holes through it, into the shell (isobox opening), out of the sun in
+    //it (isobox indoor)
     ring(1, ground, DRESSED);
+    b.push(iso.indoor(r.x0 + t, r.x1 - t, r.y0 + t, r.y1 - t, 1, ground));
     ["-y", "+y", "-x", "+x"].forEach(function (f) {
       var sp = f === "-y" || f === "+y" ? [r.x0, r.x1] : [r.y0, r.y1];
 
       for (var a = sp[0] + 3; a < sp[1] - 5; a += 7)
-        b.push(face(r, f, a, a + 3, 4, 9, -0.05, 0.05, [70, 64, 58]));
+        b.push(
+          iso.opening(face(r, f, a, a + 3, 4, 9, -0.05, 0.05, [70, 64, 58])),
+        );
     });
 
     //the frame over it: posts round it, a beam round every floor

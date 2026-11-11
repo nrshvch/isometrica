@@ -106,6 +106,7 @@ function moved(b, dx, dy, dz) {
         c.d + c.n[0] * dx + c.n[1] * dy + c.n[2] * dz,
       );
     });
+  if (b.seams) r.seams = b.seams;
 
   return r;
 }
@@ -121,9 +122,17 @@ function clip(b, x0, x1, y0, y1) {
   //round
   if (!(cx0 < cx1 && cy0 < cy1)) return null;
 
-  var r = box(cx0, cx1, cy0, cy1, b.z0, b.z1, b.color, b.finish);
+  var r = box(cx0, cx1, cy0, cy1, b.z0, b.z1, b.color, b.finish),
+    seams = Object.assign({}, b.seams);
 
   r.cuts = b.cuts;
+
+  //cut off more of itself: a seam there (seamed)
+  if (cx0 > b.x0) seams.x0 = true;
+  if (cx1 < b.x1) seams.x1 = true;
+  if (cy0 > b.y0) seams.y0 = true;
+  if (cy1 < b.y1) seams.y1 = true;
+  if (Object.keys(seams).length > 0) r.seams = seams;
 
   return r;
 }
@@ -172,8 +181,68 @@ function rotate(boxes, sizeX, sizeY, turns) {
         }
       });
 
+    //its seams, the way the sides they are on now look
+    if (b.seams) {
+      r.seams = {};
+      Object.keys(b.seams).forEach(function (side) {
+        var n = SIDES[side],
+          m =
+            turns % 4 === 1
+              ? [n[1], -n[0]]
+              : turns % 4 === 2
+                ? [-n[0], -n[1]]
+                : turns % 4 === 3
+                  ? [-n[1], n[0]]
+                  : n;
+
+        if (b.seams[side]) r.seams[sideOf(m)] = true;
+      });
+    }
+
     return r;
   });
+}
+
+//the sides of a box, by name, and which way each looks along the ground
+var SIDES = { x0: [-1, 0], x1: [1, 0], y0: [0, -1], y1: [0, 1] };
+
+//the side of a box that looks the way n does
+function sideOf(n) {
+  return n[0] < 0 ? "x0" : n[0] > 0 ? "x1" : n[1] < 0 ? "y0" : "y1";
+}
+
+/**
+ * Has sides of a box be seams - where it runs on into more of itself, on
+ * the next tile, rather than its faces: a building's walls are on its
+ * faces, its rooms open at a seam (interiors). Cutting a box to a tile
+ * (clip) leaves seams where it was cut; a part of a building put together
+ * a tile at a time says so of itself (shared/gen/blocks).
+ *
+ * @param sides {{x0, x1, y0, y1}} true for each side that is a seam
+ * @returns {Object} the box
+ */
+function seamed(b, sides) {
+  var seams = Object.assign({}, b.seams);
+
+  Object.keys(sides).forEach(function (side) {
+    if (sides[side]) seams[side] = true;
+  });
+  if (Object.keys(seams).length > 0) b.seams = seams;
+
+  return b;
+}
+
+/**
+ * Has a box be an opening left in a wall going up - a door, a window not yet
+ * glazed: laid on the wall's face, it is a hole through the wall when it is
+ * painted, the room behind it showing (interiors).
+ *
+ * @returns {Object} the box
+ */
+function opening(b) {
+  b.finish = Object.assign({}, b.finish || {}, { opening: true });
+
+  return b;
 }
 
 //how thin a box squeezed onto what it lies on is (see snap)
@@ -240,6 +309,7 @@ function snap(b, outward) {
     r = box(x[0], x[1], y[0], y[1], z[0], z[1], b.color, b.finish);
 
   r.cuts = b.cuts;
+  if (b.seams) r.seams = b.seams;
 
   return r;
 }
@@ -518,6 +588,10 @@ function shadeHit(boxes, hit, face, px, py, pz) {
     if (hit.finish !== undefined && !(hit.finish.sign && !hit.finish.material))
       color = finish(color, face, normal, hit.finish, px, py, pz);
   }
+
+  //indoors, out of the sun: darker (interiors)
+  if (indoors.length > 0 && indoorAt(px, py, pz))
+    color = darker(color, INDOOR_DARK);
 
   //its colour with no light on it, which way it looks (normalOf) and how
   //high it stands (heightOf) - for the light to be worked out pixel by
@@ -1101,6 +1175,413 @@ function tiles(minX, maxX, minY, maxY) {
   };
 }
 
+/* --- Interiors ------------------------------------------------------ */
+
+//a building's rooms as it is built: how thick its walls are, its floor and
+//its ceiling, and the plaster on its walls inside; how high a storey is, for
+//the floors of a box more than one high; how wide a room is at the most
+//before a wall across it; how big a box has to be every way to be rooms
+//rather than a detail of something; and how deep an opening is cut through
+//whatever it is laid on
+var ROOM_WALL = 2,
+  ROOM_SLAB = 2,
+  ROOM_CEILING = 1,
+  ROOM_PLASTER = 1,
+  ROOM_STOREY = 12,
+  ROOM_WIDE = 17,
+  ROOM_LEAST = 8,
+  OPENING_DEPTH = 2.5;
+
+//how far behind a wall's face a pane in it is set through it (glazed): what
+//is laid on the face, the pane, a mullion over it, left as it is
+var FACE_SKIN = 1.5 / 64;
+
+//inside: a bare concrete floor, plastered walls - and indoors, out of the
+//sun, how much darker anything is than it would be lit as it is
+var BARE_FLOOR = [146, 142, 134],
+  PLASTERED = [208, 202, 192],
+  INDOOR_DARK = 0.42;
+
+//the spaces indoors of what is being painted (interiors, indoor): rooms,
+//the inside of a shell going up - whatever of it is seen in them darker
+var indoors = [];
+
+/**
+ * A space indoors, x0..x1, y0..y1, z0..z1 - the inside of the shell of a
+ * building going up, its walls round it and openings left in them: nothing
+ * to be seen itself, only whatever of it is seen in it painted darker, out
+ * of the sun, as a room is (interiors). Laid with the boxes, cut and turned
+ * with them.
+ *
+ * @returns {Object} a box to be laid with the others
+ */
+function indoor(x0, x1, y0, y1, z0, z1) {
+  return box(x0, x1, y0, y1, z0, z1, undefined, { indoors: true });
+}
+
+//whether a point is indoors (indoors), on its walls or its floor as well
+function indoorAt(x, y, z) {
+  var e = 0.02;
+
+  for (var i = 0; i < indoors.length; i++) {
+    var r = indoors[i];
+
+    if (
+      x >= r.x0 - e &&
+      x <= r.x1 + e &&
+      y >= r.y0 - e &&
+      y <= r.y1 + e &&
+      z >= r.z0 - e &&
+      z <= r.z1 + e
+    )
+      return true;
+  }
+
+  return false;
+}
+
+//whether a box is leaves, grass - a tree's crown, a hedge, a lawn is not a
+//room - by its colour: green, and not glass, which shines, nor a wall
+//painted green, which is made of something
+function leafy(b) {
+  var c = b.color,
+    f = b.finish;
+
+  if (c === undefined || !(c[1] > c[0] + 18 && c[1] > c[2] + 18)) return false;
+
+  return !(
+    f !== undefined &&
+    (f.sheen || (f.material !== undefined && f.material !== "grass"))
+  );
+}
+
+//whether a box is rooms - the body of a house, a storey of a block, a shop -
+//rather than a detail of something: big enough every way, square, not
+//leaves
+function roomy(b) {
+  return (
+    (b.cuts === undefined || b.cuts.length === 0) &&
+    !leafy(b) &&
+    b.x1 - b.x0 >= ROOM_LEAST &&
+    b.y1 - b.y0 >= ROOM_LEAST &&
+    b.z1 - b.z0 >= ROOM_LEAST
+  );
+}
+
+//whether a box is a pane of glass: shining, or thin and blue
+function paneOf(b) {
+  var c = b.color;
+
+  return (
+    (b.finish !== undefined && !!b.finish.sheen) ||
+    (c !== undefined &&
+      c[2] > c[0] + 30 &&
+      c[2] > c[1] + 5 &&
+      Math.min(b.x1 - b.x0, b.y1 - b.y0) <= 1.5)
+  );
+}
+
+/**
+ * The boxes as a building is built, inside as well as out:
+ *
+ *   - every box of it big enough to be rooms (roomy) hollow, its walls on
+ *     its faces and open at its seams, where it runs on into more of itself
+ *     on the next tile (seamed): a bare concrete floor to every storey, its
+ *     ceiling, plaster on the walls that can be seen inside, a wall across
+ *     it where it is wide - a storey all of glass an open floor inside its
+ *     glass walls;
+ *   - every pane of glass in a wall of it set in a hole through the wall,
+ *     glass through it, a window from inside as well as out;
+ *   - every opening left in a wall going up (opening) a hole through it.
+ *
+ * Seen from outside it is as it was: its rooms only where its walls are not,
+ * at a seam - where the tile next to it has gone - or through an opening.
+ */
+function interiors(boxes) {
+  boxes = pierce(withoutIndoors(boxes));
+
+  var rooms = [];
+
+  boxes.forEach(function (b) {
+    //rooms - and seen: only through a seam on a side that looks this way,
+    //towards -x or -y; shut all round, it is as it would be solid
+    if (!roomy(b) || !b.seams || !(b.seams.x0 || b.seams.y0)) return;
+
+    var s = b.seams,
+      r = {
+        b: b,
+        glass: b.finish !== undefined && !!b.finish.sheen,
+        seams: s,
+        x0: s.x0 ? b.x0 - 1 : b.x0 + ROOM_WALL,
+        x1: s.x1 ? b.x1 + 1 : b.x1 - ROOM_WALL,
+        y0: s.y0 ? b.y0 - 1 : b.y0 + ROOM_WALL,
+        y1: s.y1 ? b.y1 + 1 : b.y1 - ROOM_WALL,
+        z0: b.z0 + ROOM_SLAB,
+        z1: b.z1 - ROOM_CEILING,
+      };
+
+    if (
+      Math.min(r.x1, b.x1) - Math.max(r.x0, b.x0) >= 4 &&
+      Math.min(r.y1, b.y1) - Math.max(r.y0, b.y0) >= 4 &&
+      r.z1 - r.z0 >= 5
+    )
+      rooms.push(r);
+  });
+
+  rooms.forEach(function (r) {
+    indoors.push({
+      x0: Math.max(r.x0, r.b.x0),
+      x1: Math.min(r.x1, r.b.x1),
+      y0: Math.max(r.y0, r.b.y0),
+      y1: Math.min(r.y1, r.b.y1),
+      z0: r.z0,
+      z1: r.z1,
+    });
+  });
+
+  if (rooms.length === 0) return boxes;
+
+  var out = [];
+
+  //the rooms taken out of it - not out of a roof, which is no room
+  boxes.forEach(function (b) {
+    var pieces = [b];
+
+    if (b.cuts === undefined || b.cuts.length === 0)
+      rooms.forEach(function (r) {
+        var left = [];
+
+        pieces.forEach(function (p) {
+          left = left.concat(minus(p, r));
+        });
+        pieces = left;
+      });
+    out = out.concat(pieces);
+  });
+
+  rooms.forEach(function (r) {
+    out = out.concat(furnished(r));
+  });
+  rooms.forEach(function (r) {
+    if (!r.glass) out = glazed(r, boxes, out);
+  });
+
+  return out;
+}
+
+//the boxes without the spaces indoors laid with them (indoor) - which are
+//kept, for what is seen in them (indoorAt), from now till the next picture
+function withoutIndoors(boxes) {
+  indoors = [];
+
+  return boxes.filter(function (b) {
+    if (!(b.finish !== undefined && b.finish.indoors)) return true;
+
+    indoors.push({
+      x0: b.x0,
+      x1: b.x1,
+      y0: b.y0,
+      y1: b.y1,
+      z0: b.z0,
+      z1: b.z1,
+    });
+
+    return false;
+  });
+}
+
+//what is left of box b with the space r taken out of it - in up to six
+//pieces
+function minus(b, r) {
+  if (
+    b.x1 <= r.x0 ||
+    b.x0 >= r.x1 ||
+    b.y1 <= r.y0 ||
+    b.y0 >= r.y1 ||
+    b.z1 <= r.z0 ||
+    b.z0 >= r.z1
+  )
+    return [b];
+
+  var out = [],
+    mx0 = Math.max(b.x0, r.x0),
+    mx1 = Math.min(b.x1, r.x1),
+    my0 = Math.max(b.y0, r.y0),
+    my1 = Math.min(b.y1, r.y1);
+
+  function piece(x0, x1, y0, y1, z0, z1) {
+    if (!(x0 < x1 && y0 < y1 && z0 < z1)) return;
+
+    var c = box(x0, x1, y0, y1, z0, z1, b.color, b.finish);
+
+    if (b.cuts !== undefined) c.cuts = b.cuts;
+    out.push(c);
+  }
+
+  piece(b.x0, r.x0, b.y0, b.y1, b.z0, b.z1);
+  piece(r.x1, b.x1, b.y0, b.y1, b.z0, b.z1);
+  piece(mx0, mx1, b.y0, r.y0, b.z0, b.z1);
+  piece(mx0, mx1, r.y1, b.y1, b.z0, b.z1);
+  piece(mx0, mx1, my0, my1, b.z0, r.z0);
+  piece(mx0, mx1, my0, my1, r.z1, b.z1);
+
+  return out;
+}
+
+//what is in a room (interiors): its floor, concrete; the floors between
+//its storeys; plaster on its walls that can be seen inside, at its back and
+//along its far side; and a wall across it, where it is wide
+function furnished(r) {
+  var b = r.b,
+    x0 = Math.max(r.x0, b.x0),
+    x1 = Math.min(r.x1, b.x1),
+    y0 = Math.max(r.y0, b.y0),
+    y1 = Math.min(r.y1, b.y1),
+    out = [box(x0, x1, y0, y1, b.z0, r.z0, BARE_FLOOR)],
+    z,
+    c;
+
+  for (z = b.z0 + ROOM_STOREY; z + ROOM_SLAB < r.z1 - 3; z += ROOM_STOREY)
+    out.push(box(x0, x1, y0, y1, z, z + ROOM_SLAB, BARE_FLOOR));
+
+  if (r.glass) return out;
+
+  if (!r.seams.x1)
+    out.push(box(r.x1, r.x1 + ROOM_PLASTER, y0, y1, r.z0, r.z1, PLASTERED));
+  if (!r.seams.y1)
+    out.push(box(x0, x1, r.y1, r.y1 + ROOM_PLASTER, r.z0, r.z1, PLASTERED));
+
+  if (y1 - y0 >= ROOM_WIDE) {
+    c = Math.round((y0 + y1) / 2);
+    out.push(box(x0, x1, c, c + 1, r.z0, r.z1, PLASTERED));
+  }
+  if (x1 - x0 >= ROOM_WIDE) {
+    c = Math.round((x0 + x1) / 2);
+    out.push(box(c, c + 1, y0, y1, r.z0, r.z1, PLASTERED));
+  }
+
+  return out;
+}
+
+//every pane of glass in a wall of a room (interiors) set in a hole through
+//the wall, glass through it to the room - the pane as it was outside, a
+//window inside - of the boxes as they were, out of the boxes as they are:
+//in the walls at its back and its far side, the ones seen from inside
+function glazed(r, boxes, out) {
+  var b = r.b,
+    s = r.seams,
+    //along a wall, between the walls across its ends
+    ya = s.y0 ? b.y0 : b.y0 + ROOM_WALL,
+    yb = s.y1 ? b.y1 : b.y1 - ROOM_WALL,
+    xa = s.x0 ? b.x0 : b.x0 + ROOM_WALL,
+    xb = s.x1 ? b.x1 : b.x1 - ROOM_WALL,
+    holes = [];
+
+  boxes.forEach(function (g) {
+    if (g === b || !paneOf(g)) return;
+
+    var z0 = Math.max(g.z0, r.z0),
+      z1 = Math.min(g.z1, r.z1),
+      thinX = g.x1 - g.x0 <= 1.5,
+      thinY = g.y1 - g.y0 <= 1.5,
+      y0 = Math.max(g.y0, ya),
+      y1 = Math.min(g.y1, yb),
+      x0 = Math.max(g.x0, xa),
+      x1 = Math.min(g.x1, xb),
+      through = null;
+
+    if (z1 - z0 < 1) return;
+
+    //in a wall at +x or at +y, the ones whose inside can be seen - through
+    //it from just behind its face, where the pane and whatever is laid over
+    //it are, to the room
+    if (thinX && y1 - y0 >= 1 && !s.x1 && g.x0 <= b.x1 + 0.5)
+      if (g.x1 >= b.x1 - ROOM_WALL)
+        through = [b.x1 - ROOM_WALL - 0.01, b.x1 - FACE_SKIN, y0, y1];
+
+    if (through === null && thinY && x1 - x0 >= 1 && !s.y1)
+      if (g.y0 <= b.y1 + 0.5 && g.y1 >= b.y1 - ROOM_WALL)
+        through = [x0, x1, b.y1 - ROOM_WALL - 0.01, b.y1 - FACE_SKIN];
+
+    if (through !== null) holes.push({ g: g, at: through, z0: z0, z1: z1 });
+  });
+
+  holes.forEach(function (h) {
+    var hole = {
+        x0: h.at[0],
+        x1: h.at[1],
+        y0: h.at[2],
+        y1: h.at[3],
+        z0: h.z0,
+        z1: h.z1,
+      },
+      left = [];
+
+    out.forEach(function (p) {
+      left = left.concat(paneOf(p) ? [p] : minus(p, hole));
+    });
+    out = left;
+
+    //the glass through the wall
+    out.push(
+      box(
+        h.at[0],
+        h.at[1],
+        h.at[2],
+        h.at[3],
+        h.z0,
+        h.z1,
+        h.g.color,
+        h.g.finish,
+      ),
+    );
+  });
+
+  return out;
+}
+
+//every opening left in a wall going up (opening) a hole through whatever it
+//is laid on - the wall, its plaster - and gone itself
+function pierce(boxes) {
+  var openings = boxes.filter(function (b) {
+    return b.finish !== undefined && b.finish.opening;
+  });
+
+  if (openings.length === 0) return boxes;
+
+  var out = boxes.filter(function (b) {
+    return !(b.finish !== undefined && b.finish.opening);
+  });
+
+  openings.forEach(function (o) {
+    var thinX = o.x1 - o.x0 <= o.y1 - o.y0,
+      hole = {
+        x0: o.x0 - (thinX ? OPENING_DEPTH : 0),
+        x1: o.x1 + (thinX ? OPENING_DEPTH : 0),
+        y0: o.y0 - (thinX ? 0 : OPENING_DEPTH),
+        y1: o.y1 + (thinX ? 0 : OPENING_DEPTH),
+        z0: o.z0,
+        z1: o.z1,
+      },
+      left = [];
+
+    out.forEach(function (b) {
+      var on =
+        b.x1 >= o.x0 - 0.06 &&
+        b.x0 <= o.x1 + 0.06 &&
+        b.y1 >= o.y0 - 0.06 &&
+        b.y0 <= o.y1 + 0.06 &&
+        b.z1 > o.z0 &&
+        b.z0 < o.z1;
+
+      left = left.concat(on ? minus(b, hole) : [b]);
+    });
+    out = left;
+  });
+
+  return out;
+}
+
 /**
  * The picture of the boxes, with pivotX/pivotY where the world's origin lands
  * in it - from above, the whole tiles it is on.
@@ -1116,12 +1597,23 @@ function render(boxes) {
     h,
     pixels;
 
-  boxes = snapAll(boxes).map(function (b) {
+  boxes = snapAll(boxes);
+
+  boxes.forEach(function (b) {
     var r = screenBounds(b);
+
     minX = Math.min(minX, r.minX);
     maxX = Math.max(maxX, r.maxX);
     minY = Math.min(minY, r.minY);
     maxY = Math.max(maxY, r.maxY);
+  });
+
+  //as it is built, inside as well as out - the same size as it would be
+  //solid; what is seen of it from straight above is its top all the same
+  boxes = view !== "top" ? interiors(boxes) : withoutIndoors(boxes);
+
+  boxes = boxes.map(function (b) {
+    var r = screenBounds(b);
 
     return {
       x0: b.x0,
@@ -1358,6 +1850,9 @@ export {
   cut,
   moved,
   clip,
+  seamed,
+  opening,
+  indoor,
   snap,
   snapAll,
   rotate,

@@ -876,6 +876,15 @@ export function blocks(style) {
     else if (p.kind === "site") siteBase(b, s);
     else style.frame(b, s, PLINTH + STOREY, rnd);
 
+    //where the block runs on into the next tile, not its end: a seam, its
+    //rooms open there (isobox seamed)
+    b.forEach(function (c) {
+      iso.seamed(c, {
+        x0: !s.start && c.x0 <= 0.01,
+        x1: !s.end && c.x1 >= TILE - 0.01,
+      });
+    });
+
     return finished(b, pal);
   }
 

@@ -105,6 +105,15 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   it, the building fenced off and brought down where it stands by the
   bulldozers, and the ground left clear (`isometrica/src/client/buildman.js`
   demolish).
+- A building is built inside as well as out, so a tile of it that comes
+  down before the one behind it - the bulldozers bringing it down a tile
+  at a time - leaves that one showing its rooms on that side, not a flat
+  wall where it was cut: a bare concrete floor to every storey, plastered
+  walls, a wall across where it is wide, its windows in them seen from
+  inside, darker in there out of the sun - a storey all of glass an open
+  floor inside its glass walls. And a building going up shows the inside
+  of its shell through the openings left in its walls
+  (`isometrica/src/shared/gen/isobox.js` interiors).
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

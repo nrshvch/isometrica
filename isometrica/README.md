@@ -1259,6 +1259,22 @@ dev`) plays them the way a game would - all three weathers together, the
   are planes the boxes are cut by, not staircases of thin strips, and roofs
   are pitched half a unit up for one across, so their gable ends come out
   clean diagonals.
+- A building is built inside as well as out (`isometrica/src/shared/gen/isobox.js`
+  interiors): every box of it big enough to be rooms is hollow, its walls
+  on its faces, a bare concrete floor to every storey, plaster on its
+  walls, a wall across it where it is wide - a storey all of glass an open
+  floor inside its glass walls - and its panes of glass set through its
+  walls, windows from inside too; out of the sun, it is darker in there.
+  Where a building runs on into the next tile it has no wall: cut to a tile
+  out of the whole of it, or put together a tile at a time (`blocks.js`),
+  its side there is a seam (`isobox.js` seamed, clip), its rooms open on
+  it. Standing whole, the tile next to it covers that, and every picture
+  of it is as it would be solid; with that tile gone - a bulldozer at it -
+  the rooms behind show, its floors and walls, no flat wall where it was
+  cut. And a building going up has its openings left in its walls as holes
+  through them, the inside of its shell showing (`isobox.js` opening,
+  indoor). Only what can be seen of it is worked out: a box with no seam
+  on a side towards the viewer is painted as it would be solid.
 - Surfaces are made of something rather than speckled at random
   (`isobox.js` MATERIALS), laid out a pixel at a time and lined up with the
   tiles and storeys: brick courses, stone, siding and logs on the houses,
