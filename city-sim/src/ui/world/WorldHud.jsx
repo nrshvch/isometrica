@@ -239,10 +239,12 @@ function Focus({ inspected, seen }) {
  * What can be done to the building looked at, in the bar in the place of
  * its tools: put something else up in its place, clear it away - the
  * bulldozers bringing it down where it stands - blow it up, or set it on
- * fire; on fire or burnt down already, all but that.
+ * fire; on fire or burnt down already, all but that; being demolished,
+ * only put something else up in its place or send the bulldozers again.
  */
 function focusButtons(inspected, seen) {
-  var standing = !seen || !seen.fire;
+  var demolishing = seen !== null && seen.demolishing === true,
+    standing = !demolishing && (!seen || !seen.fire);
 
   return [
     {
@@ -259,7 +261,7 @@ function focusButtons(inspected, seen) {
         demolish(inspected.tile);
       },
     },
-    {
+    !demolishing && {
       icon: "explode",
       label: "Blow up",
       action: function () {

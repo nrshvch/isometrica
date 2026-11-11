@@ -810,7 +810,14 @@ dev`) plays them the way a game would - all three weathers together, the
   is once its rubble is pushed away (`city.js` tileDown), the ground bare
   there; it is gone once its last tile is. Both are kept in the save, so a
   reload halfway finds it as far down as it had come; asked again, only its
-  tiles still standing are sent for, for nothing. How it comes down is a
+  tiles still standing are sent for, for nothing. Being demolished, it is
+  the bulldozers' alone: it cannot be blown up nor set on fire, a blast next
+  to it does not reach it (`city.js` explode, blast, fireUp), it neither
+  comes down nor catches fire by itself (`building.js` hazards, fallsLater),
+  and one on fire when it is ordered down has its fire put out - its
+  flames are no longer drawn (`client/fires.js` look), what it burnt to
+  standing behind the fence. Looked at, only Replace and Demolish are
+  offered for it. How it comes down is a
   unit of its own (`Demolition`, in `isometrica/src/client/demolition.js`),
   told when each tile is to come down and when its rubble is pushed away;
   in the game it is the bulldozers that tell it (`client/buildman.js`

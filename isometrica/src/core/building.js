@@ -263,7 +263,8 @@ Building.prototype.knock = function (tiles) {
  * this tick - more likely the less health it has, and none of it over
  * HAZARD: with none, it stands COLLAPSES hours or so; with next to none it
  * catches fire in CATCHES or so. Coming down, the city brings it down
- * (City#collapse); on fire, it burns (ignite).
+ * (City#collapse); on fire, it burns (ignite). Being demolished, neither:
+ * the bulldozers bring it down, a tile at a time.
  *
  * @param hours {number} how long a tick is, hours
  * @returns {boolean} whether it came down
@@ -271,7 +272,12 @@ Building.prototype.knock = function (tiles) {
 function hazards(self, hours) {
   var health = self.health;
 
-  if (self._state !== BuildingState.ready || health >= HAZARD) return false;
+  if (
+    self._state !== BuildingState.ready ||
+    self.demolishing ||
+    health >= HAZARD
+  )
+    return false;
 
   var k = 1 - health / HAZARD,
     city = self.getCity(),
@@ -292,12 +298,13 @@ function hazards(self, hours) {
 /**
  * Whether, gutted by fire to its frame of concrete, it comes down now - as
  * a building of it may some hours after (core/burning collapsesAt): the
- * city brings it down (City#collapse).
+ * city brings it down (City#collapse) - unless the bulldozers are bringing
+ * it down already (demolishing).
  *
  * @returns {boolean} whether it came down
  */
 function fallsLater(self) {
-  if (self._state !== BuildingState.ruin) return false;
+  if (self._state !== BuildingState.ruin || self.demolishing) return false;
 
   var at = Burning.collapsesAt(self),
     city = self.getCity();

@@ -263,7 +263,9 @@ function alight(model, now) {
   return false;
 }
 
-//every building on fire in sight with a blaze, and none for what is not
+//every building on fire in sight with a blaze, and none for what is not -
+//nor for one being demolished: its fire put out for the bulldozers to go
+//in, what it is by now standing in for it (client/demolition)
 function look(self) {
   var views = self.root.buildman.getBuildingViews(),
     now = self.now(),
@@ -272,7 +274,7 @@ function look(self) {
   views.forEach(function (b) {
     var model = b.data;
 
-    if (!model || !b.view || !alight(model, now)) return;
+    if (!model || !b.view || model.demolishing || !alight(model, now)) return;
 
     seen[model.tile] = true;
 
@@ -552,8 +554,10 @@ function gather(self, dt) {
   if (waiting && self.gathering < 6000) return;
 
   if (out.length === 0) {
-    //nothing to burn out of yet, or ever: tried again in a moment
-    if (self.gathering < 6000) return;
+    //nothing to burn out of yet: tried again in a moment - or ever, all of
+    //it yard: no windows to burn out of, only its smoke
+    if (self.gathering >= 6000) self.windows = [];
+    return;
   }
 
   //where it catches: a window of the lowest floors, any of them

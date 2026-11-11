@@ -676,9 +676,12 @@ City.prototype.blast = function (tiles, except, yard) {
     for (var y = y0 - reach; y <= y1 + reach; y++) {
       var b = service.get(Terrain.convertToIndex(x, y));
 
+      //nor a building being demolished: the bulldozers bring that down, a
+      //tile at a time (demolish)
       if (
         b === null ||
         b === except ||
+        b.demolishing ||
         seen.indexOf(b) >= 0 ||
         b.data.classCode === BuildingClassCode.tree ||
         b.data.classCode === BuildingClassCode.road
@@ -830,7 +833,8 @@ function bringDown(self, building, yard, smoke) {
  * knock), and the rest stands; what has no part of it left standing comes
  * down altogether, rubble and wrecked yards of its own; further off, less of
  * it. And the trees round it go over (treesIn), to lie there till they are
- * cleared away (CityBuildings#leaveFallen).
+ * cleared away (CityBuildings#leaveFallen). Not a building being demolished:
+ * the bulldozers are bringing that down already.
  *
  * @param tile {number} any tile of what stands there
  * @param [yard] {function(number): boolean} whether a tile is only a yard
@@ -838,7 +842,8 @@ function bringDown(self, building, yard, smoke) {
  *        and no blast off it; as each building knows, without
  * @returns {{error: number, tile: number, tiles: number[], hit: Object[],
  *          trees: Object[]}} error an ErrorCode - NOTHING_TO_CLEAR for
- *          nothing there to blow up, a tree or a road; tile the corner of
+ *          nothing there to blow up, a tree or a road, BEING_CLEARED for one
+ *          being demolished; tile the corner of
  *          what stood there, and tiles every tile of it - none, for an
  *          error; hit what the blast got to, {tile, tiles, distance,
  *          health, whole} each - tiles the parts of it that came down, and
@@ -856,6 +861,15 @@ City.prototype.explode = function (tile, yard) {
   )
     return {
       error: ErrorCode.NOTHING_TO_CLEAR,
+      tile: tile,
+      tiles: [],
+      hit: [],
+      trees: [],
+    };
+
+  if (building.demolishing)
+    return {
+      error: ErrorCode.BEING_CLEARED,
       tile: tile,
       tiles: [],
       hit: [],
@@ -1055,7 +1069,7 @@ City.prototype.collapse = function (building) {
  * burns down over a day of the game's time - nobody in it, nothing made or
  * paid for meanwhile - into a ruin, there till it is cleared away. Only
  * something standing finished: not a tree nor a road, not one going up, on
- * fire already or burnt down.
+ * fire already or burnt down, nor one being demolished.
  *
  * @param tile {number} any tile of what stands there
  * @returns {number} ErrorCode
@@ -1070,7 +1084,8 @@ City.prototype.fireUp = function (tile) {
   )
     return ErrorCode.NOTHING_TO_CLEAR;
 
-  if (building.getState() !== BuildingState.ready) return ErrorCode.CANT_BURN;
+  if (building.getState() !== BuildingState.ready || building.demolishing)
+    return ErrorCode.CANT_BURN;
 
   building.ignite(this.world.time.now);
 

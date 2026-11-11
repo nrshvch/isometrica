@@ -79,11 +79,12 @@ export function wantOf(city, model) {
  *          income: number, residents: number, capacity: number,
  *          workers: number, jobs: number, wants: string|null,
  *          fire: string|null, health: number, parts: number,
- *          standing: number}} progress 0..1 while it is
- *          going up, null once it stands; income money a tick, rounded;
+ *          standing: number, demolishing: boolean}} progress 0..1 while it
+ *          is going up, null once it stands; income money a tick, rounded;
  *          capacity and jobs 0 for none; fire "burning" or "ruin", or null;
  *          health 0..100, rounded; parts the tiles of the building itself,
- *          standing those not come down
+ *          standing those not come down; demolishing whether the bulldozers
+ *          are bringing it down (core/building demolishing)
  */
 export function describe(city, building) {
   var data = building.data,
@@ -104,6 +105,7 @@ export function describe(city, building) {
     classCode: data.classCode,
     progress: going ? building.getProgress() : null,
     fire: fire,
+    demolishing: building.demolishing === true,
     //how many parts it has, and of them still standing (core/building
     //down)
     parts: building.builtTiles ? building.builtTiles().length : 0,

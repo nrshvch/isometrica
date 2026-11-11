@@ -1125,6 +1125,13 @@ Buildman.prototype.explode = function (tile) {
     return ErrorCode.NOTHING_TO_CLEAR;
   }
 
+  //being demolished: the bulldozers are bringing it down already (core/city
+  //explode)
+  if (building.demolishing) {
+    this.showError(tile, ErrorCode.BEING_CLEARED);
+    return ErrorCode.BEING_CLEARED;
+  }
+
   //it goes, and with it whatever was shown of it
   if (root.serviceman) {
     root.serviceman.hideCoverage();
