@@ -52,7 +52,7 @@ function Vkaria(core, ui, play) {
   // We can calculate camera angle around X axis like this: Math.asin(1/2)*180/Math.PI = 30deg, where 1/2 is our
   // x to y ratio.
   // Distance between tiles in 3D space can be calculated like this:
-  // 1/cos(45)*TILE_WIDTH/2 = 45.255 , where 45deg angle is rotation about Y axis.
+  // 1/cos(45)*TILE_WIDTH/2 = 32*sqrt(2) = 45.2548... (Config.tileSize, exactly), where 45deg angle is rotation about Y axis.
 
   //Tile Z is amount of how much units tile should be elevated in one step by z axis.
   //it's calculated: tileZStep = x/cos(30deg); where x is height of elevation step on image, in pixels,
