@@ -1,30 +1,10 @@
 import engine from "engine";
-import RenderLayer from "./renderlayer";
 import WorldCamera from "./components/camerascript";
 import Events from "events";
 import RProp from "reactive-property";
 
-function filterTile(gameObjects) {
-  var r = gameObjects,
-    l = r.length,
-    sprite;
-
-  for (var i = 0; i < l; i++) {
-    //picking hands back anything it can hit, and that includes text - a
-    //city's name, a "no water" over a house - which has no sprite to read
-    //a layer off
-    sprite = r[i].spriteRenderer;
-
-    if (sprite !== undefined && sprite.layer === RenderLayer.groundLayer)
-      return r[i];
-  }
-
-  return false;
-}
-
 function pickTile(me, screenX, screenY) {
-  var tile = filterTile(me._cam.pickGameObject(screenX, screenY));
-  return (tile && me.root.terrain.getCoordinates(tile)) || -1;
+  return me.root.terrain.tileAt(me._cam, screenX, screenY);
 }
 
 function onMove(sender, e, self) {

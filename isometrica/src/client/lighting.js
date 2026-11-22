@@ -390,10 +390,14 @@ function rgb(css) {
 }
 
 //how high the ground under what renderer draws is, on the screen - a pixel
-//a unit, as how high its pixels stand over it is
+//a unit, as how high its pixels stand over it is: as high as height, where
+//the picture says (a tile of a stretch of ground, client/groundchunk), or
+//else as high as its gameObject stands
 var where = new Float32Array(3);
 
-function elevation(M, renderer) {
+function elevation(M, renderer, height) {
+  if (height !== undefined) return upOf(M) * height;
+
   var go = renderer.gameObject;
 
   if (!go) return 0;
@@ -414,8 +418,11 @@ function upOf(M) {
  * A picture drawn by renderer at x0, y0 (engine SpriteRenderer picture):
  * into the batch of the layer, as it knows to be drawn (client/cachedsprite
  * glQuad) - and nothing that does not.
+ *
+ * @param [height] {number} how high in the world it stands, where it is not
+ *        where renderer's gameObject is (elevation)
  */
-Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
+Lighting.prototype.collect = function (renderer, sprite, x0, y0, height) {
   if (sprite.glQuad === undefined) return;
 
   var view = this.view,
@@ -425,7 +432,7 @@ Lighting.prototype.collect = function (renderer, sprite, x0, y0) {
       sprite.width,
       sprite.height,
       renderer.opacity,
-      this.lit ? elevation(this.M, renderer) : 0,
+      this.lit ? elevation(this.M, renderer, height) : 0,
       renderer.dither === true,
       //something up in the air with no heights of its own - a puff of
       //smoke - lit where it is, not as the ground it is drawn over

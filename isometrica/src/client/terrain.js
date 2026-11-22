@@ -3,7 +3,7 @@
  */
 import engine from "engine";
 import Core from "../core/main";
-import Tile from "./gameObjects/tile";
+import GroundChunk from "./groundchunk";
 import Config from "./config";
 import Events from "events";
 import Generated from "./generated";
@@ -334,13 +334,9 @@ function shownOf(sprite) {
 
 var events = {};
 
-function CreateTile(self) {
-  if (self.pool.length > 0) {
-    return self.pool.pop();
-  } else {
-    return new Tile();
-  }
-}
+//a tile picked, timed with the rest of picking (components/camerascript)
+var PICK = engine.Stats.section("pick"),
+  PICKS = engine.Stats.counter("picks");
 
 //where the grid over the ground is kept on or off in the browser (setGrid)
 var GRID_STORE = "isometrica.grid";
@@ -355,9 +351,13 @@ function gridWanted() {
 }
 
 function Terrain(root) {
+  //every tile drawn, by its index: the stretch of the ground it is drawn
+  //with (client/groundchunk), and its slot in that - and the stretches, in
+  //the order they are in the world, which is the order they are drawn in,
+  //the last first
   this.tiles = [];
-  this.gos = [];
-  this.pool = [];
+  this.slots = [];
+  this.chunks = [];
   this.root = root;
   //the tiles drawn with earth on them, by index, and how - BARE or
   //REGROWING - to be drawn again as the grass grows back (Regrowth)
@@ -381,7 +381,8 @@ Terrain.prototype.init = function () {
     View.events.change,
     function (sender, args, self) {
       for (var index in self.tiles)
-        if (self.tiles[index]) shapeTile(self, self.tiles[index], +index);
+        if (self.tiles[index])
+          shapeTile(self, self.tiles[index], self.slots[index], +index);
     },
     this,
   );
@@ -518,32 +519,47 @@ Terrain.prototype.tileKeys = function () {
   return Object.keys(this.tiles);
 };
 
+/**
+ * Takes the tiles in the rectangle out of the drawn ground - and a stretch
+ * of it left with none out of the world.
+ */
 Terrain.prototype.clear = function (x0, y0, w, l) {
   var tile0 = CoreTerrain.convertToIndex(x0, y0);
   var tile1 = CoreTerrain.convertToIndex(x0 + w - 1, y0 + l - 1);
   var iter = new TileIterator(tile0, tile1);
-  var tile,
+  var chunk,
     index,
     tiles = this.tiles,
-    pool = this.pool,
-    gos = this.gos,
-    world = vkaria.game.logic.world;
+    slots = this.slots,
+    touched = [],
+    world = vkaria.game.logic.world,
+    i;
+
   while (true) {
     index = iter.next();
     if (index === -1) break;
 
-    tile = this.tiles[index];
-    if (tile) {
-      world.removeGameObject(tile);
-      pool.push(tile);
+    chunk = tiles[index];
+    if (chunk) {
+      if (chunk.remove(slots[index])) touched.push(chunk);
       delete this.bare[index];
       this.grid.changed(
         CoreTerrain.extractX(index),
         CoreTerrain.extractY(index),
       );
       delete tiles[index];
-      delete gos[tile.instanceId];
+      delete slots[index];
       changed();
+    }
+  }
+
+  for (i = 0; i < touched.length; i++) {
+    chunk = touched[i];
+    chunk.close(slots);
+
+    if (chunk.count === 0) {
+      world.removeGameObject(chunk);
+      this.chunks.splice(this.chunks.indexOf(chunk), 1);
     }
   }
 };
@@ -571,37 +587,11 @@ function calcSpriteCode(self, x, y) {
   return 2000 + (z1 - z0 + 2) * 100 + (z2 - z0 + 2) * 10 + (z3 - z0 + 2);
 }
 
-var routine = function (iter, self) {
-  var i = 0;
-  while (i++ < 128) {
-    var index = iter.next();
-
-    if (index === -1) return -1;
-
-    if (!self.tiles[index]) {
-      var t = CreateTile(self);
-
-      shapeTile(self, t, index);
-      vkaria.game.logic.world.addGameObject(t);
-
-      self.tiles[index] = t;
-      self.gos[t.instanceId] = index;
-    }
-  }
-
-  return 0;
-};
-
-Terrain.prototype.draw0 = function (x0, y0, w, l) {
-  var iter = new TileIterator(x0, y0, w, l);
-
-  Isometrica.Engine.Coroutine.startCoroutine(routine, iter, this);
-};
-
 /**
- * Puts tile t where the ground of tile index is, with the sprite of its shape.
+ * Puts the tile in slot s of chunk where the ground of tile index is, with
+ * the sprite of its shape.
  */
-function shapeTile(self, t, index) {
+function shapeTile(self, chunk, s, index) {
   changed();
 
   var terrain = vkaria.core.world.terrain,
@@ -620,22 +610,17 @@ function shapeTile(self, t, index) {
   //how high its corners are drawn, for the grid over it
   //(components/terraingridrenderer): at x, y, x + 1, y, x, y + 1 and
   //x + 1, y + 1 - all at the water's surface for a tile of water
-  var h = t.heights || (t.heights = new Int8Array(4));
+  var h = chunk.heights,
+    o = 4 * s;
 
-  if (type === TerrainType.water) h.fill(0);
+  if (type === TerrainType.water) h[o] = h[o + 1] = h[o + 2] = h[o + 3] = 0;
   else {
-    h[0] = terrain.getGridPointHeight(x, y);
-    h[1] = terrain.getGridPointHeight(x + 1, y);
-    h[2] = terrain.getGridPointHeight(x, y + 1);
-    h[3] = terrain.getGridPointHeight(x + 1, y + 1);
+    h[o] = terrain.getGridPointHeight(x, y);
+    h[o + 1] = terrain.getGridPointHeight(x + 1, y);
+    h[o + 2] = terrain.getGridPointHeight(x, y + 1);
+    h[o + 3] = terrain.getGridPointHeight(x + 1, y + 1);
   }
   self.grid.changed(x, y);
-
-  t.transform.setPosition(
-    x * Config.tileSize,
-    z * Config.tileZStep,
-    y * Config.tileSize,
-  );
 
   sprite = tileSprite(x, y, type, slope);
 
@@ -650,10 +635,10 @@ function shapeTile(self, t, index) {
       View.turns(),
       View.top() ? "top" : "side",
     ].join(":"),
-    was = shownOf(t.renderer.sprite);
+    was = shownOf(chunk.sprites[s]);
 
   if (
-    t.shape === shape &&
+    chunk.shapes[s] === shape &&
     was &&
     was !== sprite &&
     sprite.ready &&
@@ -661,7 +646,7 @@ function shapeTile(self, t, index) {
     !sprite.ready()
   )
     sprite = new Meanwhile(sprite, was);
-  t.shape = shape;
+  chunk.shapes[s] = shape;
 
   //the earth on it, for the grass to grow back over (Regrowth)
   var ground = type === TerrainType.water ? GRASS : groundOf(x, y);
@@ -669,30 +654,46 @@ function shapeTile(self, t, index) {
   if (ground !== GRASS) self.bare[index] = ground;
   else delete self.bare[index];
 
-  t.renderer.setSprite(sprite);
-  if (View.top()) t.renderer.setPivot(TOP_PIVOT, TOP_PIVOT);
-  else t.renderer.setPivot(PIVOT_X, PIVOT_Y);
+  chunk.set(
+    s,
+    x * Config.tileSize,
+    z * Config.tileZStep,
+    y * Config.tileSize,
+    sprite,
+    View.top() ? TOP_PIVOT : PIVOT_X,
+    View.top() ? TOP_PIVOT : PIVOT_Y,
+  );
 }
 
-function drawTile(self, index) {
-  var t = CreateTile(self);
-
-  shapeTile(self, t, index);
-  vkaria.game.logic.world.addGameObject(t);
-
-  self.tiles[index] = t;
-  self.gos[t.instanceId] = index;
-}
-
+/**
+ * Draws the ground of the tiles in the rectangle not drawn yet - as one
+ * stretch of it (client/groundchunk), put in the world after everything
+ * there already: the ground is drawn in the world's order, the last first,
+ * so it goes under what was drawn before it.
+ */
 Terrain.prototype.draw = function (x0, y0, w, l) {
   var tile0 = CoreTerrain.convertToIndex(x0, y0);
   var tile1 = CoreTerrain.convertToIndex(x0 + w - 1, y0 + l - 1);
   var iter = new TileIterator(tile0, tile1);
   var tiles = this.tiles,
-    index;
+    chunk = null,
+    index,
+    s;
 
   while ((index = iter.next()) !== -1) {
-    if (!tiles[index]) drawTile(this, index);
+    if (tiles[index]) continue;
+
+    if (chunk === null) chunk = new GroundChunk(w * l);
+
+    s = chunk.add(index);
+    tiles[index] = chunk;
+    this.slots[index] = s;
+    shapeTile(this, chunk, s, index);
+  }
+
+  if (chunk !== null) {
+    this.chunks.push(chunk);
+    vkaria.game.logic.world.addGameObject(chunk);
   }
 };
 
@@ -700,9 +701,8 @@ Terrain.prototype.draw = function (x0, y0, w, l) {
  * Reshapes tiles after the ground under them moved, or was cleared - and the
  * tiles round them, whose grass spills over the earth on them, or the other
  * way round. Only the ones on screen are - the rest are drawn as they are
- * when their chunk comes in. The tile stays in the world: taking one out
- * only happens at the end of the tick, so putting it straight back in would
- * lose it.
+ * when their chunk comes in. Each stays in its slot of the stretch it is
+ * drawn with, and so where it is in the order the ground is drawn in.
  *
  * @param indexes {number[]}
  */
@@ -719,29 +719,38 @@ Terrain.prototype.redraw = function (indexes) {
         done[index] = true;
 
         t = this.tiles[index];
-        if (t) shapeTile(this, t, index);
+        if (t) shapeTile(this, t, this.slots[index], index);
       }
 };
 
-Terrain.prototype.getTile = function (idx_or_x, y) {
-  var idx;
-
-  if (arguments.length === 2) {
-    idx = Core.Terrain.convertToIndex(idx_or_x, y);
-  } else {
-    idx = idx_or_x;
-  }
-
-  var t = this.tiles[idx];
-
-  return (t !== undefined && t) || null;
+/**
+ * Whether the ground of tile is drawn - it is on the screen, or near it.
+ */
+Terrain.prototype.drawn = function (tile) {
+  return this.tiles[tile] !== undefined;
 };
 
 /**
- * Find tile coordinates by gameObject
+ * The tile whose ground, as it is drawn, is under x, y on the screen camera
+ * (components/camerascript) looks at - the one drawn over the rest there -
+ * or -1.
  */
-Terrain.prototype.getCoordinates = function (go) {
-  return this.gos[go.instanceId] || -1;
+Terrain.prototype.tileAt = function (camera, x, y) {
+  var M = camera.gameObject.camera.getWorldToScreen(),
+    chunks = this.chunks,
+    tile = -1,
+    i;
+
+  engine.Stats.begin(PICK);
+  engine.Stats.count(PICKS, 1);
+
+  //the first in the world's order, as a pick goes through it
+  for (i = 0; i < chunks.length && tile === -1; i++)
+    tile = chunks[i].tileAt(M, x, y);
+
+  engine.Stats.end(PICK);
+
+  return tile;
 };
 
 Terrain.prototype.tileXPos = function (tile) {

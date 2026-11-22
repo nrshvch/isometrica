@@ -144,8 +144,8 @@ define(function (require) {
 
     /**
      * While the renderer draws in WebGL (Config.gl), what every picture drawn
-     * is handed to instead of being drawn: collect(renderer, sprite, x0, y0);
-     * null otherwise.
+     * is handed to instead of being drawn: collect(renderer, sprite, x0, y0,
+     * height) - height as picture() is given it; null otherwise.
      */
     Sprite.collect = null;
 
@@ -162,12 +162,17 @@ define(function (require) {
      * Draws a picture of the renderer's - its sprite, or anything it draws
      * over it - at x0, y0; or, while the renderer draws in WebGL, hands it
      * to what does (collect).
+     *
+     * height is how high in the world the picture stands, for a renderer that
+     * draws many pictures at heights of their own - every tile of a stretch of
+     * ground - rather than one where its gameObject is; left out, it is where
+     * its gameObject is.
      */
-    function picture(layer, self, sprite, x0, y0) {
+    function picture(layer, self, sprite, x0, y0, height) {
         //drawn by whatever collects what is drawn instead (see
         //Canvas2dRenderer, Config.gl)
         if (Sprite.collect !== null) {
-            Sprite.collect.collect(self, sprite, x0, y0);
+            Sprite.collect.collect(self, sprite, x0, y0, height);
             return;
         }
 
