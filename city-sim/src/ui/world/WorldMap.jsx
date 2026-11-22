@@ -1,5 +1,5 @@
 /**
- * The map of the world, for debugging (the menu's World map): the ground of
+ * The map of the world, for debugging (the HUD's map button): the ground of
  * as much of it as is asked for - all of it, 65536 tiles each way, down to a
  * few hundred tiles across - from straight above, north up the way the view
  * from above has it: x to the right, y up. The tiles' x and y along its
@@ -12,6 +12,10 @@
  * tiles averaged, zoomed out, to tell mostly land from mostly sea. Worked
  * out a few rows a frame, the game going on meanwhile. It opens over the
  * camera, a good way out.
+ *
+ * Floating over the world on a screen wide enough - beside the debug panel,
+ * if that is up - or over the whole of a phone's, as the game's screens are;
+ * put up and away by the map button in the HUD, by the view from above.
  *
  * Dragged, it moves about; turned with the wheel, or the buttons, it shows
  * more or less of the world; Go to puts it over the tile asked for. Clicked,
@@ -197,7 +201,6 @@ export default function WorldMap() {
     target: target,
     camera: camera,
     size: size,
-    wide: wide,
   };
 
   function draw() {
@@ -512,10 +515,6 @@ export default function WorldMap() {
       y * ClientConfig.tileSize,
     );
     setCamera([x, y]);
-
-    //the map filling the screen is put away, for where the camera went to
-    //be seen
-    if (!latest.current.wide) setWorldMap(false);
   }
 
   function go(e) {

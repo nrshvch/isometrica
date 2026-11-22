@@ -410,9 +410,6 @@ function Menu({ client, world, cityId, address, busy }) {
     debug = useGame(function (s) {
       return s.debug;
     }),
-    worldMap = useGame(function (s) {
-      return s.worldMap;
-    }),
     box = useRef(null);
 
   useEffect(
@@ -516,15 +513,6 @@ function Menu({ client, world, cityId, address, busy }) {
               setDebug();
             }}
           />
-          <Row
-            icon="map"
-            label="World map"
-            sub="Debug: look about, jump anywhere"
-            on={worldMap}
-            onClick={function () {
-              setWorldMap();
-            }}
-          />
           {address && (
             <Row
               icon={copied ? "check" : "share"}
@@ -605,6 +593,9 @@ export default function Hud() {
     busy = useGame(function (s) {
       return s.busy;
     }),
+    worldMap = useGame(function (s) {
+      return s.worldMap;
+    }),
     prompt = useGame(function (s) {
       return s.prompt;
     }),
@@ -665,11 +656,20 @@ export default function Hud() {
       )}
       <div className="flex gap-2 justify-self-end [grid-area:tools]">
         <HudButton
-          icon="map"
+          icon="satellite"
           label="View from above (T)"
           on={world.top}
           onClick={function () {
             if (client.setTopView) client.setTopView(!WorldView.top());
+          }}
+        />
+        {/* for debugging: players only ever pan (WorldMap) */}
+        <HudButton
+          icon="map"
+          label="World map"
+          on={worldMap}
+          onClick={function () {
+            setWorldMap();
           }}
         />
         <Menu
