@@ -584,8 +584,8 @@ export default function WorldMap() {
   var height =
     hover && terrain
       ? terrain.getGridPointHeight(
-          clamp(Math.floor(hover.x), 0, WORLD - 1),
-          clamp(Math.floor(hover.y), 0, WORLD - 1),
+          clamp(Math.round(hover.x), 0, WORLD - 1),
+          clamp(Math.round(hover.y), 0, WORLD - 1),
         )
       : null;
 
@@ -618,16 +618,16 @@ export default function WorldMap() {
           <span className="min-w-0 flex-1 truncate">
             {hover
               ? "x " +
-                Math.floor(hover.x) +
+                Math.round(hover.x) +
                 "  y " +
-                Math.floor(hover.y) +
+                Math.round(hover.y) +
                 "  height " +
                 height
               : camera
                 ? "camera  x " +
-                  Math.floor(camera[0]) +
+                  Math.round(camera[0]) +
                   "  y " +
-                  Math.floor(camera[1])
+                  Math.round(camera[1])
                 : ""}
           </span>
         </div>

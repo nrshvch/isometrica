@@ -15,6 +15,7 @@ import Events from "events";
 import engine from "engine";
 import Numeral from "numeral";
 import WorldView from "isometrica/client/view";
+import ClientConfig from "isometrica/client/config";
 import CameraControl from "isometrica/client/cameracontrol";
 import ResourceCode from "isometrica/core/resourcecode";
 import Game from "../../game";
@@ -349,6 +350,24 @@ function Row({ icon, label, sub, on, disabled, className, onClick }) {
 
 //how long the menu says the city's address was copied
 var COPIED_MS = 1500;
+//how often the menu reads again where the camera is, while it is open, ms
+var WHERE_MS = 250;
+
+/**
+ * The tile the camera is over - under the middle of the screen - x and y,
+ * or null without a camera. A tile is drawn round its own x, y, so it is
+ * the nearest one.
+ */
+function cameraTile(client) {
+  if (!client || !client.camera) return null;
+
+  var p = client.camera.transform.getPosition();
+
+  return [
+    Math.round(p[0] / ClientConfig.tileSize),
+    Math.round(p[2] / ClientConfig.tileSize),
+  ];
+}
 //how many of the cities saved here the menu lists at most
 var CITIES = 5;
 
@@ -387,8 +406,8 @@ function savedCities(client, cityId) {
 }
 
 /**
- * The menu behind the button in the top right corner: what is switched on
- * and off for the whole game, the city's address shared - as the phone
+ * The menu behind the button in the top right corner: the tile the camera
+ * is over, on top, then what is switched on and off for the whole game, the city's address shared - as the phone
  * shares things, or else copied - a new city: blank, the one a new
  * player starts on, or the big one - and, under them, the other cities
  * saved here, to go back to. Put away by a click anywhere else, or Escape.
@@ -407,6 +426,9 @@ function Menu({ client, world, cityId, address, busy }) {
       [open, client, cityId],
     ),
     [copied, setCopied] = useState(false),
+    //where the camera is, read as the menu opens and then again and again
+    //while it is open - it can be panned with the keys meanwhile
+    [where, setWhere] = useState(null),
     debug = useGame(function (s) {
       return s.debug;
     }),
@@ -425,6 +447,31 @@ function Menu({ client, world, cityId, address, busy }) {
       };
     },
     [copied],
+  );
+
+  useEffect(
+    function () {
+      if (!open) return;
+
+      function read() {
+        var now = cameraTile(client);
+
+        setWhere(function (was) {
+          return was && now && was[0] === now[0] && was[1] === now[1]
+            ? was
+            : now;
+        });
+      }
+
+      read();
+
+      var every = setInterval(read, WHERE_MS);
+
+      return function () {
+        clearInterval(every);
+      };
+    },
+    [open, client],
   );
 
   function share() {
@@ -479,6 +526,17 @@ function Menu({ client, world, cityId, address, busy }) {
           role="menu"
           className="card absolute top-full right-0 z-30 mt-2 max-h-[calc(100svh-9rem-env(safe-area-inset-bottom))] w-64 overflow-y-auto overscroll-contain"
         >
+          {where && (
+            //the tile the camera is over, to be copied off - and a line
+            //under it, the switches after it
+            <div className="flex items-center gap-3 border-b-4 border-inset px-3 py-2.5">
+              <Icon name="map" size={20} className="text-muted" />
+              <span className="label">Location</span>
+              <span className="ml-auto font-mono text-sm font-bold select-text">
+                {where[0] + ", " + where[1]}
+              </span>
+            </div>
+          )}
           <Row
             icon={world.sounds ? "sound-on" : "sound-off"}
             label="Sounds"
