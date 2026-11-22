@@ -154,7 +154,19 @@ define(function(require){
     }
 
     CameraComponent.prototype.getWorldToScreen = function () {
-        return glMatrix.mat4.mul(this.worldToScreenMatrix, this.viewport.viewportMatrix, this.worldToViewportMatrix);
+        var M = glMatrix.mat4.mul(this.worldToScreenMatrix, this.viewport.viewportMatrix, this.worldToViewportMatrix);
+
+        //the camera's own offset on a whole pixel, rounded on its own: a
+        //sprite is put on the nearest pixel to where it is, and with the
+        //camera's fraction of a pixel added in first, ones a tile apart -
+        //whose spots differ by a hair from whole pixels, the tile's size not
+        //being exact and their positions kept in float32 - can round
+        //different ways, a pixel apart, leaving a line of the background
+        //between two rows of ground tiles as the camera pans
+        M[12] = Math.round(M[12]);
+        M[13] = Math.round(M[13]);
+
+        return M;
     }
 
     CameraComponent.prototype.getWorldToViewport = function () {
