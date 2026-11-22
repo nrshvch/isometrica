@@ -49,13 +49,13 @@ var MOVE = 1,
   RESIZE = 2;
 
 /**
- * The ground tile at a point on screen, and whether a building being placed
- * was hit there - picking hands back anything it can hit, the see-through
- * preview of what is about to be built included.
+ * The ground tile at a point on screen (client/terrain tileAt), and whether a
+ * building being placed was hit there - picking hands back anything it can
+ * hit, the see-through preview of what is about to be built included.
  */
 function pick(me, screenX, screenY) {
   var gos = me._cam.pickGameObject(screenX, screenY),
-    r = { tile: -1, preview: false },
+    r = { tile: me._terrain.tileAt(me._cam, screenX, screenY), preview: false },
     sprite;
 
   for (var i = 0; i < gos.length; i++) {
@@ -63,11 +63,8 @@ function pick(me, screenX, screenY) {
     //read a layer off
     sprite = gos[i].spriteRenderer;
 
-    if (sprite === undefined) continue;
-
-    if (sprite.layer === RenderLayer.previewLayer) r.preview = true;
-    else if (r.tile === -1 && sprite.layer === RenderLayer.groundLayer)
-      r.tile = me._terrain.getCoordinates(gos[i]);
+    if (sprite !== undefined && sprite.layer === RenderLayer.previewLayer)
+      r.preview = true;
   }
 
   //the drawn tile only says roughly where - the one under the finger is the

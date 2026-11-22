@@ -13,7 +13,7 @@ define(function(require) {
         //the layers drawn lit, and of them those of flat ground, and what
         //draws every layer instead of the canvas - in WebGL: {canvas,
         //context, begin(viewport, M), layer(lit, flat), collect(renderer,
-        //sprite, x0, y0), flush(), light(), end()} - its canvas the one
+        //sprite, x0, y0[, height]), flush(), light(), end()} - its canvas the one
         //shown, its context what lines, shapes and words are drawn with
         //(see Canvas2dRenderer renderGL, Viewport) - null for everything
         //drawn on the canvas

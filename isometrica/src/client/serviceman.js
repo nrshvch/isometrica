@@ -237,18 +237,7 @@ function refreshInfo(self) {
 }
 
 function pickTile(root, screenX, screenY) {
-  var gos = root.camera.cameraScript.pickGameObject(screenX, screenY),
-    sprite,
-    i;
-
-  for (i = 0; i < gos.length; i++) {
-    sprite = gos[i].spriteRenderer;
-
-    if (sprite !== undefined && sprite.layer === RenderLayer.groundLayer)
-      return root.terrain.getCoordinates(gos[i]);
-  }
-
-  return -1;
+  return root.terrain.tileAt(root.camera.cameraScript, screenX, screenY);
 }
 
 /**

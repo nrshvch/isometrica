@@ -271,10 +271,7 @@ function onGridUpdate(sender, args, self) {
         place(self, go, tile, spriteData);
       }
       //only ever put on a tile that is on screen
-    } else if (
-      spriteData !== null &&
-      self.root.terrain.getTile(tile) !== null
-    ) {
+    } else if (spriteData !== null && self.root.terrain.drawn(tile)) {
       plant(self, tile, spriteData);
     }
   }

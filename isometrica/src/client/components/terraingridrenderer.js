@@ -194,6 +194,7 @@ function moved(self, M, w, h) {
  */
 function lines(self, M, w, h) {
   var tiles = self.terrain.tiles,
+    slots = self.terrain.slots,
     points = self.points,
     extra = self.extra,
     box = self.box,
@@ -232,6 +233,7 @@ function lines(self, M, w, h) {
       gridLine(
         points,
         tiles,
+        slots,
         extra,
         i,
         Math.max(0, Math.floor(span[0])),
@@ -243,6 +245,7 @@ function lines(self, M, w, h) {
       gridLine(
         points,
         tiles,
+        slots,
         extra,
         i,
         Math.max(0, Math.floor(span[0])),
@@ -301,9 +304,11 @@ function across(u, v, c) {
  * from to grid point to: into points, where there are tiles either side
  * of it, as one line for as long as it goes on straight; and where the tiles
  * either side have it at heights of their own, the second of them into
- * extra.
+ * extra. A tile's corners are read off the stretch of ground it is drawn
+ * with, at its slot there (client/terrain tiles, slots; client/groundchunk
+ * heights).
  */
-function gridLine(points, tiles, extra, at, from, to, alongX) {
+function gridLine(points, tiles, slots, extra, at, from, to, alongX) {
   var c = alongX ? ALONG_X : ALONG_Y,
     //the line's start and how far it has got, and how much it climbs a tile
     open = false,
@@ -311,19 +316,20 @@ function gridLine(points, tiles, extra, at, from, to, alongX) {
     endZ = 0,
     climb = 0,
     k,
+    ka,
+    kb,
     a,
     b,
+    ha,
+    hb,
     za,
     zb;
 
   for (k = from; k < to; k++) {
-    a = alongX ? tiles[(at << 16) ^ k] : tiles[(k << 16) ^ at];
-    b =
-      at === 0
-        ? undefined
-        : alongX
-          ? tiles[((at - 1) << 16) ^ k]
-          : tiles[(k << 16) ^ (at - 1)];
+    ka = alongX ? (at << 16) ^ k : (k << 16) ^ at;
+    kb = alongX ? ((at - 1) << 16) ^ k : (k << 16) ^ (at - 1);
+    a = tiles[ka];
+    b = at === 0 ? undefined : tiles[kb];
 
     if (a === undefined && b === undefined) {
       if (open) end(points, alongX, at, endK, endZ);
@@ -332,16 +338,36 @@ function gridLine(points, tiles, extra, at, from, to, alongX) {
     }
 
     if (a !== undefined) {
-      za = a.heights[c[0]];
-      zb = a.heights[c[1]];
+      ha = 4 * slots[ka];
+      za = a.heights[ha + c[0]];
+      zb = a.heights[ha + c[1]];
 
-      if (b !== undefined && (b.heights[c[2]] !== za || b.heights[c[3]] !== zb))
-        alongX
-          ? extra.push(k, at, b.heights[c[2]], k + 1, at, b.heights[c[3]])
-          : extra.push(at, k, b.heights[c[2]], at, k + 1, b.heights[c[3]]);
+      if (b !== undefined) {
+        hb = 4 * slots[kb];
+
+        if (b.heights[hb + c[2]] !== za || b.heights[hb + c[3]] !== zb)
+          alongX
+            ? extra.push(
+                k,
+                at,
+                b.heights[hb + c[2]],
+                k + 1,
+                at,
+                b.heights[hb + c[3]],
+              )
+            : extra.push(
+                at,
+                k,
+                b.heights[hb + c[2]],
+                at,
+                k + 1,
+                b.heights[hb + c[3]],
+              );
+      }
     } else {
-      za = b.heights[c[2]];
-      zb = b.heights[c[3]];
+      hb = 4 * slots[kb];
+      za = b.heights[hb + c[2]];
+      zb = b.heights[hb + c[3]];
     }
 
     if (open && endZ === za && zb - za === climb) {

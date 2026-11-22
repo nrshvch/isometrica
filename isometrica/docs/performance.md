@@ -157,8 +157,28 @@ What it says:
 - **Later.** The grid (`terraingridrenderer.js`) keeps its geometry, but
   every frame takes it through the camera and tessellates it again in
   script; the borders do too. Static GPU buffers, moved by a uniform.
-- **Later.** The cull is over every game object every frame (about 6,700
-  here), typed as it is: cull by chunk first.
+- **Done.** Every tile of the ground was a game object of its own: 5,184
+  of the 6,730 here, each one culled every frame and gone through by every
+  pick. A chunk of the ground is one game object now (`groundchunk.js`),
+  its tiles kept in typed arrays the way a tilemap keeps them: culled as a
+  whole by its box on the screen, and only on the screen each tile culled
+  and drawn as the engine culls and draws a sprite, in the same order. The
+  GPU is handed what it was, quad for quad: every quad of the ground, and
+  the tile picked at 16,000 points across the screen, compared before and
+  after, turned each of three ways and from above. A tile is picked off
+  the chunks (`Terrain#tileAt`). Before → after, the middle of three runs
+  each: the cull 0.45 → 0.15 ms a frame, the ground's draw 1.23 → 0.71 ms,
+  a pass over the slots (every pick makes one) 0.11 → 0.03 ms, a tile
+  picked 0.081 → 0.017 ms, the heap 37.8 → 29.8 MB.
+- **Done.** And then every tile culled from numbers alone: its picture's
+  size kept in the chunk's typed arrays with the rest of it, the pivot one
+  for the chunk, the shape it was drawn in numbers rather than a string.
+  Only a tile drawn has its picture read. The ground's own cull and draw,
+  by itself, 0.107 → 0.075 ms; a tile picked 0.029 → 0.010 ms.
+- **Later.** What the cull still goes over is mostly the trees, 1,320 game
+  objects. They are sorted by depth among the buildings, so a chunk of
+  them cannot be drawn as one the way the ground is: the engine would have
+  to sort what a renderer draws, not only the renderer.
 
 ### The GPU
 
@@ -194,8 +214,21 @@ What it says:
   (tiles are about 1.78e9, past a small integer), a typed A*.
 - **Later.** Smoke: a game object a puff, each working out the wind and a
   matrix a frame - one particle buffer.
-- **Later.** Heights: a per-chunk `Int16Array` instead of noise worked out
-  again.
+- **Done.** Heights: `getGridPointHeight` worked eleven octaves of noise
+  out every time it was asked (`calcZ`, its cache taken out, as it was kept
+  in `gridPoints`, which is saved whole), and the ground, the trees, the
+  roads and the buildings ask it over and over: a tile's corners, and the
+  tiles round it for its edges. Of a quarter turn it was about 70% of the
+  time and nearly 90% of what was allocated. What the noise says is kept
+  now beside `gridPoints` (`noiseHeight`): a window of the world 512 grid
+  points across, wrapped round, in two typed arrays made once, 1.25 MB -
+  nothing made as it is asked, a point far off only taking another's
+  place. And `calcZ` works its four finest octaves out once for the land
+  and the islands both. The same heights to the last one: 1.25 million
+  grid points compared, near and all over the world, and the traffic's
+  test the same. The middle of three runs each: a quarter turn 231 → 57
+  ms; what four turns allocate 624 → 83 MB; 16 chunks coming in 254 → 59
+  ms; the frame 6.3 → 5.4 ms.
 - **Later.** The city's tick (`core/logic.js`): `city.missing()` 3-5 times a
   building a tick; `catchUp` replays up to 288 ticks at once when the tab
   comes back; a full `JSON.stringify` save every 5 ticks.
@@ -288,6 +321,23 @@ Already so:
   camera does not move, and only what moves drawn over it every frame.
 - **Later.** Smoke as one buffer of particles, not a game object a puff.
 - **Later.** Fewer render targets: normal and height in one.
+
+## Keeping the frame light
+
+What runs every frame, or over everything there is, keeps its numbers in
+typed arrays rather than in objects, and goes to an object only when it
+has to:
+
+- What there are many of - the world's slots, the renderer's entries, the
+  ground's tiles - is a typed array a field, one of them an index into all
+  of them. They are grown when they fill, by half again or twice as much at
+  a time, never one at a time.
+- What is culled is culled from numbers alone. An object is looked at only
+  for what is drawn: a tile of the ground off the screen costs a few reads
+  of its arrays, and its picture is never touched.
+- Nothing is made in a frame only to be thrown away - no arrays, closures
+  or strings: what a thing is, its shape or its key, is numbers compared,
+  not a string joined.
 
 ## Notes
 

@@ -619,6 +619,10 @@ function hit(image, layer, x, y) {
   );
 }
 
+//for whatever picks among pictures of its own that are not gameObjects
+//(client/groundchunk)
+CameraScript.hit = hit;
+
 //what may be under the pointer, and where each picture's corner is on the
 //screen (engine Canvas2dRenderer under) - kept for the next pick
 var found = [],
