@@ -20,7 +20,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import ClientConfig from "isometrica/client/config";
-import { Icon, cx } from "../kit";
+import { Container, Icon, cx } from "../kit";
 import { setWorldMap, useGame } from "../store";
 import { getClient } from "../session";
 
@@ -50,6 +50,35 @@ var LEFT = 40,
 var DRAG = 4;
 //how often the camera's spot is read again, ms
 var EVERY = 250;
+//how wide the map is on a screen wide enough for it to float over the
+//world, CSS pixels - on a narrower one it fills the screen (WorldMap)
+var FLOATING = 320;
+//what wide enough is: Tailwind's sm, as the HUD goes by
+var WIDE = "(min-width: 640px)";
+
+//whether the screen is wide enough for the map to float over the world -
+//kept up to date as it turns, or the window is made narrower
+function useWide() {
+  var [wide, setWide] = useState(function () {
+    return window.matchMedia(WIDE).matches;
+  });
+
+  useEffect(function () {
+    var m = window.matchMedia(WIDE);
+
+    function change() {
+      setWide(m.matches);
+    }
+
+    m.addEventListener("change", change);
+
+    return function () {
+      m.removeEventListener("change", change);
+    };
+  }, []);
+
+  return wide;
+}
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -133,10 +162,13 @@ function cameraTile(client) {
 export default function WorldMap() {
   var client = getClient(),
     terrain = client && client.core ? client.core.terrain : null,
-    //as wide as the screen leaves room for, at the most 320 CSS pixels
-    size = useRef(
-      Math.max(200, Math.min(320, window.innerWidth - 120)),
-    ).current,
+    //floating over the world, or filling a phone's screen, as a screen
+    //over the world does there (kit Screen)
+    wide = useWide(),
+    //how wide the map is, CSS pixels: as wide as it floats, or as the
+    //room it has filling the screen
+    [size, setSize] = useState(FLOATING),
+    room = useRef(null),
     [at, setAt] = useState(function () {
       var c = cameraTile(client);
 
@@ -164,6 +196,8 @@ export default function WorldMap() {
     hover: hover,
     target: target,
     camera: camera,
+    size: size,
+    wide: wide,
   };
 
   function draw() {
@@ -172,10 +206,11 @@ export default function WorldMap() {
     if (!c) return;
 
     var dpr = window.devicePixelRatio || 1,
+      s = latest.current,
+      size = s.size,
       w = LEFT + size + RIGHT,
       h = TOP + size + BOTTOM,
       g = c.getContext("2d"),
-      s = latest.current,
       span = SPANS[s.at.zoom],
       x0 = s.at.x - span / 2,
       y0 = s.at.y - span / 2,
@@ -187,7 +222,7 @@ export default function WorldMap() {
       i,
       t;
 
-    if (c.width !== Math.round(w * dpr)) {
+    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) {
       c.width = Math.round(w * dpr);
       c.height = Math.round(h * dpr);
     }
@@ -350,7 +385,39 @@ export default function WorldMap() {
   );
 
   //drawn again as anything on it changes
-  useEffect(draw, [hover, target, camera]);
+  useEffect(draw, [hover, target, camera, size, wide]);
+
+  //filling the screen, as big as the room it has - square, and measured
+  //again as the phone turns
+  useEffect(
+    function () {
+      if (wide) {
+        setSize(FLOATING);
+        return;
+      }
+
+      var el = room.current,
+        watch = new ResizeObserver(function () {
+          var r = el.getBoundingClientRect();
+
+          setSize(
+            Math.max(
+              120,
+              Math.floor(
+                Math.min(r.width - LEFT - RIGHT, r.height - TOP - BOTTOM),
+              ),
+            ),
+          );
+        });
+
+      watch.observe(el);
+
+      return function () {
+        watch.disconnect();
+      };
+    },
+    [wide],
+  );
 
   //where the camera is, read again now and then - panned, it moves
   useEffect(function () {
@@ -373,22 +440,26 @@ export default function WorldMap() {
   }, []);
 
   //the wheel zooms the map, not the page or the world under it
-  useEffect(function () {
-    var c = canvas.current;
+  useEffect(
+    function () {
+      var c = canvas.current;
 
-    function wheel(e) {
-      var t = tileAt(e);
+      function wheel(e) {
+        var t = tileAt(e);
 
-      e.preventDefault();
-      if (t) zoomAbout(t, e.deltaY < 0 ? 1 : -1);
-    }
+        e.preventDefault();
+        if (t) zoomAbout(t, e.deltaY < 0 ? 1 : -1);
+      }
 
-    c.addEventListener("wheel", wheel, { passive: false });
+      c.addEventListener("wheel", wheel, { passive: false });
 
-    return function () {
-      c.removeEventListener("wheel", wheel);
-    };
-  }, []);
+      return function () {
+        c.removeEventListener("wheel", wheel);
+      };
+      //a canvas of its own, floating or filling the screen
+    },
+    [wide],
+  );
 
   //the tile under the pointer, and where on the map it is - or null off it
   function tileAt(e) {
@@ -396,6 +467,7 @@ export default function WorldMap() {
       mx = e.clientX - r.left - LEFT,
       my = e.clientY - r.top - TOP,
       s = latest.current,
+      size = s.size,
       span = SPANS[s.at.zoom];
 
     if (mx < 0 || my < 0 || mx > size || my > size) return null;
@@ -412,6 +484,7 @@ export default function WorldMap() {
   //or the middle of it, with no t
   function zoomAbout(t, by) {
     var s = latest.current.at,
+      size = latest.current.size,
       zoom = clamp(s.zoom + by, 0, SPANS.length - 1),
       span = SPANS[zoom];
 
@@ -439,6 +512,10 @@ export default function WorldMap() {
       y * ClientConfig.tileSize,
     );
     setCamera([x, y]);
+
+    //the map filling the screen is put away, for where the camera went to
+    //be seen
+    if (!latest.current.wide) setWorldMap(false);
   }
 
   function go(e) {
@@ -481,6 +558,7 @@ export default function WorldMap() {
 
     var dx = e.clientX - d.x,
       dy = e.clientY - d.y,
+      size = latest.current.size,
       span = SPANS[d.at.zoom];
 
     if (!d.moved && Math.hypot(dx, dy) < DRAG) return;
@@ -512,31 +590,11 @@ export default function WorldMap() {
         )
       : null;
 
-  return (
-    <div
-      className={cx(
-        "card pointer-events-auto fixed top-32 z-40 max-h-[calc(100svh-14rem)] overflow-y-auto overscroll-contain text-xs",
-        //beside the debug panel, when that is up too
-        debug ? "left-[19.25rem] sm:left-[19.75rem]" : "left-2.5 sm:left-4",
-      )}
-    >
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5">
-        <span className="label">World map</span>
-        <span className="text-[10px] font-semibold text-muted">
-          {SPANS[at.zoom].toLocaleString()} tiles across
-        </span>
-        <button
-          type="button"
-          aria-label="Close"
-          title="Close"
-          onClick={function () {
-            setWorldMap(false);
-          }}
-          className="-mr-1 ml-auto grid size-7 cursor-pointer place-items-center rounded-[3px] hover:bg-inset"
-        >
-          <Icon name="close" size={16} />
-        </button>
-      </div>
+  var across = SPANS[at.zoom].toLocaleString() + " tiles across",
+    close = function () {
+      setWorldMap(false);
+    },
+    map = (
       <canvas
         ref={canvas}
         style={{
@@ -554,84 +612,152 @@ export default function WorldMap() {
           setHover(null);
         }}
       />
-      <div className="flex items-center gap-1 px-3 pt-1.5 font-mono text-[11px] text-muted">
-        <span className="min-w-0 flex-1 truncate">
-          {hover
-            ? "x " +
-              Math.floor(hover.x) +
-              "  y " +
-              Math.floor(hover.y) +
-              "  height " +
-              height
-            : camera
-              ? "camera  x " +
-                Math.floor(camera[0]) +
+    ),
+    below = (
+      <>
+        <div className="flex items-center gap-1 px-3 pt-1.5 font-mono text-[11px] text-muted">
+          <span className="min-w-0 flex-1 truncate">
+            {hover
+              ? "x " +
+                Math.floor(hover.x) +
                 "  y " +
-                Math.floor(camera[1])
-              : ""}
-        </span>
+                Math.floor(hover.y) +
+                "  height " +
+                height
+              : camera
+                ? "camera  x " +
+                  Math.floor(camera[0]) +
+                  "  y " +
+                  Math.floor(camera[1])
+                : ""}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 px-3 pt-1.5">
+          <MapButton
+            icon="minus"
+            label="Show more"
+            onClick={function () {
+              zoomAbout(null, -1);
+            }}
+          />
+          <MapButton
+            icon="plus"
+            label="Show less, closer"
+            onClick={function () {
+              zoomAbout(null, 1);
+            }}
+          />
+          <button
+            type="button"
+            className="h-7 cursor-pointer rounded-[3px] px-2 font-extrabold hover:bg-inset"
+            onClick={function () {
+              setAt(shown(WORLD / 2, WORLD / 2, 0));
+            }}
+          >
+            World
+          </button>
+          <button
+            type="button"
+            className="h-7 cursor-pointer rounded-[3px] px-2 font-extrabold hover:bg-inset"
+            onClick={function () {
+              if (camera)
+                setAt(
+                  shown(
+                    camera[0],
+                    camera[1],
+                    at.zoom === 0 ? GO_ZOOM : at.zoom,
+                  ),
+                );
+            }}
+          >
+            Camera
+          </button>
+        </div>
+        <form onSubmit={go} className="flex items-center gap-1.5 px-3 pt-1.5">
+          <input
+            value={asked}
+            onChange={function (e) {
+              setAsked(e.target.value);
+              setWrong(false);
+            }}
+            placeholder="x, y"
+            aria-label="Go to tile x, y"
+            className={cx(
+              //16 pixels on a phone, or it zooms the page in to it
+              "h-8 min-w-0 flex-1 rounded-[3px] bg-inset px-2 font-mono text-base outline-none sm:text-[12px]",
+              wrong && "ring-2 ring-red",
+            )}
+          />
+          <button
+            type="submit"
+            className="h-8 cursor-pointer rounded-[3px] bg-navy px-3 font-extrabold text-paper"
+          >
+            Go to
+          </button>
+        </form>
+        <div className="px-3 pt-1.5 pb-2.5 text-[11px] text-muted">
+          {wide
+            ? "Drag to look about, wheel to zoom. Click to put the camera there."
+            : "Drag to look about. Tap to put the camera there."}
+        </div>
+      </>
+    );
+
+  //on a phone, over the whole screen as the game's screens are (kit
+  //Screen): the world dimmed behind it
+  if (!wide)
+    return (
+      <div className="pointer-events-auto fixed inset-0 z-40 flex flex-col bg-navy/45 backdrop-blur-sm">
+        <Container className="flex min-h-0 flex-1 flex-col pt-[max(0.625rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <section className="card flex min-h-0 flex-1 flex-col overflow-hidden text-xs">
+            <header className="flex flex-wrap items-center gap-3 border-b-[1.5px] border-inset px-4 py-3">
+              <h2 className="text-xl font-black">World map</h2>
+              <div className="text-sm text-muted">{across}</div>
+              <button
+                type="button"
+                aria-label="Close"
+                title="Close"
+                onClick={close}
+                className="-mr-1.5 ml-auto grid size-10 cursor-pointer place-items-center rounded-[3px] hover:bg-inset"
+              >
+                <Icon name="close" size={22} />
+              </button>
+            </header>
+            <div
+              ref={room}
+              className="grid min-h-0 flex-1 place-items-center overflow-hidden pt-2"
+            >
+              {map}
+            </div>
+            {below}
+          </section>
+        </Container>
       </div>
-      <div className="flex items-center gap-1 px-3 pt-1.5">
-        <MapButton
-          icon="minus"
-          label="Show more"
-          onClick={function () {
-            zoomAbout(null, -1);
-          }}
-        />
-        <MapButton
-          icon="plus"
-          label="Show less, closer"
-          onClick={function () {
-            zoomAbout(null, 1);
-          }}
-        />
+    );
+
+  return (
+    <div
+      className={cx(
+        "card pointer-events-auto fixed top-32 z-40 max-h-[calc(100svh-14rem)] overflow-y-auto overscroll-contain text-xs",
+        //beside the debug panel, when that is up too
+        debug ? "left-[19.75rem]" : "left-4",
+      )}
+    >
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5">
+        <span className="label">World map</span>
+        <span className="text-[10px] font-semibold text-muted">{across}</span>
         <button
           type="button"
-          className="h-7 cursor-pointer rounded-[3px] px-2 font-extrabold hover:bg-inset"
-          onClick={function () {
-            setAt(shown(WORLD / 2, WORLD / 2, 0));
-          }}
+          aria-label="Close"
+          title="Close"
+          onClick={close}
+          className="-mr-1 ml-auto grid size-7 cursor-pointer place-items-center rounded-[3px] hover:bg-inset"
         >
-          World
-        </button>
-        <button
-          type="button"
-          className="h-7 cursor-pointer rounded-[3px] px-2 font-extrabold hover:bg-inset"
-          onClick={function () {
-            if (camera)
-              setAt(
-                shown(camera[0], camera[1], at.zoom === 0 ? GO_ZOOM : at.zoom),
-              );
-          }}
-        >
-          Camera
+          <Icon name="close" size={16} />
         </button>
       </div>
-      <form onSubmit={go} className="flex items-center gap-1.5 px-3 pt-1.5">
-        <input
-          value={asked}
-          onChange={function (e) {
-            setAsked(e.target.value);
-            setWrong(false);
-          }}
-          placeholder="x, y"
-          aria-label="Go to tile x, y"
-          className={cx(
-            "h-8 min-w-0 flex-1 rounded-[3px] bg-inset px-2 font-mono text-[12px] outline-none",
-            wrong && "ring-2 ring-red",
-          )}
-        />
-        <button
-          type="submit"
-          className="h-8 cursor-pointer rounded-[3px] bg-navy px-3 font-extrabold text-paper"
-        >
-          Go to
-        </button>
-      </form>
-      <div className="px-3 pt-1.5 pb-2.5 text-[11px] text-muted">
-        Drag to look about, wheel to zoom. Click to put the camera there.
-      </div>
+      {map}
+      {below}
     </div>
   );
 }
