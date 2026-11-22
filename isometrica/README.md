@@ -95,10 +95,12 @@ engine in `engine/`.
   spilling over the edges of open water next to it), its trees and its
   stones. The woods (`src/core/woods.js`) go on whatever the climate, so a
   forest runs on into the cold or the heat and only what grows in it changes
-  (`FLORA`): out in the cold, the spruce and the pine snowed over and the
-  broadleaf trees mostly gone, then further out fewer trees and fewer of
-  them alive, till only the dead wood is left in the snow; in the desert,
-  hardly anything, dead and bleached by the sun. The stones are snowed over
+  (`FLORA`): out in the cold, only the firs and the pines, snowed over -
+  some where the broadleaf trees would be, which die in the cold - and a
+  dead trunk among them now and then; further out the pines die off, then
+  the firs, and for a few thousand tiles there are only dead trunks and
+  fallen ones in the snow, fewer and fewer, till the edge of the world is
+  empty; in the desert, hardly anything, dead and bleached by the sun. The stones are snowed over
   in the cold, and red sandstone and pale rock in the desert - twice as many
   of them (`src/core/ambient.js`, `src/data/rocks.js`).
 - Nothing of it is kept: it is worked out from where a tile is, like the

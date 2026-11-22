@@ -15,10 +15,12 @@
  *
  * The woods go on whatever the climate (core/climate), so a forest runs on
  * into the cold or the heat, and only what grows in it changes (FLORA): out
- * in the cold, the spruce and the pine snowed over, the broadleaf trees
- * mostly gone, and further out fewer and fewer trees, and fewer of them
- * alive, till there is only the dead wood left in the snow; in the desert,
- * hardly anything, and that dead and dried out.
+ * in the cold, only the firs and the pines, snowed over - a few of them
+ * where the broadleaf trees would be, which die in the cold - a dead one
+ * among them now and then; further out the pines die off, then the firs,
+ * and for a while there are only dead trunks standing in the snow, fewer
+ * and fewer, till at the edge of the world there is nothing at all; in the
+ * desert, hardly anything, and that dead and dried out.
  */
 import Simplex from "simplex-noise";
 import Trees from "../data/trees";
@@ -134,8 +136,11 @@ var UPLAND = 3,
  *
  *  - kinds: what each kind of the woods is there - one kind, or a few to pick
  *    from, as likely as each other; one that is not there, nothing;
- *  - die: the kinds still alive at the edge of the zone, which die off going
- *    further in, all of them dead dieOver degrees in - as one of dead;
+ *  - die: the living kinds that die off further in, each over degrees of its
+ *    own - none of them dead from so far in, all of them so far in - standing
+ *    there as one of dead instead, or nothing;
+ *  - bare: from how far in, to how far, whatever is left there thins out to
+ *    nothing - past it nothing grows at all;
  *  - density: how many of the trees the woods would have there are at the
  *    edge of the zone, and thin: how many fewer still, thinOver degrees
  *    further in.
@@ -145,24 +150,28 @@ var FLORA = {
     kinds: {
       spruce: "snowspruce",
       pine: "snowpine",
-      //the broadleaf trees die in the cold, and only now and then one
-      //stands dead
-      oak: [null, null, null, null, "snowsnag"],
-      beech: [null, null, null, null, "snowsnag"],
-      ash: [null, null, null, null, "snowsnag"],
-      alder: [null, null, null, null, "snowsnag"],
-      birch: [null, null, null, "snowsnag"],
-      snag: "snowsnag",
+      //the broadleaf trees die in the cold: here and there a fir or a pine
+      //stands where one would
+      oak: [null, null, null, "snowspruce", "snowpine"],
+      beech: [null, null, null, "snowspruce", "snowpine"],
+      ash: [null, null, null, "snowspruce", "snowpine"],
+      alder: [null, null, null, "snowspruce", "snowpine"],
+      birch: [null, null, null, "snowspruce", "snowpine"],
+      //and a dead one stands only now and then
+      snag: ["snowsnag", null, null],
       stump: "snowstump",
       log: "snowlog",
       logs: "snowlogs",
     },
-    die: { snowspruce: true, snowpine: true },
-    dead: ["snowsnag", "snowsnag", "snowlog", "snowstump"],
-    dieOver: 9,
+    //further out the pines die off first, then the firs - dead trunks
+    //standing where they were, a fallen one now and then - and the dead
+    //wood, last, thins out to the frozen waste at the edge of the world
+    die: { snowpine: [3, 7], snowspruce: [5, 9] },
+    dead: ["snowsnag", "snowsnag", "snowsnag", "snowlog", "snowstump", null],
+    bare: [9, 14],
     density: 1,
-    thin: 0.8,
-    thinOver: 12,
+    thin: 0.5,
+    thinOver: 9,
   },
   hot: {
     kinds: {
@@ -285,12 +294,17 @@ function climateKind(flora, kind, x, y, depth) {
   if (k === null) return null;
 
   //the further in, the more of the living ones are dead
-  if (
-    flora.die !== undefined &&
-    flora.die[k] === true &&
-    hash(x, y, 26) < smoothstep(0, flora.dieOver, depth)
-  )
+  var die = flora.die !== undefined ? flora.die[k] : undefined;
+
+  if (die !== undefined && hash(x, y, 26) < smoothstep(die[0], die[1], depth))
     k = flora.dead[Math.floor(hash(x, y, 27) * flora.dead.length)];
+
+  //and further in still, nothing at all
+  if (
+    flora.bare !== undefined &&
+    hash(x, y, 28) < smoothstep(flora.bare[0], flora.bare[1], depth)
+  )
+    return null;
 
   return k;
 }
