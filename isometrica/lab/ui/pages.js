@@ -87,6 +87,15 @@ export var PAGES = [
       "on and smoulders - a day of it, as fast as you like, by day or night.",
   },
   {
+    id: "climate",
+    name: "Climate bench",
+    about:
+      "Every zone of the climate on one island - desert, green, snow and " +
+      "the frozen edge of the world - the way the game draws it: where each " +
+      "gives way to the next, the water freezing over, the trees and the " +
+      "stones of each, warmer or colder.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

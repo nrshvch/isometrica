@@ -42,7 +42,9 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   the fire bench at `/fire.html` - a building set on fire, spreading
   floor by floor and tile by tile, black smoke rolling up off it, and left
   gutted, a roofless shell or fallen in, by what it is built of, a
-  burnt-out ruin, a day of it as fast as asked, by day or at night - and
+  burnt-out ruin, a day of it as fast as asked, by day or at night - the
+  climate bench at `/climate.html` - every zone of the climate on one
+  island, how each gives way to the next, the water freezing over - and
   the lighting bench at `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
@@ -106,7 +108,9 @@ engine in `engine/`.
 - Nothing of it is kept: it is worked out from where a tile is, like the
   lie of the land. The game's world map (the HUD's map button) shows the
   rings, and the zone and how warm it is under the pointer; the woods map
-  in the lab (`/woods.html`) shows the zones' trees.
+  in the lab (`/woods.html`) shows the zones' trees, and the climate bench
+  (`/climate.html`, see Benches) every zone on one island, the way the
+  game draws it.
 - `npm run map:climate` (`tools/climatemap.mjs`) writes the whole world -
   or a part of it, `--at x,y --size n` - as a picture, `climate.png`, and
   tells how much of the land each zone has; `--temperature t` shows where
@@ -319,7 +323,26 @@ engine in `engine/`.
   are done, and "again" does both.
 - Both go as fast as asked, down to a tenth, or stopped, at ten in the
   morning in clear weather, nothing saved or heard, and turn round or are
-  seen from above. `window.bench` in the console.
+  seen from above. `window.bench` in the console. Their ground is as warm
+  as the green of the world (`src/core/climate.js` setHeat), wherever the
+  world's own climate would have it: grass.
+- `lab/climate.html` is the climate bench: every zone of the climate on one
+  island, on the same world as the demolition bench (`lab/climate/
+scene.js`) - the desert at one end, 40°, then the green, then the snow,
+  -18° at the other: what the world spreads over thousands of tiles pressed
+  into seventy-two, the bench laying the climate out its own way (setHeat),
+  so that every border can be seen at once - the zones mixed in patches,
+  the ground of the one spilling over the edges of the other. A river winds
+  from one end to the other through every zone, deep in its middle, and the
+  sea is all round, so every zone has its shore: a sand beach, and out in
+  the cold the water frozen over, the ice closing over open water from its
+  edges, frost for a beach. Hills stand in every zone for its ground on the
+  slopes, and the trees and the stones are the ones the world puts there by
+  itself: the dead wood of the desert, the woods of the green, the snowy
+  firs and pines, the pines dying off, then the firs, then only dead trunks
+  and at the far end nothing. Warmer or colder moves every zone along it;
+  it turns, is seen from above, and goes nearer or further - "all" the
+  whole island.
 
 ### Sounds
 

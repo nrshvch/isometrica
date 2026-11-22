@@ -83,6 +83,9 @@ var KEPT = 65536;
 
 var simplex = new Simplex("climate"),
   temperature = TEMPERATURE,
+  //how warm a tile is worked out some other way than by how far it is from
+  //the middle of the world, for a page of the lab (setHeat) - or null
+  heatOf = null,
   kept = new Map();
 
 //0 to 1, as good as random and always the same for the same numbers
@@ -108,6 +111,8 @@ function hash(x, y, salt) {
  * @returns {number}
  */
 function heat(x, y) {
+  if (heatOf !== null) return heatOf(x, y);
+
   var dx = x + 0.5 - CENTER[0],
     dy = y + 0.5 - CENTER[1];
 
@@ -233,6 +238,21 @@ function getTemperature() {
   return temperature;
 }
 
+/**
+ * Has how warm tile x, y is, °C, worked out by fn from now on, in place of
+ * how far it is from the middle of the world - for a page of the lab to lay
+ * the climate out over a patch of its own (lab/climate), or to keep its
+ * ground green (lab/bench); the world's own way again, given nothing. Where
+ * the zones change, their tiles are mixed all the same (BLEND). The game
+ * never calls it.
+ *
+ * @param [fn] {function(number, number): number}
+ */
+function setHeat(fn) {
+  heatOf = fn || null;
+  kept.clear();
+}
+
 export default {
   CENTER: CENTER,
   TEMPERATURE: TEMPERATURE,
@@ -247,4 +267,5 @@ export default {
   radius: radius,
   setTemperature: setTemperature,
   getTemperature: getTemperature,
+  setHeat: setHeat,
 };

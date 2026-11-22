@@ -13,6 +13,7 @@ import Client from "../../src/client/main";
 import Config from "../../src/client/config";
 import Weather from "../../src/client/weather";
 import Terrain from "../../src/core/terrain";
+import Climate from "../../src/core/climate";
 import BuildingCode from "../../src/data/buildingcode";
 import BuildingData from "../../src/data/buildings";
 import BuildingClassCode from "../../src/data/classcode";
@@ -37,6 +38,11 @@ var CLOSE = 2;
  */
 export function open(el) {
   Weather.override = "clear";
+  //as warm as the green of the world (core/climate), whatever the world's
+  //own climate would have it there: grass
+  Climate.setHeat(function () {
+    return 15;
+  });
 
   var terrain = new Terrain(null),
     //all there is of a world for the drawing: the ground, the hour, and no

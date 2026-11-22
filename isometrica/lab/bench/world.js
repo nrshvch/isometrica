@@ -11,9 +11,16 @@
  *
  * What is put up goes up whole, there and then - unpaid, nothing floated
  * over it (put) - on tiles counted from the middle of the patch.
+ *
+ * It is as warm as the green of the world there (core/climate), whatever
+ * the world's own climate would have it - unless a bench lays the climate
+ * out its own way (lab/climate.html); and of what the world puts on the land
+ * by itself, the trees and the stones, nothing stands off the patch.
  */
 import ReactiveProperty from "reactive-property";
+import Events from "events";
 import Core from "../../src/core/main";
+import Climate from "../../src/core/climate";
 import Client from "../../src/client/main";
 import BuildingCode from "../../src/data/buildingcode";
 import BuildingClassCode from "../../src/data/classcode";
@@ -33,6 +40,9 @@ var SAVES = "lab.bench";
 
 //how high the bench's ground is, steps - land, clear of the sea
 var GROUND = 2;
+
+//how warm the bench is, °C: the middle of the green (core/climate ZONES)
+var GREEN = 15;
 
 //the middle of the bench, out in the open sea: deep water for thirty tiles
 //round it, nothing of the world's own anywhere near
@@ -137,6 +147,9 @@ export function kinds() {
  */
 export function open(el) {
   Weather.override = "clear";
+  Climate.setHeat(function () {
+    return GREEN;
+  });
 
   var core = new Core.Logic({ tick: 300000, saves: SAVES }),
     client = new Client.Vkaria(core, bridge(), {
@@ -201,6 +214,27 @@ function only(self) {
 
     if (ax1 > ax0 && ay1 > ay0)
       draw.call(terrain, ax0, ay0, ax1 - ax0, ay1 - ay0);
+  };
+
+  //and the trees and the stones the world puts on the land by itself
+  //(core/ambient) only on it - not floating over the ground left undrawn
+  var service = self.core.envService,
+    getTree = service.getTree,
+    getRock = service.getRock;
+
+  function on(tile) {
+    var a = self.area,
+      x = Terrain.extractX(tile),
+      y = Terrain.extractY(tile);
+
+    return a !== null && x >= a.x && y >= a.y && x < a.x + a.w && y < a.y + a.h;
+  }
+
+  service.getTree = function (tile) {
+    return on(tile) ? getTree.call(this, tile) : null;
+  };
+  service.getRock = function (tile) {
+    return on(tile) ? getRock.call(this, tile) : null;
   };
 }
 
@@ -268,13 +302,20 @@ World.prototype.start = function () {
  * on any of its tiles, and drawn, and nothing else; the patch drawn before
  * it gone where it is not this one.
  *
- * @param [rise] {function(number, number): number} steps
+ * @param [o] {function(number, number): number|Object} rise, steps - or
+ *        {heights, wild}: heights, how high the grid point i, j from the
+ *        patch's corner is, steps, outright (0 to w, 0 to h; no two next to
+ *        each other more than a step apart); wild, the world's own trees and
+ *        stones left standing on it (core/ambient) rather than cleared off
  */
-World.prototype.ground = function (dx, dy, w, h, rise) {
+World.prototype.ground = function (dx, dy, w, h, o) {
   var core = this.core,
     client = this.client,
     x0 = Terrain.extractX(MIDDLE) + dx,
     y0 = Terrain.extractY(MIDDLE) + dy,
+    rise = typeof o === "function" ? o : null,
+    heights = (o && typeof o === "object" && o.heights) || null,
+    wild = !!(o && typeof o === "object" && o.wild),
     was = this.area,
     points = [],
     cleared = [],
@@ -286,7 +327,7 @@ World.prototype.ground = function (dx, dy, w, h, rise) {
     for (j = 0; j <= h; j++)
       points.push([
         Terrain.convertToIndex(x0 + i, y0 + j),
-        GROUND + (rise ? rise(i, j) : 0),
+        heights !== null ? heights(i, j) : GROUND + (rise ? rise(i, j) : 0),
       ]);
 
   for (i = 0; i < w; i++)
@@ -294,10 +335,10 @@ World.prototype.ground = function (dx, dy, w, h, rise) {
       var tile = Terrain.convertToIndex(x0 + i, y0 + j);
 
       tiles.push(tile);
-      if (core.terrain.clearedTiles[tile] !== true) cleared.push(tile);
+      if (!wild && core.terrain.clearedTiles[tile] !== true) cleared.push(tile);
     }
 
-  core.terrain.load({ points: points, cleared: cleared });
+  core.terrain.load({ points: points, cleared: wild ? [] : cleared });
 
   this.area = { x: x0, y: y0, w: w, h: h };
 
@@ -310,6 +351,14 @@ World.prototype.ground = function (dx, dy, w, h, rise) {
 
   this.drawGround(x0, y0, w, h);
   client.terrain.redraw(tiles);
+
+  //the world's own trees and stones put on it, at its height, as the game
+  //puts them where the ground moved (client/envman)
+  if (wild)
+    Events.fire(core.terrain, Terrain.events.gridUpdate, {
+      points: {},
+      tiles: tiles,
+    });
 };
 
 //the client's clock going speed times as fast as the real one - and the
