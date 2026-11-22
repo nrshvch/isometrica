@@ -120,10 +120,32 @@ function codesByKind() {
   return out;
 }
 
+/**
+ * Which way round a tree the world grew on a tile is, of its four: the same
+ * every time, and any of them as likely as the others, with nothing to tell
+ * from the next tile's (client/envman; standing, or lying knocked down,
+ * client/buildingview).
+ *
+ * @param tile {number}
+ * @returns {number} quarter turns, 0..3
+ */
+function tileTurns(tile) {
+  var h =
+    Math.imul(tile & 0xffff, 0x27d4eb2d) ^
+    Math.imul(tile >>> 16, 0x165667b1) ^
+    0x2545f491;
+
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+
+  return (h ^ (h >>> 16)) >>> 30;
+}
+
 export default {
   KINDS: KINDS,
   TREES: TREES,
   variants: variants,
   codesByKind: codesByKind,
   turned: turned,
+  tileTurns: tileTurns,
 };

@@ -69,6 +69,24 @@ export var PAGES = [
       "and a building site goes up on its ground once they are done.",
   },
   {
+    id: "explosion",
+    name: "Explosion bench",
+    about:
+      "One building on flat grass blown up the way the game blows one up - " +
+      "no fence, no bulldozer: torn into pieces thrown all round in a " +
+      "fireball, heaps of rubble left where it stood till they are cleared " +
+      "away - as slowly as you like.",
+  },
+  {
+    id: "fire",
+    name: "Fire bench",
+    about:
+      "One building on flat grass set on fire the way the game sets one on " +
+      "fire: it spreads window by window, floor by floor, black smoke " +
+      "rolling up off it, till it comes down and what is left of it burns " +
+      "on and smoulders - a day of it, as fast as you like, by day or night.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

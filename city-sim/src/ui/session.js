@@ -146,6 +146,30 @@ export function demolish(tile) {
 }
 
 /**
+ * Blows up the building on tile, for nothing: torn into pieces thrown all
+ * round in a fireball, heaps of rubble left where it stood till they are
+ * cleared away (isometrica client/buildman explode).
+ *
+ * @param tile {number}
+ */
+export function explode(tile) {
+  client.buildman.explode(tile);
+}
+
+/**
+ * Sets the building on tile on fire: it burns through most of a day, the
+ * fire spreading from window to window, floor to floor, black smoke rolling
+ * up off it over the city - then comes down, and what is left of it burns
+ * on and smoulders, a burnt-out ruin till it is cleared (isometrica
+ * client/fires).
+ *
+ * @param tile {number}
+ */
+export function fireUp(tile) {
+  client.buildman.fireUp(tile);
+}
+
+/**
  * Builds what is picked, in the world: a building out of the catalogue, a
  * road.
  *

@@ -31,8 +31,19 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   demolition bench at `/demolition.html`, the replacement bench at
   `/replace.html` - a building put up in the place of itself, another look
   of it, or of whatever else covers its ground, coming down and going up
-  again the game's way, its site as fast as asked - and the lighting bench at
-  `/lighting.html`. Everything is painted and
+  again the game's way, its site as fast as asked - the explosion bench at
+  `/explosion.html` - a building blown up, pieces torn off it in a
+  fireball and the rest of it coming down a tile at a time, dust hanging
+  over it, its rubble left lying till the bulldozers clear it and its
+  yard wrecked; or two of it side by side, a pile each, on the flat or on
+  a slope; or with its neighbours round it, the blast bringing down the
+  ones next to it and across the road and knocking about the one further
+  off -
+  the fire bench at `/fire.html` - a building set on fire, spreading
+  floor by floor and tile by tile, black smoke rolling up off it, and left
+  gutted, a roofless shell or fallen in, by what it is built of, a
+  burnt-out ruin, a day of it as fast as asked, by day or at night - and
+  the lighting bench at `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
@@ -768,6 +779,19 @@ dev`) plays them the way a game would - all three weathers together, the
   joining it go on joining it (`roadman.js` seenRoad), till the bulldozer
   has driven over it and broken it up into the bare earth. None of it is
   kept - after a reload the ground is bare.
+- A building put up is not put up till its ground is cleared, bare or not
+  (`isometrica/src/core/city/citybuildings.js` buildBuilding,
+  `isometrica/src/core/construction.js` awaitClearing): its tiles are being
+  cleared from then on, whatever is on them - trees, stones, rubble -
+  standing till the bulldozers get to it (`client/clearworks.js` sweep),
+  and nothing of it is drawn but how far along it is. That is the first
+  tenth of the way up, as much of it as is cleared, and the rest goes by its
+  time from when it all is; put up in the place of one that came down
+  (Replace), its ground is cleared already. Demolished or replaced while it
+  still waits, there is nothing of it to bring down: it is called off there
+  and then, for nothing, and its ground cleared all the same (`city.js`
+  demolitionOf). As with ground cleared, the bulldozers are not kept: after
+  a reload it goes up from as far along as it was.
 - What clearing ground came to floats up once, over all of the ground
   picked - not over every tile of it.
 - A building cleared away is demolished whole, every tile of it, whichever
@@ -778,7 +802,14 @@ dev`) plays them the way a game would - all three weathers together, the
   is once its rubble is pushed away (`city.js` tileDown), the ground bare
   there; it is gone once its last tile is. Both are kept in the save, so a
   reload halfway finds it as far down as it had come; asked again, only its
-  tiles still standing are sent for, for nothing. How it comes down is a
+  tiles still standing are sent for, for nothing. Being demolished, it is
+  the bulldozers' alone: it cannot be blown up nor set on fire, a blast next
+  to it does not reach it (`city.js` explode, blast, fireUp), it neither
+  comes down nor catches fire by itself (`building.js` hazards, fallsLater),
+  and one on fire when it is ordered down has its fire put out - its
+  flames are no longer drawn (`client/fires.js` look), what it burnt to
+  standing behind the fence. Looked at, only Replace and Demolish are
+  offered for it. How it comes down is a
   unit of its own (`Demolition`, in `isometrica/src/client/demolition.js`),
   told when each tile is to come down and when its rubble is pushed away;
   in the game it is the bulldozers that tell it (`client/buildman.js`
