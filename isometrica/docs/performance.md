@@ -305,6 +305,23 @@ Already so:
 - **Later.** Smoke as one buffer of particles, not a game object a puff.
 - **Later.** Fewer render targets: normal and height in one.
 
+## Keeping the frame light
+
+What runs every frame, or over everything there is, keeps its numbers in
+typed arrays rather than in objects, and goes to an object only when it
+has to:
+
+- What there are many of - the world's slots, the renderer's entries, the
+  ground's tiles - is a typed array a field, one of them an index into all
+  of them. They are grown when they fill, by half again or twice as much at
+  a time, never one at a time.
+- What is culled is culled from numbers alone. An object is looked at only
+  for what is drawn: a tile of the ground off the screen costs a few reads
+  of its arrays, and its picture is never touched.
+- Nothing is made in a frame only to be thrown away - no arrays, closures
+  or strings: what a thing is, its shape or its key, is numbers compared,
+  not a string joined.
+
 ## Notes
 
 - Moves are not coalesced to a frame in `CameraScript`: its only listener,

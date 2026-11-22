@@ -7,6 +7,10 @@
  * was when it was a sprite of its own (engine Canvas2dRenderer cull, Sprite-
  * Renderer), in the same order - the GPU is handed what it always was.
  *
+ * Everything about a tile is a number in a typed array but its picture,
+ * which is drawn from: a tile is culled from its numbers alone, and only one
+ * on the screen is its picture looked at.
+ *
  * What a tile shows, where, and how high its corners are is client/terrain's
  * to work out (shapeTile); this only keeps it, and culls, draws and picks by
  * it.
@@ -30,7 +34,7 @@ var Renderer = engine.Renderer,
 //what the stretch's screen box is worked out from (measure): the least and
 //most x, y and z of where its tiles are in the world, and how far the
 //pictures go out past that, the most of any of them - left and up of the
-//spot each is drawn from (its pivot), and right and down of it
+//spot each is drawn from (the pivot), and right and down of it
 var X0 = 0,
   X1 = 1,
   Y0 = 2,
@@ -46,9 +50,25 @@ var X0 = 0,
 //way than its box, for the rounding of every tile's spot to the pixel
 var spread = new Float64Array(4);
 
+//the arrays a tile is kept in, a number each, by name and kind - what grows
+//and closes up a slot at a time (grow, close); heights is four a tile
+var PER_TILE = {
+  tile: Int32Array,
+  x: Float32Array,
+  y: Float32Array,
+  z: Float32Array,
+  w: Uint16Array,
+  h: Uint16Array,
+  kind: Uint8Array,
+  slope: Int16Array,
+  level: Int16Array,
+  view: Uint8Array,
+};
+var NAMES = Object.keys(PER_TILE);
+
 /**
  * @param capacity {number} how many tiles it is made with room for - it
- *        grows past that if it has to
+ *        grows past that, twice as big at a time, if it has to
  * @constructor
  */
 function GroundChunk(capacity) {
@@ -56,24 +76,34 @@ function GroundChunk(capacity) {
 
   capacity = Math.max(capacity, 1);
   this.count = 0;
-  //what each tile is, by its slot: its index (core Terrain), where it is in
+  //what each tile is, by its slot: its index (core Terrain); where it is in
   //the world - kept as a Transform keeps it, to the float, for each to be
-  //put on the very pixel it was as a gameObject - what it is drawn as and
-  //from where in it, how high its corners are drawn (as TerrainGridRenderer
-  //reads them: x, y; x + 1, y; x, y + 1; x + 1, y + 1), and the shape it was
-  //last drawn in (client/terrain shapeTile) - null for a tile taken out
+  //put on the very pixel it was as a gameObject; how big its picture is
+  //(w, h), 0 by 0 till the picture comes in; the shape it was last drawn
+  //in (shape) - its terrain type, slope, how high its left corner is, and
+  //which way it was seen from, 0 for a slot with no tile in it; and how
+  //high its corners are drawn (heights: as TerrainGridRenderer reads them,
+  //x, y; x + 1, y; x, y + 1; x + 1, y + 1)
   this.tile = new Int32Array(capacity);
   this.x = new Float32Array(capacity);
   this.y = new Float32Array(capacity);
   this.z = new Float32Array(capacity);
-  this.pivotX = new Float32Array(capacity);
-  this.pivotY = new Float32Array(capacity);
+  this.w = new Uint16Array(capacity);
+  this.h = new Uint16Array(capacity);
+  this.kind = new Uint8Array(capacity);
+  this.slope = new Int16Array(capacity);
+  this.level = new Int16Array(capacity);
+  this.view = new Uint8Array(capacity);
   this.heights = new Int8Array(capacity * 4);
+  //what each is drawn as
   this.sprites = new Array(capacity).fill(null);
-  this.shapes = new Array(capacity).fill(null);
+  //where in its picture every tile is drawn from - the same for them all
+  this.pivotX = 0;
+  this.pivotY = 0;
   //its box (X0..DOWN), and whether that is as the tiles are now; and
   //whether every picture's size is known - one still to come in may be any
-  //size, and while there is one, the stretch is not culled as a whole
+  //size, and while there is one, the stretch is not culled as a whole and
+  //the sizes are read again every frame
   this.box = new Float64Array(10);
   this.measured = false;
   this.sized = false;
@@ -95,44 +125,74 @@ GroundChunk.prototype.add = function (tile) {
   var s = this.count++;
 
   this.tile[s] = tile;
+  this.view[s] = 0;
   this.measured = false;
 
   return s;
 };
 
 function grow(self, capacity) {
-  var keys = ["tile", "x", "y", "z", "pivotX", "pivotY"],
-    i,
-    more;
+  var i, more;
 
-  for (i = 0; i < keys.length; i++) {
-    more = new self[keys[i]].constructor(capacity);
-    more.set(self[keys[i]]);
-    self[keys[i]] = more;
+  for (i = 0; i < NAMES.length; i++) {
+    more = new PER_TILE[NAMES[i]](capacity);
+    more.set(self[NAMES[i]]);
+    self[NAMES[i]] = more;
   }
 
   more = new Int8Array(capacity * 4);
   more.set(self.heights);
   self.heights = more;
 
-  for (i = self.sprites.length; i < capacity; i++) {
-    self.sprites.push(null);
-    self.shapes.push(null);
-  }
+  while (self.sprites.length < capacity) self.sprites.push(null);
 }
 
 /**
- * Puts the tile in slot s where it is drawn, as the picture sprite, from
- * pivotX, pivotY in it.
+ * Puts the tile in slot s where it is drawn, as the picture sprite.
  */
-GroundChunk.prototype.set = function (s, x, y, z, sprite, pivotX, pivotY) {
+GroundChunk.prototype.set = function (s, x, y, z, sprite) {
   this.x[s] = x;
   this.y[s] = y;
   this.z[s] = z;
   this.sprites[s] = sprite;
-  this.pivotX[s] = pivotX;
-  this.pivotY[s] = pivotY;
+  this.w[s] = sprite.width;
+  this.h[s] = sprite.height;
   this.measured = false;
+};
+
+/**
+ * Has every tile drawn from x, y in its picture.
+ */
+GroundChunk.prototype.setPivot = function (x, y) {
+  if (this.pivotX === x && this.pivotY === y) return;
+
+  this.pivotX = x;
+  this.pivotY = y;
+  this.measured = false;
+};
+
+/**
+ * Whether the tile in slot s was last drawn in this shape - see shape.
+ */
+GroundChunk.prototype.shaped = function (s, kind, slope, level, view) {
+  return (
+    this.view[s] === view &&
+    this.kind[s] === kind &&
+    this.slope[s] === slope &&
+    this.level[s] === level
+  );
+};
+
+/**
+ * The shape the tile in slot s is drawn in: its terrain type, its slope,
+ * how high its left corner is, and which way it is seen from - any number
+ * but 0, which is for a slot with no tile in it.
+ */
+GroundChunk.prototype.shape = function (s, kind, slope, level, view) {
+  this.kind[s] = kind;
+  this.slope[s] = slope;
+  this.level[s] = level;
+  this.view[s] = view;
 };
 
 /**
@@ -141,7 +201,7 @@ GroundChunk.prototype.set = function (s, x, y, z, sprite, pivotX, pivotY) {
  */
 GroundChunk.prototype.remove = function (s) {
   this.sprites[s] = null;
-  this.shapes[s] = null;
+  this.view[s] = 0;
   this.measured = false;
 
   return ++this.gone === 1;
@@ -150,85 +210,85 @@ GroundChunk.prototype.remove = function (s) {
 /**
  * Closes up the slots of the tiles taken out, the rest kept in their order,
  * and has slots - every tile's slot by its index (client/terrain) - say
- * where those that moved went.
+ * where those that moved went. Every slot up to count has a tile in it
+ * again after.
  */
 GroundChunk.prototype.close = function (slots) {
   var count = this.count,
+    view = this.view,
     heights = this.heights,
     n = 0,
+    a,
     s,
     k;
 
   for (s = 0; s < count; s++) {
-    if (this.shapes[s] === null) continue;
+    if (view[s] === 0) continue;
 
     if (n !== s) {
-      this.tile[n] = this.tile[s];
-      this.x[n] = this.x[s];
-      this.y[n] = this.y[s];
-      this.z[n] = this.z[s];
-      this.pivotX[n] = this.pivotX[s];
-      this.pivotY[n] = this.pivotY[s];
-      this.sprites[n] = this.sprites[s];
-      this.shapes[n] = this.shapes[s];
+      for (k = 0; k < NAMES.length; k++) {
+        a = this[NAMES[k]];
+        a[n] = a[s];
+      }
       for (k = 0; k < 4; k++) heights[4 * n + k] = heights[4 * s + k];
+      this.sprites[n] = this.sprites[s];
       slots[this.tile[n]] = n;
     }
 
     n++;
   }
 
-  for (s = n; s < count; s++) {
-    this.sprites[s] = null;
-    this.shapes[s] = null;
-  }
+  for (s = n; s < count; s++) this.sprites[s] = null;
 
   this.count = n;
   this.gone = 0;
 };
 
 /**
- * Works out its box (X0..DOWN) from its tiles as they are now.
+ * Works out its box (X0..DOWN) from its tiles as they are now - and reads
+ * the size of every picture again, for one that has come in since.
  */
 function measure(self) {
   var b = self.box,
     count = self.count,
+    xs = self.x,
+    ys = self.y,
+    zs = self.z,
+    ws = self.w,
+    hs = self.h,
+    sprites = self.sprites,
     sized = true,
-    sprite,
-    x,
-    y,
-    z,
-    px,
-    py,
+    w,
+    h,
     s;
 
   b[X0] = b[Y0] = b[Z0] = Infinity;
   b[X1] = b[Y1] = b[Z1] = -Infinity;
-  b[LEFT] = b[RIGHT] = b[UP] = b[DOWN] = 0;
+  w = h = 0;
 
   for (s = 0; s < count; s++) {
-    sprite = self.sprites[s];
+    if (sprites[s] === null) continue;
 
-    if (sprite === null) continue;
-    if (sprite.width === 0) sized = false;
+    if (ws[s] === 0) {
+      ws[s] = sprites[s].width;
+      hs[s] = sprites[s].height;
+      if (ws[s] === 0) sized = false;
+    }
 
-    x = self.x[s];
-    y = self.y[s];
-    z = self.z[s];
-    px = self.pivotX[s];
-    py = self.pivotY[s];
-
-    if (x < b[X0]) b[X0] = x;
-    if (x > b[X1]) b[X1] = x;
-    if (y < b[Y0]) b[Y0] = y;
-    if (y > b[Y1]) b[Y1] = y;
-    if (z < b[Z0]) b[Z0] = z;
-    if (z > b[Z1]) b[Z1] = z;
-    if (px > b[LEFT]) b[LEFT] = px;
-    if (sprite.width - px > b[RIGHT]) b[RIGHT] = sprite.width - px;
-    if (py > b[UP]) b[UP] = py;
-    if (sprite.height - py > b[DOWN]) b[DOWN] = sprite.height - py;
+    if (xs[s] < b[X0]) b[X0] = xs[s];
+    if (xs[s] > b[X1]) b[X1] = xs[s];
+    if (ys[s] < b[Y0]) b[Y0] = ys[s];
+    if (ys[s] > b[Y1]) b[Y1] = ys[s];
+    if (zs[s] < b[Z0]) b[Z0] = zs[s];
+    if (zs[s] > b[Z1]) b[Z1] = zs[s];
+    if (ws[s] > w) w = ws[s];
+    if (hs[s] > h) h = hs[s];
   }
+
+  b[LEFT] = self.pivotX;
+  b[RIGHT] = Math.max(0, w - self.pivotX);
+  b[UP] = self.pivotY;
+  b[DOWN] = Math.max(0, h - self.pivotY);
 
   self.measured = true;
   self.sized = sized;
@@ -322,14 +382,16 @@ GroundChunk.prototype.draw = function (layer, renderer, M, width, height, pad) {
     m9 = M[9],
     m12 = M[12],
     m13 = M[13],
+    px = this.pivotX,
+    py = this.pivotY,
     xs = this.x,
     ys = this.y,
     zs = this.z,
-    pivotX = this.pivotX,
-    pivotY = this.pivotY,
-    sprites = this.sprites,
+    ws = this.w,
+    hs = this.h,
+    right = width + pad,
+    bottom = height + pad,
     drawn = 0,
-    sprite,
     x,
     y,
     z,
@@ -338,25 +400,18 @@ GroundChunk.prototype.draw = function (layer, renderer, M, width, height, pad) {
     s;
 
   for (s = this.count - 1; s >= 0; s--) {
-    sprite = sprites[s];
-
-    if (sprite === null) continue;
-
     x = xs[s];
     y = ys[s];
     z = zs[s];
-    sx = Math.floor(m0 * x + m4 * y + m8 * z + m12 - pivotX[s] + 0.5);
-    sy = Math.floor(m1 * x + m5 * y + m9 * z + m13 - pivotY[s] + 0.5);
+    //added up in the engine's order, to the bit: the spot rounded to the
+    //pixel is the engine's to the pixel
+    sx = Math.floor(m0 * x + m4 * y + m8 * z + m12 - px + 0.5);
+    sy = Math.floor(m1 * x + m5 * y + m9 * z + m13 - py + 0.5);
 
-    if (
-      sx > width + pad ||
-      sx + sprite.width < -pad ||
-      sy > height + pad ||
-      sy + sprite.height < -pad
-    )
+    if (sx > right || sx + ws[s] < -pad || sy > bottom || sy + hs[s] < -pad)
       continue;
 
-    picture(layer, renderer, sprite, sx, sy, y);
+    picture(layer, renderer, this.sprites[s], sx, sy, y);
     drawn++;
   }
 
@@ -379,11 +434,14 @@ GroundChunk.prototype.tileAt = function (M, x, y) {
     m9 = M[9],
     m12 = M[12],
     m13 = M[13],
+    px = this.pivotX,
+    py = this.pivotY,
+    xs = this.x,
+    ys = this.y,
+    zs = this.z,
+    ws = this.w,
+    hs = this.h,
     layer = this.renderer.layer,
-    sprite,
-    px,
-    py,
-    pz,
     sx,
     sy,
     s;
@@ -396,20 +454,19 @@ GroundChunk.prototype.tileAt = function (M, x, y) {
     return -1;
 
   for (s = 0; s < this.count; s++) {
-    sprite = this.sprites[s];
+    sx = Math.floor(m0 * xs[s] + m4 * ys[s] + m8 * zs[s] + m12 - px + 0.5);
+    sy = Math.floor(m1 * xs[s] + m5 * ys[s] + m9 * zs[s] + m13 - py + 0.5);
 
-    if (sprite === null) continue;
+    if (x < sx || x >= sx + ws[s] || y < sy || y >= sy + hs[s]) continue;
 
-    px = this.x[s];
-    py = this.y[s];
-    pz = this.z[s];
-    sx = Math.floor(m0 * px + m4 * py + m8 * pz + m12 - this.pivotX[s] + 0.5);
-    sy = Math.floor(m1 * px + m5 * py + m9 * pz + m13 - this.pivotY[s] + 0.5);
-
-    if (x < sx || x >= sx + sprite.width || y < sy || y >= sy + sprite.height)
-      continue;
-
-    if (CameraScript.hit(sprite, layer, Math.floor(x - sx), Math.floor(y - sy)))
+    if (
+      CameraScript.hit(
+        this.sprites[s],
+        layer,
+        Math.floor(x - sx),
+        Math.floor(y - sy),
+      )
+    )
       return this.tile[s];
   }
 

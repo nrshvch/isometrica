@@ -626,19 +626,13 @@ function shapeTile(self, chunk, s, index) {
 
   //only the ground of it changed - cleared, the grass growing back over it -
   //the same shape, as high, seen from the same side: drawn as it was till
-  //the new picture of it is painted, rather than nothing (Meanwhile)
-  var shape = [
-      index,
-      type,
-      slope,
-      z,
-      View.turns(),
-      View.top() ? "top" : "side",
-    ].join(":"),
+  //the new picture of it is painted, rather than nothing (Meanwhile). Which
+  //way it is seen, as a number other than 0 (GroundChunk shape)
+  var seen = 1 + View.turns() + (View.top() ? 4 : 0),
     was = shownOf(chunk.sprites[s]);
 
   if (
-    chunk.shapes[s] === shape &&
+    chunk.shaped(s, type, slope, z, seen) &&
     was &&
     was !== sprite &&
     sprite.ready &&
@@ -646,7 +640,7 @@ function shapeTile(self, chunk, s, index) {
     !sprite.ready()
   )
     sprite = new Meanwhile(sprite, was);
-  chunk.shapes[s] = shape;
+  chunk.shape(s, type, slope, z, seen);
 
   //the earth on it, for the grass to grow back over (Regrowth)
   var ground = type === TerrainType.water ? GRASS : groundOf(x, y);
@@ -654,14 +648,16 @@ function shapeTile(self, chunk, s, index) {
   if (ground !== GRASS) self.bare[index] = ground;
   else delete self.bare[index];
 
+  chunk.setPivot(
+    View.top() ? TOP_PIVOT : PIVOT_X,
+    View.top() ? TOP_PIVOT : PIVOT_Y,
+  );
   chunk.set(
     s,
     x * Config.tileSize,
     z * Config.tileZStep,
     y * Config.tileSize,
     sprite,
-    View.top() ? TOP_PIVOT : PIVOT_X,
-    View.top() ? TOP_PIVOT : PIVOT_Y,
   );
 }
 
