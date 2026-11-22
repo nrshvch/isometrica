@@ -3,7 +3,8 @@
  * opens the city screen and puts it away again - and how it is doing, and
  * under it the city's name - back to it; the time, and the weather; the
  * view from above, and the menu: the sounds, the day and the night going
- * by, the grid over the ground, the city's address shared, a new city.
+ * by, the grid over the ground, the city's address shared, the game put on
+ * the home screen, a new city.
  * Under them, zooming in and out, and how close the camera is.
  *
  * On a phone the money and the time take the top, the city's name and the
@@ -21,6 +22,7 @@ import ResourceCode from "isometrica/core/resourcecode";
 import Game from "../../game";
 import { Container, HudButton, Icon, cx } from "../kit";
 import { setDebug, setWorldMap, store, useGame } from "../store";
+import { install } from "../install";
 import {
   bigCityName,
   getClient,
@@ -406,9 +408,34 @@ function savedCities(client, cityId) {
 }
 
 /**
+ * How the game is put on the home screen, where it is done by hand
+ * (install.js): from an iPhone's Share, or Safari's File menu on a Mac.
+ */
+function InstallHowTo({ how }) {
+  return (
+    <div className="border-y-[1.5px] border-inset bg-inset px-3 py-2.5 text-xs leading-relaxed font-semibold text-muted">
+      {how === "mac" ? (
+        <>
+          In Safari's menu bar, choose <b className="text-ink">File</b>, then{" "}
+          <b className="text-ink">Add to Dock</b>.
+        </>
+      ) : (
+        <>
+          Tap <b className="text-ink">Share</b>{" "}
+          <Icon name="share" size={14} className="inline align-[-2px]" /> - in
+          Safari, under <b className="text-ink">···</b> if it is not in sight -
+          then <b className="text-ink">Add to Home Screen</b>.
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
  * The menu behind the button in the top right corner: the tile the camera
  * is over, on top, then what is switched on and off for the whole game, the city's address shared - as the phone
- * shares things, or else copied - a new city: blank, the one a new
+ * shares things, or else copied - the game put on the home screen, where
+ * it can be - a new city: blank, the one a new
  * player starts on, or the big one - and, under them, the other cities
  * saved here, to go back to. Put away by a click anywhere else, or Escape.
  */
@@ -432,7 +459,20 @@ function Menu({ client, world, cityId, address, busy }) {
     debug = useGame(function (s) {
       return s.debug;
     }),
+    //how the game is put on the home screen here, if it is (install.js) -
+    //and, done by hand, whether the menu says how
+    installHow = useGame(function (s) {
+      return s.install;
+    }),
+    [howTo, setHowTo] = useState(false),
     box = useRef(null);
+
+  useEffect(
+    function () {
+      if (!open) setHowTo(false);
+    },
+    [open],
+  );
 
   useEffect(
     function () {
@@ -580,6 +620,27 @@ function Menu({ client, world, cityId, address, busy }) {
               onClick={share}
             />
           )}
+          {installHow && (
+            <Row
+              icon="install"
+              label={
+                installHow === "mac"
+                  ? "Add to Dock"
+                  : installHow === "ios" ||
+                      window.matchMedia("(pointer: coarse)").matches
+                    ? "Add to Home Screen"
+                    : "Install as an app"
+              }
+              sub="Opens on its own, plays offline"
+              onClick={function () {
+                if (installHow === "prompt") {
+                  setOpen(false);
+                  install();
+                } else setHowTo(!howTo);
+              }}
+            />
+          )}
+          {howTo && installHow && <InstallHowTo how={installHow} />}
           <Row
             icon="found"
             label="Start a new city"
@@ -696,7 +757,7 @@ export default function Hud() {
   }
 
   return (
-    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-2.5 [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_1fr_auto_auto] sm:gap-3 sm:pt-4 sm:[grid-template-areas:'funds_._time_tools'_'city_._._zoom']">
+    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-[max(0.625rem,env(safe-area-inset-top))] [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_1fr_auto_auto] sm:gap-3 sm:pt-[max(1rem,env(safe-area-inset-top))] sm:[grid-template-areas:'funds_._time_tools'_'city_._._zoom']">
       {funds && (
         <div className="flex min-w-0 self-stretch [grid-area:funds] *:flex-1">
           <Funds world={world} onClick={openCity} />

@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import isometrica from "isometrica/vite";
+import precache from "./tools/precache.js";
 
 //the commit built, short: the one GitHub Actions builds, or the one checked
 //out here
@@ -31,7 +32,8 @@ function version() {
 
 //the game's page is index.html, its sources in src/ - its screens in React,
 //styled with Tailwind - and what is served as it is in public/ - and
-//isometrica's pictures, served and copied in by its plugin
+//isometrica's pictures, served and copied in by its plugin; and all of it
+//written into the Service Worker built, for it to keep (tools/precache.js)
 export default defineConfig({
   build: {
     outDir: "dist",
@@ -40,5 +42,5 @@ export default defineConfig({
   define: {
     __VERSION__: JSON.stringify(version()),
   },
-  plugins: [react(), tailwindcss(), isometrica()],
+  plugins: [react(), tailwindcss(), isometrica(), precache()],
 });

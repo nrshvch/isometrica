@@ -45,10 +45,17 @@ export function LayeredLayout({
 /**
  * As wide as what goes over the world gets: the whole of a phone, the
  * middle of a desktop's screen - the world itself going on either side.
+ * Clear of a phone's notch, turned on its side (the page goes right up to
+ * the edges of the screen, index.html viewport-fit).
  */
 export function Container({ className, children }) {
   return (
-    <div className={cx("mx-auto w-full max-w-5xl px-2.5 sm:px-4", className)}>
+    <div
+      className={cx(
+        "mx-auto w-full max-w-5xl pr-[max(0.625rem,env(safe-area-inset-right))] pl-[max(0.625rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))]",
+        className,
+      )}
+    >
       {children}
     </div>
   );

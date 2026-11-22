@@ -202,8 +202,19 @@ chooses which to keep (`isometrica/src/core/persistence/citysync.js`); the
 same when it is opened. `npm run dev` has no Worker behind it, and saves in
 the browser only.
 
-The page is kept by a Service Worker (`public/sw.js`), so that it opens
-without a connection too, from whatever was fetched while there was one.
+It is an app to be put on the home screen, too (`public/manifest.webmanifest`,
+the icons out of its logo): opened from there, it is a window of its own,
+and plays offline. The page is kept by a Service Worker (`public/sw.js`),
+everything of the game, all of one build, the first time it is opened online
+
+- the build writes what that is into it (`tools/precache.js`): the page, its
+  scripts, styles, fonts and icons, and isometrica's pictures at the addresses
+  the game asks for them by. The page and `gfx/manifest.json` come from the
+  network while there is one, so a new release is never held back, and from
+  what was kept when there is not; the rest as it was kept, being asked for by
+  its hash. Every release is a Service Worker of its own (`sw.js?v=<version>`),
+  which keeps its build before it takes over and throws away what the one
+  before it kept.
 
 Its own: `src/main.jsx` starts it, `src/game.js` says what it is (five
 minutes a tick of the clock, its saves under `city-sim.v1.*` in
@@ -231,7 +242,10 @@ it the city's name and how many live there (back to the city), the time and
 the weather, the view from above and the menu (the sounds, the day and the
 night going by, the grid over the ground - kept off, if switched off,
 whatever a tap on the world puts away and brings back - the city's address
-at https://peeps.land shared, or copied, a new city on empty land, or
+at https://peeps.land shared, or copied, the game put on the home screen
+where the browser can do that (`src/ui/install.js`: asked of it in Chrome,
+Edge and the like; said how on an iPhone or an iPad, and in Safari on a
+Mac), a new city on empty land, or
 starting over on the city new players start on (`src/initialcity.js`,
 Peepsville) or on the big one (`src/peepstown.js`, the delivery game's,
 isometrica's `data/initialcity`, called Peepstown here) - each under an id
@@ -276,13 +290,15 @@ Painted by a script, to be changed there and painted again - what it
 paints is checked in and goes into the build as it is:
 
 ```
-npm run generate:logo    # tools/genlogo.js → public/logo.png
+npm run generate:logo    # tools/genlogo.js → public/logo.png, public/icons/
 ```
 
 A little town out of the game's own pieces - a house, a pine, a water tower
 on a slab of ground, painted by isometrica's generators - in a ring, the
 tower too tall for it and breaking out through the top: 128 pixels square,
-the page's icon.
+the page's icon. And out of it, the game's icons on a home screen
+(`public/icons/`): the logo bigger, 192 and 512, and on navy, small enough
+for the round a phone cuts out of it (maskable), and for an iPhone, 180.
 
 ### Its icons
 
