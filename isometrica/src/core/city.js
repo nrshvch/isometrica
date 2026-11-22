@@ -250,9 +250,20 @@ function demolished(building) {
 //what of a building demolishing it would clear (demolished): its tiles still
 //standing that are not being cleared already - and what it comes to, one
 //clearTileCost for every tile of it, but nothing for one being demolished,
-//paid for already
+//paid for already. Nothing of one up yet, its ground still being cleared
+//for it to go up (Construction awaitClearing): nothing to bring down, so
+//called off there and then, for nothing (demolish) - its tiles still being
+//cleared, cleared all the same
 function demolitionOf(self, building) {
-  var terrain = self.world.terrain;
+  var terrain = self.world.terrain,
+    waiting =
+      building.clearing !== undefined && building.clearing()
+        ? building.tiles().filter(function (t) {
+            return terrain.beingCleared(t);
+          })
+        : [];
+
+  if (waiting.length > 0) return { tiles: waiting, cost: 0, calledOff: true };
 
   return {
     tiles: building.tilesLeft().filter(function (t) {
@@ -407,6 +418,16 @@ function demolish(self, building) {
     !self.resourcesService.hasEnoughResource(Resource.money, d.cost)
   )
     return [];
+
+  //nothing of it up yet: gone at once, the bulldozers clearing its ground
+  //going on with it (demolitionOf)
+  if (d.calledOff) {
+    building.tiles().forEach(function (t) {
+      terrain.clear(t);
+    });
+    tiles.cost = 0;
+    return tiles;
+  }
 
   var first = !building.demolishing;
 

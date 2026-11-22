@@ -312,6 +312,11 @@ BuildingView.prototype.update = function () {
     //it, fenced off, as far down as it has come (client/demolition)
     if (b.data.demolishing) return;
 
+    //its ground still being cleared before it goes up (core/construction
+    //awaitClearing): nothing of it there yet, but the bulldozers at it
+    //(client/clearworks) - drawn again once it goes up (cleared)
+    if (b.data.clearing !== undefined && b.data.clearing()) return;
+
     //a site laid out on the ground the building takes up in the world, and
     //turned as it is seen - the crane on the same tile from every side
     var lots =

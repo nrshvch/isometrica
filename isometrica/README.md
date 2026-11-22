@@ -779,6 +779,19 @@ dev`) plays them the way a game would - all three weathers together, the
   joining it go on joining it (`roadman.js` seenRoad), till the bulldozer
   has driven over it and broken it up into the bare earth. None of it is
   kept - after a reload the ground is bare.
+- A building put up is not put up till its ground is cleared, bare or not
+  (`isometrica/src/core/city/citybuildings.js` buildBuilding,
+  `isometrica/src/core/construction.js` awaitClearing): its tiles are being
+  cleared from then on, whatever is on them - trees, stones, rubble -
+  standing till the bulldozers get to it (`client/clearworks.js` sweep),
+  and nothing of it is drawn but how far along it is. That is the first
+  tenth of the way up, as much of it as is cleared, and the rest goes by its
+  time from when it all is; put up in the place of one that came down
+  (Replace), its ground is cleared already. Demolished or replaced while it
+  still waits, there is nothing of it to bring down: it is called off there
+  and then, for nothing, and its ground cleared all the same (`city.js`
+  demolitionOf). As with ground cleared, the bulldozers are not kept: after
+  a reload it goes up from as far along as it was.
 - What clearing ground came to floats up once, over all of the ground
   picked - not over every tile of it.
 - A building cleared away is demolished whole, every tile of it, whichever

@@ -245,6 +245,12 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   it - and the card says it is on fire, then burnt down. Kept in the save,
   the fire as far along after a reload as it would have been
   (`isometrica/src/core/building.js` ignite, burn).
+- A building put up has its ground cleared first, bare or not - the trees,
+  stones or rubble on it standing till a bulldozer gets there - and only
+  then goes up: the bulldozers are the first tenth of how far along it is,
+  shown from the start (`isometrica/src/core/construction.js`
+  awaitClearing). Demolished or replaced before then, it is called off at
+  once, for nothing.
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.
