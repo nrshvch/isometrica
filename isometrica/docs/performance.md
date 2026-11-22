@@ -157,20 +157,24 @@ What it says:
 - **Later.** The grid (`terraingridrenderer.js`) keeps its geometry, but
   every frame takes it through the camera and tessellates it again in
   script; the borders do too. Static GPU buffers, moved by a uniform.
-- **Done.** Every tile of the ground was a game object of its own - 5,184
-  of the 6,730 here - each one culled every frame and gone through by
-  every pick. A chunk of the ground is one game object now
-  (`groundchunk.js`), its tiles kept in typed arrays the way a tilemap
-  keeps them: culled as a whole by its box on the screen, and only on the
-  screen each tile culled and drawn as the engine culls and draws a
-  sprite, in the same order. The GPU is handed what it was, quad for quad
-  - every quad of the ground and the tile picked at 16,000 points across
-    the screen, compared before and after, turned each of three ways and
-    from above. A tile is picked off the chunks (`Terrain#tileAt`). Before →
-    after, the middle of three runs each: the cull 0.45 → 0.15 ms a frame,
-    the ground's draw 1.23 → 0.71 ms, a pass over the slots (every pick
-    makes one) 0.11 → 0.03 ms, a tile picked 0.081 → 0.017 ms, the heap
-    37.8 → 29.8 MB.
+- **Done.** Every tile of the ground was a game object of its own: 5,184
+  of the 6,730 here, each one culled every frame and gone through by every
+  pick. A chunk of the ground is one game object now (`groundchunk.js`),
+  its tiles kept in typed arrays the way a tilemap keeps them: culled as a
+  whole by its box on the screen, and only on the screen each tile culled
+  and drawn as the engine culls and draws a sprite, in the same order. The
+  GPU is handed what it was, quad for quad: every quad of the ground, and
+  the tile picked at 16,000 points across the screen, compared before and
+  after, turned each of three ways and from above. A tile is picked off
+  the chunks (`Terrain#tileAt`). Before → after, the middle of three runs
+  each: the cull 0.45 → 0.15 ms a frame, the ground's draw 1.23 → 0.71 ms,
+  a pass over the slots (every pick makes one) 0.11 → 0.03 ms, a tile
+  picked 0.081 → 0.017 ms, the heap 37.8 → 29.8 MB.
+- **Done.** And then every tile culled from numbers alone: its picture's
+  size kept in the chunk's typed arrays with the rest of it, the pivot one
+  for the chunk, the shape it was drawn in numbers rather than a string.
+  Only a tile drawn has its picture read. The ground's own cull and draw,
+  by itself, 0.107 → 0.075 ms; a tile picked 0.029 → 0.010 ms.
 - **Later.** What the cull still goes over is mostly the trees, 1,320 game
   objects. They are sorted by depth among the buildings, so a chunk of
   them cannot be drawn as one the way the ground is: the engine would have
@@ -211,7 +215,11 @@ What it says:
 - **Later.** Smoke: a game object a puff, each working out the wind and a
   matrix a frame - one particle buffer.
 - **Later.** Heights: a per-chunk `Int16Array` instead of noise worked out
-  again.
+  again. `getGridPointHeight` works eleven octaves of noise out every time
+  it is asked (`calcZ`, its cache taken out), and the ground, the trees,
+  the roads and the buildings ask it over and over: of a quarter turn,
+  about 70% of the time and nearly 90% of what is allocated, some 150 MB
+  of numbers a turn, is that.
 - **Later.** The city's tick (`core/logic.js`): `city.missing()` 3-5 times a
   building a tick; `catchUp` replays up to 288 ticks at once when the tab
   comes back; a full `JSON.stringify` save every 5 ticks.
