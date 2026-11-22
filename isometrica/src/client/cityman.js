@@ -178,7 +178,7 @@ function startAtPicked(root) {
   }
 
   if (at !== null && isFinite(at.x) && isFinite(at.z))
-    root.camera.transform.setPosition(at.x, 0, at.z);
+    root.camera.cameraScript.lookAt(at.x, at.z);
 }
 
 /**
