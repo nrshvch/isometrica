@@ -214,12 +214,21 @@ What it says:
   (tiles are about 1.78e9, past a small integer), a typed A*.
 - **Later.** Smoke: a game object a puff, each working out the wind and a
   matrix a frame - one particle buffer.
-- **Later.** Heights: a per-chunk `Int16Array` instead of noise worked out
-  again. `getGridPointHeight` works eleven octaves of noise out every time
-  it is asked (`calcZ`, its cache taken out), and the ground, the trees,
-  the roads and the buildings ask it over and over: of a quarter turn,
-  about 70% of the time and nearly 90% of what is allocated, some 150 MB
-  of numbers a turn, is that.
+- **Done.** Heights: `getGridPointHeight` worked eleven octaves of noise
+  out every time it was asked (`calcZ`, its cache taken out, as it was kept
+  in `gridPoints`, which is saved whole), and the ground, the trees, the
+  roads and the buildings ask it over and over: a tile's corners, and the
+  tiles round it for its edges. Of a quarter turn it was about 70% of the
+  time and nearly 90% of what was allocated. What the noise says is kept
+  now beside `gridPoints` (`noiseHeight`): a window of the world 512 grid
+  points across, wrapped round, in two typed arrays made once, 1.25 MB -
+  nothing made as it is asked, a point far off only taking another's
+  place. And `calcZ` works its four finest octaves out once for the land
+  and the islands both. The same heights to the last one: 1.25 million
+  grid points compared, near and all over the world, and the traffic's
+  test the same. The middle of three runs each: a quarter turn 231 → 57
+  ms; what four turns allocate 624 → 83 MB; 16 chunks coming in 254 → 59
+  ms; the frame 6.3 → 5.4 ms.
 - **Later.** The city's tick (`core/logic.js`): `city.missing()` 3-5 times a
   building a tick; `catchUp` replays up to 288 ticks at once when the tab
   comes back; a full `JSON.stringify` save every 5 ticks.
