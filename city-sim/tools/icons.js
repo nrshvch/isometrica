@@ -111,9 +111,9 @@ function vertical(tail, tip) {
 
 /* --- signs -------------------------------------------------------------- */
 
-//a satellite: its body, a solar panel either side of it on a strut, and its
-//antenna - drawn level, then turned a quarter of the way round, its panels
-//going up to the right
+//a satellite: its body, a long solar panel either side of it on a strut,
+//and its antenna - drawn level, then turned an eighth of the way round, its
+//panels going up to the right
 function satellite() {
   var a = -Math.PI / 4,
     c = Math.cos(a),
@@ -139,10 +139,10 @@ function satellite() {
 
   return [
     box(9.5, 9.5, 14.5, 14.5),
-    box(0.5, 9.5, 7.5, 14.5),
-    line(turn([4, 9.5]), turn([4, 14.5])),
-    box(16.5, 9.5, 23.5, 14.5),
-    line(turn([20, 9.5]), turn([20, 14.5])),
+    box(2.5, 7.5, 7.5, 16.5),
+    line(turn([5, 7.5]), turn([5, 16.5])),
+    box(16.5, 7.5, 21.5, 16.5),
+    line(turn([19, 7.5]), turn([19, 16.5])),
     line(turn([7.5, 12]), turn([9.5, 12])),
     line(turn([14.5, 12]), turn([16.5, 12])),
     line(turn([12, 9.5]), turn([12, 6.5])),
