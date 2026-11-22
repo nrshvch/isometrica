@@ -15,6 +15,7 @@ import {
   cx,
 } from "../ui/kit.jsx";
 import {
+  EDGES,
   HOME,
   KINDS,
   KIND_COLOURS,
@@ -186,7 +187,7 @@ export default function WoodsPage() {
       page="woods"
       wide
       title="Woods map"
-      about="Where the world grows its trees, and which, a pixel or a few for every tile - worked out here in the page from the same code the games use (src/core/woods.js, on the ground of src/core/terrain.js). Drag to look round; the shares are of the trees in sight."
+      about="Where the world grows its trees, and which, a pixel or a few for every tile - worked out here in the page from the same code the games use (src/core/woods.js, on the ground of src/core/terrain.js, in the climate of src/core/climate.js). Drag to look round; the shares are of the trees in sight."
     >
       <div className="mb-2.5 flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
         <Choice values={VIEWS} value={view} onChange={setView} />
@@ -219,6 +220,20 @@ export default function WoodsPage() {
           }}
         >
           The starting city
+        </Button>
+        <Button
+          onClick={function () {
+            setCentre(EDGES.desert.slice());
+          }}
+        >
+          The desert's edge
+        </Button>
+        <Button
+          onClick={function () {
+            setCentre(EDGES.snow.slice());
+          }}
+        >
+          The snow's edge
         </Button>
       </div>
 

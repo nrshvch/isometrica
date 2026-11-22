@@ -16,6 +16,8 @@
     "build:lab": "vite build lab",
     "pretest:traffic": "npm run build --prefix ../engine",
     "test:traffic": "node tools/traffictest.mjs",
+    "premap:climate": "npm run build --prefix ../engine",
+    "map:climate": "node tools/climatemap.mjs",
     "generate:terrain": "node tools/genterrain.js",
     "generate:vehicles": "node tools/genvehicles.js",
     "generate:sounds": "node tools/gensounds.js",

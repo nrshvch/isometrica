@@ -21,6 +21,14 @@
  *   - spruce: a cone of tiers down to the ground, narrowing to a spike;
  *     the darkest green.
  *
+ * And the ones the world has where it is not green (core/climate): out in
+ * the cold, the spruce and the pine with snow lying on their tiers and
+ * branches, and the dead wood - a dead tree standing, a stump, a fallen
+ * trunk or two - with snow on whatever of it looks up ("snowspruce",
+ * "snowsnag"...); in the desert, the dead wood dried out, bleached grey by
+ * the sun, no moss on it ("drysnag"...). Each is the kind it is made from,
+ * grown the same way, in colours of its own.
+ *
  * Each comes in two, grown from different seeds, and each of those is
  * painted from its four sides - "gen/trees/oak-1", "gen/trees/oak-1/r1" - so
  * that the camera turning round (client/view) sees another side of it, and
@@ -75,6 +83,10 @@ var FALLING = [
   "pine",
   "spruce",
   "snag",
+  "snowspruce",
+  "snowpine",
+  "snowsnag",
+  "drysnag",
 ];
 
 //the ways one can be seen to fall, along the ground as it is painted (x - y
@@ -715,6 +727,63 @@ var KINDS = {
   },
 };
 
+//the snow lying on a tree, in the light and in the shade of it - the tone
+//a kind's bark marks are in (tree.marked), which the leaves take as well
+//where it lies on them
+var SNOW = [236, 242, 250];
+
+//how much a patch of a tree has to look up for snow to lie on it
+var SNOW_UP = 0.35;
+
+/**
+ * A kind as another one is, out in the cold: grown the same way, with snow
+ * lying on whatever of it looks up, in patches - the lower snow is, the more
+ * of it (0..1). Its moss, its marks and the cut of a stump are under it.
+ */
+function snowed(base, snow) {
+  var k = Object.assign({}, KINDS[base]);
+
+  k.bark = [k.bark[0], k.bark[1], SNOW];
+  k.snow = snow;
+  delete k.moss;
+  delete k.marks;
+  delete k.face;
+
+  return k;
+}
+
+/**
+ * A kind of dead wood as another one is, out in the desert: grown the same
+ * way, dried out and bleached grey by the sun - bark darker to lighter, and
+ * the cut of a stump - with no moss on it.
+ */
+function dried(base, bark) {
+  var k = Object.assign({}, KINDS[base]);
+
+  k.bark = bark;
+  delete k.moss;
+
+  return k;
+}
+
+//the bark of the dead wood of the desert, dark to light, and the cut of it
+var BLEACHED = [
+  [124, 114, 100],
+  [184, 174, 156],
+  [216, 204, 178],
+];
+
+KINDS.snowspruce = snowed("spruce", 0.3);
+KINDS.snowpine = snowed("pine", 0.32);
+KINDS.snowsnag = snowed("snag", 0.1);
+KINDS.snowstump = snowed("stump", 0.2);
+KINDS.snowlog = snowed("log", 0.25);
+KINDS.snowlogs = snowed("logs", 0.25);
+KINDS.drysnag = dried("snag", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
+KINDS.drystump = dried("stump", BLEACHED);
+KINDS.drylog = dried("log", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
+KINDS.drylogs = dried("logs", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
+
 /**
  * A fallen trunk lying along a, on the ground across the middle of the
  * tile: the trunk itself, thick at its foot, and the broken stubs of a few
@@ -924,6 +993,16 @@ function grow(kind, seed, turns) {
     //the cut, for a kind that shows it
     if (k.face && trunk && trunk.cut) return cutAt(p) > -0.3;
 
+    //snow, on whatever looks up enough - leaves and all
+    if (k.snow !== undefined) {
+      var w = back(p[0], p[1]);
+
+      return (
+        n[2] > SNOW_UP &&
+        noise(w[0] * 0.35 + seed, w[1] * 0.35, p[2] * 0.35) > k.snow
+      );
+    }
+
     if (k.moss !== undefined) {
       var m = back(p[0], p[1]);
 
@@ -1107,9 +1186,10 @@ function paintTree(tree, look) {
         if (ns !== null) ns[i] = n;
 
         //the trunk is never caught by the sun the way the leaves are: its
-        //third tone is for where it is marked
+        //third tone is for where it is marked - and the snow lies on leaves
+        //and wood alike
         tones[i] =
-          part && tree.marked(p, n)
+          (part || tree.kind.snow !== undefined) && tree.marked(p, n)
             ? 5
             : part * 3 + Math.min(toneOf(light), part ? 1 : 2);
       } else if (

@@ -6,8 +6,8 @@ traffic on the roads, the light it is all drawn in, and the generators that
 paint every picture of it. It has no game of its own and no screens: a game
 starts it up and puts its own over it (see the games' `src/main.js`).
 
-- `src/core` - the world itself: terrain, buildings and roads, cities, the
-  clock, saves.
+- `src/core` - the world itself: terrain, the climate (`climate.js`, see
+  Climate), buildings and roads, cities, the clock, saves.
 - `src/client` - the world on screen: chunks streamed in round the camera,
   building and road views, traffic (`traffic.js`, `carman.js`), the WebGL
   renderer and lighting (`glview.js`, `lighting.js`), the sprite cache and
@@ -60,6 +60,62 @@ A game depends on it by path (`"isometrica": "file:../isometrica"`) and
 imports its modules as `isometrica/<path under src>`, e.g.
 `isometrica/client/main`, `isometrica/core/terrain`. It is drawn with the
 engine in `engine/`.
+
+### Climate
+
+- The world is hot in the middle and frozen at its edge, the way the Earth
+  is at the equator and the poles - only flat, so its equator is the middle
+  of it, tile 32768, 32768, and its poles all of its rim
+  (`src/core/climate.js`). It rings round the middle: desert there, the
+  green world round that, and snow and ice out at the edge.
+- It all goes by one number, `TEMPERATURE` - how warm the middle of the
+  world is, 33° - and it gets a degree colder every 600 tiles out (`LAPSE`).
+  Every zone starts at a temperature of its own (`ZONES`): the desert gives
+  way to the green at 29°, 2,400 tiles out; the green to the snow at 1°,
+  19,200 tiles out. A degree warmer moves every zone 600 tiles further out -
+  the desert spreads, the green ring moves out, a longer ring with more
+  room on it, and the snow draws back to the edge. As warm as it is, the
+  city a new player of the city builder starts on, 5,600 tiles out, is in
+  the green, and so is the delivery game's, 15,100 tiles out; a couple of
+  degrees warmer and the desert reaches the first. Another zone
+  - savannah between the desert and the green, say - is another row of
+    `ZONES`, its ground one of the terrain painter's tilesets.
+- The rings are not round: how warm it is wanders a couple of degrees
+  either way over a few thousand tiles. Nor does one zone stop where the next
+  starts: their tiles are mixed for 1,800 tiles either side of it (`BLEND`)
+  - a patch of the next zone here and there first, then more, bigger ones
+    that run into each other, till there is none of the first left; the way
+    the woods shade into each other, on the scale of the world. Where the
+    ground of two meets, the one over the other in the painter's precedence
+    (snow over grass, sand over grass) spills over the edges of the other's
+    tiles, ragged, the way the earth of a tile cleared does - so there is no
+    line along the tiles anywhere.
+- The zone a tile is in has its ground (`sand_dunes`, `grass`, `snow`), its
+  water frozen over in the cold (`ice`, with its frosted shore, the ice
+  spilling over the edges of open water next to it), its trees and its
+  stones. The woods (`src/core/woods.js`) go on whatever the climate, so a
+  forest runs on into the cold or the heat and only what grows in it changes
+  (`FLORA`): out in the cold, the spruce and the pine snowed over and the
+  broadleaf trees mostly gone, then further out fewer trees and fewer of
+  them alive, till only the dead wood is left in the snow; in the desert,
+  hardly anything, dead and bleached by the sun. The stones are snowed over
+  in the cold, and red sandstone and pale rock in the desert - twice as many
+  of them (`src/core/ambient.js`, `src/data/rocks.js`).
+- Nothing of it is kept: it is worked out from where a tile is, like the
+  lie of the land. The game's world map (the HUD's map button) shows the
+  rings, and the zone and how warm it is under the pointer; the woods map
+  in the lab (`/woods.html`) shows the zones' trees.
+- `npm run map:climate` (`tools/climatemap.mjs`) writes the whole world -
+  or a part of it, `--at x,y --size n` - as a picture, `climate.png`, and
+  tells how much of the land each zone has; `--temperature t` shows where
+  the zones would be were the middle of the world that warm, without
+  changing the game.
+- The snow, ice and desert tiles, and the tools that write the terrain and
+  the biomes' trees out as pictures (`tools/genterrain.js`,
+  `genterrain-preview.js`, `gentrees.js`), came from the
+  `terrain-asset-generation` branch, which drew its world with its own
+  biomes and mountains; this world keeps its own land and has the climate
+  ring round it instead.
 
 ### Traffic
 
@@ -705,7 +761,8 @@ dev`) plays them the way a game would - all three weathers together, the
   water with its swell and ripples catching the light - the shallows along
   the shore and deep water further out, alike but for their blues, deep
   water spilling over the edges of the shallows next to it in a ragged,
-  dithered contour (the terrain generator's diffuse tiles);
+  dithered contour (the terrain generator's diffuse tiles); the desert's
+  sand, the snow and the ice where the climate has them (see Climate);
   and every tile's outline is its corners joined up, lit by the same sun as
   the buildings. The grid is not painted into the tiles but laid over them,
   see-through black round every tile, as the tiles drawn by hand had it. A

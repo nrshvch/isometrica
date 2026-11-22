@@ -4,6 +4,11 @@
  * (core/woods treeAt), or which wood every tile is in (woodAt), on the ground
  * of core/terrain: the sea, the shore, and the land lighter the higher it is.
  *
+ * The land is the colour of its zone of the climate (core/climate): sand in
+ * the desert in the middle of the world, green round it, snow out at the
+ * edge, where the water is frozen over - and so are the trees that grow
+ * there.
+ *
  * As in the game, nothing grows on the shore or in the water. What the map
  * leaves out is the stones the world strews about, which keep a tree off
  * the odd tile in the game, and whatever a city built.
@@ -11,6 +16,7 @@
 import Terrain from "../../src/core/terrain.js";
 import Woods from "../../src/core/woods.js";
 import Trees from "../../src/data/trees.js";
+import Climate from "../../src/core/climate.js";
 
 //the kinds, each as it shows on the map
 export var KIND_COLOURS = {
@@ -25,6 +31,16 @@ export var KIND_COLOURS = {
   stump: [40, 30, 25],
   log: [230, 110, 200],
   logs: [255, 170, 235],
+  snowspruce: [40, 110, 90],
+  snowpine: [240, 120, 110],
+  snowsnag: [100, 100, 110],
+  snowstump: [70, 60, 60],
+  snowlog: [190, 80, 170],
+  snowlogs: [150, 60, 140],
+  drysnag: [120, 100, 80],
+  drystump: [80, 60, 40],
+  drylog: [170, 90, 60],
+  drylogs: [140, 70, 40],
 };
 
 //the woods, in the order core/woods has them
@@ -38,10 +54,25 @@ export var WOOD_COLOURS = [
 ];
 
 export var SEA = [52, 92, 150],
-  SHORE = [200, 184, 130];
+  SHORE = [200, 184, 130],
+  ICE = [196, 218, 232];
 
 //round about the city a new player starts on (data/initialcity)
 export var HOME = [22110, 22110];
+
+//where the desert gives way to the green, and the green to the snow, as the
+//rings would be were they round (core/climate radius) - straight down from
+//the middle of the world
+export var EDGES = {
+  desert: [
+    Climate.CENTER[0],
+    Math.round(Climate.CENTER[1] - Climate.radius("temperate")),
+  ],
+  snow: [
+    Climate.CENTER[0],
+    Math.round(Climate.CENTER[1] - Climate.radius("cold")),
+  ],
+};
 
 export var KINDS = Trees.KINDS,
   WOODS = Woods.WOODS;
@@ -57,11 +88,20 @@ export function rgb(c) {
   return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
 }
 
-//the land, lighter the higher it is
-function ground(low) {
-  var l = Math.min(low, 10) / 10;
+//the land of each zone's ground, low down - lighter the higher it is
+var LANDS = {
+  grass: [92, 118, 70],
+  sand_dunes: [196, 164, 110],
+  snow: [200, 206, 216],
+};
 
-  return [92 + 50 * l, 118 + 50 * l, 70 + 40 * l];
+function ground(low, zone) {
+  var l = Math.min(low, 10) / 10,
+    c = LANDS[zone.ground] || LANDS.grass;
+
+  return [c[0] + 50 * l, c[1] + 50 * l, c[2] + 40 * l].map(function (v) {
+    return Math.min(255, v);
+  });
 }
 
 /**
@@ -101,8 +141,10 @@ export function draw(canvas, centre, scale, view) {
         low = Math.min(a, b, c, d),
         colour;
 
-      if (Math.max(a, b, c, d) <= 0) colour = SEA;
-      else if (low <= 0) colour = SHORE;
+      var zone = Climate.zoneAt(x0 + x, y0 + y);
+
+      if (Math.max(a, b, c, d) <= 0) colour = zone.water !== null ? ICE : SEA;
+      else if (low <= 0) colour = zone.water !== null ? LANDS.snow : SHORE;
       else {
         land++;
 
@@ -111,7 +153,7 @@ export function draw(canvas, centre, scale, view) {
         else {
           var code = Woods.treeAt(x0 + x, y0 + y, low);
 
-          if (code === null) colour = ground(low);
+          if (code === null) colour = ground(low, zone);
           else {
             trees++;
             count[kindOf[code]] = (count[kindOf[code]] || 0) + 1;
@@ -145,7 +187,18 @@ export function at(drawn, x, y) {
     low = Math.min(h[i], h[i + 1], h[i + drawn.w + 1], h[i + drawn.w + 2]),
     tx = drawn.x0 + x,
     ty = drawn.y0 + y,
-    text = "tile " + tx + ", " + ty + " - height " + low;
+    text =
+      "tile " +
+      tx +
+      ", " +
+      ty +
+      " - height " +
+      low +
+      " - " +
+      Climate.zoneAt(tx, ty).name.toLowerCase() +
+      ", " +
+      Math.round(Climate.heat(tx, ty)) +
+      "°";
 
   if (low > 0) {
     var code = Woods.treeAt(tx, ty, low);

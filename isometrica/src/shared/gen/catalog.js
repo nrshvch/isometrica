@@ -29,6 +29,7 @@ import * as Trees from "./trees.js";
 import * as Foundations from "./foundations.js";
 import { tileName, shoreName, diffuseName } from "./names.js";
 import * as iso from "./isobox.js";
+import Climate from "../../core/climate.js";
 
 //the kinds of ground the terrain is drawn with: the land, the water its
 //shore runs into, and the water further out, too deep to see the bottom of
@@ -48,6 +49,30 @@ var EARTH = "earth",
 //many of each there are (shared/gen/terrain DIRECTIONS, diffuseVariants)
 var SPILLS = ["ne", "se", "sw", "nw", "n", "e", "s", "w"],
   SPILL_VARIANTS = 2;
+
+//the ground of every zone of the climate (core/climate ZONES) - the desert's
+//sand, the green's grass, the snow - lowest first, as shared/gen/terrain
+//PRECEDENCE has them: where two meet, the later one spills over the edges of
+//the earlier one; and what their water freezes to, where it does - the ice,
+//which closes over open water the same way
+var GROUNDS = [],
+  FROZEN = [];
+
+Climate.ZONES.forEach(function (zone) {
+  if (GROUNDS.indexOf(zone.ground) === -1) GROUNDS.push(zone.ground);
+  if (zone.water !== null && FROZEN.indexOf(zone.water) === -1)
+    FROZEN.push(zone.water);
+});
+GROUNDS.sort(function (a, b) {
+  return Terrain.PRECEDENCE.indexOf(a) - Terrain.PRECEDENCE.indexOf(b);
+});
+
+//every tileset the ground is drawn with
+var TILESETS = [LAND, WATER, DEEP, EARTH, REGROWING]
+  .concat(GROUNDS, FROZEN)
+  .filter(function (id, i, all) {
+    return all.indexOf(id) === i;
+  });
 
 export var GENERATORS = [
   "terrain",
@@ -195,7 +220,7 @@ function describeSide(gen, pixels) {
 
   if (gen === "terrain") {
     var terrain = Terrain.describe(null, {
-        tilesets: [LAND, WATER, DEEP, EARTH, REGROWING],
+        tilesets: TILESETS,
         diffuse: false,
       }),
       sets = terrain.manifest.tilesets;
@@ -206,7 +231,14 @@ function describeSide(gen, pixels) {
       deep: DEEP,
       earth: EARTH,
       regrowing: REGROWING,
+      //the ground of the climate's zones, lowest first - each spills over
+      //the edges and corners of those before it, on any slope - and what
+      //water freezes to, which spills over open water's, on the flat
+      grounds: GROUNDS,
+      frozen: FROZEN,
       variants: {},
+      //the slopes every water has a shore on, by water: the shallows', and
+      //the ice's
       shores: {},
       //deep water spilling over the shallows next to it, on the flat
       spills: { dirs: SPILLS, variants: SPILL_VARIANTS },
@@ -218,7 +250,7 @@ function describeSide(gen, pixels) {
       edges: { variants: EDGE_VARIANTS },
     };
 
-    [LAND, WATER, DEEP, EARTH, REGROWING].forEach(function (id) {
+    TILESETS.forEach(function (id) {
       Object.keys(sets[id].base).forEach(function (slope) {
         sets[id].base[slope].forEach(function (rel, v) {
           add(tileName(id, slope, v), terrain.sizes[rel], rel);
@@ -228,39 +260,53 @@ function describeSide(gen, pixels) {
       });
     });
 
-    //only the shallows meet the land
-    Object.keys(sets[WATER].shore).forEach(function (slope) {
-      var rel = sets[WATER].shore[slope];
+    //the shallows meet the land, and so does the ice where the water is
+    //frozen over
+    [WATER].concat(FROZEN).forEach(function (id) {
+      data.shores[id] = {};
 
-      add(shoreName(WATER, slope), terrain.sizes[rel], rel);
-      data.shores[slope] = true;
+      Object.keys(sets[id].shore).forEach(function (slope) {
+        var rel = sets[id].shore[slope];
+
+        add(shoreName(id, slope), terrain.sizes[rel], rel);
+        data.shores[id][slope] = true;
+      });
     });
 
     //deep water spilling over the edge of the shallows next to it, dithered
-    //as it thins out: the contour between the two
-    SPILLS.forEach(function (dir) {
-      for (var v = 0; v < SPILL_VARIANTS; v++)
-        add(
-          diffuseName(DEEP, Terrain.FLAT, dir, v),
-          { w: Terrain.WIDTH, h: Terrain.HEIGHT },
-          DEEP + "/diffuse/" + Terrain.FLAT + "_" + dir + "_" + v + ".png",
-        );
-    });
-
-    //the earth spilling over the land next to it, and the grass over the
-    //earth growing back over, on any slope
-    [EARTH, LAND].forEach(function (id) {
-      Object.keys(sets[id].base).forEach(function (slope) {
-        SPILLS.forEach(function (dir) {
-          for (var v = 0; v < EDGE_VARIANTS; v++)
-            add(
-              diffuseName(id, slope, dir, v),
-              { w: Terrain.WIDTH, h: Terrain.HEIGHT },
-              id + "/diffuse/" + slope + "_" + dir + "_" + v + ".png",
-            );
-        });
+    //as it thins out: the contour between the two - and the ice over the
+    //edge of open water next to it
+    [DEEP].concat(FROZEN).forEach(function (id) {
+      SPILLS.forEach(function (dir) {
+        for (var v = 0; v < SPILL_VARIANTS; v++)
+          add(
+            diffuseName(id, Terrain.FLAT, dir, v),
+            { w: Terrain.WIDTH, h: Terrain.HEIGHT },
+            id + "/diffuse/" + Terrain.FLAT + "_" + dir + "_" + v + ".png",
+          );
       });
     });
+
+    //the earth spilling over the land next to it, the grass over the earth
+    //growing back over, and the ground of each zone over that of the one
+    //next to it, on any slope
+    [EARTH]
+      .concat(GROUNDS)
+      .filter(function (id, i, all) {
+        return all.indexOf(id) === i;
+      })
+      .forEach(function (id) {
+        Object.keys(sets[id].base).forEach(function (slope) {
+          SPILLS.forEach(function (dir) {
+            for (var v = 0; v < EDGE_VARIANTS; v++)
+              add(
+                diffuseName(id, slope, dir, v),
+                { w: Terrain.WIDTH, h: Terrain.HEIGHT },
+                id + "/diffuse/" + slope + "_" + dir + "_" + v + ".png",
+              );
+          });
+        });
+      });
   } else if (gen === "vehicles") {
     var vehicles = Vehicles.describe();
 

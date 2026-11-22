@@ -5,7 +5,10 @@
  * world grows them on its own (core/ambient), in woods of their own
  * (core/woods) - and among them now and then a dead tree still standing, a
  * stump or a fallen trunk, which only the world puts down: a tree planted is
- * a live one.
+ * a live one. Where it is not green (core/climate), the world has kinds of
+ * its own: out in the cold the spruce and the pine snowed over, and the dead
+ * wood snowed over; in the desert the dead wood dried out - only the world
+ * puts those down either.
  *
  * The first oak and the first beech keep the codes the two trees drawn by hand
  * had, so a city that has those has these instead.
@@ -33,13 +36,52 @@ var KINDS = [
   "stump",
   "log",
   "logs",
+  "snowspruce",
+  "snowpine",
+  "snowsnag",
+  "snowstump",
+  "snowlog",
+  "snowlogs",
+  "drysnag",
+  "drystump",
+  "drylog",
+  "drylogs",
 ];
 var EACH = 2;
 
 //the kinds nobody plants, and what they are called where it is not their
 //kind's name
-var WILD = { snag: true, stump: true, log: true, logs: true };
-var NAMES = { snag: "dead tree", log: "fallen tree", logs: "fallen trees" };
+var WILD = {
+  snag: true,
+  stump: true,
+  log: true,
+  logs: true,
+  snowspruce: true,
+  snowpine: true,
+  snowsnag: true,
+  snowstump: true,
+  snowlog: true,
+  snowlogs: true,
+  drysnag: true,
+  drystump: true,
+  drylog: true,
+  drylogs: true,
+};
+var NAMES = {
+  snag: "dead tree",
+  log: "fallen tree",
+  logs: "fallen trees",
+  snowspruce: "snowy spruce",
+  snowpine: "snowy pine",
+  snowsnag: "snowy dead tree",
+  snowstump: "snowy stump",
+  snowlog: "snowy fallen tree",
+  snowlogs: "snowy fallen trees",
+  drysnag: "dry dead tree",
+  drystump: "dry stump",
+  drylog: "dry fallen tree",
+  drylogs: "dry fallen trees",
+};
 
 var TREES = [];
 
@@ -104,8 +146,9 @@ function turned(path, turns) {
   return path + "/r" + turns;
 }
 
-//the pictures painted from all four sides
-var TURNING = /^gen\/(trees|scenery\/(stone|rubble))/;
+//the pictures painted from all four sides - the stones of every zone of the
+//climate as well, "snowstone", "desertstone0"
+var TURNING = /^gen\/(trees|scenery\/[a-z]*(stone|rubble))/;
 
 /**
  * The codes of every tree of each kind, by kind.
