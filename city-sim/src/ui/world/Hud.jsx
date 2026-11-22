@@ -529,7 +529,7 @@ function Menu({ client, world, cityId, address, busy }) {
           {where && (
             //the tile the camera is over, to be copied off - and a line
             //under it, the switches after it
-            <div className="flex items-center gap-3 border-b-4 border-inset px-3 py-2.5">
+            <div className="flex items-center gap-3 border-b-[1.5px] border-inset px-3 py-2.5">
               <Icon name="map" size={20} className="text-muted" />
               <span className="label">Location</span>
               <span className="ml-auto font-mono text-sm font-bold select-text">
