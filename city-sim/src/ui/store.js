@@ -56,6 +56,9 @@ export var store = createStore(function () {
     //whether the map of the whole world is up over it, to look about and
     //jump anywhere - for debugging, players only ever pan (WorldMap)
     worldMap: false,
+    //how the game is put on the home screen here: "prompt", "ios", "mac",
+    //or null for not at all (install.js)
+    install: null,
   };
 });
 

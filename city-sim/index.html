@@ -2,13 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- the page right up to the edges of a phone's screen, under its notch
+         and its home bar - what goes over the world keeps clear of them
+         (env(safe-area-inset-*)) -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=0, maximum-scale=1"
+      content="width=device-width, initial-scale=1.0, user-scalable=0, maximum-scale=1, viewport-fit=cover"
     />
     <title>Peepsland</title>
+    <meta
+      name="description"
+      content="Found a city, build it, lay its roads and shape the ground"
+    />
+    <!-- put on a home screen, it opens as an app of its own, and plays
+         offline (public/sw.js) - its name, icons and colours
+         (tools/genlogo.js) -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#1b2340" />
     <link rel="icon" type="image/png" href="/logo.png" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Peepsland" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <!-- what the page fetches by a relative address - isometrica's gfx/ -
          is fetched from the top, whatever city or screen the address is on -->
     <base href="/" />

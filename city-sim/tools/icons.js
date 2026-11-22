@@ -283,6 +283,19 @@ var SIGNS = {
     line([8, 7], [12, 3], [16, 7]),
   ],
 
+  //put on the phone: an arrow down into one, its home bar under it
+  install: [
+    shape([
+      [6, 2.5],
+      [18, 2.5],
+      [18, 21.5],
+      [6, 21.5],
+    ]),
+    line([12, 6.5], [12, 12.5]),
+    line([9, 10.5], [12, 13.5], [15, 10.5]),
+    line([10.5, 18], [13.5, 18]),
+  ],
+
   //turned round, most of the way, the arrow's head where it has got to
   rotate: [
     path("M20 12a8 8 0 1 1-2.34-5.66L20 8"),

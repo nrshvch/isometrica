@@ -4,8 +4,12 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router";
 import { router } from "./ui/router";
 import { connect } from "./ui/session";
+import { watchInstall } from "./ui/install";
 import "./ui/app.css";
 
+//before anything else: the browser says it can put the game on the home
+//screen when it likes
+watchInstall();
 connect(router);
 
 createRoot(document.getElementById("root")).render(
@@ -14,9 +18,10 @@ createRoot(document.getElementById("root")).render(
   </StrictMode>,
 );
 
-//the game opens without a connection from what the browser kept of it while
-//it had one (public/sw.js), and plays the city saved here till it is back.
-//Not in development: what was kept would be served instead of what changed
+//the game opens without a connection from what the browser kept of it the
+//first time it was opened with one - all of it (public/sw.js) - and plays
+//the city saved here till it is back. Not in development: what was kept
+//would be served instead of what changed
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   navigator.serviceWorker
     .register("/sw.js?v=" + encodeURIComponent(__VERSION__))
