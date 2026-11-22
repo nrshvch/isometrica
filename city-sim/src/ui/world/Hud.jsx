@@ -19,7 +19,7 @@ import CameraControl from "isometrica/client/cameracontrol";
 import ResourceCode from "isometrica/core/resourcecode";
 import Game from "../../game";
 import { Container, HudButton, Icon, cx } from "../kit";
-import { setDebug, store, useGame } from "../store";
+import { setDebug, setWorldMap, store, useGame } from "../store";
 import {
   bigCityName,
   getClient,
@@ -410,6 +410,9 @@ function Menu({ client, world, cityId, address, busy }) {
     debug = useGame(function (s) {
       return s.debug;
     }),
+    worldMap = useGame(function (s) {
+      return s.worldMap;
+    }),
     box = useRef(null);
 
   useEffect(
@@ -511,6 +514,15 @@ function Menu({ client, world, cityId, address, busy }) {
             on={debug}
             onClick={function () {
               setDebug();
+            }}
+          />
+          <Row
+            icon="map"
+            label="World map"
+            sub="Debug: look about, jump anywhere"
+            on={worldMap}
+            onClick={function () {
+              setWorldMap();
             }}
           />
           {address && (
