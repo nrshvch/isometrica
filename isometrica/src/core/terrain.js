@@ -67,6 +67,12 @@ function oilDistribution(x, y) {
     return simplex.noise2D(y / 8, x / 8) * 64 > 50;
 }
 
+/**
+ * How high the ground at grid point index is, as the noise has it - for any
+ * point the ground has not been shaped at (getGridPointHeight). The four
+ * finest octaves go into the land and into the islands both, and are worked
+ * out once for the two: the same numbers, added up in the same order.
+ */
 function calcZ(index) {
   var land = 0,
     island = 0;
@@ -77,20 +83,72 @@ function calcZ(index) {
   x += 640;
   y += 700;
 
+  var n64 = simplex.noise2D(x / 64, y / 64),
+    n32 = simplex.noise2D(x / 32, y / 32),
+    n16 = simplex.noise2D(x / 16, y / 16),
+    n8 = simplex.noise2D(x / 8, y / 8);
+
   land += simplex.noise2D(x / 512, y / 512) / 2; //noisemap of continents
   land += simplex.noise2D(x / 256, y / 256) / 4; //of smaller lands
   land += simplex.noise2D(x / 128, y / 128) / 8; //...
-  land += simplex.noise2D(x / 64, y / 64) / 16; //...
-  land += simplex.noise2D(x / 32, y / 32) / 32; //...
-  land += simplex.noise2D(x / 16, y / 16) / 64; //...
-  land += simplex.noise2D(x / 8, y / 8) / 64; //smallest details
+  land += n64 / 16; //...
+  land += n32 / 32; //...
+  land += n16 / 64; //...
+  land += n8 / 64; //smallest details
 
-  island += simplex.noise2D(x / 64, y / 64) / 10;
-  island += simplex.noise2D(x / 32, y / 32) / 20;
-  island += simplex.noise2D(x / 16, y / 16) / 40;
-  island += simplex.noise2D(x / 8, y / 8) / 40;
+  island += n64 / 10;
+  island += n32 / 20;
+  island += n16 / 40;
+  island += n8 / 40;
 
   return Math.floor((0.8 * land + 0.2 * island) * 16);
+}
+
+//calcZ, worked out once a grid point and kept: the ground, the trees, the
+//roads and the buildings ask how high it is over and over - a tile's four
+//corners for every tile drawn, the tiles round it for its edges, and every
+//one of them again as the camera turns - and eleven octaves of noise for
+//every one of those asks was most of what a turn took. Kept beside
+//gridPoints, not in it: that is the ground as it was shaped, saved whole
+//(save), and planned changes are laid over it (after) - this is only ever
+//what the noise says, the same for every terrain there is.
+//
+//The world WINDOW by WINDOW grid points at a time, wrapped round: grid point
+//x, y is kept at slot x, y of the window, each worked out the first time it
+//is asked - with which grid point it is, the whole of its index, for one
+//further off on the same slot to be told apart and worked out in its place.
+//Anywhere WINDOW across, as much as is ever on the screen, every grid point
+//has a slot of its own; asked far and wide, they only take each other's
+//place. Nothing is made as it is asked: two typed arrays, made once.
+var WINDOW_BITS = 9,
+  WINDOW_MASK = (1 << WINDOW_BITS) - 1,
+  keptAt = new Int32Array(1 << (2 * WINDOW_BITS)),
+  kept = new Int8Array(1 << (2 * WINDOW_BITS));
+
+//none kept yet: a grid point that is never asked for at each slot - 0, the
+//grid point 0, 0, on every slot but its own, 0, which has 1, 1, 0's
+keptAt[0] = 1;
+
+function noiseHeight(index) {
+  var x = index & 0xffff,
+    y = index >>> 16,
+    slot = ((y & WINDOW_MASK) << WINDOW_BITS) | (x & WINDOW_MASK),
+    //the index as convertToIndex makes it, whatever it came in as
+    key = (y << 16) ^ x,
+    z;
+
+  if (keptAt[slot] === key) return kept[slot];
+
+  z = calcZ(index);
+
+  //kept if a byte holds it, which it always does: worked out every time
+  //otherwise, never kept wrong
+  if (z >= -128 && z < 128) {
+    keptAt[slot] = key;
+    kept[slot] = z;
+  }
+
+  return z;
 }
 
 //levelling one tile can pull a whole hillside along with it, and past this
@@ -575,10 +633,8 @@ Terrain.prototype.getGridPointHeight = function (indexOrX, y) {
 
   var gp = this.gridPoints[index];
 
-  if (gp === undefined) {
-    gp = calcZ(index);
-    //gp = this.gridPoints[index] = calcZ(index);
-  }
+  //where the ground was not shaped, as the noise has it
+  if (gp === undefined) gp = noiseHeight(index);
 
   return gp;
 };
