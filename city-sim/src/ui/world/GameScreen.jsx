@@ -13,6 +13,7 @@ import { getClient, reopen, showCaughtUp, start } from "../session";
 import WorldCanvas from "./WorldCanvas";
 import Hud from "./Hud";
 import DebugPanel from "./DebugPanel";
+import WorldMap from "./WorldMap";
 import Prompt from "./Prompt";
 import Splash from "./Splash";
 import Welcome from "./Welcome";
@@ -41,6 +42,9 @@ export default function GameScreen() {
     }),
     debug = useGame(function (s) {
       return s.debug;
+    }),
+    worldMap = useGame(function (s) {
+      return s.worldMap;
     }),
     onWorld = useMatch("/:city?") !== null,
     //a screen up over the world: the world dimmed behind it, and none of
@@ -97,6 +101,7 @@ export default function GameScreen() {
       >
         {phase === "ready" && <Hud />}
         {phase === "ready" && debug && <DebugPanel />}
+        {phase === "ready" && worldMap && <WorldMap />}
         {/* the screens are of the city, and wait for it to be up */}
         {phase !== "ready" ? null : prompt ? (
           <Prompt prompt={prompt} />

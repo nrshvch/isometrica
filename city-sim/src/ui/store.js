@@ -53,6 +53,9 @@ export var store = createStore(function () {
     welcome: null,
     //whether the debug panel is up over the world (DebugPanel)
     debug: debugWanted(),
+    //whether the map of the whole world is up over it, to look about and
+    //jump anywhere - for debugging, players only ever pan (WorldMap)
+    worldMap: false,
   };
 });
 
@@ -72,6 +75,18 @@ export function setDebug(on) {
   }
 
   store.setState({ debug: debug });
+}
+
+/**
+ * Puts the map of the world up or away - the other way round from now,
+ * unless told.
+ *
+ * @param [on] {boolean}
+ */
+export function setWorldMap(on) {
+  store.setState({
+    worldMap: on === undefined ? !store.getState().worldMap : on === true,
+  });
 }
 
 export function useGame(selector) {

@@ -128,12 +128,22 @@ Cityman.prototype.init = function () {
   for (var i = 0; i < cities.length; i++)
     onNewCity(root.core.cities, cities[i], this);
 
+  //how the city was looked at when it was left - read before anything
+  //moves the camera, and writes over it
+  var persistence = root.core.persistence,
+    view = persistence ? persistence.view() : null;
+
   //turned the way it was left - before it moves, as it turns about where
   //it is
-  keepTurns(root);
+  keepTurns(root, view);
 
-  if (cities.length > 0) this.locate(cities[0]);
-  else startAtPicked(root);
+  //and over where the player left off - or the city, for a save from
+  //before that was kept
+  if (cities.length > 0) {
+    if (!openWhereLeft(root, view)) this.locate(cities[0]);
+  } else startAtPicked(root);
+
+  keepWhere(root);
 };
 
 /**
@@ -141,13 +151,12 @@ Cityman.prototype.init = function () {
  * from here on - so that the city opens the way it was looked at. A save
  * from before that was kept, or one that makes no sense, opens unturned.
  */
-function keepTurns(root) {
+function keepTurns(root, view) {
   var persistence = root.core.persistence;
 
   if (!persistence) return;
 
-  var view = persistence.view(),
-    turns = view !== null ? view.turns : 0;
+  var turns = view !== null ? view.turns : 0;
 
   if (typeof turns === "number" && isFinite(turns) && turns % 1 === 0) {
     turns = ((turns % 4) + 4) % 4;
@@ -156,12 +165,65 @@ function keepTurns(root) {
   }
 
   Events.on(View, View.events.change, function () {
+    keepView(root);
+  });
+}
+
+var whereBuffer = [0, 0, 0];
+
+/**
+ * How the player is looking at the world now, into the next save (core
+ * CityPersistence#view): {turns, at} - the camera's quarter turns, and the
+ * tile under the middle of the screen, x and y, to a hundredth of one.
+ */
+function keepView(root) {
+  var persistence = root.core.persistence;
+
+  if (!persistence) return;
+
+  var pos = root.camera.transform.getPosition(whereBuffer);
+
+  persistence.setView({
     //from above it is unturned for a while - the side it was seen from is
     //the one to come back to
-    persistence.setView({
-      turns: View.top() ? root.turnsBeforeTop : View.turns(),
-    });
+    turns: View.top() ? root.turnsBeforeTop : View.turns(),
+    at: [
+      Math.round((pos[0] / Config.tileSize) * 100) / 100,
+      Math.round((pos[2] / Config.tileSize) * 100) / 100,
+    ],
   });
+}
+
+/**
+ * Has wherever the camera goes from here on go into the save with it - and
+ * where it is now.
+ */
+function keepWhere(root) {
+  var camera = root.camera.camera;
+
+  camera.addEventListener(camera.events.update, function () {
+    keepView(root);
+  });
+  keepView(root);
+}
+
+/**
+ * Puts the camera over the tile the save says the player left off over -
+ * if it says one.
+ *
+ * @returns {boolean} whether it did
+ */
+function openWhereLeft(root, view) {
+  var at = view !== null ? view.at : null;
+
+  if (!Array.isArray(at) || !isFinite(at[0]) || !isFinite(at[1])) return false;
+
+  root.camera.cameraScript.lookAt(
+    at[0] * Config.tileSize,
+    at[1] * Config.tileSize,
+  );
+
+  return true;
 }
 
 /**

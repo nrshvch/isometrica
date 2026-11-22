@@ -111,6 +111,45 @@ function vertical(tail, tip) {
 
 /* --- signs -------------------------------------------------------------- */
 
+//a satellite: its body, a long solar panel either side of it on a strut,
+//and its antenna - drawn level, then turned an eighth of the way round, its
+//panels going up to the right
+function satellite() {
+  var a = -Math.PI / 4,
+    c = Math.cos(a),
+    s = Math.sin(a);
+
+  function turn(p) {
+    var dx = p[0] - 12,
+      dy = p[1] - 12;
+
+    return [12 + dx * c - dy * s, 12 + dx * s + dy * c];
+  }
+
+  function box(x0, y0, x1, y1) {
+    return shape(
+      [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+      ].map(turn),
+    );
+  }
+
+  return [
+    box(9.5, 9.5, 14.5, 14.5),
+    box(2.5, 7.5, 7.5, 16.5),
+    line(turn([5, 7.5]), turn([5, 16.5])),
+    box(16.5, 7.5, 21.5, 16.5),
+    line(turn([19, 7.5]), turn([19, 16.5])),
+    line(turn([7.5, 12]), turn([9.5, 12])),
+    line(turn([14.5, 12]), turn([16.5, 12])),
+    line(turn([12, 9.5]), turn([12, 6.5])),
+    dot.apply(null, turn([12, 5.25]).concat(1.25)),
+  ];
+}
+
 var SIGNS = {
   close: [line([6, 6], [18, 18]), line([18, 6], [6, 18])],
 
@@ -184,6 +223,9 @@ var SIGNS = {
     line([9, 3.5], [9, 18]),
     line([15, 6], [15, 20.5]),
   ],
+
+  //a satellite, its panels spread - the world seen from straight above
+  satellite: satellite(),
 
   //a house, its door - back to the city
   home: [

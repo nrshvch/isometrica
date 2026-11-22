@@ -97,9 +97,10 @@ CityPersistence.prototype.cityId = function () {
 };
 
 /**
- * How the player was looking at the city when it was saved - {turns}, the
- * camera's quarter turns (client/view) - for the client to open it the same
- * way. Core does not look into it. null for a save from before it was kept,
+ * How the player was looking at the city when it was saved - {turns, at},
+ * the camera's quarter turns (client/view) and the tile x, y it was over
+ * (client/cityman) - for the client to open it the same way, where it was
+ * left. Core does not look into it. null for a save from before it was kept,
  * or a city never looked at: the client's own default, then.
  *
  * @returns {Object|null}
