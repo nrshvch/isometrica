@@ -20,6 +20,7 @@ import View from "./view";
 import BuildingClassCode from "../data/classcode";
 import Trees from "../data/trees";
 import { changed } from "./looks";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 
@@ -365,9 +366,9 @@ BuildingView.prototype.update = function () {
 
     //drawn from the tile it is seen from (see drawnAt)
     this.gameObject.transform.setPosition(
-      at.x * tileSize,
+      Origin.worldX(at.x),
       at.z * tileZStep,
-      at.y * tileSize,
+      Origin.worldZ(at.y),
     );
   }
 };

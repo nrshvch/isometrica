@@ -19,6 +19,7 @@ import Engine from "engine";
 import Config from "../config";
 import RenderLayer from "../renderlayer";
 import View from "../view";
+import Origin from "../origin";
 
 //see-through black along every edge of every tile, a pixel into each tile
 //either side - a line two pixels wide where two tiles meet, as the tiles
@@ -128,9 +129,9 @@ TerrainGridRenderer.prototype.render = function (
   //to the pixel, as the pictures under them are put (engine Canvas2dRenderer
   //cull)
   for (i = 0; i < points.length; i += 4) {
-    wx = points[i] * ts - ts / 2;
+    wx = Origin.worldX(points[i]) - ts / 2;
     wy = points[i + 2] * zStep;
-    wz = points[i + 1] * ts - ts / 2;
+    wz = Origin.worldZ(points[i + 1]) - ts / 2;
     sx = Math.floor(M[0] * wx + M[4] * wy + M[8] * wz + M[12] + 0.5);
     sy = Math.floor(M[1] * wx + M[5] * wy + M[9] * wz + M[13] + 0.5) - lift;
 
@@ -218,8 +219,8 @@ function lines(self, M, w, h) {
     sx = (k & 1 ? w + MARGIN : -MARGIN) - M[4] * up - M[12];
     sy = (k & 2 ? h + MARGIN : -MARGIN) - M[5] * up - M[13];
     //the world's x, z there, as grid points
-    hullX[k] = (sx * M[9] - M[8] * sy) / det / ts + 0.5;
-    hullY[k] = (M[0] * sy - M[1] * sx) / det / ts + 0.5;
+    hullX[k] = Origin.tileX((sx * M[9] - M[8] * sy) / det) + 0.5;
+    hullY[k] = Origin.tileY((M[0] * sy - M[1] * sx) / det) + 0.5;
   }
 
   box[0] = Math.max(0, Math.floor(Math.min.apply(null, hullX)));

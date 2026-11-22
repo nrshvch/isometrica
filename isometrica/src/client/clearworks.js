@@ -8,6 +8,7 @@ import Carman from "./carman";
 import WorkLights from "./worklights";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain,
   TerrainType = Core.TerrainType;
@@ -646,9 +647,9 @@ function kick(self, d, dt, ahead) {
 function dust(self, x, y, up) {
   SmokeSource.puff(
     self.root.game.logic.world,
-    x * Config.tileSize,
+    Origin.worldX(x),
     (Carman.groundHeight(self.root, x, y) * Config.tileZStep || 0) + up,
-    y * Config.tileSize,
+    Origin.worldZ(y),
     SmokeScript.dust,
   );
 }
@@ -684,9 +685,9 @@ function place(self, d) {
   renderer.opacity = Math.max(0, fading);
 
   go.transform.setPosition(
-    d.x * Config.tileSize,
+    Origin.worldX(d.x),
     Carman.groundHeight(self.root, d.x, d.y) * Config.tileZStep,
-    d.y * Config.tileSize,
+    Origin.worldZ(d.y),
   );
 
   if (go.world === null) self.root.game.logic.world.addGameObject(go);

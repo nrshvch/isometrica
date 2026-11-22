@@ -11,6 +11,7 @@ import ClientConfig from "isometrica/client/config";
 import Game from "../game";
 import { createBridge } from "./bridge";
 import { store } from "./store";
+import Origin from "isometrica/client/origin";
 
 var START_AT_KEY = "isometrica.startAt",
   //the id of a new city to start from the initial city, rather than from
@@ -390,14 +391,18 @@ function startFreshCity(initial) {
   //picks it up after the reload and opens the camera there
   else if (client !== null && client.camera) {
     var pos = client.camera.transform.getPosition(),
-      span = ClientConfig.citySpreadTiles * ClientConfig.tileSize;
+      span = ClientConfig.citySpreadTiles;
 
     try {
       window.sessionStorage.setItem(
         START_AT_KEY,
         JSON.stringify({
-          x: pos[0] + (Math.random() - 0.5) * span,
-          z: pos[2] + (Math.random() - 0.5) * span,
+          tileX: Math.round(
+            Origin.tileX(pos[0]) + (Math.random() - 0.5) * span,
+          ),
+          tileY: Math.round(
+            Origin.tileY(pos[2]) + (Math.random() - 0.5) * span,
+          ),
         }),
       );
     } catch (e) {

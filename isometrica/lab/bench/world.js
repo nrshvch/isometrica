@@ -20,6 +20,7 @@ import BuildingClassCode from "../../src/data/classcode";
 import CityBuildings from "../../src/core/city/citybuildings";
 import Resource from "../../src/core/resourcecode";
 import Config from "../../src/client/config";
+import Origin from "../../src/client/origin";
 import Weather from "../../src/client/weather";
 import BuildingState from "../../src/core/buildingstate";
 import { stageOf } from "../../src/shared/gen/stacking";
@@ -329,8 +330,8 @@ World.prototype.tile = function (dx, dy) {
  */
 World.prototype.look = function (x, y) {
   this.client.camera.cameraScript.lookAt(
-    (Terrain.extractX(MIDDLE) + x) * Config.tileSize,
-    (Terrain.extractY(MIDDLE) + y) * Config.tileSize,
+    Origin.worldX(Terrain.extractX(MIDDLE) + x),
+    Origin.worldZ(Terrain.extractY(MIDDLE) + y),
   );
 };
 

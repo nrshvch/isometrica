@@ -5,6 +5,7 @@ import View from "./view";
 import RenderLayer from "./renderlayer";
 import Carman from "./carman";
 import WorkLights from "./worklights";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain,
   Surface = Core.Surface;
@@ -393,9 +394,9 @@ function place(go, type, points, i, k, turned) {
   }
 
   go.transform.setPosition(
-    x * Config.tileSize,
+    Origin.worldX(x),
     Carman.groundHeight(man.root, x, y) * Config.tileZStep,
-    y * Config.tileSize,
+    Origin.worldZ(y),
   );
 
   if (go.world === null) man.root.game.logic.world.addGameObject(go);

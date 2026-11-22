@@ -1,6 +1,7 @@
 import Pathfinder from "./pathfinder";
 import _ from "underscore";
 import BuildingClassCode from "../../data/classcode";
+import Origin from "../origin";
 
 function Pathman() {
   this.nodes = [];
@@ -86,10 +87,10 @@ Pathman.prototype.refinePath = function (nodePath) {
 };
 
 Pathman.prototype.findWaypoints = function (startWP, endWP) {
-  var startX = Math.round(startWP[0] / vkaria.config.tileSize),
-    startY = Math.round(startWP[2] / vkaria.config.tileSize),
-    endX = Math.round(endWP[0] / vkaria.config.tileSize),
-    endY = Math.round(endWP[2] / vkaria.config.tileSize),
+  var startX = Math.round(Origin.tileX(startWP[0])),
+    startY = Math.round(Origin.tileY(startWP[2])),
+    endX = Math.round(Origin.tileX(endWP[0])),
+    endY = Math.round(Origin.tileY(endWP[2])),
     startTile = vkaria.tilesman.getTile(startX, startY).tileScript,
     endTile = vkaria.tilesman.getTile(endX, endY).tileScript;
 

@@ -47,6 +47,7 @@ import Terrain from "../../core/terrain";
 import Maker from "./maker";
 import MusicPlayer from "./music";
 import { sleep, wake } from "./wake";
+import Origin from "../origin";
 
 //what is kept quiet for now
 var QUIET = {
@@ -430,8 +431,8 @@ Soundman.prototype.view = function () {
     width = Config.tileSize * Math.SQRT2;
 
   return {
-    x: p[0] / Config.tileSize,
-    y: p[2] / Config.tileSize,
+    x: Origin.tileX(p[0]),
+    y: Origin.tileY(p[2]),
     reach: corner[0] / width + corner[1] / (width / 2),
     zoom: camera.camera.zoom || 1,
   };
@@ -893,9 +894,9 @@ Soundman.prototype.thunder = function (wall, weather) {
 
 //where a driver is on screen: x, y -1..1 across it, or null if well off it
 Soundman.prototype.where = function (d, toViewport) {
-  at[0] = d.x * Config.tileSize;
+  at[0] = Origin.worldX(d.x);
   at[1] = 0;
-  at[2] = d.y * Config.tileSize;
+  at[2] = Origin.worldZ(d.y);
   vec3.transformMat4(onScreen, at, toViewport);
 
   if (Math.abs(onScreen[0]) > 1.2 || Math.abs(onScreen[1]) > 1.2) return null;

@@ -10,7 +10,7 @@
  * asked, or not at all.
  */
 import Client from "../../src/client/main";
-import Config from "../../src/client/config";
+import Origin from "../../src/client/origin";
 import Weather from "../../src/client/weather";
 import Terrain from "../../src/core/terrain";
 import BuildingCode from "../../src/data/buildingcode";
@@ -166,8 +166,8 @@ Stage.prototype.ground = function (dx, dy, w, h) {
  */
 Stage.prototype.look = function (x, y) {
   this.client.camera.cameraScript.lookAt(
-    (Terrain.extractX(MIDDLE) + x) * Config.tileSize,
-    (Terrain.extractY(MIDDLE) + y) * Config.tileSize,
+    Origin.worldX(Terrain.extractX(MIDDLE) + x),
+    Origin.worldZ(Terrain.extractY(MIDDLE) + y),
   );
 };
 

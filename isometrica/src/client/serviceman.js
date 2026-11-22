@@ -45,6 +45,7 @@ import BuildingView from "./buildingview";
 import BuildingState from "../core/buildingstate";
 import Rotation from "../core/rotation";
 import View from "./view";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 
@@ -517,9 +518,9 @@ function copyBuilding(self, building) {
   );
 
   go.transform.setPosition(
-    at.x * Config.tileSize,
+    Origin.worldX(at.x),
     at.z * Config.tileZStep,
-    at.y * Config.tileSize,
+    Origin.worldZ(at.y),
   );
   self.root.game.logic.world.addGameObject(go);
 

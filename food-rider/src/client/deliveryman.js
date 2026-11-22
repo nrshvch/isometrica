@@ -30,6 +30,7 @@ import Courier from "./courier";
 import Roads from "./roads";
 import Places from "./places";
 import Orders from "./orders";
+import Origin from "isometrica/client/origin";
 
 var Phase = Courier.Phase;
 
@@ -584,8 +585,8 @@ function draw(self, heading) {
       : self.driver.signal();
   car.car.braking = !!self.driver && self.driver.braking;
 
-  var x = self.x * Config.tileSize,
-    z = self.y * Config.tileSize,
+  var x = Origin.worldX(self.x),
+    z = Origin.worldZ(self.y),
     y = Carman.groundHeight(self.root, self.x, self.y) * Config.tileZStep;
 
   car.transform.setPosition(x, y, z);

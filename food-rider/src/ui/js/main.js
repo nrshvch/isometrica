@@ -1,10 +1,10 @@
 import Config from "./config";
-import ClientConfig from "isometrica/client/config";
 import MainRouter from "./mainrouter";
 import SplashScreen from "../modules/splash/js/main";
 import GameScreen from "../modules/gamescreen/js/gamescreen";
 import $ from "jquery";
 import Backbone from "backbone";
+import Origin from "isometrica/client/origin";
 
 // Under RequireJS, Backbone's AMD branch always received jQuery and wired
 // Backbone.$ itself. Vite's CJS interop takes Backbone's plain CommonJS
@@ -162,14 +162,18 @@ UIManager.prototype.startFreshCity = function () {
   //the reload and opens the camera there
   if (client !== null) {
     var pos = client.camera.transform.getPosition(),
-      span = START_SPREAD_TILES * ClientConfig.tileSize;
+      span = START_SPREAD_TILES;
 
     try {
       window.sessionStorage.setItem(
         START_AT_KEY,
         JSON.stringify({
-          x: pos[0] + (Math.random() - 0.5) * span,
-          z: pos[2] + (Math.random() - 0.5) * span,
+          tileX: Math.round(
+            Origin.tileX(pos[0]) + (Math.random() - 0.5) * span,
+          ),
+          tileY: Math.round(
+            Origin.tileY(pos[2]) + (Math.random() - 0.5) * span,
+          ),
         }),
       );
     } catch (e) {

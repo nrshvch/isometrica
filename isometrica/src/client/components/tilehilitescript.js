@@ -1,5 +1,6 @@
 import Config from "../config";
 import engine from "engine";
+import Origin from "../origin";
 
 function Script() {
   engine.Component.call(this);
@@ -47,9 +48,9 @@ Script.prototype.setHiliteData = function (hiliteData) {
   //one reaching past the edge of what is loaded, or left behind while the
   //map was panned away
   t.setPosition(
-    r.x * Config.tileSize,
+    Origin.worldX(r.x),
     type === 0 ? 0 : gps[2] * zStep,
-    r.y * Config.tileSize,
+    Origin.worldZ(r.y),
   );
 
   if (type === 0) {

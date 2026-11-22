@@ -26,6 +26,7 @@ import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
 import Soundman from "./audio/soundman";
 import View from "./view";
+import Origin from "./origin";
 
 //how long the world's ticks take (core/logic timed), for a debug panel
 //(engine Stats): a tick of the clock, or the ticks made up for at once when
@@ -233,7 +234,18 @@ function pauseHidden(self) {
   });
 }
 
+//the tile the world is put about when there is nowhere else to open on: the
+//middle of where new players' cities went up for years, as it happens
+var ORIGIN_TILE = 22097;
+
 Vkaria.prototype.startServices = function () {
+  //the world put about where the camera opens, before anything is put in it
+  //- the camera's 0, 0 is there (client/origin)
+  var opening = this.cityman.openingTile();
+
+  if (opening !== null) Origin.set(opening[0], opening[1]);
+  else Origin.set(ORIGIN_TILE, ORIGIN_TILE);
+
   this.pathman.start();
   this.buildman.start();
   this.tilesman.start();

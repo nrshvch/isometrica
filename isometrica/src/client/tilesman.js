@@ -3,6 +3,7 @@ import Config from "./config";
 import Events from "events";
 import Tile from "./gameObjects/tile";
 import Core from "../core/main";
+import Origin from "./origin";
 
 var events = {
   tileLoad: 0,
@@ -32,8 +33,8 @@ function Tilesman(root) {
       radius = chunkRadius(self, camera),
       shrunk = radius < self.radius;
 
-    self.currentChunkX = (position[0] / Config.tileSize / Config.chunkSize) | 0;
-    self.currentChunkY = (position[2] / Config.tileSize / Config.chunkSize) | 0;
+    self.currentChunkX = (Origin.tileX(position[0]) / Config.chunkSize) | 0;
+    self.currentChunkY = (Origin.tileY(position[2]) / Config.chunkSize) | 0;
     self.radius = radius;
 
     self.loadChunks2(self.currentChunkX, self.currentChunkY);

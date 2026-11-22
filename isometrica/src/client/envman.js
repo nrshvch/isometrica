@@ -15,6 +15,7 @@ import View from "./view";
 import Trees from "../data/trees";
 import Felling from "./felling";
 import { changed } from "./looks";
+import Origin from "./origin";
 
 //which way round a tree on a tile is, of its four: the same every time, and
 //any of them as likely as the others, with nothing to tell from the next
@@ -65,9 +66,9 @@ function place(self, go, tile, spriteData) {
       : View.cornerHeight(terrain, x, y, 2);
 
   go.transform.setPosition(
-    x * Config.tileSize,
+    Origin.worldX(x),
     z * Config.tileZStep,
-    y * Config.tileSize,
+    Origin.worldZ(y),
   );
 }
 
@@ -116,7 +117,7 @@ EnvMan.prototype.seenSprites = function (out, near, keys) {
       y = CoreTerrain.extractY(tile),
       spriteData;
 
-    if (!near(x * Config.tileSize, y * Config.tileSize)) continue;
+    if (!near(Origin.worldX(x), Origin.worldZ(y))) continue;
     if ((spriteData = sceneryOf(this, tile)) === null) continue;
 
     var name = Trees.turned(

@@ -3,6 +3,7 @@ import Config from "./config";
 import looks from "./looks";
 import Core from "../core/main";
 import Rotation from "../core/rotation";
+import Origin from "./origin";
 
 /**
  * Gets the world ready to be seen from the other sides before the camera
@@ -413,7 +414,6 @@ function nearAny(b, near) {
     y = Core.Terrain.extractY(data.tile),
     sx = staticData ? Rotation.sizeX(staticData, data.rotation) || 1 : 1,
     sy = staticData ? Rotation.sizeY(staticData, data.rotation) || 1 : 1,
-    ts = Config.tileSize,
     points = [
       [x, y],
       [x + sx - 1, y],
@@ -423,7 +423,7 @@ function nearAny(b, near) {
     ];
 
   return points.some(function (p) {
-    return near(p[0] * ts, p[1] * ts);
+    return near(Origin.worldX(p[0]), Origin.worldZ(p[1]));
   });
 }
 

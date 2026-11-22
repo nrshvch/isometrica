@@ -32,6 +32,7 @@
 import View from "./view";
 import Carman from "./carman";
 import Config from "./config";
+import Origin from "./origin";
 
 //how much more of the city each picture of it takes in than the screen
 //shows, across and down
@@ -713,7 +714,7 @@ function lift(root, heights, spot, zoom) {
       Z = (M[0] * sy - M[1] * sx) / det,
       ground = Math.max(
         0,
-        Carman.groundHeight(root, X / Config.tileSize, Z / Config.tileSize),
+        Carman.groundHeight(root, Origin.tileX(X), Origin.tileY(Z)),
       );
 
     down = own + ground * up;
@@ -747,7 +748,7 @@ function elevations(gl, root, w, h) {
       data[j * cols + i] =
         Math.max(
           0,
-          Carman.groundHeight(root, X / Config.tileSize, Z / Config.tileSize),
+          Carman.groundHeight(root, Origin.tileX(X), Origin.tileY(Z)),
         ) * up;
     }
 

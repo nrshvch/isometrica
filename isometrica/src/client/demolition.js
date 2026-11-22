@@ -10,6 +10,7 @@ import Trees from "../data/trees";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
 import { changed } from "./looks";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 
@@ -175,8 +176,8 @@ function Demolition(root, building, tiles, down) {
   this.mz = 0;
 
   tiles.forEach(function (tile) {
-    self.mx += (Terrain.extractX(tile) * TILE) / tiles.length;
-    self.mz += (Terrain.extractY(tile) * TILE) / tiles.length;
+    self.mx += Origin.worldX(Terrain.extractX(tile)) / tiles.length;
+    self.mz += Origin.worldZ(Terrain.extractY(tile)) / tiles.length;
     self.columns[tile] = column(tile);
     //down already: gone, but for its stretch of the fence
     if (down && down.indexOf(tile) !== -1) self.columns[tile].state = "gone";
@@ -337,8 +338,8 @@ function stand(self, view, at) {
       wy = at[1] + local[1],
       wz = at[2] + local[2],
       tile = Terrain.convertToIndex(
-        Math.round(wx / TILE),
-        Math.round(wz / TILE),
+        Math.round(Origin.tileX(wx)),
+        Math.round(Origin.tileY(wz)),
       ),
       col = self.columns[tile];
 
@@ -1003,8 +1004,10 @@ function flyOn(self, dt) {
 //how high the ground is at x, z in the world, world units
 function groundAt(self, x, z) {
   return (
-    self.root.core.terrain.getHeight(x / TILE + 0.5, z / TILE + 0.5) *
-    Config.tileZStep
+    self.root.core.terrain.getHeight(
+      Origin.tileX(x) + 0.5,
+      Origin.tileY(z) + 0.5,
+    ) * Config.tileZStep
   );
 }
 
@@ -1031,8 +1034,8 @@ function down(self, col) {
   for (var k = 0; k < DOWN_PUFFS; k++)
     debris(
       self,
-      (x + (Math.random() - 0.5) * 0.9) * TILE - g[0],
-      (y + (Math.random() - 0.5) * 0.9) * TILE - g[2],
+      Origin.worldX(x + (Math.random() - 0.5) * 0.9) - g[0],
+      Origin.worldZ(y + (Math.random() - 0.5) * 0.9) - g[2],
       Math.random() * 8,
       24 + Math.random() * 20,
     );
@@ -1163,9 +1166,9 @@ function stretches(self, tile, mask) {
     }
 
     go.transform.setPosition(
-      (x + by * away[0]) * TILE,
+      Origin.worldX(x + by * away[0]),
       ground,
-      (y + by * away[1]) * TILE,
+      Origin.worldZ(y + by * away[1]),
     );
     self.root.game.logic.world.addGameObject(go);
     out.push(go);
@@ -1326,9 +1329,9 @@ function dress(self, col) {
   }
 
   go.transform.setPosition(
-    x * TILE,
+    Origin.worldX(x),
     self.root.core.terrain.getHeight(x + 0.5, y + 0.5) * Config.tileZStep,
-    y * TILE,
+    Origin.worldZ(y),
   );
 }
 

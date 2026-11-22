@@ -11,6 +11,7 @@ import View from "./view";
 import AnimatedSprite from "./animatedsprite";
 import TerrainGridRenderer from "./components/terraingridrenderer";
 import { changed } from "./looks";
+import Origin from "./origin";
 
 var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
@@ -500,7 +501,7 @@ Terrain.prototype.seenSprites = function (out, near, keys) {
       x = Core.Terrain.extractX(index),
       y = Core.Terrain.extractY(index);
 
-    if (!near(x * Config.tileSize, y * Config.tileSize)) continue;
+    if (!near(Origin.worldX(x), Origin.worldZ(y))) continue;
 
     out.push(
       tileSprite(
@@ -632,9 +633,9 @@ function shapeTile(self, t, index) {
   self.grid.changed(x, y);
 
   t.transform.setPosition(
-    x * Config.tileSize,
+    Origin.worldX(x),
     z * Config.tileZStep,
-    y * Config.tileSize,
+    Origin.worldZ(y),
   );
 
   sprite = tileSprite(x, y, type, slope);
@@ -745,11 +746,11 @@ Terrain.prototype.getCoordinates = function (go) {
 };
 
 Terrain.prototype.tileXPos = function (tile) {
-  return CoreTerrain.extractX(tile) * Config.tileSize;
+  return Origin.worldX(CoreTerrain.extractX(tile));
 };
 
 Terrain.prototype.tileZPos = function (tile) {
-  return CoreTerrain.extractY(tile) * Config.tileSize;
+  return Origin.worldZ(CoreTerrain.extractY(tile));
 };
 
 Terrain.prototype.tileYPos = function (tile) {

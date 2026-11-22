@@ -42,6 +42,7 @@ import Events from "events";
 import Core from "../core/main";
 import * as glMatrix from "gl-matrix";
 import ServiceMan from "./serviceman";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 
@@ -108,7 +109,6 @@ var SIDE = 2 * OUTLINE_REACH + 2,
 function outlineAt(me, tile, screenX, screenY) {
   var terrain = me.root.core.world.terrain,
     m = me._cam.gameObject.camera.getWorldToScreen(),
-    ts = Config.tileSize,
     zStep = Config.tileZStep,
     x0 = Terrain.extractX(tile),
     y0 = Terrain.extractY(tile),
@@ -135,9 +135,9 @@ function outlineAt(me, tile, screenX, screenY) {
       (flat ? 1 : 0);
 
     if (projectedFor[i] !== picked) {
-      cornerBuffer[0] = (gx - 0.5) * ts;
+      cornerBuffer[0] = Origin.worldX(gx - 0.5);
       cornerBuffer[1] = flat ? 0 : terrain.getGridPointHeight(gx, gy) * zStep;
-      cornerBuffer[2] = (gy - 0.5) * ts;
+      cornerBuffer[2] = Origin.worldZ(gy - 0.5);
       glMatrix.vec3.transformMat4(cornerBuffer, cornerBuffer, m);
       projectedX[i] = cornerBuffer[0];
       projectedY[i] = cornerBuffer[1];
@@ -216,8 +216,8 @@ function centerTile(me) {
   pos = cam.gameObject.transform.getPosition();
 
   return Terrain.convertToIndex(
-    Math.round(pos[0] / Config.tileSize),
-    Math.round(pos[2] / Config.tileSize),
+    Math.round(Origin.tileX(pos[0])),
+    Math.round(Origin.tileY(pos[2])),
   );
 }
 

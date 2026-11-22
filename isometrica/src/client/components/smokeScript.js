@@ -1,6 +1,7 @@
 import engine from "engine";
 import Config from "../config";
 import Wind from "../wind";
+import Origin from "../origin";
 
 /**
  * A puff of smoke, from the moment it comes out to when it is gone: it grows
@@ -89,8 +90,8 @@ var blowing = [0, 0];
  */
 function groundUnder(x, z) {
   var terrain = vkaria.core.terrain,
-    gx = x / Config.tileSize + 0.5,
-    gy = z / Config.tileSize + 0.5,
+    gx = Origin.tileX(x) + 0.5,
+    gy = Origin.tileY(z) + 0.5,
     x0 = Math.floor(gx),
     y0 = Math.floor(gy),
     fx = gx - x0,

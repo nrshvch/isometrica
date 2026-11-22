@@ -11,6 +11,7 @@ import BuildingCode from "../data/buildingcode";
 import BuildingData from "../data/buildings";
 import ErrorCode from "../core/errorcode";
 import * as glMatrix from "gl-matrix";
+import Origin from "./origin";
 
 var City = Core.City;
 var CoreTerrain = Core.Terrain;
@@ -58,9 +59,9 @@ function placeLabel(self, city) {
     tile = CoreTerrain.convertToIndex(Math.round(c.x), Math.round(c.y));
 
   go.transform.setPosition(
-    c.x * Config.tileSize,
+    Origin.worldX(c.x),
     self.root.terrain.tileYPos(tile),
-    c.y * Config.tileSize,
+    Origin.worldZ(c.y),
   );
 }
 
@@ -164,22 +165,59 @@ function keepTurns(root) {
   });
 }
 
+//where a blank city is to go up, kept over the page going up again on it:
+//the tile, {tileX, tileY} - the game's UIManager#startFreshCity picks it
+var START_AT_KEY = "isometrica.startAt";
+
+/**
+ * The tile a blank city was picked to go up on (UIManager#startFreshCity) -
+ * or null - and forgotten, if it is to be.
+ *
+ * @returns {number[]|null} x, y
+ */
+function startAt(forget) {
+  var at = null;
+
+  try {
+    at = JSON.parse(window.sessionStorage.getItem(START_AT_KEY));
+    if (forget) window.sessionStorage.removeItem(START_AT_KEY);
+  } catch (e) {
+    return null;
+  }
+
+  return at !== null && isFinite(at.tileX) && isFinite(at.tileY)
+    ? [at.tileX, at.tileY]
+    : null;
+}
+
 /**
  * A blank city opens wherever UIManager#startFreshCity picked for it, once.
  */
 function startAtPicked(root) {
-  var at = null;
+  var at = startAt(true);
 
-  try {
-    at = JSON.parse(window.sessionStorage.getItem("isometrica.startAt"));
-    window.sessionStorage.removeItem("isometrica.startAt");
-  } catch (e) {
-    return;
-  }
-
-  if (at !== null && isFinite(at.x) && isFinite(at.z))
-    root.camera.transform.setPosition(at.x, 0, at.z);
+  if (at !== null)
+    root.camera.cameraScript.lookAt(Origin.worldX(at[0]), Origin.worldZ(at[1]));
 }
+
+/**
+ * The tile the camera opens on: the city's, loaded from a save, or where a
+ * blank one is to go up - or null, for wherever the camera starts. What the
+ * world is put about (client/origin), before anything goes in.
+ *
+ * @returns {number[]|null} x, y
+ */
+Cityman.prototype.openingTile = function () {
+  var cities = this.root.core.cities.getCities();
+
+  if (cities.length > 0)
+    return [
+      CoreTerrain.extractX(cities[0].tile()),
+      CoreTerrain.extractY(cities[0].tile()),
+    ];
+
+  return startAt(false);
+};
 
 /**
  * The city whose name was clicked on, if it was one.
@@ -275,9 +313,8 @@ var siteBuffer = new Float32Array(3),
  */
 function glideToSite(root, tile, sizeX, sizeY) {
   var cam = root.camera.cameraScript,
-    ts = Config.tileSize,
-    x = (CoreTerrain.extractX(tile) + (sizeX - 1) / 2) * ts,
-    z = (CoreTerrain.extractY(tile) + (sizeY - 1) / 2) * ts,
+    x = Origin.worldX(CoreTerrain.extractX(tile) + (sizeX - 1) / 2),
+    z = Origin.worldZ(CoreTerrain.extractY(tile) + (sizeY - 1) / 2),
     m = cam.gameObject.camera.getWorldToScreen();
 
   //how far off the ground under it the ground up there is drawn - the same
@@ -311,8 +348,8 @@ Cityman.prototype.roll = function () {
   if (this._rolledFrom === null) {
     from = root.camera.transform.getPosition();
     this._rolledFrom = [
-      Math.round(from[0] / Config.tileSize),
-      Math.round(from[2] / Config.tileSize),
+      Math.round(Origin.tileX(from[0])),
+      Math.round(Origin.tileY(from[2])),
     ];
   }
 

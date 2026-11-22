@@ -5,6 +5,7 @@ import View from "./view";
 import Carman from "./carman";
 import SmokeSource from "./components/smokesource";
 import SmokeScript from "./components/smokeScript";
+import Origin from "./origin";
 
 /**
  * A tree pushed over by the bulldozer clearing it (client/clearworks).
@@ -257,8 +258,8 @@ FellingScript.prototype.tick = function (time) {
 function landed(self) {
   var at = self.gameObject.transform.getPosition([0, 0, 0]),
     v = self.along,
-    x = at[0] / Config.tileSize,
-    y = at[2] / Config.tileSize;
+    x = Origin.tileX(at[0]),
+    y = Origin.tileY(at[2]);
 
   for (var i = 0; i < PUFFS; i++) {
     var d = 0.25 + (LONG * (i + Math.random() * 0.5)) / PUFFS,
@@ -268,10 +269,10 @@ function landed(self) {
 
     SmokeSource.puff(
       self.root.game.logic.world,
-      px * Config.tileSize,
+      Origin.worldX(px),
       (Carman.groundHeight(self.root, px, py) * Config.tileZStep || at[1]) +
         Math.random() * 4,
-      py * Config.tileSize,
+      Origin.worldZ(py),
       SmokeScript.dust,
       -v[1] * side * 16,
       v[0] * side * 16,

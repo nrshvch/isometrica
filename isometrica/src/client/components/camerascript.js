@@ -255,11 +255,82 @@ CameraScript.prototype.awake = function () {
     viewport.removeEventListener(viewport.events.pinchend, self.onPinchEnd);
   });
 
-  //this.gameObject.transform.setPosition(11585, 0, 15609);
-  //this.gameObject.transform.setPosition(2784.961181640625, 0, 3594.453369140625);
-  this.gameObject.transform.setPosition(1000000.123, 0, 1000000.645);
+  //over the tile the world is put about (client/origin) - where the city
+  //opens, or where a blank one goes up
+  this.gameObject.transform.setPosition(0, 0, 0);
   this.gameObject.transform.rotate(30, 45, 0, "self");
 };
+
+//where the camera is, x, y and z in the world, as it was last put (place) -
+//the transform has it a hair off there, on a whole pixel - and where the
+//transform was put for it, to tell when something else has moved it since;
+//null till it is first put
+CameraScript.prototype._at = null;
+CameraScript.prototype._put = null;
+
+var placeBuffer = [0, 0, 0];
+
+/**
+ * Where the camera is: where it was put, not the whole pixel next to it the
+ * transform was put on (place) - or wherever the transform is, if something
+ * else moved it meanwhile.
+ *
+ * @returns {number[]} x, y, z in the world
+ */
+function where(self) {
+  var pos = self.gameObject.transform.getPosition(),
+    put = self._put;
+
+  if (
+    put !== null &&
+    Math.abs(pos[0] - put[0]) < 0.01 &&
+    Math.abs(pos[1] - put[1]) < 0.01 &&
+    Math.abs(pos[2] - put[2]) < 0.01
+  )
+    return self._at.slice();
+
+  return pos;
+}
+
+/**
+ * Puts the camera at x, y, z - or rather a hair off along the ground, under
+ * half a pixel, where the world falls on whole pixels of the screen. The
+ * pictures are put to the nearest pixel each; with the camera on a fraction
+ * of one, two that are whole pixels apart could round apart, a pixel off,
+ * with nothing between them. Where it was put is kept as where it is (where)
+ * - panned a fraction of a pixel at a time, it still gets there.
+ */
+function place(self, x, y, z) {
+  var transform = self.gameObject.transform,
+    camera = self.gameObject.camera,
+    px = x,
+    pz = z;
+
+  if (camera.viewport !== null) {
+    //where the world's 0, 0, 0 would be on the screen from x, y, z - the
+    //camera moved along the screen moves it the other way
+    var M = camera.getWorldToScreen(),
+      pos = transform.getPosition(placeBuffer),
+      dx = x - pos[0],
+      dy = y - pos[1],
+      dz = z - pos[2],
+      sx = M[12] - (M[0] * dx + M[4] * dy + M[8] * dz),
+      sy = M[13] - (M[1] * dx + M[5] * dy + M[9] * dz),
+      fx = sx - Math.round(sx),
+      fy = sy - Math.round(sy),
+      det = M[0] * M[9] - M[8] * M[1];
+
+    //as far along the ground as takes it the rest of the way to them
+    if (det !== 0) {
+      px = x + (fx * M[9] - M[8] * fy) / det;
+      pz = z + (M[0] * fy - M[1] * fx) / det;
+    }
+  }
+
+  self._at = [x, y, z];
+  self._put = [px, y, pz];
+  transform.setPosition(px, y, pz);
+}
 
 //how many pixels across the screen a unit of the world is, looked at from
 //straight above: a tile 64 a side, as wide as it is seen from the side
@@ -274,7 +345,7 @@ var TOP_SCALE = Math.SQRT2;
 CameraScript.prototype.setTop = function (top) {
   var transform = this.gameObject.transform,
     camera = this.gameObject.camera,
-    pos = transform.getPosition(),
+    pos = where(this),
     local = transform.local,
     mat4 = glMatrix.mat4;
 
@@ -290,7 +361,9 @@ CameraScript.prototype.setTop = function (top) {
   this.top = top;
   //higher drawn later; from the side, further away first too
   camera.depthAxes = top ? [0, -1, 0] : [1, -1, 1];
+  //turned straight away, and then onto a whole pixel the way it looks now
   transform.setPosition(pos[0], pos[1], pos[2]);
+  place(this, pos[0], pos[1], pos[2]);
 };
 
 CameraScript.prototype.top = false;
@@ -339,7 +412,7 @@ CameraScript.prototype.moveTo = function (transform) {
   var pos = transform.getPosition();
 
   this._glide = null;
-  this.gameObject.transform.setPosition(pos[0], 0, pos[2]);
+  place(this, pos[0], 0, pos[2]);
 };
 
 CameraScript.prototype.pan = function (x, y) {
@@ -348,9 +421,10 @@ CameraScript.prototype.pan = function (x, y) {
   //dragged off a glide, it is let go of there
   this._glide = null;
 
-  var d = this.panShift(x, y);
+  var d = this.panShift(x, y),
+    at = where(this);
 
-  this.gameObject.transform.translate(d[0], 0, d[1], "world");
+  place(this, at[0] + d[0], at[1], at[2] + d[1]);
 };
 
 /**
@@ -391,8 +465,7 @@ CameraScript.prototype._glide = null;
  */
 CameraScript.prototype.glideTo = function (x, z) {
   var self = this,
-    transform = this.gameObject.transform,
-    pos = transform.getPosition(),
+    pos = where(this),
     dx = pos[0] - x,
     dz = pos[2] - z,
     far = GLIDE_FROM * Config.tileSize,
@@ -415,7 +488,7 @@ CameraScript.prototype.glideTo = function (x, z) {
       //fast to start with, and slowing down on the way in
       left = Math.pow(1 - t, 3);
 
-    transform.setPosition(x + dx * left, 0, z + dz * left);
+    place(self, x + dx * left, 0, z + dz * left);
 
     if (t < 1) requestAnimationFrame(step);
     else self._glide = null;
@@ -438,7 +511,7 @@ CameraScript.prototype.lookAt = function (x, z, up) {
   var follow = this.follow;
 
   this._glide = null;
-  this.gameObject.transform.setPosition(x, 0, z);
+  place(this, x, 0, z);
 
   if (up) {
     this.follow = false;
@@ -459,12 +532,12 @@ var TURN = -90;
  */
 CameraScript.prototype.turn = function (by) {
   var transform = this.gameObject.transform,
-    pos = transform.getPosition(),
+    pos = where(this),
     camera = this.gameObject.camera;
 
   transform.setPosition(0, 0, 0);
   transform.rotate(0, TURN * by, 0, "world");
-  transform.setPosition(pos[0], pos[1], pos[2]);
+  place(this, pos[0], pos[1], pos[2]);
 
   View.setTurns(View.turns() + by);
 

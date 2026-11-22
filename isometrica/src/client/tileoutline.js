@@ -21,6 +21,7 @@
  */
 import Core from "../core/main";
 import Config from "./config";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 
@@ -273,9 +274,9 @@ function points(paths, terrain, padding) {
 
       ring.push(
         new Float32Array([
-          x * ts - ts / 2 + inset[0],
+          Origin.worldX(x) - ts / 2 + inset[0],
           z * zStep,
-          y * ts - ts / 2 + inset[1],
+          Origin.worldZ(y) - ts / 2 + inset[1],
         ]),
       );
     }

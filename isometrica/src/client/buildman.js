@@ -27,6 +27,7 @@ import Felling from "./felling";
 import Replacement from "../core/replacement";
 import * as RoadRules from "../core/roadrules";
 import { changed } from "./looks";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
@@ -306,7 +307,6 @@ var PREVIEW_OPACITY = 0.75,
  */
 function createPreview(self, data, tile, rotation, opacity, look) {
   var terrain = self.root.core.world.terrain,
-    tileSize = Config.tileSize,
     x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
     //as it would be seen, the camera turned (see client/view)
@@ -341,9 +341,9 @@ function createPreview(self, data, tile, rotation, opacity, look) {
 
   //placed before it goes in - the world files it by where it stands
   go.transform.setPosition(
-    at.x * tileSize,
+    Origin.worldX(at.x),
     z * Config.tileZStep,
-    at.y * tileSize,
+    Origin.worldZ(at.y),
   );
   self.root.game.logic.world.addGameObject(go);
 
@@ -515,7 +515,6 @@ function showText(self, tile, sizeX, sizeY, text, color) {
  */
 function placeOverArea(self, go, tile, sizeX, sizeY, height) {
   var terrain = self.root.core.world.terrain,
-    tileSize = Config.tileSize,
     x = Terrain.extractX(tile),
     y = Terrain.extractY(tile),
     //over water it floats from the surface, not from the bottom
@@ -525,9 +524,9 @@ function placeOverArea(self, go, tile, sizeX, sizeY, height) {
         : terrain.getGridPointHeight(x + 1, y);
 
   go.transform.setPosition(
-    (x + (sizeX - 1) / 2) * tileSize,
+    Origin.worldX(x + (sizeX - 1) / 2),
     z * Config.tileZStep + height,
-    (y + (sizeY - 1) / 2) * tileSize,
+    Origin.worldZ(y + (sizeY - 1) / 2),
   );
 }
 

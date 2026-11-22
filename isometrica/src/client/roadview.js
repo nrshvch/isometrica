@@ -14,6 +14,7 @@ import View from "./view";
 import Lighting from "./lighting";
 import WorkLights from "./worklights";
 import { changed } from "./looks";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 
@@ -702,9 +703,9 @@ function place(go, tile, surface) {
     y = Terrain.extractY(tile);
 
   go.transform.setPosition(
-    x * Config.tileSize,
+    Origin.worldX(x),
     middle(surface) * Config.tileZStep,
-    y * Config.tileSize,
+    Origin.worldZ(y),
   );
 }
 

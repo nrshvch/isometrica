@@ -14,6 +14,7 @@ import CoreConfig from "../core/config";
 import BuildingClassCode from "../data/classcode";
 import BuildingData from "../data/buildings";
 import GLView from "./glview";
+import Origin from "./origin";
 
 var Terrain = Core.Terrain;
 
@@ -1490,9 +1491,9 @@ CarScript.prototype.place = function () {
   }
 
   this.gameObject.transform.setPosition(
-    driver.x * Config.tileSize,
+    Origin.worldX(driver.x),
     groundHeight(root, driver.x, driver.y) * Config.tileZStep,
-    driver.y * Config.tileSize,
+    Origin.worldZ(driver.y),
   );
 };
 
