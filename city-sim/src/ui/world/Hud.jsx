@@ -30,6 +30,7 @@ import {
   goWorld,
   reopen,
   startFresh,
+  startGenerated,
   worldScreen,
 } from "../session";
 
@@ -436,7 +437,8 @@ function InstallHowTo({ how }) {
  * is over, on top, then what is switched on and off for the whole game, the city's address shared - as the phone
  * shares things, or else copied - the game put on the home screen, where
  * it can be - a new city: blank, the one a new
- * player starts on, or the big one - and, under them, the other cities
+ * player starts on, the big one, or one generated afresh, built up,
+ * somewhere new - and, under them, the other cities
  * saved here, to go back to. Put away by a click anywhere else, or Escape.
  */
 function Menu({ client, world, cityId, address, busy }) {
@@ -676,6 +678,16 @@ function Menu({ client, world, cityId, address, busy }) {
               }}
             />
           )}
+          <Row
+            icon="dice"
+            label="New random city"
+            sub="Built up, somewhere new"
+            disabled={busy}
+            onClick={function () {
+              setOpen(false);
+              startGenerated("city");
+            }}
+          />
           {cities.length > 0 && (
             <div className="label border-t-4 border-inset px-3 pt-3 pb-1">
               Your other cities

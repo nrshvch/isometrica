@@ -223,3 +223,103 @@ Abandoned roads only come from a town gone bankrupt, or from a part left
 cut off.
 
 Phase 0 has no decay: an abandoned house already empties and pays nothing.
+
+## Generated cities
+
+**Done** for a city about Peepstown's size; **Later** for a small town and
+for Peepsopolis, the big one. The menu starts a new game on one generated
+afresh (`city-sim/src/citygen`): built up, all of it, somewhere about where a
+blank city would go, a new one every time - the seed and the spot go over
+the page reloading on it (`ui/session.js`), so the same seed and spot are the
+same city, tile for tile. It is a save like the city a new player starts
+on, made up as the game opens it.
+
+How one is made, in order (`citygen/index.js`):
+
+1. **The site** (`site.js`): of ninety spots about the one asked for, the
+   one with the most dry, level land round it, the least of it too steep to
+   build on and the least rise and fall over it - and, for most towns, water
+   along a side of it, a coast or a lake, the way towns grow up by the water.
+   Further and further out, if none will do. Never across the row of tiles
+   where y goes from 32767 to 32768: the world numbers its tiles
+   `(y << 16) ^ x`, 32 bits with a sign, and nothing that runs across from one
+   side of that to the other is ever got to the end of
+   (`isometrica/src/core/tileiterator.js`) - a building a player put across
+   it would hang the game the same way.
+2. **The streets** (`streets.js`): two main roads through its middle, on out
+   into the country to the edge of what the town looks at, stopping at the
+   water - the roads to the next towns. The land between them is cut into
+   blocks, each cut across its longer side a little off its middle and again,
+   till it is the size a block is where it stands - its short side six tiles
+   at most, two rows of lots three deep back to back, its long side nine
+   downtown, twelve in town, fifteen in the suburbs, more further out - the
+   recursive subdivision most city generators lay their lots out with, after
+   Parish and Mueller's. Each street runs only as far as the block it cuts,
+   so the cross streets of blocks side by side do not line up: T-junctions,
+   staggered, as real towns have them, which the traffic takes a turn at a
+   time. The town is the blocks inside an outline round its middle -
+   bulging out one way, pulled in another - on land it can build on, and the
+   streets round them; lanes of gravel go on out from some to the farms.
+   Then a **boulevard** down one of the main roads downtown - a one-way road
+   each way, the traffic keeping to the right, a strip of park between them,
+   crossed only where a street comes in; two one-way roads side by side
+   with nothing between would be a junction every tile of the way - a
+   **roundabout** or two where a main road comes into town, a ring of eight
+   tiles round a little park going round the way Peepstown's does, and the
+   **square**, a block by where the main roads cross, paved over. Streets
+   downtown and the main roads are asphalt, cobbles in town, gravel in the
+   country. No street runs but along x or y.
+3. **The grading** (`grade.js`): every road laid flat or as a ramp - the
+   surfaces the game lays one on - the one that has the most of them meet
+   their neighbours level, worked out for all of them at once the way the
+   game works out a road dragged out (`isometrica/src/client/road.js` plan);
+   a ramp only on a road that goes on straight along it. Where two still do
+   not meet, the ground under them is levelled, the ground round it dragged
+   along a step at a time, as shaping the ground does, and it is worked out
+   again - the earthworks go into the save as the ground's shaped points.
+4. **The lots** (`lots.js`): every block built up round its edge, facing its
+   streets: two rows back to back, each half as deep as the block, three at
+   most - a courtyard park in the middle where there is room downtown and in
+   town, gardens and their trees further out. What goes on a lot is what that
+   part of town is built of (`PALETTES`) - offices, stores and flats
+   downtown, and the shops out along the main roads, the high street; flats,
+   terraces and shops in town; houses in the suburbs, villas more of them by
+   the water and up on the hills; houses, villas and the odd farm at the
+   edge - a street built a kind at a time, a row of the same houses or a
+   parade of shops, something else among them now and then, a pocket park.
+   Round the square, facing it, the town hall, the church and the market;
+   the old town in the blocks beside it; a park of a whole block in town, by
+   the water if it can be; farms along the roads out, their fields round
+   them. All of it only what the catalogue offers (`catalogue.js` reads it
+   off isometrica's `data/buildings`), each on a road it can do with.
+5. **The water** (`water.js`): pump stations first - three times as far as a
+   tower for four times its upkeep, nine times the ground - as long as each
+   still waters a good few buildings that have none, by the water where
+   there is some to pump; then water towers, up on the high ground, till
+   everything that wants water has it. Each on open ground of the town, or
+   in the place of a lot, the rest of it a park.
+6. **The jobs** (`balance.js`): the game has everybody in the city work in
+   it, the jobs going to the beds of the oldest houses first and the people
+   to the oldest businesses (`isometrica/src/core/city/cityjobs.js`,
+   `citypopulation.js`): fewer jobs than the people who need one and the last
+   houses say "no jobs", more than there are people and the last businesses
+   "no workers". So lots along the streets are turned, on the same footprint,
+   from homes into shops or from offices into flats - shops into town, homes
+   out of downtown last - till there are at least as many jobs as the beds
+   that need one, and no more than everybody in town. The town opens with
+   as many people as it has beds for.
+7. **The name** (`names.js`): a Peeps- town named for where it stands - a
+   port or a mouth by the water, a hill up high, a ford, a field or a bury
+   anywhere else.
+
+`npm run test:cities` in city-sim (`tools/gencity.js`) generates them headless
+and opens each in isometrica's own world, as the game opens it, asking every
+building what it goes without; none goes without anything.
+
+**Later.** The other two sizes, from the same steps:
+
+- **A small town** - one to three roads: a village grown along one road, or
+  round a crossroads or two; mostly rural, a little centre, no flats and no
+  offices.
+- **Peepsopolis** - a city four to six times Peepstown, all of it: more main
+  roads than two, a ring road round downtown, districts of their own.

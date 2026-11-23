@@ -35,6 +35,12 @@ export default {
     return import("./peepstown");
   },
 
+  //and a city generated afresh, built up, somewhere new - out of a seed
+  //(citygen), loaded only when one is to be started on
+  generator: function () {
+    return import("./citygen");
+  },
+
   //land, and shaping the ground (play.js)
   client: function () {
     return import("./play");
