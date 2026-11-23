@@ -1,23 +1,7 @@
 /**
- * Traces the outline of a set of tiles.
- *
- * Every tile offers its four edges, and an edge that two tiles share cancels
- * out - what is left is the perimeter. Those edges are then walked into closed
- * rings: one per piece, plus one per hole, so a set in two halves or with a
- * bite out of the middle comes back as several rings rather than one impossible
- * shape.
- *
- * Walking has a choice to make wherever two tiles meet at nothing but a corner,
- * and it always turns the same way - which reads that pinch as two shapes
- * touching rather than one shape crossing itself.
- *
- * Points follow the terrain's grid points, so an outline rides over hills
- * instead of cutting through them, and every line is drawn a little way inside
- * its own area - two areas that share a border then show two lines side by
- * side instead of one on top of the other.
- *
- * This is how a water tower's reach is drawn: one continuous line around "these tiles, together",
- * rather than a grid of per tile hilites.
+ * Traces the outline of a set of tiles as rings - one per piece and per
+ * hole - riding the terrain, a little inside its own area.
+ * See isometrica/.claude/skills/rendering/camera.md (Over the city).
  */
 import Core from "../core/main";
 import Config from "./config";

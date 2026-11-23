@@ -1,24 +1,7 @@
 /**
- * A stretch of the ground drawn as one gameObject: what each of its tiles is
- * drawn as kept in arrays side by side rather than in a gameObject a tile -
- * the way a tilemap keeps its tiles - so that the world has one gameObject
- * to cull and to go over where it had a few hundred. Off the screen, the
- * whole stretch costs one test; on it, every tile is culled and drawn as it
- * was when it was a sprite of its own (engine Canvas2dRenderer cull, Sprite-
- * Renderer), in the same order - the GPU is handed what it always was.
- *
- * Everything about a tile is a number in a typed array but its picture,
- * which is drawn from: a tile is culled from its numbers alone, and only one
- * on the screen is its picture looked at.
- *
- * What a tile shows, where, and how high its corners are is client/terrain's
- * to work out (shapeTile); this only keeps it, and culls, draws and picks by
- * it.
- *
- * A stretch is whatever tiles were drawn at once (Terrain#draw) - a chunk of
- * the ground as the camera brings it in - and stays where it was put in the
- * world's order, as they did one by one: the ground is not sorted by depth,
- * and what is drawn over what along a hillside goes by that order.
+ * A stretch of the ground drawn as one gameObject, its tiles in typed arrays:
+ * culled, drawn and picked like sprites, in the order they were put.
+ * See isometrica/.claude/skills/rendering/camera.md (Ground and frames).
  */
 import engine from "engine";
 import RenderLayer from "./renderlayer";

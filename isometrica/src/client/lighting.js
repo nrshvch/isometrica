@@ -1,38 +1,7 @@
 /**
- * The city drawn in WebGL, and the light it is drawn in, worked out pixel by
- * pixel: the sun going over by the hour of the game's clock, the shade bluer
- * and darker towards night, and at night the windows, the street lights and
- * the headlights.
- *
- * The engine hands every layer to it (engine Canvas2dRenderer renderGL),
- * every picture of it to be drawn in one batch (collect, client/glview). A
- * picture painted out of boxes - and the ground, the trees and the vehicles
- * - is drawn from its colours with no light on them and which way every
- * pixel of it looks; at night, too, from what of it shines, how high every
- * pixel of it stands, and the light it throws round its foot (shared/gen/
- * looks, client/cachedsprite glQuad) - into as many pictures of the screen,
- * in the order the engine sorts them, so whatever is in front hides what is
- * behind it in all of them alike. Once the lit layers are in, they are lit
- * (light): the sun on every pixel by the way it looks, every lamp on every
- * pixel it reaches by how far it is and how squarely it faces it - stepped
- * and dithered, as pixel art is - what shines added in over the dark. The
- * layers over the city go on top as they are painted.
- *
- * Nothing fades: a light is on or off (shines). Every building turns its
- * lights on in the same hour of an evening, each at its own time; a home
- * turns them off late at night, a shop keeps them on all night, an office a
- * few of them; a building still going up has none (windowsOn); the street
- * lights all go on at once, and off at once in the morning (cityOn); every
- * car puts its lamps on and off a while after them, each in its own time
- * (lampsOn).
- *
- * The day and the night go by only if asked for (setDayNight: N, its button
- * in the top bar, ?daynight=on; kept in the browser for next time) - else
- * the city is drawn at ten in the morning whatever the clock says (STILL),
- * the clock and all that goes by it going on as ever.
- *
- * With ?light=0 everything is drawn as it is painted, lit by the one sun of
- * old.
+ * The light the city is drawn in, pixel by pixel: the sun by the hour, and
+ * at night windows, street lights and car lamps; on or off, never fading.
+ * See isometrica/.claude/skills/rendering/light.md.
  */
 import engine from "engine";
 import Config from "../core/config";

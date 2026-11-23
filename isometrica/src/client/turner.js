@@ -1,33 +1,7 @@
 /**
- * Turning the camera round the city, between one side of the world and the
- * next, shown as one smooth turn about a spot on the ground - the middle of
- * the screen, for a key or a finger dragged in from the edge of it (client/
- * cameracontrol) - though the city is only ever drawn from its four sides.
- *
- * For the while, a picture of the city is laid over the game, the game
- * going on under it unseen: the side the camera is on, and the sides it
- * turns to, each drawn - OVER more of it than the screen shows, bare: no
- * rain, no lightning, nothing drawn over the city (the grid, the names,
- * the signs) - and kept, with the picture of how high each pixel
- * of it stands. Each is laid over a mesh, every point of it lifted as high
- * as what is there stands, and turned about the up axis through that spot
- * on the ground, as the world would be, and drawn from where the camera
- * looks, in a WebGL canvas of its own: what stands up stays upright and
- * swings round where it stands, further the taller. The one goes over into
- * the other halfway - where one has nothing, the other shows, and past the
- * edges of both their edges are drawn out - blurred the more the further
- * from either side, so that what the pictures cannot show, what was behind
- * something, goes unseen.
- *
- * Done, the camera is put where the turn ended - on that side, the spot it
- * turned about where it was on the screen - and the picture goes, showing
- * the game drawn from there.
- *
- * Nothing else of the game knows about it but that it is told when a frame
- * has been drawn, can have the city drawn bare for a frame, and hands it
- * the picture of how high things stand (client/lighting onFrame, calm,
- * client/glview readHeights), and that the camera control drives it
- * (client/cameracontrol).
+ * Turning the camera between sides as one smooth turn about the spot in the
+ * middle of the screen, over a picture of each side laid on a lifted mesh.
+ * See isometrica/.claude/skills/rendering/camera.md (The smooth turn).
  */
 import View from "./view";
 import Carman from "./carman";

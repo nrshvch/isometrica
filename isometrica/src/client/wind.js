@@ -1,13 +1,7 @@
 /**
- * The wind over the city: one for all of it, blowing every puff of smoke
- * there is the same way at once. It never quite settles - which way it comes
- * from wanders round over a few minutes, and how hard it blows rises and
- * falls over a minute or so, with gusts on top every few seconds - each of
- * them a few slow waves added together, so it changes smoothly and never
- * goes round the same way twice soon.
- *
- * Going by the world's clock (engine logic time, ms), so it holds still
- * while the game is paused.
+ * One wind over the whole city, wandering and gusting smoothly, by the
+ * world's clock.
+ * See isometrica/.claude/skills/rendering/weather.md (Wind).
  */
 
 //how hard it blows, world units a second: most of the time, how far that
