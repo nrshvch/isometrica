@@ -334,15 +334,20 @@ It is an app to be put on the home screen, too (`public/manifest.webmanifest`,
 the icons out of its logo): opened from there, it is a window of its own,
 and plays offline. The page is kept by a Service Worker (`public/sw.js`),
 everything of the game, all of one build, the first time it is opened online
-
-- the build writes what that is into it (`tools/precache.js`): the page, its
-  scripts, styles, fonts and icons, and isometrica's pictures at the addresses
-  the game asks for them by. The page and `gfx/manifest.json` come from the
-  network while there is one, so a new release is never held back, and from
-  what was kept when there is not; the rest as it was kept, being asked for by
-  its hash. Every release is a Service Worker of its own (`sw.js?v=<version>`),
-  which keeps its build before it takes over and throws away what the one
-  before it kept.
+(the build writes what that is into it, `tools/precache.js`): the page, its
+scripts, styles, fonts and icons, and isometrica's pictures at the addresses
+the game asks for them by. The page and `gfx/manifest.json` come from the
+network while there is one, so a new release is never held back, and from
+what was kept when there is not; the rest as it was kept, being asked for by
+its hash. Every release is a Service Worker of its own - `sw.js`, with its
+build and its version written in - which keeps its build when the browser
+finds it, and waits: a page of its own release, opened from the network,
+has it take over straight away; an older one, left open, says "Peepsland
+has been updated" over the world's buttons, to be reloaded on it, or put
+away for now (`src/ui/updates.js`, `src/ui/world/UpdateReady.jsx`). The
+page looks for a new release when it comes back in sight, if it has not
+for ten minutes, and every hour it stays in sight. Taking over, the new
+one throws away what the one before it kept.
 
 Its own: `src/main.jsx` starts it, `src/game.js` says what it is (five
 minutes a tick of the clock, its saves under `city-sim.v1.*` in
