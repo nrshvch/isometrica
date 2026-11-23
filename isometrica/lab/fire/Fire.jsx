@@ -1,13 +1,7 @@
 /**
- * The fire bench's page (scene.js): one building on flat grass, a road along
- * its front and a few trees about it, set on fire the way the game sets one
- * on fire - catching in a window low down, the fire spreading along that
- * floor of that tile, then to the next tile and the floor over it, black
- * smoke rolling up off it, till it is burnt out - gutted, its walls
- * standing or fallen in, by what it is built of - and what is left of it
- * burns on and smoulders, a burnt-out ruin - over a
- * day of the game's time, as fast as wanted, by day or at night, turned
- * round or from above; and put up again.
+ * The fire bench's page: one building set on fire the game's way, over a day
+ * of game time, as fast as wanted, by day or at night.
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import { useEffect, useRef, useState } from "react";
 import { kinds, open } from "../bench/world.js";

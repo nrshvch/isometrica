@@ -1,26 +1,7 @@
 /**
- * The climate bench (lab/climate.html): every zone of the climate
- * (core/climate) on one island, drawn the game's own way (lab/bench/world) -
- * from the desert at one end, nothing but sand, through the savannah, its
- * cacti and dried-out trees, and the green, to the arctic, its firs and
- * pines snowed over, dying off, then dead trunks, and at the other end the
- * north, nothing but snow. Every zone has a stretch of the island as long as
- * every other's, its temperatures from its one edge to its other spread
- * along it - what the world spreads over thousands of tiles pressed into a
- * dozen or so - so that where one zone gives way to the next - ragged, in
- * patches, the ground of the one spilling over the edges of the other - can
- * be seen all at once.
- *
- * The island has a ring of water round it, the shallows and deep water
- * beyond them, so every zone has its shore: a sand beach, and out in the cold
- * the water frozen over with frost for a beach. A river winds along it from
- * the one end to the other, deep in the middle, through every zone - open
- * water in the warm, the ice closing over it from the edges where the snow
- * comes in - and hills stand in every zone, for its ground on every slope.
- * On it all, the trees and the stones the world puts there by itself.
- *
- * Warmer or colder (warmth) moves every zone along it, the way warming the
- * world moves them out from its middle.
+ * The climate bench: every zone on one island, its temperatures laid out
+ * along it (setHeat), shores, a river and hills; warmth moves them.
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import Simplex from "simplex-noise";
 import Core from "../../src/core/main";

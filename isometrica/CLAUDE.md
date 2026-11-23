@@ -92,8 +92,10 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
   roads, vehicles, smoke; `src/data` catalogue rows.
 - `sound` - sounds and music made from numbers (`shared/gen` sounds, music,
   dsp...), and what the game plays when (`client/audio`).
+- `lab` - the lab's pages and benches (`bench/stage.js`, `bench/world.js`),
+  adding a page, building and deploying the lab.
 
 ## Docs
 
-`README.md` is the overview plus per-area write-ups, 100 KB: grep it.
+`README.md` - the overview and the index of the skills.
 `docs/performance.md` - where a frame and a tick go, the debug panel.

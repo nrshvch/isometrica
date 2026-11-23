@@ -1,15 +1,7 @@
 /**
- * The explosion bench's sound: the blast (src/shared/gen/blast.js), one of
- * its ways at random, as the game has it, heard as each building on the
- * bench goes up - started
- * so that its boom comes just as the pieces are torn off it and fly
- * (client/explosion blast), however fast the bench's clock goes. The sound
- * itself is not slowed: at ¼× the boom still comes as they fly, but it is
- * over long before they land.
- *
- * Made in the page, through Web Audio, as the sound lab makes its sounds -
- * the bench's world has the game's sound off; the game times it the same
- * way (client/audio/soundman blasts).
+ * The explosion bench's boom: the game's blast at random, started so it comes
+ * as the pieces fly, however fast the bench's clock goes.
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import * as Sounds from "../../src/shared/gen/sounds.js";
 import { BLAST_SOUND } from "../../src/shared/gen/blast.js";
