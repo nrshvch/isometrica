@@ -1,23 +1,17 @@
 /**
- * Generates cities headless (src/citygen) and says how they came out: a map
- * of each, in letters, and whatever about it is not the way the game wants
- * it - opened in the game's own world (isometrica core), every building
- * asked what it goes without, as the game asks it over the world
- * (isometrica client/worth wantOf).
+ * Generates cities headless and checks them (lab/cities/check.js); exits 1
+ * on any failure.
  *
- *   node tools/citytest.mjs [--seed=N] [--seeds=N] [--size=town,city]
- *                         [--at=x,y] [--map]
+ *   node tools/citytest.mjs [--size=town,city,metropolis] [--seed=N]
+ *                           [--seeds=N] [--at=x,y] [--map]
  *
- * --size is the sizes to make, each of them seeds times (citygen SIZES) -
- * all of them where left out.
- *
- * Exits 1 if any city has something wrong with it that should never be.
+ * See .claude/skills/citygen.
  */
 import { createServer } from "vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-//the modules it loads only ever look for a window to hang a namespace on
+//the modules only look for a window to hang a namespace on
 globalThis.window = globalThis;
 
 var here = path.dirname(fileURLToPath(import.meta.url)),
@@ -42,10 +36,10 @@ var server = await createServer({
   appType: "custom",
   server: { middlewareMode: true, hmr: false, watch: null },
   optimizeDeps: { noDiscovery: true, include: [] },
-  //the engine's own "events", not node's, which goes by the same name
   resolve: {
     alias: [
       {
+        //the engine's "events", not node's
         find: /^events$/,
         replacement: path.join(here, "../../engine/events/dist/events.js"),
       },

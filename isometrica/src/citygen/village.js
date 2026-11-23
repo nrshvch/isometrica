@@ -1,27 +1,7 @@
 /**
- * A small town: a village grown into a town, mostly the country still -
- * one road, two or three, and the town along them - the way villages are laid
- * out where they grew up by themselves (a street village, a crossroads
- * village, a village at a fork, a green village):
- *
- *  - "street": along one road through it, its houses either side - and a
- *    back lane behind them at the middle, round a block or two;
- *  - "crossroads": where two roads cross, the town round the crossing and
- *    out along all four of them - and a lane round a block in one corner;
- *  - "tee": a road through it and a road off it, the town where they meet
- *    and along both;
- *  - "green": the road through it parted round a long green in its middle -
- *    the church on it, the square, a park and its pond - and the town round
- *    the green, facing it.
- *
- * Its middle is a little town: a square by the road, the church, the town
- * hall now and then, a market, the old town, shops, town houses - on cobbled
- * streets with water, as they want. Out along the roads, a village's houses
- * and farms, a gap between some of them; further out, farms, their fields
- * round them. No flats, no offices: a small town has neither.
- *
- * u runs along the road through it, v across: along x or along y, whichever
- * way the town is longer (site.js).
+ * Small town: one road or two (street, crossroads, tee, green), a small
+ * centre, the village and farms along the roads.
+ * See .claude/skills/citygen/layouts.md (small town).
  */
 import { WATER, FREE } from "./plan";
 import { keepJoined } from "./streets";
@@ -35,23 +15,16 @@ import {
 } from "./lots";
 import { codesOf } from "./catalogue";
 
-//how likely each way of laying a village out is
 export var LAYOUTS = { street: 3, crossroads: 3, tee: 2, green: 2 };
 
-//what the middle of a small town is built of, and what out along its roads
 export var PALETTES = {
   centre: { oldtown: 3, house: 3, shop: 2, market: 1, village: 1 },
-  //just out of the middle, the town houses and the villas thinning out -
-  //where the water towers that water the middle reach
   edge: { village: 4, house: 2, villa: 0.6 },
-  //and out along the roads the village itself
   village: { village: 1 },
 };
 
-//how far out of the middle the town's houses go on
 var EDGE = 4;
 
-//what a small town may have built in it at all (balance.js)
 export var ALLOWED = {
   village: true,
   house: true,
@@ -65,12 +38,9 @@ export var ALLOWED = {
   townhall: true,
 };
 
-//how far out its middle reaches from where its roads meet, in tiles
 var CENTRE = 6;
 
-/**
- * The way the town lies on the window: u along its road, v across.
- */
+//u along the main road, v across - whichever way the site is longer
 function frameOf(plan) {
   var alongX = plan.rx >= plan.ry;
 
@@ -81,8 +51,6 @@ function frameOf(plan) {
     xy: function (u, v) {
       return alongX ? [u, v] : [v, u];
     },
-    //the side of a lot a road is on, -x, -y, +x, +y as the plan has them:
-    //towards -u, -v, +u, +v
     side: function (du, dv) {
       if (alongX) return du < 0 ? 0 : du > 0 ? 2 : dv < 0 ? 1 : 3;
 
@@ -91,12 +59,6 @@ function frameOf(plan) {
   };
 }
 
-/**
- * Lays a road from u, v a tile at a time along du, dv - n tiles, or to the
- * edge of the window, or the water, whichever comes first.
- *
- * @returns {number} how many tiles it laid
- */
 function lay(plan, f, u, v, du, dv, n, material, level) {
   for (var i = 0; i < n; i++, u += du, v += dv) {
     var t = f.xy(u, v);
@@ -109,10 +71,6 @@ function lay(plan, f, u, v, du, dv, n, material, level) {
   return n;
 }
 
-/**
- * A block of the town's middle, between lanes: tiles u0..u1, v0..v1 of it,
- * taking both in.
- */
 function block(plan, f, ua, ub, va, vb, zone) {
   var a = f.xy(Math.min(ua, ub), Math.min(va, vb)),
     c = f.xy(Math.max(ua, ub), Math.max(va, vb)),
@@ -147,32 +105,19 @@ function block(plan, f, ua, ub, va, vb, zone) {
   return b;
 }
 
-/**
- * Lays the small town's roads out on the plan, one of the LAYOUTS - picked
- * at random, or the one asked for.
- *
- * @param [wanted] {string} one of the LAYOUTS (lab/cities)
- * @returns {Object} how: {layout, frame, length, green}
- */
 export function layVillage(plan, random, wanted) {
   var f = frameOf(plan),
     u0 = f.u0,
     v0 = f.v0,
-    //picked all the same, so that the rest of the town is the same town
-    //whichever is asked for
+    //picked even when forced, so the rest of the town stays the same
     picked = random.weighted(LAYOUTS),
     layout = LAYOUTS[wanted] ? wanted : picked,
-    //the road through it: asphalt, or an old gravel road - cobbled in the
-    //middle of town either way, where the town houses and the shops are
     main = random.chance(0.55) ? "asphalt" : "gravel",
-    //how far along its roads the town goes from its middle
     length = Math.round(Math.max(plan.rx, plan.ry) * 0.85),
     out = { layout: layout, frame: f, length: length, green: null };
 
   plan.lobes = null;
 
-  //what a road is laid in where it is: the town's middle cobbled, unless
-  //the road through it is asphalt; gravel or asphalt out of it
   function through(base) {
     return function (u, v) {
       var inMiddle =
@@ -186,8 +131,6 @@ export function layVillage(plan, random, wanted) {
     return "cobble";
   }
 
-  //the road through it, both ways out of its middle - parted round the
-  //green for a green village
   if (layout === "green") {
     var g = random.int(2, 3),
       half = random.int(6, 9);
@@ -214,7 +157,6 @@ export function layVillage(plan, random, wanted) {
     lay(plan, f, u0 - 1, v0, -1, 0, 9999, through(main), 0);
   }
 
-  //and the second road: across it, both ways or one
   var cross = main === "asphalt" && random.chance(0.5) ? "asphalt" : "gravel",
     sv = random.chance(0.5) ? 1 : -1;
 
@@ -231,7 +173,6 @@ export function layVillage(plan, random, wanted) {
       lay(plan, f, u0, v0 + sv * (n + 1), 0, sv, 9999, through("gravel"), 1);
   }
 
-  //a lane behind the houses round a block or two of the town's middle
   if (layout === "street" && random.chance(0.65)) {
     var k = random.int(5, 7),
       a = random.int(4, 8),
@@ -260,7 +201,6 @@ export function layVillage(plan, random, wanted) {
     (layout === "crossroads" || layout === "tee") &&
     random.chance(0.55)
   ) {
-    //round a corner of where the two roads meet - the tee's own side of it
     var su = random.chance(0.5) ? 1 : -1,
       kk = random.int(5, 7),
       m = random.int(5, 8);
@@ -283,9 +223,6 @@ export function layVillage(plan, random, wanted) {
   return out;
 }
 
-//the centre of the town, where its square goes: the tiles beside the road
-//through it, a square w along it and d deep, on side `towards` of it (-1,
-//1 across) - the corner nearest u0 as near as it goes
 function squareSpot(plan, f, w, d, towards) {
   var offsets = [1, -w, 2, -w - 1, 3, -w - 2, 0, -w + 1];
 
@@ -302,7 +239,6 @@ function squareSpot(plan, f, w, d, towards) {
         else cells.push(t);
       }
 
-    //on the road: the row next to it is all road
     for (du = 0; du < w && ok; du++) {
       var r = f.xy(ua + du, f.v0);
 
@@ -315,13 +251,6 @@ function squareSpot(plan, f, w, d, towards) {
   return null;
 }
 
-/**
- * The town's own buildings in its middle: the square by the road - or on
- * the green - the church beside it, the town hall facing it across the road
- * now and then, a market.
- *
- * @returns {{townHall: Object|null, church: Object|null, square: number[]}}
- */
 function centre(plan, random, how) {
   var f = how.frame,
     u0 = f.u0,
@@ -333,8 +262,6 @@ function centre(plan, random, how) {
       square: [f.xy(u0, v0)[0], f.xy(u0, v0)[1]],
     };
 
-  //one of kind facing the road along u on line `road`, on side `towards`
-  //of it (-1, 1 across), from lo to hi along it
   function face(kind, shapes, road, towards, lo, hi) {
     return placeFacing(
       plan,
@@ -350,14 +277,11 @@ function centre(plan, random, how) {
 
   if (how.green) {
     var g = how.green,
-      //the green's long sides, a road along each
       lo = f.alongX ? g.x0 : g.y0,
       hi = f.alongX ? g.x1 : g.y1,
       vLo = f.alongX ? g.y0 : g.x0,
       vHi = (f.alongX ? g.y1 : g.x1) - 1;
 
-    //the church on the green, facing the road along one side of it, as near
-    //its middle as it goes
     built.church = placeFacing(
       plan,
       random,
@@ -369,7 +293,6 @@ function centre(plan, random, how) {
       hi,
     );
 
-    //and the square facing the road along the other
     for (var u = u0 - 1; u <= u0 + 1; u++)
       for (var dv = 0; dv < 2; dv++) {
         var t = f.xy(u, vHi - dv);
@@ -380,10 +303,8 @@ function centre(plan, random, how) {
 
     built.square = f.xy(u0, vHi);
 
-    //and the rest of it a park, its pond and its paths
     parkUp(plan, random, freeCells(plan, g));
 
-    //the town hall facing the green across the road, now and then
     if (random.chance(0.5))
       built.townHall = face(
         "townhall",
@@ -413,8 +334,6 @@ function centre(plan, random, how) {
     return built;
   }
 
-  //the square by the road, on whichever side it fits - away from the block
-  //behind the street, if there is one
   var sides = random.shuffle([-1, 1]),
     w = random.int(2, 3),
     spot = null,
@@ -431,14 +350,11 @@ function centre(plan, random, how) {
     });
     built.square = spot.cells[0];
 
-    //the church beside it, facing the road too
     built.church =
       face("church", [[1, 2]], v0, towards, spot.u + w, spot.u + w + 4) ||
       face("church", [[1, 2]], v0, towards, spot.u - 4, spot.u);
   }
 
-  //the town hall across the road from it, now and then - a small town has
-  //one once it is a town
   if (random.chance(0.6))
     built.townHall = face(
       "townhall",
@@ -452,7 +368,6 @@ function centre(plan, random, how) {
       u0 + 5,
     );
 
-  //and a market by it
   face(
     "market",
     [
@@ -470,10 +385,6 @@ function centre(plan, random, how) {
   return built;
 }
 
-/**
- * Every straight stretch of road of the plan, along x and along y: each
- * {along, at, from, to} - tiles from..to on line `at`.
- */
 function runsOf(plan) {
   var runs = [];
 
@@ -501,17 +412,10 @@ function runsOf(plan) {
   return runs;
 }
 
-/**
- * Builds the small town up: its middle, its blocks, its houses along its
- * roads, the farms beyond.
- *
- * @returns {{townHall: Object|null, church: Object|null, at: number[]}}
- */
 export function buildVillage(plan, random, how) {
   var built = centre(plan, random, how),
     length = how.length;
 
-  //the blocks behind the street, the town's middle
   plan.blocks.forEach(function (b) {
     if (!b.urban || b.zone !== "centre") return;
 
@@ -525,8 +429,6 @@ export function buildVillage(plan, random, how) {
     parkUp(plan, random, freeCells(plan, b), 2);
   });
 
-  //along the roads, both sides of every stretch of them: its middle first,
-  //then out of it as far as the town goes
   var runs = runsOf(plan),
     far = function (x, y) {
       return Math.max(Math.abs(x - plan.cx), Math.abs(y - plan.cy));
@@ -548,7 +450,6 @@ export function buildVillage(plan, random, how) {
           edge = run.at + across,
           from = -1;
 
-        //the stretch of it in this part of the town, a strip at a time
         for (var i = run.from; i <= run.to + 1; i++) {
           var x = run.alongX ? i : run.at,
             y = run.alongX ? run.at : i,

@@ -1,22 +1,16 @@
 /**
- * The town being planned: a window of the world round its site, a grid of
- * what each tile of it is to be - a road, a building's, a block's own ground
- * left open, the water - in tiles of its own, x and y from the window's
- * corner, and what goes into the save once it is all worked out (save).
+ * The planning grid: a window round the site, what each tile is to be, and
+ * the roads and buildings on it, in window coordinates. See .claude/skills/citygen.
  */
 import Ground from "./ground";
 
-//what a tile of the plan is
 export var FREE = 0;
 export var ROAD = 1;
 export var LOT = 2;
 export var WATER = 3;
-//kept for something to go there - a pump station, a square - before the
-//lots are handed out
 export var KEPT = 4;
 
-//the four ways from a tile, -x, -y, +x, +y - as the roads count them
-//(core/roadrules)
+//-x, -y, +x, +y, as the roads count sides (core/roadrules)
 export var SIDES = [
   [-1, 0],
   [0, -1],
@@ -24,12 +18,6 @@ export var SIDES = [
   [0, 1],
 ];
 
-/**
- * @param ground {Ground}
- * @param site {Object} (site.js)
- * @param margin {number} how far round the town the window reaches, a share
- *        of how far the town does
- */
 export default function Plan(ground, site, margin) {
   var w = Math.round(site.rx * 2 * margin),
     h = Math.round(site.ry * 2 * margin);
@@ -38,26 +26,19 @@ export default function Plan(ground, site, margin) {
   this.site = site;
   this.w = w;
   this.h = h;
-  //the window's corner, in the world's tiles
   this.ox = site.x - (w >> 1);
   this.oy = site.y - (h >> 1);
-  //the middle of the town, in the window's
   this.cx = w >> 1;
   this.cy = h >> 1;
   this.rx = site.rx;
   this.ry = site.ry;
 
   this.what = new Uint8Array(w * h);
-  //the block a tile is the ground of, or -1
   this.blockOf = new Int32Array(w * h).fill(-1);
-  //the building on a tile, its index in buildings, or -1
   this.on = new Int32Array(w * h).fill(-1);
   this.blocks = [];
-  //by tile index: {material, way, level, surface}
   this.roads = Object.create(null);
   this.buildings = [];
-  //the shape of the town's edge: how far out it reaches every way round,
-  //a share of rx and ry (outline)
   this.lobes = null;
 
   for (var y = 0; y < h; y++)
@@ -86,7 +67,6 @@ Plan.prototype.isRoad = function (x, y) {
   return this.at(x, y) === ROAD;
 };
 
-//the world's ground under tile x, y of the window
 Plan.prototype.wx = function (x) {
   return this.ox + x;
 };
@@ -95,11 +75,7 @@ Plan.prototype.wy = function (y) {
   return this.oy + y;
 };
 
-/**
- * How far out from the middle of the town tile x, y is: 1 at the town's
- * edge, as its outline has it - not round, but reaching further out one way
- * and less another (outline).
- */
+//elliptical distance from the middle, 1 at the (lobed) outline
 Plan.prototype.reach = function (x, y) {
   var dx = (x - this.cx) / this.rx,
     dy = (y - this.cy) / this.ry,
@@ -147,7 +123,6 @@ Plan.prototype.clearRoad = function (x, y) {
   this.what[k] = this.ground.isWater(this.wx(x), this.wy(y)) ? WATER : FREE;
 };
 
-//how many roads there are next to tile x, y, and on which sides
 Plan.prototype.roadSides = function (x, y) {
   var out = [];
 
@@ -157,10 +132,6 @@ Plan.prototype.roadSides = function (x, y) {
   return out;
 };
 
-/**
- * Puts a building up on the plan: code, its corner with the least x and y
- * at x, y, turned rotation times, covering w by h tiles as turned.
- */
 Plan.prototype.build = function (code, x, y, w, h, rotation, extra) {
   var b = {
       code: code,
@@ -187,9 +158,6 @@ Plan.prototype.build = function (code, x, y, w, h, rotation, extra) {
   return b;
 };
 
-/**
- * Takes a building off the plan again, its ground free.
- */
 Plan.prototype.unbuild = function (b) {
   for (var i = 0; i < b.w; i++)
     for (var j = 0; j < b.h; j++) {
@@ -200,10 +168,6 @@ Plan.prototype.unbuild = function (b) {
   b.gone = true;
 };
 
-/**
- * Whether w by h on x, y is free ground of the plan, inside it, that a
- * building stands on.
- */
 Plan.prototype.free = function (x, y, w, h) {
   for (var i = 0; i < w; i++)
     for (var j = 0; j < h; j++)

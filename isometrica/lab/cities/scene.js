@@ -1,12 +1,6 @@
 /**
- * The city bench (lab/cities.html): a town generated afresh (src/citygen) -
- * a small town, a city of Peepstown's size, Peepsopolis - on a patch of flat
- * grass and nothing else (lab/bench/world), for how its roads and buildings
- * are laid out and nothing more: no water to keep off, no hills to level,
- * nobody living in it, no traffic. Put up as it would come out of a save -
- * the roads laid in what the generator laid them in, going the way it has
- * them go, every building turned to face its street - another seed, size or
- * layout at a click, and what was there before taken away at once.
+ * City bench scene: a generated city on flat grass, put up as a save would
+ * have it. See .claude/skills/citygen.
  */
 import generate, { SIZES } from "../../src/citygen/index.js";
 import { LAYOUTS } from "../../src/citygen/village.js";
@@ -17,33 +11,18 @@ import { GROUND } from "../bench/world.js";
 
 var Terrain = Core.Terrain;
 
-//how far the grass reaches out round the window the town was planned in
 var MARGIN = 2;
 
-//how close the camera is for each size, to begin with (client/cameracontrol
-//ZOOMS)
 var ZOOM = { town: 1.5, city: 1, metropolis: 0.5 };
 
 export var SIZE_NAMES = Object.keys(SIZES);
 export var LAYOUT_NAMES = Object.keys(LAYOUTS);
 
-/**
- * @param world {World} the bench's world (lab/bench/world)
- */
 export function Scene(world) {
   this.world = world;
-  //the patch the town before stood on, to be taken away: {x, y, w, h}
-  //from the middle of the bench
   this.area = null;
 }
 
-/**
- * Generates a town and puts it up in the place of the one there was.
- *
- * @param want {{size: string, seed: number, layout: string}}
- * @returns {Object} how it came out (stats) - or null while the one before
- *          is still being taken away
- */
 Scene.prototype.make = function (want) {
   var world = this.world,
     middle = world.tile(0, 0),
@@ -59,7 +38,6 @@ Scene.prototype.make = function (want) {
     }),
     generated = performance.now() - started,
     plan = out.plan,
-    //the window's corner, from the middle of the bench
     dx = plan.ox - mx,
     dy = plan.oy - my,
     a = this.area;
@@ -124,16 +102,7 @@ Scene.prototype.make = function (want) {
   });
 };
 
-/**
- * Does fn - a whole town put up or taken away, a building at a time - with
- * the roads drawn plain meanwhile, and then the pieces of the roads on tiles
- * worked out once. Every building that goes up or comes down has the roads
- * by it work out their pieces again (client/roadman updateRoadsAround), a
- * street paved or not by whether it is of the city's road network (Roadman
- * paved) - which is worked out again for all of the city whenever anything
- * goes up or comes down: a thousand buildings, a thousand times. The game
- * never meets it - a city is opened before anything of it is drawn.
- */
+//bulk put/wipe without the O(n^2) road repaving (.claude/skills/citygen/engine.md)
 function quietly(world, tiles, fn) {
   var roadman = world.client.roadman,
     paved = roadman.paved,
@@ -158,10 +127,6 @@ function quietly(world, tiles, fn) {
   return out;
 }
 
-/**
- * How a town came out: its plan, what stands in it, by kind, and what it
- * took.
- */
 export function stats(plan, save, took) {
   var roads = { asphalt: 0, cobble: 0, gravel: 0, oneWay: 0 },
     kinds = {},

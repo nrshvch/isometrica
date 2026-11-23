@@ -1,8 +1,5 @@
 /**
- * What a generated town is called: a Peeps- town, named the way towns are,
- * for where it stands - a port or a mouth by the sea, a hill or a ridge up
- * high, a ford, a field or a bury anywhere else - and now and then a New, a
- * Great or a side of the compass before it, to tell it from the others.
+ * Town names: Peeps- and where it stands; small towns a village's name.
  */
 var BY_WATER = [
   "Peepsport",
@@ -28,7 +25,6 @@ var ANYWHERE = [
   "Peepsbridge",
 ];
 
-//and a small town's: a village's names
 var VILLAGE = [
   "Peepsthorpe",
   "Peepscote",
@@ -55,11 +51,6 @@ var BEFORE = [
   "South ",
 ];
 
-/**
- * @param random {Object} (random.js)
- * @param where {{coastal: boolean, high: boolean, small: boolean}} - small,
- *        for a small town
- */
 export default function nameOf(random, where) {
   var names = where.small ? VILLAGE.slice() : ANYWHERE.slice();
 
@@ -69,7 +60,6 @@ export default function nameOf(random, where) {
 
   var name = random.pick(names);
 
-  //a small town is Little this as often as not
   if (where.small && random.chance(0.35)) return "Little " + name;
 
   if (random.chance(0.2)) name = random.pick(BEFORE) + name;

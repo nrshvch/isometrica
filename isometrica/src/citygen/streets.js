@@ -1,34 +1,11 @@
 /**
- * A town's streets, laid out the way a town grows when it is planned at all:
- * two main roads through its middle - the old ways in and out of it, going
- * on into the country to wherever they lead - and the land between them cut
- * into blocks by streets, again and again, each block cut across its longer
- * side, a little off its middle, till it is the size a block is where it
- * stands: small downtown, where the land is dear, longer out in the
- * suburbs, big fields in the country (recursive subdivision, the way
- * Parish and Mueller's city generator lays its lots out, and most others
- * since). Each street only runs as far as the block it cuts, so they meet
- * the street beyond it end on, and the cross streets of two blocks side by
- * side do not line up: T-junctions, staggered, the way real towns have
- * them - and the traffic too, a junction of three taken turn about rather
- * than a crossroads of four.
- *
- * Then what the town is: the blocks inside its outline - round its middle,
- * reaching further one way than another - on dry land it can build on, and
- * the streets round them; the main roads on out into the country, lanes off
- * them to the farms. And what a town of any size has: a main street down
- * its middle, divided - a one-way road each way, a boulevard - a roundabout
- * where a main road comes into town, a square at its heart.
- *
- * No street runs any way but along x or along y: the world's roads are laid
- * a tile at a time, on its grid.
+ * Streets of a city: main roads, recursive block subdivision (an arterial
+ * grid first for Peepsopolis), boulevards, roundabouts, the square.
+ * See .claude/skills/citygen/layouts.md (city, Peepsopolis) and engine.md (roads).
  */
 import { ROAD, WATER, KEPT, SIDES } from "./plan";
 
-//what a block is cut down to, by how far out it is (Plan#reach): its
-//shorter side at most `short` tiles across, its longer `long` - between the
-//streets round it, which take a tile each. Six across is two rows of lots
-//three deep, back to back; four, two of two
+//largest block (short x long side, between streets) by reach
 export var DISTRICTS = [
   { name: "core", upTo: 0.34, short: 6, long: 9, least: 4 },
   { name: "inner", upTo: 0.64, short: 6, long: 12, least: 4 },
@@ -48,13 +25,6 @@ function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-/**
- * Where across a block of extent tiles to cut it - how many tiles of it go
- * to the first part, the street on the next - or -1 for nowhere: both parts
- * at least `least` across. Cutting its longer side, a little off the middle;
- * cutting the shorter, so that both parts are as deep as two rows of lots
- * back to back want, five or six, if they can be.
- */
 function cutAt(random, extent, cuttingLong, d) {
   var least = d.least,
     hi = extent - 1 - least,
@@ -80,11 +50,7 @@ function cutAt(random, extent, cuttingLong, d) {
   return clamp(p, least, hi);
 }
 
-/**
- * Where the arterials of a big city run across one way: through its middle,
- * and every `spacing` tiles, a little more or less, either side of it as far
- * as the window goes - the lines of a grid of them, each a superblock across.
- */
+//Peepsopolis: grid lines every ~spacing tiles either side of the middle
 function arterials(random, middle, extent, spacing) {
   var lines = [middle],
     at;
@@ -99,17 +65,7 @@ function arterials(random, middle, extent, spacing) {
   });
 }
 
-/**
- * Cuts the window into blocks, the main roads through the middle first - and
- * for a big city, a grid of arterials (size.grid tiles apart) before anything
- * else, every superblock between them cut on its own; one of them, near the
- * middle, left whole for the city's central park.
- *
- * @returns {{segments: Object[], blocks: Object[]}} the streets, each along x
- *          or y on one line of tiles from one tile to another, and how deep
- *          in the cutting it was cut (level - 0 for the main roads); and the
- *          blocks between them, x0, y0 to x1, y1 not taking in the last
- */
+//each cut spans only its parent block: staggered T-junctions
 function subdivide(plan, random, size) {
   var segments = [],
     blocks = [],
@@ -118,11 +74,9 @@ function subdivide(plan, random, size) {
     xs = size && size.grid ? arterials(random, cx, plan.w, size.grid) : [cx],
     ys = size && size.grid ? arterials(random, cy, plan.h, size.grid) : [cy];
 
-  //the main roads first, through the middle - the first two segments
   segments.push({ along: "y", at: cx, from: 0, to: plan.h - 1, level: 0 });
   segments.push({ along: "x", at: cy, from: 0, to: plan.w - 1, level: 0 });
 
-  //and the rest of the grid
   xs.forEach(function (x) {
     if (x !== cx)
       segments.push({ along: "y", at: x, from: 0, to: plan.h - 1, level: 0 });
@@ -138,7 +92,6 @@ function subdivide(plan, random, size) {
 
     if (bw < 1 || bh < 1) return;
 
-    //cut down to what the part of it nearest the middle of the town wants
     var d = districtOf(
         plan.reach(clamp(cx, b.x0, b.x1 - 1), clamp(cy, b.y0, b.y1 - 1)),
       ),
@@ -151,7 +104,6 @@ function subdivide(plan, random, size) {
     }
 
     var cuttingLong = long > d.long,
-      //which way it is cut: across x, a street along y
       acrossX = cuttingLong ? bw >= bh : bw < bh,
       p = cutAt(random, acrossX ? bw : bh, cuttingLong, d);
 
@@ -183,8 +135,6 @@ function subdivide(plan, random, size) {
     }
   }
 
-  //the superblocks between the lines - four quarters round the middle, for
-  //a town with no grid
   var cells = [],
     i,
     j;
@@ -198,7 +148,6 @@ function subdivide(plan, random, size) {
         y1: j === ys.length ? plan.h : ys[j],
       });
 
-  //the central park: a whole superblock near the middle, not cut at all
   var park = null;
 
   if (size && size.grid) {
@@ -206,7 +155,6 @@ function subdivide(plan, random, size) {
 
     cells.forEach(function (c) {
       var r = plan.reach((c.x0 + c.x1) / 2, (c.y0 + c.y1) / 2),
-        //the one just off downtown, more or less
         off = Math.abs(r - 0.42) + random.range(0, 0.08);
 
       if (c.x1 - c.x0 < 8 || c.y1 - c.y0 < 8 || off >= best) return;
@@ -226,7 +174,6 @@ function subdivide(plan, random, size) {
   return { segments: segments, blocks: blocks };
 }
 
-//the tiles of a street, in order along it
 function tilesOf(seg) {
   var out = [];
 
@@ -236,10 +183,6 @@ function tilesOf(seg) {
   return out;
 }
 
-/**
- * What of a block the town is: inside its outline, and dry land it can build
- * on - most of it.
- */
 function sizeUp(plan, b) {
   var cells = 0,
     good = 0,
@@ -263,8 +206,6 @@ function sizeUp(plan, b) {
   b.urban = b.reach <= 1 && b.good >= 0.55 && cells >= 6;
 }
 
-//whether a tile next to x, y, corners too, is the ground of a block of the
-//town
 function byTown(plan, x, y) {
   for (var dy = -1; dy <= 1; dy++)
     for (var dx = -1; dx <= 1; dx++) {
@@ -278,8 +219,6 @@ function byTown(plan, x, y) {
   return false;
 }
 
-//what a street is laid in: the main roads asphalt, and downtown; cobbles in
-//town; gravel out in the country
 function materialFor(plan, x, y, level) {
   var reach = plan.reach(x, y);
 
@@ -291,11 +230,6 @@ function materialFor(plan, x, y, level) {
   return "gravel";
 }
 
-/**
- * The main road from the middle of the town out to the edge of the window
- * one way along a segment, the country road it goes on as - as far as the
- * land goes: it stops at the water.
- */
 function countryRoad(plan, seg, fromMiddle, dir) {
   var x = seg.along === "x" ? fromMiddle : seg.at,
     y = seg.along === "x" ? seg.at : fromMiddle;
@@ -310,13 +244,7 @@ function countryRoad(plan, seg, fromMiddle, dir) {
   }
 }
 
-/**
- * Lays the streets out on the plan, and marks the town's blocks.
- *
- * @returns {Object} what was laid: {segments}
- */
 export function layStreets(plan, random, size) {
-  //the town's outline: round, but bulging out one way and pulled in another
   plan.lobes = [
     { n: 2, amp: random.range(0.04, 0.12), phase: random.range(0, 6.3) },
     { n: 3, amp: random.range(0.03, 0.09), phase: random.range(0, 6.3) },
@@ -336,7 +264,6 @@ export function layStreets(plan, random, size) {
     sizeUp(plan, b);
   });
 
-  //the streets round the town's blocks
   segments.forEach(function (seg) {
     tilesOf(seg).forEach(function (t) {
       if (plan.at(t[0], t[1]) === WATER || !byTown(plan, t[0], t[1])) return;
@@ -350,7 +277,6 @@ export function layStreets(plan, random, size) {
     });
   });
 
-  //the main roads on out of town, as far as the land goes
   segments.slice(0, 2).forEach(function (seg) {
     var middle = seg.along === "x" ? plan.cx : plan.cy;
 
@@ -364,10 +290,6 @@ export function layStreets(plan, random, size) {
   return { segments: segments };
 }
 
-/**
- * Lanes off the town into the country, to the farms - the streets of the
- * first cuts, on past the town's last block, some of them, a way.
- */
 function farmLanes(plan, random, segments) {
   segments.forEach(function (seg) {
     if (seg.level === 0 || seg.level > 3) return;
@@ -379,7 +301,6 @@ function farmLanes(plan, random, segments) {
 
     if (on.indexOf(true) === -1) return;
 
-    //from either end of what is laid of it, on out
     [
       [on.indexOf(true), -1],
       [on.lastIndexOf(true), 1],
@@ -396,7 +317,6 @@ function farmLanes(plan, random, segments) {
         var t = tiles[i];
 
         if (n++ >= length || plan.at(t[0], t[1]) === WATER) break;
-        //into another road: it joins it there
         if (plan.isRoad(t[0], t[1])) break;
 
         plan.setRoad(t[0], t[1], "gravel", 9);
@@ -405,18 +325,13 @@ function farmLanes(plan, random, segments) {
   });
 }
 
-/**
- * Only the roads joined up to the middle of the town are kept - a street cut
- * off from it by the water is not one of its own - and a block with none of
- * them round it is no part of it either.
- */
+//drops roads not joined to the road nearest the middle, and blocks left
+//with none round them
 export function keepJoined(plan) {
   var seen = new Uint8Array(plan.w * plan.h),
     queue = [],
     k;
 
-  //from the road nearest the middle of town - where the main roads cross,
-  //for a town that has them there
   var start = null,
     nearest = Infinity;
 
@@ -467,31 +382,11 @@ export function keepJoined(plan) {
   });
 }
 
-/**
- * A stretch of one of the main roads through downtown divided: a boulevard.
- * The road there goes one way, and a second road two tiles beside it, +y of
- * one along x or +x of one along y, the other way - the traffic keeping to
- * the right: along x, -x on the road and +x on the one beside it; along y,
- * +y on the road and -y beside it - with a strip of park between them,
- * crossed only where a street comes into it from either side, and at its
- * ends, where it is the main road again, both ways. Two one-way roads side
- * by side with nothing between would be a junction every tile of the way.
- *
- * @param axis {string} "x" or "y": which of the main roads
- * @param [opts] {{start: number, reachOut: number, reachIn: number}} where
- *        along it to start from, out both ways - the middle of town, where
- *        left out - and how far out it may go, Plan#reach, downtown where
- *        left out; and how far in, for one out of downtown
- * @returns {{axis: string, at: number, from: number, to: number,
- *          median: number[][]}|null} where it runs - the main road's line,
- *          and from and to along it - and the tiles of its middle strip,
- *          each [x, y]
- */
+//one-way pair with a park median, crossed only at streets (engine.md:
+//why the median, which way each goes)
 export function boulevard(plan, random, axis, opts) {
   opts = opts || {};
 
-  //u along it, v across: the main road on v0, the strip on v0 + 1 and the
-  //road beside it on v0 + 2
   var alongX = axis !== "y",
     v0 = alongX ? plan.cy : plan.cx,
     reachOut =
@@ -500,7 +395,6 @@ export function boulevard(plan, random, axis, opts) {
     us = opts.start !== undefined ? opts.start : alongX ? plan.cx : plan.cy,
     ue = us,
     median = [],
-    //the ways the two go: on the main road, and on the one beside it
     ways = alongX ? [0, 2] : [3, 1],
     u;
 
@@ -526,7 +420,6 @@ export function boulevard(plan, random, axis, opts) {
     return plan.ground.fits(plan.wx(t[0]), plan.wy(t[1]), 1, 1);
   }
 
-  //as far either way as it is downtown, and dry land under it all
   function ok(u) {
     var t = xy(u, v0),
       reach = plan.reach(t[0], t[1]);
@@ -546,14 +439,11 @@ export function boulevard(plan, random, axis, opts) {
     return true;
   }
 
-  //just past an end, and a street comes in there from the far side: it
-  //ends there, on it, rather than leave the two side by side
   function ok2(u) {
     return (
       road(u, v0) !== null &&
       at(u, v0 + 2) !== WATER &&
       fits(u, v0 + 2) &&
-      //never onto a one-way road there is already
       [0, 1, 2].every(function (dv) {
         var r = road(u, v0 + dv);
 
@@ -562,7 +452,6 @@ export function boulevard(plan, random, axis, opts) {
     );
   }
 
-  //nowhere to start from
   if (!ok(us)) return null;
 
   while (ok(us - 1)) us--;
@@ -573,9 +462,6 @@ export function boulevard(plan, random, axis, opts) {
 
   if (ue - us < 10) return null;
 
-  //where it is crossed: its ends, and wherever a street comes into it -
-  //onto the main road from its other side, or from beyond the road beside
-  //it, onto what was the first row of the blocks there
   var crossed = [];
 
   for (u = us; u <= ue; u++)
@@ -609,11 +495,6 @@ export function boulevard(plan, random, axis, opts) {
   return { axis: alongX ? "x" : "y", at: v0, from: us, to: ue, median: median };
 }
 
-/**
- * Which side of the boulevard - or of the main road along x, with none -
- * tiles x0..x1, y0..y1 are on: -1 the side away from the road beside it,
- * 1 its side, 0 across it.
- */
 export function sideOf(plan, x0, y0, x1, y1) {
   var alongY = plan.boulevard && plan.boulevard.axis === "y",
     v0 = alongY ? plan.cx : plan.cy,
@@ -623,15 +504,6 @@ export function sideOf(plan, x0, y0, x1, y1) {
   return hi < v0 ? -1 : lo > v0 ? 1 : 0;
 }
 
-/**
- * A roundabout where a main road comes into town: a ring of one-way road
- * round a junction of it - eight tiles round, a small one, round a little
- * park - going round the way the game's own does (data/initialcity): +x
- * along its -y side, +y down its +x side, -x along its +y side and -y up
- * its -x side.
- *
- * @returns {Object[]} the islands in the middle of each, {x, y}
- */
 export function roundabouts(plan, random, most) {
   var found = [],
     candidates = [];
@@ -655,7 +527,6 @@ export function roundabouts(plan, random, most) {
   for (var i = 0; i < candidates.length && found.length < most; i++) {
     var c = candidates[i];
 
-    //one a way out of town at most, and well apart
     if (
       found.some(function (f) {
         return Math.abs(f.x - c.x) + Math.abs(f.y - c.y) < 16;
@@ -672,9 +543,7 @@ export function roundabouts(plan, random, most) {
   return found;
 }
 
-//the ring round x, y, from its -x, -y corner round, and the way each of
-//its tiles goes: +x along the top, +y down the right, -x along the bottom,
-//-y up the left - each corner the way it is left by
+//ring tiles round a junction and their ways, as Peepstown's roundabout
 var RING = [
   [-1, -1, 2],
   [0, -1, 2],
@@ -697,8 +566,6 @@ function ringFits(plan, x, y) {
     if (corner && what === ROAD) return false;
     if (!plan.ground.fits(plan.wx(rx), plan.wy(ry), 1, 1)) return false;
 
-    //nothing else comes onto the ring but the roads into it, at the middle
-    //of each side
     for (var s = 0; s < 4; s++) {
       var nx = rx + SIDES[s][0],
         ny = ry + SIDES[s][1];
@@ -706,11 +573,9 @@ function ringFits(plan, x, y) {
       if (Math.abs(nx - x) <= 1 && Math.abs(ny - y) <= 1) continue;
       if (!plan.isRoad(nx, ny)) continue;
       if (corner) return false;
-      //a middle tile: only straight on out
       if (nx - rx !== RING[i][0] || ny - ry !== RING[i][1]) return false;
     }
 
-    //and its ground no block's that is too small to lose a corner
     var id = plan.blockOf[plan.index(rx, ry)];
 
     if (corner && id >= 0 && plan.blocks[id].cells < 12) return false;
@@ -730,18 +595,10 @@ function ring(plan, x, y) {
     plan.blockOf[plan.index(rx, ry)] = -1;
   });
 
-  //the junction is the island now
   plan.clearRoad(x, y);
   plan.what[plan.index(x, y)] = KEPT;
 }
 
-/**
- * The town's square: a block next to the middle of the town, where its main
- * roads cross - one the boulevard does not run along, if it can - not too
- * big, all of it dry land.
- *
- * @returns {Object|null} the block
- */
 export function pickSquare(plan, random) {
   var best = null,
     bestScore = -Infinity;
@@ -754,13 +611,10 @@ export function pickSquare(plan, random) {
 
     if (bw < 3 || bh < 3 || bw * bh > 42) return;
 
-    //how far its nearest corner is from where the main roads cross
     var dx = Math.max(b.x0 - plan.cx, plan.cx - (b.x1 - 1), 0),
       dy = Math.max(b.y0 - plan.cy, plan.cy - (b.y1 - 1), 0),
       score = -(dx + dy) * 2 - Math.abs(bw * bh - 25) * 0.1;
 
-    //the boulevard's other road runs beside the main road: the side away
-    //from it is quieter
     if (sideOf(plan, b.x0, b.y0, b.x1 - 1, b.y1 - 1) > 0) score -= 3;
 
     score += random.range(0, 1.5);

@@ -1,36 +1,17 @@
 /**
- * The streets graded: every road laid flat or as a ramp - the surfaces the
- * game lays one on (client/road surfaces) - so that the roads side by side
- * meet level all along the edge between them (core/roadrules meets), the
- * way the traffic only drives where they do. Each is the one that has the
- * most of them join up and, as far as that goes, takes the least concrete,
- * worked out for all of them together the way the game works out a road
- * dragged out (client/road plan): from a few first guesses - each the
- * cheapest, all of them level at each height there is - bettered a road at a
- * time, and two side by side at a time, till nothing betters it.
- *
- * A ramp only on a road that goes on straight, along its slope: never at a
- * junction, nor round a corner, which a ramp does not join up with.
- *
- * Where roads still do not meet - the ground too steep, too broken up for a
- * street - the ground is levelled under the two of them, the way a town
- * levels a street: they and the ground round them brought to one height, and
- * it is worked out again.
+ * Gives every road a surface so roads side by side meet level (traffic
+ * drives only where they do), levelling the ground where none will.
+ * See .claude/skills/citygen/engine.md (roads).
  */
 import { SIDES } from "./plan";
 import Surface from "../core/surface";
 import * as RoadRules from "../core/roadrules";
 
-//what a road joined up is worth, against a corner's worth of concrete
+//a join outweighs a corner of concrete, as client/road plan scores it
 var JOIN = 10;
 
-//how many times the ground is levelled under what does not meet, and it is
-//graded again
 var ROUNDS = 6;
 
-//what a road with surface takes laid on ground g: a corner's worth of
-//concrete for each corner over the ground, and more for a ramp up on
-//concrete (client/road cost)
 function cost(g, surface) {
   var drops = 0;
 
@@ -39,20 +20,12 @@ function cost(g, surface) {
   return drops + (drops > 0 && Surface.shapeOf(surface) > 0 ? 3 : 0);
 }
 
-//a ramp's axis: 1 along x (up towards -x or +x), 2 along y; 0 for flat
 function axisOf(surface) {
   var shape = Surface.shapeOf(surface);
 
   return shape === 2 || shape === 4 ? 1 : shape === 1 || shape === 3 ? 2 : 0;
 }
 
-/**
- * Grades the plan's roads, each road's surface set (road.surface).
- *
- * @returns {{unmet: number[][], levelled: number}} the roads side by side
- *          that still do not meet, each pair [x, y, x, y], and how many times
- *          the ground was levelled for them
- */
 export default function grade(plan) {
   var levelled = 0,
     result;
@@ -62,8 +35,6 @@ export default function grade(plan) {
 
     if (result.unmet.length === 0 || round >= ROUNDS) break;
 
-    //every pair that does not meet levelled, at the height of the higher -
-    //filled in, rather than dug out - and if that cannot be, the lower
     var did = 0;
 
     result.unmet.forEach(function (pair) {
@@ -104,7 +75,6 @@ function assign(plan) {
 
   for (i = 0; i < n; i++) byIndex[keys[i]] = i;
 
-  //the roads next to each, by side - -1 for none
   for (i = 0; i < n; i++) {
     var r = roads[i],
       sides = [-1, -1, -1, -1];
@@ -122,18 +92,17 @@ function assign(plan) {
 
   for (i = 0; i < n; i++) {
     var g = ground.corners(plan.wx(roads[i].x), plan.wy(roads[i].y)),
+      //a ramp only where the road runs straight along it
       alongX = nbr[i][1] < 0 && nbr[i][3] < 0,
       alongY = nbr[i][0] < 0 && nbr[i][2] < 0,
       all = ground.roadSurfaces(plan.wx(roads[i].x), plan.wy(roads[i].y));
 
-    //a ramp only where the road goes on straight along it
     var mine = all.filter(function (surface) {
       var axis = axisOf(surface);
 
       return axis === 0 || (axis === 1 && alongX) || (axis === 2 && alongY);
     });
 
-    //nothing will do: the ground as it is, for now - it is levelled after
     if (mine.length === 0) mine = [g.slice()];
 
     options.push(mine);
@@ -208,8 +177,6 @@ function assign(plan) {
         if (best !== was) changed = true;
       }
 
-      //two side by side changing together - a road up onto a levelled one
-      //takes both - where they do not meet yet
       for (i = 0; i < n; i++)
         for (var s = 2; s < 4; s++) {
           var m = nbr[i][s];
@@ -249,8 +216,6 @@ function assign(plan) {
     return assigned;
   }
 
-  //first guesses: each the cheapest; and all of them level at each height
-  //some of them can be levelled at
   var guesses = [new Int32Array(n)],
     heights = [];
 

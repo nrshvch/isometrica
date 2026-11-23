@@ -1,6 +1,6 @@
 /**
- * What tools/citytest.mjs says of a generated city (src/citygen): a map of it
- * in letters, and what about it is not the way the game wants it.
+ * What test:cities checks: a map in letters, drivable roads, and each
+ * building's wants in the real core. See .claude/skills/citygen.
  */
 import { ROAD, LOT, WATER, KEPT } from "../../src/citygen/plan";
 import { info } from "../../src/citygen/catalogue";
@@ -8,10 +8,8 @@ import * as RoadRules from "../../src/core/roadrules";
 import Logic from "../../src/core/logic";
 import { wantOf } from "../../src/client/worth";
 
-//a letter for every road, by what it is laid in, or the way it goes
 var WAYS = ["<", "^", ">", "v"];
 
-//and every building, by what it is - the first tile of it in capitals
 var LETTERS = {
   village: "f",
   house: "h",
@@ -35,11 +33,6 @@ export function letterOf(b) {
   return LETTERS[info(b.code).kind] || "?";
 }
 
-/**
- * The plan in letters, a line a row: ~ water, # asphalt, % cobbles, :
- * gravel, arrows one way; the buildings by what they are, the corner they
- * are put down on in capitals; . a block's ground left open, , the country.
- */
 export function map(plan) {
   var rows = [],
     x,
@@ -83,10 +76,6 @@ export function map(plan) {
   return rows.join("\n");
 }
 
-/**
- * @param out {{plan: Plan, save: Object}} (src/citygen)
- * @returns {{ok: boolean, line: string, problems: string[]}}
- */
 export function check(out) {
   var plan = out.plan,
     problems = [],
@@ -108,14 +97,11 @@ export function check(out) {
           .join(" "),
     );
 
-  //the roads as the traffic drives them: every road reaches every other
   var parts = drivable(plan);
 
   if (parts > 1)
     problems.push("the traffic cannot get everywhere: " + parts + " parts");
 
-  //and the city opened in the game's own world, every building asked what
-  //it goes without
   var wants = {},
     opened = null;
 
@@ -177,12 +163,7 @@ export function check(out) {
   };
 }
 
-/**
- * How many parts the roads come apart into for the traffic, which drives
- * only where two roads meet level, and never against a one-way road
- * (isometrica client/traffic canDrive): the strongly connected parts of
- * them, by Tarjan's.
- */
+//strongly connected parts of the road graph as traffic drives it
 export function drivable(plan) {
   var keys = Object.keys(plan.roads).map(Number),
     at = new Map(),
@@ -226,7 +207,6 @@ export function drivable(plan) {
   for (var root = 0; root < keys.length; root++) {
     if (idx[root] >= 0) continue;
 
-    //iteratively, the roads being many
     var work = [[root, 0, next(root)]];
 
     idx[root] = low[root] = index++;
@@ -271,7 +251,6 @@ export function drivable(plan) {
   return parts;
 }
 
-//a store of saves in nothing but memory, for the world to keep its city in
 function memory() {
   var items = {};
 
@@ -294,12 +273,7 @@ function memory() {
   };
 }
 
-/**
- * The save opened the way the game opens it (core CityPersistence#open),
- * in a world of its own with its clock stopped - and what every building
- * goes without, as the game says it over it (client/worth wantOf): by what,
- * the tile of each.
- */
+//opens the save as the game does and asks every building what it lacks
 export function open(save) {
   globalThis.localStorage = globalThis.localStorage || memory();
   globalThis.addEventListener = globalThis.addEventListener || function () {};

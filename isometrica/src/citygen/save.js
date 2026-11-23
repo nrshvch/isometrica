@@ -1,21 +1,13 @@
 /**
- * The town planned, as a save the game opens a city from - the way it keeps
- * one (isometrica core/persistence snapshot), the way the city a new player
- * starts on is kept (initialcity.js): the ground as it was shaped, the tiles
- * cleared of what the world grew there, and the city - its name, its money,
- * its people, and everything that stands in it, a road with what it is laid
- * in, which way it goes if it is one way, and the surface it was graded to.
- * A building's look is left for the game to pick as it first draws it, and
- * its surface for it to work out from the ground, as for one put up there.
+ * The plan as a save (core/persistence snapshot).
+ * See .claude/skills/citygen/engine.md (save).
  */
 import Ground from "./ground";
 import { ROAD as ROAD_CODE } from "./catalogue";
 
-//ten in the morning, on the fourteenth day - a city starts in daylight
 var MORNING = 13 * 86400000 + 10 * 3600000;
 
-//what downtown is cleared of: the trees the world would grow between its
-//buildings - out in the suburbs they are left in the gardens
+//no wild trees between buildings downtown
 var CLEARED_ZONES = {
   core: true,
   inner: true,
@@ -26,12 +18,6 @@ var CLEARED_ZONES = {
   green: true,
 };
 
-/**
- * @param plan {Plan}
- * @param city {{name: string, money: number, population: number, tile:
- *        number[], at: number[]}} the town hall's tile and where the camera
- *        opens, each the window's x, y
- */
 export default function saveOf(plan, city) {
   var buildings = [],
     cleared = Object.create(null);
@@ -40,8 +26,6 @@ export default function saveOf(plan, city) {
     return Ground.index(plan.wx(x), plan.wy(y));
   }
 
-  //the roads first, from the middle of town out, as a town is laid out -
-  //then what stands along them, the same way
   Object.keys(plan.roads)
     .map(function (k) {
       return plan.roads[k];

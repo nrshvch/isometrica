@@ -1,28 +1,16 @@
 /**
- * The ground a city is generated on: the world's own terrain (isometrica
- * core/terrain) - the same noise, so what is worked out here is what the
- * game draws - with the generator's earthworks laid over it, to go into the
- * save as the ground's shaped points (Terrain#save points).
- *
- * In world tiles, x and y, as the game counts them.
+ * The world's terrain (the game's own noise) with the generator's earthworks
+ * over it, saved as terrain.points; Ground(flat) for the lab bench.
+ * See .claude/skills/citygen/engine.md (tiles, buildings, roads).
  */
 import Terrain from "../core/terrain";
 import TerrainType from "../core/terraintype";
 import Surface from "../core/surface";
 
-//how far shaping one point may drag the ground round it along, in points -
-//past that it is a hill being moved, not a street levelled
 var MAX_DRAG = 400;
 
-/**
- * @param [flat] {number} the height the ground is everywhere, as flat as a
- *        table and no water - in the place of the world's (lab/cities); the
- *        world's own, where left out
- */
 export default function Ground(flat) {
-  //a terrain of no world: the noise, and the points the generator moved
   this.terrain = new Terrain(null);
-  //grid point index -> height, for every point moved
   this.moved = Object.create(null);
 
   if (flat !== undefined) {
@@ -43,8 +31,6 @@ Ground.prototype.height = function (x, y) {
   return this.terrain.getGridPointHeight(Terrain.convertToIndex(x, y));
 };
 
-//the heights at the corners of tile x, y: A (x, y), B (x + 1, y),
-//C (x, y + 1), D (x + 1, y + 1) - as core/surface has them
 Ground.prototype.corners = function (x, y) {
   return Surface.ground(this.terrain, Terrain.convertToIndex(x, y));
 };
@@ -57,19 +43,11 @@ Ground.prototype.isWater = function (x, y) {
   return this.type(x, y) === TerrainType.water;
 };
 
-//any corner of it in the water: the beach, or the sea itself
 Ground.prototype.isWet = function (x, y) {
   return this.type(x, y) !== TerrainType.grass;
 };
 
-/**
- * Whether a building can stand on tile x, y as the game puts one up: flat at
- * the highest corner of its footprint, on a step of concrete at most, never
- * in the water (core/buildings buildTest, core/surface fits).
- *
- * @param [top] {number} the highest corner of the whole footprint - the
- *        tile's own where left out
- */
+//as core/buildings buildTest: flat at the footprint's top corner
 Ground.prototype.standsOn = function (x, y, top) {
   var g = this.corners(x, y),
     high = top === undefined ? Math.max(g[0], g[1], g[2], g[3]) : top;
@@ -84,10 +62,6 @@ Ground.prototype.standsOn = function (x, y, top) {
   ]);
 };
 
-/**
- * Whether a building w by h on x, y (its corner with the least x and y) can go
- * up on the ground there.
- */
 Ground.prototype.fits = function (x, y, w, h) {
   var top = -Infinity,
     i,
@@ -106,16 +80,9 @@ Ground.prototype.fits = function (x, y, w, h) {
   return true;
 };
 
-//the corners each ramp is up at, of A, B, C and D (core/surface)
 var RAMP_TOPS = Surface.RAMP_TOPS;
 
-/**
- * Every surface a road on tile x, y can have - flat at the top of the ground,
- * or a ramp a step up, on the ground or on concrete - the way the game lays
- * one (client/road surfaces), the ground's own first.
- *
- * @returns {number[][]}
- */
+//the surfaces the game lays a road on (client/road surfaces)
 Ground.prototype.roadSurfaces = function (x, y) {
   var tile = Terrain.convertToIndex(x, y),
     terrain = this.terrain,
@@ -147,7 +114,6 @@ Ground.prototype.roadSurfaces = function (x, y) {
   return out;
 };
 
-//the four grid points next to point x, y
 function around(x, y) {
   return [
     [x + 1, y],
@@ -157,14 +123,8 @@ function around(x, y) {
   ];
 }
 
-/**
- * Levels tiles - each [x, y] - flat at height h, the ground round them
- * dragged along so that no two points next to each other are more than a
- * step apart, as the game shapes it (core/terrain planLevel). Nothing is
- * moved if that would drag too much along, or put dry land under the water.
- *
- * @returns {boolean} whether it was levelled
- */
+//flat at h, neighbours dragged a step at a time (core/terrain planLevel);
+//false if too much moves or land and water would swap
 Ground.prototype.level = function (tiles, h) {
   var plan = Object.create(null),
     queue = [],
@@ -211,7 +171,6 @@ Ground.prototype.level = function (tiles, h) {
     }
   }
 
-  //dry land is never dug down into the sea, nor the sea filled in
   for (var k in plan) {
     var was = this.height(plan[k].x, plan[k].y);
 
@@ -226,11 +185,7 @@ Ground.prototype.level = function (tiles, h) {
   return true;
 };
 
-/**
- * The points moved, as a save keeps them (Terrain#save points).
- *
- * @returns {number[][]}
- */
+//the moved points, as Terrain#save keeps them
 Ground.prototype.points = function () {
   var out = [];
 

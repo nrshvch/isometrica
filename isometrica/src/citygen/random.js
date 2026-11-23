@@ -1,18 +1,10 @@
 /**
- * The generator's dice: a seeded random source (mulberry32), so that the same
- * seed makes the same city - in the game, where the seed goes over the page
- * reloading on it (ui/session), and in the tool that tries them
- * (tools/citytest.mjs).
- */
-
-/**
- * @param seed {number} any 32-bit number
- * @returns {Random}
+ * Seeded RNG (mulberry32): same seed, same city. fork(n) gives each
+ * stage its own stream. See .claude/skills/citygen.
  */
 export default function Random(seed) {
   var state = seed >>> 0;
 
-  //a number in [0, 1)
   function next() {
     state = (state + 0x6d2b79f5) >>> 0;
 
@@ -27,17 +19,14 @@ export default function Random(seed) {
   var random = {
     next: next,
 
-    //a whole number in [lo, hi]
     int: function (lo, hi) {
       return lo + Math.floor(next() * (hi - lo + 1));
     },
 
-    //a number in [lo, hi)
     range: function (lo, hi) {
       return lo + next() * (hi - lo);
     },
 
-    //true one time in 1 / p
     chance: function (p) {
       return next() < p;
     },
@@ -46,7 +35,6 @@ export default function Random(seed) {
       return list[Math.floor(next() * list.length)];
     },
 
-    //one of the keys of weights, as likely as its weight
     weighted: function (weights) {
       var total = 0,
         k;
@@ -75,8 +63,6 @@ export default function Random(seed) {
       return list;
     },
 
-    //another source, of its own, for one part of the work - so that what one
-    //part rolls does not shift what every part after it rolls
     fork: function (salt) {
       return Random(Math.imul(state ^ (salt * 0x9e3779b1), 0x85ebca6b));
     },

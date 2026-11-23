@@ -1,9 +1,6 @@
 /**
- * The city bench's page (scene.js): a town generated afresh on flat grass -
- * its size, its seed, a small town's layout picked along the top, another at
- * a click - turned round or from above, and how it came out down the side.
- * The size and seed are kept in the address, #size=city&seed=7, so a reload
- * or a link shows the same town.
+ * City bench page: size, layout, seed (kept in the address), camera, and
+ * how it came out. See .claude/skills/citygen.
  */
 import { useEffect, useRef, useState } from "react";
 import { open } from "../bench/world.js";
@@ -16,7 +13,6 @@ var SIZE_LABELS = {
   metropolis: "Peepsopolis",
 };
 
-//what the address asks for, with what it leaves out as it comes
 function asked() {
   var q = new URLSearchParams(window.location.hash.slice(1)),
     size = q.get("size"),
@@ -68,7 +64,6 @@ export default function Cities() {
     [top, setTop] = useState(false),
     [seen, setSeen] = useState(null);
 
-  //the world, up once
   useEffect(function () {
     open(el.current).then(
       function (world) {
@@ -83,7 +78,6 @@ export default function Cities() {
     );
   }, []);
 
-  //and a town on it, whenever what is asked for changes
   useEffect(
     function () {
       if (!ready) return;

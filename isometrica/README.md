@@ -21,8 +21,10 @@ starts it up and puts its own over it (see the games' `src/main.js`).
 - `src/citygen` - cities generated afresh out of a seed: a small town, a
   city of Peepstown's size or Peepsopolis, built up all of it somewhere in
   the world, as a save a game starts a new city on (`index.js` generate; see
-  [generated cities](../city-sim/docs/cities.md#generated-cities)) - and
-  the city bench to look at them on (see Benches).
+  [generated cities](../city-sim/docs/cities.md#generated-cities); the
+  engineering notes for working on it are the `citygen` Claude skill,
+  `.claude/skills/citygen`) - and the city bench to look at them on (see
+  Benches).
 - `npm run build` writes `dist/gfx`: the manifests of what every generator
   will paint.
 - `vite.mjs` - the Vite plugin a game uses to serve and ship `dist/gfx`.

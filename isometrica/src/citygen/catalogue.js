@@ -1,24 +1,6 @@
 /**
- * What there is to build a town out of, by what each is to the town - read
- * off the game's own data (isometrica data/buildings), so that a building
- * added there is built here too: only what the catalogue offers, nothing
- * hidden or done away with.
- *
- *   village  - a village's houses, farms: no road, no water, no jobs wanted
- *   house    - town houses, terraces, semi-detached houses
- *   villa    - villas
- *   flats    - blocks of flats
- *   shop     - small shops
- *   store    - stores, supermarkets, department stores
- *   market   - farmers' markets, market halls
- *   office   - office blocks
- *   oldtown  - the old town
- *   park     - parks
- *   square   - a town square
- *   church, townhall
- *
- * Each by footprint - how many tiles along its front, the street it faces,
- * and how many deep (sizeX, sizeY) - as "wxd".
+ * Kinds of building, read off data/buildings (offered ones only), by
+ * footprint "frontxdepth". See .claude/skills/citygen.
  */
 import BuildingData from "../data/buildings";
 import BuildingCode from "../data/buildingcode";
@@ -46,9 +28,6 @@ function kindOf(data) {
   return null;
 }
 
-/**
- * @returns {Object} kind -> "wxd" -> codes
- */
 export function catalogue() {
   if (kinds !== null) return kinds;
 
@@ -79,19 +58,12 @@ export function catalogue() {
   return kinds;
 }
 
-/**
- * The codes of kind on a footprint w along its front by d deep - none for
- * a kind there is none of that size.
- */
 export function codesOf(kind, w, d) {
   var byFootprint = catalogue()[kind];
 
   return (byFootprint && byFootprint[w + "x" + d]) || [];
 }
 
-/**
- * The fronts of kind there are d deep, smallest first.
- */
 export function widthsOf(kind, d) {
   var out = [];
 
@@ -100,10 +72,6 @@ export function widthsOf(kind, d) {
   return out;
 }
 
-/**
- * What a building is to the town: who it puts up, who works in it, and what
- * it wants of it.
- */
 export function info(code) {
   var data = BuildingData[code],
     requires = data.requires || {};
@@ -112,7 +80,6 @@ export function info(code) {
     kind: data.compound ? kindOf(data) : null,
     beds: data.citizenCapacity || 0,
     jobs: data.jobs || 0,
-    //people who need a job in town to live here (core/city/citypopulation)
     needsJobs: !!data.citizenCapacity && data.needsJobs !== false,
     water: requires.water === true,
     road: typeof requires.road === "string" ? requires.road : null,

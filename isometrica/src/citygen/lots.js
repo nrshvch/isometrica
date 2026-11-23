@@ -1,30 +1,16 @@
 /**
- * The town built up: every block filled round its edge with lots facing its
- * streets - two rows of them back to back, each as deep as half the block,
- * three tiles at most; whatever is left in the middle a courtyard, a park -
- * and each lot with what that part of town is built of (PALETTES): its
- * square, the town hall, the church and the market round it; the old town by
- * it; offices, stores and flats downtown, and shops along the main roads; in
- * town flats and terraces; houses and villas in the suburbs - by the water
- * and up on the hills the villas most - farms out along the roads into the
- * country. A street is built a kind at a time, the way a street goes up, a
- * row of the same houses or a parade of shops, with now and then something
- * else among them.
- *
- * A lot faces the street it is on: turned so its front is to it (core/
- * replacement frontOf - turned 0 it faces -y, 1 -x, 2 +y, 3 +x), on a road
- * laid in what it wants at least (data/buildings requires).
+ * Builds the blocks up: zones, palettes, strips of lots facing their streets,
+ * civic buildings round the squares, farms. See .claude/skills/citygen/layouts.md.
  */
 import { FREE, WATER } from "./plan";
 import { sideOf } from "./streets";
 import { codesOf, widthsOf, info } from "./catalogue";
 import * as RoadRules from "../core/roadrules";
 
-//the way a building faces with the street on its side s - -x, -y, +x, +y
+//rotation of a building whose street is on side s (engine.md: buildings)
 var FACING = [1, 0, 3, 2];
 
-//what each part of town is built of, and how much of each - along a main
-//road ("high"), the shops come out onto it
+//what each zone is built of; <zone>High along main roads
 export var PALETTES = {
   core: { office: 3, flats: 3, store: 2, shop: 1 },
   coreHigh: { office: 3, store: 3, shop: 2, flats: 1.2 },
@@ -37,14 +23,9 @@ export var PALETTES = {
   edgeHigh: { house: 3, villa: 1, shop: 0.6, village: 0.8 },
 };
 
-//a lot is now and then a park instead, in these
 var PARK_CHANCE = { inner: 0.05, suburb: 0.06, edge: 0.05 };
 
-/**
- * Puts code up on the plan facing side s, its front `w` along the street,
- * `d` deep, its corner with the least x and y at x, y - if the ground is
- * free, it stands on it, and there is a road on its front it can do with.
- */
+//builds if free, it fits, and its front has a road of what it needs
 function tryPlace(plan, code, x, y, w, d, s, extra) {
   var ex = s === 0 || s === 2 ? d : w,
     ey = s === 0 || s === 2 ? w : d,
@@ -58,10 +39,6 @@ function tryPlace(plan, code, x, y, w, d, s, extra) {
   return plan.build(code, x, y, ex, ey, FACING[s], extra);
 }
 
-/**
- * Whether the footprint ex by ey on x, y has a road at least `least` along
- * its side s.
- */
 function fronted(plan, x, y, ex, ey, s, least) {
   var i, r;
 
@@ -81,11 +58,7 @@ function fronted(plan, x, y, ex, ey, s, least) {
   return false;
 }
 
-//the corner of a lot `along` tiles along a strip facing s, `d` deep: the
-//strip's line of tiles next to the street at `edge`
 function lotCorner(s, edge, along, d) {
-  //s: the street's side; edge: the first tile's row (s 1, 3) or column (s 0,
-  //2) next to the street
   if (s === 1) return [along, edge];
   if (s === 3) return [along, edge - d + 1];
   if (s === 0) return [edge, along];
@@ -93,12 +66,7 @@ function lotCorner(s, edge, along, d) {
   return [edge - d + 1, along];
 }
 
-/**
- * Fills a strip of lots: along a street on side s of them, from `from` to
- * `to` (not taking in to) along it, `depth` deep from `edge` - the row or
- * column of the block next to the street. Out in a village, now and then a
- * gap between two of them (opts.gaps), an orchard, a paddock.
- */
+//a strip a street's kind at a time; opts.gaps for village plots
 export function fillStrip(plan, random, strip, palette, opts) {
   var primary = random.weighted(palette),
     primaryW = null,
@@ -111,11 +79,8 @@ export function fillStrip(plan, random, strip, palette, opts) {
       placed = null,
       k;
 
-    //a park, now and then
     if (opts.parks && random.chance(opts.parks)) kinds.push("park");
 
-    //the street's own kind mostly, the rest of what this part of town is
-    //built of now and then
     if (random.chance(0.75)) kinds.push(primary);
 
     var rest = Object.assign({}, palette);
@@ -130,9 +95,6 @@ export function fillStrip(plan, random, strip, palette, opts) {
       var kind = kinds[ki];
 
       for (var d = strip.depth; d >= 1 && placed === null; d--) {
-        //a lot less deep than the strip leaves a garden behind it - but one
-        //a single tile deep in a deeper strip is only ever a pocket park or
-        //a corner shop, not a house with the rest of the block for a garden
         if (d < strip.depth && d < 2 && kind !== "park" && kind !== "shop")
           continue;
 
@@ -144,7 +106,6 @@ export function fillStrip(plan, random, strip, palette, opts) {
 
         random.shuffle(widths);
 
-        //the street's own width first, for the same houses along it
         if (kind === primary && primaryW !== null) {
           var at = widths.indexOf(primaryW);
 
@@ -178,8 +139,6 @@ export function fillStrip(plan, random, strip, palette, opts) {
   return built;
 }
 
-//how much of the line of tiles along side s of a block is road - and the
-//best of what it is laid in
 function sideRoad(plan, b, s) {
   var n = 0,
     roads = 0,
@@ -212,11 +171,8 @@ function sideRoad(plan, b, s) {
   return { share: n > 0 ? roads / n : 0, level: level };
 }
 
-/**
- * The strips of lots of a block: along the two longer sides with a street,
- * each half as deep as the block, three at most - and if only one of them
- * has, as deep as it can - and the shorter sides if neither does.
- */
+//two long sides, half the depth each (3 at most); ends where a middle
+//is left
 export function stripsOf(plan, b) {
   var bw = b.x1 - b.x0,
     bh = b.y1 - b.y0,
@@ -226,7 +182,6 @@ export function stripsOf(plan, b) {
     has = roads.map(function (r) {
       return r.share >= 0.4;
     }),
-    //the longer sides: -y and +y, or -x and +x
     pairs = bw >= bh ? [1, 3, 0, 2] : [0, 2, 1, 3],
     a = pairs[0],
     c = pairs[1];
@@ -263,13 +218,10 @@ export function stripsOf(plan, b) {
       edge: s === 1 ? b.y0 : s === 3 ? b.y1 - 1 : s === 0 ? b.x0 : b.x1 - 1,
       from: s === 1 || s === 3 ? b.x0 : b.y0,
       to: s === 1 || s === 3 ? b.x1 : b.y1,
-      //on a main road: the high street
       high: roads[s].level <= 1,
     });
   });
 
-  //the ends of the block, where what is left in the middle reaches them
-  //and there is a street there too
   var mid = across - da - dc;
 
   if (mid > 0)
@@ -278,8 +230,6 @@ export function stripsOf(plan, b) {
         return s !== a && s !== c && has[s];
       })
       .forEach(function (s) {
-        //how deep the strip at the low end of the block is, -x or -y: the
-        //middle starts past it
         var lo = a === 0 || a === 1 ? da : dc;
 
         strips.push({
@@ -296,7 +246,6 @@ export function stripsOf(plan, b) {
   return strips;
 }
 
-//every tile of a block still free, as [x, y]
 export function freeCells(plan, b) {
   var out = [];
 
@@ -307,10 +256,6 @@ export function freeCells(plan, b) {
   return out;
 }
 
-/**
- * Fills what is free of a block with parks, the biggest first - a
- * courtyard, a park of a whole block.
- */
 export function parkUp(plan, random, cells, smallest) {
   var sizes = [
     [3, 3],
@@ -332,7 +277,6 @@ export function parkUp(plan, random, cells, smallest) {
     for (var i = 0; i < sizes.length; i++) {
       var ex = sizes[i][0],
         ey = sizes[i][1],
-        //a park is as long as it is - laid along y, or turned along x
         turned = ex > ey,
         codes = codesOf("park", turned ? ey : ex, turned ? ex : ey);
 
@@ -346,7 +290,6 @@ export function parkUp(plan, random, cells, smallest) {
   });
 }
 
-//how far tile x, y is from the water, up to `most`
 function nearWater(plan, x, y, most) {
   for (var r = 1; r <= most; r++)
     for (var dy = -r; dy <= r; dy++)
@@ -360,10 +303,7 @@ function nearWater(plan, x, y, most) {
   return Infinity;
 }
 
-/**
- * What the town's blocks are: which is the square, which the park, which the
- * old town; which are by the water, and which up on a hill.
- */
+//square, old town, parks, district squares, waterside, hills
 function zone(plan, random) {
   var urban = plan.blocks.filter(function (b) {
       return b.urban;
@@ -393,13 +333,10 @@ function zone(plan, random) {
 
   if (square) square.zone = "square";
 
-  //a superblock left whole for the city's central park (streets.js)
   urban.forEach(function (b) {
     if (b.park) b.zone = "park";
   });
 
-  //the old town: the blocks downtown nearest the square, on its side of
-  //the main road
   if (square) {
     var side = sideOf(plan, square.x0, square.y0, square.x1 - 1, square.y1 - 1);
 
@@ -422,9 +359,6 @@ function zone(plan, random) {
 
   var size = plan.size || {};
 
-  //a big city's district centres: the villages it grew over, a square of
-  //their own each, out in a quarter of the city each - and the old town
-  //round it
   plan.squares = square ? [square] : [];
 
   if (size.districts) {
@@ -451,7 +385,6 @@ function zone(plan, random) {
 
         if (quarters[q] || plan.squares.length > size.districts) return;
 
-        //well apart from every other square
         if (
           plan.squares.some(function (o) {
             return gap(o, b) < 12;
@@ -475,8 +408,6 @@ function zone(plan, random) {
       });
   }
 
-  //the parks: a block in town not too big - by the water if there is one -
-  //or as many as the city has
   var parks = urban.filter(function (b) {
     return (
       b.zone === b.district &&
@@ -499,7 +430,6 @@ function zone(plan, random) {
     var park = parks.splice(random.int(0, Math.min(2, parks.length - 1)), 1)[0];
 
     park.zone = "park";
-    //and none right next to it
     parks = parks.filter(function (b) {
       return gap(b, park) > 6;
     });
@@ -508,7 +438,6 @@ function zone(plan, random) {
   return urban;
 }
 
-//how many tiles apart two blocks are, along x and y
 function gap(a, b) {
   var dx = Math.max(a.x0 - b.x1, b.x0 - a.x1, 0),
     dy = Math.max(a.y0 - b.y1, b.y0 - a.y1, 0);
@@ -516,14 +445,8 @@ function gap(a, b) {
   return dx + dy;
 }
 
-/**
- * What a block of a zone is built of along a strip: the high street's
- * palette along a main road, with more villas by the water and up on the
- * hills, more parks by the water.
- */
 function paletteFor(plan, b, strip) {
   var name = b.zone,
-    //a size of city's own, in the place of the town's
     own = (plan.size && plan.size.palettes) || {},
     palettes = Object.assign({}, PALETTES, own);
 
@@ -539,14 +462,6 @@ function paletteFor(plan, b, strip) {
   return palette;
 }
 
-/**
- * Puts one of kind up facing a street on its side s - of the footprints
- * given, [front, deep], the first that goes - its front on the line of tiles
- * next to the street at `edge`, somewhere from `lo` to `hi` along it (not
- * taking in hi).
- *
- * @returns {Object|null} what went up
- */
 export function placeFacing(plan, random, kind, shapes, s, edge, lo, hi) {
   for (var f = 0; f < shapes.length; f++) {
     var w = shapes[f][0],
@@ -577,10 +492,6 @@ export function placeFacing(plan, random, kind, shapes, s, edge, lo, hi) {
   return null;
 }
 
-/**
- * The town's own buildings round its square, facing it across the street:
- * the town hall, the church, the market.
- */
 function civic(plan, random) {
   var squares = plan.squares || (plan.square ? [plan.square] : []),
     built = {};
@@ -594,7 +505,6 @@ function civic(plan, random) {
   return built;
 }
 
-//what goes round a town's square - and round a district's of a big city
 var MAIN = [
     [
       "townhall",
@@ -617,14 +527,10 @@ var MAIN = [
   ],
   DISTRICT = MAIN.slice(1);
 
-/**
- * A square paved over, and what is to go round it facing it across the
- * street, as far as it goes: wants, each [kind, footprints].
- */
+//civic buildings facing a square across its streets
 function around(plan, random, sq, wants) {
   var built = {};
 
-  //the square itself, paved over - town squares side by side are one
   freeCells(plan, sq).forEach(function (c) {
     if (plan.free(c[0], c[1], 1, 1))
       plan.build(codesOf("square", 1, 1)[0], c[0], c[1], 1, 1, 0, {
@@ -632,12 +538,9 @@ function around(plan, random, sq, wants) {
       });
   });
 
-  //the sides of it, the street there and the block across it facing back
   var spots = [];
 
   [0, 1, 2, 3].forEach(function (s) {
-    //the block across the street on side s, and the side of it facing the
-    //square
     var x = s === 0 ? sq.x0 - 2 : s === 2 ? sq.x1 + 1 : (sq.x0 + sq.x1) >> 1,
       y = s === 1 ? sq.y0 - 2 : s === 3 ? sq.y1 + 1 : (sq.y0 + sq.y1) >> 1;
 
@@ -656,7 +559,6 @@ function around(plan, random, sq, wants) {
     for (var i = 0; i < spots.length; i++) {
       var b = spots[i].block,
         s = spots[i].s,
-        //along the side facing the square, as near its middle as it goes
         lo =
           s === 1 || s === 3
             ? Math.max(b.x0, sq.x0 - 1)
@@ -679,16 +581,10 @@ function around(plan, random, sq, wants) {
   return built;
 }
 
-/**
- * Builds the town's blocks up, and the farms out along its roads.
- *
- * @returns {{townHall: Object|null}} what of it the rest goes by
- */
 export function buildUp(plan, random) {
   var urban = zone(plan, random),
     civics = civic(plan, random);
 
-  //the islands of the roundabouts, and down the middle of the boulevard
   (plan.islands || []).forEach(function (c) {
     plan.what[plan.index(c.x, c.y)] = FREE;
     parkUp(plan, random, [[c.x, c.y]]);
@@ -700,8 +596,6 @@ export function buildUp(plan, random) {
     boulevard.median.forEach(function (c) {
       plan.what[plan.index(c[0], c[1])] = FREE;
     });
-    //each stretch of it between the crossings a park as long as it goes -
-    //along x or along y, as it runs
     var alongY = boulevard.axis === "y";
 
     boulevard.median.forEach(function (c) {
@@ -713,7 +607,6 @@ export function buildUp(plan, random) {
         var ex = alongY ? 1 : len,
           ey = alongY ? len : 1;
 
-        //a park is laid along y as it is, turned for along x
         if (codes.length > 0 && plan.free(c[0], c[1], ex, ey)) {
           plan.build(
             random.pick(codes),
@@ -732,7 +625,6 @@ export function buildUp(plan, random) {
     });
   });
 
-  //downtown first, out to the suburbs
   urban.sort(function (a, b) {
     return a.reach - b.reach;
   });
@@ -752,8 +644,6 @@ export function buildUp(plan, random) {
       });
     });
 
-    //the courtyard in the middle: a park downtown and in town, the gardens
-    //and the trees left as they are further out
     if (b.zone === "core" || b.zone === "inner" || b.zone === "oldtown")
       parkUp(plan, random, freeCells(plan, b), 2);
   });
@@ -763,11 +653,7 @@ export function buildUp(plan, random) {
   return { townHall: civics.townhall || null, church: civics.church || null };
 }
 
-/**
- * Farms out along the roads into the country - a farm every so often either
- * side of the road, facing it, its fields round it in its footprint - as far
- * as the town's country reaches.
- */
+//farms along roads outside the blocks, spaced
 export function farms(plan, random) {
   var keys = Object.keys(plan.roads),
     taken = Object.create(null);
@@ -779,7 +665,6 @@ export function farms(plan, random) {
 
     if (r.way !== -1 || plan.reach(r.x, r.y) > 1.7) return;
 
-    //out in the country: no block of the town by it
     for (var dy = -2; dy <= 2; dy++)
       for (var dx = -2; dx <= 2; dx++) {
         var id = plan.inside(r.x + dx, r.y + dy)
@@ -791,16 +676,13 @@ export function farms(plan, random) {
 
     if (!random.chance(0.22)) return;
 
-    //either side of the road, across it
     var alongX = plan.isRoad(r.x - 1, r.y) || plan.isRoad(r.x + 1, r.y),
       sides = alongX ? [1, 3] : [0, 2];
 
     random.shuffle(sides);
 
     for (var i = 0; i < sides.length; i++) {
-      //the lot's side facing the road is the road's other side
       var s = (sides[i] + 2) % 4,
-        //the row next to the road on that side
         edge = alongX
           ? r.y + (sides[i] === 1 ? -1 : 1)
           : r.x + (sides[i] === 0 ? -1 : 1);
@@ -828,14 +710,12 @@ function tryFarm(plan, random, r, s, edge, alongX, taken) {
 
     if (codes.length === 0) continue;
 
-    //its front over the road tile, or a tile to either side
     for (var off = 0; off < w; off++) {
       var along = (alongX ? r.x : r.y) - off,
         corner = lotCorner(s, edge, along, d),
         ex = alongX ? w : d,
         ey = alongX ? d : w;
 
-      //room round it, for the fields not to run into the next farm's
       if (!roomAround(plan, corner[0], corner[1], ex, ey, taken)) continue;
 
       var placed = tryPlace(

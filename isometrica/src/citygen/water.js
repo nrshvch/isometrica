@@ -1,41 +1,22 @@
 /**
- * The town's water: pump stations and water towers, so that everything that
- * wants water has it - reaching it as the game reckons it, from the tile
- * each stands on to the tile the building does, as the crow flies, as far
- * as its radius (core/city/citywater).
- *
- * A pump station waters three times as far as a tower for four times its
- * upkeep - nine times the ground - so the town is watered by pump stations
- * first, as many as each still waters a good part of what has none, put up
- * by the water where there is any to pump - a lake, the sea - and then
- * whatever is left out is watered by towers, up on the high ground where a
- * tower goes. Each goes up on open ground of the town if there is some,
- * or else in the place of a lot - whatever of it the station does not take
- * left a park.
+ * Pump stations first (radius 18, by water), then towers (radius 6, high
+ * ground) until everything that wants water has it.
+ * See .claude/skills/citygen/engine.md (water, jobs, people).
  */
 import BuildingData from "../data/buildings";
 import { FREE, WATER } from "./plan";
 import { info, WATER_TOWER, PUMP } from "./catalogue";
 import { parkUp } from "./lots";
 
-//a pump station goes up only while it waters at least this many buildings
-//that have no water yet - fewer than that are a tower's to water
+//fewer dry buildings than this are cheaper watered by towers
 var PUMP_LEAST = 24;
 
-//what is never pulled down for one
 var KEEP = { civic: true, square: true };
 
 function radius(code) {
   return BuildingData[code].waterRadius;
 }
 
-/**
- * @param [near] {boolean} whether it may go up on open ground right by the
- *        houses as well, out of the town's blocks - a village's, along its
- *        roads, has few blocks to it
- * @returns {{pumps: number, towers: number, dry: number}} how many of each
- *          went up, and how many buildings still have no water - none
- */
 export default function water(plan, random, near) {
   var wants = plan.standing().filter(function (b) {
       return info(b.code).water;
@@ -61,12 +42,8 @@ export default function water(plan, random, near) {
     });
   }
 
-  //open ground right by a building of the town - two tiles from it at
-  //most, so that it hangs together with it (core/city/cityroads)
   var byHouses = near ? beside(plan) : null;
 
-  //where one could go up, w by w: open ground of the town, or a lot it
-  //could take the place of - at the lot's corner
   function sites(w) {
     var out = [],
       x,
@@ -92,19 +69,15 @@ export default function water(plan, random, near) {
     return out;
   }
 
-  //how good a site is: what it waters that has none, less what it pulls
-  //down; a pump by the water, a tower up high
   function score(site, code, left) {
     var gets = reaches(site.x, site.y, radius(code), left).length;
 
     if (site.lot !== null) {
       var lost = info(site.lot.code);
 
-      //watering itself no more - it is gone
       if (left.indexOf(site.lot) >= 0) gets--;
       gets -= (lost.beds + lost.jobs) / 40 + 1;
-      //and a park pulled down is a park gone from the town - open ground
-      //by the houses rather
+      //a park is pulled down last
       if (lost.kind === "park") gets -= 4;
     }
 
@@ -137,7 +110,6 @@ export default function water(plan, random, near) {
       covered.add(d);
     });
 
-    //what is left of the lot, a park
     if (freed.length > 0)
       parkUp(
         plan,
@@ -150,7 +122,6 @@ export default function water(plan, random, near) {
     return b;
   }
 
-  //the pump stations
   for (;;) {
     var left = dry();
 
@@ -174,9 +145,6 @@ export default function water(plan, random, near) {
     pumps++;
   }
 
-  //and towers for whatever is left out - there is always somewhere for
-  //one: in the place of the very building that has no water, if nowhere
-  //else
   for (var guard = 0; guard < 200; guard++) {
     left = dry();
 
@@ -186,7 +154,6 @@ export default function water(plan, random, near) {
       score1 = -Infinity;
 
     sites(1).forEach(function (site) {
-      //only where it waters something that has none
       if (reaches(site.x, site.y, radius(WATER_TOWER), left).length === 0)
         return;
 
@@ -207,7 +174,6 @@ export default function water(plan, random, near) {
   return { pumps: pumps, towers: towers, dry: dry().length };
 }
 
-//every tile within two of a building that is not a farm's, by its index
 function beside(plan) {
   var mask = new Uint8Array(plan.w * plan.h);
 

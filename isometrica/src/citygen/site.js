@@ -1,30 +1,16 @@
 /**
- * Where a generated town goes up: somewhere about the spot asked for, the
- * way people settle - on dry land that is fairly level, with room round it
- * for the town to grow into, and gladly by the water: a coast, a lake. Of
- * the spots tried, the one that does all that best, and which way the town
- * is longer, along x or along y, the way the land lies.
+ * Picks a site about a spot: dry, level land, by the water for most towns,
+ * never across the y seam. See .claude/skills/citygen/engine.md (tiles and the seam).
  */
-
-//how many spots are tried, and how far about the one asked for, in tiles -
-//and if none of them will do, out at sea, further and further out
 var TRIES = 90;
 var SPREADS = [900, 3000, 9000];
 
-//every STEPth tile is looked at in sizing a spot up - enough to tell land
-//from sea and a slope from a plain, at a ninth of the work - and for a big
-//city's, as many tiles looked at as for a town's, further apart
 var STEP = 3;
 
 function stepFor(rx, ry) {
   return Math.max(STEP, Math.round(Math.sqrt(rx * ry) / 7));
 }
 
-/**
- * How good a spot is for a town rx by ry about cx, cy: what of it is dry,
- * level land, what is too steep to build on, how far the ground rises and
- * falls over it, and the water by it.
- */
 function survey(ground, cx, cy, rx, ry) {
   var land = 0,
     steep = 0,
@@ -55,7 +41,6 @@ function survey(ground, cx, cy, rx, ry) {
 
       var wet = ground.isWater(x, y);
 
-      //the town's own ground
       if (d <= 1.1 * 1.1) {
         total++;
 
@@ -76,9 +61,7 @@ function survey(ground, cx, cy, rx, ry) {
           middle++;
           if (!wet && ground.fits(x, y, 1, 1)) middleLand++;
         }
-      }
-      //and round it, where the water it is by would be
-      else {
+      } else {
         ring++;
         if (wet) water++;
       }
@@ -93,7 +76,6 @@ function survey(ground, cx, cy, rx, ry) {
     steep: total > 0 ? steep / total : 1,
     water: total + ring > 0 ? water / (total + ring) : 0,
     middle: middle > 0 ? middleLand / middle : 0,
-    //how far the ground rises over most of it, in steps
     relief:
       heights.length > 0
         ? heights[Math.floor(heights.length * 0.9)] -
@@ -102,10 +84,7 @@ function survey(ground, cx, cy, rx, ry) {
   };
 }
 
-//the world's tiles are numbered (y << 16) ^ x, 32 bits with a sign: from
-//y 32768 on, the numbers are below zero, and nothing that runs across from
-//one side of that to the other is ever got to the end of (core/tileiterator).
-//A town is kept to one side of it, a few tiles clear
+//tile indices change sign at y 32768: never span it (engine.md)
 var SEAM = 32768;
 
 function clearOfSeam(cy, ry, margin) {
@@ -114,19 +93,7 @@ function clearOfSeam(cy, ry, margin) {
   return cy + half < SEAM || cy - half >= SEAM;
 }
 
-/**
- * @param ground {Ground}
- * @param random {Object} (random.js)
- * @param near {number[]} the tile x, y about which it is looked for
- * @param size {{rx: number, ry: number, margin: number}} how far the town
- *        reaches each way from its middle, in tiles, the longer way along x -
- *        and how far round it its country does, a share of that
- * @returns {{x: number, y: number, rx: number, ry: number, coastal: boolean,
- *          survey: Object}}
- */
 export default function pickSite(ground, random, near, size) {
-  //some towns are by the water, more of them than chance would have it -
-  //how much this one wants to be is its own
   var wantsWater = random.chance(0.75),
     best = null,
     bestScore = -Infinity,
@@ -147,14 +114,12 @@ export default function pickSite(ground, random, near, size) {
 
       s = survey(ground, cx, cy, rx, ry);
 
-      //a town needs its middle on dry, level land, and room round it
       if (s.middle < 0.9 || s.land < 0.5) continue;
 
       var score =
         s.land * 3 -
         s.steep * 4 -
         Math.max(0, s.relief - 1) * 0.35 +
-        //water on a side of it, not all round
         (wantsWater && s.water > 0.04 && s.water < 0.45 ? 1 : 0) -
         (s.water > 0.55 ? 1 : 0);
 
@@ -165,8 +130,6 @@ export default function pickSite(ground, random, near, size) {
     }
   }
 
-  //nothing would do: out at sea, say - the spot asked for, as it is, and
-  //the town will be what the land there has room for
   if (best === null) {
     var y = Math.round(near[1]),
       half = Math.ceil(size.ry * size.margin) + 4;
