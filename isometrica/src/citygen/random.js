@@ -1,6 +1,6 @@
 /**
  * Seeded RNG (mulberry32): same seed, same city. fork(n) gives each
- * stage its own stream. See .claude/skills/citygen.
+ * stage its own stream. See isometrica/.claude/skills/citygen.
  */
 export default function Random(seed) {
   var state = seed >>> 0;

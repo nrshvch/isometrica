@@ -1,6 +1,6 @@
 /**
  * City bench page: size, layout, seed (kept in the address), camera, and
- * how it came out. See .claude/skills/citygen.
+ * how it came out. See isometrica/.claude/skills/citygen.
  */
 import { useEffect, useRef, useState } from "react";
 import { open } from "../bench/world.js";

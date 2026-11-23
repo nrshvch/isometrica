@@ -1,6 +1,6 @@
 /**
  * Kinds of building, read off data/buildings (offered ones only), by
- * footprint "frontxdepth". See .claude/skills/citygen.
+ * footprint "frontxdepth". See isometrica/.claude/skills/citygen.
  */
 import BuildingData from "../data/buildings";
 import BuildingCode from "../data/buildingcode";

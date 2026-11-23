@@ -1,6 +1,6 @@
 /**
  * Generated cities: generate({size, seed, near, flat, layout}) ->
- * {plan, save}. Sizes, pipeline and rules: .claude/skills/citygen.
+ * {plan, save}. Sizes, pipeline and rules: isometrica/.claude/skills/citygen.
  */
 import Random from "./random";
 import Ground from "./ground";

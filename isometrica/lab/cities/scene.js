@@ -1,6 +1,6 @@
 /**
  * City bench scene: a generated city on flat grass, put up as a save would
- * have it. See .claude/skills/citygen.
+ * have it. See isometrica/.claude/skills/citygen.
  */
 import generate, { SIZES } from "../../src/citygen/index.js";
 import { LAYOUTS } from "../../src/citygen/village.js";
@@ -102,7 +102,7 @@ Scene.prototype.make = function (want) {
   });
 };
 
-//bulk put/wipe without the O(n^2) road repaving (.claude/skills/citygen/engine.md)
+//bulk put/wipe without the O(n^2) road repaving (isometrica/.claude/skills/citygen/engine.md)
 function quietly(world, tiles, fn) {
   var roadman = world.client.roadman,
     paved = roadman.paved,

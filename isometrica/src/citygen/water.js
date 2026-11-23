@@ -1,7 +1,7 @@
 /**
  * Pump stations first (radius 18, by water), then towers (radius 6, high
  * ground) until everything that wants water has it.
- * See .claude/skills/citygen/engine.md (water, jobs, people).
+ * See isometrica/.claude/skills/citygen/engine.md (water, jobs, people).
  */
 import BuildingData from "../data/buildings";
 import { FREE, WATER } from "./plan";
