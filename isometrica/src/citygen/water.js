@@ -13,7 +13,7 @@
  * or else in the place of a lot - whatever of it the station does not take
  * left a park.
  */
-import BuildingData from "isometrica/data/buildings";
+import BuildingData from "../data/buildings";
 import { FREE, WATER } from "./plan";
 import { info, WATER_TOWER, PUMP } from "./catalogue";
 import { parkUp } from "./lots";
@@ -103,6 +103,9 @@ export default function water(plan, random, near) {
       //watering itself no more - it is gone
       if (left.indexOf(site.lot) >= 0) gets--;
       gets -= (lost.beds + lost.jobs) / 40 + 1;
+      //and a park pulled down is a park gone from the town - open ground
+      //by the houses rather
+      if (lost.kind === "park") gets -= 4;
     }
 
     var wx = plan.wx(site.x),

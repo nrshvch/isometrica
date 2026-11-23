@@ -18,6 +18,11 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   and Music), which share what they are made with (`dsp.js`).
 - `src/data` - what can stand in the world, and the city both games start
   on (`initialcity.js`).
+- `src/citygen` - cities generated afresh out of a seed: a small town, a
+  city of Peepstown's size or Peepsopolis, built up all of it somewhere in
+  the world, as a save a game starts a new city on (`index.js` generate; see
+  [generated cities](../city-sim/docs/cities.md#generated-cities)) - and
+  the city bench to look at them on (see Benches).
 - `npm run build` writes `dist/gfx`: the manifests of what every generator
   will paint.
 - `vite.mjs` - the Vite plugin a game uses to serve and ship `dist/gfx`.
@@ -31,8 +36,8 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   demolition bench at `/demolition.html`, the replacement bench at
   `/replace.html` - a building put up in the place of itself, another look
   of it, or of whatever else covers its ground, coming down and going up
-  again the game's way, its site as fast as asked - and the lighting bench at
-  `/lighting.html`. Everything is painted and
+  again the game's way, its site as fast as asked - the city bench at
+  `/cities.html`, and the lighting bench at `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
@@ -251,6 +256,35 @@ engine in `engine/`.
 - Both go as fast as asked, down to a tenth, or stopped, at ten in the
   morning in clear weather, nothing saved or heard, and turn round or are
   seen from above. `window.bench` in the console.
+- `lab/cities.html` is the city bench, for how a generated city
+  (`src/citygen`) is laid out and nothing else: the bench's own world
+  (`lab/bench/world.js`), a patch of flat grass as big as the window the city
+  was planned in, and the city generated on ground as flat as that - no
+  water, no hills (generate's `flat`) - put up as a save would have it, its
+  roads laid in what they are laid in and going the way they go, every
+  building facing its street (`lab/cities/scene.js`). A small town, a city of
+  Peepstown's size or Peepsopolis; a small town's layout - along a road,
+  round a crossroads, a tee or a green - or any; the seed, the one before,
+  the one after or any - each a new city in the place of the last at once,
+  the size and the seed kept in the address (`#size=city&seed=7`). Down the
+  side, how it came out: its blocks, squares and roundabouts, its roads by
+  what they are laid in and how many go one way, its buildings by kind, and
+  how long it took to generate and to put up. Nobody lives in it and no
+  traffic drives it. While a city is put up or taken down a building at a
+  time, the roads are drawn plain and only work out their pieces once at
+  the end: each building would have the roads by it ask whether they are
+  the city's streets, worked out for the whole city every time.
+- `npm run test:cities` (`tools/citytest.mjs`) generates cities headless -
+  twelve of every size, `--size=town,city,metropolis` `--seed=N --seeds=N`
+  for which, `--at=x,y` for where about - and says how each came out, and
+  fails if anything in one is not the way the game wants it: roads side by
+  side that do not meet, a part of the roads the traffic cannot get to
+  (`lab/cities/check.js` drivable), and, the city opened in the world as a
+  game opens it, every building asked what it goes without, as the game asks
+  it over the world (`src/client/worth.js` wantOf) - cut off, no road, no
+  water. `--map` draws each in letters (`lab/cities/check.js` map: `#`
+  asphalt, `%` cobbles, `:` gravel, arrows one way, `~` water; the buildings
+  by what they are, the tile each stands on in capitals).
 
 ### Sounds
 

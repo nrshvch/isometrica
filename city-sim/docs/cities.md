@@ -226,9 +226,9 @@ Phase 0 has no decay: an abandoned house already empties and pays nothing.
 
 ## Generated cities
 
-**Done** for a small town and a city about Peepstown's size; **Later** for
-Peepsopolis, the big one. The menu starts a new game on one generated
-afresh (`city-sim/src/citygen`): built up, all of it, somewhere about where a
+**Done** for all three sizes: a small town, a city about Peepstown's size,
+and Peepsopolis, the big one. The menu starts a new game on one generated
+afresh (`isometrica/src/citygen`): built up, all of it, somewhere about where a
 blank city would go, a new one every time - the seed and the spot go over
 the page reloading on it (`ui/session.js`), so the same seed and spot are the
 same city, tile for tile. It is a save like the city a new player starts
@@ -348,10 +348,34 @@ water and no job in town, and the jobs are balanced against those who do
 - the old town turned into houses where there is more of it than the town
   has people for.
 
-`npm run test:cities` in city-sim (`tools/gencity.js`) generates them headless
-and opens each in isometrica's own world, as the game opens it, asking every
-building what it goes without; none goes without anything.
+### Peepsopolis
 
-**Later.** The third size, from the same steps: **Peepsopolis** - a city
-four to six times Peepstown, all of it: more main roads than two, a ring road
-round downtown, districts of their own.
+**Done.** A city four to six times Peepstown - a thousand buildings, twelve to
+fifteen thousand people - from the same steps as a city of Peepstown's size,
+but laid out the way a big city is (`SIZES.metropolis`):
+
+- **a grid of arterials** before anything else, every twenty tiles or so
+  each way, a little more or less - superblocks between them, each cut into
+  blocks on its own the way a town's land is, small downtown and long in
+  the suburbs; the arterials round downtown its ring, asphalt all of them;
+- **a boulevard down its main avenue** downtown, and two more out along the
+  other avenue from where downtown ends, north and south - a boulevard is
+  laid only where nothing goes one way already, so they never cross each
+  other;
+- **roundabouts** on the arterials out of downtown, six of them;
+- **a central park**: a superblock near downtown never cut at all, all of it
+  parks and their ponds - and three more parks a block each;
+- **districts of their own**: the villages it grew over, a square of their
+  own each in a quarter of the city, the church and the market facing it,
+  and the old town beside it;
+- **its downtown its offices**, and stores, flats round it, towers out
+  along the avenues.
+
+It takes about half a second to make, and it opens in the game the way the
+others do.
+
+`npm run test:cities` (isometrica's `tools/citytest.mjs`) generates twelve
+of every size headless and opens each in isometrica's own world, as the game
+opens it, asking every building what it goes without; none goes without
+anything. The lab's city bench (`isometrica/lab/cities.html`) puts any of
+them up on flat grass, a seed at a time, for how they are laid out.

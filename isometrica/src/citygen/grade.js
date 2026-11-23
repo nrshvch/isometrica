@@ -18,8 +18,8 @@
  * it is worked out again.
  */
 import { SIDES } from "./plan";
-import Surface from "isometrica/core/surface";
-import * as RoadRules from "isometrica/core/roadrules";
+import Surface from "../core/surface";
+import * as RoadRules from "../core/roadrules";
 
 //what a road joined up is worth, against a corner's worth of concrete
 var JOIN = 10;

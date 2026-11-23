@@ -12,8 +12,13 @@ var TRIES = 90;
 var SPREADS = [900, 3000, 9000];
 
 //every STEPth tile is looked at in sizing a spot up - enough to tell land
-//from sea and a slope from a plain, at a ninth of the work
+//from sea and a slope from a plain, at a ninth of the work - and for a big
+//city's, as many tiles looked at as for a town's, further apart
 var STEP = 3;
+
+function stepFor(rx, ry) {
+  return Math.max(STEP, Math.round(Math.sqrt(rx * ry) / 7));
+}
 
 /**
  * How good a spot is for a town rx by ry about cx, cy: what of it is dry,
@@ -38,8 +43,10 @@ function survey(ground, cx, cy, rx, ry) {
     lo,
     hi;
 
-  for (y = Math.round(cy - ry * 1.6); y <= cy + ry * 1.6; y += STEP)
-    for (x = Math.round(cx - rx * 1.6); x <= cx + rx * 1.6; x += STEP) {
+  var step = stepFor(rx, ry);
+
+  for (y = Math.round(cy - ry * 1.6); y <= cy + ry * 1.6; y += step)
+    for (x = Math.round(cx - rx * 1.6); x <= cx + rx * 1.6; x += step) {
       dx = (x - cx) / rx;
       dy = (y - cy) / ry;
       d = dx * dx + dy * dy;

@@ -38,7 +38,7 @@ export default {
   //and a city generated afresh, built up, somewhere new - out of a seed
   //(citygen), loaded only when one is to be started on
   generator: function () {
-    return import("./citygen");
+    return import("isometrica/citygen/index");
   },
 
   //land, and shaping the ground (play.js)

@@ -31,7 +31,7 @@ var Terrain = Core.Terrain;
 var SAVES = "lab.bench";
 
 //how high the bench's ground is, steps - land, clear of the sea
-var GROUND = 2;
+export var GROUND = 2;
 
 //the middle of the bench, out in the open sea: deep water for thirty tiles
 //round it, nothing of the world's own anywhere near

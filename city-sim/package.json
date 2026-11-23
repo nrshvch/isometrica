@@ -11,9 +11,7 @@
     "preview": "vite preview",
     "dev:worker": "npm run build && wrangler dev --env=",
     "generate:logo": "node tools/genlogo.js",
-    "generate:icons": "node tools/genicons.js",
-    "pretest:cities": "npm run build --prefix ../engine",
-    "test:cities": "node tools/gencity.js --seeds=12"
+    "generate:icons": "node tools/genicons.js"
   },
   "dependencies": {
     "@fontsource-variable/nunito": "^5.3.0",

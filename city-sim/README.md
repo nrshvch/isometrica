@@ -171,10 +171,12 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   placed, the dice next to turning it round picks another of the same kind
   for every footprint of the selection, the selection staying as it is.
 - A new city can be started on one generated afresh, from the menu: "New
-  random town", a small town along a road or two, mostly country, or "New
-  random city", a town about Peepstown's size - built up all of it,
-  somewhere about where a blank city would go, a new one every time, out of
-  a seed (`src/citygen`, see [generated cities](docs/cities.md#generated-cities)).
+  random town", a small town along a road or two, mostly country, "New
+  random city", a town about Peepstown's size, or "New Peepsopolis", a
+  megacity five times that - built up all of it, somewhere about where a
+  blank city would go, a new one every time, out of a seed (isometrica's
+  `src/citygen`, see [generated cities](docs/cities.md#generated-cities);
+  the lab's city bench shows them on flat grass).
   A small town is laid out the way villages are where they grew up by
   themselves - along one road through it, round a crossroads, where a road
   comes off another, or round a green the road parts round - its middle a
@@ -211,20 +213,10 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
 npm run dev          # in city-sim/ - or npm run dev:city-sim at the root
 npm run build        # into city-sim/dist, isometrica built first
 npm run dev:worker   # built, and served by the Worker with its saves, http://localhost:8787
-npm run test:cities  # generates 20 cities headless, and checks them in the game's own world
 ```
 
-`npm run test:cities` (`tools/gencity.js`) generates cities without the game
-round them and says how each came out - and fails if anything in one is not
-the way the game wants it: roads side by side that do not meet, a part of the
-roads the traffic cannot get to, and, the city opened in isometrica's own
-world as the game opens it, every building asked what it goes without, the
-way the game asks it over the world (`isometrica/src/client/worth.js`
-wantOf) - cut off, no road, no water. `--seed=N --seeds=N` for which,
-`--at=x,y` for where about, `--map` for a map of each in letters
-(`tools/citycheck.js` map: `#` asphalt, `%` cobbles, `:` gravel, arrows one
-way, `~` water; the buildings by what they are, the tile each stands on in
-capitals).
+The generated cities are checked by isometrica's `npm run test:cities`
+(`npm run test:cities` at the root), and looked at on its city bench.
 
 ### Saves
 
@@ -291,7 +283,7 @@ Mac), a new city on empty land, or
 starting over on the city new players start on (`src/initialcity.js`,
 Peepsville), on the big one (`src/peepstown.js`, the delivery game's,
 isometrica's `data/initialcity`, called Peepstown here), or on a city
-generated afresh (`src/citygen`) - each under an id of its own, the city left
+generated afresh (isometrica's `src/citygen`) - each under an id of its own, the city left
 kept under its own - and under them the other cities
 saved in the browser to go back to, the five played most lately), with
 zooming in and out under them; along the

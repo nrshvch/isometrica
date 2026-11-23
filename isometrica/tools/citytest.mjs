@@ -5,7 +5,7 @@
  * asked what it goes without, as the game asks it over the world
  * (isometrica client/worth wantOf).
  *
- *   node tools/gencity.js [--seed=N] [--seeds=N] [--size=town,city]
+ *   node tools/citytest.mjs [--seed=N] [--seeds=N] [--size=town,city]
  *                         [--at=x,y] [--map]
  *
  * --size is the sizes to make, each of them seeds times (citygen SIZES) -
@@ -57,7 +57,7 @@ var failures = 0;
 
 try {
   var Gen = await server.ssrLoadModule("/src/citygen/index.js"),
-    Check = await server.ssrLoadModule("/tools/citycheck.js");
+    Check = await server.ssrLoadModule("/lab/cities/check.js");
 
   var all = sizes ? sizes.split(",") : Object.keys(Gen.SIZES),
     runs = [];

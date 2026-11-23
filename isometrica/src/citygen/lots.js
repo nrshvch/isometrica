@@ -18,7 +18,7 @@
 import { FREE, WATER } from "./plan";
 import { sideOf } from "./streets";
 import { codesOf, widthsOf, info } from "./catalogue";
-import * as RoadRules from "isometrica/core/roadrules";
+import * as RoadRules from "../core/roadrules";
 
 //the way a building faces with the street on its side s - -x, -y, +x, +y
 var FACING = [1, 0, 3, 2];
@@ -393,6 +393,11 @@ function zone(plan, random) {
 
   if (square) square.zone = "square";
 
+  //a superblock left whole for the city's central park (streets.js)
+  urban.forEach(function (b) {
+    if (b.park) b.zone = "park";
+  });
+
   //the old town: the blocks downtown nearest the square, on its side of
   //the main road
   if (square) {
@@ -415,27 +420,89 @@ function zone(plan, random) {
       });
   }
 
-  //the park: a block in town not too big - by the water if there is one
+  var size = plan.size || {};
+
+  //a big city's district centres: the villages it grew over, a square of
+  //their own each, out in a quarter of the city each - and the old town
+  //round it
+  plan.squares = square ? [square] : [];
+
+  if (size.districts) {
+    var quarters = {};
+
+    urban
+      .filter(function (b) {
+        return (
+          b.zone === b.district &&
+          b.good >= 1 &&
+          b.reach > 0.5 &&
+          b.reach < 0.85 &&
+          b.cells >= 9 &&
+          b.cells <= 42
+        );
+      })
+      .sort(function (a, b) {
+        return Math.abs(a.reach - 0.65) - Math.abs(b.reach - 0.65);
+      })
+      .forEach(function (b) {
+        var q =
+          (b.x0 + b.x1 > 2 * plan.cx ? "e" : "w") +
+          (b.y0 + b.y1 > 2 * plan.cy ? "s" : "n");
+
+        if (quarters[q] || plan.squares.length > size.districts) return;
+
+        //well apart from every other square
+        if (
+          plan.squares.some(function (o) {
+            return gap(o, b) < 12;
+          })
+        )
+          return;
+
+        quarters[q] = b;
+        b.zone = "square";
+        plan.squares.push(b);
+
+        var oldest = urban
+          .filter(function (o) {
+            return o.zone === o.district && gap(o, b) <= 1;
+          })
+          .sort(function (o1, o2) {
+            return gap(o1, b) - gap(o2, b);
+          })[0];
+
+        if (oldest) oldest.zone = "oldtown";
+      });
+  }
+
+  //the parks: a block in town not too big - by the water if there is one -
+  //or as many as the city has
   var parks = urban.filter(function (b) {
     return (
-      b.zone !== "oldtown" &&
-      b.zone !== "square" &&
+      b.zone === b.district &&
       b.reach > 0.25 &&
-      b.reach < 0.75 &&
+      b.reach < (size.parks ? 0.95 : 0.75) &&
       b.cells >= 16 &&
       b.cells <= 72
     );
   });
 
-  if (parks.length > 0) {
-    parks.sort(function (a, b) {
-      return (
-        (a.waterside < 4 ? -10 : 0) +
-        Math.abs(a.reach - 0.45) * 10 -
-        ((b.waterside < 4 ? -10 : 0) + Math.abs(b.reach - 0.45) * 10)
-      );
+  parks.sort(function (a, b) {
+    return (
+      (a.waterside < 4 ? -10 : 0) +
+      Math.abs(a.reach - 0.45) * 10 -
+      ((b.waterside < 4 ? -10 : 0) + Math.abs(b.reach - 0.45) * 10)
+    );
+  });
+
+  for (var n = 0; n < (size.parks || 1) && parks.length > 0; n++) {
+    var park = parks.splice(random.int(0, Math.min(2, parks.length - 1)), 1)[0];
+
+    park.zone = "park";
+    //and none right next to it
+    parks = parks.filter(function (b) {
+      return gap(b, park) > 6;
     });
-    parks[random.int(0, Math.min(2, parks.length - 1))].zone = "park";
   }
 
   return urban;
@@ -454,12 +521,15 @@ function gap(a, b) {
  * palette along a main road, with more villas by the water and up on the
  * hills, more parks by the water.
  */
-function paletteFor(b, strip) {
-  var name = b.zone;
+function paletteFor(plan, b, strip) {
+  var name = b.zone,
+    //a size of city's own, in the place of the town's
+    own = (plan.size && plan.size.palettes) || {},
+    palettes = Object.assign({}, PALETTES, own);
 
-  if (strip.high && PALETTES[name + "High"]) name += "High";
+  if (strip.high && palettes[name + "High"]) name += "High";
 
-  var palette = Object.assign({}, PALETTES[name] || PALETTES.suburb);
+  var palette = Object.assign({}, palettes[name] || palettes.suburb);
 
   if (b.zone === "suburb" || b.zone === "edge") {
     if (b.waterside <= 3) palette.villa = (palette.villa || 0) + 3;
@@ -512,10 +582,47 @@ export function placeFacing(plan, random, kind, shapes, s, edge, lo, hi) {
  * the town hall, the church, the market.
  */
 function civic(plan, random) {
-  var sq = plan.square,
+  var squares = plan.squares || (plan.square ? [plan.square] : []),
     built = {};
 
-  if (!sq) return built;
+  squares.forEach(function (sq, i) {
+    var mine = around(plan, random, sq, i === 0 ? MAIN : DISTRICT);
+
+    if (i === 0) built = mine;
+  });
+
+  return built;
+}
+
+//what goes round a town's square - and round a district's of a big city
+var MAIN = [
+    [
+      "townhall",
+      [
+        [2, 1],
+        [1, 2],
+      ],
+    ],
+    ["church", [[1, 2]]],
+    [
+      "market",
+      [
+        [2, 3],
+        [2, 2],
+        [3, 2],
+        [1, 2],
+        [2, 1],
+      ],
+    ],
+  ],
+  DISTRICT = MAIN.slice(1);
+
+/**
+ * A square paved over, and what is to go round it facing it across the
+ * street, as far as it goes: wants, each [kind, footprints].
+ */
+function around(plan, random, sq, wants) {
+  var built = {};
 
   //the square itself, paved over - town squares side by side are one
   freeCells(plan, sq).forEach(function (c) {
@@ -545,26 +652,7 @@ function civic(plan, random) {
 
   random.shuffle(spots);
 
-  [
-    [
-      "townhall",
-      [
-        [2, 1],
-        [1, 2],
-      ],
-    ],
-    ["church", [[1, 2]]],
-    [
-      "market",
-      [
-        [2, 3],
-        [2, 2],
-        [3, 2],
-        [1, 2],
-        [2, 1],
-      ],
-    ],
-  ].forEach(function (want) {
+  wants.forEach(function (want) {
     for (var i = 0; i < spots.length; i++) {
       var b = spots[i].block,
         s = spots[i].s,
@@ -606,26 +694,43 @@ export function buildUp(plan, random) {
     parkUp(plan, random, [[c.x, c.y]]);
   });
 
-  if (plan.boulevard) {
-    plan.boulevard.median.forEach(function (c) {
+  (plan.boulevards || [plan.boulevard]).forEach(function (boulevard) {
+    if (!boulevard) return;
+
+    boulevard.median.forEach(function (c) {
       plan.what[plan.index(c[0], c[1])] = FREE;
     });
-    //each stretch of it between the crossings a park as long as it goes
-    plan.boulevard.median.forEach(function (c) {
+    //each stretch of it between the crossings a park as long as it goes -
+    //along x or along y, as it runs
+    var alongY = boulevard.axis === "y";
+
+    boulevard.median.forEach(function (c) {
       if (plan.at(c[0], c[1]) !== FREE) return;
 
       for (var len = 3; len >= 1; len--) {
         var codes = codesOf("park", 1, len);
 
-        if (codes.length > 0 && plan.free(c[0], c[1], len, 1)) {
-          plan.build(random.pick(codes), c[0], c[1], len, 1, len > 1 ? 1 : 0, {
-            zone: "park",
-          });
+        var ex = alongY ? 1 : len,
+          ey = alongY ? len : 1;
+
+        //a park is laid along y as it is, turned for along x
+        if (codes.length > 0 && plan.free(c[0], c[1], ex, ey)) {
+          plan.build(
+            random.pick(codes),
+            c[0],
+            c[1],
+            ex,
+            ey,
+            alongY || len === 1 ? 0 : 1,
+            {
+              zone: "park",
+            },
+          );
           return;
         }
       }
     });
-  }
+  });
 
   //downtown first, out to the suburbs
   urban.sort(function (a, b) {
@@ -641,7 +746,7 @@ export function buildUp(plan, random) {
     }
 
     stripsOf(plan, b).forEach(function (strip) {
-      fillStrip(plan, random, strip, paletteFor(b, strip), {
+      fillStrip(plan, random, strip, paletteFor(plan, b, strip), {
         zone: b.zone,
         parks: strip.high ? 0 : PARK_CHANCE[b.zone] || 0,
       });

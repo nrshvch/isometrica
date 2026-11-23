@@ -2,7 +2,7 @@
  * The generator's dice: a seeded random source (mulberry32), so that the same
  * seed makes the same city - in the game, where the seed goes over the page
  * reloading on it (ui/session), and in the tool that tries them
- * (tools/gencity.js).
+ * (tools/citytest.mjs).
  */
 
 /**

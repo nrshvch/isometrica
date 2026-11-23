@@ -64,33 +64,93 @@ export var SIZES = {
     money: 500000,
     roundabouts: 2,
   },
+  //Peepsopolis: a city four to six times Peepstown - a grid of arterials
+  //(grid tiles apart) with the blocks cut inside each superblock of it, a
+  //boulevard along its main avenue downtown and two more out along its
+  //other, roundabouts on the arterials out of downtown, a central park and
+  //a few more, the squares of the villages it grew over (districts), and
+  //downtown its offices
+  metropolis: {
+    rx: 46,
+    ry: 34,
+    margin: 1.5,
+    money: 2000000,
+    roundabouts: 6,
+    grid: 20,
+    districts: 4,
+    parks: 4,
+    name: "Peepsopolis",
+    palettes: {
+      core: { office: 6, store: 2, flats: 2, shop: 1 },
+      coreHigh: { office: 5, store: 3, shop: 2, flats: 1 },
+      inner: { flats: 6, house: 1.5, shop: 1, store: 0.5, office: 0.8 },
+      innerHigh: { shop: 2.5, store: 2, flats: 3, office: 2 },
+    },
+  },
 };
 
 /**
- * @param options {{size: string, seed: number, near: number[]}} which size
- *        (SIZES), the seed, and the tile x, y about which to look for a site
+ * @param options {{size: string, seed: number, near: number[],
+ *        flat: number, layout: string}} which size (SIZES), the seed, and
+ *        the tile x, y about which to look for a site - or, with flat, right
+ *        there, on ground as flat as a table at that height, no water
+ *        anywhere: for looking at how it is laid out and nothing else
+ *        (lab/cities); and for a small town, how it is laid out, if not as
+ *        it comes (village LAYOUTS)
  * @returns {{save: Object, plan: Plan}}
  */
 export default function generate(options) {
   var size = SIZES[options.size] || SIZES.city,
     random = Random(options.seed),
-    ground = new Ground(),
-    site = pickSite(ground, random.fork(1), options.near, size),
+    flat = typeof options.flat === "number",
+    ground = new Ground(flat ? options.flat : undefined),
+    site = flat
+      ? {
+          x: Math.round(options.near[0]),
+          y: Math.round(options.near[1]),
+          rx: size.rx,
+          ry: size.ry,
+          coastal: false,
+        }
+      : pickSite(ground, random.fork(1), options.near, size),
     plan = new Plan(ground, site, size.margin),
     streets = random.fork(2),
     built,
     at;
 
+  plan.size = size;
+
   if (size.village) {
-    var how = layVillage(plan, streets);
+    var how = layVillage(plan, streets, options.layout);
 
     plan.village = how;
     plan.graded = grade(plan);
     built = buildVillage(plan, random.fork(3), how);
     at = built.at;
   } else {
-    layStreets(plan, streets);
-    plan.boulevard = boulevard(plan, streets, streets.pick(["x", "y"]));
+    layStreets(plan, streets, size);
+
+    if (size.grid) {
+      //down its main avenue downtown, and out along the other both ways
+      //from where downtown ends
+      plan.boulevard = boulevard(plan, streets, "x", { reachOut: 0.5 });
+      plan.boulevards = [plan.boulevard];
+
+      [-1, 1].forEach(function (dir) {
+        plan.boulevards.push(
+          boulevard(plan, streets, "y", {
+            start: plan.cy + dir * Math.round(plan.ry * 0.7),
+            reachIn: 0.5,
+            reachOut: 0.95,
+          }),
+        );
+      });
+    } else {
+      plan.boulevard = boulevard(plan, streets, streets.pick(["x", "y"]));
+      plan.boulevards = [plan.boulevard];
+    }
+
+    plan.boulevards = plan.boulevards.filter(Boolean);
     plan.islands = roundabouts(plan, streets, size.roundabouts);
     plan.square = pickSquare(plan, streets);
     plan.graded = grade(plan);
@@ -112,11 +172,13 @@ export default function generate(options) {
   if (hall) hall.first = true;
 
   var t = plan.tally,
-    name = nameOf(random.fork(5), {
-      coastal: plan.site.coastal,
-      high: plan.ground.height(plan.wx(plan.cx), plan.wy(plan.cy)) >= 5,
-      small: !!size.village,
-    });
+    name =
+      size.name ||
+      nameOf(random.fork(5), {
+        coastal: plan.site.coastal,
+        high: plan.ground.height(plan.wx(plan.cx), plan.wy(plan.cy)) >= 5,
+        small: !!size.village,
+      });
 
   return {
     plan: plan,

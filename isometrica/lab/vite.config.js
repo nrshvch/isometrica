@@ -39,6 +39,7 @@ export default defineConfig({
         buildings: path.join(here, "buildings.html"),
         demolition: path.join(here, "demolition.html"),
         replace: path.join(here, "replace.html"),
+        cities: path.join(here, "cities.html"),
       },
     },
   },

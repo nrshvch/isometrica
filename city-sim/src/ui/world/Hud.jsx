@@ -438,8 +438,9 @@ function InstallHowTo({ how }) {
  * shares things, or else copied - the game put on the home screen, where
  * it can be - a new city: blank, the one a new
  * player starts on, the big one, or one generated afresh somewhere new -
- * a small town, or a city of Peepstown's size - and, under them, the other
- * cities saved here, to go back to. Put away by a click anywhere else, or Escape.
+ * a small town, a city of Peepstown's size, or Peepsopolis, a megacity -
+ * and, under them, the other cities saved here, to go back to. Put away by
+ * a click anywhere else, or Escape.
  */
 function Menu({ client, world, cityId, address, busy }) {
   var [open, setOpen] = useState(false),
@@ -696,6 +697,16 @@ function Menu({ client, world, cityId, address, busy }) {
             onClick={function () {
               setOpen(false);
               startGenerated("city");
+            }}
+          />
+          <Row
+            icon="dice"
+            label="New Peepsopolis"
+            sub="A megacity, all built up"
+            disabled={busy}
+            onClick={function () {
+              setOpen(false);
+              startGenerated("metropolis");
             }}
           />
           {cities.length > 0 && (

@@ -20,8 +20,8 @@
  * Each by footprint - how many tiles along its front, the street it faces,
  * and how many deep (sizeX, sizeY) - as "wxd".
  */
-import BuildingData from "isometrica/data/buildings";
-import BuildingCode from "isometrica/data/buildingcode";
+import BuildingData from "../data/buildings";
+import BuildingCode from "../data/buildingcode";
 
 var kinds = null;
 

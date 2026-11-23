@@ -41,8 +41,15 @@ export var LAYOUTS = { street: 3, crossroads: 3, tee: 2, green: 2 };
 //what the middle of a small town is built of, and what out along its roads
 export var PALETTES = {
   centre: { oldtown: 3, house: 3, shop: 2, market: 1, village: 1 },
-  village: { village: 8, house: 0.6, villa: 0.25 },
+  //just out of the middle, the town houses and the villas thinning out -
+  //where the water towers that water the middle reach
+  edge: { village: 4, house: 2, villa: 0.6 },
+  //and out along the roads the village itself
+  village: { village: 1 },
 };
+
+//how far out of the middle the town's houses go on
+var EDGE = 4;
 
 //what a small town may have built in it at all (balance.js)
 export var ALLOWED = {
@@ -141,15 +148,20 @@ function block(plan, f, ua, ub, va, vb, zone) {
 }
 
 /**
- * Lays the small town's roads out on the plan, one of the LAYOUTS.
+ * Lays the small town's roads out on the plan, one of the LAYOUTS - picked
+ * at random, or the one asked for.
  *
+ * @param [wanted] {string} one of the LAYOUTS (lab/cities)
  * @returns {Object} how: {layout, frame, length, green}
  */
-export function layVillage(plan, random) {
+export function layVillage(plan, random, wanted) {
   var f = frameOf(plan),
     u0 = f.u0,
     v0 = f.v0,
-    layout = random.weighted(LAYOUTS),
+    //picked all the same, so that the rest of the town is the same town
+    //whichever is asked for
+    picked = random.weighted(LAYOUTS),
+    layout = LAYOUTS[wanted] ? wanted : picked,
     //the road through it: asphalt, or an old gravel road - cobbled in the
     //middle of town either way, where the town houses and the shops are
     main = random.chance(0.55) ? "asphalt" : "gravel",
@@ -522,9 +534,10 @@ export function buildVillage(plan, random, how) {
 
   [
     ["centre", 0, CENTRE + 1, { zone: "centre", parks: 0.04 }],
+    ["edge", CENTRE + 2, CENTRE + 1 + EDGE, { zone: "village", parks: 0.03 }],
     [
       "village",
-      CENTRE + 2,
+      CENTRE + 2 + EDGE,
       length,
       { zone: "village", parks: 0.03, gaps: 0.3 },
     ],

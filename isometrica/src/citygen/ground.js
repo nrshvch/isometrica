@@ -6,19 +6,35 @@
  *
  * In world tiles, x and y, as the game counts them.
  */
-import Terrain from "isometrica/core/terrain";
-import TerrainType from "isometrica/core/terraintype";
-import Surface from "isometrica/core/surface";
+import Terrain from "../core/terrain";
+import TerrainType from "../core/terraintype";
+import Surface from "../core/surface";
 
 //how far shaping one point may drag the ground round it along, in points -
 //past that it is a hill being moved, not a street levelled
 var MAX_DRAG = 400;
 
-export default function Ground() {
+/**
+ * @param [flat] {number} the height the ground is everywhere, as flat as a
+ *        table and no water - in the place of the world's (lab/cities); the
+ *        world's own, where left out
+ */
+export default function Ground(flat) {
   //a terrain of no world: the noise, and the points the generator moved
   this.terrain = new Terrain(null);
   //grid point index -> height, for every point moved
   this.moved = Object.create(null);
+
+  if (flat !== undefined) {
+    var points = this.terrain.gridPoints;
+
+    this.terrain.getGridPointHeight = function (indexOrX, y) {
+      var index = arguments.length === 2 ? (y << 16) ^ indexOrX : indexOrX,
+        moved = points[index];
+
+      return moved !== undefined ? moved : flat;
+    };
+  }
 }
 
 Ground.index = Terrain.convertToIndex;

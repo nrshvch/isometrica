@@ -13,8 +13,8 @@
  * footprint, the same way round, where it suits the street: shops into
  * town, homes out of downtown last.
  */
-import BuildingData from "isometrica/data/buildings";
-import * as RoadRules from "isometrica/core/roadrules";
+import BuildingData from "../data/buildings";
+import * as RoadRules from "../core/roadrules";
 import { codesOf, info, WATER_TOWER, PUMP } from "./catalogue";
 
 //what a lot of one kind can be turned into, the likeliest first

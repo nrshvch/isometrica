@@ -492,9 +492,11 @@ function startGeneratedCity(size) {
  */
 export function startGenerated(size) {
   ask(
-    "Do you really want to start on a new random " +
-      (size === "town" ? "town" : "city") +
-      "?",
+    size === "metropolis"
+      ? "Do you really want to start on a new Peepsopolis?"
+      : "Do you really want to start on a new random " +
+          (size === "town" ? "town" : "city") +
+          "?",
     function () {
       startGeneratedCity(size);
     },

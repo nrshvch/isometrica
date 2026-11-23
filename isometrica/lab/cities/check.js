@@ -1,12 +1,12 @@
 /**
- * What tools/gencity.js says of a generated city: a map of it in letters, and
- * what about it is not the way the game wants it.
+ * What tools/citytest.mjs says of a generated city (src/citygen): a map of it
+ * in letters, and what about it is not the way the game wants it.
  */
-import { ROAD, LOT, WATER, KEPT } from "../src/citygen/plan";
-import { info } from "../src/citygen/catalogue";
-import * as RoadRules from "isometrica/core/roadrules";
-import Logic from "isometrica/core/logic";
-import { wantOf } from "isometrica/client/worth";
+import { ROAD, LOT, WATER, KEPT } from "../../src/citygen/plan";
+import { info } from "../../src/citygen/catalogue";
+import * as RoadRules from "../../src/core/roadrules";
+import Logic from "../../src/core/logic";
+import { wantOf } from "../../src/client/worth";
 
 //a letter for every road, by what it is laid in, or the way it goes
 var WAYS = ["<", "^", ">", "v"];
@@ -148,7 +148,11 @@ export function check(out) {
       " roads" +
       (plan.village
         ? ", " + plan.village.layout + " village"
-        : (plan.boulevard ? ", boulevard along " + plan.boulevard.axis : "") +
+        : (plan.boulevards || [])
+            .map(function (b) {
+              return ", boulevard along " + b.axis + " " + (b.to - b.from + 1);
+            })
+            .join("") +
           ", " +
           (plan.islands || []).length +
           " roundabouts") +
@@ -306,7 +310,7 @@ export function open(save) {
     removeEventListener: function () {},
   };
 
-  var world = new Logic({ tick: 300000, saves: "gencity", initialCity: null });
+  var world = new Logic({ tick: 300000, saves: "citytest", initialCity: null });
   world.start();
   world.pause();
   world.persistence.open(null, save);
