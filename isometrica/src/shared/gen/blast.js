@@ -25,10 +25,9 @@
  *     the long ring of the town (dsp.js ring) under it all - and the air
  *     taking the very top off everything on the way.
  *
- * Three of it, to pick one from: TNT - one big charge and the building
- * going; demolition charges - a quick ripple of them at its foot, then it
- * going; and heavier, further off - two blasts close together and the
- * collapse rolling round the streets. None longer than two seconds.
+ * Two of it, the game picking one at random each time: TNT - one big
+ * charge and the building going; and demolition charges - a quick ripple
+ * of them at its foot, then it going. Neither longer than two seconds.
  *
  * Each knows when, into it, the building goes up (`at`, seconds): the game
  * starts it that long before the pieces fly, so the blast comes as they do
@@ -53,8 +52,8 @@ var SECONDS = 2;
 
 /**
  * Each way of it: how far off it is, m; how big the blast; when it goes up,
- * s; how many charges go off at its foot before it; a second blast so long
- * after the first, s, if any; how many times the crack comes back off the
+ * s; how many charges go off at its foot before it; how many times the
+ * crack comes back off the
  * streets; how long the town rings on, s, and how much of it is heard; how
  * hard the collapse is.
  */
@@ -65,7 +64,6 @@ var BLASTS = [
     size: 1,
     at: 0.04,
     charges: 0,
-    second: null,
     echoes: 10,
     ring: 1.4,
     wet: 0.35,
@@ -77,23 +75,10 @@ var BLASTS = [
     size: 1,
     at: 0.5,
     charges: 7,
-    second: null,
     echoes: 10,
     ring: 1.4,
     wet: 0.38,
     collapse: 1.1,
-  },
-  //heavier, further off
-  {
-    far: 200,
-    size: 1.35,
-    at: 0.04,
-    charges: 0,
-    second: 0.14,
-    echoes: 14,
-    ring: 1.8,
-    wet: 0.55,
-    collapse: 1.3,
   },
 ];
 
@@ -490,19 +475,13 @@ function blast(rnd, variant, rate) {
     echoes(rnd, rate, ch, bang, when, 4, k.far);
   }
 
-  //it goes up: the crack and the fireball - and a second, if there is one
+  //it goes up: the crack and the fireball
   var long = SECONDS - k.at,
     main = new Float32Array(Math.round(long * rate)),
     start = Math.round(k.at * rate);
 
   mix(main, crack(rnd, rate, k.size), 0, 1);
   mix(main, roar(rnd, rate, k.size, long), Math.round(0.003 * rate), 0.75);
-  if (k.second !== null) {
-    var at2 = Math.round(k.second * rate);
-
-    mix(main, crack(rnd, rate, k.size * 0.85), at2, 0.85);
-    mix(main, roar(rnd, rate, k.size * 1.1, long - k.second), at2, 0.6);
-  }
   main = carried(rate, main, k.far);
   lay(ch, main, start, between(rnd, -0.06, 0.06), 1, false);
   echoes(rnd, rate, ch, main, k.at, k.echoes, k.far);
@@ -552,7 +531,7 @@ function blast(rnd, variant, rate) {
 export var BLAST_SOUND = {
   loop: false,
   make: blast,
-  ways: ["TNT", "demolition charges", "heavier, further off"],
+  ways: ["TNT", "demolition charges"],
   at: BLASTS.map(function (k) {
     return k.at;
   }),

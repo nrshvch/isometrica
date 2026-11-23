@@ -1,6 +1,7 @@
 /**
- * The explosion bench's sound: the blast (src/shared/gen/blast.js), heard
- * as each building on the bench goes up - started
+ * The explosion bench's sound: the blast (src/shared/gen/blast.js), one of
+ * its ways at random, as the game has it, heard as each building on the
+ * bench goes up - started
  * so that its boom comes just as the pieces are torn off it and fly
  * (client/explosion blast), however fast the bench's clock goes. The sound
  * itself is not slowed: at ¼× the boom still comes as they fly, but it is
@@ -55,6 +56,8 @@ export function Boom(world) {
   this.on = true;
   //the explosions heard already
   this.heard = new WeakSet();
+  //the way each is heard
+  this.ways = new WeakMap();
   this.frame = 0;
   this.watch();
 }
@@ -65,7 +68,7 @@ export function Boom(world) {
  */
 Boom.prototype.wake = function () {
   wake();
-  if (this.on) bufferOf(0);
+  if (this.on) for (var w = 0; w < BLAST_SOUND.ways.length; w++) bufferOf(w);
 };
 
 Boom.prototype.turn = function (on) {
@@ -73,11 +76,15 @@ Boom.prototype.turn = function (on) {
   this.wake();
 };
 
-//on its own, now
+//one of them at random, on its own, now
 Boom.prototype.hear = function () {
   this.wake();
-  play(0, 0);
+  play(pick(), 0);
 };
+
+function pick() {
+  return Math.floor(Math.random() * BLAST_SOUND.ways.length);
+}
 
 /**
  * Every frame: each explosion on the bench, its fuse burning, heard once
@@ -95,7 +102,7 @@ Boom.prototype.watch = function () {
 
   var world = this.world,
     speed = world.speed,
-    at = BLAST_SOUND.at[0];
+    ways = this.ways;
 
   world.client.game.logic.world.gameObjects.forEach(function (go) {
     var e = go && go.explosion;
@@ -112,10 +119,16 @@ Boom.prototype.watch = function () {
       till = -e.t / 1000 / Math.max(speed, 0.01);
     } else return;
 
+    //its way, picked once it is first seen
+    if (!ways.has(e)) ways.set(e, pick());
+
+    var way = ways.get(e),
+      at = BLAST_SOUND.at[way];
+
     if (till > at) return;
 
     self.heard.add(e);
-    play(0, at - till);
+    play(way, at - till);
   });
 };
 
