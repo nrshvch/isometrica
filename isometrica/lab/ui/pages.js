@@ -8,7 +8,9 @@ export var PAGES = [
     name: "Sprites",
     about:
       "Every picture the generators paint - ground, roads, buildings, trees, " +
-      "vehicles, stones, smoke - a generator at a time, lit or at night.",
+      "vehicles, stones, smoke - a generator at a time, lit or at night; " +
+      "and what the game does not use (yet): every kind of ground the " +
+      "terrain painter has, and the savannah's dead trees.",
   },
   {
     id: "sounds",

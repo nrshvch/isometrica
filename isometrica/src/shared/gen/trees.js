@@ -29,6 +29,9 @@
  * the sun, no moss on it ("drysnag"...). Each is the kind it is made from,
  * grown the same way, in colours of its own.
  *
+ * And, for the lab only, the dead trees the terrain-asset-generation branch
+ * had for its savannah, dried out and bare ("deadtree") - see describe.
+ *
  * Each comes in two, grown from different seeds, and each of those is
  * painted from its four sides - "gen/trees/oak-1", "gen/trees/oak-1/r1" - so
  * that the camera turning round (client/view) sees another side of it, and
@@ -87,6 +90,7 @@ var FALLING = [
   "snowpine",
   "snowsnag",
   "drysnag",
+  "deadtree",
 ];
 
 //the ways one can be seen to fall, along the ground as it is painted (x - y
@@ -784,6 +788,128 @@ KINDS.drystump = dried("stump", BLEACHED);
 KINDS.drylog = dried("log", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
 KINDS.drylogs = dried("logs", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
 
+/* --- The savannah's dead trees, to look at ---------------------------- */
+
+//The dead trees the terrain-asset-generation branch painted for its
+//savannah (tools/gentrees.js there), dried out and bare, grown here the way
+//every other kind is - each of the two the branch's own, by its numbers:
+//the variant grow is handed. The world grows neither (lab: it has no code in
+//data/trees, and the game is not even told of it, see describe) - they are
+//for the lab's sprite gallery, till a zone of the climate has them.
+
+//the branch's trees were painted a unit a pixel across, from 30 degrees
+//up: as wide and as tall here, across the ground and up
+var ACROSS = Math.SQRT1_2,
+  UP = Math.sqrt(3) / 2;
+
+//one of the branch's sizes along the ground and up, as a point here: its y
+//was up, its z towards the eye
+function across(x, z, y) {
+  return [x * ACROSS, z * ACROSS, y * UP];
+}
+
+function unit(v) {
+  var l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+
+  return [v[0] / l, v[1] / l, v[2] / l];
+}
+
+//no limb thinner than a pixel can show
+function thick(r) {
+  return Math.max(0.5, r * ACROSS);
+}
+
+//the dead trees: a trunk leaning a little, and the branches it has left -
+//each [how far up, which way round, how far out, how steep] - forking at
+//their ends; the second broken off short, with one branch left on it
+var DEADTREE = [
+  {
+    height: 30,
+    girth: 1.6,
+    lean: [1.5, 0.5],
+    broken: false,
+    branches: [
+      [0.45, 2.6, 9, 0.8],
+      [0.62, 0.3, 10, 0.6],
+      [0.8, 4.2, 7, 1.1],
+      [0.7, 1.4, 6, 0.9],
+    ],
+  },
+  {
+    height: 14,
+    girth: 2.2,
+    lean: [0.3, 0],
+    broken: true,
+    branches: [[0.6, 0.4, 7, 0.5]],
+  },
+];
+
+KINDS.deadtree = {
+  lab: true,
+  leaves: [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ],
+  //the branch's dried wood, in the shade and in the light
+  bark: [
+    [84, 74, 62],
+    [148, 134, 114],
+    [148, 134, 114],
+  ],
+  clump: 0.3,
+  bumps: 0,
+  grow: function (r, v) {
+    var o = DEADTREE[(v - 1) % DEADTREE.length],
+      height = o.height * UP,
+      lean = [o.lean[0] * ACROSS, o.lean[1] * ACROSS],
+      branches = [];
+
+    o.branches.forEach(function (b) {
+      var from = [lean[0] * b[0], lean[1] * b[0], height * b[0]],
+        d = unit([Math.cos(b[1]), b[3], Math.sin(b[1])]),
+        out = across(d[0] * b[2], d[2] * b[2], d[1] * b[2]),
+        to = [from[0] + out[0], from[1] + out[1], from[2] + out[2]];
+
+      branches.push({ from: from, to: to, ra: thick(0.9), rb: thick(0.45) });
+
+      //and forking at the end - now and then only the one way
+      [-0.7, 0.8].forEach(function (turn, j) {
+        if (j === 1 && r() > 0.7) return;
+
+        var f = unit([
+            Math.cos(b[1] + turn),
+            b[3] + 0.6,
+            Math.sin(b[1] + turn),
+          ]),
+          fork = across(f[0] * 3.5, f[2] * 3.5, f[1] * 3.5);
+
+        branches.push({
+          from: to,
+          to: [to[0] + fork[0], to[1] + fork[1], to[2] + fork[2]],
+          ra: thick(0.45),
+          rb: thick(0.35),
+        });
+      });
+    });
+
+    return {
+      trunk: {
+        height: height,
+        foot: thick(o.girth),
+        top: thick(o.girth * (o.broken ? 0.75 : 0.3)),
+        lean: lean,
+        //broken off aslant
+        cut: o.broken ? [0.5 * r() - 0.25, 0.5 * r() - 0.25] : undefined,
+      },
+      branches: branches,
+      lobes: [],
+    };
+  },
+};
+
 /**
  * A fallen trunk lying along a, on the ground across the middle of the
  * tile: the trunk itself, thick at its foot, and the broken stubs of a few
@@ -846,10 +972,17 @@ function branchesTo(lobes, from, ra, rb) {
 //how many of each kind there are
 var EACH = 2;
 
+//every tree the game has, by name - and every one there is, the ones only
+//the lab looks at too (lab)
 export var NAMES = [];
 
+var ALL_NAMES = [];
+
 Object.keys(KINDS).forEach(function (kind) {
-  for (var v = 1; v <= EACH; v++) NAMES.push(kind + "-" + v);
+  for (var v = 1; v <= EACH; v++) {
+    ALL_NAMES.push(kind + "-" + v);
+    if (KINDS[kind].lab !== true) NAMES.push(kind + "-" + v);
+  }
 });
 
 /* --- A tree ---------------------------------------------------------- */
@@ -909,9 +1042,9 @@ function turnPlan(plan, turns) {
   };
 }
 
-function grow(kind, seed, turns) {
+function grow(kind, seed, turns, v) {
   var k = KINDS[kind],
-    plan = turnPlan(k.grow(random(seed)), turns || 0),
+    plan = turnPlan(k.grow(random(seed), v), turns || 0),
     //the tree's own way round, for its clumps to be where they are on it
     //whichever side it is seen from
     back = function (x, y) {
@@ -1309,11 +1442,14 @@ function flatten(tones, ns) {
  * "gen/trees/oak-1/r1" - with its size and where its foot is in it, and
  * every one that goes over going over - "gen/trees/oak-1/r1/x+/1" - without
  * painting it.
+ *
+ * @param [o] {Object} all: the trees only the lab looks at as well (lab) -
+ *        which the game is not told of
  */
-export function describe() {
+export function describe(o) {
   var sizes = {};
 
-  NAMES.forEach(function (name) {
+  (o && o.all ? ALL_NAMES : NAMES).forEach(function (name) {
     var falls = FALLING.indexOf(name.split("-")[0]) !== -1;
 
     [0, 1, 2, 3].forEach(function (turns) {
@@ -1353,7 +1489,7 @@ export function paint(name, look, v) {
   if (m === null || KINDS[m[1]] === undefined)
     throw new Error("no such tree: " + name);
 
-  var tree = grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0));
+  var tree = grow(m[1], hashSeed(m[1]) + +m[2] * 101, +(m[3] || 0), +m[2]);
 
   //going over, in a picture big enough for it
   if (m[4] !== undefined) {

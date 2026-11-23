@@ -5,6 +5,12 @@
  * sight. Filter by name, see them lit or at night, bigger, on another
  * ground; click one to see it big, with its name and size. The generator
  * open is in the address: sprites.html#trees.
+ *
+ * It has what the game does not as well: every kind of ground the terrain
+ * painter has, the rock of the mountains, the tropics' and the north's
+ * grass, the savannah, with all their edges and shores, and the trees
+ * nothing grows - marked "not in the game", and to see on their own or not
+ * at all.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Catalog from "../../src/shared/gen/catalog.js";
@@ -27,6 +33,12 @@ var LOOKS = [
     { value: "#26292d", label: "dark" },
     { value: "#e8e4da", label: "light" },
     { value: "#6a9a4a", label: "grass" },
+  ],
+  //which of them: all, what the game has, or what it does not
+  WHICH = [
+    { value: "", label: "all" },
+    { value: "game", label: "in the game" },
+    { value: "lab", label: "not in the game" },
   ];
 
 function fromHash() {
@@ -123,6 +135,11 @@ function Card({ gen, sprite, look, scale, watch, onZoom }) {
         className="block [image-rendering:pixelated]"
         style={{ width: sprite[1] * scale, height: sprite[2] * scale }}
       />
+      {sprite[4] && (
+        <span className="mt-0.5 text-[10px] leading-none text-dim">
+          not in the game
+        </span>
+      )}
     </div>
   );
 }
@@ -177,7 +194,8 @@ function Zoom({ gen, sprite, look, onClose }) {
           sprite[1] +
           "x" +
           sprite[2] +
-          (sprite[3] !== sprite[0] ? " - " + sprite[3] : "")}
+          (sprite[3] !== sprite[0] ? " - " + sprite[3] : "") +
+          (sprite[4] ? " - not in the game" : "")}
       </div>
     </div>
   );
@@ -191,6 +209,7 @@ export default function Sprites() {
     [described, setDescribed] = useState({}),
     [filter, setFilter] = useState(""),
     [words, setWords] = useState([]),
+    [which, setWhich] = useState(""),
     [look, setLook] = useState(""),
     [scale, setScale] = useState(2),
     [bg, setBg] = useState(GROUNDS[0].value),
@@ -255,12 +274,15 @@ export default function Sprites() {
       return d.sprites.filter(function (s) {
         var name = s[0].toLowerCase();
 
+        if (which === "game" && s[4]) return false;
+        if (which === "lab" && !s[4]) return false;
+
         return words.every(function (w) {
           return name.indexOf(w) !== -1;
         });
       });
     },
-    [d, words],
+    [d, words, which],
   );
 
   //a page of them, from the top, whenever what is listed changes
@@ -269,7 +291,7 @@ export default function Sprites() {
       setShown(PAGE);
       if (grid.current) grid.current.scrollTop = 0;
     },
-    [gen, words, look],
+    [gen, words, look, which],
   );
 
   function open(g) {
@@ -288,6 +310,14 @@ export default function Sprites() {
           value={filter}
           onChange={function (e) {
             setFilter(e.target.value);
+          }}
+        />
+        <Select
+          title="which of them"
+          options={WHICH}
+          value={which}
+          onChange={function (e) {
+            setWhich(e.target.value);
           }}
         />
         <Select
@@ -385,7 +415,12 @@ export default function Sprites() {
             " of " +
             d.sprites.length +
             " pictures" +
-            (words.length ? " match" : "") +
+            (words.length || which ? " match" : "") +
+            " (" +
+            d.sprites.filter(function (s) {
+              return s[4];
+            }).length +
+            " of them not in the game)" +
             " - described in " +
             Math.round(d.ms) +
             " ms" +

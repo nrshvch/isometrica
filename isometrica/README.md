@@ -116,12 +116,21 @@ engine in `engine/`.
   tells how much of the land each zone has; `--temperature t` shows where
   the zones would be were the middle of the world that warm, without
   changing the game.
-- The snow, ice and desert tiles, and the tools that write the terrain and
-  the biomes' trees out as pictures (`tools/genterrain.js`,
-  `genterrain-preview.js`, `gentrees.js`), came from the
-  `terrain-asset-generation` branch, which drew its world with its own
-  biomes and mountains; this world keeps its own land and has the climate
-  ring round it instead.
+- The snow, ice and desert tiles came from the `terrain-asset-generation`
+  branch, which drew its world with its own biomes and mountains; this
+  world keeps its own land and has the climate ring round it instead.
+  Everything else that branch painted is here to look at, painted the way
+  the game paints everything, though the game has none of it (yet): every
+  other kind of its ground - the rock of the mountains, the grass of the
+  tropics and of the north, the southern grass, the savannah - in the
+  terrain painter (`src/shared/gen/terrain.js`), and the savannah's dead
+  trees, dried out and bare, in the tree painter (`src/shared/gen/
+trees.js` "deadtree"). The lab's sprite gallery (`/sprites.html`) shows
+  all of it, in its terrain and trees, marked "not in the game" - the game
+  is not even told of it (`shared/gen/catalog` describe all). Its pines and
+  baobabs are not here: the game has pines of its own, and a savannah will
+  have trees of its own. `tools/genterrain.js` writes every kind of ground
+  out as pictures, and `genterrain-preview.js` lays them out together.
 
 ### Traffic
 
