@@ -48,20 +48,31 @@ var LONE_ROCKS = 0.003;
 //and how much likelier, at the most, on a hillside that has some
 var SLOPE_ROCKS = 0.16;
 
-//the rock codes of either kind of picture, by the zone of the climate they
-//lie in (core/climate), to pick one of
+//the rock codes of either kind of picture, by the climate they lie in
+//(data/rocks), to pick one of
 var HEAPS = {},
   STREWN = {};
 
 Rocks.forEach(function (rock, code) {
   var kinds = rock.heap ? HEAPS : STREWN;
 
-  (kinds[rock.zone] = kinds[rock.zone] || []).push(code);
+  (kinds[rock.climate] = kinds[rock.climate] || []).push(code);
 });
 
-//how many more stones lie about in a zone than in the green, where it has
-//more - the desert is stony
-var MORE_ROCKS = { hot: 2 };
+/**
+ * The stones of each zone of the climate (core/climate ZONES), by its id:
+ * which kind of them lie there (data/rocks climate), and how many to the
+ * green's - the savannah stony, sandstone and pale rock showing through its
+ * grass; the arctic's snowed over; in the north only a few of those, and in
+ * the desert nothing but sand.
+ */
+var ROCKS = {
+  desert: { kind: "hot", more: 0 },
+  savannah: { kind: "hot", more: 2 },
+  temperate: { kind: "temperate", more: 1 },
+  arctic: { kind: "cold", more: 1 },
+  polar: { kind: "cold", more: 0.3 },
+};
 
 //the height of the lowest corner of the tile
 function lowest(self, tile) {
@@ -183,10 +194,13 @@ function rockAt(self, tile) {
   //on the shore they would lie half in the water
   if (low <= 0) return null;
 
-  var zone = Climate.zoneAt(x, y).id,
-    more = MORE_ROCKS[zone] || 1;
+  var rocks = ROCKS[Climate.zoneAt(x, y).id] || ROCKS.temperate,
+    more = rocks.more;
 
-  field = rockField(x, y);
+  if (more === 0) return null;
+
+  //where there are fewer, the rock fields thin out as well
+  field = rockField(x, y) * Math.min(1, more);
   density = 1 - (1 - field) * (1 - LONE_ROCKS * more);
 
   if (a !== b || a !== c || a !== d)
@@ -194,10 +208,9 @@ function rockAt(self, tile) {
 
   if (hash(x, y, 1) >= density) return null;
 
-  //heaps where the field is thick, a few stones where it is thin - the
-  //zone's own, or the green's for a zone with none
-  kinds = hash(x, y, 2) < field * 0.9 ? HEAPS : STREWN;
-  kinds = kinds[zone] || kinds.temperate;
+  //heaps where the field is thick, a few stones where it is thin - of the
+  //zone's own kind
+  kinds = (hash(x, y, 2) < field * 0.9 ? HEAPS : STREWN)[rocks.kind];
 
   return kinds[Math.floor(hash(x, y, 3) * kinds.length)];
 }

@@ -7,16 +7,17 @@
  * shadows, drawn flat over the tile the way the tile itself is - same size,
  * same pivot. The game paints them as it starts, see shared/gen/stones.
  *
- * Each zone of the climate (core/climate) has stones of its own, both kinds:
- * the grey and brown ones of the green, the same snowed over out in the
- * cold, sandstone and pale rock in the desert. A new one goes on the end, so
- * the codes of the ones before it stay.
+ * The climate (core/climate) has stones of three kinds, both sizes of each:
+ * the grey and brown ones of the green ("temperate"), the same snowed over
+ * out in the cold ("cold"), and sandstone and pale rock where it is hot
+ * ("hot") - which of them lie in each zone, and how many, core/ambient ROCKS
+ * says. A new one goes on the end, so the codes of the ones before it stay.
  *
- * @type {{heap: boolean, flat: boolean, zone: string, path: string, pivotX: number, pivotY: number}[]}
+ * @type {{heap: boolean, flat: boolean, climate: string, path: string, pivotX: number, pivotY: number}[]}
  */
 var Rocks = [];
 
-//every picture, the zone it lies in, and whether it is the thick of a rock
+//every picture, the climate it lies in, and whether it is the thick of a rock
 //field - five together - or its thin edges and the stones out on their own,
 //three strewn about; each the other way round as well ("-m")
 [
@@ -31,7 +32,7 @@ var Rocks = [];
     Rocks.push({
       heap: rock[2],
       flat: true,
-      zone: rock[1],
+      climate: rock[1],
       path: "gen/scenery/" + rock[0] + m,
       pivotX: 32,
       pivotY: 24,

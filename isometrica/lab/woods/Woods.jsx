@@ -221,20 +221,19 @@ export default function WoodsPage() {
         >
           The starting city
         </Button>
-        <Button
-          onClick={function () {
-            setCentre(EDGES.desert.slice());
-          }}
-        >
-          The desert's edge
-        </Button>
-        <Button
-          onClick={function () {
-            setCentre(EDGES.snow.slice());
-          }}
-        >
-          The snow's edge
-        </Button>
+        {EDGES.map(function (edge) {
+          return (
+            <Button
+              key={edge.name}
+              title={"where the " + edge.name.toLowerCase() + " begins"}
+              onClick={function () {
+                setCentre(edge.at.slice());
+              }}
+            >
+              {edge.name}
+            </Button>
+          );
+        })}
       </div>
 
       <div className="overflow-hidden">

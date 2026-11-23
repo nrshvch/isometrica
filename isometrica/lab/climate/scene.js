@@ -1,12 +1,15 @@
 /**
  * The climate bench (lab/climate.html): every zone of the climate
  * (core/climate) on one island, drawn the game's own way (lab/bench/world) -
- * from the desert at one end through the green to the snow at the other,
- * and on past the firs and the pines dying off and the dead trunks to the
- * empty frozen edge of the world. What the world spreads over thousands of
- * tiles is pressed into a few dozen here, so that where one zone gives way
- * to the next - ragged, in patches, the ground of the one spilling over the
- * edges of the other - can be seen all at once.
+ * from the desert at one end, nothing but sand, through the savannah, its
+ * cacti and dried-out trees, and the green, to the arctic, its firs and
+ * pines snowed over, dying off, then dead trunks, and at the other end the
+ * north, nothing but snow. Every zone has a stretch of the island as long as
+ * every other's, its temperatures from its one edge to its other spread
+ * along it - what the world spreads over thousands of tiles pressed into a
+ * dozen or so - so that where one zone gives way to the next - ragged, in
+ * patches, the ground of the one spilling over the edges of the other - can
+ * be seen all at once.
  *
  * The island has a ring of water round it, the shallows and deep water
  * beyond them, so every zone has its shore: a sand beach, and out in the cold
@@ -36,32 +39,72 @@ var X = -36,
 //edge of the island: the deep water round it, then the shallows
 var LAND = 2;
 
-//how warm the hot end of it is, °C, and how much colder every tile along
-//it: 40° to -18°, the desert at one end, then the green, then 16 tiles of
-//the cold - the firs and the pines dying off, the dead trunks, and nothing
-//(core/woods FLORA) - and how far the zones' edges wave to and fro across
-//it, and how often
-var HOT = 40,
-  LAPSE = 0.8,
-  WAVE = 1.5,
-  WAVES = 24;
+//how much hotter than the desert starts the island's hot end is, and how
+//much colder than the north starts its other end, °C
+var HOTTER = 8,
+  COLDER = 10;
 
-//and how far it strays either way, °C, in patches a few tiles across: the
-//zones mixed over a dozen tiles or so either side of where they change,
-//rather than the few the climate's own patches give a slope this steep
-var STRAY = 3.5,
+//how far the zones' edges wave to and fro across the island, tiles, and how
+//often; and how far they stray either way in patches a few tiles across, as
+//the climate's own patches have them over thousands of tiles
+var WAVE = 1.5,
+  WAVES = 24,
+  STRAY = 2.5,
   STRAYS = 6;
 
 var simplex = new Simplex("climate bench");
 
-//the hills, each [i, j, how high over the land, steps], one or two in
-//every zone, away from the river and the shore
+/**
+ * How warm it is along the island, °C: [tiles from its hot end, how warm
+ * there] - every zone a stretch as long as every other, from the
+ * temperature it gives way to the one before it at to the one it starts at.
+ */
+var KNOTS = (function () {
+  var zones = Climate.ZONES,
+    n = zones.length,
+    out = [[0, zones[0].from + HOTTER]];
+
+  zones.forEach(function (zone, k) {
+    out.push([
+      (W * (k + 1)) / n,
+      zone.from === -Infinity ? zones[k - 1].from - COLDER : zone.from,
+    ]);
+  });
+
+  return out;
+})();
+
+//how warm it is u tiles along the island
+function heatAlong(u) {
+  for (var k = 1; k < KNOTS.length - 1; k++) if (u < KNOTS[k][0]) break;
+
+  var a = KNOTS[k - 1],
+    b = KNOTS[k];
+
+  return a[1] + ((u - a[0]) * (b[1] - a[1])) / (b[0] - a[0]);
+}
+
+//and how far along it is that warm, tiles - no further than its ends
+function along(t) {
+  for (var k = 1; k < KNOTS.length; k++) {
+    var a = KNOTS[k - 1],
+      b = KNOTS[k];
+
+    if (t <= a[1] && t >= b[1])
+      return a[0] + ((t - a[1]) * (b[0] - a[0])) / (b[1] - a[1]);
+  }
+
+  return t > KNOTS[0][1] ? 0 : W;
+}
+
+//the hills, each [i, j, how high over the land, steps], one in every zone,
+//away from the river and the shore
 var HILLS = [
   [7, 9, 2],
-  [24, 39, 3],
+  [22, 39, 3],
   [36, 8, 2],
-  [52, 39, 3],
-  [62, 9, 2],
+  [50, 39, 3],
+  [65, 9, 2],
 ];
 
 //how steep a hill's side is, steps a tile - under one, for no two grid
@@ -131,11 +174,12 @@ Scene.prototype.lay = function () {
 
   Climate.setHeat(function (x, y) {
     return (
-      HOT +
-      warmth -
-      (x - x0) * LAPSE +
-      WAVE * Math.sin((2 * Math.PI * (y - y0)) / WAVES) +
-      STRAY * simplex.noise2D(x / STRAYS, y / STRAYS)
+      heatAlong(
+        x -
+          x0 +
+          WAVE * Math.sin((2 * Math.PI * (y - y0)) / WAVES) +
+          STRAY * simplex.noise2D(x / STRAYS, y / STRAYS),
+      ) + warmth
     );
   });
 
@@ -163,13 +207,7 @@ Scene.prototype.zones = function () {
   return Climate.ZONES.map(function (zone, i) {
     return {
       name: zone.name,
-      from:
-        i === 0
-          ? 0
-          : Math.max(
-              0,
-              Math.round((HOT + warmth - Climate.ZONES[i - 1].from) / LAPSE),
-            ),
+      from: i === 0 ? 0 : Math.round(along(Climate.ZONES[i - 1].from - warmth)),
     };
   });
 };

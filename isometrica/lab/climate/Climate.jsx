@@ -180,10 +180,11 @@ export default function Climate() {
         <aside className="w-80 flex-none overflow-y-auto border-l border-line px-2.5 py-2 max-[700px]:h-[45%] max-[700px]:w-auto max-[700px]:border-t max-[700px]:border-l-0">
           <Note>
             Every zone of the climate on one island, drawn the way the game
-            draws it: hot at one end, cold at the other, what the world spreads
-            over thousands of tiles pressed into a few dozen. Where one zone
-            gives way to the next their tiles are mixed in patches, the ground
-            of the one spilling over the edges of the other.
+            draws it: the desert, the savannah, the green, the arctic and the
+            north, each a stretch of it as long as the others - what the world
+            spreads over thousands of tiles pressed into a dozen or so. Where
+            one zone gives way to the next their tiles are mixed in patches, the
+            ground of the one spilling over the edges of the other.
           </Note>
           <Note>
             A river winds through every zone and the sea is all round, so each
@@ -202,10 +203,12 @@ export default function Climate() {
               );
             })}
             <Note>
-              Going on into the cold, the pines die off first, then the firs,
-              then only dead trunks stand in the snow, and at the far end there
-              is nothing at all. Warmer or colder moves every zone along it, the
-              way warming the world moves them out from its middle.
+              The desert is nothing but sand; on the savannah, cacti, prickly
+              pears and dried-out trees, and stones. In the arctic the pines die
+              off first, then the firs, then only dead trunks stand in the snow,
+              and in the north there is nothing but the odd stone. Warmer or
+              colder moves every zone along it, the way warming the world moves
+              them out from its middle.
             </Note>
           </Section>
         </aside>

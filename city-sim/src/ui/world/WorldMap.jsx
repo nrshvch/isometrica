@@ -104,16 +104,36 @@ function shown(x, y, zoom) {
   };
 }
 
-//the land of each zone's ground (isometrica core/climate), low down and up
-//high - rock over that, as on the green - and its shore
+//the land of each zone of the climate (isometrica core/climate), low down
+//and up high - rock over that, as on the green - and its shore: the
+//desert's pale sand, the savannah's gold and red earth, the green, the
+//arctic's snow grey with its firs and pines, and the north's white
 var LANDS = {
-  grass: { low: [96, 164, 72], high: [52, 110, 42], shore: [214, 200, 146] },
-  sand_dunes: {
-    low: [232, 204, 140],
-    high: [196, 150, 96],
-    shore: [222, 196, 140],
+  desert: {
+    low: [236, 210, 150],
+    high: [204, 164, 108],
+    shore: [226, 204, 150],
   },
-  snow: { low: [242, 246, 252], high: [204, 214, 230], shore: [222, 230, 240] },
+  savannah: {
+    low: [204, 164, 92],
+    high: [170, 112, 70],
+    shore: [214, 190, 140],
+  },
+  temperate: {
+    low: [96, 164, 72],
+    high: [52, 110, 42],
+    shore: [214, 200, 146],
+  },
+  arctic: {
+    low: [210, 220, 222],
+    high: [170, 186, 186],
+    shore: [214, 224, 236],
+  },
+  polar: {
+    low: [246, 248, 252],
+    high: [214, 222, 236],
+    shore: [230, 236, 244],
+  },
 };
 
 //the water frozen over, from the shallows out
@@ -130,7 +150,7 @@ var ICE = [
  * @param zone {Object} the zone of the climate it is in (core/climate)
  */
 function colour(h, zone, out, o) {
-  var land = LANDS[zone.ground] || LANDS.grass,
+  var land = LANDS[zone.id] || LANDS.temperate,
     r,
     g,
     b,

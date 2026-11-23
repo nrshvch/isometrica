@@ -68,46 +68,52 @@ engine in `engine/`.
 - The world is hot in the middle and frozen at its edge, the way the Earth
   is at the equator and the poles - only flat, so its equator is the middle
   of it, tile 32768, 32768, and its poles all of its rim
-  (`src/core/climate.js`). It rings round the middle: desert there, the
-  green world round that, and snow and ice out at the edge.
+  (`src/core/climate.js`). It rings round the middle in five zones
+  (`ZONES`), out from the middle:
+
+  | Zone     | Ground       | Water  | What grows                                                                | Stones                         | From, at 33° |
+  | -------- | ------------ | ------ | ------------------------------------------------------------------------- | ------------------------------ | ------------ |
+  | desert   | `sand_dunes` | open   | nothing                                                                   | none                           | the middle   |
+  | savannah | `savannah`   | open   | cacti, prickly pears, dried-out trees, dead wood bleached by the sun      | sandstone and pale rock, twice | 2,000 tiles  |
+  | green    | `grass`      | open   | the woods                                                                 | grey and brown                 | 4,400 tiles  |
+  | arctic   | `snow`       | frozen | firs and pines snowed over; the pines die off, then the firs, dead trunks | snowed over                    | 18,400 tiles |
+  | north    | `snow`       | frozen | nothing                                                                   | a few, snowed over             | 24,800 tiles |
+
 - It all goes by one number, `TEMPERATURE` - how warm the middle of the
-  world is, 33° - and it gets a degree colder every 600 tiles out (`LAPSE`).
-  Every zone starts at a temperature of its own (`ZONES`): the desert gives
-  way to the green at 29°, 2,400 tiles out; the green to the snow at 1°,
-  19,200 tiles out. A degree warmer moves every zone 600 tiles further out -
-  the desert spreads, the green ring moves out, a longer ring with more
-  room on it, and the snow draws back to the edge. As warm as it is, the
-  city a new player of the city builder starts on, 5,600 tiles out, is in
-  the green, and so is the delivery game's, 15,100 tiles out; a couple of
-  degrees warmer and the desert reaches the first. Another zone
-  - savannah between the desert and the green, say - is another row of
-    `ZONES`, its ground one of the terrain painter's tilesets.
-- The rings are not round: how warm it is wanders a couple of degrees
-  either way over a few thousand tiles. Nor does one zone stop where the next
-  starts: their tiles are mixed for 1,800 tiles either side of it (`BLEND`)
-  - a patch of the next zone here and there first, then more, bigger ones
-    that run into each other, till there is none of the first left; the way
-    the woods shade into each other, on the scale of the world. Where the
-    ground of two meets, the one over the other in the painter's precedence
-    (snow over grass, sand over grass) spills over the edges of the other's
-    tiles, ragged, the way the earth of a tile cleared does - so there is no
-    line along the tiles anywhere.
-- The zone a tile is in has its ground (`sand_dunes`, `grass`, `snow`), its
-  water frozen over in the cold (`ice`, with its frosted shore, the ice
-  spilling over the edges of open water next to it), its trees and its
-  stones. The woods (`src/core/woods.js`) go on whatever the climate, so a
-  forest runs on into the cold or the heat and only what grows in it changes
-  (`FLORA`): out in the cold, only the firs and the pines, snowed over -
+  world is, 33° - and it gets a degree colder every 400 tiles out (`LAPSE`).
+  Every zone starts at a temperature of its own: the savannah at 28°, the
+  green at 22°, the arctic at -13°, the north at -29°. A degree warmer moves
+  every zone 400 tiles further out - the desert and the savannah spread,
+  the green ring moves out, a longer ring with more room on it, and the snow
+  draws back to the edge. As warm as it is, the city a new player of the
+  city builder starts on, 5,600 tiles out, is in the green - the savannah's
+  first patches a hundred tiles off - and so is the delivery game's, 15,100
+  tiles out. Another zone is another row of `ZONES`, its ground one of the
+  terrain painter's tilesets.
+- The rings are not round: how warm it is wanders a few degrees either way
+  over a few thousand tiles. Nor does one zone stop where the next starts:
+  their tiles are mixed for 800 tiles either side of it (`BLEND`, 2°) - a
+  patch of the next zone here and there first, then more, bigger ones that
+  run into each other, till there is none of the first left; the way the
+  woods shade into each other, on the scale of the world. Where the ground
+  of two meets, the one over the other in the painter's precedence (snow
+  over grass, savannah over grass, sand over savannah) spills over the
+  edges of the other's tiles, ragged, the way the earth of a tile cleared
+  does - so there is no line along the tiles anywhere.
+- What grows in each zone is the woods' (`src/core/woods.js` `FLORA`): they
+  go on whatever the climate, so a forest runs on into the cold or the heat
+  and only what grows in it changes - by how warm it is, so that it moves
+  with the zones. In the arctic only the firs and the pines, snowed over -
   some where the broadleaf trees would be, which die in the cold - and a
-  dead trunk among them now and then; further out the pines die off, then
-  the firs, and for a few thousand tiles there are only dead trunks and
-  fallen ones in the snow, fewer and fewer, till the edge of the world is
-  empty; in the desert, hardly anything: cacti - tall ones with arms,
-  ribbed up their length, and prickly pears - where the woods would have a
-  tree alive, dried-out trees where they would have a dead one, and the
-  dead wood bleached by the sun. The stones are snowed over
-  in the cold, and red sandstone and pale rock in the desert - twice as many
-  of them (`src/core/ambient.js`, `src/data/rocks.js`).
+  dead trunk among them now and then; further out the pines die off
+  (-19° to -23°), then the firs (-21° to -25°), and for a couple of thousand
+  tiles there are only dead trunks and fallen ones in the snow, fewer and
+  fewer (-25° to -29°), till the north is empty. On the savannah, cacti -
+  tall ones with arms, ribbed up their length, and prickly pears - where
+  the woods would have a tree alive, dried-out trees where they would have
+  a dead one, and the dead wood bleached by the sun, fewer towards the
+  desert, where there is nothing. The stones of each zone, and how many,
+  are `src/core/ambient.js` `ROCKS` (`src/data/rocks.js`).
 - Nothing of it is kept: it is worked out from where a tile is, like the
   lie of the land. The game's world map (the HUD's map button) shows the
   rings, and the zone and how warm it is under the pointer; the woods map
@@ -339,19 +345,21 @@ engine in `engine/`.
   world's own climate would have it: grass.
 - `lab/climate.html` is the climate bench: every zone of the climate on one
   island, on the same world as the demolition bench (`lab/climate/
-scene.js`) - the desert at one end, 40°, then the green, then the snow,
-  -18° at the other: what the world spreads over thousands of tiles pressed
-  into seventy-two, the bench laying the climate out its own way (setHeat),
-  so that every border can be seen at once - the zones mixed in patches,
-  the ground of the one spilling over the edges of the other. A river winds
+scene.js`) - the desert at one end, then the savannah, the green and the
+  arctic, the north at the other, each a stretch of it as long as the others,
+  its temperatures from its one edge to its other spread along it: what the
+  world spreads over thousands of tiles pressed into a dozen or so, the bench
+  laying the climate out its own way (setHeat), so that every border can be
+  seen at once - the zones mixed in patches, the ground of the one spilling
+  over the edges of the other. A river winds
   from one end to the other through every zone, deep in its middle, and the
   sea is all round, so every zone has its shore: a sand beach, and out in
   the cold the water frozen over, the ice closing over open water from its
   edges, frost for a beach. Hills stand in every zone for its ground on the
   slopes, and the trees and the stones are the ones the world puts there by
-  itself: the dead wood of the desert, the woods of the green, the snowy
-  firs and pines, the pines dying off, then the firs, then only dead trunks
-  and at the far end nothing. Warmer or colder moves every zone along it;
+  itself: the savannah's cacti and dried-out trees, the woods of the green,
+  the snowy firs and pines, the pines dying off, then the firs, then only
+  dead trunks, and in the desert and the north nothing. Warmer or colder moves every zone along it;
   it turns, is seen from above, and goes nearer or further - "all" the
   whole island.
 

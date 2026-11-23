@@ -2,8 +2,11 @@
  * How warm the world is where: hot in the middle of it and colder the further
  * out - the way the Earth is hot at the equator and frozen at the poles, only
  * the world is flat, so its equator is the middle of it and its poles all of
- * its rim. The climate rings round the middle: desert there, the green world
- * further out, and snow and ice out at the edge.
+ * its rim. The climate rings round the middle, in five zones (ZONES): the
+ * desert in the very middle, nothing but sand; the savannah round it, its
+ * red earth showing through dry grass, cacti and dried-out trees on it; the
+ * green world further out; then the arctic, snow and ice and the firs and
+ * pines snowed over; and out at the edge the north, nothing but snow.
  *
  * It all goes by one number, TEMPERATURE - how warm it is in the very middle.
  * From there it gets colder by a degree every 1 / LAPSE tiles out, the
@@ -15,7 +18,7 @@
  * The rings are not round: how warm it is wanders a couple of degrees either
  * way over a few thousand tiles (heat). Nor does one zone end along a line
  * where the next starts. The tiles of both are mixed over BLEND degrees
- * either side of where it changes, a couple of thousand tiles - first a
+ * either side of where it changes, eight hundred tiles or so - first a
  * patch of the next zone here and there, then more and bigger ones that run
  * into each other, until there is nothing left of the first: the way the
  * woods shade into each other (core/woods), on the scale of the world.
@@ -33,33 +36,43 @@ var CENTER = [32768, 32768];
 //degree warmer moves every zone 1 / LAPSE tiles further out. As warm as this,
 //the city a new player of the city builder starts on, 5,600 tiles out
 //(city-sim initialcity), is in the green, and so is the delivery game's,
-//15,100 tiles out - the desert is no more than a heart of the world; warmer,
-//it spreads out over them
+//15,100 tiles out - the desert and the savannah no more than the heart of
+//the world; warmer, they spread out over them
 var TEMPERATURE = 33;
 
 //how much colder it is for every tile further out, °C
-var LAPSE = 1 / 600;
+var LAPSE = 1 / 400;
 
 //how far, °C, either side of where one zone gives way to the next their tiles
-//are mixed
-var BLEND = 3;
+//are mixed - under half of the narrowest zone, the savannah's, for every
+//zone to have the middle of it all to itself
+var BLEND = 2;
 
 /**
  * The zones, the hottest first - each from the temperature it starts at
  * (from) to where the one before it does: what the ground there is (a tileset
  * of shared/gen/terrain), and what water is, where it is not water - frozen
- * over. Another zone - savannah, say, between the desert and the green - is
- * another row.
+ * over. What grows in each, and the stones lying about, are core/woods FLORA
+ * and core/ambient ROCKS. Another zone is another row.
  *
- * With TEMPERATURE 33 the desert gives way at 2,400 tiles out from the middle,
- * and the snow comes in at 19,200; the middle of the world's edges are -22°.
+ * With TEMPERATURE 33, out from the middle of the world: the desert to 2,000
+ * tiles, the savannah to 4,400, the green to 18,400, the arctic to 24,800,
+ * and the north from there; the middle of the world's edges are -49°.
  */
 var ZONES = [
-  { id: "hot", name: "Desert", ground: "sand_dunes", water: null, from: 29 },
-  { id: "temperate", name: "Green", ground: "grass", water: null, from: 1 },
+  { id: "desert", name: "Desert", ground: "sand_dunes", water: null, from: 28 },
   {
-    id: "cold",
-    name: "Frozen",
+    id: "savannah",
+    name: "Savannah",
+    ground: "savannah",
+    water: null,
+    from: 22,
+  },
+  { id: "temperate", name: "Green", ground: "grass", water: null, from: -13 },
+  { id: "arctic", name: "Arctic", ground: "snow", water: "ice", from: -29 },
+  {
+    id: "polar",
+    name: "North",
     ground: "snow",
     water: "ice",
     from: -Infinity,
@@ -185,27 +198,6 @@ function frozenAt(x, y) {
 }
 
 /**
- * How far into a zone tile x, y is, °C: from where it starts - the nearer of
- * its two edges, for one between two - by how warm it is there (heat), not by
- * the patches. Below 0 outside it, by as much.
- *
- * @param x {number}
- * @param y {number}
- * @param id {string} one of ZONES' ids
- * @returns {number}
- */
-function depth(x, y, id) {
-  var zone = BY_ID[id],
-    t = heat(x, y),
-    d = Infinity;
-
-  if (zone.from !== -Infinity) d = t - zone.from;
-  if (zone.index > 0) d = Math.min(d, ZONES[zone.index - 1].from - t);
-
-  return d;
-}
-
-/**
  * How far out from the middle of the world a zone starts - the hotter one
  * giving way to it - as the rings would be were they round, tiles: where it
  * is as warm as it starts at, the wander of heat left out. 0 for the one in
@@ -263,7 +255,6 @@ export default {
   zoneAt: zoneAt,
   groundAt: groundAt,
   frozenAt: frozenAt,
-  depth: depth,
   radius: radius,
   setTemperature: setTemperature,
   getTemperature: getTemperature,

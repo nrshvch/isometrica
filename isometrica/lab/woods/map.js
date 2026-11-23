@@ -62,19 +62,18 @@ export var SEA = [52, 92, 150],
 //round about the city a new player starts on (data/initialcity)
 export var HOME = [22110, 22110];
 
-//where the desert gives way to the green, and the green to the snow, as the
-//rings would be were they round (core/climate radius) - straight down from
-//the middle of the world
-export var EDGES = {
-  desert: [
-    Climate.CENTER[0],
-    Math.round(Climate.CENTER[1] - Climate.radius("temperate")),
-  ],
-  snow: [
-    Climate.CENTER[0],
-    Math.round(Climate.CENTER[1] - Climate.radius("cold")),
-  ],
-};
+//where each zone of the climate gives way to the next, as the rings would be
+//were they round (core/climate radius) - straight down from the middle of
+//the world: the name of the next one, and where
+export var EDGES = Climate.ZONES.slice(1).map(function (zone) {
+  return {
+    name: zone.name,
+    at: [
+      Climate.CENTER[0],
+      Math.round(Climate.CENTER[1] - Climate.radius(zone.id)),
+    ],
+  };
+});
 
 export var KINDS = Trees.KINDS,
   WOODS = Woods.WOODS;
@@ -90,16 +89,18 @@ export function rgb(c) {
   return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")";
 }
 
-//the land of each zone's ground, low down - lighter the higher it is
+//the land of each zone of the climate, low down - lighter the higher it is
 var LANDS = {
-  grass: [92, 118, 70],
-  sand_dunes: [196, 164, 110],
-  snow: [200, 206, 216],
+  desert: [204, 178, 120],
+  savannah: [176, 138, 82],
+  temperate: [92, 118, 70],
+  arctic: [172, 182, 186],
+  polar: [205, 208, 215],
 };
 
 function ground(low, zone) {
   var l = Math.min(low, 10) / 10,
-    c = LANDS[zone.ground] || LANDS.grass;
+    c = LANDS[zone.id] || LANDS.temperate;
 
   return [c[0] + 50 * l, c[1] + 50 * l, c[2] + 40 * l].map(function (v) {
     return Math.min(255, v);
@@ -146,7 +147,7 @@ export function draw(canvas, centre, scale, view) {
       var zone = Climate.zoneAt(x0 + x, y0 + y);
 
       if (Math.max(a, b, c, d) <= 0) colour = zone.water !== null ? ICE : SEA;
-      else if (low <= 0) colour = zone.water !== null ? LANDS.snow : SHORE;
+      else if (low <= 0) colour = zone.water !== null ? LANDS.polar : SHORE;
       else {
         land++;
 

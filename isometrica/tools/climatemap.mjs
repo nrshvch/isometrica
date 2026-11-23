@@ -75,19 +75,33 @@ function options(argv) {
   return o;
 }
 
-//the colours of the land of each zone's ground - and of its shore - and of
-//the sea, open and frozen over, as the game's world map has them
+//the colours of the land of each zone - and of its shore - and of the sea,
+//open and frozen over, as the game's world map has them
 var LANDS = {
-    grass: { low: [96, 164, 72], high: [52, 110, 42], shore: [214, 200, 146] },
-    sand_dunes: {
-      low: [232, 204, 140],
-      high: [196, 150, 96],
-      shore: [222, 196, 140],
+    desert: {
+      low: [236, 210, 150],
+      high: [204, 164, 108],
+      shore: [226, 204, 150],
     },
-    snow: {
-      low: [242, 246, 252],
-      high: [204, 214, 230],
-      shore: [222, 230, 240],
+    savannah: {
+      low: [204, 164, 92],
+      high: [170, 112, 70],
+      shore: [214, 190, 140],
+    },
+    temperate: {
+      low: [96, 164, 72],
+      high: [52, 110, 42],
+      shore: [214, 200, 146],
+    },
+    arctic: {
+      low: [210, 220, 222],
+      high: [170, 186, 186],
+      shore: [214, 224, 236],
+    },
+    polar: {
+      low: [246, 248, 252],
+      high: [214, 222, 236],
+      shore: [230, 236, 244],
     },
   },
   SEA = [
@@ -108,7 +122,7 @@ function mix(a, b, t) {
 }
 
 function colour(h, zone) {
-  var land = LANDS[zone.ground] || LANDS.grass;
+  var land = LANDS[zone.id] || LANDS.temperate;
 
   if (h <= 0)
     return mix.apply(

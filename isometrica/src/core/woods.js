@@ -14,15 +14,16 @@
  * with glades now and then, and each of its kinds in clumps of its own.
  *
  * The woods go on whatever the climate (core/climate), so a forest runs on
- * into the cold or the heat, and only what grows in it changes (FLORA): out
- * in the cold, only the firs and the pines, snowed over - a few of them
- * where the broadleaf trees would be, which die in the cold - a dead one
- * among them now and then; further out the pines die off, then the firs,
- * and for a while there are only dead trunks standing in the snow, fewer
- * and fewer, till at the edge of the world there is nothing at all; in the
- * desert, hardly anything: cacti and prickly pears where the woods would
- * have a tree alive, a dried-out tree where they would have a dead one, and
- * the dead wood bleached by the sun.
+ * into the cold or the heat, and only what grows in it changes (FLORA): in
+ * the arctic, only the firs and the pines, snowed over - a few of them where
+ * the broadleaf trees would be, which die in the cold - a dead one among
+ * them now and then; further out the pines die off, then the firs, and for a
+ * while there are only dead trunks standing in the snow, fewer and fewer,
+ * till in the north there is nothing at all. On the savannah, hardly
+ * anything: cacti and prickly pears where the woods would have a tree alive,
+ * a dried-out tree where they would have a dead one, and the dead wood
+ * bleached by the sun - fewer and fewer towards the desert, where there is
+ * nothing at all.
  */
 import Simplex from "simplex-noise";
 import Trees from "../data/trees";
@@ -133,49 +134,27 @@ var UPLAND = 3,
   COAST = 3;
 
 /**
- * What grows in the zones of the climate that are not green, by the zone's
- * id (core/climate ZONES) - one with none grows the woods as they are:
+ * What grows in the zones of the climate other than the green, by the zone's
+ * id (core/climate ZONES) - one with none grows the woods as they are. How
+ * warm it is, °C, as core/climate heat has it - which the zones' own edges
+ * are in too, so all of it moves with them as the world warms:
  *
  *  - kinds: what each kind of the woods is there - one kind, or a few to pick
  *    from, as likely as each other; one that is not there, nothing;
- *  - die: the living kinds that die off further in, each over degrees of its
- *    own - none of them dead from so far in, all of them so far in - standing
- *    there as one of dead instead, or nothing;
- *  - bare: from how far in, to how far, whatever is left there thins out to
- *    nothing - past it nothing grows at all;
- *  - density: how many of the trees the woods would have there are at the
- *    edge of the zone, and thin: how many fewer still, thinOver degrees
- *    further in.
+ *  - density: how many of the trees the woods would have there are - none,
+ *    for a zone where nothing grows - and thin: [how warm it is where they
+ *    start to thin out, how warm where they are thinnest, how many fewer
+ *    they are there];
+ *  - die: the living kinds that die off, each between two temperatures of
+ *    its own - none of them dead at the first, all of them at the second -
+ *    standing there as one of dead instead, or nothing;
+ *  - bare: between which temperatures whatever is left thins out to nothing.
  */
 var FLORA = {
-  cold: {
-    kinds: {
-      spruce: "snowspruce",
-      pine: "snowpine",
-      //the broadleaf trees die in the cold: here and there a fir or a pine
-      //stands where one would
-      oak: [null, null, null, "snowspruce", "snowpine"],
-      beech: [null, null, null, "snowspruce", "snowpine"],
-      ash: [null, null, null, "snowspruce", "snowpine"],
-      alder: [null, null, null, "snowspruce", "snowpine"],
-      birch: [null, null, null, "snowspruce", "snowpine"],
-      //and a dead one stands only now and then
-      snag: ["snowsnag", null, null],
-      stump: "snowstump",
-      log: "snowlog",
-      logs: "snowlogs",
-    },
-    //further out the pines die off first, then the firs - dead trunks
-    //standing where they were, a fallen one now and then - and the dead
-    //wood, last, thins out to the frozen waste at the edge of the world
-    die: { snowpine: [3, 7], snowspruce: [5, 9] },
-    dead: ["snowsnag", "snowsnag", "snowsnag", "snowlog", "snowstump", null],
-    bare: [9, 14],
-    density: 1,
-    thin: 0.5,
-    thinOver: 9,
-  },
-  hot: {
+  //nothing but sand
+  desert: { kinds: {}, density: 0 },
+
+  savannah: {
     kinds: {
       //the living ones: cacti - tall ones with arms and prickly pears - and
       //now and then a tree that has dried out
@@ -192,10 +171,40 @@ var FLORA = {
       log: "drylog",
       logs: "drylogs",
     },
-    density: 0.1,
-    thin: 0.7,
-    thinOver: 8,
+    density: 0.12,
+    //fewer and fewer towards the desert
+    thin: [22, 28, 0.6],
   },
+
+  arctic: {
+    kinds: {
+      spruce: "snowspruce",
+      pine: "snowpine",
+      //the broadleaf trees die in the cold: here and there a fir or a pine
+      //stands where one would
+      oak: [null, null, null, "snowspruce", "snowpine"],
+      beech: [null, null, null, "snowspruce", "snowpine"],
+      ash: [null, null, null, "snowspruce", "snowpine"],
+      alder: [null, null, null, "snowspruce", "snowpine"],
+      birch: [null, null, null, "snowspruce", "snowpine"],
+      //and a dead one stands only now and then
+      snag: ["snowsnag", null, null],
+      stump: "snowstump",
+      log: "snowlog",
+      logs: "snowlogs",
+    },
+    density: 1,
+    thin: [-13, -27, 0.5],
+    //further out the pines die off first, then the firs - dead trunks
+    //standing where they were, a fallen one now and then - and the dead
+    //wood, last, thins out to nothing at the edge of the north
+    die: { snowpine: [-19, -23], snowspruce: [-21, -25] },
+    dead: ["snowsnag", "snowsnag", "snowsnag", "snowlog", "snowstump", null],
+    bare: [-25, -29],
+  },
+
+  //nothing but snow
+  polar: { kinds: {}, density: 0 },
 };
 
 var simplex = new Simplex("woods");
@@ -289,25 +298,25 @@ function grows(x, y, w, density) {
 
 /**
  * What a kind of tree of the woods is in a zone of the climate (FLORA), on
- * the tile at x, y, that far into it - or null for nothing.
+ * the tile at x, y, as warm as it is there - or null for nothing.
  */
-function climateKind(flora, kind, x, y, depth) {
+function climateKind(flora, kind, x, y, heat) {
   var k = flora.kinds[kind];
 
   if (k === undefined) return null;
   if (Array.isArray(k)) k = k[Math.floor(hash(x, y, 25) * k.length)];
   if (k === null) return null;
 
-  //the further in, the more of the living ones are dead
+  //the colder, the more of the living ones are dead
   var die = flora.die !== undefined ? flora.die[k] : undefined;
 
-  if (die !== undefined && hash(x, y, 26) < smoothstep(die[0], die[1], depth))
+  if (die !== undefined && hash(x, y, 26) < smoothstep(die[0], die[1], heat))
     k = flora.dead[Math.floor(hash(x, y, 27) * flora.dead.length)];
 
-  //and further in still, nothing at all
+  //and colder still, nothing at all
   if (
     flora.bare !== undefined &&
-    hash(x, y, 28) < smoothstep(flora.bare[0], flora.bare[1], depth)
+    hash(x, y, 28) < smoothstep(flora.bare[0], flora.bare[1], heat)
   )
     return null;
 
@@ -351,23 +360,29 @@ function kindAt(x, y, w) {
  * @param low {number} the height of the lowest corner of the tile
  */
 function treeAt(x, y, low) {
-  var w = woodAt(x, y, low),
-    flora = FLORA[Climate.zoneAt(x, y).id],
+  var flora = FLORA[Climate.zoneAt(x, y).id],
     density = 1,
-    depth = 0,
+    heat = 0,
     kind;
 
   if (flora !== undefined) {
-    depth = Math.max(0, Climate.depth(x, y, Climate.zoneAt(x, y).id));
-    density =
-      flora.density * (1 - flora.thin * smoothstep(0, flora.thinOver, depth));
+    //nothing grows there at all
+    if (flora.density === 0) return null;
+
+    heat = Climate.heat(x, y);
+    density = flora.density;
+    if (flora.thin !== undefined)
+      density *=
+        1 - flora.thin[2] * smoothstep(flora.thin[0], flora.thin[1], heat);
   }
+
+  var w = woodAt(x, y, low);
 
   if (!grows(x, y, w, density)) return null;
 
   kind = kindAt(x, y, w);
 
-  if (flora !== undefined) kind = climateKind(flora, kind, x, y, depth);
+  if (flora !== undefined) kind = climateKind(flora, kind, x, y, heat);
   if (kind === null) return null;
 
   var codes = CODES[kind];
