@@ -1,3 +1,4 @@
+import Burnt from "./burnt";
 import CanvasCache from "./canvascache";
 import CachedSprite from "./cachedsprite";
 import Generator from "./generator";
@@ -338,6 +339,147 @@ SpriteCache.prototype.frameName = function (name, f) {
   return out;
 };
 
+//the generators whose parts are rooms, storeys - which can be painted open
+//on a side (openName): the buildings'
+var ROOMS = {
+  flats: true,
+  offices: true,
+  shops: true,
+  houses: true,
+  civic: true,
+  oldtown: true,
+  utilities: true,
+};
+
+//the generators whose parts can be painted run down (wornName): whatever
+//stands on a tile of a city's
+var WORN = Object.assign({ parks: true, sites: true }, ROOMS);
+
+/**
+ * The name of a generated picture painted another way, tag after it -
+ * "o1", "w2" - made drawable the first time it is asked for: the same size
+ * and pivot, painted by the same generator, with @<tag> after its key; the
+ * name as it is, for anything not painted by one of gens.
+ */
+function variantName(self, name, tag, gens) {
+  var base = name.replace(/\/[owsbck]\d+$/, ""),
+    frame = self.frames[base];
+
+  if (frame === undefined) return base;
+
+  var g = self.sheets[frame.sheet].generated,
+    out = base + "/" + tag;
+
+  if (g === null || gens[g.gen] !== true) return base;
+
+  if (self.frames[out] === undefined) {
+    self.sheets[out] = new Sheet(null, {
+      name: out,
+      gen: g.gen,
+      key: g.key + "@" + tag,
+      faced: g.faced,
+    });
+    self.frames[out] = Object.assign({}, frame, { sheet: out });
+  }
+
+  return out;
+}
+
+/**
+ * The name of a generated part of a building painted open on sides of its
+ * tile (shared/gen/isobox setOpen) - its rooms showing where the wall on
+ * that side was, a tile of it in front having come down: 1 the side to the
+ * -x of it as it is seen, 2 to the -y, 3 both. The name itself for 0, or
+ * anything that is no such part.
+ */
+SpriteCache.prototype.openName = function (name, sides) {
+  return sides > 0
+    ? variantName(this, name, "o" + sides, ROOMS)
+    : name.replace(/\/[owsbck]\d+$/, "");
+};
+
+/**
+ * The name of a generated part painted run down (shared/gen/isobox
+ * setWorn): a yard, a park, a garden wrecked by a blast (1) or burnt (2) -
+ * cracked, the grass dry, the trees dead, broken, strewn with what fell.
+ */
+SpriteCache.prototype.wornName = function (name, kind) {
+  return kind > 0
+    ? variantName(this, name, "w" + kind, WORN)
+    : name.replace(/\/[owsbck]\d+$/, "");
+};
+
+/**
+ * The name of a generated part of a building painted as a ruin of itself
+ * (shared/gen/isobox setRuin): "s" burnt out, standing; "b" burnt and fallen
+ * in; "c" fallen in, the rubble of it - storeys how many storeys came down
+ * onto it (0 for as many as it has).
+ */
+SpriteCache.prototype.ruinName = function (name, kind, storeys) {
+  return variantName(this, name, kind + (storeys | 0), ROOMS);
+};
+
+/**
+ * The same picture as sprite, put together out of the same parts in the same
+ * places, burnt as they were - each part of it named anew as rename says
+ * (openName, wornName); or sprite itself, for one not put together here.
+ *
+ * @returns {CachedSprite}
+ */
+function renamed(self, sprite, rename) {
+  if (!sprite || typeof sprite.key !== "string") return sprite;
+
+  var parts = [],
+    whole = sprite.key.split("+").every(function (key) {
+      var m = PART_KEY.exec(key);
+
+      if (m === null || self.frames[m[1]] === undefined) return false;
+
+      parts.push({
+        name: rename(m[1]),
+        x: +(m[2] || 0),
+        y: +(m[3] || 0),
+        clip:
+          m[4] !== undefined
+            ? { x: +m[4], y: +m[5], w: +m[6], h: +m[7] }
+            : undefined,
+        plain: m[8] === "!",
+        burnt: m[9] || undefined,
+      });
+
+      return true;
+    });
+
+  return whole && parts.length > 0 ? self.getComposite(parts) : sprite;
+}
+
+/**
+ * The same picture as sprite with every part of a building in it open on
+ * sides of its tile (openName).
+ *
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.opened = function (sprite, sides) {
+  var self = this;
+
+  return renamed(this, sprite, function (name) {
+    return self.openName(name, sides);
+  });
+};
+
+/**
+ * The same picture as sprite with every part in it run down (wornName).
+ *
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.worn = function (sprite, kind) {
+  var self = this;
+
+  return renamed(this, sprite, function (name) {
+    return self.wornName(name, kind);
+  });
+};
+
 SpriteCache.prototype.has = function (name) {
   return this.frames[name] !== undefined;
 };
@@ -388,7 +530,8 @@ SpriteCache.prototype.getComposite = function (parts) {
             ? part.name || part
             : part.name + "@" + part.x + "," + part.y) +
           (c ? "#" + c.x + "," + c.y + "," + c.w + "," + c.h : "") +
-          (part.plain ? "!" : "")
+          (part.plain ? "!" : "") +
+          (part.burnt ? "~" + part.burnt : "")
         );
       })
       .join("+"),
@@ -420,6 +563,8 @@ SpriteCache.prototype.getComposite = function (parts) {
       x: x,
       y: y,
       clip: part.clip || null,
+      //burnt down, as its words say (client/burnt)
+      burnt: part.burnt ? Burnt.spec(part.burnt) : null,
     });
     width = Math.max(width, x + (part.clip ? part.clip.w : frame.w));
     height = Math.max(height, y + (part.clip ? part.clip.h : frame.h));
@@ -435,8 +580,88 @@ SpriteCache.prototype.getComposite = function (parts) {
   );
 
   if (plain) sprite.plain = true;
+  if (
+    resolved.some(function (part) {
+      return part.burnt !== null;
+    })
+  )
+    sprite.burnt = true;
+
+  //charred, all of it as one (client/burnt wholly)
+  resolved.forEach(function (part) {
+    if (part.burnt !== null && Burnt.wholly(part.burnt).length > 0)
+      sprite.wholly = Burnt.wholly(part.burnt);
+  });
 
   return sprite;
+};
+
+//a part of what a picture is put together out of, as its key has it
+//(getComposite): its name, where it is in it, the piece of it, drawn as
+//painted, burnt
+var PART_KEY =
+  /^([^@#!~]*)(?:@(-?[\d.]+),(-?[\d.]+))?(?:#(-?[\d.]+),(-?[\d.]+),([\d.]+),([\d.]+))?(!)?(?:~(.*))?$/;
+
+//what a part was burnt as already, with words on top - a kind of burning
+//once only, the newer words for it (client/burnt spec)
+function merged(was, words) {
+  if (!was) return words;
+
+  var kinds = {},
+    out = [];
+
+  was
+    .split(";")
+    .concat(String(words).split(";"))
+    .filter(Boolean)
+    .forEach(function (one) {
+      var kind = one.split(":")[0];
+
+      if (kinds[kind] === undefined) {
+        kinds[kind] = out.length;
+        out.push(one);
+      } else out[kinds[kind]] = one;
+    });
+
+  return out.join(";");
+}
+
+/**
+ * The same picture as sprite, put together out of the same parts in the same
+ * places, every one of them burnt as words say (client/burnt) - and drawn as
+ * painted, if plain - or sprite itself, for one not put together here.
+ *
+ * @param sprite {CachedSprite}
+ * @param words {string} "c:seed:level", "r:seed:keep", "y:seed"
+ * @param [plain] {boolean}
+ * @returns {CachedSprite}
+ */
+SpriteCache.prototype.burnt = function (sprite, words, plain) {
+  if (!sprite || typeof sprite.key !== "string") return sprite;
+
+  var frames = this.frames,
+    parts = [],
+    whole = sprite.key.split("+").every(function (key) {
+      var m = PART_KEY.exec(key);
+
+      if (m === null || frames[m[1]] === undefined) return false;
+
+      parts.push({
+        name: m[1],
+        x: +(m[2] || 0),
+        y: +(m[3] || 0),
+        clip:
+          m[4] !== undefined
+            ? { x: +m[4], y: +m[5], w: +m[6], h: +m[7] }
+            : undefined,
+        plain: !!plain || m[8] === "!",
+        burnt: merged(m[9], words),
+      });
+
+      return true;
+    });
+
+  return whole && parts.length > 0 ? this.getComposite(parts) : sprite;
 };
 
 /**

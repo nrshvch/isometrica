@@ -110,6 +110,11 @@ var CRUSH_PUFFS = 2,
   DOWN_PUFFS = 6,
   MOST_PUFFS = 320;
 
+//how fast the dust a tile comes down in is thrown out from the middle of
+//it, world units a second, at the least and at the most - over the tiles
+//round it, not off down the street
+var DOWN_OUT = [8, 18];
+
 //how long the rubble takes to come up under the dust, and the foot to go,
 //ms
 var SETTLE_MS = 450;
@@ -149,12 +154,21 @@ var FENCE_SHIFT = 14 / 32,
  *        the client's building (client/building), or anything drawn the
  *        same way, its view up still
  * @param tiles {number[]} every tile it stands on
- * @param [down] {number[]} the tiles of it down already, a demolition
- *        under way (core/building down): nothing of it there - and fenced
- *        off all the same
+ * @param [options] {{fence: boolean, rubble: boolean, down: number[]}}
+ *        fence and rubble false for no fence round it, and no heaps of
+ *        rubble of its own where it comes down - a building burnt down,
+ *        what is left of it its own (client/fires); down the tiles of it
+ *        down already, a demolition under way (core/building down): nothing
+ *        of it there - and fenced off all the same
  */
-function Demolition(root, building, tiles, down) {
-  var self = this;
+function Demolition(root, building, tiles, options) {
+  var self = this,
+    down = options && options.down ? options.down : null;
+
+  this.fenced = !options || options.fence !== false;
+  this.rubbles = !options || options.rubble !== false;
+  //what it is burnt as, all of it still standing (burn) - or null
+  this.words = null;
 
   this.root = root;
   this.building = building;
@@ -166,6 +180,10 @@ function Demolition(root, building, tiles, down) {
     staticData: building.staticData,
   };
   this.puffs = 0;
+  //its windows flickering, the wires to them torn (flicker) - and how long
+  //it has been at it, ms
+  this.flickers = [];
+  this.since = 0;
   this.chunks = [];
   this.chunked = 0;
   //every tile of it, by the tile: what stands there, coming down, or down
@@ -182,12 +200,20 @@ function Demolition(root, building, tiles, down) {
     if (down && down.indexOf(tile) !== -1) self.columns[tile].state = "gone";
   });
 
-  //what stands of it, drawn as it is
-  var view = new BuildingView(),
+  //what stands of it: the pictures its view has up - charred, say, by a
+  //fire (client/fires) - or, its view drawing nothing of it, being
+  //demolished, drawn afresh as it is
+  var live =
+      building.view &&
+      building.view.gameObject &&
+      building.view.gameObject.transform.children.length > 0,
+    view = live ? building.view : new BuildingView(),
     at;
 
-  view.setBuilding(this.standIn);
-  view.update();
+  if (!live) {
+    view.setBuilding(this.standIn);
+    view.update();
+  }
   at = view.gameObject.transform.getPosition([0, 0, 0]);
 
   this.go = new engine.GameObject("demolition");
@@ -196,12 +222,13 @@ function Demolition(root, building, tiles, down) {
   root.game.logic.world.addGameObject(this.go);
 
   stand(this, view.gameObject, at);
-  view.dispose();
+  if (!live) view.dispose();
+  ahead(this);
 
   //fenced off the moment it is to come down - every tile of it, till the
   //last of it is down and pushed away (end)
   this.fences = {};
-  fence(this);
+  if (this.fenced) fence(this);
 
   //turned round: what is coming down is down, and what stands stands as it
   //is seen from the new side
@@ -313,6 +340,12 @@ function column(tile) {
     //be taken apart from then (slice)
     whole: [],
     cuts: [],
+    //what it was last seen to be doing, and the sides of it opened up where
+    //a tile of it in front has fallen (open) - and still to be, once they
+    //are painted
+    was: "standing",
+    open: 0,
+    opening: 0,
   };
 }
 
@@ -359,10 +392,15 @@ function stand(self, view, at) {
       pivotX: renderer.pivotX,
       pivotY: renderer.pivotY,
       lights: renderer.lights,
+      windows: renderer.windows,
       variant: renderer.variant,
     };
 
     col.whole.push(piece(self, where, kept, whole(sprite, kept)));
+    //come down by itself, blown up, burnt: lit still as it stands - for a
+    //moment, flickering (what an explosion tears off it is not lit)
+    if (self.flickers !== undefined && !self.fenced)
+      flicker(self, col.whole[col.whole.length - 1], kept);
     col.cuts.push({ where: where, renderer: kept, sprite: sprite });
   });
 }
@@ -500,12 +538,14 @@ function partsOf(sprites, sprite, renderer) {
     out = [];
 
   for (var i = 0; i < keys.length; i++) {
-    var m = /^([^@#]*)(?:@(-?\d+),(-?\d+))?$/.exec(keys[i]),
+    var m = /^([^@#~!]*)(?:@(-?[\d.]+),(-?[\d.]+))?(?:~(.*))?$/.exec(keys[i]),
       frame = m ? sprites.frame(m[1]) : undefined;
 
     if (frame === undefined) return [whole(sprite, renderer)];
 
-    var x = +(m[2] || 0),
+    //burnt as the whole was
+    var burnt = m[4] || "",
+      x = +(m[2] || 0),
       y = +(m[3] || 0),
       //where its own middle is - a generated part's - the rest of its place
       //up the picture is how far it is laid up
@@ -513,8 +553,14 @@ function partsOf(sprites, sprite, renderer) {
       lift = Math.max(0, renderer.pivotY - y - pivotY);
 
     out.push({
-      sprite: keys.length > 1 ? sprites.getSprite(m[1]) : sprite,
+      sprite:
+        keys.length === 1
+          ? sprite
+          : burnt
+            ? sprites.getComposite([{ name: m[1], burnt: burnt }])
+            : sprites.getSprite(m[1]),
       name: m[1],
+      burnt: burnt || undefined,
       frame: frame,
       pivotX: renderer.pivotX - x,
       pivotY: renderer.pivotY - y - lift,
@@ -536,7 +582,9 @@ function piece(self, where, renderer, part) {
     c = part.clip,
     sprite =
       c !== null
-        ? self.root.sprites.getComposite([{ name: part.name, clip: c }])
+        ? self.root.sprites.getComposite([
+            { name: part.name, clip: c, burnt: part.burnt },
+          ])
         : part.sprite,
     y = where[1] + part.lift * PER_PIXEL;
 
@@ -710,6 +758,51 @@ function fallBy(s, floors, ground, dt, crush) {
   }
 }
 
+//how long the lights of what comes down by itself flicker before they go
+//out for good, ms, at the least and at the most; and how long each flicker
+//is, on or off, at the most
+var FLICKER = [250, 750],
+  FLICKER_EACH = 110;
+
+/**
+ * The lights of a tile of it coming down by itself - blown up, hit by a
+ * blast, fallen in as it burnt (no fence round it, the people still in it)
+ * - on as they were, its windows lit as its view had them (client/lighting
+ * windowsOn), then flickering as the wires to them are torn, and out a
+ * moment on. What falls of it is dark (slice).
+ */
+function flicker(self, p, kept) {
+  var r = p.go.spriteRenderer;
+
+  if (kept.windows === undefined || kept.lights === undefined) return;
+
+  r.windows = kept.windows;
+  r.dark = false;
+  self.flickers.push({
+    r: r,
+    out: self.since + FLICKER[0] + Math.random() * (FLICKER[1] - FLICKER[0]),
+    next: self.since + Math.random() * FLICKER_EACH,
+  });
+}
+
+function flickering(self) {
+  self.flickers = self.flickers.filter(function (f) {
+    if (self.since >= f.out || f.r.gameObject.world === null) {
+      f.r.dark = true;
+      return false;
+    }
+
+    if (self.since >= f.next) {
+      //off more and more of the time, as it goes
+      f.r.dark = !f.r.dark;
+      f.next =
+        self.since + (f.r.dark ? 1.5 : 0.6) * Math.random() * FLICKER_EACH + 15;
+    }
+
+    return true;
+  });
+}
+
 function DemolitionScript(demolition) {
   engine.Component.call(this);
   this.demolition = demolition;
@@ -721,10 +814,21 @@ DemolitionScript.prototype.profileName = "demolition";
 DemolitionScript.prototype.tick = function (time) {
   var self = this.demolition,
     dt = time.dt,
-    busy = false;
+    busy = false,
+    fell = false;
+
+  self.since += dt;
+  if (self.flickers.length > 0) flickering(self);
 
   for (var tile in self.columns) {
     var col = self.columns[tile];
+
+    if (col.state !== col.was) {
+      if (col.state === "falling") fell = true;
+      col.was = col.state;
+    }
+
+    if (col.opening > 0 && col.state === "standing") opening(self, col);
 
     if (col.state === "shaking") shake(self, col, dt);
     else if (col.state === "falling") fallOn(self, col, dt);
@@ -735,7 +839,152 @@ DemolitionScript.prototype.tick = function (time) {
 
   flyOn(self, dt);
 
+  if (fell) open(self);
+
   if (!busy && self.chunks.length === 0) end(self);
+};
+
+/**
+ * Every tile of it still standing whole, open on its sides where a tile of
+ * it in front of it there has fallen away: its storeys painted open there
+ * (SpriteCache opened, shared/gen/isobox setOpen) - empty rooms, their
+ * floors and walls, where the wall between them was - and what it is to
+ * come down in too, so it comes down open. Only the sides to the front, as
+ * it is seen: what is behind it leaves nothing of it to be seen. Put in
+ * the place of what it was as soon as they are painted (opening), shut
+ * meanwhile, never not there.
+ */
+function open(self) {
+  if (View.top()) return;
+
+  for (var tile in self.columns) {
+    var col = self.columns[tile];
+
+    if (col.state !== "standing" || col.whole.length === 0) continue;
+
+    var sides = frontSides(self, +tile, function (o) {
+      return o.state !== "standing" && o.state !== "shaking";
+    });
+
+    if (sides !== (col.open || 0)) {
+      col.open = sides;
+      col.opening = sides;
+    }
+  }
+}
+
+//the sides of tile, as it is seen, that a tile of it which is - as which
+//says - is in front of: 1 to the -x of it, 2 to the -y
+function frontSides(self, tile, which) {
+  var sides = 0,
+    x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile);
+
+  for (var other in self.columns) {
+    if (!which(self.columns[other])) continue;
+
+    var seen = View.vector(
+      Terrain.extractX(+other) - x,
+      Terrain.extractY(+other) - y,
+    );
+
+    if (seen[0] === -1 && seen[1] === 0) sides |= 1;
+    else if (seen[0] === 0 && seen[1] === -1) sides |= 2;
+  }
+
+  return sides;
+}
+
+//a tile of it to be opened up (open), once what it is opened up as is
+//painted, every part of it, as it is drawn - lit, and at night
+function opening(self, col) {
+  var sprites = self.root.sprites,
+    gl = engine.Config.gl,
+    sides = col.opening,
+    ready = true,
+    whole = col.whole.map(function (p) {
+      var s = sprites.opened(p.go.spriteRenderer.sprite, sides);
+
+      if (!painted(s, gl)) ready = false;
+      return s;
+    });
+
+  if (!ready) return;
+
+  col.whole.forEach(function (p, k) {
+    p.go.spriteRenderer.setSprite(whole[k]);
+  });
+  col.cuts.forEach(function (c) {
+    c.sprite = sprites.opened(c.sprite, sides);
+  });
+  col.opening = 0;
+  changed();
+}
+
+//whether a picture is painted, as it is drawn - asked for, if not
+function painted(sprite, gl) {
+  var ready = sprite.ready ? sprite.ready() : true;
+
+  if (sprite.entries)
+    sprite.entries(!!gl, true).forEach(function (e) {
+      if (e !== sprite && e.ready && !e.ready()) ready = false;
+    });
+
+  return ready;
+}
+
+/**
+ * Every side of every tile of it that may be opened up, as it comes down -
+ * where there is a tile of it in front of it - painted ahead (open), so
+ * that it is ready by the time it is.
+ */
+function ahead(self) {
+  var sprites = self.root.sprites,
+    gl = engine.Config.gl;
+
+  if (View.top()) return;
+
+  for (var tile in self.columns) {
+    var col = self.columns[tile],
+      sides = frontSides(self, +tile, function () {
+        return true;
+      });
+
+    if (sides === 0) continue;
+
+    col.whole.forEach(function (p) {
+      [sides & 1, sides & 2, sides].forEach(function (s, k) {
+        if (s > 0 && (k < 2 || sides === 3))
+          painted(sprites.opened(p.go.spriteRenderer.sprite, s), gl);
+      });
+    });
+  }
+}
+
+/**
+ * Every tile of it still standing burnt as words say (client/burnt) -
+ * charred, a building blown up: what stands of it, and what it will come
+ * down in.
+ *
+ * @param words {string}
+ */
+Demolition.prototype.burn = function (words) {
+  var sprites = this.root.sprites;
+
+  this.words = words;
+
+  for (var tile in this.columns) {
+    var col = this.columns[tile];
+
+    col.whole.forEach(function (p) {
+      var r = p.go.spriteRenderer;
+
+      r.setSprite(sprites.burnt(r.sprite, words));
+    });
+    col.cuts.forEach(function (c) {
+      c.sprite = sprites.burnt(c.sprite, words);
+    });
+  }
 };
 
 //a tile shaking, before it gives - dust going up where it will
@@ -850,9 +1099,16 @@ function crush(self, col, f) {
 /**
  * A floor bursting into pieces of itself: bits of its picture - none of
  * them nothing to see - flung out from the middle of the building and up,
- * from where they are in it.
+ * from where they are in it: CHUNKS of them, as far and as high as a floor
+ * crushed throws them - or as fling says (client/explosion).
+ *
+ * @param [fling] {{n: number, out: number[], up: number[], lie: number[],
+ *        around: boolean}} how many pieces, and how fast out and up, world
+ *        units a second, and how long they lie, ms - each from the first to
+ *        the second - and whether they go any way at all, all round, rather
+ *        than out from the middle of the building
  */
-function burst(self, col, f) {
+function burst(self, col, f, fling) {
   if (!f.cuttable) return;
 
   var part = f.part,
@@ -870,12 +1126,14 @@ function burst(self, col, f) {
           h: Math.min(CELL, c.h - y),
         });
 
-  for (var n = 0; n < CHUNKS && cells.length > 0; n++) {
-    if (self.chunked >= MOST_CHUNKS) return;
+  var most = fling ? fling.n : CHUNKS;
+
+  for (var n = 0; n < most && cells.length > 0; n++) {
+    if (self.chunked >= (self.most || MOST_CHUNKS)) return;
 
     var cell = cells.splice(Math.floor(Math.random() * cells.length), 1)[0];
 
-    chunk(self, f, cell);
+    chunk(self, f, cell, fling);
   }
 }
 
@@ -910,18 +1168,30 @@ function seen(sprites, part, x, y, size) {
  * A piece of a floor flung off it: its bit of the picture, its foot where
  * the bit's foot is, flung out and up.
  */
-function chunk(self, f, cell) {
-  var part = f.part,
+function chunk(self, f, cell, fling) {
+  var throws = fling ? fling.out : THROW,
+    tosses = fling ? fling.up : TOSS,
+    lies = fling ? fling.lie : LIE_MS,
+    part = f.part,
     go = new engine.GameObject("debris"),
     r = new engine.SpriteRenderer(),
     p = [f.x, f.y, f.z],
     //how far up its foot is over where the floor is drawn from
     up = (part.pivotY - (cell.y + cell.h)) * PER_PIXEL,
     wx = self.go.transform.getPosition([0, 0, 0]),
-    ox = wx[0] + p[0] - self.mx + (Math.random() - 0.5) * TILE,
-    oz = wx[2] + p[2] - self.mz + (Math.random() - 0.5) * TILE,
+    //out from the middle of the building, more or less - or for one blown
+    //up, any way at all, all round it (fling around)
+    any = fling && fling.around ? Math.random() * 2 * Math.PI : null,
+    ox =
+      any !== null
+        ? Math.cos(any)
+        : wx[0] + p[0] - self.mx + (Math.random() - 0.5) * TILE,
+    oz =
+      any !== null
+        ? Math.sin(any)
+        : wx[2] + p[2] - self.mz + (Math.random() - 0.5) * TILE,
     l = Math.hypot(ox, oz) || 1,
-    out = THROW[0] + Math.random() * (THROW[1] - THROW[0]);
+    out = throws[0] + Math.random() * (throws[1] - throws[0]);
 
   r.layer = RenderLayer.buildingsLayer;
   //drawn as it is painted: lit as it is drawn, it would stand as high as
@@ -946,9 +1216,9 @@ function chunk(self, f, cell) {
     z: p[2],
     vx: (ox / l) * out,
     vz: (oz / l) * out,
-    vy: TOSS[0] + Math.random() * (TOSS[1] - TOSS[0]),
+    vy: tosses[0] + Math.random() * (tosses[1] - tosses[0]),
     bounced: 0,
-    lie: LIE_MS[0] + Math.random() * (LIE_MS[1] - LIE_MS[0]),
+    lie: lies[0] + Math.random() * (lies[1] - lies[0]),
     t: -1,
   });
 }
@@ -1034,10 +1304,10 @@ function down(self, col) {
       (x + (Math.random() - 0.5) * 0.9) * TILE - g[0],
       (y + (Math.random() - 0.5) * 0.9) * TILE - g[2],
       Math.random() * 8,
-      24 + Math.random() * 20,
+      DOWN_OUT[0] + Math.random() * (DOWN_OUT[1] - DOWN_OUT[0]),
     );
 
-  rubble(self, col);
+  if (self.rubbles) rubble(self, col);
 }
 
 //a tile's rubble coming up, its foot going, as it settles
@@ -1199,7 +1469,7 @@ function turn(self) {
   var standing = false;
 
   //the fence as it is seen from the new side
-  fence(self);
+  if (self.fenced) fence(self);
 
   self.chunks.forEach(function (c) {
     if (c.go.world !== null) c.go.world.removeGameObject(c.go);
@@ -1240,6 +1510,12 @@ function turn(self) {
     view.gameObject.transform.getPosition([0, 0, 0]),
   );
   view.dispose();
+
+  //burnt as it was, and open where it was, from the new side
+  if (self.words !== null) self.burn(self.words);
+  for (tile in self.columns) self.columns[tile].open = 0;
+  ahead(self);
+  open(self);
 }
 
 //all of it down, and pushed away, and every piece of it gone
@@ -1341,4 +1617,23 @@ function hash(x, y) {
   return (h ^ (h >>> 13)) >>> 0;
 }
 
-export default { Demolition: Demolition };
+/**
+ * What a building coming down is taken apart and thrown about with, for
+ * whatever else brings one down (client/explosion) - each working on
+ * anything shaped like a Demolition: {root, go, columns, chunks, chunked,
+ * puffs, mx, mz} and, at the most, so many pieces (most).
+ */
+var pieces = {
+  partsOf: partsOf,
+  column: column,
+  stand: stand,
+  slice: slice,
+  seat: seat,
+  burst: burst,
+  flyOn: flyOn,
+  debris: debris,
+  gone: gone,
+  bottomOf: bottomOf,
+};
+
+export default { Demolition: Demolition, pieces: pieces };

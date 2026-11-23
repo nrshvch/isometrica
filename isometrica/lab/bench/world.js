@@ -1,19 +1,26 @@
 /**
  * The ground for the lab's benches that go the game's own way (lab/
- * demolition.html, lab/replace.html): the game's own client and world, out
- * in the open sea, and of all of it only the bench's own patch drawn - flat
- * grass, as a save puts ground back (core/terrain load), with nothing of the
- * world's own on it - and a city of nobody to own what is put up, rich
- * enough never to be short. The clock stands still at ten in the morning in
+ * demolition.html, replace.html, explosion.html, fire.html): the game's own
+ * client and world, out in the open sea, and of all of it only the bench's
+ * own patch drawn - flat grass, as a save puts ground back (core/terrain
+ * load), with nothing of the world's own on it - and a city of nobody to
+ * own what is put up, rich enough never to be short. The clock stands still at ten in the morning in
  * clear weather, no traffic drives its roads, nothing is saved, nothing is
  * heard; and the client goes as fast or as slowly as asked, or not at all -
  * and the building sites with it, sitePace times as fast again.
  *
  * What is put up goes up whole, there and then - unpaid, nothing floated
  * over it (put) - on tiles counted from the middle of the patch.
+ *
+ * It is as warm as the green of the world there (core/climate), whatever
+ * the world's own climate would have it - unless a bench lays the climate
+ * out its own way (lab/climate.html); and of what the world puts on the land
+ * by itself, the trees and the stones, nothing stands off the patch.
  */
 import ReactiveProperty from "reactive-property";
+import Events from "events";
 import Core from "../../src/core/main";
+import Climate from "../../src/core/climate";
 import Client from "../../src/client/main";
 import BuildingCode from "../../src/data/buildingcode";
 import BuildingClassCode from "../../src/data/classcode";
@@ -22,6 +29,7 @@ import Resource from "../../src/core/resourcecode";
 import Config from "../../src/client/config";
 import Weather from "../../src/client/weather";
 import BuildingState from "../../src/core/buildingstate";
+import BuildingData from "../../src/data/buildings";
 import { stageOf } from "../../src/shared/gen/stacking";
 
 var Terrain = Core.Terrain;
@@ -32,6 +40,9 @@ var SAVES = "lab.bench";
 
 //how high the bench's ground is, steps - land, clear of the sea
 export var GROUND = 2;
+
+//how warm the bench is, °C: the middle of the green (core/climate ZONES)
+var GREEN = 15;
 
 //the middle of the bench, out in the open sea: deep water for thirty tiles
 //round it, nothing of the world's own anywhere near
@@ -96,6 +107,39 @@ function controls() {
 }
 
 /**
+ * Every building the catalogue offers, by its size and then its name:
+ * {value, label} each.
+ */
+export function kinds() {
+  return Object.keys(BuildingData)
+    .filter(function (code) {
+      var b = BuildingData[code];
+
+      return (
+        !b.hidden &&
+        b.classCode !== BuildingClassCode.road &&
+        b.classCode !== BuildingClassCode.tree
+      );
+    })
+    .sort(function (a, b) {
+      var x = BuildingData[a],
+        y = BuildingData[b];
+
+      return (
+        x.sizeX * x.sizeY - y.sizeX * y.sizeY || x.name.localeCompare(y.name)
+      );
+    })
+    .map(function (code) {
+      var b = BuildingData[code];
+
+      return {
+        value: code,
+        label: b.name + " (" + b.sizeX + "×" + b.sizeY + ")",
+      };
+    });
+}
+
+/**
  * Brings a bench's world up in el, the camera over its middle.
  *
  * @param el {HTMLElement}
@@ -103,6 +147,9 @@ function controls() {
  */
 export function open(el) {
   Weather.override = "clear";
+  Climate.setHeat(function () {
+    return GREEN;
+  });
 
   var core = new Core.Logic({ tick: 300000, saves: SAVES }),
     client = new Client.Vkaria(core, bridge(), {
@@ -168,6 +215,27 @@ function only(self) {
     if (ax1 > ax0 && ay1 > ay0)
       draw.call(terrain, ax0, ay0, ax1 - ax0, ay1 - ay0);
   };
+
+  //and the trees and the stones the world puts on the land by itself
+  //(core/ambient) only on it - not floating over the ground left undrawn
+  var service = self.core.envService,
+    getTree = service.getTree,
+    getRock = service.getRock;
+
+  function on(tile) {
+    var a = self.area,
+      x = Terrain.extractX(tile),
+      y = Terrain.extractY(tile);
+
+    return a !== null && x >= a.x && y >= a.y && x < a.x + a.w && y < a.y + a.h;
+  }
+
+  service.getTree = function (tile) {
+    return on(tile) ? getTree.call(this, tile) : null;
+  };
+  service.getRock = function (tile) {
+    return on(tile) ? getRock.call(this, tile) : null;
+  };
 }
 
 //no traffic on the roads: whatever puts the cars on (client/carman) taken
@@ -227,16 +295,27 @@ World.prototype.start = function () {
 
 /**
  * The patch of ground the bench stands on, w by h tiles from dx, dy off its
- * middle: flat grass, made so the way a save puts ground back (core/terrain
- * load) - its grid points all as high, and nothing of the world's own on
- * any of its tiles - and drawn, and nothing else; the patch drawn before it
- * gone where it is not this one.
+ * middle: grass, made so the way a save puts ground back (core/terrain
+ * load) - its grid points all as high, flat, or each as high as rise(i, j)
+ * says it is over that, i, j along the patch from its corner (no grid point
+ * more than a step over the ones next to it) - nothing of the world's own
+ * on any of its tiles, and drawn, and nothing else; the patch drawn before
+ * it gone where it is not this one.
+ *
+ * @param [o] {function(number, number): number|Object} rise, steps - or
+ *        {heights, wild}: heights, how high the grid point i, j from the
+ *        patch's corner is, steps, outright (0 to w, 0 to h; no two next to
+ *        each other more than a step apart); wild, the world's own trees and
+ *        stones left standing on it (core/ambient) rather than cleared off
  */
-World.prototype.ground = function (dx, dy, w, h) {
+World.prototype.ground = function (dx, dy, w, h, o) {
   var core = this.core,
     client = this.client,
     x0 = Terrain.extractX(MIDDLE) + dx,
     y0 = Terrain.extractY(MIDDLE) + dy,
+    rise = typeof o === "function" ? o : null,
+    heights = (o && typeof o === "object" && o.heights) || null,
+    wild = !!(o && typeof o === "object" && o.wild),
     was = this.area,
     points = [],
     cleared = [],
@@ -246,17 +325,20 @@ World.prototype.ground = function (dx, dy, w, h) {
 
   for (i = 0; i <= w; i++)
     for (j = 0; j <= h; j++)
-      points.push([Terrain.convertToIndex(x0 + i, y0 + j), GROUND]);
+      points.push([
+        Terrain.convertToIndex(x0 + i, y0 + j),
+        heights !== null ? heights(i, j) : GROUND + (rise ? rise(i, j) : 0),
+      ]);
 
   for (i = 0; i < w; i++)
     for (j = 0; j < h; j++) {
       var tile = Terrain.convertToIndex(x0 + i, y0 + j);
 
       tiles.push(tile);
-      if (core.terrain.clearedTiles[tile] !== true) cleared.push(tile);
+      if (!wild && core.terrain.clearedTiles[tile] !== true) cleared.push(tile);
     }
 
-  core.terrain.load({ points: points, cleared: cleared });
+  core.terrain.load({ points: points, cleared: wild ? [] : cleared });
 
   this.area = { x: x0, y: y0, w: w, h: h };
 
@@ -269,6 +351,14 @@ World.prototype.ground = function (dx, dy, w, h) {
 
   this.drawGround(x0, y0, w, h);
   client.terrain.redraw(tiles);
+
+  //the world's own trees and stones put on it, at its height, as the game
+  //puts them where the ground moved (client/envman)
+  if (wild)
+    Events.fire(core.terrain, Terrain.events.gridUpdate, {
+      points: {},
+      tiles: tiles,
+    });
 };
 
 //the client's clock going speed times as fast as the real one - and the
@@ -298,6 +388,9 @@ function pace(self) {
  */
 function sites(self, dt) {
   self.core.buildings.underConstruction().forEach(function (b) {
+    //its ground cleared first, as fast as the bulldozers go
+    if (b.clearing()) return;
+
     var was = self.progress.has(b) ? self.progress.get(b) : b.getProgress(),
       now = Math.min(1, was + (dt * self.sitePace) / b.data.constructionTime),
       seen = self.client.buildman.getBuilding(b.tile),
@@ -383,6 +476,66 @@ World.prototype.replace = function (dx, dy, code) {
 
   return this.client.buildman.replace(this.tile(dx, dy), code);
 };
+
+/**
+ * Blows up the building dx, dy from the middle, the way the game does
+ * (client/buildman explode): torn into pieces thrown all round in a
+ * fireball, and a heap of rubble left on every tile of it.
+ *
+ * @returns {number} ErrorCode - 0 once it has gone up
+ */
+World.prototype.explode = function (dx, dy) {
+  return this.client.buildman.explode(this.tile(dx, dy));
+};
+
+/**
+ * What lies on the bench left by what was blown up (data/buildings rubble):
+ * its heaps of rubble and its wrecked yards, by the tile - or only the one
+ * or the other.
+ *
+ * @param [only] {string} "heaps", "wrecks", "fallen" - the trees knocked
+ *        down, lying
+ * @returns {number[]}
+ */
+World.prototype.rubble = function (only) {
+  return this.city.buildings
+    .getBuildings()
+    .filter(function (b) {
+      if (b.data.variantOf !== BuildingCode.rubble) return false;
+
+      var wreck = !!(b.look && b.look.wreck),
+        fallen = !!(b.look && b.look.fallen);
+
+      return only === "heaps"
+        ? !wreck && !fallen
+        : only === "wrecks"
+          ? wreck
+          : only === "fallen"
+            ? fallen
+            : true;
+    })
+    .map(function (b) {
+      return b.tile;
+    });
+};
+
+//what is coming down on the bench by itself still (client/collapse)
+function collapses(self) {
+  return self.client.game.logic.world.gameObjects.filter(function (go) {
+    return go && go.collapse && go.world !== null;
+  });
+}
+
+//what is blowing up on the bench still (client/explosion)
+function explosions(self) {
+  return self.client.game.logic.world.gameObjects
+    .filter(function (go) {
+      return go && go.explosion && go.world !== null;
+    })
+    .map(function (go) {
+      return go.explosion;
+    });
+}
 
 /**
  * The building sites on the bench finished there and then.
@@ -506,7 +659,9 @@ World.prototype.wipe = function (dx, dy, w, h) {
 
 /**
  * Whether anything is being cleared still - a bulldozer out, a tile it has
- * not got to yet - or waits to go up where it is (client/buildman replace).
+ * not got to yet - or waits to go up where it is (client/buildman replace),
+ * or is blowing up (client/explosion), or coming down by itself, blown up
+ * or hit by the blast (client/collapse), or burnt (client/fires).
  */
 World.prototype.busy = function () {
   var works = this.client.clearworks;
@@ -514,7 +669,10 @@ World.prototype.busy = function () {
   return (
     works.dozers.length > 0 ||
     Object.keys(works.waiting).length > 0 ||
-    this.city.buildings.replacing().length > 0
+    this.city.buildings.replacing().length > 0 ||
+    explosions(this).length > 0 ||
+    collapses(this).length > 0 ||
+    this.client.fires.falling()
   );
 };
 
@@ -533,7 +691,10 @@ World.prototype.top = function (on) {
 /**
  * What is going on: the bulldozers out, the tiles still waiting for one,
  * the buildings coming down, the trees going over, the roads still to
- * break up and the heaps of rubble lying about; what waits to go up where
+ * break up and the heaps of rubble lying about; what is blowing up, its
+ * pieces flying and lying about, what is coming down by itself, and the
+ * heaps of rubble and the wrecked yards left lying there for good
+ * (data/buildings rubble); what waits to go up where
  * something is coming down for it, and the building sites going up, how far
  * along each, 0..1.
  */
@@ -555,6 +716,14 @@ World.prototype.status = function () {
     rubble: named.rubble || 0,
     fence: named.fence || 0,
     replacing: this.city.buildings.replacing().length,
+    blowing: explosions(this).length,
+    pieces: explosions(this).reduce(function (n, e) {
+      return n + e.pieces();
+    }, 0),
+    heaps: this.rubble("heaps").length,
+    wrecks: this.rubble("wrecks").length,
+    fallen: this.rubble("fallen").length,
+    collapsing: collapses(this).length,
     sites: this.core.buildings.underConstruction().map(function (b) {
       return b.getProgress();
     }),

@@ -335,6 +335,34 @@ var WORLD = {
     line([3, 20], [21, 20]),
   ],
 
+  //a burst: a star of eight points, longer and shorter by turns, and bits
+  //flung off it - blown up
+  explode: [
+    shape(
+      Array.apply(null, Array(16)).map(function (_, i) {
+        var a = -Math.PI / 2 + (i * Math.PI) / 8,
+          r = i % 2 === 0 ? (i % 4 === 0 ? 8.5 : 6.5) : 3.4;
+
+        return [12 + r * Math.cos(a), 12.5 + r * Math.sin(a)];
+      }),
+    ),
+    dot(4, 4.5, 1),
+    dot(20.5, 20, 1),
+  ],
+
+  //a flame, a smaller one licking up inside it - set on fire
+  fire: [
+    path(
+      "M12 21.5C8 21.5 5.5 18.75 5.5 15.25C5.5 11.25 9 9.5 9.25 5.25" +
+        "C11.75 7 12.25 9.25 12 11C13.5 10.25 14.25 8.5 14.25 7" +
+        "C16.75 9 18.5 12 18.5 15.25C18.5 18.75 16 21.5 12 21.5Z",
+    ),
+    path(
+      "M12 21.5C10.25 21.5 9.25 20.25 9.25 18.75C9.25 17 10.75 16 11.5 14" +
+        "C13.25 15.25 14.75 16.75 14.75 18.75C14.75 20.25 13.75 21.5 12 21.5Z",
+    ),
+  ],
+
   //a house, two arrows going round it - put up again, as something else
   replace: [
     path("M4 12A8 8 0 0 1 17.66 6.34L20 8"),

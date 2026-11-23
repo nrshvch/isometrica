@@ -242,10 +242,10 @@ How one is made, in order (`citygen/index.js`):
    along a side of it, a coast or a lake, the way towns grow up by the water.
    Further and further out, if none will do. Never across the row of tiles
    where y goes from 32767 to 32768: the world numbers its tiles
-   `(y << 16) ^ x`, 32 bits with a sign, and nothing that runs across from one
-   side of that to the other is ever got to the end of
-   (`isometrica/src/core/tileiterator.js`) - a building a player put across
-   it would hang the game the same way.
+   `(y << 16) ^ x`, 32 bits with a sign, and a tile worked out from one on
+   the other side of it by adding to it is not the same number -
+   `isometrica/src/core/tileiterator.js` wraps round it now, as the rest
+   of the world's sums do not.
 2. **The streets** (`streets.js`): two main roads through its middle, on out
    into the country to the edge of what the town looks at, stopping at the
    water - the roads to the next towns. The land between them is cut into

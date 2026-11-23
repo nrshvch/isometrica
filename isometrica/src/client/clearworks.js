@@ -47,6 +47,10 @@ var Terrain = Core.Terrain,
  * building being demolished stands as far down as it had come, fenced off,
  * for them to be sent again to the rest of it (client/buildman
  * demolitionOf).
+ *
+ * And a building put up is not put up till its ground is cleared - bare or
+ * not, whatever is on it held standing till then (sweep, core/city/
+ * citybuildings buildBuilding): the bulldozers sent to it the same way.
  */
 
 //how many tiles of a stretch a bulldozer takes on, at most
@@ -153,6 +157,24 @@ function waitOn(self, tile) {
 }
 
 /**
+ * Has the bulldozers out to the tiles a building is to go up on, once they
+ * are cleared (core/city/citybuildings buildBuilding): being cleared, and
+ * whatever stood on them held standing till one gets there (hold) - every
+ * one of them swept, bare or not, before it goes up.
+ *
+ * @param tiles {number[]}
+ */
+Clearworks.prototype.sweep = function (tiles) {
+  var self = this;
+
+  tiles.forEach(function (tile) {
+    waitOn(self, tile);
+  });
+
+  if (tiles.length > 0) crew(this, tiles);
+};
+
+/**
  * Holds what stood on a tile being cleared (core/terrain beingCleared) till
  * a bulldozer gets to it, when letGo(push) takes it away - push the way the
  * bulldozer pushed it over, in the world ("x+", "y-" - client/view
@@ -246,7 +268,8 @@ function burst(self, tile) {
  * Whatever stood on a tile waiting goes at once once anything is built on it
  * - a building site, a road - rather than stand in the middle of it till the
  * bulldozer gets there; and the bulldozer leaves that tile out. A building
- * being demolished is no such thing: it stands there till it is down.
+ * being demolished is no such thing: it stands there till it is down; nor
+ * is one waiting for this very ground to be cleared before it goes up.
  */
 function builtOver(self) {
   var buildings = self.root.core.buildingService;
@@ -254,7 +277,8 @@ function builtOver(self) {
   for (var tile in self.waiting) {
     var b = buildings.get(+tile);
 
-    if (b !== null && !b.demolishing) reach(self, +tile);
+    if (b !== null && !b.demolishing && !(b.clearing && b.clearing()))
+      reach(self, +tile);
   }
 }
 

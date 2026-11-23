@@ -10,70 +10,55 @@ import { tileName, shoreName, diffuseName } from "../shared/gen/names";
  * first, for SpriteCache#getComposite.
  *
  * @param terrain {Object} the data of gfx/generated/terrain.json
- * @param kind {string} "land", "shore", "water" - the shallows along the
- *        land - or "deep", the water further out
+ * @param set {string} the tileset the tile is: for land, the ground of its
+ *        zone of the climate (core/climate) - "grass", "sand_dunes", "snow" -
+ *        or the earth it was cleared down to, "earth", or that earth growing
+ *        back over, "earth_regrowing"; for water, the shallows along the land,
+ *        "water_shallow", the water further out, "water_deep", or the water
+ *        frozen over, "ice"
  * @param slope {string|number} the tile's slope code
  * @param x {number} where the tile is, which picks one of the variants
  * @param y {number}
- * @param [spills] {string[]} for the shallows, the edges and corners deep
- *        water lies beyond, as the tile is seen - "ne", "n" - which it spills
- *        over them from
- * @param [ground] {Object} for land cleared down to the earth, or next to
- *        some: {set} - "earth", "regrowing" or nothing, for the grass - and
- *        {grass} and {earth}, the edges and corners, as spills, the grass
- *        and the earth lie beyond, which they spill over them from
+ * @param [over] {{set: string, dirs: string[]}[]} the tilesets spilling over
+ *        the tile's edges and corners from the tiles next to it, lowest first
+ *        - each over the edges and corners, as the tile is seen, it lies
+ *        beyond: "ne", "n"
+ * @param [shore] {string} for land at the water, the water - "water_shallow"
+ *        or "ice" - whose shore is laid over it last: the water coming up the
+ *        low side of it, and its beach. A flat one has none
  */
-function tileParts(terrain, kind, slope, x, y, spills, ground) {
-  var cleared = ground && terrain.earth ? ground : null,
-    set =
-      kind === "water"
-        ? terrain.water
-        : kind === "deep"
-          ? terrain.deep
-          : cleared === null || !cleared.set
-            ? terrain.land
-            : terrain[cleared.set],
-    n = terrain.variants[set],
-    base = tileName(set, slope, n > 1 ? scatter(x, y) % n : 0),
-    parts = [base];
+function tileParts(terrain, set, slope, x, y, over, shore) {
+  var n = terrain.variants[set],
+    parts = [tileName(set, slope, n > 1 ? scatter(x, y) % n : 0)];
 
-  //the grass round earth growing back over spilling over its edges, and
-  //the earth of a tile cleared over the edges of those round it - ragged,
-  //the same one along an edge whichever tile, so it runs on
-  if (cleared !== null && terrain.edges)
-    [terrain.land, terrain.earth].forEach(function (over, k) {
-      (k === 0 ? cleared.grass : cleared.earth).forEach(function (dir) {
+  //ragged, the same one along an edge whichever tile, so it runs on - deep
+  //water and ice on the flat, as the water is, dithered as they thin out
+  if (over)
+    over.forEach(function (o) {
+      var variants = isWater(terrain, o.set)
+        ? terrain.spills.variants
+        : terrain.edges.variants;
+
+      o.dirs.forEach(function (dir) {
         parts.push(
-          diffuseName(
-            over,
-            slope,
-            dir,
-            scatter(x, y + dir.length) % terrain.edges.variants,
-          ),
+          diffuseName(o.set, slope, dir, scatter(x, y + dir.length) % variants),
         );
       });
     });
 
-  //the land with the water's shore over it - a flat shore has no water
-  //painted on it
-  if (kind === "shore" && terrain.shores[slope] === true)
-    return parts.concat([shoreName(terrain.water, slope)]);
-
-  //deep water spilling over the edges it lies beyond, dithered as it thins
-  //out - the same one along an edge whichever tile, so it runs on
-  if (kind === "water" && spills && terrain.spills)
-    spills.forEach(function (dir) {
-      parts.push(
-        diffuseName(
-          terrain.deep,
-          slope,
-          dir,
-          scatter(x, y + dir.length) % terrain.spills.variants,
-        ),
-      );
-    });
+  if (shore && terrain.shores[shore] && terrain.shores[shore][slope] === true)
+    parts.push(shoreName(shore, slope));
 
   return parts;
+}
+
+//whether a tileset is one of the water's: deep water, or the ice
+function isWater(terrain, set) {
+  return (
+    set === terrain.water ||
+    set === terrain.deep ||
+    terrain.frozen.indexOf(set) !== -1
+  );
 }
 
 /**

@@ -8,7 +8,9 @@ export var PAGES = [
     name: "Sprites",
     about:
       "Every picture the generators paint - ground, roads, buildings, trees, " +
-      "vehicles, stones, smoke - a generator at a time, lit or at night.",
+      "vehicles, stones, smoke - a generator at a time, lit or at night; " +
+      "and what the game does not use (yet): every kind of ground the " +
+      "terrain painter has.",
   },
   {
     id: "sounds",
@@ -67,6 +69,33 @@ export var PAGES = [
       "look of the same - or of anything that covers its ground, the way " +
       "the game replaces one: it comes down as the bulldozers get to it, " +
       "and a building site goes up on its ground once they are done.",
+  },
+  {
+    id: "explosion",
+    name: "Explosion bench",
+    about:
+      "One building on flat grass blown up the way the game blows one up - " +
+      "no fence, no bulldozer: torn into pieces thrown all round in a " +
+      "fireball, heaps of rubble left where it stood till they are cleared " +
+      "away - as slowly as you like.",
+  },
+  {
+    id: "fire",
+    name: "Fire bench",
+    about:
+      "One building on flat grass set on fire the way the game sets one on " +
+      "fire: it spreads window by window, floor by floor, black smoke " +
+      "rolling up off it, till it comes down and what is left of it burns " +
+      "on and smoulders - a day of it, as fast as you like, by day or night.",
+  },
+  {
+    id: "climate",
+    name: "Climate bench",
+    about:
+      "Every zone of the climate on one island - desert, green, snow and " +
+      "the frozen edge of the world - the way the game draws it: where each " +
+      "gives way to the next, the water freezing over, the trees and the " +
+      "stones of each, warmer or colder.",
   },
   {
     id: "cities",

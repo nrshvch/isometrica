@@ -16,19 +16,9 @@ import Trees from "../data/trees";
 import Felling from "./felling";
 import { changed } from "./looks";
 
-//which way round a tree on a tile is, of its four: the same every time, and
-//any of them as likely as the others, with nothing to tell from the next
-//tile's
+//which way round a tree on a tile is, of its four (data/trees)
 function tileTurns(tile) {
-  var h =
-    Math.imul(CoreTerrain.extractX(tile), 0x27d4eb2d) ^
-    Math.imul(CoreTerrain.extractY(tile), 0x165667b1) ^
-    0x2545f491;
-
-  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
-  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-
-  return (h ^ (h >>> 16)) >>> 30;
+  return Trees.tileTurns(tile);
 }
 
 var BuildingData = Core.BuildingData;
@@ -202,9 +192,35 @@ function onSceneryRemove(sender, tile, self) {
  */
 function hold(self, tile) {
   var go = self._scenery[tile],
-    works = self.root.clearworks;
+    works = self.root.clearworks,
+    blast = self.root.blasted ? self.root.blasted[tile] : undefined;
 
-  if (go === undefined || !works) return false;
+  if (go === undefined) return false;
+
+  //a tree a blast knocks over: standing till the blast gets to it, then
+  //going over the way it pushes it (client/explosion)
+  if (blast !== undefined) {
+    delete self.root.blasted[tile];
+    delete self._scenery[tile];
+    self._held[tile] = go;
+    blast(
+      function (push) {
+        if (self._held[tile] !== go) return;
+
+        delete self._held[tile];
+        Felling.fell(self.root, go.renderer, push, tile);
+        Pool.returnObject(self.pool, go);
+        changed();
+        self.root.game.scene.removeGameObject(go);
+      },
+      function (push) {
+        Felling.expect(self.root, go.renderer, push, tile);
+      },
+    );
+    return true;
+  }
+
+  if (!works) return false;
 
   if (
     !works.hold(

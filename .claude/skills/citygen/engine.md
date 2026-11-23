@@ -3,10 +3,10 @@
 ## Tiles and the seam
 
 - Tile index = `(y << 16) ^ x` (core/terrain `convertToIndex`), signed 32 bit.
-  From y = 32768 indices are negative. `core/tileiterator` never terminates on
-  a footprint spanning y 32767 -> 32768 (hangs the game on load). `site.js
-clearOfSeam` keeps the whole window plus margin on one side. Pre-existing
-  engine bug: a player building across that row hangs too.
+  From y = 32768 indices are negative. `core/tileiterator` now wraps (it used
+  to never terminate on a footprint spanning y 32767 -> 32768), but other
+  `tile + Terrain.dy` sums still do not wrap, so keys can miss across the
+  row. `site.js clearOfSeam` keeps the whole window plus margin on one side.
 - Terrain heights are deterministic noise (`core/terrain calcZ`), integers;
   `<= 0` corners = water. Overrides go in `gridPoints`, saved as
   `terrain.points`. `Ground.level` mirrors `planLevel`: neighbours within one

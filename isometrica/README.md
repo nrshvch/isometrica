@@ -6,8 +6,8 @@ traffic on the roads, the light it is all drawn in, and the generators that
 paint every picture of it. It has no game of its own and no screens: a game
 starts it up and puts its own over it (see the games' `src/main.js`).
 
-- `src/core` - the world itself: terrain, buildings and roads, cities, the
-  clock, saves.
+- `src/core` - the world itself: terrain, the climate (`climate.js`, see
+  Climate), buildings and roads, cities, the clock, saves.
 - `src/client` - the world on screen: chunks streamed in round the camera,
   building and road views, traffic (`traffic.js`, `carman.js`), the WebGL
   renderer and lighting (`glview.js`, `lighting.js`), the sprite cache and
@@ -38,8 +38,21 @@ starts it up and puts its own over it (see the games' `src/main.js`).
   demolition bench at `/demolition.html`, the replacement bench at
   `/replace.html` - a building put up in the place of itself, another look
   of it, or of whatever else covers its ground, coming down and going up
-  again the game's way, its site as fast as asked - the city bench at
-  `/cities.html`, and the lighting bench at `/lighting.html`. Everything is painted and
+  again the game's way, its site as fast as asked - the explosion bench at
+  `/explosion.html` - a building blown up, pieces torn off it in a
+  fireball and the rest of it coming down a tile at a time, dust hanging
+  over it, its rubble left lying till the bulldozers clear it and its
+  yard wrecked; or two of it side by side, a pile each, on the flat or on
+  a slope; or with its neighbours round it, the blast bringing down the
+  ones next to it and across the road and knocking about the one further
+  off -
+  the fire bench at `/fire.html` - a building set on fire, spreading
+  floor by floor and tile by tile, black smoke rolling up off it, and left
+  gutted, a roofless shell or fallen in, by what it is built of, a
+  burnt-out ruin, a day of it as fast as asked, by day or at night - the
+  climate bench at `/climate.html` - every zone of the climate on one
+  island, how each gives way to the next, the water freezing over - the
+  city bench at `/cities.html`, and the lighting bench at `/lighting.html`. Everything is painted and
   played in the page, nothing made beforehand.
   Each page is an HTML file that mounts a React component - its folder
   holds it and whatever the page works with (`sprites/` the gallery and its
@@ -56,6 +69,83 @@ A game depends on it by path (`"isometrica": "file:../isometrica"`) and
 imports its modules as `isometrica/<path under src>`, e.g.
 `isometrica/client/main`, `isometrica/core/terrain`. It is drawn with the
 engine in `engine/`.
+
+### Climate
+
+- The world is hot in the middle and frozen at its edge, the way the Earth
+  is at the equator and the poles - only flat, so its equator is the middle
+  of it, tile 32768, 32768, and its poles all of its rim
+  (`src/core/climate.js`). It rings round the middle in five zones
+  (`ZONES`), out from the middle:
+
+  | Zone     | Ground       | Water  | What grows                                                                | Stones                         | From, at 33° |
+  | -------- | ------------ | ------ | ------------------------------------------------------------------------- | ------------------------------ | ------------ |
+  | desert   | `sand_dunes` | open   | nothing                                                                   | none                           | the middle   |
+  | savannah | `savannah`   | open   | cacti, prickly pears, dried-out trees, dead wood bleached by the sun      | sandstone and pale rock, twice | 2,000 tiles  |
+  | green    | `grass`      | open   | the woods                                                                 | grey and brown                 | 4,400 tiles  |
+  | arctic   | `snow`       | frozen | firs and pines snowed over; the pines die off, then the firs, dead trunks | snowed over                    | 18,400 tiles |
+  | north    | `snow`       | frozen | nothing                                                                   | a few, snowed over             | 24,800 tiles |
+
+- It all goes by one number, `TEMPERATURE` - how warm the middle of the
+  world is, 33° - and it gets a degree colder every 400 tiles out (`LAPSE`).
+  Every zone starts at a temperature of its own: the savannah at 28°, the
+  green at 22°, the arctic at -13°, the north at -29°. A degree warmer moves
+  every zone 400 tiles further out - the desert and the savannah spread,
+  the green ring moves out, a longer ring with more room on it, and the snow
+  draws back to the edge. As warm as it is, the city a new player of the
+  city builder starts on, 5,600 tiles out, is in the green - the savannah's
+  first patches a hundred tiles off - and so is the delivery game's, 15,100
+  tiles out. Another zone is another row of `ZONES`, its ground one of the
+  terrain painter's tilesets.
+- The rings are not round: how warm it is wanders a few degrees either way
+  over a few thousand tiles. Nor does one zone stop where the next starts:
+  their tiles are mixed for 800 tiles either side of it (`BLEND`, 2°) - a
+  patch of the next zone here and there first, then more, bigger ones that
+  run into each other, till there is none of the first left; the way the
+  woods shade into each other, on the scale of the world. Where the ground
+  of two meets, the one over the other in the painter's precedence (snow
+  over grass, savannah over grass, sand over savannah) spills over the
+  edges of the other's tiles, ragged, the way the earth of a tile cleared
+  does - so there is no line along the tiles anywhere.
+- What grows in each zone is the woods' (`src/core/woods.js` `FLORA`): they
+  go on whatever the climate, so a forest runs on into the cold or the heat
+  and only what grows in it changes - by how warm it is, so that it moves
+  with the zones. In the arctic only the firs and the pines, snowed over -
+  some where the broadleaf trees would be, which die in the cold - and a
+  dead trunk among them now and then; further out the pines die off
+  (-19° to -23°), then the firs (-21° to -25°), and for a couple of thousand
+  tiles there are only dead trunks and fallen ones in the snow, fewer and
+  fewer (-25° to -29°), till the north is empty. On the savannah, cacti -
+  tall ones with arms, ribbed up their length, and prickly pears - where
+  the woods would have a tree alive, dried-out trees where they would have
+  a dead one, and the dead wood bleached by the sun, fewer towards the
+  desert, where there is nothing. The stones of each zone, and how many,
+  are `src/core/ambient.js` `ROCKS` (`src/data/rocks.js`).
+- Nothing of it is kept: it is worked out from where a tile is, like the
+  lie of the land. The game's world map (the HUD's map button) shows the
+  rings, and the zone and how warm it is under the pointer; the woods map
+  in the lab (`/woods.html`) shows the zones' trees, and the climate bench
+  (`/climate.html`, see Benches) every zone on one island, the way the
+  game draws it.
+- `npm run map:climate` (`tools/climatemap.mjs`) writes the whole world -
+  or a part of it, `--at x,y --size n` - as a picture, `climate.png`, and
+  tells how much of the land each zone has; `--temperature t` shows where
+  the zones would be were the middle of the world that warm, without
+  changing the game.
+- The snow, ice and desert tiles came from the `terrain-asset-generation`
+  branch, which drew its world with its own biomes and mountains; this
+  world keeps its own land and has the climate ring round it instead.
+  Its savannah's dead trees, dried out and bare, are grown by the tree
+  painter the way every other tree is (`src/shared/gen/trees.js`
+  "deadtree"), and stand in the desert. Every other kind of its ground -
+  the rock of the mountains, the grass of the tropics and of the north, the
+  southern grass, the savannah - is in the terrain painter
+  (`src/shared/gen/terrain.js`) though the game has none of it (yet): the
+  lab's sprite gallery (`/sprites.html`) shows it in its terrain, marked
+  "not in the game" - the game is not even told of it (`shared/gen/catalog`
+  describe all). Its pines and baobabs are not here: the game has pines of
+  its own, and a savannah will have trees of its own. `tools/genterrain.js` writes every kind of ground
+  out as pictures, and `genterrain-preview.js` lays them out together.
 
 ### Traffic
 
@@ -257,7 +347,28 @@ engine in `engine/`.
   are done, and "again" does both.
 - Both go as fast as asked, down to a tenth, or stopped, at ten in the
   morning in clear weather, nothing saved or heard, and turn round or are
-  seen from above. `window.bench` in the console.
+  seen from above. `window.bench` in the console. Their ground is as warm
+  as the green of the world (`src/core/climate.js` setHeat), wherever the
+  world's own climate would have it: grass.
+- `lab/climate.html` is the climate bench: every zone of the climate on one
+  island, on the same world as the demolition bench (`lab/climate/
+scene.js`) - the desert at one end, then the savannah, the green and the
+  arctic, the north at the other, each a stretch of it as long as the others,
+  its temperatures from its one edge to its other spread along it: what the
+  world spreads over thousands of tiles pressed into a dozen or so, the bench
+  laying the climate out its own way (setHeat), so that every border can be
+  seen at once - the zones mixed in patches, the ground of the one spilling
+  over the edges of the other. A river winds
+  from one end to the other through every zone, deep in its middle, and the
+  sea is all round, so every zone has its shore: a sand beach, and out in
+  the cold the water frozen over, the ice closing over open water from its
+  edges, frost for a beach. Hills stand in every zone for its ground on the
+  slopes, and the trees and the stones are the ones the world puts there by
+  itself: the savannah's cacti and dried-out trees, the woods of the green,
+  the snowy firs and pines, the pines dying off, then the firs, then only
+  dead trunks, and in the desert and the north nothing. Warmer or colder moves every zone along it;
+  it turns, is seen from above, and goes nearer or further - "all" the
+  whole island.
 - `lab/cities.html` is the city bench, for how a generated city
   (`src/citygen`) is laid out and nothing else: the bench's own world
   (`lab/bench/world.js`), a patch of flat grass as big as the window the city
@@ -730,7 +841,8 @@ dev`) plays them the way a game would - all three weathers together, the
   water with its swell and ripples catching the light - the shallows along
   the shore and deep water further out, alike but for their blues, deep
   water spilling over the edges of the shallows next to it in a ragged,
-  dithered contour (the terrain generator's diffuse tiles);
+  dithered contour (the terrain generator's diffuse tiles); the desert's
+  sand, the snow and the ice where the climate has them (see Climate);
   and every tile's outline is its corners joined up, lit by the same sun as
   the buildings. The grid is not painted into the tiles but laid over them,
   see-through black round every tile, as the tiles drawn by hand had it. A
@@ -804,6 +916,19 @@ dev`) plays them the way a game would - all three weathers together, the
   joining it go on joining it (`roadman.js` seenRoad), till the bulldozer
   has driven over it and broken it up into the bare earth. None of it is
   kept - after a reload the ground is bare.
+- A building put up is not put up till its ground is cleared, bare or not
+  (`isometrica/src/core/city/citybuildings.js` buildBuilding,
+  `isometrica/src/core/construction.js` awaitClearing): its tiles are being
+  cleared from then on, whatever is on them - trees, stones, rubble -
+  standing till the bulldozers get to it (`client/clearworks.js` sweep),
+  and nothing of it is drawn but how far along it is. That is the first
+  tenth of the way up, as much of it as is cleared, and the rest goes by its
+  time from when it all is; put up in the place of one that came down
+  (Replace), its ground is cleared already. Demolished or replaced while it
+  still waits, there is nothing of it to bring down: it is called off there
+  and then, for nothing, and its ground cleared all the same (`city.js`
+  demolitionOf). As with ground cleared, the bulldozers are not kept: after
+  a reload it goes up from as far along as it was.
 - What clearing ground came to floats up once, over all of the ground
   picked - not over every tile of it.
 - A building cleared away is demolished whole, every tile of it, whichever
@@ -814,7 +939,14 @@ dev`) plays them the way a game would - all three weathers together, the
   is once its rubble is pushed away (`city.js` tileDown), the ground bare
   there; it is gone once its last tile is. Both are kept in the save, so a
   reload halfway finds it as far down as it had come; asked again, only its
-  tiles still standing are sent for, for nothing. How it comes down is a
+  tiles still standing are sent for, for nothing. Being demolished, it is
+  the bulldozers' alone: it cannot be blown up nor set on fire, a blast next
+  to it does not reach it (`city.js` explode, blast, fireUp), it neither
+  comes down nor catches fire by itself (`building.js` hazards, fallsLater),
+  and one on fire when it is ordered down has its fire put out - its
+  flames are no longer drawn (`client/fires.js` look), what it burnt to
+  standing behind the fence. Looked at, only Replace and Demolish are
+  offered for it. How it comes down is a
   unit of its own (`Demolition`, in `isometrica/src/client/demolition.js`),
   told when each tile is to come down and when its rubble is pushed away;
   in the game it is the bulldozers that tell it (`client/buildman.js`
