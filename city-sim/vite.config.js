@@ -30,17 +30,25 @@ function version() {
   return tag ? tag[1] : "dev" + (sha ? " " + sha : "");
 }
 
+var VERSION = version();
+
 //the game's page is index.html, its sources in src/ - its screens in React,
 //styled with Tailwind - and what is served as it is in public/ - and
 //isometrica's pictures, served and copied in by its plugin; and all of it
-//written into the Service Worker built, for it to keep (tools/precache.js)
+//written into the Service Worker built, for it to keep (tools/precache.js),
+//and the version it is of
 export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
   },
   define: {
-    __VERSION__: JSON.stringify(version()),
+    __VERSION__: JSON.stringify(VERSION),
   },
-  plugins: [react(), tailwindcss(), isometrica(), precache()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    isometrica(),
+    precache({ version: VERSION }),
+  ],
 });

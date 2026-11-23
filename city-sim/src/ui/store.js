@@ -59,6 +59,9 @@ export var store = createStore(function () {
     //how the game is put on the home screen here: "prompt", "ios", "mac",
     //or null for not at all (install.js)
     install: null,
+    //whether a new release of the game is ready, the page to be reloaded on
+    //it (updates.js)
+    update: false,
   };
 });
 

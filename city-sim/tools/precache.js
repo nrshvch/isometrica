@@ -12,7 +12,9 @@
  *   generated/houses.json?v=<hash> (isometrica client/spritecache)
  *
  * and the script the page starts with, for the Service Worker to see that
- * the page it kept is the one these files are of.
+ * the page it kept is the one these files are of - and the version of the
+ * game they are (vite.config.js version), for the Service Worker to keep
+ * them under, and to tell the page (src/ui/updates.js).
  *
  * sw.js has `var BUILT = null;` for it, to be put in; the build fails
  * without it.
@@ -67,7 +69,10 @@ function entry(outDir) {
   return found[1];
 }
 
-export default function precache() {
+/**
+ * @param options {{version: string}} the version of the game built
+ */
+export default function precache(options) {
   var outDir = null,
     base = "/";
 
@@ -102,7 +107,11 @@ export default function precache() {
               }),
             gfx(outDir, base),
           ),
-          built = { entry: entry(outDir), files: list };
+          built = {
+            version: options.version,
+            entry: entry(outDir),
+            files: list,
+          };
 
         if (source.indexOf(MARK) === -1)
           throw new Error("precache: no `" + MARK + "` in " + SW);

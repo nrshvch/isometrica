@@ -2,7 +2,8 @@
  * What goes over the world when no screen is up, along the bottom where a
  * thumb is: the bar of buttons - whatever holds them (bridge.js): the
  * building tools, or the action going on - and over it, on a card as wide,
- * a line of what to do. As wide as what is along the top on a phone; in
+ * a line of what to do, and over that a new release of the game ready to
+ * be reloaded on (UpdateReady). As wide as what is along the top on a phone; in
  * the middle on a desktop, where the top has the width of the screen.
  *
  * While a building is looked at - tapped, with nothing else going on - the
@@ -24,6 +25,7 @@ import { displayName } from "../catalogue/buildings";
 import { BarButton, Container, Icon, cx } from "../kit";
 import { demolish, explode, fireUp, getClient, goReplace } from "../session";
 import { useGame } from "../store";
+import UpdateReady from "./UpdateReady";
 
 //what a button says under it, when what puts it up does not say - the
 //toggles of what is being done (isometrica client/buildman, terrainman),
@@ -282,6 +284,10 @@ export default function WorldHud() {
   var hint = useGame(function (s) {
       return s.hint;
     }),
+    //a new release ready, the page to be reloaded on it (ui/updates.js)
+    update = useGame(function (s) {
+      return s.update;
+    }),
     buttons = useGame(function (s) {
       return s.buttons;
     }),
@@ -298,6 +304,7 @@ export default function WorldHud() {
   return (
     <Container className="flex flex-1 flex-col justify-end pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4">
       <div className="mx-auto flex w-full flex-col gap-2 sm:max-w-xl">
+        {update && <UpdateReady />}
         {hint && <Hint text={hint} on={on} />}
         {inspected && seen && <Focus inspected={inspected} seen={seen} />}
         {shown.length > 0 && (
