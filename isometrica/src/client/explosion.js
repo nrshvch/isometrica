@@ -171,6 +171,9 @@ Explosion.prototype.light = function () {
   this.t = 0;
   this.collapse.start();
 
+  //and its boom to come as it goes up (client/audio/soundman)
+  if (this.root.sound) this.root.sound.blast(this);
+
   var self = this;
 
   this.trees.forEach(function (t) {
