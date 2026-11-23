@@ -17,7 +17,24 @@ var START_AT_KEY = "isometrica.startAt",
   //nothing - kept over the page going up again on it (startFreshCity)
   FROM_INITIAL_KEY = "isometrica.fromInitial",
   //and of one to start from the big city, Peepstown (Game.bigCity)
-  FROM_BIG_KEY = "isometrica.fromBig";
+  FROM_BIG_KEY = "isometrica.fromBig",
+  //and of one to generate, with how: {id, size, seed, near} (Game.generator)
+  GENERATE_KEY = "isometrica.generate";
+
+//the city to generate the page is going up on, as asked before it reloaded
+//(startGeneratedCity) - read once, and kept till it is generated
+var generating = (function () {
+  var value = null;
+
+  try {
+    value = JSON.parse(window.sessionStorage.getItem(GENERATE_KEY));
+    window.sessionStorage.removeItem(GENERATE_KEY);
+  } catch (e) {
+    //no storage, or nothing sensible in it: nothing was asked
+  }
+
+  return value !== null && typeof value === "object" ? value : null;
+})();
 
 //whether the city asked for is the one kept under the key - asked once
 function asked(key, id) {
@@ -39,6 +56,20 @@ function fromInitial(id) {
   var initial = asked(FROM_INITIAL_KEY, id),
     big = asked(FROM_BIG_KEY, id);
 
+  if (generator !== null && generating !== null && generating.id === id)
+    try {
+      return generator.default({
+        size: generating.size,
+        seed: generating.seed,
+        near: generating.near,
+      }).save;
+    } catch (e) {
+      //a city that could not be generated is a blank one, on empty land -
+      //not a game that never comes up
+      console.error("Could not generate the city", generating, e);
+      return false;
+    }
+
   return big && bigCity !== null ? bigCity : initial;
 }
 
@@ -48,6 +79,8 @@ var core = null,
   starting = null,
   //the big city to start over on, once loaded (Game.bigCity)
   bigCity = null,
+  //what generates a city, loaded if one is to be (Game.generator)
+  generator = null,
   //where the world is drawn, once the world screen has put it up - and who
   //is waiting for it
   container = null,
@@ -211,11 +244,13 @@ function load() {
     Game.client ? Game.client() : null,
     Game.initialCity ? Game.initialCity() : null,
     Game.bigCity ? Game.bigCity() : null,
+    generating !== null && Game.generator ? Game.generator() : null,
   ]).then(function (modules) {
     var Vkaria = modules[0].default.Vkaria,
       Core = modules[1].default;
 
     bigCity = modules[4] ? modules[4].default : null;
+    generator = modules[5] || null;
 
     core = new Core.Logic({
       tick: Game.tick,
@@ -433,6 +468,87 @@ function startFreshCity(initial) {
 }
 
 /**
+ * Leaves the city behind and starts on one generated afresh, under an id of
+ * its own: built up, all of it, somewhere about where a blank city would go
+ * - within a square ClientConfig.citySpreadTiles wide round where the camera
+ * is - out of a seed of its own. The seed and the spot go over the page
+ * reloading on it, and the city is generated as it opens (fromInitial): the
+ * same seed and spot, the same city.
+ *
+ * @param size {string} which size (citygen SIZES)
+ */
+function startGeneratedCity(size) {
+  var id = core === null ? null : core.persistence.newCityId(),
+    near = [32768, 27000];
+
+  if (client !== null && client.camera) {
+    var pos = client.camera.transform.getPosition(),
+      span = ClientConfig.citySpreadTiles;
+
+    near = [
+      Math.round(pos[0] / ClientConfig.tileSize + (Math.random() - 0.5) * span),
+      Math.round(pos[2] / ClientConfig.tileSize + (Math.random() - 0.5) * span),
+    ];
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      GENERATE_KEY,
+      JSON.stringify({
+        id: id,
+        size: size,
+        seed: Math.floor(Math.random() * 4294967296),
+        near: near,
+      }),
+    );
+  } catch (e) {
+    //no storage - a blank city, then
+  }
+
+  reopen(id);
+}
+
+/**
+ * Asks whether the player really means to leave this city behind for one
+ * generated afresh, and starts on it if they do (startGeneratedCity).
+ *
+ * @param size {string} which size (citygen SIZES)
+ */
+export function startGenerated(size) {
+  ask(
+    size === "metropolis"
+      ? "Do you really want to start on a new Peepsopolis?"
+      : "Do you really want to start on a new random " +
+          (size === "town" ? "town" : "city") +
+          "?",
+    function () {
+      startGeneratedCity(size);
+    },
+  );
+}
+
+//asks the player over the world, from whatever screen the menu was opened
+//on, and goes on with then if they say yes
+function ask(question, then) {
+  var world = worldScreen(),
+    controls;
+
+  go("");
+  world.showHint(question);
+
+  controls = world.showControls();
+  controls.canRotate(false);
+  controls.onSubmit = function () {
+    world.hideHint();
+    then();
+  };
+  controls.onDiscard = function () {
+    world.hideHint();
+    world.show();
+  };
+}
+
+/**
  * Asks whether the player really means to leave this city behind, and starts
  * a new one under a new id if they do - blank, the initial city, or the big
  * one. The city they are on is kept - it stays in storage under its own
@@ -442,27 +558,14 @@ function startFreshCity(initial) {
  *        nothing - or "big", from the big city, Peepstown
  */
 export function startFresh(initial) {
-  var world = worldScreen(),
-    controls;
-
-  //asked over the world, from whatever screen the menu was opened on
-  go("");
-  world.showHint(
+  ask(
     initial
       ? "Do you really want to start over on " +
           (initial === "big" ? bigCityName() : core.persistence.initialName()) +
           "?"
       : "Do you really want to start fresh?",
+    function () {
+      startFreshCity(initial === "big" ? "big" : initial === true);
+    },
   );
-
-  controls = world.showControls();
-  controls.canRotate(false);
-  controls.onSubmit = function () {
-    world.hideHint();
-    startFreshCity(initial === "big" ? "big" : initial === true);
-  };
-  controls.onDiscard = function () {
-    world.hideHint();
-    world.show();
-  };
 }

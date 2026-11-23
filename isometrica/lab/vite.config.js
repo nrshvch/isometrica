@@ -44,6 +44,7 @@ export default defineConfig({
         explosion: path.join(here, "explosion.html"),
         fire: path.join(here, "fire.html"),
         climate: path.join(here, "climate.html"),
+        cities: path.join(here, "cities.html"),
       },
     },
   },

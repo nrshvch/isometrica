@@ -18,6 +18,8 @@
     "test:traffic": "node tools/traffictest.mjs",
     "premap:climate": "npm run build --prefix ../engine",
     "map:climate": "node tools/climatemap.mjs",
+    "pretest:cities": "npm run build --prefix ../engine",
+    "test:cities": "node tools/citytest.mjs --seeds=12",
     "generate:terrain": "node tools/genterrain.js",
     "generate:vehicles": "node tools/genvehicles.js",
     "generate:sounds": "node tools/gensounds.js",

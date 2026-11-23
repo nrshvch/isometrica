@@ -39,7 +39,7 @@ var Terrain = Core.Terrain;
 var SAVES = "lab.bench";
 
 //how high the bench's ground is, steps - land, clear of the sea
-var GROUND = 2;
+export var GROUND = 2;
 
 //how warm the bench is, °C: the middle of the green (core/climate ZONES)
 var GREEN = 15;

@@ -98,6 +98,15 @@ export var PAGES = [
       "stones of each, warmer or colder.",
   },
   {
+    id: "cities",
+    name: "City bench",
+    about:
+      "A town generated afresh - a small town, a city of Peepstown's size or " +
+      "Peepsopolis - on flat grass, its roads and buildings as the " +
+      "generator lays them out: another seed, size or layout at a click, " +
+      "from any side or from above.",
+  },
+  {
     id: "lighting",
     name: "Lighting bench",
     about:

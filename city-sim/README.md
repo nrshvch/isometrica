@@ -298,6 +298,37 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   everything there is: nothing is drawn by hand. While a building is being
   placed, the dice next to turning it round picks another of the same kind
   for every footprint of the selection, the selection staying as it is.
+- A new city can be started on one generated afresh, from the menu: "New
+  random town", a small town along a road or two, mostly country, "New
+  random city", a town about Peepstown's size, or "New Peepsopolis", a
+  megacity five times that - built up all of it, somewhere about where a
+  blank city would go, a new one every time, out of a seed (isometrica's
+  `src/citygen`, see [generated cities](docs/cities.md#generated-cities);
+  the lab's city bench shows them on flat grass).
+  A small town is laid out the way villages are where they grew up by
+  themselves - along one road through it, round a crossroads, where a road
+  comes off another, or round a green the road parts round - its middle a
+  little town on cobbled streets, a square, the church, a market, the old
+  town, shops and town houses, now and then a town hall and a lane behind
+  them round a block or two; out along its roads a village's houses with a
+  gap between some, then farms. No flats, no offices.
+  Its streets are laid out the way a planned town's are: two main roads
+  through its middle and on out into the country as far as the land goes,
+  the land between them cut into blocks, smaller downtown and longer out in
+  the suburbs, their cross streets staggered into T-junctions; one of the
+  main roads a boulevard downtown - two one-way roads with a strip of park
+  between them - a roundabout or two where they come into town, its square
+  at its heart with the town hall, the church and the market round it, the
+  old town beside it. Every road is graded so that the roads side by side
+  meet level and the traffic drives everywhere, the ground levelled where
+  it has to be. The blocks are built up round their edges facing their
+  streets, with what that part of town is built of - offices, stores and
+  flats downtown and shops along the main roads, flats and terraces in
+  town, houses and villas in the suburbs, more villas by the water and up
+  on the hills, a park, farms out along the roads; pump stations by the
+  water and water towers on the high ground so that everything that wants
+  water has it; and as many jobs as there are people to work them, so
+  nothing says it goes without anything.
 - The weather changes over the days - clear, overcast, fog, rain, storms -
   shown by the time in the top right corner; W goes round the kinds of it to see
   each, and back to the game's own (`isometrica/src/client/weather.js`).
@@ -311,6 +342,9 @@ npm run dev          # in city-sim/ - or npm run dev:city-sim at the root
 npm run build        # into city-sim/dist, isometrica built first
 npm run dev:worker   # built, and served by the Worker with its saves, http://localhost:8787
 ```
+
+The generated cities are checked by isometrica's `npm run test:cities`
+(`npm run test:cities` at the root), and looked at on its city bench.
 
 ### Saves
 
@@ -375,9 +409,10 @@ where the browser can do that (`src/ui/install.js`: asked of it in Chrome,
 Edge and the like; said how on an iPhone or an iPad, and in Safari on a
 Mac), a new city on empty land, or
 starting over on the city new players start on (`src/initialcity.js`,
-Peepsville) or on the big one (`src/peepstown.js`, the delivery game's,
-isometrica's `data/initialcity`, called Peepstown here) - each under an id
-of its own, the city left kept under its own - and under them the other cities
+Peepsville), on the big one (`src/peepstown.js`, the delivery game's,
+isometrica's `data/initialcity`, called Peepstown here), or on a city
+generated afresh (isometrica's `src/citygen`) - each under an id of its own, the city left
+kept under its own - and under them the other cities
 saved in the browser to go back to, the five played most lately), with
 zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
