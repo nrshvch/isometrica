@@ -1,33 +1,7 @@
 /**
- * The town's own buildings, painted out of boxes the way the houses are
- * (shared/gen/houses) - each painted whole and cut into its tiles (onTile):
- *
- *   - a church on 1x2, end on to the street: its tower at the front, half
- *     as high again as the old town's, with the
- *     door in its foot, a clock and the bells under a spire, its nave behind
- *     under a steep roof, tall windows down its sides between buttresses -
- *     whitewashed or of dark red brick, under slate or tiles - in a
- *     churchyard with its gravestones and a low wall along the street;
- *   - a town hall on 1x2, end on to the street - or on 2x1, along it - two
- *     storeys behind a paved
- *     forecourt with its flag: white with a portico of columns and a dome
- *     over it all, like a capitol; cream with columns, a hipped roof and a
- *     clock tower on it; clapboard with a porch and a bell cupola; or brick
- *     with stone at its corners and the clock in its gable, no columns;
- *   - a square on 1x1, for people to walk across where a park would be
- *     wasted - slabs or cobbles, a bench along each side, a tree in a tub
- *     at each corner, lamps - with an advertising column in the middle, a
- *     street food stand, an ice cream cart, or nothing; or bare paving and
- *     nothing else at all.
- *
- * Whichever it is is picked when it is placed (client/compoundbuilding), out
- * of the designs and options there are for each (FOOTPRINTS).
- *
- * While one goes up its tiles are the same building site as anybody's
- * (shared/gen/sites), then its walls going up on their slab (houses site).
- *
- * Units as everywhere: a tile is 32 along the ground, about ten metres;
- * heights in pixels, twelve to a storey.
+ * The town's own buildings - a church, a town hall, a square - painted whole
+ * and cut into tiles.
+ * See isometrica/.claude/skills/generators/buildings.md (The town's own).
  */
 import * as iso from "./isobox.js";
 import {

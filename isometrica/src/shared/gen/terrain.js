@@ -1,49 +1,7 @@
 /**
- * Paints terrain tilesets for more kinds of ground than the one grass there
- * is, in the same fashion as that grass - the same nineteen slopes, the same
- * size and outline, lit the same way - together with the pieces a tile is
- * overlaid with where it borders another kind of ground, and writes a manifest
- * listing all of it.
- *
- * Every tileset has, for each slope it comes in:
- *
- *  - base tiles: the ground as it is, in a few variants so that a field of it
- *    shows no pattern;
- *  - diffuse tiles: that ground spilling over one edge (ne, se, sw, nw) or one
- *    corner (n, e, s, w) of a tile of the same slope, see-through everywhere
- *    else. Laid over another tileset's base tile of the same slope they make
- *    the border between the two. However a diffuse wanders in between, it
- *    reaches exactly edge.depth into the tile at the corners of the edge it
- *    comes over (a corner one: edge.depth along both edges next to its
- *    corner), so any two pieces of the same tileset meet wherever they are put
- *    next to each other, over any slopes, and a border runs on unbroken for as
- *    long as it goes.
- *
- * Which of two tilesets spills over the other is settled once, here, by
- * PRECEDENCE: the later one always goes over the earlier one. The manifest
- * spells the pairs out, so a renderer never has to decide it.
- *
- * Water meets the ground differently: not across an edge but where the ground
- * sinks under it - a shore tile. So a water tileset has a shore tile for each
- * slope instead, laid over whatever ground the tile has: the water comes up
- * the lowest part of it, a little higher than the water level, into wet
- * sand, sand, and then the ground above - each line ragged, a grain of
- * pixels along it and the odd speck past it, the way deep water's edge over
- * the shallows is drawn. It goes by how high the ground is, which
- * runs on from tile to tile, so a shore runs on unbroken over any slopes. The
- * shallows' shore has the shallows in it; deep water its own water, for where
- * the land drops straight into it, and ice its ice with frost for a beach.
- *
- * All of it is painted here, the grass and the water the game has too -
- * nothing is taken from a picture. The outline of every slope is its corners
- * joined up, and the light on every face is the sun's on the buildings
- * (shared/gen/isobox), so that the ground and what stands on it are lit
- * alike.
- *
- * It paints into plain pictures, {width, height, data} with the pixels as
- * RGBA, so that the same painting runs in the game as it starts (client/
- * generated), for the tilesets it draws, and in tools/genterrain.js, which
- * writes every tileset out as files to look at.
+ * Terrain tilesets in the nineteen slopes - base, diffuse and shore tiles -
+ * and which ground spills over which (PRECEDENCE).
+ * See isometrica/.claude/skills/generators/ground.md (Terrain).
  */
 import * as Looks from "./looks.js";
 import SimplexNoise from "simplex-noise";

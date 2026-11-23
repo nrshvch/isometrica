@@ -1,26 +1,7 @@
 /**
- * Puffs of smoke, a picture for every size a puff grows through as it rises
- * (client/components/smokeScript): "steam<f>" - white, out of a chimney -
- * "soot<f>" - black, out of an engine on fire, greyer the higher it gets -
- * "dust<f>" - the brown of the earth, kicked up where the ground is being
- * cleared (client/clearworks), paler as it settles - and "debris<f>" - the
- * grey of a building coming down, a cloud of it (client/demolition) - and
- * "fire<f>" - a fireball, white-hot yellow as it bursts out, orange, and
- * dull red going to soot as it swells (client/explosion) - and
- * "plume<f>", the black smoke of a building on fire, billowing out of it
- * and up over the city, greying as it goes (client/fires) - and
- * "cloud<f>", the dust a building blown up raises, rolling out round it and
- * down the streets (client/explosion) - f from
- * 0, the smallest, as it comes out, to FRAMES - 1, as big as it gets before
- * it is gone.
- *
- * A puff is a soft round lump: a little lumpy round its edge, lit from above
- * and from the left, darker under itself, its edge broken up every other
- * pixel - thinner the bigger it has grown. How see-through it is as it
- * rises is not painted: the puff fades as it goes (smokeScript).
- *
- * It paints into plain pictures, {width, height, data} with the pixels as
- * RGBA, as it is asked for them.
+ * Puffs of smoke a frame per size as they grow: steam, soot, dust, debris,
+ * fire, plume, cloud.
+ * See isometrica/.claude/skills/generators/roads-vehicles-smoke.md (Smoke).
  */
 
 //how many sizes a puff grows through, and how big across each is

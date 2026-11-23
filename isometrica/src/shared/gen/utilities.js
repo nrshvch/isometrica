@@ -1,33 +1,6 @@
 /**
- * What a town runs on, painted out of boxes the way the houses are
- * (shared/gen/houses): its water tower, in one of four designs of the kind
- * that stand over European towns and villages, picked for each tower when it
- * is placed (client/compoundbuilding):
- *
- *   - goblet: a wide concrete bowl, an upturned cone, on a round shaft
- *     banded red and white under it;
- *   - steel: a slim steel tank on a steel column a little narrower, with a
- *     ladder up the side of both;
- *   - stack: a tall square shaft of precast panels with three tanks like
- *     lenses stacked up its side, and aerials on top;
- *   - brick: a round brick shaft with a wider tank of steel sheet on it,
- *     funnelled under, a railing round its top.
- *
- * And its pump station on two tiles by two, one of three (STATIONS): a
- * Victorian engine house with its chimney stack, a pump hall and two steel
- * tanks, or a reservoir under a grassed mound with its valve house.
- *
- * Each has a colour of its own and a band of blue round its tank. Whatever is
- * round is laid out in columns a unit across, each lit by which way the
- * surface looks there (blocks shaded), so its outline keeps to the pixels
- * the way everything else does (iso snap).
- *
- * The whole of it stands on one tile, and goes up on the same building site
- * as anything else (shared/gen/sites), then as its shaft (stage 1) and its
- * tank going up on top of it (stage 2).
- *
- * Units as everywhere: a tile is 32 along the ground - about ten metres -
- * and heights are in pixels, twelve to a storey of three metres.
+ * The water tower in four designs, and the pump station (STATIONS).
+ * See isometrica/.claude/skills/generators/buildings.md (Water).
  */
 import * as iso from "./isobox.js";
 import {

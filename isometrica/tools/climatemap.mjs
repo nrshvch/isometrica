@@ -1,22 +1,10 @@
 /**
- * Looks at the climate (src/core/climate.js) from far above: the whole world,
- * or a part of it, a pixel every so many tiles - the desert in the middle, the
- * green round it, the snow and the ice out at the edge, on the land and the
- * sea of src/core/terrain.js - written out as a picture; and how much of the
- * land every zone has, and how far out from the middle each starts.
+ * Draws the climate's zones over the world's land and sea as a picture, and
+ * says how much land each zone has.
  *
- * Every zone starts at a temperature of its own, so how warm the middle of
- * the world is moves them all: --temperature has it that warm, to see where
- * the zones would be if the world warmed - or cooled - without changing the
- * game.
- *
- * Usage:
- *   node tools/climatemap.mjs [--png file] [--temperature t] [--at x,y]
- *                             [--size n] [--px n]
- *
- * Looks at size x size tiles (the whole world, 65536) around tile x, y (the
- * middle of it), px pixels across (512), and writes the picture to file -
- * climate.png unless given.
+ * Usage: node tools/climatemap.mjs [--png file] [--temperature t] [--at x,y]
+ *          [--size n] [--px n]
+ * See isometrica/.claude/skills/generators/ground.md (Climate).
  */
 import { createServer } from "vite";
 import { createRequire } from "node:module";

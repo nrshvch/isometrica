@@ -1,21 +1,11 @@
 /**
- * Writes out every terrain tileset src/shared/gen/terrain.js paints - the
- * base tiles, the diffuse tiles and the shores of all of them, far more than
- * the game paints for itself as it starts - to look at, and to try a change to
- * the painting on before the game gets it.
+ * Writes every terrain tileset - base, diffuse and shore tiles - out as
+ * pictures with a manifest; removes what an earlier run wrote and this did not.
  *
- * Usage:
- *   node tools/genterrain.js [outDir] [--seed s] [--variants n]
- *                            [--diffuse-variants n] [--preview]
- *
- * outDir is assets/terrain/terraingen unless given. Writes there:
- *   <tileset>/base/<slope>_<variant>.png
- *   <tileset>/diffuse/<slope>_<direction>_<variant>.png
- *   <tileset>/shore/<slope>.png          water tilesets only
- *   manifest.json                        everything above, and how it fits
- *   preview-tiles.png, preview-map.png   with --preview
- * Files an earlier run listed in manifest.json and this one did not write are
- * removed.
+ * Usage: node tools/genterrain.js [outDir] [--seed s] [--variants n]
+ *          [--diffuse-variants n] [--preview]
+ * outDir assets/terrain/terraingen unless given.
+ * See isometrica/.claude/skills/generators/ground.md (Terrain).
  */
 
 var fs = require("fs");

@@ -1,54 +1,7 @@
 /**
- * Shops, put together out of parts the way the blocks are (shared/gen/blocks)
- * - only a shop does not grow storey by storey: it is one building, as big as
- * it is, cut up into the tiles it stands on. Every one is painted whole and
- * each of its tiles is what the whole shows on that tile (onTile), so a shop
- * three tiles long is still one roof.
- *
- * There are shops for every footprint of every tier (data/shops), and for
- * each a design or more, each with options it is put together with at random
- * for every shop built (client/compoundbuilding picks them, see describe
- * footprints):
- *
- *   - 1x1, a small-town shop: a flat roof behind a false front, a gable or a
- *     lean-to; a shop front with the door in the middle, at the corner or a
- *     door either side of the window; a firm's striped awning or none; a
- *     fascia over the windows or a board on its side, in the firm's colours
- *     and with its emblem (shared/gen/brands);
- *   - 1x2, a shop with a car park in front, a firm's: a flat roof with its
- *     emblem up on the parapet, a front all glass or between brick piers, awnings over
- *     the windows, a sign on a pole in the car park or not;
- *   - the small shops' other footprints: a parade of those small-town shops
- *     side by side, each with its own colours, awning and sign under the same
- *     kind of roof, or shops with car parks side by side - behind a row or
- *     two of car park on the deeper footprints (along); or one of them on
- *     the street with car parks beside it (besideParking);
- *   - 2x2, a superstore over the two tiles at the back, a car park over the
- *     two in front: a firm's - the builders' merchant in orange, or white
- *     and orange; the bank in navy and gold; the grocer in white with green
- *     stripes along it; the burger chain in grey and red - a flat roof or one raised over the way in and
- *     at the back, air conditioning on it, banners down its front, its
- *     emblem over the doors and maybe on a pole by the road;
- *   - 2x3, a shopping centre over four tiles with a glass vault along its
- *     roof, or a market hall under green glass vaults or saw-tooth roofs,
- *     stalls out in front - and a car park over the two tiles in front;
- *   - the stores' other footprints: the superstore along the street on one
- *     row of tiles or three long behind its car park (bigboxAt), or a
- *     department store of two floors over shop windows, every firm on its
- *     sign and a lantern of glass on its roof (departmentAt) - on one tile,
- *     its car park beside it;
- *   - the farmers' markets, on every footprint: a square of cobbles or slabs
- *     with rows of stalls under striped canopies - or round its edge, round
- *     a fountain - and a farm's trailer come in with hay and pumpkins
- *     (openMarketAt); a timber roof on posts over every row of tiles, the
- *     stalls under it (coveredMarketAt); or on two rows of tiles or more a
- *     glass hall behind a square of stalls (marketHallAt).
- *
- * The cars in a car park are not painted: they are the vehicle generator's,
- * different for every shop (blocks baysOverlay).
- *
- * While a shop goes up its tiles are the same building site as anybody's
- * (shared/gen/sites) and then a steel frame of it (frame).
+ * Shops, stores and markets, each painted whole and cut into tiles, picked
+ * at random among designs per tier and footprint.
+ * See isometrica/.claude/skills/generators/buildings.md (Shops).
  */
 import * as iso from "./isobox.js";
 import { BRANDS, panel, parade } from "./brands.js";

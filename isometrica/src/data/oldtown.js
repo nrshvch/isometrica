@@ -1,27 +1,7 @@
 /**
- * The old town (see shared/gen/oldtown and client/compoundbuilding): one to a
- * footprint in the catalogue, each put down as any of the designs there are
- * for it - a lane of craftsmen, a yard with its smithy, a market square, a
- * church, a quarter, and on three tiles by three all of it at once.
- *
- * It is what a village trades in from the first day: it needs no water and no
- * street to it - only to stand with the village, as everything does
- * (core/city/cityroads); gravel laid next to it is cobbled, the way its own
- * lanes are (client/road materialAt) - and makes its money with the people
- * who work in it - the cottagers round it, whose houses need no jobs
- * of their own (data/houses). Later on the town keeps it as its old town. Old
- * town next to old town is one town, and one wall goes round all of it
- * (client/compoundbuilding walled).
- *
- * The bigger it is, the more it makes for every tile it covers:
- *
- *                      cost   jobs   money   money   payback
- *                                            /tile
- *  lane, 1x2           6000    10      80      40       75
- *  street, 1x3         9500    16     126      42       75
- *  square, 2x2        13000    22     176      44       74
- *  quarter, 2x3       20000    34     270      45       74
- *  centre, 3x3        31000    52     414      46       75
+ * The old town in the catalogue, one to a footprint; no water nor street
+ * needed, gravel next to it cobbled.
+ * See isometrica/.claude/skills/generators/buildings.md (The old town).
  */
 import BuildingClassCode from "./classcode";
 

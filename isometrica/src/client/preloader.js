@@ -5,41 +5,9 @@ import Core from "../core/main";
 import Rotation from "../core/rotation";
 
 /**
- * Gets the world ready to be seen from the other sides before the camera
- * turns there, so that a turn shows it all straight away - every picture
- * whole, as it is drawn, not a piece of it missing nor painted a moment
- * later.
- *
- * Now and then (SURVEY_EVERY) - a little at a time, a few frames over, not
- * to hold any one up (SURVEY_MS) - it works out what would be on the screen from
- * each of the other sides - the two next to the one the camera is on first,
- * then the far side: the camera turned about where it is, the ground under
- * the middle of the screen (CameraScript turn), and what stands where it
- * would be seen from there - and what each of those things would be drawn
- * with from there (View peek, and every manager's seenSprites): the ground,
- * the trees, the buildings and the roads, the cars.
- *
- * Every frame, in what time painting has left in it once what is drawn has
- * had its share (client/canvascache warm), it puts those pictures on the
- * pages as they are drawn - lit, and at night the night's too - their parts
- * painted first, after anything wanted now (client/generator ahead). Only
- * where there is room: they never take the place of anything drawn lately,
- * and give their own up to whatever is drawn - and are kept there as long
- * as they would be seen from a side next to it, the one the camera came
- * from among them, so that it can turn back too.
- *
- * Nothing of it while the world is looked at from above, which is not
- * turned, nor while it is turning.
- *
- * Looking over all of it takes a while - a few hundred milliseconds of
- * work, a frame's share at a time - so it is only done again once anything
- * it goes by has changed: the camera, the light, or the look of anything
- * standing in the world (client/looks - a tile, a tree, a building going up
- * a stage, a road), or after a long while (REST) whatever. In between, the
- * cars, which come and go all the while, are looked over every SURVEY_EVERY
- * on their own, and what was found ready is kept on the pages as it would
- * have been - so a still screen costs next to nothing, and a turn finds
- * what it did.
+ * Paints ahead what the camera would see from the other sides, in the frames'
+ * spare time, so a turn shows everything at once.
+ * See isometrica/.claude/skills/generators/SKILL.md (Pipeline).
  */
 
 //how often it looks over what would be seen from the other sides, ms; how

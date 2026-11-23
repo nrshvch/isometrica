@@ -1,12 +1,7 @@
 /**
- * What a game's Vite needs of isometrica (`import isometrica from
- * "isometrica/vite"` in its vite.config.js): the pictures isometrica's build
- * put in dist/gfx - the hand-drawn sheets and the manifests of every picture
- * it paints for itself (tools/packsprites.js) - served at /gfx while the game
- * runs in development, and copied into the game's own build.
- *
- * isometrica's build (npm run build here) has to have run first: the games
- * run it before theirs (their predev and prebuild).
+ * What a game's Vite needs of isometrica: dist/gfx served at /gfx in
+ * development and copied into the build. isometrica's build runs first.
+ * See isometrica/.claude/skills/generators/SKILL.md (Pipeline).
  */
 import fs from "node:fs";
 import path from "node:path";

@@ -1,15 +1,6 @@
 /**
- * The office blocks put together out of parts the game paints (see
- * shared/gen/offices and client/compoundbuilding): a tower of one section, a
- * wall of two or three, right on the street or behind a car park and a plaza
- * - a row of them, or two in front of the taller ones - or a tower on the
- * street with a car park or a plaza beside it, or one either side. What
- * a block looks like, its glass and its roofs, is picked for each one as it
- * goes up.
- *
- * Like the shops, an office block makes its money with the people who work
- * in it, and the more of it there is the more it makes - by the numbers a
- * little better than a mall for every job, on a fraction of the ground.
+ * Office blocks in the catalogue.
+ * See isometrica/.claude/skills/generators/buildings.md (Tiers and footprints).
  */
 import BuildingClassCode from "./classcode";
 

@@ -1,29 +1,7 @@
 /**
- * Where the world's trees grow, and which (core/ambient): not every kind
- * everywhere, but woods of their own - spruce forest, pine woods, birch
- * groves, broadleaf woods of beech, oak and ash, alder by the water, and
- * open meadow with an oak standing here and there.
- *
- * Every wood has a noise field of its own, and where its field is the
- * highest that wood grows. Where two are about as high they shade into each
- * other over a good few tiles, the trees of both standing among each other,
- * rather than meeting along a line. Spruce likes it high up, alder down on
- * the wet ground by the water; the others do not mind.
- *
- * Inside a wood its trees stand thicker in places and thinner in others,
- * with glades now and then, and each of its kinds in clumps of its own.
- *
- * The woods go on whatever the climate (core/climate), so a forest runs on
- * into the cold or the heat, and only what grows in it changes (FLORA): in
- * the arctic, only the firs and the pines, snowed over - a few of them where
- * the broadleaf trees would be, which die in the cold - a dead one among
- * them now and then; further out the pines die off, then the firs, and for a
- * while there are only dead trunks standing in the snow, fewer and fewer,
- * till in the north there is nothing at all. On the savannah, hardly
- * anything: cacti and prickly pears where the woods would have a tree alive,
- * a dried-out tree where they would have a dead one, and the dead wood
- * bleached by the sun - fewer and fewer towards the desert, where there is
- * nothing at all.
+ * Where the world's trees grow, and which: woods of their own on noise fields,
+ * what grows in them by the climate (FLORA).
+ * See isometrica/.claude/skills/generators/ground.md (Woods, trees, stones).
  */
 import Simplex from "simplex-noise";
 import Trees from "../data/trees";
