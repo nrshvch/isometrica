@@ -30,6 +30,7 @@ var TO_HOMES = {
   store: ["flats", "house"],
   shop: ["house", "flats"],
   market: ["house"],
+  oldtown: ["house", "village"],
 };
 
 //never turned into anything else
@@ -50,9 +51,11 @@ export function tally(plan) {
 }
 
 /**
+ * @param [allowed] {Object} kind -> true for what the town may have built in
+ *        it at all - everything, where left out
  * @returns {Object} the tally it ended with (tally)
  */
-export default function balance(plan) {
+export default function balance(plan, allowed) {
   annotate(plan);
 
   for (var guard = 0; guard < 400; guard++) {
@@ -66,8 +69,8 @@ export default function balance(plan) {
 
     var swap =
       short > 0
-        ? best(plan, TO_WORK, short, true)
-        : best(plan, TO_HOMES, over, false);
+        ? best(plan, TO_WORK, short, true, allowed)
+        : best(plan, TO_HOMES, over, false, allowed);
 
     if (swap === null) return t;
 
@@ -83,7 +86,7 @@ export default function balance(plan) {
  * turned, homes into work the nearer the middle of town, work into homes the
  * further out.
  */
-function best(plan, table, by, toWork) {
+function best(plan, table, by, toWork, allowed) {
   var found = null,
     bestScore = -Infinity;
 
@@ -100,6 +103,8 @@ function best(plan, table, by, toWork) {
       d = b.rotation & 1 ? b.w : b.h;
 
     into.forEach(function (kind, rank) {
+      if (allowed && !allowed[kind]) return;
+
       codesOf(kind, w, d).forEach(function (code) {
         var now = info(code),
           //how far it moves the jobs towards where they should be: work

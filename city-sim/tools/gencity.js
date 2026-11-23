@@ -5,8 +5,11 @@
  * asked what it goes without, as the game asks it over the world
  * (isometrica client/worth wantOf).
  *
- *   node tools/gencity.js [--seed=N] [--seeds=N] [--size=city]
- *                         [--at=x,y] [--map] [--quiet]
+ *   node tools/gencity.js [--seed=N] [--seeds=N] [--size=town,city]
+ *                         [--at=x,y] [--map]
+ *
+ * --size is the sizes to make, each of them seeds times (citygen SIZES) -
+ * all of them where left out.
  *
  * Exits 1 if any city has something wrong with it that should never be.
  */
@@ -28,7 +31,7 @@ var here = path.dirname(fileURLToPath(import.meta.url)),
   },
   seed = +flag("seed", 1),
   seeds = +flag("seeds", 1),
-  size = flag("size", "city"),
+  sizes = flag("size", ""),
   at = flag("at", "31979,27187").split(",").map(Number),
   showMap = args.indexOf("--map") !== -1;
 
@@ -56,9 +59,16 @@ try {
   var Gen = await server.ssrLoadModule("/src/citygen/index.js"),
     Check = await server.ssrLoadModule("/tools/citycheck.js");
 
-  for (var k = 0; k < seeds; k++) {
+  var all = sizes ? sizes.split(",") : Object.keys(Gen.SIZES),
+    runs = [];
+
+  all.forEach(function (size) {
+    for (var k = 0; k < seeds; k++) runs.push({ size: size, seed: seed + k });
+  });
+
+  for (var run of runs) {
     var started = performance.now(),
-      out = Gen.default({ size: size, seed: seed + k, near: at }),
+      out = Gen.default({ size: run.size, seed: run.seed, near: at }),
       took = performance.now() - started,
       report = Check.check(out);
 
@@ -66,8 +76,9 @@ try {
 
     console.log(
       (report.ok ? "ok   " : "FAIL ") +
-        "seed " +
-        (seed + k) +
+        run.size +
+        " seed " +
+        run.seed +
         "  " +
         Math.round(took) +
         " ms  " +

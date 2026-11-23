@@ -146,10 +146,13 @@ export function check(out) {
       " blocks, " +
       roads +
       " roads" +
-      (plan.boulevard ? ", boulevard along " + plan.boulevard.axis : "") +
-      ", " +
-      (plan.islands || []).length +
-      " roundabouts, levelled " +
+      (plan.village
+        ? ", " + plan.village.layout + " village"
+        : (plan.boulevard ? ", boulevard along " + plan.boulevard.axis : "") +
+          ", " +
+          (plan.islands || []).length +
+          " roundabouts") +
+      ", levelled " +
       graded.levelled +
       " times  " +
       (out.save ? out.save.city.name + ", " : "") +

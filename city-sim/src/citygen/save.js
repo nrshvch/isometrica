@@ -22,6 +22,8 @@ var CLEARED_ZONES = {
   oldtown: true,
   square: true,
   park: true,
+  centre: true,
+  green: true,
 };
 
 /**

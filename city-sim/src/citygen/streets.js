@@ -345,9 +345,24 @@ export function keepJoined(plan) {
     queue = [],
     k;
 
-  if (plan.isRoad(plan.cx, plan.cy)) {
-    queue.push([plan.cx, plan.cy]);
-    seen[plan.index(plan.cx, plan.cy)] = 1;
+  //from the road nearest the middle of town - where the main roads cross,
+  //for a town that has them there
+  var start = null,
+    nearest = Infinity;
+
+  for (k in plan.roads) {
+    var r = plan.roads[k],
+      d = Math.abs(r.x - plan.cx) + Math.abs(r.y - plan.cy);
+
+    if (d < nearest) {
+      nearest = d;
+      start = r;
+    }
+  }
+
+  if (start !== null) {
+    queue.push([start.x, start.y]);
+    seen[plan.index(start.x, start.y)] = 1;
   }
 
   while (queue.length > 0) {

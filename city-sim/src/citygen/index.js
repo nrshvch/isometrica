@@ -10,7 +10,8 @@
  *  2. the streets (streets.js): the main roads through its middle and on out
  *     into the country, the blocks between them cut smaller towards the
  *     middle; a boulevard down its main street, a roundabout where a main
- *     road comes in, its square;
+ *     road comes in, its square - or, for a small town, a road or two and a
+ *     lane, the way a village is laid out (village.js);
  *  3. the roads graded (grade.js): each laid flat or as a ramp, so that the
  *     ones side by side meet level - the ground levelled under them where
  *     they cannot;
@@ -33,6 +34,7 @@ import pickSite from "./site";
 import { layStreets, boulevard, roundabouts, pickSquare } from "./streets";
 import grade from "./grade";
 import { buildUp } from "./lots";
+import { layVillage, buildVillage, ALLOWED as VILLAGE_KINDS } from "./village";
 import water from "./water";
 import balance from "./balance";
 import nameOf from "./names";
@@ -41,9 +43,19 @@ import saveOf from "./save";
 /**
  * The sizes of town there are: how far it reaches from its middle each way,
  * in tiles - the longer way first - and how far round it the country it
- * reaches out into goes, a share of that.
+ * reaches out into goes, a share of that. A small town (village: true) is
+ * laid out and built up as a village is (village.js), the rest as a town is
+ * (streets.js, lots.js).
  */
 export var SIZES = {
+  //a small town: a road or two, mostly country (village.js)
+  town: {
+    rx: 20,
+    ry: 13,
+    margin: 2,
+    money: 150000,
+    village: true,
+  },
   //about the size of Peepstown (peepstown.js)
   city: {
     rx: 23,
@@ -65,24 +77,37 @@ export default function generate(options) {
     ground = new Ground(),
     site = pickSite(ground, random.fork(1), options.near, size),
     plan = new Plan(ground, site, size.margin),
-    streets = random.fork(2);
+    streets = random.fork(2),
+    built,
+    at;
 
-  layStreets(plan, streets);
-  plan.boulevard = boulevard(plan, streets, streets.pick(["x", "y"]));
-  plan.islands = roundabouts(plan, streets, size.roundabouts);
-  plan.square = pickSquare(plan, streets);
-  plan.graded = grade(plan);
+  if (size.village) {
+    var how = layVillage(plan, streets);
 
-  var built = buildUp(plan, random.fork(3));
+    plan.village = how;
+    plan.graded = grade(plan);
+    built = buildVillage(plan, random.fork(3), how);
+    at = built.at;
+  } else {
+    layStreets(plan, streets);
+    plan.boulevard = boulevard(plan, streets, streets.pick(["x", "y"]));
+    plan.islands = roundabouts(plan, streets, size.roundabouts);
+    plan.square = pickSquare(plan, streets);
+    plan.graded = grade(plan);
+    built = buildUp(plan, random.fork(3));
 
-  plan.watered = water(plan, random.fork(4));
-  plan.tally = balance(plan);
+    var square = plan.square;
 
-  var hall = built.townHall,
-    square = plan.square,
     at = square
       ? [(square.x0 + square.x1) >> 1, (square.y0 + square.y1) >> 1]
       : [plan.cx, plan.cy];
+  }
+
+  plan.watered = water(plan, random.fork(4), !!size.village);
+  plan.tally = balance(plan, size.village ? VILLAGE_KINDS : null);
+
+  //what the town is about: its town hall, or else its church
+  var hall = built.townHall || built.church || null;
 
   if (hall) hall.first = true;
 
@@ -90,6 +115,7 @@ export default function generate(options) {
     name = nameOf(random.fork(5), {
       coastal: plan.site.coastal,
       high: plan.ground.height(plan.wx(plan.cx), plan.wy(plan.cy)) >= 5,
+      small: !!size.village,
     });
 
   return {

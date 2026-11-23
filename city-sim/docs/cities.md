@@ -226,8 +226,8 @@ Phase 0 has no decay: an abandoned house already empties and pays nothing.
 
 ## Generated cities
 
-**Done** for a city about Peepstown's size; **Later** for a small town and
-for Peepsopolis, the big one. The menu starts a new game on one generated
+**Done** for a small town and a city about Peepstown's size; **Later** for
+Peepsopolis, the big one. The menu starts a new game on one generated
 afresh (`city-sim/src/citygen`): built up, all of it, somewhere about where a
 blank city would go, a new one every time - the seed and the spot go over
 the page reloading on it (`ui/session.js`), so the same seed and spot are the
@@ -310,16 +310,48 @@ How one is made, in order (`citygen/index.js`):
    as many people as it has beds for.
 7. **The name** (`names.js`): a Peeps- town named for where it stands - a
    port or a mouth by the water, a hill up high, a ford, a field or a bury
-   anywhere else.
+   anywhere else; a small town a village's name, Little this as often as
+   not.
+
+### A small town
+
+**Done.** A village grown into a town (`citygen/village.js`), from the same
+steps but the streets and the lots: a road or two, three at most, and the
+town along them, mostly the country still - the ways villages are laid out
+where they grew up by themselves, one picked for each:
+
+- **along one road** (a street village): its houses either side of the road
+  through it, and at its middle, as often as not, a back lane behind them,
+  round a block or two;
+- **round a crossroads**: the town round where two roads cross and out
+  along all four, a lane round a block in one corner of it now and then;
+- **where a road comes off another** (a tee): the town where they meet and
+  along both, the road off it on out as a lane to the farms or not;
+- **round a green**: the road through it parted round a long green in its
+  middle - the church on it, the square, a park and its pond - the town
+  hall and the market facing it across the road, the town round it.
+
+The road through it is asphalt or an old gravel road, cobbled through the
+town's middle either way, where the town houses and the shops are; lanes are
+cobbled. Its middle, six tiles round where its roads meet, is a little town:
+the square by the road and the church beside it, the town hall across from it
+now and then, a market, and along the roads the old town, shops, town houses
+and the odd farmstead. Further out along its roads, as far as the town goes,
+a village's houses and farms - a farmstead, cottages, a croft, a farm round
+its yard - and the odd town house or villa where the road is good enough,
+with a gap now and then between two of them, an orchard, a paddock; past
+that, farms, their fields round them. No flats and no offices, built or
+swapped in (`ALLOWED`). Its water towers go up on open ground right by the
+houses, there being few blocks to put them in; most of its people need no
+water and no job in town, and the jobs are balanced against those who do
+
+- the old town turned into houses where there is more of it than the town
+  has people for.
 
 `npm run test:cities` in city-sim (`tools/gencity.js`) generates them headless
 and opens each in isometrica's own world, as the game opens it, asking every
 building what it goes without; none goes without anything.
 
-**Later.** The other two sizes, from the same steps:
-
-- **A small town** - one to three roads: a village grown along one road, or
-  round a crossroads or two; mostly rural, a little centre, no flats and no
-  offices.
-- **Peepsopolis** - a city four to six times Peepstown, all of it: more main
-  roads than two, a ring road round downtown, districts of their own.
+**Later.** The third size, from the same steps: **Peepsopolis** - a city
+four to six times Peepstown, all of it: more main roads than two, a ring road
+round downtown, districts of their own.

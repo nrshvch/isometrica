@@ -13,7 +13,7 @@
     "generate:logo": "node tools/genlogo.js",
     "generate:icons": "node tools/genicons.js",
     "pretest:cities": "npm run build --prefix ../engine",
-    "test:cities": "node tools/gencity.js --seeds=20"
+    "test:cities": "node tools/gencity.js --seeds=12"
   },
   "dependencies": {
     "@fontsource-variable/nunito": "^5.3.0",

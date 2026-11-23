@@ -437,9 +437,9 @@ function InstallHowTo({ how }) {
  * is over, on top, then what is switched on and off for the whole game, the city's address shared - as the phone
  * shares things, or else copied - the game put on the home screen, where
  * it can be - a new city: blank, the one a new
- * player starts on, the big one, or one generated afresh, built up,
- * somewhere new - and, under them, the other cities
- * saved here, to go back to. Put away by a click anywhere else, or Escape.
+ * player starts on, the big one, or one generated afresh somewhere new -
+ * a small town, or a city of Peepstown's size - and, under them, the other
+ * cities saved here, to go back to. Put away by a click anywhere else, or Escape.
  */
 function Menu({ client, world, cityId, address, busy }) {
   var [open, setOpen] = useState(false),
@@ -680,8 +680,18 @@ function Menu({ client, world, cityId, address, busy }) {
           )}
           <Row
             icon="dice"
+            label="New random town"
+            sub="Small, along a road or two"
+            disabled={busy}
+            onClick={function () {
+              setOpen(false);
+              startGenerated("town");
+            }}
+          />
+          <Row
+            icon="dice"
             label="New random city"
-            sub="Built up, somewhere new"
+            sub="Peepstown's size, built up"
             disabled={busy}
             onClick={function () {
               setOpen(false);

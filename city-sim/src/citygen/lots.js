@@ -96,9 +96,10 @@ function lotCorner(s, edge, along, d) {
 /**
  * Fills a strip of lots: along a street on side s of them, from `from` to
  * `to` (not taking in to) along it, `depth` deep from `edge` - the row or
- * column of the block next to the street.
+ * column of the block next to the street. Out in a village, now and then a
+ * gap between two of them (opts.gaps), an orchard, a paddock.
  */
-function fillStrip(plan, random, strip, palette, opts) {
+export function fillStrip(plan, random, strip, palette, opts) {
   var primary = random.weighted(palette),
     primaryW = null,
     pos = strip.from,
@@ -164,6 +165,8 @@ function fillStrip(plan, random, strip, palette, opts) {
             if (kind === primary) primaryW = w;
             pos += w;
             built.push(placed);
+
+            if (opts.gaps && random.chance(opts.gaps)) pos += random.int(1, 3);
           }
         }
       }
@@ -214,7 +217,7 @@ function sideRoad(plan, b, s) {
  * each half as deep as the block, three at most - and if only one of them
  * has, as deep as it can - and the shorter sides if neither does.
  */
-function stripsOf(plan, b) {
+export function stripsOf(plan, b) {
   var bw = b.x1 - b.x0,
     bh = b.y1 - b.y0,
     roads = [0, 1, 2, 3].map(function (s) {
@@ -294,7 +297,7 @@ function stripsOf(plan, b) {
 }
 
 //every tile of a block still free, as [x, y]
-function freeCells(plan, b) {
+export function freeCells(plan, b) {
   var out = [];
 
   for (var y = b.y0; y < b.y1; y++)
@@ -467,6 +470,44 @@ function paletteFor(b, strip) {
 }
 
 /**
+ * Puts one of kind up facing a street on its side s - of the footprints
+ * given, [front, deep], the first that goes - its front on the line of tiles
+ * next to the street at `edge`, somewhere from `lo` to `hi` along it (not
+ * taking in hi).
+ *
+ * @returns {Object|null} what went up
+ */
+export function placeFacing(plan, random, kind, shapes, s, edge, lo, hi) {
+  for (var f = 0; f < shapes.length; f++) {
+    var w = shapes[f][0],
+      d = shapes[f][1],
+      codes = codesOf(kind, w, d);
+
+    if (codes.length === 0) continue;
+
+    for (var along = lo; along + w <= hi; along++) {
+      var corner = lotCorner(s, edge, along, d),
+        placed = tryPlace(
+          plan,
+          random.pick(codes),
+          corner[0],
+          corner[1],
+          w,
+          d,
+          s,
+          {
+            zone: "civic",
+          },
+        );
+
+      if (placed !== null) return placed;
+    }
+  }
+
+  return null;
+}
+
+/**
  * The town's own buildings round its square, facing it across the street:
  * the town hall, the church, the market.
  */
@@ -536,34 +577,13 @@ function civic(plan, random) {
           s === 1 || s === 3
             ? Math.min(b.x1, sq.x1 + 1)
             : Math.min(b.y1, sq.y1 + 1),
-        edge = s === 1 ? b.y0 : s === 3 ? b.y1 - 1 : s === 0 ? b.x0 : b.x1 - 1;
+        edge = s === 1 ? b.y0 : s === 3 ? b.y1 - 1 : s === 0 ? b.x0 : b.x1 - 1,
+        placed = placeFacing(plan, random, want[0], want[1], s, edge, lo, hi);
 
-      for (var f = 0; f < want[1].length; f++) {
-        var w = want[1][f][0],
-          d = want[1][f][1],
-          codes = codesOf(want[0], w, d);
-
-        if (codes.length === 0) continue;
-
-        for (var along = lo; along + w <= hi; along++) {
-          var corner = lotCorner(s, edge, along, d),
-            placed = tryPlace(
-              plan,
-              random.pick(codes),
-              corner[0],
-              corner[1],
-              w,
-              d,
-              s,
-              { zone: "civic" },
-            );
-
-          if (placed !== null) {
-            built[want[0]] = placed;
-            spots.splice(i, 1);
-            return;
-          }
-        }
+      if (placed !== null) {
+        built[want[0]] = placed;
+        spots.splice(i, 1);
+        return;
       }
     }
   });
@@ -643,7 +663,7 @@ export function buildUp(plan, random) {
  * side of the road, facing it, its fields round it in its footprint - as far
  * as the town's country reaches.
  */
-function farms(plan, random) {
+export function farms(plan, random) {
   var keys = Object.keys(plan.roads),
     taken = Object.create(null);
 

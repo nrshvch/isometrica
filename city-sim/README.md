@@ -170,10 +170,18 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   everything there is: nothing is drawn by hand. While a building is being
   placed, the dice next to turning it round picks another of the same kind
   for every footprint of the selection, the selection staying as it is.
-- A new city can be started on one generated afresh, from the menu ("New
-  random city"): a town about Peepstown's size, built up all of it,
-  somewhere about where a blank city would go - a new one every time, out
-  of a seed (`src/citygen`, see [generated cities](docs/cities.md#generated-cities)).
+- A new city can be started on one generated afresh, from the menu: "New
+  random town", a small town along a road or two, mostly country, or "New
+  random city", a town about Peepstown's size - built up all of it,
+  somewhere about where a blank city would go, a new one every time, out of
+  a seed (`src/citygen`, see [generated cities](docs/cities.md#generated-cities)).
+  A small town is laid out the way villages are where they grew up by
+  themselves - along one road through it, round a crossroads, where a road
+  comes off another, or round a green the road parts round - its middle a
+  little town on cobbled streets, a square, the church, a market, the old
+  town, shops and town houses, now and then a town hall and a lane behind
+  them round a block or two; out along its roads a village's houses with a
+  gap between some, then farms. No flats, no offices.
   Its streets are laid out the way a planned town's are: two main roads
   through its middle and on out into the country as far as the land goes,
   the land between them cut into blocks, smaller downtown and longer out in

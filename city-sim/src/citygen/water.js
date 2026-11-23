@@ -30,10 +30,13 @@ function radius(code) {
 }
 
 /**
+ * @param [near] {boolean} whether it may go up on open ground right by the
+ *        houses as well, out of the town's blocks - a village's, along its
+ *        roads, has few blocks to it
  * @returns {{pumps: number, towers: number, dry: number}} how many of each
  *          went up, and how many buildings still have no water - none
  */
-export default function water(plan, random) {
+export default function water(plan, random, near) {
   var wants = plan.standing().filter(function (b) {
       return info(b.code).water;
     }),
@@ -58,6 +61,10 @@ export default function water(plan, random) {
     });
   }
 
+  //open ground right by a building of the town - two tiles from it at
+  //most, so that it hangs together with it (core/city/cityroads)
+  var byHouses = near ? beside(plan) : null;
+
   //where one could go up, w by w: open ground of the town, or a lot it
   //could take the place of - at the lot's corner
   function sites(w) {
@@ -67,9 +74,11 @@ export default function water(plan, random) {
 
     for (y = 0; y + w <= plan.h; y++)
       for (x = 0; x + w <= plan.w; x++) {
-        var id = plan.blockOf[plan.index(x, y)];
+        var k = plan.index(x, y),
+          id = plan.blockOf[k];
 
-        if (id < 0 || !plan.blocks[id].urban) continue;
+        if ((id < 0 || !plan.blocks[id].urban) && !(byHouses && byHouses[k]))
+          continue;
         if (plan.free(x, y, w, w)) out.push({ x: x, y: y, lot: null });
       }
 
@@ -193,6 +202,21 @@ export default function water(plan, random) {
   }
 
   return { pumps: pumps, towers: towers, dry: dry().length };
+}
+
+//every tile within two of a building that is not a farm's, by its index
+function beside(plan) {
+  var mask = new Uint8Array(plan.w * plan.h);
+
+  plan.standing().forEach(function (b) {
+    if (b.zone === "farm") return;
+
+    for (var x = b.x - 2; x < b.x + b.w + 2; x++)
+      for (var y = b.y - 2; y < b.y + b.h + 2; y++)
+        if (plan.inside(x, y)) mask[plan.index(x, y)] = 1;
+  });
+
+  return mask;
 }
 
 function byWater(plan, x, y, most) {

@@ -491,9 +491,14 @@ function startGeneratedCity(size) {
  * @param size {string} which size (citygen SIZES)
  */
 export function startGenerated(size) {
-  ask("Do you really want to start on a new random city?", function () {
-    startGeneratedCity(size);
-  });
+  ask(
+    "Do you really want to start on a new random " +
+      (size === "town" ? "town" : "city") +
+      "?",
+    function () {
+      startGeneratedCity(size);
+    },
+  );
 }
 
 //asks the player over the world, from whatever screen the menu was opened
