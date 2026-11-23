@@ -25,12 +25,12 @@
  * the cold, the spruce and the pine with snow lying on their tiers and
  * branches, and the dead wood - a dead tree standing, a stump, a fallen
  * trunk or two - with snow on whatever of it looks up ("snowspruce",
- * "snowsnag"...); in the desert, the dead wood dried out, bleached grey by
- * the sun, no moss on it ("drysnag"...). Each is the kind it is made from,
- * grown the same way, in colours of its own.
- *
- * And, for the lab only, the dead trees the terrain-asset-generation branch
- * had for its savannah, dried out and bare ("deadtree") - see describe.
+ * "snowsnag"...). Each is the kind it is made from, grown the same way, in
+ * colours of its own. In the desert, the dead wood dried out, bleached grey
+ * by the sun, no moss on it ("drystump"...), the dead trees the
+ * terrain-asset-generation branch had for its savannah, dried out and bare
+ * ("deadtree"), and cacti: the tall ones with arms ("cactus"), ribbed up
+ * their length, and prickly pears, a clump of flat pads ("pricklypear").
  *
  * Each comes in two, grown from different seeds, and each of those is
  * painted from its four sides - "gen/trees/oak-1", "gen/trees/oak-1/r1" - so
@@ -89,8 +89,8 @@ var FALLING = [
   "snowspruce",
   "snowpine",
   "snowsnag",
-  "drysnag",
   "deadtree",
+  "cactus",
 ];
 
 //the ways one can be seen to fall, along the ground as it is painted (x - y
@@ -783,19 +783,16 @@ KINDS.snowsnag = snowed("snag", 0.1);
 KINDS.snowstump = snowed("stump", 0.2);
 KINDS.snowlog = snowed("log", 0.25);
 KINDS.snowlogs = snowed("logs", 0.25);
-KINDS.drysnag = dried("snag", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
 KINDS.drystump = dried("stump", BLEACHED);
 KINDS.drylog = dried("log", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
 KINDS.drylogs = dried("logs", [BLEACHED[0], BLEACHED[1], BLEACHED[1]]);
 
-/* --- The savannah's dead trees, to look at ---------------------------- */
+/* --- The desert's: dead trees and cacti -------------------------------- */
 
 //The dead trees the terrain-asset-generation branch painted for its
 //savannah (tools/gentrees.js there), dried out and bare, grown here the way
 //every other kind is - each of the two the branch's own, by its numbers:
-//the variant grow is handed. The world grows neither (lab: it has no code in
-//data/trees, and the game is not even told of it, see describe) - they are
-//for the lab's sprite gallery, till a zone of the climate has them.
+//the variant grow is handed - and standing in the desert now.
 
 //the branch's trees were painted a unit a pixel across, from 30 degrees
 //up: as wide and as tall here, across the ground and up
@@ -845,7 +842,6 @@ var DEADTREE = [
 ];
 
 KINDS.deadtree = {
-  lab: true,
   leaves: [
     [0, 0, 0],
     [0, 0, 0],
@@ -906,6 +902,175 @@ KINDS.deadtree = {
       },
       branches: branches,
       lobes: [],
+    };
+  },
+};
+
+//the cacti - saguaros: a tall thick stem, rounded at the top, and arms that
+//leave it low down, bend out and up in a curve and rise nearly as high. An
+//arm goes out along one of the grid's ways - x, -x, y, -y, give or take a
+//little - which the camera turning round only swaps for one another, so
+//from every side it is seen from an arm stands clear of the stem on either
+//side of it: each [which way - a quarter turn from x for every one - how
+//far up the stem it leaves it, how far up its tip is]. The first tall with
+//three arms, the second younger, with two
+var SAGUARO = [
+  {
+    height: 44,
+    foot: 2.8,
+    top: 2.5,
+    arms: [
+      [0, 0.36, 0.78],
+      [2, 0.46, 0.86],
+      [3, 0.3, 0.62],
+    ],
+  },
+  {
+    height: 32,
+    foot: 2.5,
+    top: 2.2,
+    arms: [
+      [0, 0.42, 0.78],
+      [2, 0.5, 0.85],
+    ],
+  },
+];
+
+//how far out from the middle of the stem an arm rises, and how thick it is
+//at its foot and at its tip - out far enough to stand clear of the stem
+var ARM_OUT = 8.5,
+  ARM_FOOT = 1.9,
+  ARM_TIP = 1.8;
+
+//the way an arm bends out of the stem and up, as [how far out, how far up]
+//of it, the last of them where it goes straight up from
+var ELBOW = [
+  [0, 0],
+  [0.45, 0.6],
+  [0.85, 2.2],
+  [1, 4.5],
+];
+
+KINDS.cactus = {
+  leaves: [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ],
+  //pale sage green in the shade and in the light, and the grooves between
+  //its ribs
+  bark: [
+    [104, 138, 92],
+    [158, 188, 130],
+    [72, 104, 68],
+  ],
+  ribs: 8,
+  clump: 0.3,
+  bumps: 0,
+  grow: function (r, v) {
+    var o = SAGUARO[(v - 1) % SAGUARO.length],
+      branches = [];
+
+    o.arms.forEach(function (arm) {
+      var a = (arm[0] * Math.PI) / 2 + 0.28 * (r() - 0.5),
+        dx = Math.cos(a),
+        dy = Math.sin(a),
+        z = o.height * (arm[1] + 0.08 * (r() - 0.5)),
+        tip = o.height * (arm[2] + 0.08 * (r() - 0.5)),
+        at = ELBOW.map(function (e) {
+          return [dx * ARM_OUT * e[0], dy * ARM_OUT * e[0], z + e[1]];
+        });
+
+      //out of the stem and round, a little thicker at the bend
+      for (var i = 0; i < at.length - 1; i++)
+        branches.push({
+          from: at[i],
+          to: at[i + 1],
+          ra: ARM_FOOT,
+          rb: ARM_FOOT,
+        });
+
+      //and up
+      branches.push({
+        from: at[at.length - 1],
+        to: [at[at.length - 1][0], at[at.length - 1][1], Math.max(tip, z + 8)],
+        ra: ARM_FOOT,
+        rb: ARM_TIP,
+      });
+    });
+
+    return {
+      trunk: {
+        height: o.height,
+        foot: o.foot,
+        top: o.top,
+        lean: [0, 0],
+      },
+      branches: branches,
+      lobes: [],
+    };
+  },
+};
+
+//the prickly pears: flat pads growing out of one another, a few low down
+//and a few on them - each [x, y, how high, which way it is flat, how big]
+var PRICKLYPEAR = [
+  [
+    [0, 0, 4.4, 0, 1],
+    [3.4, 0.8, 4.2, 1, 0.9],
+    [-3.1, -0.6, 3.9, 1, 0.85],
+    [1.3, -0.3, 11.2, 1, 0.85],
+    [-2, 0.7, 10.4, 0, 0.8],
+    [4.2, 1.3, 10.6, 0, 0.75],
+  ],
+  [
+    [0, 0, 4.2, 1, 0.95],
+    [-2.8, 0.7, 3.9, 0, 0.85],
+    [0.8, 0.4, 10.6, 0, 0.8],
+  ],
+];
+
+KINDS.pricklypear = {
+  //a paler, bluer green than the leaves of a tree - the pads face every way,
+  //and the sun catches few of them full on
+  leaves: [
+    [58, 104, 70],
+    [72, 124, 80],
+    [102, 152, 94],
+    [138, 182, 116],
+    [170, 204, 140],
+  ],
+  bark: [
+    [46, 92, 58],
+    [96, 146, 84],
+    [96, 146, 84],
+  ],
+  //every pad a pad of its own
+  blend: 0.5,
+  clump: 0.6,
+  bumps: 0.25,
+  grow: function (r, v) {
+    var pads = PRICKLYPEAR[(v - 1) % PRICKLYPEAR.length];
+
+    return {
+      trunk: null,
+      branches: [],
+      lobes: pads.map(function (pad) {
+        var size = pad[4] * (0.9 + 0.2 * r()),
+          wide = 3.6 * size,
+          thin = 1.1;
+
+        return [
+          pad[0] + 0.4 * (r() - 0.5),
+          pad[1] + 0.4 * (r() - 0.5),
+          pad[2],
+          pad[3] ? thin : wide,
+          pad[3] ? wide : thin,
+          4.4 * size,
+        ];
+      }),
     };
   },
 };
@@ -1075,7 +1240,7 @@ function grow(kind, seed, turns, v) {
           (Math.sqrt(dx * dx + dy * dy + dz * dz) - 1) *
           Math.min(l[3], l[4], l[5]);
 
-      d = d === Infinity ? e : smoothMin(d, e, 2.5);
+      d = d === Infinity ? e : smoothMin(d, e, k.blend || 2.5);
     });
 
     //lumpy with clumps of leaves
@@ -1142,6 +1307,55 @@ function grow(kind, seed, turns, v) {
       return (
         n[2] > 0.45 &&
         noise(m[0] * 0.45 + seed, m[1] * 0.45, p[2] * 0.45) > k.moss
+      );
+    }
+
+    //the ribs up a cactus: lines up the stem and up every arm, every so far
+    //round it - in its own way round, so that they stay where they are on it
+    //whichever side it is seen from
+    if (k.ribs !== undefined) {
+      var nearest = Infinity,
+        upright = false,
+        dx = 0,
+        dy = 0;
+
+      (trunk ? [{ from: [0, 0, -1], to: top }] : [])
+        .concat(plan.branches)
+        .forEach(function (l) {
+          var ab = [
+              l.to[0] - l.from[0],
+              l.to[1] - l.from[1],
+              l.to[2] - l.from[2],
+            ],
+            t = clamp(
+              ((p[0] - l.from[0]) * ab[0] +
+                (p[1] - l.from[1]) * ab[1] +
+                (p[2] - l.from[2]) * ab[2]) /
+                dot(ab, ab),
+              0,
+              1,
+            ),
+            cx = p[0] - (l.from[0] + ab[0] * t),
+            cy = p[1] - (l.from[1] + ab[1] * t),
+            cz = p[2] - (l.from[2] + ab[2] * t),
+            d = cx * cx + cy * cy + cz * cz;
+
+          if (d < nearest) {
+            nearest = d;
+            dx = cx;
+            dy = cy;
+            //the stem, or an arm going up - not where it bends out of it
+            upright = ab[2] * ab[2] > 0.5 * dot(ab, ab);
+          }
+        });
+
+      var round = back(dx, dy);
+
+      //a groove a pixel wide between every two ribs, darker than the
+      //cactus in the sun or in the shade - up the stem and up its arms, and
+      //none round the bends, which no groove runs along
+      return (
+        upright && Math.cos(Math.atan2(round[1], round[0]) * k.ribs) > 0.86
       );
     }
 

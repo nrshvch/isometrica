@@ -8,9 +8,8 @@
  *
  * It has what the game does not as well: every kind of ground the terrain
  * painter has, the rock of the mountains, the tropics' and the north's
- * grass, the savannah, with all their edges and shores, and the trees
- * nothing grows - marked "not in the game", and to see on their own or not
- * at all.
+ * grass, the savannah, with all their edges and shores - marked "not in the
+ * game", and to see on their own or not at all.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Catalog from "../../src/shared/gen/catalog.js";

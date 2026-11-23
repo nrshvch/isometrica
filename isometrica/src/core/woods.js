@@ -20,7 +20,9 @@
  * among them now and then; further out the pines die off, then the firs,
  * and for a while there are only dead trunks standing in the snow, fewer
  * and fewer, till at the edge of the world there is nothing at all; in the
- * desert, hardly anything, and that dead and dried out.
+ * desert, hardly anything: cacti and prickly pears where the woods would
+ * have a tree alive, a dried-out tree where they would have a dead one, and
+ * the dead wood bleached by the sun.
  */
 import Simplex from "simplex-noise";
 import Trees from "../data/trees";
@@ -175,19 +177,22 @@ var FLORA = {
   },
   hot: {
     kinds: {
-      oak: "drysnag",
-      beech: "drysnag",
-      ash: "drysnag",
-      alder: "drystump",
-      birch: "drystump",
-      pine: "drysnag",
-      spruce: "drysnag",
-      snag: "drysnag",
+      //the living ones: cacti - tall ones with arms and prickly pears - and
+      //now and then a tree that has dried out
+      oak: ["cactus", "cactus", "pricklypear", "deadtree"],
+      beech: ["cactus", "pricklypear", "pricklypear", "deadtree"],
+      ash: ["cactus", "cactus", "pricklypear", "deadtree"],
+      alder: ["pricklypear", "pricklypear", "cactus", "deadtree"],
+      birch: ["pricklypear", "cactus", "deadtree"],
+      pine: ["cactus", "cactus", "deadtree"],
+      spruce: ["cactus", "pricklypear", "deadtree"],
+      //the dead ones dried out
+      snag: "deadtree",
       stump: "drystump",
       log: "drylog",
       logs: "drylogs",
     },
-    density: 0.08,
+    density: 0.1,
     thin: 0.7,
     thinOver: 8,
   },

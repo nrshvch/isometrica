@@ -7,8 +7,8 @@
  * stump or a fallen trunk, which only the world puts down: a tree planted is
  * a live one. Where it is not green (core/climate), the world has kinds of
  * its own: out in the cold the spruce and the pine snowed over, and the dead
- * wood snowed over; in the desert the dead wood dried out - only the world
- * puts those down either.
+ * wood snowed over; in the desert dried-out dead trees, the dead wood dried
+ * out, and cacti - only the world puts those down either.
  *
  * The first oak and the first beech keep the codes the two trees drawn by hand
  * had, so a city that has those has these instead.
@@ -42,10 +42,12 @@ var KINDS = [
   "snowstump",
   "snowlog",
   "snowlogs",
-  "drysnag",
+  "deadtree",
   "drystump",
   "drylog",
   "drylogs",
+  "cactus",
+  "pricklypear",
 ];
 var EACH = 2;
 
@@ -62,10 +64,12 @@ var WILD = {
   snowstump: true,
   snowlog: true,
   snowlogs: true,
-  drysnag: true,
+  deadtree: true,
   drystump: true,
   drylog: true,
   drylogs: true,
+  cactus: true,
+  pricklypear: true,
 };
 var NAMES = {
   snag: "dead tree",
@@ -77,10 +81,11 @@ var NAMES = {
   snowstump: "snowy stump",
   snowlog: "snowy fallen tree",
   snowlogs: "snowy fallen trees",
-  drysnag: "dry dead tree",
+  deadtree: "dried-out tree",
   drystump: "dry stump",
   drylog: "dry fallen tree",
   drylogs: "dry fallen trees",
+  pricklypear: "prickly pear",
 };
 
 var TREES = [];

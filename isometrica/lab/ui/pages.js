@@ -10,7 +10,7 @@ export var PAGES = [
       "Every picture the generators paint - ground, roads, buildings, trees, " +
       "vehicles, stones, smoke - a generator at a time, lit or at night; " +
       "and what the game does not use (yet): every kind of ground the " +
-      "terrain painter has, and the savannah's dead trees.",
+      "terrain painter has.",
   },
   {
     id: "sounds",

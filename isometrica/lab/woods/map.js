@@ -37,10 +37,12 @@ export var KIND_COLOURS = {
   snowstump: [70, 60, 60],
   snowlog: [190, 80, 170],
   snowlogs: [150, 60, 140],
-  drysnag: [120, 100, 80],
+  deadtree: [120, 100, 80],
   drystump: [80, 60, 40],
   drylog: [170, 90, 60],
   drylogs: [140, 70, 40],
+  cactus: [60, 170, 80],
+  pricklypear: [170, 210, 90],
 };
 
 //the woods, in the order core/woods has them
