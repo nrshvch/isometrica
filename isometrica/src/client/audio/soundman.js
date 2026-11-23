@@ -141,7 +141,7 @@ var AROUND = 2.5,
 //as soon as it can, the boom a little after the pieces fly - and how far
 //apart two are at least, ms: blown up together, they are heard as one
 var BLAST = "blast/0",
-  BLAST_AT = BLAST_SOUND.at,
+  BLAST_AT = BLAST_SOUND.at[0],
   BLAST_LOUD = 0.95,
   BLAST_OFF = 2.5,
   BLAST_LATE = 0.5,

@@ -95,7 +95,7 @@ Boom.prototype.watch = function () {
 
   var world = this.world,
     speed = world.speed,
-    at = BLAST_SOUND.at;
+    at = BLAST_SOUND.at[0];
 
   world.client.game.logic.world.gameObjects.forEach(function (go) {
     var e = go && go.explosion;
