@@ -41,7 +41,9 @@
  *     day and night, a slight wind over the sea - as real as the skyline,
  *     not cartoons of it: their own models, in country.js;
  *   - bells: the old town's small church's one bell, rung for a service
- *     or tolled - its own model, in bells.js.
+ *     or tolled - its own model, in bells.js;
+ *   - blast: a building blown up, heard from up over the town - a real
+ *     demolition, not a cartoon of one: its own model, in blast.js.
  *
  * The last four loop, seamlessly: what goes on in them all the time is made
  * a little longer than the loop and its end faded into its start, and what
@@ -79,6 +81,7 @@ import {
 import { SKYLINE } from "./skyline.js";
 import { WOODS_SOUND, OFFSHORE_SOUND } from "./country.js";
 import { BELLS_SOUND } from "./bells.js";
+import { BLAST_SOUND } from "./blast.js";
 
 //how many samples a second, unless asked for another rate
 export var RATE = 44100;
@@ -1081,6 +1084,7 @@ export var SOUNDS = {
   woods: WOODS_SOUND,
   offshore: OFFSHORE_SOUND,
   bells: BELLS_SOUND,
+  blast: BLAST_SOUND,
 };
 
 /**

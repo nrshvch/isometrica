@@ -6,12 +6,14 @@
  * time, heaps of rubble left where it stood and its yard wrecked, dust
  * hanging over it - as slowly as wanted, turned round or from above;
  * with its neighbours round it, the blast bringing down the near ones; the
- * rubble cleared away by the bulldozers, and all of it put up again.
+ * rubble cleared away by the bulldozers, and all of it put up again. And
+ * the boom of it (boom.js), one of three ways, as the pieces fly.
  */
 import { useEffect, useRef, useState } from "react";
 import BuildingData from "../../src/data/buildings";
 import { kinds, open } from "../bench/world.js";
 import { Scene } from "./scene.js";
+import { Boom, WAYS } from "./boom.js";
 import { Button, Header, Select } from "../ui/kit.jsx";
 
 var SPEEDS = [
@@ -49,6 +51,8 @@ function Row({ children }) {
 export default function Explosion() {
   var el = useRef(null),
     bench = useRef(null),
+    boom = useRef(null),
+    [sound, setSound] = useState(0),
     [ready, setReady] = useState(false),
     [failed, setFailed] = useState(""),
     [speed, setSpeed] = useState(1),
@@ -71,6 +75,7 @@ export default function Explosion() {
       function (world) {
         world.speed = speed;
         bench.current = new Scene(world);
+        boom.current = new Boom(world);
         window.bench.scene = bench.current;
         setKind(String(bench.current.code));
         setReady(true);
@@ -92,6 +97,7 @@ export default function Explosion() {
 
     return function () {
       if (looking !== null) clearInterval(looking);
+      if (boom.current) boom.current.stop();
     };
   }, []);
 
@@ -106,6 +112,7 @@ export default function Explosion() {
       until;
 
     if (!s.put()) return;
+    boom.current.wake();
     until = time.time + STANDS;
 
     var waiting = setInterval(function () {
@@ -263,6 +270,7 @@ export default function Explosion() {
                 title="blow up the one in the middle - and then the one beside it"
                 disabled={!ready || busy || left === 0}
                 onClick={function () {
+                  boom.current.wake();
                   scene().explode();
                 }}
               >
@@ -297,6 +305,57 @@ export default function Explosion() {
                 onClick={again}
               >
                 again
+              </Button>
+            </Row>
+          </Section>
+
+          <Section title="The boom">
+            <Note>
+              What is heard as it goes up, from up over the town: started so its
+              boom comes just as the pieces fly - not slowed with the bench, so
+              at ¼× it is over long before they land.
+            </Note>
+            <Row>
+              {WAYS.map(function (w) {
+                return (
+                  <Button
+                    key={w.value}
+                    className="px-1.5 py-0.5"
+                    title={"blast/" + w.value + ": heard as it goes up"}
+                    on={sound === w.value}
+                    disabled={!ready}
+                    onClick={function () {
+                      boom.current.pick(w.value);
+                      setSound(w.value);
+                    }}
+                  >
+                    {w.label}
+                  </Button>
+                );
+              })}
+              <Button
+                className="px-1.5 py-0.5"
+                title="nothing heard as it goes up"
+                on={sound === null}
+                disabled={!ready}
+                onClick={function () {
+                  boom.current.pick(null);
+                  setSound(null);
+                }}
+              >
+                none
+              </Button>
+            </Row>
+            <Row>
+              <Button
+                className="px-1.5 py-0.5"
+                title="hear the one picked on its own, now"
+                disabled={!ready || sound === null}
+                onClick={function () {
+                  boom.current.hear(sound);
+                }}
+              >
+                hear it on its own
               </Button>
             </Row>
           </Section>
