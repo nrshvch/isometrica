@@ -26,13 +26,10 @@ function VTime(world) {
   );
 }
 
-var events =
-  (VTime.events =
-  VTime.prototype.events =
-    {
-      advance: 3,
-      newDay: 0,
-    });
+VTime.events = VTime.prototype.events = {
+  advance: 3,
+  newDay: 0,
+};
 
 //how much game time one tick of the world is worth
 VTime.millisecondsPerTick = millisecondsInTick;

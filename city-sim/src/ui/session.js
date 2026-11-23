@@ -25,7 +25,7 @@ var generating = (function () {
   try {
     value = JSON.parse(window.sessionStorage.getItem(GENERATE_KEY));
     window.sessionStorage.removeItem(GENERATE_KEY);
-  } catch (e) {
+  } catch {
     //no storage, or nothing sensible in it: nothing was asked
   }
 
@@ -39,7 +39,7 @@ function asked(key, id) {
   try {
     value = window.sessionStorage.getItem(key);
     window.sessionStorage.removeItem(key);
-  } catch (e) {
+  } catch {
     //no storage: nothing was asked
   }
 
@@ -437,7 +437,7 @@ function startFreshCity(initial) {
         initial === "big" ? FROM_BIG_KEY : FROM_INITIAL_KEY,
         id,
       );
-    } catch (e) {
+    } catch {
       //no storage - a blank city, then
     }
   //a blank one is not dropped right where the player stands, but somewhere
@@ -455,7 +455,7 @@ function startFreshCity(initial) {
           z: pos[2] + (Math.random() - 0.5) * span,
         }),
       );
-    } catch (e) {
+    } catch {
       //no storage - the new city just opens where the camera defaults to
     }
   }
@@ -497,7 +497,7 @@ function startGeneratedCity(size) {
         near: near,
       }),
     );
-  } catch (e) {
+  } catch {
     //no storage - a blank city, then
   }
 

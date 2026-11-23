@@ -2,7 +2,6 @@
  * Office blocks: the parts and palettes of their style, on shared/gen/blocks.
  * See isometrica/.claude/skills/generators/buildings.md (Blocks of flats and offices).
  */
-import * as iso from "./isobox.js";
 import * as Brands from "./brands.js";
 import {
   blocks,

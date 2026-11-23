@@ -286,7 +286,7 @@ Terrain.extractY = function (index) {
   return index >>> 16;
 };
 
-var dx = (Terrain.dx = Terrain.convertToIndex(1, 0));
+Terrain.dx = Terrain.convertToIndex(1, 0);
 var dy = (Terrain.dy = Terrain.convertToIndex(0, 1));
 
 Terrain.events = events;
@@ -382,8 +382,9 @@ Terrain.prototype.planLevel = function (tiles, direction) {
     }
   }
 
-  var tiles = [],
-    seen = Object.create(null),
+  tiles = [];
+
+  var seen = Object.create(null),
     tile,
     n;
 
@@ -728,7 +729,9 @@ Terrain.prototype.tileSlope = function (tile) {
 };
 
 Terrain.prototype.tilePoints = function (tile) {
-  var z0 = this.getGridPointHeight(x, y),
+  var x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile),
+    z0 = this.getGridPointHeight(x, y),
     z1 = this.getGridPointHeight(x + 1, y),
     z2 = this.getGridPointHeight(x, y + 1),
     z3 = this.getGridPointHeight(x + 1, y + 1);

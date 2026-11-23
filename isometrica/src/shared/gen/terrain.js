@@ -1379,14 +1379,6 @@ function shade(c, light, look) {
 
 /* --- Painting --------------------------------------------------------- */
 
-function blank() {
-  return {
-    width: WIDTH,
-    height: HEIGHT,
-    data: new Uint8ClampedArray(WIDTH * HEIGHT * 4),
-  };
-}
-
 function put(image, i, c, alpha) {
   image.data[i * 4] = Math.max(0, Math.min(255, Math.round(c[0])));
   image.data[i * 4 + 1] = Math.max(0, Math.min(255, Math.round(c[1])));

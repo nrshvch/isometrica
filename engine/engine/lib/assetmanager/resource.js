@@ -20,8 +20,9 @@ define(function (require) {
 
         //this will be called once ajax/xhr loading will be finished
         this.onLoad = function (xhr) {
-            var data,
-                xhr = xhr.target;
+            var data;
+
+            xhr = xhr.target;
 
             if (xhr.status === 200) {
                 if (self.type === ResourceTypeEnum.image) {

@@ -1,11 +1,9 @@
 /**
  * Created by denis on 9/11/14.
  */
-import Config from "./config";
 import Core from "../core/main";
 
 var TileIterator = Core.TileIterator;
-var Terrain = Core.Terrain;
 
 function Chunk(tile0, tile1) {
   this.tile0 = tile0;

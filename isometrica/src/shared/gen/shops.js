@@ -8,7 +8,6 @@ import { BRANDS, panel, parade } from "./brands.js";
 import {
   box,
   darker,
-  lighter,
   TILE,
   STOREY,
   GRASS,
@@ -566,8 +565,6 @@ function smallShop(o, rnd) {
     b.push(box(R.x0, R.x1, R.y1 - 0.8, R.y1, h, h + 1.2, P.wall));
     airConditioner(b, R.x1 - 9, R.y1 - 8, h + 0.4);
   } else if (o.roof === "gable") {
-    var mid = (R.y0 + R.y1) / 2;
-
     slopedRoof(
       b,
       R.x0 - 1,

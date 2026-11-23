@@ -222,7 +222,7 @@ define(function (require) {
         }
 
         if (this.removeQueueWaiting) {
-            var len = this.removeQueue.length;
+            len = this.removeQueue.length;
 
             for (i = 0; i < len; i++) {
                 this.components.splice(this.components.indexOf(this.removeQueue.pop()), 1);

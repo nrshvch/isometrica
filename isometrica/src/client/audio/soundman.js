@@ -153,7 +153,7 @@ function smooth(k) {
 function stored(key) {
   try {
     return localStorage.getItem(key);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -161,7 +161,7 @@ function stored(key) {
 function store(key, v) {
   try {
     localStorage.setItem(key, v);
-  } catch (e) {
+  } catch {
     //not kept: as it is now, then
   }
 }
@@ -911,8 +911,7 @@ Soundman.prototype.blast = function (e) {
  * stands still.
  */
 Soundman.prototype.blasts = function (wall) {
-  var ctx = this.context,
-    left = [],
+  var left = [],
     toViewport = null;
 
   for (var i = 0; i < this.blasting.length; i++) {

@@ -77,7 +77,7 @@ function fraction(now, from, to) {
 function defaultStorage() {
   try {
     return typeof localStorage !== "undefined" ? localStorage : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -500,7 +500,7 @@ Courier.prototype.status = function (now) {
  *
  * @returns {number} what was paid, 0 when there was nothing to collect
  */
-Courier.prototype.collect = function (now) {
+Courier.prototype.collect = function () {
   var order = this.state.order;
 
   if (order === null || order.phase !== Phase.delivered) return 0;

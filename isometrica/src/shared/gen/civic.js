@@ -7,7 +7,6 @@ import * as iso from "./isobox.js";
 import {
   box,
   darker,
-  lighter,
   TILE,
   STOREY,
   GRASS,

@@ -816,7 +816,7 @@ function jitter(i, j, k) {
  */
 var MATERIALS = {
   //smooth render, and painted concrete: the odd stain, faint
-  render: function (u, v, side, dark) {
+  render: function (u, v) {
     return jitter(u >> 1, v, 11) * 0.018 + (hash(u, v, 12) < 0.05 ? -0.035 : 0);
   },
 

@@ -391,7 +391,7 @@ export function createPainter(loadPixels) {
   function painter(gen) {
     if (painters[gen] === undefined)
       painters[gen] = loadPixels(INPUTS[gen]).then(
-        function (pixels) {
+        function () {
           if (gen === "terrain") return Terrain.createPainter(null);
           if (gen === "stones") return { paint: Stones.paint };
           if (gen === "smoke") return { paint: Smoke.paint };

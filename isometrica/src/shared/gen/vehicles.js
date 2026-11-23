@@ -703,7 +703,6 @@ function castDown(boxes, sx, sy) {
   }
 
   hitColor = hit === null ? null : hit.color;
-  hitFace = 2;
   hitNormal = [0, 0, 1];
   hitZ = hit === null ? 0 : top;
 
@@ -776,17 +775,15 @@ function cast(boxes, sx, sy) {
   }
 
   hitColor = hit === null ? null : hit.color;
-  hitFace = face;
   hitNormal = face === 0 ? [-1, 0, 0] : face === 1 ? [0, -1, 0] : [0, 0, 1];
   hitZ = hit === null ? 0 : z - best;
 
   return hit === null ? null : shade(hit.color, face);
 }
 
-//what the last ray cast hit: its colour, the face it went in through - and
-//which way that face looks in the world
+//what the last ray cast hit: its colour, and which way the face it went in
+//through looks in the world
 var hitColor = null,
-  hitFace = -1,
   hitNormal = [0, 0, 1],
   hitZ = 0;
 
@@ -866,7 +863,6 @@ function castTurned(boxes, sx, sy) {
   else normal = [0, 0, 1];
 
   hitColor = hit === null ? null : hit.color;
-  hitFace = axis === 2 ? 2 : normal[1] < normal[0] ? 1 : 0;
   hitNormal = normal;
   hitZ = hit === null ? 0 : z - best;
 

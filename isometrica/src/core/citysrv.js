@@ -22,14 +22,6 @@ function addCity(self, city) {
   } else throw "City with id: " + city.id() + " already exists";
 }
 
-function removeCity(self, city) {
-  var index = this._cities.indexOf(city);
-  if (index !== -1) this._cities.splice(index, 1);
-  delete this._citiesByName[city.name()];
-  delete this._citiesById[city.id()];
-  delete this._citiesByTile[city.tile()];
-}
-
 function CityService(root) {
   this.root = root;
   this._cities = [];

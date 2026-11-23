@@ -5,7 +5,6 @@
  */
 import Events from "events";
 import CityStore from "./citystore";
-import CitySync from "./citysync";
 import CityService from "../citysrv";
 import Config from "../config";
 import InitialCity from "../../data/initialcity";
@@ -134,7 +133,6 @@ CityPersistence.prototype.prepare = function (requestedId) {
  */
 CityPersistence.prototype.open = function (requestedId, fromInitial) {
   var store = this._store,
-    world = this.world,
     id = CityStore.isValidId(requestedId) ? requestedId : null,
     data = null,
     //a save of the player's, rather than the city everybody starts on

@@ -48,7 +48,7 @@ function dayNightWanted() {
 
   try {
     kept = localStorage.getItem(DAY_NIGHT_STORE);
-  } catch (e) {
+  } catch {
     //not kept: not wanted, then
   }
 
@@ -237,7 +237,7 @@ Lighting.prototype.setDayNight = function (on) {
 
   try {
     localStorage.setItem(DAY_NIGHT_STORE, this.dayNight ? "on" : "off");
-  } catch (e) {
+  } catch {
     //not kept: as it is now, then
   }
 

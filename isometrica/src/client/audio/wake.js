@@ -48,7 +48,7 @@ export function wake() {
   if (navigator.audioSession) {
     try {
       navigator.audioSession.type = "playback";
-    } catch (e) {
+    } catch {
       //not to be had: as it was
     }
   } else if (apple()) {

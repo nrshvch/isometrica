@@ -1,6 +1,5 @@
 define(function (require) {
     var namespace = require("namespace");
-    var vec3Buffer1 = new Float32Array(3);
     var Component = require("./renderer");
     var Transform = require("./transformcomponent");
     var glMatrix = require("gl-matrix");
@@ -8,7 +7,7 @@ define(function (require) {
 
     namespace("Isometrica.Engine").SpriteRenderer = Sprite;
 
-    function Sprite(sprite) {
+    function Sprite() {
         Component.call(this);
 
         this.events = {
@@ -25,12 +24,15 @@ define(function (require) {
         //one shape and the loop over tens of thousands of them stays on V8's
         //fast path. Filled in later, one at a time and in whatever order,
         //they left it juggling several.
+        //(own copies of what the prototype has: the same shape, not a no-op)
+        /* eslint-disable no-self-assign */
         this.gameObject = null;
         this._sprite = this._sprite;
         this._pivotX = this._pivotX;
         this._pivotY = this._pivotY;
         this.opacity = 1;
         this.layer = this.layer;
+        /* eslint-enable no-self-assign */
     }
 
     var p = Sprite.prototype = Object.create(Component.prototype);

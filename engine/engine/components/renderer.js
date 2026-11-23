@@ -27,7 +27,7 @@ define(function (require) {
         return vec3Buffer1[0] <= 1 && vec3Buffer1[0] >= -1 && vec3Buffer1[1] <= 1 && vec3Buffer1[1] >= -1;
     };
 
-    Renderer.prototype.render = function(layer,viewportRenderer,viewport){
+    Renderer.prototype.render = function(layer,viewportRenderer){
         this.gameObject.transform.getPosition(vec3Buffer1);
         Vec3.transformMat4(vec3Buffer1, vec3Buffer1, viewportRenderer.V);
 

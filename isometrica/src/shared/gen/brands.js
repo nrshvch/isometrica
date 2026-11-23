@@ -19,7 +19,7 @@ export var BRANDS = {
     main: [238, 118, 34],
     accent: [46, 48, 54],
     light: WHITE,
-    emblem: function (i, j, w, h) {
+    emblem: function (i, j) {
       return Math.floor((i + j) / 2) % 2 ? this.accent : this.main;
     },
     band: function (i, j) {
@@ -70,7 +70,7 @@ export var BRANDS = {
 
       return x % 3 === 0 ? this.accent : this.main;
     },
-    band: function (i, j) {
+    band: function (i) {
       return i % 6 === 2 ? this.accent : this.main;
     },
   },
@@ -97,7 +97,7 @@ export var BRANDS = {
 
       return this.main;
     },
-    band: function (i, j) {
+    band: function (i) {
       return i % 4 === 1 ? this.accent : this.main;
     },
   },

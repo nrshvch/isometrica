@@ -41,8 +41,7 @@ import {
 } from "./houses.js";
 import { stall, farmTrailer, COBBLES, GOODS, CANOPIES } from "./shops.js";
 
-var GLASS = [92, 126, 160],
-  STAINED = [70, 92, 150],
+var STAINED = [70, 92, 150],
   IRON = [46, 46, 54],
   GOLD = [214, 178, 64],
   STONE = madeOf([186, 178, 162], "stone"),

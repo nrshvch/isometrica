@@ -6,7 +6,7 @@ import $ from "jquery";
 var template = Handlebars.compile(__templateSource);
 
 var View = Backbone.View.extend({
-  initialize: function (options) {
+  initialize: function () {
     this.setElement(template());
     this._$head = $(".head-slot", this.el);
     this._$body = $(".body-slot", this.el);

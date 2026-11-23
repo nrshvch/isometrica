@@ -6,7 +6,6 @@ import * as iso from "./isobox.js";
 import {
   box,
   darker,
-  lighter,
   TILE,
   STOREY,
   GRASS,
@@ -24,7 +23,6 @@ import {
   made,
   MATTE,
   GLASSY,
-  WOOD,
   TURNS,
 } from "./blocks.js";
 import { slopedRoof } from "./shops.js";

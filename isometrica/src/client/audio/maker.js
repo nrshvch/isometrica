@@ -36,7 +36,7 @@ Maker.prototype.start = function () {
       w = new Worker(new URL("./audio.worker.js", import.meta.url), {
         type: "module",
       });
-    } catch (e) {
+    } catch {
       break;
     }
 

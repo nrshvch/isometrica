@@ -4,9 +4,6 @@
  */
 import BuildingClassCode from "./classcode";
 
-//over the blocks of flats' codes (data/flats)
-var BASE = 1000;
-
 //what each of them that work in it brings in
 var MONEY_PER_JOB = 7;
 

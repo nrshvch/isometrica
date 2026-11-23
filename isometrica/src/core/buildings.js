@@ -24,7 +24,7 @@ import ErrorCode from "./errorcode";
 import Terrain from "./terrain";
 import TerrainType from "./terraintype";
 import TileIterator from "./tileiterator";
-import TileIteratorAction from "./tileiteratoraction";
+import "./tileiteratoraction";
 /**
  * @type {BuildingPositioning}
  */
@@ -61,7 +61,6 @@ function buildTest(self, code, tile, rotation) {
     positioning = data.positioning || BuildingPositioning.flat,
     sizeX = Rotation.sizeX(data, rotation),
     sizeY = Rotation.sizeY(data, rotation),
-    slopeId,
     terrain,
     terrainType,
     resource,
@@ -82,7 +81,6 @@ function buildTest(self, code, tile, rotation) {
     tile = TileIterator.next(tileIterator);
 
     terrain = self.world.terrain;
-    slopeId = terrain.tileSlope(tile);
     terrainType = terrain.getTerrainType(tile);
     resource = terrain.getResource(tile);
 

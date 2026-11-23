@@ -287,7 +287,7 @@ define(function (require) {
         this.staleCount = 0;
     };
 
-    p.retrieve = function (gameObject) {
+    p.retrieve = function () {
         compact(this);
 
         return this.gameObjects;//.slice(0); //slice(0) pollutes heap and does a sawtooth with GC

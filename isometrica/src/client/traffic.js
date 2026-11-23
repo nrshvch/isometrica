@@ -664,8 +664,9 @@ function route(start, from, end, next) {
 
       if (back && !turnable(tile)) continue;
 
-      var k = keyOf(to, d),
-        cost = g.get(key) + 1 + (back ? TURN_ROUND : 0);
+      k = keyOf(to, d);
+
+      var cost = g.get(key) + 1 + (back ? TURN_ROUND : 0);
 
       if (closed.has(k) || (g.has(k) && g.get(k) <= cost)) continue;
 

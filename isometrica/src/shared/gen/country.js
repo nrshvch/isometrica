@@ -36,11 +36,6 @@ function smooth(x) {
   return x * x * (3 - 2 * x);
 }
 
-//smoothly up from nothing at the start, and back down to it at the end
-function fade(u, edge) {
-  return smooth(Math.min(u, 1 - u) / edge);
-}
-
 /* ------------------------------------------------------------------------
  * What goes on all the time
  * --------------------------------------------------------------------- */

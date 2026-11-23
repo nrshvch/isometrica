@@ -21,7 +21,7 @@ function GameScreen(ui) {
     //event that has been and gone
     if (cities.getCities().length > 0) showTopBar(d);
 
-    cities.onNewCity().on(function (citysrv, city) {
+    cities.onNewCity().on(function () {
       showTopBar(d);
     });
   }, this);

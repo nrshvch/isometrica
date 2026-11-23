@@ -12,7 +12,7 @@ function commit() {
 
   try {
     return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
-  } catch (e) {
+  } catch {
     return "";
   }
 }

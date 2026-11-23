@@ -165,11 +165,7 @@ CityRoads.prototype.inNetwork = function (tile) {
 CityRoads.prototype.getNetworkSize = function () {
   update(this);
 
-  var n = 0;
-
-  for (var tile in this._network) n++;
-
-  return n;
+  return Object.keys(this._network).length;
 };
 
 /**

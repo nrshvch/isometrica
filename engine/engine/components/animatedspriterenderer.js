@@ -4,7 +4,7 @@ define(function (require) {
 
     namespace("Isometrica.Engine").AnimatedSpriteRenderer = AnimatedSprite;
 
-    function AnimatedSprite(sprite) {
+    function AnimatedSprite() {
         SpriteRenderer.call(this);
 
         this.frames = [];

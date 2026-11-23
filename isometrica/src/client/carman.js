@@ -1564,8 +1564,7 @@ function behindBus(driver) {
 }
 
 CarScript.prototype.tick = function (time) {
-  var roadman = this.man.root.roadman,
-    driver = this.driver,
+  var driver = this.driver,
     wps = driver === null ? [] : driver.wps,
     x,
     y;
@@ -2114,7 +2113,7 @@ function restore(self, last) {
 
   try {
     kept = JSON.parse(at.storage.getItem(at.key) || "null");
-  } catch (e) {
+  } catch {
     kept = null;
   }
 
