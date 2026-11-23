@@ -45,7 +45,7 @@ watched or not; after time away `catchUp` (`:154`) plays the ticks missed,
 a game day at most.
 
 **Every ticker runs every frame**, far or near: the engine's `World.tick`
-(`engine/engine/world.js:424`) goes through every game object with something
+(`engine/engine/world.js:381`) goes through every game object with something
 to tick. Cars, chimneys and smoke puffs are most of them. A few scripts tick
 less often by keeping their own count of the time.
 

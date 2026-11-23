@@ -73,11 +73,11 @@ its sizes:
 Any other partition that keeps the contract - stable keys, the same from the
 same position everywhere - can be added.
 
-The octree the engine already has (`engine/engine/lib/octree.js`, `lib/Octree/*`,
-used by `World` only when it is made with `useOctree`,
-`engine/engine/world.js:16`, which nobody does) is the other kind: it splits a node when too many items are in
-it. That makes a good index, and no address at all - its nodes are not the
-same on two machines, nor from one minute to the next.
+The engine had an octree of the other kind, removed since as it was never
+used: one that splits a node when too many items are in it. That makes a good
+index, and no address at all - its nodes are not the same on two machines,
+nor from one minute to the next. An index of that kind may come back, as an
+index.
 
 ## Records, stores and views
 
@@ -323,9 +323,8 @@ The engine keys these by region and leaves how to the game:
 
 Now: `World` keeps every game object in one list and the slots the renderer
 culls by (`engine/engine/world.js`); every ticker is ticked every frame
-(`engine/engine/world.js:424`); `Game` steps by the frame's time
-(`engine/engine/game.js`); the adaptive octree is there, unused; `Stats`
-counts what a frame takes. Half way to typed already: the renderer culls from
+(`engine/engine/world.js:381`); `Game` steps by the frame's time
+(`engine/engine/game.js`); `Stats` counts what a frame takes. Half way to typed already: the renderer culls from
 the slots, a `Float64Array`, and keeps what it draws a frame in typed arrays,
 sorted by a radix sort (`engine/engine/canvas2drenderer.js`) - but every
 picture drawn is still handed over as a renderer object and a picture object
