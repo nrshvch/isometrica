@@ -9,7 +9,6 @@ import ErrorCode from "../errorcode";
 import Resource from "../resourcecode";
 import Config from "../config";
 import Building from "../building";
-import Construction from "../construction";
 import BuildingState from "../buildingstate";
 import Terrain from "../terrain";
 import TileIterator from "../tileiterator";
@@ -808,8 +807,8 @@ function footprint(code, tile, rotation) {
  * site, on ground that is clear now: none of its tiles being cleared still,
  * nothing standing on any - the building it is to replace down to its last
  * tile. And a building waiting for its ground to be cleared before it goes
- * up (buildBuilding) has as much of it cleared as is, and goes up once it
- * all is - one cleared away meanwhile let go of.
+ * up (buildBuilding) goes up once it all is - one cleared away meanwhile let
+ * go of.
  */
 function settle(self) {
   var terrain = self.city.world.terrain,
@@ -823,12 +822,12 @@ function settle(self) {
       if (held.get(b.tile) !== b || !b.clearing() || b.demolishing)
         return false;
 
-      var done = site.tiles.filter(function (t) {
-        return !terrain.beingCleared(t);
-      }).length;
-
-      b.setCleared(done / site.tiles.length);
-      if (done < site.tiles.length) return true;
+      if (
+        site.tiles.some(function (t) {
+          return terrain.beingCleared(t);
+        })
+      )
+        return true;
 
       b.cleared();
       return false;
@@ -851,22 +850,14 @@ function settle(self) {
 }
 
 /**
- * Puts up what was waiting for its ground (replaceLater), a building site:
- * its ground cleared by the bulldozers bringing down what stood there - so
- * that far up already (Construction CLEAR_SHARE) - and paid for when it was
- * asked for (City#replace), so with nothing to show over it for what it
- * cost.
+ * Puts up what was waiting for its ground (replaceLater), a building site
+ * from the start: paid for when it was asked for (City#replace), so with
+ * nothing to show over it for what it cost.
  */
 function goUp(self, r) {
   var building = new Building();
 
-  building.init(
-    self.city.world,
-    r.code,
-    r.tile,
-    r.rotation,
-    Construction.CLEAR_SHARE,
-  );
+  building.init(self.city.world, r.code, r.tile, r.rotation, 0);
   if (r.look !== undefined && r.look !== null) building.look = r.look;
   building.expense = 0;
 

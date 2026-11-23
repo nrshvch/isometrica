@@ -247,10 +247,10 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   (`isometrica/src/core/building.js` ignite, burn).
 - A building put up has its ground cleared first, bare or not - the trees,
   stones or rubble on it standing till a bulldozer gets there - and only
-  then goes up: the bulldozers are the first tenth of how far along it is,
-  shown from the start (`isometrica/src/core/construction.js`
-  awaitClearing). Demolished or replaced before then, it is called off at
-  once, for nothing.
+  then goes up. How far along it is counts on from the start all the same,
+  but no further than a tenth of the way till the bulldozers are done
+  (`isometrica/src/core/construction.js` awaitClearing). Demolished or
+  replaced before then, it is called off at once, for nothing.
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.

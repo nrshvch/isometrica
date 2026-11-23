@@ -19,6 +19,7 @@ import CityBuildings from "../core/city/citybuildings";
 import Config from "./config";
 import RenderLayer from "./renderlayer";
 import ResourceCode from "../core/resourcecode";
+import BuildingState from "../core/buildingstate";
 import ErrorCode from "../core/errorcode";
 import Numeral from "numeral";
 import Rotation from "../core/rotation";
@@ -533,10 +534,10 @@ function createRoadPreview(self, tile, id, surface, opacity) {
  * Floats text over the middle of an area of sizeX by sizeY tiles anchored at
  * tile.
  */
-function showText(self, tile, sizeX, sizeY, text, color) {
+function showText(self, tile, sizeX, sizeY, text, color, height) {
   var message = new TileMessage(text, color || "rgb(255,64,64)");
   self.root.game.logic.world.addGameObject(message);
-  placeOverArea(self, message, tile, sizeX, sizeY, 0);
+  placeOverArea(self, message, tile, sizeX, sizeY, height || 0);
 }
 
 /**
@@ -608,8 +609,16 @@ function createTag(self, tile, sizeX, sizeY, text, grey) {
  * Floats what it just cost over the middle of an area of sizeX by sizeY tiles
  * anchored at tile.
  */
-function showCost(self, tile, sizeX, sizeY, amount) {
-  showText(self, tile, sizeX, sizeY, "-$" + Numeral(amount).format("0,0"));
+function showCost(self, tile, sizeX, sizeY, amount, height) {
+  showText(
+    self,
+    tile,
+    sizeX,
+    sizeY,
+    "-$" + Numeral(amount).format("0,0"),
+    undefined,
+    height,
+  );
 }
 
 /**
@@ -750,6 +759,12 @@ function showConstructionCost(self, model) {
     Rotation.sizeX(data, model.rotation),
     Rotation.sizeY(data, model.rotation),
     cost,
+    //a building site: floating up from over how far along it is
+    //(client/serviceman), so as not to hide it from the start
+    data.classCode !== BuildingClassCode.road &&
+      model.getState() === BuildingState.underConstruction
+      ? Config.tileSize
+      : 0,
   );
 }
 
