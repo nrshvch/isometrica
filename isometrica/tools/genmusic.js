@@ -1,19 +1,9 @@
 /**
- * Writes out every piece of music src/shared/gen/music.js makes - the same
- * music the game makes for itself - as .wav files to listen to: each place,
- * by day and by night, in each weather.
+ * Writes every piece of music out as <place>-<time>-<weather>.wav.
  *
- * Each is <place>-<time>-<weather>.wav - town-night-rain.wav - 16-bit
- * stereo, at the generator's rate unless another is given. Every one loops
- * without a seam, and the three weathers of a place and time are exactly as
- * long as each other: started together, any can be faded up in place of
- * another.
- *
- * Usage:
- *   node tools/genmusic.js [outDir] [rate] [name...]
- *
- * outDir is assets/previews/music unless given; name, "town/night/rain",
- * "town/night" or just "town", writes only those.
+ * Usage: node tools/genmusic.js [outDir] [rate] [name...]
+ * outDir assets/previews/music unless given; name "town/night/rain", "town".
+ * See isometrica/.claude/skills/sound/SKILL.md (Testing).
  */
 
 var fs = require("fs");

@@ -1,37 +1,7 @@
 /**
- * A building blown up, heard from a little way off - from up above the town,
- * where the game looks down on it from - not a cartoon of it: TNT going off
- * in a building and the building tearing apart, the way it sounds a hundred
- * or two metres back.
- *
- * What a real one has that a clean synthetic boom does not (Farnell's
- * explosion in Designing Sound splits it into the rumble, the air and the
- * dust; sound designers layer the transient, the body and the tail):
- *
- *   - the crack: not one smooth pressure wave - that is a sonic boom - but
- *     a cluster of sharp fronts a few milliseconds apart, the charges and
- *     what they tear, so loud that whatever hears it clips: harsh, broad,
- *     a snap more than a thud;
- *   - the roar of the fireball: noise, but never steady - turbulent,
- *     lumpy, rolling - its top closing down as it cools, and crackling all
- *     through, densely at first and then here and there;
- *   - the building itself: concrete and brick breaking - a crunching grit
- *     in the middle of the range - and then its floors coming down, a deep
- *     rumble of thuds, rising after the blast and rolling on;
- *   - what it throws: a rain of gravel and grit, the tinkle of glass, a
- *     lump landing here and there, all over the place;
- *   - and the town round it: the crack coming back off the walls of the
- *     streets, many times, each later and duller (early reflections), then
- *     the long ring of the town (dsp.js ring) under it all - and the air
- *     taking the very top off everything on the way.
- *
- * Two of it, the game picking one at random each time: TNT - one big
- * charge and the building going; and demolition charges - a quick ripple
- * of them at its foot, then it going. Neither longer than two seconds.
- *
- * Each knows when, into it, the building goes up (`at`, seconds): the game
- * starts it that long before the pieces fly, so the blast comes as they do
- * (client/audio/soundman blasts).
+ * A building blown up, heard from above the town: TNT, or demolition
+ * charges; each knows `at`, when the building goes up into it.
+ * See isometrica/.claude/skills/sound/making.md (The real ones).
  */
 
 import {

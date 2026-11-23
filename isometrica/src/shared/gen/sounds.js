@@ -1,59 +1,9 @@
 /**
- * Sounds, made the way the pictures are: worked out a sample at a time out of
- * a few plain ingredients rather than recorded - noise and simple waves, put
- * through filters and shaped by envelopes. The same sound comes out the same
- * every time, from the name of it.
- *
- * The method is the one Andy Farnell's Designing Sound teaches: look at what
- * makes a sound - what moves, what it moves through, how far it carries - and
- * build a little model of that, not a copy of a recording. A model is a few
- * dozen lines, and turning one knob of it makes another variation. The
- * pieces are the ones every synthesis book has (Curtis Roads' Computer Music
- * Tutorial): white, pink and brown noise; sine, saw and square waves; one-
- * pole and two-pole filters (Robert Bristow-Johnson's cookbook); envelopes;
- * and a small reverb of combs and all-passes (Schroeder, as Freeverb has it)
- * for the space round a sound. None of it aims to pass for the real thing -
- * a pixel city sounds a little like a cartoon, and so do these:
- *
- *   - thunder: the crack of the strike, many short N-shaped pressure waves
- *     from all along the bolt, and then the sky burping - low rumbles, each a
- *     train of pulses slowing down under filtered noise, coming later and
- *     softer from further along the bolt, and the long roll under them all.
- *     Four strikes, from right overhead to far off, and a double one;
- *   - horn: a car's two notes a third apart, squarish, through the horn's
- *     own resonance, each note bending up into pitch as it starts - beep,
- *     beep-beep, a little car's meep-meep and a bus's honk;
- *   - siren: a police car's, through a loudspeaker's horn - the wail, the
- *     yelp and the two-tone nee-naw. It loops: its pitch is worked out so a
- *     whole number of cycles goes into every turn of it;
- *   - forest: wind in gusts through the trees, the leaves rustling when it
- *     blows hardest, and birds - chirps, trills, a two-note whistle and a
- *     warble, near and far, here and there;
- *   - sea: waves - each a swell rising, breaking, and washing back up the
- *     beach fizzing - over the low roar of the surf further out, and in
- *     the rougher one gulls;
- *   - city: a town heard from a little way off - the low roar of its
- *     traffic coming and going, cars whooshing past, a hum under it all,
- *     now and then a horn;
- *   - skyline: a real city heard from high above it, not a cartoon of one
- *     - its own models, in skyline.js;
- *   - woods and offshore: the country heard from above it - the woods by
- *     day and night, a slight wind over the sea - as real as the skyline,
- *     not cartoons of it: their own models, in country.js;
- *   - bells: the old town's small church's one bell, rung for a service
- *     or tolled - its own model, in bells.js;
- *   - blast: a building blown up, heard from up over the town - a real
- *     demolition, not a cartoon of one: its own model, in blast.js.
- *
- * The last four loop, seamlessly: what goes on in them all the time is made
- * a little longer than the loop and its end faded into its start, and what
- * happens now and then - a bird, a wave, a car - is laid in round the loop,
- * so whatever runs over the end of it comes in again at the start.
- *
- * Everything comes out as plain numbers, a Float32Array per channel, -1..1:
- * a game hands them to the browser's Web Audio (AudioContext createBuffer),
- * tools/gensounds.js writes them out as .wav files to listen to, and
- * lab/sounds.html plays them.
+ * Sounds made from numbers, the same every time from their name: the cartoon
+ * ones here (thunder, horn, siren, forest, sea, city, gulls) and the real
+ * ones' models in skyline, country, bells, blast. generate(name, rate), list();
+ * out as a Float32Array per channel, -1..1.
+ * See isometrica/.claude/skills/sound/making.md.
  */
 
 import {

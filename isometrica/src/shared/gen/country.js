@@ -1,30 +1,7 @@
 /**
- * The country heard from above it - the woods, the open sea - the way
- * skyline.js has the city: as it really sounds, not a cartoon of it
- * (sounds.js has the cartoon ones, forest, sea and gulls).
- *
- * What makes it sound real is mostly what makes the city: what goes on all
- * the time is soft and smooth - the air, the leaves - rising and falling on
- * its own, never a tone or a grain in it; what stands out of it is mostly
- * far off, duller the further, and rings on round about; and nothing in it
- * is ever quite the same twice.
- *
- * - woods by day: a breath of wind through the tops of the trees, the
- *   leaves rustling softly as it goes, and the birds of a wood singing,
- *   each its own song from where it sits, over and over with a while
- *   between: chaffinches (a run down and a flourish), a great tit (tea-cher
- *   tea-cher), a blackbird (fluting, a squeaky twitter after), a robin
- *   (thin, wandering), a wren (trill after trill, far off), a wood pigeon
- *   cooing and a woodpecker drumming further still - all of them in the
- *   ring of the trees;
- * - woods by night: stiller; crickets near and far, and a tawny owl;
- * - offshore: the sea - only a slight wind over it, a light woosh rising
- *   and falling; nothing breaking, no waves: the sea on screen is calm. In
- *   a gale the same wind, stronger and gustier.
- *
- * Only the plain pieces (noise, filters, laying sounds into the ears,
- * seamless loops, the ring round about) come from dsp.js. Each loops,
- * seamlessly, the way the skyline does.
+ * The country heard from above: woods by day and night, offshore in a breeze
+ * or a gale. Loops.
+ * See isometrica/.claude/skills/sound/making.md (The real ones).
  */
 
 import {
