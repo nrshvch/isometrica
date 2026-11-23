@@ -70,6 +70,17 @@ imports its modules as `isometrica/<path under src>`, e.g.
 `isometrica/client/main`, `isometrica/core/terrain`. It is drawn with the
 engine in `engine/`.
 
+### How each part works
+
+Written down for working on it, as Claude skills in `.claude/skills/` - a
+`SKILL.md` each, and the notes it points to:
+
+- [buildings](.claude/skills/buildings/SKILL.md) - buildings and roads going
+  up and coming down: building sites, clearing ground, roads being laid,
+  surfaces, demolition, blasts, fire, ruins and rubble; and the city they
+  make - its area and road network, people, jobs, water, saves.
+- [citygen](.claude/skills/citygen/SKILL.md) - cities generated afresh.
+
 ### Climate
 
 - The world is hot in the middle and frozen at its edge, the way the Earth
@@ -850,151 +861,6 @@ dev`) plays them the way a game would - all three weathers together, the
   the grass, each line ragged with a grain of pixels along it the way deep
   water's edge over the shallows is - by how high the ground is, so a shore
   runs on unbroken from tile to tile.
-- A building goes up on uneven ground the way it did in Transport Tycoon:
-  level at the highest corner under it, on a concrete base cut to the
-  ground (`isometrica/src/shared/gen/foundations.js`, `BuildingView` addFoundations) -
-  as long as the ground falls no more than a step anywhere under it
-  (`isometrica/src/core/buildings.js`). The base is picked as the tile is seen, so it
-  turns with the camera. On the shore, where the water is painted a little
-  way up the ground and so looks higher, the base is the same, marked where
-  the water stands against it: wet and darker below that waterline, a line
-  of weed along it and a tide mark above. A road on the shore is always
-  levelled at the top on such a base - never laid on the sand as it is.
-- Every building and every road stands on a surface of its own
-  (`isometrica/src/core/surface.js`): how high it is at each corner of a tile, kept
-  with it in the save. A building's is flat over every tile it stands on,
-  at the highest corner under it as it goes up; a road's is its tile's,
-  flat or a ramp - one side a step over the side across from it. Wherever a
-  surface is over the ground it stands on concrete, a step deep at most and
-  never under the ground (`isometrica/src/client/buildingview.js` addFoundations,
-  `roadview.js` addBase, `isometrica/src/shared/gen/foundations.js`), so a road is
-  levelled across a slope, climbs a step on a wedge, or ramps up from flat
-  ground, and a building stands level on a slope. Never in the water; on
-  the shore flat only, the concrete going down into the water. Two roads
-  join, and cars drive from one to the other, only where they meet level,
-  at the same height all along the edge between them - never over a step,
-  nor onto the side of a ramp. A road up on concrete is drawn among the
-  buildings rather than under all of them (`roadview.js` SINK), so the edge
-  of a ramp stays over the yard of a house lower down behind it.
-- A road takes a while to lay (`isometrica/src/data/buildings.js`
-  constructionTime), in two stages: the earth dug out over the first half,
-  then a bed of crushed stone rolled in (`isometrica/src/shared/gen/roads.js`
-  works, the "dug" and "bed" pieces). Nothing drives on it, and it is no part
-  of the city's network (`isometrica/src/core/city/cityroads.js`), till it is
-  finished (`roadman.js` keeps the roads being laid apart from the ones the
-  traffic drives on). Each stretch being laid that hangs together is closed
-  off with barriers - striped boards on legs, an amber lamp blinking on each
-  end - where it meets a finished road and across its ends (`roadview.js`
-  barriersOf). A crew works along the whole of it
-  (`isometrica/src/client/roadworks.js`): the excavator from one end to the
-  other, stopping on every tile to turn and dig, a lorry a tile behind it;
-  then back the other way, the lorry ahead tipping stone, the excavator
-  behind it spreading it - a crew to every six tiles or so of a long stretch.
-  Where they are is worked out from how far along the road is, so it is the
-  same after a reload.
-- Ground cleared (`isometrica/src/client/clearworks.js`) is gone from the
-  world as soon as it is paid for, but what stood on it - the trees and
-  stones the world put there, a tree somebody planted - stays standing
-  (`envman.js`, `buildman.js` hold) till a bulldozer gets there
-  (`isometrica/src/shared/gen/vehicles.js` bulldozer): as its blade reaches
-  it, it goes down in a cloud of dust (`isometrica/src/shared/gen/smoke.js`
-  dust), and the tile is left bare earth. The tiles cleared that hang
-  together are swept as one, a row at a time along the longer way, a
-  bulldozer to every six tiles or so, each backing up and pushing on over
-  every tile it gets to; ground cleared next to ground still being cleared
-  is shared out afresh among the bulldozers already at it. A tree standing
-  tall does not just go: as the bulldozer comes up to it, the pictures of it
-  going over are painted (`isometrica/src/shared/gen/trees.js` FALLS -
-  `gen/trees/oak-1/r1/x+/1` a third of the way over, `/2` two thirds,
-  `/3` lying, the same tree from the same side, tipped over about its foot
-  the way it is seen to fall, nothing of it under the ground); then it
-  shudders as the blade bites, goes over the way the bulldozer pushes it -
-  slowly, then faster - hits the ground in a puff of dust along it, lies
-  there a moment and is gone, dithered away
-  (`isometrica/src/client/felling.js`). A stump, the wood lying about, a
-  stone just goes. A road stays too (`buildman.js` hold), and the roads
-  joining it go on joining it (`roadman.js` seenRoad), till the bulldozer
-  has driven over it and broken it up into the bare earth. None of it is
-  kept - after a reload the ground is bare.
-- A building put up is not put up till its ground is cleared, bare or not
-  (`isometrica/src/core/city/citybuildings.js` buildBuilding,
-  `isometrica/src/core/construction.js` awaitClearing): its tiles are being
-  cleared from then on, whatever is on them - trees, stones, rubble -
-  standing till the bulldozers get to it (`client/clearworks.js` sweep),
-  and nothing of it is drawn but how far along it is - which goes on by its
-  time from the start, as it would anyway, but no further than a tenth of
-  the way up till the bulldozers are done; it goes up the rest of the way
-  from there. What it cost floats up from over how far along it is
-  (`client/buildman.js` showConstructionCost), so as not to hide it from the
-  start. Put up in the place of one that came down (Replace), its ground is
-  cleared already, and it goes up from nothing. Demolished or replaced while it
-  still waits, there is nothing of it to bring down: it is called off there
-  and then, for nothing, and its ground cleared all the same (`city.js`
-  demolitionOf). As with ground cleared, the bulldozers are not kept: after
-  a reload it goes up from as far along as it was.
-- What clearing ground came to floats up once, over all of the ground
-  picked - not over every tile of it.
-- A building cleared away is demolished whole, every tile of it, whichever
-  was picked (`isometrica/src/core/city.js` clearTile), and is paid for by
-  the tile, once. The world keeps it while it comes down: being demolished
-  (`isometrica/src/core/building.js` demolishing) - out of service, nobody
-  living or working in it - and which of its tiles are down, each told it
-  is once its rubble is pushed away (`city.js` tileDown), the ground bare
-  there; it is gone once its last tile is. Both are kept in the save, so a
-  reload halfway finds it as far down as it had come; asked again, only its
-  tiles still standing are sent for, for nothing. Being demolished, it is
-  the bulldozers' alone: it cannot be blown up nor set on fire, a blast next
-  to it does not reach it (`city.js` explode, blast, fireUp), it neither
-  comes down nor catches fire by itself (`building.js` hazards, fallsLater),
-  and one on fire when it is ordered down has its fire put out - its
-  flames are no longer drawn (`client/fires.js` look), what it burnt to
-  standing behind the fence. Looked at, only Replace and Demolish are
-  offered for it. How it comes down is a
-  unit of its own (`Demolition`, in `isometrica/src/client/demolition.js`),
-  told when each tile is to come down and when its rubble is pushed away;
-  in the game it is the bulldozers that tell it (`client/buildman.js`
-  onDemolish), and it stands in for the building, as far down as it has
-  come, its own view drawing nothing (demolitionOf). It is fenced off there
-  and then with the blue tarp on posts of a building site
-  (`isometrica/src/shared/gen/sites.js` fence) along every edge of it, a
-  gate in the middle of its front - the stretch at the back of a tile
-  drawn just behind what stands on it and the one at its front just in
-  front - and stays fenced off, tiles down and all, till the last of it is
-  gone. It stands as it stood - every tile of it the one picture it
-  was drawn as, in the order things are drawn in and with its shadow - but
-  with all of its lights out, its windows and the warning light on its top
-  (`client/lighting.js` dark), till a bulldozer comes up to a tile of it
-  (`isometrica/src/client/clearworks.js` hold, knock): then that tile of it
-  comes down (`isometrica/src/client/demolition.js`), the bulldozer waiting
-  a moment off it. Only then is its picture taken apart into its floors -
-  each still drawn where its tile is in the order things are drawn in,
-  however high up it is (seat) - the parts it was put together out of
-  (`client/compoundbuilding.js`), or for a picture painted whole, bands of
-  it a storey high cut out of it (`client/spritecache.js` getComposite
-  clip), its foot staying on the ground. It shakes; a floor some way up gives, and what is over it drops
-  onto the floor under it, which gives in turn - and so on down, every floor
-  crushed, the ones that fell crushed onto its foot in the end; nothing of
-  it goes into the ground. A floor crushed bursts into pieces of its own
-  picture, flung out and up, that fall round it, bounce and lie a while; and
-  goes, dithered away, in a puff of grey dust
-  (`isometrica/src/shared/gen/smoke.js` debris) that rolls out over the heap
-  of rubble it leaves (`isometrica/src/shared/gen/stones.js` rubble: a mound
-  of grit, slabs of concrete, brick and timber on it) - pushed away by the
-  bulldozer then.
-- Till a bulldozer has been over a tile it is being cleared still
-  (`isometrica/src/core/terrain.js` beingCleared): nothing is built on it,
-  no road laid, nor the ground moved under it - "being cleared".
-- The earth a tile was cleared down to, or moved by raising or lowering it,
-  lies bare for a while of the game's time - half a day in all
-  (`isometrica/src/core/terrain.js` REGROWS, bareFor - kept in the save),
-  its edge churned up over the grass round it
-  (`isometrica/src/shared/gen/terrain.js` earth); then the grass comes up
-  through it, spilling in from the grass round it (earth_regrowing), a tile
-  at a time, and it is grass again (`isometrica/src/client/terrain.js`
-  groundOf, Regrowth). A tile whose ground changes so, the rest of it as it
-  was, is drawn as it was till the new picture of it is painted - never
-  gone black meanwhile (`isometrica/src/client/terrain.js` Meanwhile), the
-  way the sea's frames are.
 - The signs of a town's limits can stand by a road
   (`isometrica/src/shared/gen/roads.js` townSign, `gen/roads/limit/in0`-`3`
   and `out0`-`3`): at one side of its tile, a pair of them, each on a post
@@ -1009,22 +875,6 @@ dev`) plays them the way a game would - all three weathers together, the
   working anything out then, as a road asks while it is drawn, and while the
   pictures of another side are looked out (`client/preloader.js`); the
   city-sim puts them up where a road crosses its city's border.
-- A run of road the player drags is laid all at once (Road.plan): each new
-  tile gets the surface that has the run join up the most - with itself,
-  and with the roads already there, which stay as they are, joining those
-  the run is dragged over counting double - and, as far as that goes, takes
-  the least concrete. So a run across a slope is levelled along it, one up
-  a slope ramps up it, one dragged onto a levelled road climbs up to it, and
-  a road on its own follows the ground. The same run always comes out the
-  same, so the preview is what gets built.
-- Land can be raised and lowered under buildings and roads, the way
-  OpenTTD shapes land under its foundations (`isometrica/src/core/city.js` terraform):
-  whatever stands there stays where its surface still fits the ground as it
-  will be, the concrete under it taking up the difference - ground raised
-  to the top of a base replaces it, ground taken down from under one leaves
-  it on concrete, a whole step over flat ground if need be. Anything whose
-  surface would not fit - under the ground, more than a step over it, in the
-  water, or a ramp on the shore - is still in the way.
 - The trees are painted too (`isometrica/src/shared/gen/trees.js`), as pixel art: each
   kind's own shape - oak, beech, ash and alder, two of each - filled in with
   three flat greens and lit by the buildings' sun, every tone in patches
@@ -1032,111 +882,11 @@ dev`) plays them the way a game would - all three weathers together, the
   camera shows another side of it, and a tree stands whichever way round
   its tile has it. The world grows each kind in stands
   (`isometrica/src/core/ambient.js`).
-- A town is founded with whatever goes up first - anything there is to
-  build, its first house as often as not: the player puts it down, names the
-  city, and it goes up out of what the city starts with
-  (`City.quoteFounding`, `client/buildman.js` found). Before then, a roll of
-  the dice takes the camera off to somewhere else a town could go up, with
-  room for a town hall, about where it first was rolled
-  (`client/cityman.js` roll). It puts up a town hall
-  when it has grown into a town, and has no borders: all the land there is,
-  is the city's (`Construction#getCity`), and anything can go up anywhere.
-- Every building of a city has an area round it,
-  within two tiles of each of its tiles, rounded - along a row or a column
-  two tiles out and one to either side of those, corner to corner one, five
-  across with its corners cut (`isometrica/src/core/city/cityroads.js`
-  RADIUS, AREA) - and where two areas share a tile they hang together
-  (REACH, worked out from AREA): three tiles
-  between two buildings along a row, and they do; four, and their areas only
-  touch (REACH). A road has no area of its own: only where it joins
-  buildings to each other - where a way along it, its tiles side by side,
-  never over the same tile twice, goes from inside one building's area to
-  inside another's, both branches where two go from one village to another -
-  has it one, a tile of it as a building's (`prune`, by the blocks of a
-  graph of the roads and the buildings whose areas they are in,
-  `ringsWith`); out in the country, outside every building's area, a road is
-  the city's only where it is the shortest way from one village - buildings
-  that hang together by their areas alone - to another (`country`), so a
-  loop on the road between two villages is a way round and not the city's;
-  a road that leads nowhere is just a road, abandoned - a tile of it on its
-  own, a loop that only leads back to where it left - and a lane off into
-  the country is the city's only to the edge of a house's area, the city's
-  area going on two tiles along it from there. It holds
-  together once it is finished - a house going up, a road being laid, not
-  yet. A village holds together by its houses, and a road is the cheap way
-  to reach out to what stands further off. Of the parts that hang together, the
-  city is the one its town hall stands in, if one does, otherwise the bigger -
-  its road tiles and the ground its buildings stand on - then the one more
-  people live in, then the one with the oldest building (`CityRoads#detached`
-  the rest). Its roads that are part of it are the road network. It is
-  worked out again whenever something goes up, comes down or is finished,
-  and nothing of it is saved - and for what would hang together with
-  something more put down, without putting it down (`CityRoads#plan`).
-  Everything of the
-  city wants to be part of it, a water tower as much as a house; what is not
-  is cut off - abandoned: it costs and earns the city nothing, waters
-  nothing, and "cut off" hangs over it. A road a building wants has to be
-  right alongside it, no tile between. The city-sim draws a border round the
-  city's area (`city-sim/src/client/cityborder.js`), and while something is
-  being put down the border as it would be with it - the builder tells the
-  game played what is being put down where (its play's `placing`,
-  `client/buildman.js`), and
-  what is looked at (its play's `inspecting`, `client/serviceman.js`) - the
-  area of what it stands apart with; the world itself has none. A line round tiles is drawn whenever any of it is on
-  screen (`client/components/tileareaborderrenderer.js`). Its name hangs over
-  its town hall, or the middle of what is part of it (`City#center`).
-- People live in houses, each keeping how many live in it, in the save by
-  the tile it stands on (`isometrica/src/core/city/citypopulation.js`); a
-  save of before, with a head count only, has them put up oldest house
-  first. The city grows into the room its houses have - their beds, as
-  long as they have what they need, and for houses whose people work in
-  town as many as there are jobs - oldest first, more a tick the more room
-  there is; whoever is in a house with less room than people moves out, one
-  a tick out of the city and one out of each part cut off from it, and is
-  gone. A part cut off and joined up again is the city's once more, with
-  whoever is still there.
-- A game can have its city go on while it is away (`Logic` catchUp, city-sim
-  only): opened again, or back in sight, the world plays out the ticks it
-  missed at once - as many as seconds went by, a game day's at most - by the
-  shorter of the browser's clock and the server's, where the city is kept
-  on one (`CitySync#awayFor`), and the city-sim floats what it made over
-  it.
 - The backs of buildings are not left bare (`isometrica/src/shared/gen/blocks.js`
   backs): a shop has a steel door out to its bins - and a skip, behind a
   big one - the air conditioning's units on the wall, rain streaks, the odd
   tag sprayed on it and a wire fence round its service yard; blocks of
   flats have their bins out at the back and units on their end walls.
-- While a selection is dragged about, the buildings in it keep the looks
-  they were shown with; only a selection of another size picks again.
-- Every building goes up on a building site - the same parts for all of
-  them (`isometrica/src/shared/gen/sites.js`): bare earth, and on each tile one of an
-  excavator, a lorry, a heap of sand, the site office or a tower crane,
-  dealt out for each building (`isometrica/src/shared/gen/stacking.js`), and a blue
-  tarp fence round it all. A small building's site - a park, a cottage or
-  farm of the village, a house or shop on one tile - has no crane and a low
-  timber rail round it instead (`client/compoundbuilding.js` smallSite). A
-  block of
-  flats or offices then grows its own structure from a quarter of the way,
-  and its lower storeys finish under it from halfway; the crane, stacked
-  out of steel lattice mast sections, grows with it. The excavator drives, stops and turns
-  to dig, and the crane's jib swings to and fro
-  (`isometrica/src/client/siterenderer.js`) - each way it points drawn with
-  the crane under it, one picture, so that it stands as high as the crane is
-  and throws its shadow from there (`client/compoundbuilding.js` jibFrame) -
-  as far out as it is high, standing clear of the ground (`client/cachedsprite.js`
-  footOf, `client/glview.js` shadowed);
-  the lorry and the excavator are the
-  vehicle generator's, and the excavator never drives the streets.
-- What works has its lights on (`isometrica/src/client/worklights.js`): the
-  excavators and lorries on building sites and road works an amber beacon
-  blinking on the cab, and after dark their work lamps shining ahead; a
-  building site a floodlight on a mast by its office and by its heap of
-  sand; a tower crane a red light blinking on its peak and a floodlight
-  under its cab, high over the site. Each is a pixel or two glowing whatever
-  the light, hidden behind whatever stands in front of it, and at night it
-  lights what is round it (`lighting.js` workLight).
-- Any building can be turned four ways (`isometrica/src/core/rotation.js`). Blocks are
-  painted from all four sides.
 - The camera turns round the city a quarter turn at a time: a finger
   dragged in from the left or the right edge of the screen, or Q and E.
   Nothing in the world
@@ -1205,13 +955,6 @@ dev`) plays them the way a game would - all three weathers together, the
   top, the first of what is over the canvas. The game only tells it when a
   frame is drawn and draws the city bare for it (`Lighting#onFrame`,
   `calm`, `GLView#bare`).
-- The city a new player starts on (`isometrica/src/data/initialcity.js`) is built
-  entirely of generated buildings - houses, blocks of flats with their
-  yards, office blocks, shops and superstores - each turned to face the
-  street it stands on.
-- The game's clock moves on every second (`isometrica/src/core/vtime.js`): five minutes
-  in the city builder, a day going by in under five minutes, and a minute in
-  the delivery game, a day going by in 24.
 - The game is drawn at most 30 frames a second (`engine/engine/game.js`),
   and holds still - its clock and its drawing - while the page is out of
   sight (`isometrica/src/client/vkaria.js`).

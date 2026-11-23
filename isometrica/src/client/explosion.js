@@ -11,28 +11,9 @@ import SmokeScript from "./components/smokeScript";
 import { changed } from "./looks";
 
 /**
- * A building blown up (core/city explode). It is gone from the world at
- * once - rubble left on every tile of the building itself, its yard left
- * wrecked - and what it looked like stands where it was a moment longer
- * (client/collapse), its lights out, no fence round it and no bulldozer
- * coming: the charges go off at its foot, flashing, and it shakes; then it
- * goes up. A fireball bursts out of it, white-hot to orange to soot
- * (SmokeScript fire) - out of the building itself, not its yard - and
- * pieces of it are torn off every floor and flung out any way at all and
- * high up, to fall all round, bounce, lie a while and go (client/
- * demolition burst). What is left of it stands there blackened and broken
- * an instant, and comes down a tile at a time, one after another, floor
- * onto floor - the tiles still standing open where the ones in front have
- * gone - the rubble coming up under the dust as each goes, smouldering a
- * while after (client/fires). Its yard, its car park, its playground, a
- * park, all of it, is the wreck of itself in the dust.
- *
- * And a cloud of dust rolls out of it over everything round it, hanging
- * there a long while (SmokeScript cloud) - while whatever the blast took the health out
- * of round it comes down too, the nearest first (client/buildman explode).
- *
- * Turned round, it is down at once, and the rubble there. None of it is
- * kept: after a reload there is the rubble.
+ * A building blown up (core/city explode): charges, fireball, pieces flung,
+ * the rest coming down a tile at a time in a cloud of dust.
+ * See isometrica/.claude/skills/buildings/coming-down.md (Blown up).
  */
 
 var P = Demolition.pieces,

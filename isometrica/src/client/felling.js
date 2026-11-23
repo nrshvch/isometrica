@@ -8,20 +8,7 @@ import SmokeScript from "./components/smokeScript";
 
 /**
  * A tree pushed over by the bulldozer clearing it (client/clearworks).
- *
- * As the blade bites, it shudders a moment where it stands; then it goes
- * over the way it is pushed - slowly at first, faster and faster - through
- * the pictures painted of it going over (shared/gen/trees FALLS), and hits
- * the ground in a puff of dust along the length of it. It lies there a
- * moment, and is gone, a pixel at a time, dithered the way the smoke is.
- *
- * It is pushed the way the bulldozer drives, the nearest of the ways along
- * the tiles - one way or the other for one driving aslant, the same every
- * time for the same tile. Whatever it was drawn as is let go of as it starts
- * to go over: this draws it from then on, from the picture it was drawn
- * with. A stump, the wood lying about already, a stone, is not pushed over
- * but gone at once, in the bulldozer's dust; and from straight above, or
- * turned round while it falls, it is gone too.
+ * See isometrica/.claude/skills/buildings/going-up.md (Clearing ground).
  */
 var Felling = {};
 

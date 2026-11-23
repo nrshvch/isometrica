@@ -2,29 +2,9 @@ import Yards from "./yards";
 import Burning from "../core/burning";
 
 /**
- * What is left of a building burnt down (core/building ruin) or come down
- * (core/city explode, collapse) as it is drawn, tile by tile as it stood
- * (client/compoundbuilding pieces) - painted so by the generators that
- * painted it (shared/gen/isobox setRuin), out of its own boxes, in its own
- * colours, lit as anything is - as it burns down by what it is built of
- * (core/burning outcome):
- *
- *   - gutted to its frame ("k"): concrete, every storey of it standing, its
- *     roof on it, charred black, black holes where its windows were;
- *   - burnt out, its walls standing ("s"): every storey of it as it stood, its
- *     roof gone, its walls charred, black holes where its windows and doors
- *     were, soot up the wall over them, ash and fallen beams inside;
- *   - burnt and fallen in ("b"): its ground storey's walls broken off any
- *     height up to a storey or so, and in them a heap of charred beams and
- *     rubble, as high as there were storeys to come down;
- *   - come down ("c"): the same, not burnt - the rubble of what it was
- *     built of, its floors fallen in on each other where it was concrete,
- *     beams across it.
- *
- * Its yard - a car park, a playground, a garden - is as it was: the fire
- * does not spread to it. A building painted whole, not put together a tile
- * at a time - a church, a water tower - is its picture burnt down
- * (client/burnt "r") instead.
+ * What is left of a building burnt down or come down, tile by tile, painted
+ * out of its own boxes (core/burning outcome: "k", "s", "b", "c").
+ * See isometrica/.claude/skills/buildings/coming-down.md (Ruins).
  */
 
 //how high a ruin painted whole stands at the most, pixels - about a storey

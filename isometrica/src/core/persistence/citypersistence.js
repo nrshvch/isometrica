@@ -1,29 +1,7 @@
 /**
- * Keeps the player's city in localStorage - and on the server too, for a game
- * that has one (CitySync).
- *
- * Which city is opened is decided once, on start up, by CityPersistence#open:
- *
- *  - the url names a city the player has saved  -> that one is loaded, and it
- *    becomes the active city
- *  - the url names a city nobody has saved      -> a blank city under that id,
- *    the player starts from nothing
- *  - the url names nobody, but there is an
- *    active city in storage                     -> that one is loaded
- *  - nothing anywhere                           -> the hardcoded initial city
- *    (the game's own, or data/initialcity), opened under a fresh id of its
- *    own
- *  - asked to start from the initial city       -> the same, under the id
- *    the url names - one nobody has saved - or a fresh one - or from
- *    another city the game hands it, in its place
- *
- * With a server, #prepare goes first: it settles whether the save here or the
- * server's is the one to open, and puts the server's here if it is - so that
- * #open opens whatever is here, server or not.
- *
- * From there it saves on its own, every few ticks and once more on the way
- * out. A city that was never founded is never written, so an untouched game
- * leaves no rows behind.
+ * Keeps the player's city in localStorage, and on the server too for a game
+ * that has one (CitySync); decides which city opens (#open).
+ * See isometrica/.claude/skills/buildings/city.md (Saves).
  */
 import Events from "events";
 import CityStore from "./citystore";

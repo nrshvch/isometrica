@@ -76,6 +76,9 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
 
 ## Skills (`.claude/skills/`)
 
+- `buildings` - buildings and roads going up and coming down (sites,
+  clearing, roadworks, demolition, blasts, fire, ruins), and the city: area,
+  road network, people, jobs, water, saves.
 - `citygen` - city generation: `src/citygen`, the cities bench,
   `test:cities`.
 

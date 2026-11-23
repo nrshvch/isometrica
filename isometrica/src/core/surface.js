@@ -1,17 +1,7 @@
 /**
- * What a building or a road stands on: a surface of its own, the way the
- * ground has one - how high it is at each corner of a tile, A (x, y),
- * B (x + 1, y), C (x, y + 1) and D (x + 1, y + 1). A road's is its tile's,
- * and flat or a ramp, one side a step over the side across from it; a
- * building's is flat, one height over every tile it stands on. Kept with
- * either, in the save as well (core/building surface).
- *
- * Wherever it is over the ground it stands on concrete - a step deep at
- * most, never under the ground (client RoadView addBase, BuildingView
- * addFoundations): levelled on a slope, on a wedge, or up from flat ground.
- * Never in the water, and on the shore flat only, the concrete going down
- * into the water. The ground can be shaped under it as long as it still
- * fits (City#terraform).
+ * What a building or a road stands on: heights at corners A (x, y),
+ * B (x + 1, y), C (x, y + 1), D (x + 1, y + 1), saved with it.
+ * See isometrica/.claude/skills/buildings/going-up.md (Surfaces).
  */
 import namespace from "namespace";
 import * as RoadRules from "./roadrules";

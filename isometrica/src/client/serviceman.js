@@ -1,34 +1,7 @@
 /**
- * Shows what the city's services do and do not reach.
- *
- * Three things, all about the same question - what a building is doing for
- * the city, and why a house is standing empty:
- *
- *  - a red word over anything going without, "no road" before "no water" -
- *    because a street is the first thing to put right. Without it a house
- *    nobody moves into looks like a bug rather than a missing street. The
- *    least of a road it wants, "no road (gravel)", "no road (cobble)", is
- *    on its card, looked at (client/worth describe).
- *  - the ground a water tower waters, outlined in one continuous line.
- *    Clicking a tower shows its reach and clicking
- *    anywhere else puts it away again; an outline of its own follows the
- *    selection while a tower is being placed (see buildman), so the towers
- *    already standing can be clicked to see how the two line up.
- *  - a clicked building outlined, drawn once more over its neighbours -
- *    and what it is worth, the money it makes or costs a tick and how full
- *    it is, how far along it is going up, what it goes without
- *    (client/worth describe), left to the game played to show on its own
- *    screens (its play's inspecting) rather than written over the world.
- *    It is put away the same way the outline is.
- *
- * Labels live and die with the building views themselves (buildman announces
- * those as chunks come and go), so nothing is drawn for a part of the map that
- * is not on screen in the first place.
- *
- * A tap on nothing - bare ground, a road, the sea - while nothing is being
- * looked at puts all the words over the buildings away, and the grid over
- * the ground with them, and the next one brings them back: the town without
- * its warnings, for a picture of it.
+ * Shows what the city's services do and do not reach: words over what goes
+ * without, a tower's reach, the building looked at.
+ * See isometrica/.claude/skills/buildings/city.md (Services on screen).
  */
 import engine from "engine";
 import Events from "events";
