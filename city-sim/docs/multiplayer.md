@@ -31,6 +31,9 @@ player game stands in its way.
 
 ## What has to change
 
+How the world is cut up, simulated as far as somebody is watching it, saved
+and sent, for one player or many: [world](../../isometrica/docs/world.md).
+
 - The world runs on a server, ticking whether anybody is watching or not;
   players' browsers send what they do and draw what they are sent. The core
   (`isometrica/src/core`) needs almost no browser as it is: only its saves
