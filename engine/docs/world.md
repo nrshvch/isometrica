@@ -76,8 +76,10 @@ same position everywhere - can be added.
 The engine had an octree of the other kind, removed since as it was never
 used: one that splits a node when too many items are in it. That makes a good
 index, and no address at all - its nodes are not the same on two machines,
-nor from one minute to the next. An index of that kind may come back, as an
-index.
+nor from one minute to the next. It also went because it was written by hand
+and never tested. An index comes back either as a library used widely enough
+to be trusted, or as one of the engine's own with tests - never otherwise
+(below).
 
 ## Records, stores and views
 
@@ -289,6 +291,75 @@ it too: the same arrays handed back and forth (transferred), never copied.
 a worker (`OffscreenCanvas`) can come later, the draw lists read there
 instead.
 
+## Libraries, tested and measured
+
+Whatever in this is not about one game is written once, as a library, and
+used as one - by the engine, by a game, by a worker, by a server - the way
+`events`, `namespace` and `reactive-property` already are: each a package of
+its own under `engine/`, depending on nothing of the engine's or a game's. The
+engine puts them together; it does not own them.
+
+**The packages** (names to be settled):
+
+- **typed** - the containers everything is kept in: a store of records as
+  typed columns, with handles, the count each slot has been used and the slots
+  free; a list that takes things out by moving the last one in; a heap; a ring
+  of numbers, in a `SharedArrayBuffer` with `Atomics` or not; a set of bits; a
+  map from numbers to numbers, open addressing, no objects; a radix sort.
+- **spatial** - the partitions (a grid, an implicit quadtree and octree, keys
+  by level and Morton code) and the indexes.
+- **interest** - observers, rings, tiers, how long a region is kept once left.
+- **schedule** - the scheduler: tiers, a budget a frame, turns spread out.
+- **seed** - chance from a hash: the same numbers from the same seed on every
+  machine.
+- **draw** - draw lists and the table of pictures, culled and sorted; how
+  they get onto the GPU stays the renderer's.
+- **replica** - a region's version, its state and its changes packed and
+  unpacked, copies published with `Atomics`.
+
+New packages are plain ES modules, used as they are: nothing to build, so a
+test or a worker imports them directly (`build.js` leaves them alone).
+
+**The index: trusted, or ours and tested.** For things that stay put, a
+library that packs a tree into typed arrays and is rebuilt when they change -
+`flatbush` (boxes) or `kdbush` (points) are small and widely used. For things
+that move every step, a grid hashed into typed arrays, the engine's own:
+simple enough to know all of. Which wins where is settled by measuring them
+side by side, and the loser stays on as what the tests check the winner
+against. The partitions - addresses - are the engine's own whatever happens:
+a few lines of arithmetic that have to be exactly right, so they are tested
+exhaustively.
+
+**Every package is tested:**
+
+- **What it does**, with `node:test` (in Node, nothing to install): cases by
+  hand, and many random ones checked against something plain and obviously
+  right - every item looked at for a search of the index, `Array.prototype.sort`
+  for the radix sort, a `Map` for the map of numbers - the random ones seeded,
+  so a failure comes back the same.
+- **A contract, for every partition**: the same position always gives the same
+  key, and the same keys on any machine (checked against keys written down
+  once); a position is inside the bounds of its key; `within` gives what
+  looking at every region would; parents and children agree.
+- **The same out as in**: the same seed gives the same numbers; saved and
+  loaded gives back what was saved.
+- **Nothing made**: what runs every frame or every step allocates nothing -
+  measured round many calls, the garbage collected before and after.
+
+**Every package is measured**: a benchmark of its own, at sizes from a
+thousand to a million, that writes what it measured where it can be compared
+from one change to the next. Machines differ, so what is held to is relative -
+against the plain way, on the same machine, in the same run: the radix sort
+so many times quicker than `Array.prototype.sort` at a hundred thousand; a
+search of the index so many times quicker than looking at everything. A
+change that makes it slower than that fails.
+
+`npm test` at the root runs every package's tests, and the deploys run them
+first, as they run a game's own tests now (`.github/workflows`). A game's own
+checks stay as well - a whole world run through and compared - and a change
+to what is drawn is checked by comparing what is handed to the GPU, quad for
+quad, before and after, with a harness kept in the repository for it.
+
 ## Time, chance and names
 
 - **One clock** for the simulation, a fixed step at a time; the frame's time
@@ -321,7 +392,7 @@ The engine keys these by region and leaves how to the game:
 
 ## What the engine has, and what it gains
 
-Now: `World` keeps every game object in one list and the slots the renderer
+Now: no tests of its own. `World` keeps every game object in one list and the slots the renderer
 culls by (`engine/engine/world.js`); every ticker is ticked every frame
 (`engine/engine/world.js:381`); `Game` steps by the frame's time
 (`engine/engine/game.js`); `Stats` counts what a frame takes. Half way to typed already: the renderer culls from
@@ -330,7 +401,8 @@ sorted by a radix sort (`engine/engine/canvas2drenderer.js`) - but every
 picture drawn is still handed over as a renderer object and a picture object
 (`SpriteRenderer.picture`), and asked about itself on the way.
 
-To come: the partitions (grid, implicit quadtree and octree) and an index;
+To come, as tested libraries the engine puts together: the partitions (grid,
+implicit quadtree and octree) and an index;
 stores of records; draw lists and the table of pictures by number, and a
 renderer that draws from nothing else; the registry of systems; observers,
 rings and tiers; the scheduler; the fixed-step clock with drawing in between;

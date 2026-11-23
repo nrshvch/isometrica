@@ -181,9 +181,11 @@ Each step ships on its own, and is measured before and after: the debug
 panel's `Stats`, the traffic test (`npm run test:traffic`), and counting what
 is made and let go of, as in `docs/performance.md`.
 
-1. **The engine**: partitions (grid, implicit quadtree), stores, the registry
-   of systems, the scheduler, with `Stats` for each system; draw lists and the
-   table of pictures by number, the ground drawn from them first. Nothing
+1. **The engine**, as libraries, each with its tests and its benchmark
+   ([the engine's world](../../engine/docs/world.md), libraries): partitions
+   (grid, implicit quadtree), stores, the registry of systems, the scheduler,
+   with `Stats` for each system; draw lists and the table of pictures by
+   number, the ground drawn from them first. Nothing
    looks or plays different: what the ground hands the GPU is compared quad
    for quad, as when it became chunks.
 2. **isometrica's quadtree and rings that hold**, in place of `tilesman`'s
