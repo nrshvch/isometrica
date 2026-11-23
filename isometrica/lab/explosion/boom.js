@@ -1,12 +1,14 @@
 /**
- * The explosion bench's sound: the blast (src/shared/gen/blast.js), one of
- * its ways picked, heard as each building on the bench goes up - started
+ * The explosion bench's sound: the blast (src/shared/gen/blast.js), heard
+ * as each building on the bench goes up - started
  * so that its boom comes just as the pieces are torn off it and fly
  * (client/explosion blast), however fast the bench's clock goes. The sound
  * itself is not slowed: at ¼× the boom still comes as they fly, but it is
  * over long before they land.
  *
- * Made in the page, through Web Audio, as the sound lab makes its sounds.
+ * Made in the page, through Web Audio, as the sound lab makes its sounds -
+ * the bench's world has the game's sound off; the game times it the same
+ * way (client/audio/soundman blasts).
  */
 import * as Sounds from "../../src/shared/gen/sounds.js";
 import { BLAST_SOUND } from "../../src/shared/gen/blast.js";
@@ -14,11 +16,6 @@ import Explosion from "../../src/client/explosion";
 import { wake, audio } from "../../src/client/audio/wake.js";
 
 var FUSE_MS = Explosion.Explosion.FUSE_MS;
-
-//every way of it, for the page to pick from
-export var WAYS = BLAST_SOUND.ways.map(function (label, way) {
-  return { value: way, label: label };
-});
 
 var made = {};
 
@@ -54,8 +51,8 @@ function play(way, offset) {
  */
 export function Boom(world) {
   this.world = world;
-  //the way picked, or null for none
-  this.way = 0;
+  //whether it is heard
+  this.on = true;
   //the explosions heard already
   this.heard = new WeakSet();
   this.frame = 0;
@@ -64,22 +61,22 @@ export function Boom(world) {
 
 /**
  * Wakes the sound - to be called from a click, before anything plays - and
- * makes the way picked, so it is ready when the building goes.
+ * makes it, so it is ready when the building goes.
  */
 Boom.prototype.wake = function () {
   wake();
-  if (this.way !== null) bufferOf(this.way);
+  if (this.on) bufferOf(0);
 };
 
-Boom.prototype.pick = function (way) {
-  this.way = way;
+Boom.prototype.turn = function (on) {
+  this.on = on;
   this.wake();
 };
 
-//the way picked, on its own, now
-Boom.prototype.hear = function (way) {
+//on its own, now
+Boom.prototype.hear = function () {
   this.wake();
-  play(way, 0);
+  play(0, 0);
 };
 
 /**
@@ -94,11 +91,11 @@ Boom.prototype.watch = function () {
     self.watch();
   });
 
-  if (this.way === null) return;
+  if (!this.on) return;
 
   var world = this.world,
     speed = world.speed,
-    at = BLAST_SOUND.at[this.way];
+    at = BLAST_SOUND.at;
 
   world.client.game.logic.world.gameObjects.forEach(function (go) {
     var e = go && go.explosion;
@@ -118,7 +115,7 @@ Boom.prototype.watch = function () {
     if (till > at) return;
 
     self.heard.add(e);
-    play(self.way, at - till);
+    play(0, at - till);
   });
 };
 

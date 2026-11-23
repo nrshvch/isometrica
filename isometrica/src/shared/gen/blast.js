@@ -20,13 +20,9 @@
  *   - with the pieces of it coming down after: a patter of small stuff and
  *     glass, the odd heavy lump, quiet under the roar.
  *
- * Three of it, to pick one from: one deep boom; the charges at its foot
- * going off - ba, da - and then it going up; and one further off, the blast
- * and the whoomph of the fireball a moment after it, rolling round the
- * streets. None longer than two seconds.
- *
- * Each knows when, into it, the building goes up (`at`, seconds): the game
- * starts it that long before the pieces fly, so the boom comes as they do.
+ * One deep boom, two seconds of it. It knows when, into it, the building
+ * goes up (`at`, seconds): the game starts it that long before the pieces
+ * fly, so the boom comes as they do (client/audio/soundman blasts).
  */
 
 import {
@@ -46,43 +42,10 @@ import {
 var SECONDS = 2;
 
 /**
- * Each way of it: how far off it is, m; how big the blast; when it goes up,
- * s; the charges going off at its foot before it, s, if heard; the whoomph
- * of the fireball after it, s, if any; how many echoes off the streets, and
- * how long the town rings on.
+ * How far off it is, m; how big the blast; when, into the sound, it goes
+ * up, s; how many echoes off the streets, and how long the town rings on.
  */
-var BLASTS = [
-  //boom
-  {
-    far: 140,
-    size: 1,
-    at: 0.03,
-    charges: [],
-    whoomph: null,
-    echoes: 3,
-    ring: 1.3,
-  },
-  //ba-da-boom: the charges at its foot, then it goes up
-  {
-    far: 160,
-    size: 1,
-    at: 0.5,
-    charges: [0.1, 0.27],
-    whoomph: null,
-    echoes: 3,
-    ring: 1.3,
-  },
-  //further off: the blast, the fireball after it, round the streets
-  {
-    far: 260,
-    size: 1.15,
-    at: 0.03,
-    charges: [],
-    whoomph: 0.17,
-    echoes: 5,
-    ring: 1.6,
-  },
-];
+var BLAST = { far: 140, size: 1, at: 0.03, echoes: 3, ring: 1.3 };
 
 //the top the air leaves of what comes from r metres off, Hz
 function air(r) {
@@ -171,59 +134,6 @@ function boom(rnd, rate, size, long) {
       Math.exp(-t / 0.32);
 
     out[i] = x;
-  }
-
-  return out;
-}
-
-/**
- * A charge going off at its foot, mono: a sharp little pressure wave and
- * a crack - a bang, not yet the building going.
- */
-function charge(rnd, rate) {
-  var n = Math.round(0.35 * rate),
-    out = new Float32Array(n),
-    wave = friedlander(rate, 0.008, 0.08),
-    hiss = white(rnd),
-    band = new Biquad(rate, "bandpass", 1400, 0.9),
-    low = new Biquad(rate, "lowpass", 260, 0.8),
-    rumble = brown(rnd),
-    i;
-
-  for (i = 0; i < n; i++) {
-    var t = i / rate,
-      x = 0;
-
-    if (i < wave.length) x += wave[i] * 1.1;
-    x += band.run(hiss()) * 1.6 * Math.exp(-t / 0.012);
-    x += low.run(rumble()) * 1.1 * Math.min(1, t / 0.004) * Math.exp(-t / 0.07);
-
-    out[i] = x;
-  }
-
-  return out;
-}
-
-/**
- * The fireball catching after the blast, mono: a deep whoomph - the air
- * sucked in and thrown up - its top opening and closing again.
- */
-function whoomph(rnd, rate) {
-  var long = 1.1,
-    n = Math.round(long * rate),
-    out = new Float32Array(n),
-    rumble = brown(rnd),
-    hiss = white(rnd),
-    lp = new Biquad(rate, "lowpass", 200, 1.2),
-    i;
-
-  for (i = 0; i < n; i++) {
-    var t = i / rate,
-      open = Math.sin(Math.PI * Math.min(1, t / 0.5)),
-      env = Math.min(1, t / 0.05) * Math.exp(-t / 0.3);
-
-    if (i % 32 === 0) lp.set("lowpass", 110 + 520 * open * open, 1.2);
-    out[i] = lp.run(rumble() + hiss() * 0.08) * 2.6 * env;
   }
 
   return out;
@@ -328,27 +238,12 @@ function echoes(rnd, rate, ch, dry, at, count, far) {
 }
 
 function blast(rnd, variant, rate) {
-  var k = BLASTS[variant],
+  var k = BLAST,
     n = Math.round(SECONDS * rate),
     ch = [new Float32Array(n), new Float32Array(n)],
     room,
     i,
     c;
-
-  //the charges at its foot, ba, da
-  k.charges.forEach(function (when, j) {
-    var dry = carried(rate, charge(rnd, rate), k.far);
-
-    lay(
-      ch,
-      dry,
-      Math.round(when * rate),
-      j % 2 ? 0.15 : -0.15,
-      0.5 + 0.12 * j,
-      false,
-    );
-    echoes(rnd, rate, ch, dry, when, 2, k.far);
-  });
 
   //and it goes up
   var main = carried(rate, boom(rnd, rate, k.size, SECONDS - k.at), k.far),
@@ -356,14 +251,6 @@ function blast(rnd, variant, rate) {
 
   lay(ch, main, start, between(rnd, -0.08, 0.08), 1, false);
   echoes(rnd, rate, ch, main, k.at, k.echoes, k.far);
-
-  //the fireball catching
-  if (k.whoomph !== null) {
-    var w = carried(rate, whoomph(rnd, rate), k.far);
-
-    lay(ch, w, Math.round((k.at + k.whoomph) * rate), 0.1, 0.8, false);
-    echoes(rnd, rate, ch, w, k.at + k.whoomph, 2, k.far);
-  }
 
   //the pieces of it coming down
   debris(
@@ -402,14 +289,12 @@ function blast(rnd, variant, rate) {
 }
 
 /**
- * The blast, as sounds.js SOUNDS has its sounds - and when, into each way
- * of it, the building goes up, s.
+ * The blast, as sounds.js SOUNDS has its sounds - and when, into it, the
+ * building goes up, s.
  */
 export var BLAST_SOUND = {
   loop: false,
   make: blast,
-  ways: ["boom", "ba-da-boom", "further off"],
-  at: BLASTS.map(function (k) {
-    return k.at;
-  }),
+  ways: ["boom"],
+  at: BLAST.at,
 };

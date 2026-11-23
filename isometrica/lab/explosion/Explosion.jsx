@@ -7,13 +7,13 @@
  * hanging over it - as slowly as wanted, turned round or from above;
  * with its neighbours round it, the blast bringing down the near ones; the
  * rubble cleared away by the bulldozers, and all of it put up again. And
- * the boom of it (boom.js), one of three ways, as the pieces fly.
+ * the boom of it (boom.js), as the pieces fly.
  */
 import { useEffect, useRef, useState } from "react";
 import BuildingData from "../../src/data/buildings";
 import { kinds, open } from "../bench/world.js";
 import { Scene } from "./scene.js";
-import { Boom, WAYS } from "./boom.js";
+import { Boom } from "./boom.js";
 import { Button, Header, Select } from "../ui/kit.jsx";
 
 var SPEEDS = [
@@ -52,7 +52,7 @@ export default function Explosion() {
   var el = useRef(null),
     bench = useRef(null),
     boom = useRef(null),
-    [sound, setSound] = useState(0),
+    [sound, setSound] = useState(true),
     [ready, setReady] = useState(false),
     [failed, setFailed] = useState(""),
     [speed, setSpeed] = useState(1),
@@ -316,43 +316,24 @@ export default function Explosion() {
               at ¼× it is over long before they land.
             </Note>
             <Row>
-              {WAYS.map(function (w) {
-                return (
-                  <Button
-                    key={w.value}
-                    className="px-1.5 py-0.5"
-                    title={"blast/" + w.value + ": heard as it goes up"}
-                    on={sound === w.value}
-                    disabled={!ready}
-                    onClick={function () {
-                      boom.current.pick(w.value);
-                      setSound(w.value);
-                    }}
-                  >
-                    {w.label}
-                  </Button>
-                );
-              })}
               <Button
                 className="px-1.5 py-0.5"
-                title="nothing heard as it goes up"
-                on={sound === null}
+                title="the boom heard as it goes up, or not"
+                on={sound}
                 disabled={!ready}
                 onClick={function () {
-                  boom.current.pick(null);
-                  setSound(null);
+                  boom.current.turn(!sound);
+                  setSound(!sound);
                 }}
               >
-                none
+                heard
               </Button>
-            </Row>
-            <Row>
               <Button
                 className="px-1.5 py-0.5"
-                title="hear the one picked on its own, now"
-                disabled={!ready || sound === null}
+                title="hear it on its own, now"
+                disabled={!ready}
                 onClick={function () {
-                  boom.current.hear(sound);
+                  boom.current.hear();
                 }}
               >
                 hear it on its own

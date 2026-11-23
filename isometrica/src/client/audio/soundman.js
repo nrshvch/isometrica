@@ -24,7 +24,11 @@
  *   flash;
  * - horns: a car stood in a jam a while honks, now and then, and every so
  *   often two cars give each other a toot going by - to the left or the
- *   right of where they are on screen, quieter further off.
+ *   right of where they are on screen, quieter further off;
+ * - a building blown up (client/explosion): its boom (shared/gen/blast),
+ *   heard from up over the town, coming just as the pieces of it fly -
+ *   however fast the game goes - to the left or the right of where it is
+ *   on screen, quieter further off and zoomed out.
  *
  * For now only the hum of the town and the places are heard (QUIET): the
  * music, the thunder and the horns are kept quiet - the music with no way
@@ -45,6 +49,8 @@ import BuildingState from "../../core/buildingstate";
 import TerrainType from "../../core/terraintype";
 import Terrain from "../../core/terrain";
 import Maker from "./maker";
+import Explosion from "../explosion";
+import { BLAST_SOUND } from "../../shared/gen/blast.js";
 import MusicPlayer from "./music";
 import { sleep, wake } from "./wake";
 
@@ -56,6 +62,7 @@ var QUIET = {
   bells: false,
   thunder: true,
   horns: true,
+  blasts: false,
 };
 
 //how loud each of them is, under everything
@@ -127,6 +134,18 @@ var AROUND = 2.5,
   FAR_OFF = 0.28,
   FAR_DULL = 700,
   NEAR_DULL = 18000;
+
+//a building blown up: its boom, and how far into it it goes up, s; how
+//loud it is, in the middle of the screen, zoomed in; how far off the
+//screen it is still heard (1 its edge); how late it may still start, s -
+//as soon as it can, the boom a little after the pieces fly - and how far
+//apart two are at least, ms: blown up together, they are heard as one
+var BLAST = "blast/0",
+  BLAST_AT = BLAST_SOUND.at,
+  BLAST_LOUD = 0.95,
+  BLAST_OFF = 2.5,
+  BLAST_LATE = 0.5,
+  BLAST_GAP = 150;
 
 //the horn each kind of car has: shared/gen/sounds horn ways
 var HORNS = {
@@ -213,6 +232,9 @@ export default function Soundman(root) {
   this.heard = -Infinity;
   this.thunders = {};
   this.lastHorn = -Infinity;
+  //the buildings blown up, their boom still to come: {e, wall}
+  this.blasting = [];
+  this.lastBlast = -Infinity;
   this.honked = new WeakMap();
   this.stood = new WeakMap();
   this.pitch = new WeakMap();
@@ -352,6 +374,9 @@ Soundman.prototype.start = function () {
     this.music = new MusicPlayer(ctx, this.maker, this.buses.music);
   }
 
+  //the boom made ready, for the first building blown up not to wait for it
+  if (this.wants.sounds && !QUIET.blasts) this.maker.get("sound", BLAST);
+
   this.level();
   this.out.gain.setTargetAtTime(1, ctx.currentTime, 0.3);
 };
@@ -408,6 +433,8 @@ Soundman.prototype.frame = function () {
   }
 
   if (sounds && !QUIET.thunder) this.thunder(wall, weather);
+  if (sounds && !QUIET.blasts) this.blasts(wall);
+  else this.blasting.length = 0;
 
   if (wall - this.heard >= HORNS_EVERY) {
     var dt = wall - this.heard;
@@ -888,6 +915,93 @@ Soundman.prototype.thunder = function (wall, weather) {
 };
 
 /* ------------------------------------------------------------------------
+ * Buildings blown up
+ * --------------------------------------------------------------------- */
+
+/**
+ * A building blown up, its fuse just lit (client/explosion light): its
+ * boom to come as it goes up.
+ *
+ * @param e {Explosion}
+ */
+Soundman.prototype.blast = function (e) {
+  if (!this.live() || !this.wants.sounds || QUIET.blasts) return;
+
+  this.blasting.push({ e: e, wall: performance.now() });
+  //(made already, as a rule: start)
+  this.maker.get("sound", BLAST, true);
+};
+
+/**
+ * Every building blown up with its fuse burning: its boom started once
+ * there is no longer till it goes up than the boom has before it - worked
+ * out by how fast the game's clock has gone since its fuse was lit, so it
+ * comes as the pieces fly however fast the game goes, and waits while it
+ * stands still.
+ */
+Soundman.prototype.blasts = function (wall) {
+  var ctx = this.context,
+    buf = this.maker.ready("sound", BLAST),
+    left = [],
+    toViewport = null;
+
+  for (var i = 0; i < this.blasting.length; i++) {
+    var b = this.blasting[i],
+      e = b.e,
+      //game ms since its fuse was lit
+      gone =
+        e.state === "fuse"
+          ? e.t
+          : e.state === "blown"
+            ? Explosion.Explosion.FUSE_MS + e.t
+            : null;
+
+    //turned round, or over - or the game standing still since it was lit
+    if (gone === null || e.over()) continue;
+    if (gone <= 0 || wall <= b.wall) {
+      left.push(b);
+      continue;
+    }
+
+    //real seconds till it goes up, by how fast the game has gone since
+    var till =
+      ((Explosion.Explosion.FUSE_MS - gone) * (wall - b.wall)) / gone / 1000;
+
+    if (till > BLAST_AT || buf === null) {
+      if (till > -BLAST_LATE) left.push(b);
+      continue;
+    }
+    if (till < -BLAST_LATE || wall - this.lastBlast < BLAST_GAP) continue;
+
+    if (toViewport === null)
+      toViewport = this.root.camera.camera.getWorldToViewport();
+
+    at[0] = e.mx;
+    at[1] = 0;
+    at[2] = e.mz;
+    vec3.transformMat4(onScreen, at, toViewport);
+
+    var off = Math.max(Math.abs(onScreen[0]), Math.abs(onScreen[1]));
+
+    if (off > BLAST_OFF) continue;
+
+    var v = this.view(),
+      near = 0.45 + 0.55 * clamp((v.zoom - 0.5) / 1.5);
+
+    this.lastBlast = wall;
+    this.play(buf, {
+      gain:
+        BLAST_LOUD * near * (1 - 0.6 * smooth((off - 0.6) / (BLAST_OFF - 0.6))),
+      pan: clamp((onScreen[0] + 1) / 2) * 1.2 - 0.6,
+      //into it as far as it is late, at most to its boom
+      offset: Math.min(BLAST_AT, Math.max(0, BLAST_AT - till)),
+    });
+  }
+
+  this.blasting = left;
+};
+
+/* ------------------------------------------------------------------------
  * Horns
  * --------------------------------------------------------------------- */
 
@@ -1018,7 +1132,7 @@ Soundman.prototype.honk = function (d, p, wall, friendly) {
 
 /* ------------------------------------------------------------------------ */
 
-//plays a buffer once: {when, gain, pan, rate}
+//plays a buffer once: {when, gain, pan, rate, offset}
 Soundman.prototype.play = function (buf, o) {
   var ctx = this.context,
     s = ctx.createBufferSource(),
@@ -1042,7 +1156,7 @@ Soundman.prototype.play = function (buf, o) {
   s.onended = function () {
     last.disconnect();
   };
-  s.start(o.when || 0);
+  s.start(o.when || 0, o.offset || 0);
 };
 
 function SoundScript(man) {
