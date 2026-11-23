@@ -9,7 +9,10 @@
  * Coarse on purpose: a pixel of it is how high the ground is at a tile or
  * two (isometrica core/terrain, the noise and whatever was shaped), never
  * every tile it covers, so it costs much the same whatever it shows - a few
- * tiles averaged, zoomed out, to tell mostly land from mostly sea. Worked
+ * tiles averaged, zoomed out, to tell mostly land from mostly sea - in the
+ * colour of the zone of the climate its middle tile is in (isometrica
+ * core/climate): the desert in the middle of the world, the green round it,
+ * the snow and the ice out at its edge, rings that shade into each other. Worked
  * out a few rows a frame, the game going on meanwhile. It opens over the
  * camera, a good way out.
  *
@@ -24,6 +27,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import ClientConfig from "isometrica/client/config";
+import Climate from "isometrica/core/climate";
 import { Container, Icon, cx } from "../kit";
 import { setWorldMap, useGame } from "../store";
 import { getClient } from "../session";
@@ -100,35 +104,84 @@ function shown(x, y, zoom) {
   };
 }
 
+//the land of each zone of the climate (isometrica core/climate), low down
+//and up high - rock over that, as on the green - and its shore: the
+//desert's pale sand, the savannah's gold and red earth, the green, the
+//arctic's snow grey with its firs and pines, and the north's white
+var LANDS = {
+  desert: {
+    low: [236, 210, 150],
+    high: [204, 164, 108],
+    shore: [226, 204, 150],
+  },
+  savannah: {
+    low: [204, 164, 92],
+    high: [170, 112, 70],
+    shore: [214, 190, 140],
+  },
+  temperate: {
+    low: [96, 164, 72],
+    high: [52, 110, 42],
+    shore: [214, 200, 146],
+  },
+  arctic: {
+    low: [210, 220, 222],
+    high: [170, 186, 186],
+    shore: [214, 224, 236],
+  },
+  polar: {
+    low: [246, 248, 252],
+    high: [214, 222, 236],
+    shore: [230, 236, 244],
+  },
+};
+
+//the water frozen over, from the shallows out
+var ICE = [
+  [206, 226, 238],
+  [170, 200, 222],
+];
+
 /**
  * The colour of ground that high, into out at o: the sea deeper blue the
- * deeper it is, the shore sand, the land green, darker going up, and rock
- * up high.
+ * deeper it is - or ice, frozen over - the shore sand, the land the colour
+ * of its zone's ground, darker going up, and rock up high.
+ *
+ * @param zone {Object} the zone of the climate it is in (core/climate)
  */
-function colour(h, out, o) {
-  var r, g, b, t;
+function colour(h, zone, out, o) {
+  var land = LANDS[zone.id] || LANDS.temperate,
+    r,
+    g,
+    b,
+    t;
 
-  if (h <= 0) {
+  if (h <= 0 && zone.water !== null) {
+    t = Math.min(1, -h / 10);
+    r = ICE[0][0] + (ICE[1][0] - ICE[0][0]) * t;
+    g = ICE[0][1] + (ICE[1][1] - ICE[0][1]) * t;
+    b = ICE[0][2] + (ICE[1][2] - ICE[0][2]) * t;
+  } else if (h <= 0) {
     t = Math.min(1, -h / 10);
     r = 74 - 56 * t;
     g = 150 - 104 * t;
     b = 214 - 96 * t;
   } else if (h <= 1) {
-    r = 214;
-    g = 200;
-    b = 146;
+    r = land.shore[0];
+    g = land.shore[1];
+    b = land.shore[2];
   } else {
     t = Math.min(1, (h - 2) / 10);
     if (t < 0.6) {
       t /= 0.6;
-      r = 96 - 44 * t;
-      g = 164 - 54 * t;
-      b = 72 - 30 * t;
+      r = land.low[0] + (land.high[0] - land.low[0]) * t;
+      g = land.low[1] + (land.high[1] - land.low[1]) * t;
+      b = land.low[2] + (land.high[2] - land.low[2]) * t;
     } else {
       t = (t - 0.6) / 0.4;
-      r = 52 + 92 * t;
-      g = 110 + 22 * t;
-      b = 42 + 72 * t;
+      r = land.high[0] + (144 - land.high[0]) * t;
+      g = land.high[1] + (132 - land.high[1]) * t;
+      b = land.high[2] + (114 - land.high[2]) * t;
     }
   }
 
@@ -369,7 +422,15 @@ export default function WorldMap() {
                   Math.floor(x0 + (i + (a + 0.5) / n) * step),
                   Math.floor(top - (row + (b + 0.5) / n) * step),
                 );
-            colour(sum / (n * n), data.data, (row * PX + i) * 4);
+            colour(
+              sum / (n * n),
+              Climate.zoneAt(
+                Math.floor(x0 + (i + 0.5) * step),
+                Math.floor(top - (row + 0.5) * step),
+              ),
+              data.data,
+              (row * PX + i) * 4,
+            );
           }
 
         ctx.putImageData(data, 0, 0, 0, from, PX, end - from);
@@ -581,13 +642,16 @@ export default function WorldMap() {
     if (d !== null && !d.moved && (t = tileAt(e))) jump(t.x, t.y);
   }
 
-  var height =
-    hover && terrain
-      ? terrain.getGridPointHeight(
-          clamp(Math.round(hover.x), 0, WORLD - 1),
-          clamp(Math.round(hover.y), 0, WORLD - 1),
-        )
-      : null;
+  var hx = hover ? clamp(Math.round(hover.x), 0, WORLD - 1) : 0,
+    hy = hover ? clamp(Math.round(hover.y), 0, WORLD - 1) : 0,
+    height = hover && terrain ? terrain.getGridPointHeight(hx, hy) : null,
+    //the zone of the climate under the pointer, and how warm it is there
+    climate = hover
+      ? Climate.zoneAt(hx, hy).name.toLowerCase() +
+        " " +
+        Math.round(Climate.heat(hx, hy)) +
+        "°"
+      : "";
 
   var across = SPANS[at.zoom].toLocaleString() + " tiles across",
     close = function () {
@@ -622,7 +686,9 @@ export default function WorldMap() {
                 "  y " +
                 Math.round(hover.y) +
                 "  height " +
-                height
+                height +
+                "  " +
+                climate
               : camera
                 ? "camera  x " +
                   Math.round(camera[0]) +

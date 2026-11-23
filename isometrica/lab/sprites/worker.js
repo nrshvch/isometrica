@@ -66,8 +66,10 @@ self.onmessage = function (e) {
   var m = e.data;
 
   if (m.type === "describe") {
+    //everything the generator can paint - what the game has, and what it
+    //does not (lab), to look at all the same
     var started = performance.now(),
-      sprites = Catalog.describe(m.gen, {}).sprites;
+      sprites = Catalog.describe(m.gen, {}, { all: true }).sprites;
 
     self.postMessage({
       type: "described",
@@ -77,7 +79,7 @@ self.onmessage = function (e) {
       sprites: Object.keys(sprites).map(function (name) {
         var s = sprites[name];
 
-        return [name, s.w, s.h, s.key || name];
+        return [name, s.w, s.h, s.key || name, s.lab === true];
       }),
     });
     return;

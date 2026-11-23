@@ -38,8 +38,9 @@ function worker() {
 }
 
 /**
- * What a generator paints: { sprites: [[name, w, h, key]], ms, faced } -
- * asked once, and kept.
+ * What a generator paints: { sprites: [[name, w, h, key, lab]], ms, faced }
+ * - lab for what the game does not have, only the lab - asked once, and
+ * kept.
  */
 export function describe(gen) {
   if (described[gen]) return described[gen];

@@ -16,6 +16,11 @@
  * there as black, see-through; everywhere else there is nothing, so the
  * stones lie on whatever ground the tile is.
  *
+ * Where the world is not green (core/climate) its stones are as well: out in
+ * the cold, the same stones with snow lying on their tops ("snowstone",
+ * "snowstone0"); in the desert, red-ochre sandstone and pale rock bleached by
+ * the sun ("desertstone", "desertstone0").
+ *
  * And what a building comes down to (client/demolition): a heap of rubble
  * on every tile of it till the bulldozer pushes it away - a low mound of
  * dusty grey debris ("rubble", "rubble0"), and on it, piled any which way,
@@ -102,7 +107,28 @@ var GREY = [
     [128, 99, 68],
     [99, 76, 53],
     [72, 55, 39],
+  ],
+  //the desert's: red-ochre sandstone, and rock bleached pale by the sun
+  SANDSTONE = [
+    [206, 142, 96],
+    [178, 112, 74],
+    [146, 86, 56],
+    [108, 62, 42],
+  ],
+  PALE = [
+    [222, 208, 180],
+    [196, 180, 152],
+    [164, 148, 122],
+    [124, 110, 90],
   ];
+
+//the snow on a stone's top, in the light and in the shade - and how much a
+//stone's top has to look up for the snow to lie on it
+var SNOW = [
+    [242, 246, 252],
+    [212, 222, 238],
+  ],
+  SNOW_UP = 0.6;
 
 //what is on each picture: how many stones, in what colours, how big round
 //(along the tile) and how high
@@ -120,6 +146,39 @@ var PLANS = {
     size: [3.2, 4.8],
     high: [4, 6.5],
     seed: 23,
+  },
+  //the same out in the cold, snow lying on their tops
+  snowstone: {
+    count: 5,
+    colours: GREY,
+    size: [2.2, 4],
+    high: [3.5, 6.5],
+    seed: 11,
+    snow: true,
+  },
+  snowstone0: {
+    count: 3,
+    colours: BROWN,
+    size: [3.2, 4.8],
+    high: [4, 6.5],
+    seed: 23,
+    snow: true,
+  },
+  //and in the desert: sandstone in the thick of a field, pale rock strewn
+  //about
+  desertstone: {
+    count: 5,
+    colours: SANDSTONE,
+    size: [2.2, 4],
+    high: [3, 5.5],
+    seed: 67,
+  },
+  desertstone0: {
+    count: 3,
+    colours: PALE,
+    size: [3.2, 4.8],
+    high: [3.5, 6],
+    seed: 79,
   },
   //rubble: a mound, how big round and how high, and the pieces piled on it
   //any which way - each of one of the colours - flat on top
@@ -375,6 +434,7 @@ function stonesOf(plan) {
       turn: rnd() * Math.PI,
       high: plan.high[0] + rnd() * (plan.high[1] - plan.high[0]),
       colours: plan.colours,
+      snow: plan.snow === true,
       seed: (rnd() * 1e6) | 0,
     });
   }
@@ -846,7 +906,9 @@ export function paint(name) {
                 ),
               ),
         below = py + 1 < H ? hit[(py + 1) * W + px] : null,
-        c = h.stone.colours[tone],
+        //snow on whatever of it looks up enough, its edge ragged
+        snowed = h.stone.snow && n[2] + (hash(px, py, 9) - 0.5) * 0.2 > SNOW_UP,
+        c = snowed ? SNOW[light > 0.85 ? 0 : 1] : h.stone.colours[tone],
         //the edge at its foot a shade darker, to stand out on the grass -
         //not where a pile runs on off the tile, into the heap next to it
         on =

@@ -8,7 +8,9 @@ export var PAGES = [
     name: "Sprites",
     about:
       "Every picture the generators paint - ground, roads, buildings, trees, " +
-      "vehicles, stones, smoke - a generator at a time, lit or at night.",
+      "vehicles, stones, smoke - a generator at a time, lit or at night; " +
+      "and what the game does not use (yet): every kind of ground the " +
+      "terrain painter has.",
   },
   {
     id: "sounds",
@@ -85,6 +87,15 @@ export var PAGES = [
       "fire: it spreads window by window, floor by floor, black smoke " +
       "rolling up off it, till it comes down and what is left of it burns " +
       "on and smoulders - a day of it, as fast as you like, by day or night.",
+  },
+  {
+    id: "climate",
+    name: "Climate bench",
+    about:
+      "Every zone of the climate on one island - desert, green, snow and " +
+      "the frozen edge of the world - the way the game draws it: where each " +
+      "gives way to the next, the water freezing over, the trees and the " +
+      "stones of each, warmer or colder.",
   },
   {
     id: "lighting",
