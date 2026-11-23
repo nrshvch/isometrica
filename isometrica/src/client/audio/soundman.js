@@ -25,7 +25,8 @@
  * - horns: a car stood in a jam a while honks, now and then, and every so
  *   often two cars give each other a toot going by - to the left or the
  *   right of where they are on screen, quieter further off;
- * - a building blown up (client/explosion): its boom (shared/gen/blast),
+ * - a building blown up (client/explosion): its blast (shared/gen/blast) -
+ *   TNT, or a ripple of demolition charges and then it going, either -
  *   heard from up over the town, coming just as the pieces of it fly -
  *   however fast the game goes - to the left or the right of where it is
  *   on screen, quieter further off and zoomed out.
@@ -135,12 +136,16 @@ var AROUND = 2.5,
   FAR_DULL = 700,
   NEAR_DULL = 18000;
 
-//a building blown up: its boom, and how far into it it goes up, s; how
+//a building blown up: its blast, one of its ways at random - and how far
+//into each it goes up, s (shared/gen/blast); how
 //loud it is, in the middle of the screen, zoomed in; how far off the
-//screen it is still heard (1 its edge); how late it may still start, s -
+//screen it is still heard (1 its edge); how late it may still start, s of
+//the game's clock -
 //as soon as it can, the boom a little after the pieces fly - and how far
 //apart two are at least, ms: blown up together, they are heard as one
-var BLAST = "blast/0",
+var BLASTS = BLAST_SOUND.ways.map(function (w, way) {
+    return "blast/" + way;
+  }),
   BLAST_AT = BLAST_SOUND.at,
   BLAST_LOUD = 0.95,
   BLAST_OFF = 2.5,
@@ -375,7 +380,8 @@ Soundman.prototype.start = function () {
   }
 
   //the boom made ready, for the first building blown up not to wait for it
-  if (this.wants.sounds && !QUIET.blasts) this.maker.get("sound", BLAST);
+  if (this.wants.sounds && !QUIET.blasts)
+    for (var b = 0; b < BLASTS.length; b++) this.maker.get("sound", BLASTS[b]);
 
   this.level();
   this.out.gain.setTargetAtTime(1, ctx.currentTime, 0.3);
@@ -927,9 +933,11 @@ Soundman.prototype.thunder = function (wall, weather) {
 Soundman.prototype.blast = function (e) {
   if (!this.live() || !this.wants.sounds || QUIET.blasts) return;
 
-  this.blasting.push({ e: e, wall: performance.now() });
+  var way = Math.floor(Math.random() * BLASTS.length);
+
+  this.blasting.push({ e: e, wall: performance.now(), way: way });
   //(made already, as a rule: start)
-  this.maker.get("sound", BLAST, true);
+  this.maker.get("sound", BLASTS[way], true);
 };
 
 /**
@@ -941,13 +949,14 @@ Soundman.prototype.blast = function (e) {
  */
 Soundman.prototype.blasts = function (wall) {
   var ctx = this.context,
-    buf = this.maker.ready("sound", BLAST),
     left = [],
     toViewport = null;
 
   for (var i = 0; i < this.blasting.length; i++) {
     var b = this.blasting[i],
       e = b.e,
+      buf = this.maker.ready("sound", BLASTS[b.way]),
+      lead = BLAST_AT[b.way],
       //game ms since its fuse was lit
       gone =
         e.state === "fuse"
@@ -967,11 +976,15 @@ Soundman.prototype.blasts = function (wall) {
     var till =
       ((Explosion.Explosion.FUSE_MS - gone) * (wall - b.wall)) / gone / 1000;
 
-    if (till > BLAST_AT || buf === null) {
-      if (till > -BLAST_LATE) left.push(b);
+    //how long since it went up, by the game's clock - not the real one: a
+    //slow frame stepping well past it still has it heard
+    var late = (gone - Explosion.Explosion.FUSE_MS) / 1000;
+
+    if (till > lead || buf === null) {
+      if (late < BLAST_LATE) left.push(b);
       continue;
     }
-    if (till < -BLAST_LATE || wall - this.lastBlast < BLAST_GAP) continue;
+    if (late > BLAST_LATE || wall - this.lastBlast < BLAST_GAP) continue;
 
     if (toViewport === null)
       toViewport = this.root.camera.camera.getWorldToViewport();
@@ -994,7 +1007,7 @@ Soundman.prototype.blasts = function (wall) {
         BLAST_LOUD * near * (1 - 0.6 * smooth((off - 0.6) / (BLAST_OFF - 0.6))),
       pan: clamp((onScreen[0] + 1) / 2) * 1.2 - 0.6,
       //into it as far as it is late, at most to its boom
-      offset: Math.min(BLAST_AT, Math.max(0, BLAST_AT - till)),
+      offset: Math.min(lead, Math.max(0, lead - till)),
     });
   }
 
