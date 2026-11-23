@@ -21,8 +21,11 @@ Keep **what exists** apart from **what is drawn**, and decide for every part
 of the world **how often it is worked out**, by who is looking and how close.
 
 - Space is cut into **regions** with stable addresses.
-- Everything that exists is a **record**; a **view** (a game object) is made
-  for a record only while it is in sight.
+- Everything that exists is a **record**, numbers in **typed arrays**; the
+  engine iterates over typed arrays and nothing else. A **view** is made for a
+  record only while it is in sight - a row in a typed draw list, and a game
+  object only where one earns its keep - and the renderer is handed typed
+  draw lists, never game objects.
 - **Observers** have **rings** round what they see; a region's **tier** -
   how fully it is simulated - is the highest any observer gives it.
 - What nobody is near is **not simulated at all**, and is brought up to date
@@ -86,10 +89,46 @@ something gone is told from whatever is in its slot now. A record's region is
 `keyOf` its position; when that changes, it is moved from the one region's
 list to the other's.
 
-A **view** is the game object a record is drawn with. Views exist only for
-records in regions in sight, come from a pool, and keep nothing that is not
-the record's: let go of, nothing is lost; made again, it is drawn where its
-record is.
+A **view** is how a record is drawn, and exists only while the record is in a
+region in sight. It keeps nothing that is not the record's: let go of,
+nothing is lost; made again, it is drawn where its record is.
+
+## Typed arrays, all the way down
+
+With a world this big, speed is memory: how much the processor has to read,
+and in what order. So:
+
+- **All state is in typed arrays**, a field each. The stores of records, and
+  everything of the engine's own as well: the regions with their tiers,
+  versions and times; the rings; the set of regions awake and the heap of
+  times running out; the scheduler's queues; the reach kept for every region;
+  what changed since the last save; who is subscribed to what; the nodes of
+  the index; the graphs for finding the way. A list is an array of numbers -
+  handles, keys - and a count: taking one out moves the last one into its
+  place, and slots free to use again are a list of numbers too. Arrays are
+  made with room to spare and grown twice as big when they fill - never a
+  slot at a time.
+- **Iteration is over typed arrays only.** A loop that runs every frame or
+  every step reads numbers, one array after another: it follows no reference
+  from one item to the next, asks no object anything, and makes nothing to
+  throw away. Objects are touched only at the edges - a command coming in, a
+  view being made, the page.
+- **Game objects are views, and only where they earn it.** Something on the
+  screen with behaviour of its own - held and dragged, opened in a panel -
+  can have a game object. The mass of a world - the ground, what grows on it,
+  what drives on it, what drifts over it - has none: its view is a row in a
+  draw list.
+- **The renderer is handed typed draw lists.** For what is in sight, every
+  system writes rows into a draw list of its own: where (x, y, z), which
+  picture - a number, into a table of pictures that is typed arrays too
+  (where each is on the atlas, its size, its pivot) - which frame, how
+  see-through, how lit, and the key it is sorted by. The renderer culls, sorts
+  (by the keys, a radix sort) and batches from those arrays straight into the
+  GPU's buffers, and never asks an object anything. A list of what does not
+  move can stay on the GPU, written again only when it changes.
+- **Strings and objects** only where people and files are: names, the
+  interface, the save as it is written out - and a save is typed arrays
+  packed together before it is compressed.
 
 ## Systems
 
@@ -233,11 +272,22 @@ the same as with one.
 region worked out before it is wanted; a graph for finding the way built
 again; saves put together and compressed.
 
+**Sharing the memory.** The stores and the draw lists are typed arrays, so
+they can live in a `SharedArrayBuffer`: the worker writes them, the main
+thread reads them, and nothing is copied or handed over. What is in sight is
+kept two or three times over - the worker writing the next step into one
+while the renderer reads the last, and which copy is whole published with
+`Atomics` once it is written, so the renderer never reads half a step.
+Commands go the other way in a ring of numbers, its two ends kept with
+`Atomics`. Shared memory needs the page cross-origin isolated - served with
+`Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp` (or `credentialless`), and
+everything it loads from elsewhere allowed to be - so the engine works without
+it too: the same arrays handed back and forth (transferred), never copied.
+
 **What stays on the main thread**: game objects, WebGL, the page. Drawing from
-a worker (`OffscreenCanvas`) can come later. Memory shared between threads
-(`SharedArrayBuffer`) needs the page to be cross-origin isolated (the
-`Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers);
-arrays handed over need nothing.
+a worker (`OffscreenCanvas`) can come later, the draw lists read there
+instead.
 
 ## Time, chance and names
 
@@ -275,9 +325,15 @@ Now: `World` keeps every game object in one list and the slots the renderer
 culls by (`engine/engine/world.js`); every ticker is ticked every frame
 (`engine/engine/world.js:424`); `Game` steps by the frame's time
 (`engine/engine/game.js`); the adaptive octree is there, unused; `Stats`
-counts what a frame takes.
+counts what a frame takes. Half way to typed already: the renderer culls from
+the slots, a `Float64Array`, and keeps what it draws a frame in typed arrays,
+sorted by a radix sort (`engine/engine/canvas2drenderer.js`) - but every
+picture drawn is still handed over as a renderer object and a picture object
+(`SpriteRenderer.picture`), and asked about itself on the way.
 
 To come: the partitions (grid, implicit quadtree and octree) and an index;
-stores of records; the registry of systems; observers, rings and tiers; the
-scheduler; the fixed-step clock with drawing in between; pools of views; the
-hooks for saving, sending and deciding; and the simulation on a worker.
+stores of records; draw lists and the table of pictures by number, and a
+renderer that draws from nothing else; the registry of systems; observers,
+rings and tiers; the scheduler; the fixed-step clock with drawing in between;
+pools of views; the hooks for saving, sending and deciding; and the
+simulation on a worker, sharing its memory where the page allows.

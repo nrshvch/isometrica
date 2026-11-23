@@ -146,6 +146,35 @@ into the near ring, from the noise; a waking region's traffic brought up to
 date; saves put together. Then the whole simulation, as the engine's local
 server.
 
+## Typed arrays, in isometrica
+
+The engine's rule - all state in typed arrays, iterated over as typed arrays
+only, game objects views at most, the renderer handed typed draw lists - and
+where isometrica stands with it:
+
+- **Typed already**: the ground, a game object a chunk with its tiles in typed
+  arrays, culled from numbers alone (`client/groundchunk.js:74`); the heights
+  the noise gives, kept in two typed arrays (`core/terrain.js:125`,
+  `noiseHeight` `:132`); and the engine's slots and what it draws a frame.
+- **Still objects, a frame at a time**: every picture is a `CachedSprite`
+  (`client/cachedsprite.js:27`), handed to `Lighting.collect`
+  (`client/lighting.js:425`) and asked to write itself (`glQuad`,
+  `client/cachedsprite.js:492`) - a call a picture, reading fields of several
+  objects; every tree, car and puff is a game object, and a car's driver
+  another object besides; a building is a game object with its pieces as game
+  objects under it.
+- **Still objects in the core**: buildings in dictionaries by id and by tile
+  (`core/buildings.js:210`, `:211`), and the ground's edits too
+  (`gridPoints`, `clearedTiles`, `bareSince`, `core/terrain.js:262`-`:267`).
+
+What they become: pictures by number, the atlas a typed table; the ground
+writing rows into a draw list instead of handing pictures over one by one;
+trees, cars and puffs rows in draw lists and records in stores - the traffic
+as structs of typed arrays, the smoke as one buffer of particles
+(`docs/performance.md`, Later); and in the core, every region's edits and
+buildings as typed tables: heights by grid point, cleared ground as bits,
+buildings as rows with a kind number.
+
 ## The way there
 
 Each step ships on its own, and is measured before and after: the debug
@@ -153,8 +182,10 @@ panel's `Stats`, the traffic test (`npm run test:traffic`), and counting what
 is made and let go of, as in `docs/performance.md`.
 
 1. **The engine**: partitions (grid, implicit quadtree), stores, the registry
-   of systems, the scheduler, with `Stats` for each system. Nothing looks or
-   plays different.
+   of systems, the scheduler, with `Stats` for each system; draw lists and the
+   table of pictures by number, the ground drawn from them first. Nothing
+   looks or plays different: what the ground hands the GPU is compared quad
+   for quad, as when it became chunks.
 2. **isometrica's quadtree and rings that hold**, in place of `tilesman`'s
    square: a ring more kept than drawn, let go of only after a while, worked
    out once a frame from where the camera ended up. Done when going to and
