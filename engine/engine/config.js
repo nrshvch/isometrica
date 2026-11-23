@@ -8,8 +8,6 @@ define(function(require) {
         layersCount: 1,
         //what each layer is called, by number - for a debug panel (Stats)
         layerNames: null,
-        useOctree: false,
-        renderOctree: false,
         //the layers drawn lit, and of them those of flat ground, and what
         //draws every layer instead of the canvas - in WebGL: {canvas,
         //context, begin(viewport, M), layer(lit, flat), collect(renderer,
