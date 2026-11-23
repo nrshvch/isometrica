@@ -6,7 +6,9 @@ test/temp
 .idea
 **/.claude/*
 !/.claude/settings.json
+!/.claude/skills/
 .claudeignore
 isometrica/assets/terrain/terraingen
 isometrica/assets/previews
 .wrangler/
+isometrica/climate.png

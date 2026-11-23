@@ -14,6 +14,11 @@ var events = {
   stateChange: 0,
 };
 
+//how far a building goes up while its ground is cleared for it first
+//(awaitClearing) - by its time, as it would anyway, but no further till the
+//bulldozers are done
+var CLEAR_SHARE = 0.1;
+
 function constructor(self) {
   self.id = id++;
 }
@@ -71,6 +76,7 @@ function Construction() {
 Construction.constructor = constructor;
 Construction.events = events;
 Construction.init = init;
+Construction.CLEAR_SHARE = CLEAR_SHARE;
 
 Construction.prototype.id = -1;
 Construction.prototype.tile = -1;
@@ -85,6 +91,8 @@ Construction.prototype._startedAt = 0;
 Construction.prototype._run = 0;
 //the timer it is finished by
 Construction.prototype._timer = null;
+//waiting for its ground to be cleared before it goes up (awaitClearing)
+Construction.prototype._clearing = false;
 
 Construction.prototype.init = function (world, code, tile, rot, done) {
   return init(this, world, code, tile, rot, done);
@@ -101,6 +109,45 @@ Construction.prototype.rebuild = function () {
 };
 
 /**
+ * Has it wait for its ground to be cleared before it goes up - the
+ * bulldozers out to it (core/city/citybuildings buildBuilding, client/
+ * clearworks sweep): how far along it is goes on by its time from the
+ * start, as it would anyway, but no further than CLEAR_SHARE till its
+ * ground is cleared (cleared) - and it goes up the rest of the way from
+ * there. Nothing for one up at once.
+ */
+Construction.prototype.awaitClearing = function () {
+  if (this._state !== ConstructionState.underConstruction) return;
+
+  //not to be finished by its timer meanwhile
+  this._run++;
+  clearTimeout(this._timer);
+  this._timer = null;
+  this._clearing = true;
+};
+
+/**
+ * Whether it waits for its ground to be cleared still (awaitClearing).
+ */
+Construction.prototype.clearing = function () {
+  return this._clearing;
+};
+
+/**
+ * Its ground cleared: it goes up from here, the rest of the way by its time
+ * - and whoever draws it told.
+ */
+Construction.prototype.cleared = function () {
+  if (!this._clearing) return;
+
+  var progress = this.getProgress();
+
+  this._clearing = false;
+  start(this, progress);
+  Events.fire(this, events.stateChange, this._state);
+};
+
+/**
  * Has it go up as far as it would have in ms more - for time that went by
  * with the game closed, made up for at once (Logic#catchUp): the clock it is
  * timed by stood still meanwhile, the save keeping only how far it had got.
@@ -110,6 +157,14 @@ Construction.prototype.rebuild = function () {
  */
 Construction.prototype.advance = function (ms) {
   if (this._state !== ConstructionState.underConstruction || !(ms > 0)) return;
+
+  //time made up for: its ground long since cleared
+  if (this._clearing) {
+    var cleared = this.getProgress();
+
+    this._clearing = false;
+    start(this, cleared);
+  }
 
   var time = this.data.constructionTime,
     progress = Math.min(1, this.getProgress() + ms / time);
@@ -136,6 +191,15 @@ Construction.prototype.advance = function (ms) {
 Construction.prototype.setProgress = function (progress) {
   if (this._state !== ConstructionState.underConstruction) return;
 
+  //its ground being cleared still: no further than CLEAR_SHARE, and not
+  //finished by a timer (awaitClearing)
+  if (this._clearing) {
+    this._startedAt =
+      Date.now() -
+      Math.min(CLEAR_SHARE, Math.max(0, progress)) * this.data.constructionTime;
+    return;
+  }
+
   if (progress < 1) start(this, Math.max(0, progress));
   else this.advance(this.data.constructionTime);
 };
@@ -152,10 +216,13 @@ Construction.prototype.getState = function () {
 Construction.prototype.getProgress = function () {
   if (this._state !== ConstructionState.underConstruction) return 1;
 
-  return Math.min(
+  var progress = Math.min(
     1,
     Math.max(0, (Date.now() - this._startedAt) / this.data.constructionTime),
   );
+
+  //no further than so far till its ground is cleared (awaitClearing)
+  return this._clearing ? Math.min(CLEAR_SHARE, progress) : progress;
 };
 
 /**

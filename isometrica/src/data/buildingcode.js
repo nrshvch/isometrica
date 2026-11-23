@@ -33,6 +33,8 @@ var BuildingCode = {
   tree: 28,
   house: 29,
   smallCommerce: 30,
+  //what a building blown up leaves lying on every tile of it (data/buildings)
+  rubble: 31,
 
   //gatherers
   lumberMill: 6,

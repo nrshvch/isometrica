@@ -29,6 +29,9 @@ function CityBuildings(city) {
   //what is to go up where something else is coming down for it, once the
   //ground is clear (replaceLater): {code, tile, rotation, look, tiles} each
   this._replacing = [];
+  //what went up waiting for its ground to be cleared first, the bulldozers
+  //out to it (buildBuilding): {building, tiles} each
+  this._clearing = [];
 }
 
 /**
@@ -240,6 +243,27 @@ CityBuildings.prototype.buildBuilding = function (
     building.init(city.world, code, tile, rotate);
     //a road laid as it was planned (client/road plan)
     if (Array.isArray(surface)) building.surface = surface.slice();
+
+    //its ground cleared first - bare, or whatever was on it, trees,
+    //stones, rubble - by the bulldozers, before it goes up (awaitClearing):
+    //being cleared from before what was on it goes, for whoever shows it
+    //going to show it there till then. Not a road, which is dug out by its
+    //own works (client/roadworks), nor what goes up at once
+    if (
+      data.classCode !== BuildingClassCode.road &&
+      building.getState() === BuildingState.underConstruction
+    ) {
+      var site = {
+        building: building,
+        tiles: footprint(code, tile, rotate),
+      };
+
+      site.tiles.forEach(function (t) {
+        city.world.terrain.startClearing(t);
+      });
+      building.awaitClearing();
+      this._clearing.push(site);
+    }
 
     //what the player pays for it, set before the build is announced so
     //that whoever shows it over the site has it in hand
@@ -466,6 +490,8 @@ CityBuildings.prototype.restore = function (
   progress,
   look,
   surface,
+  fire,
+  more,
   demolition,
 ) {
   //saves written before the codes were made numbers carry them as strings
@@ -485,11 +511,25 @@ CityBuildings.prototype.restore = function (
 
   if (look !== undefined) building.look = look;
   if (Array.isArray(surface)) building.surface = surface.slice();
+  //on fire, or burnt down, since then (core/building ignite)
+  if (typeof fire === "number") building.restoreFire(fire);
+  //knocked about, and a heap of rubble smouldering since then
+  if (more && typeof more.health === "number") building.health = more.health;
+  if (more && typeof more.smoke === "number") building.smoke = more.smoke;
+  //parts of it down, and which tiles are only its yard
+  if (more && Array.isArray(more.down)) building.down = more.down.slice();
+  if (more && Array.isArray(more.yards)) building.yards = more.yards.slice();
+  //being demolished, and the tiles of it down by then - with any a blast
+  //took
   if (demolition && typeof demolition === "object") {
     building.demolishing = true;
-    building.down = Array.isArray(demolition.down)
-      ? demolition.down.slice()
-      : [];
+    building.down = (building.down || []).concat(
+      (Array.isArray(demolition.down) ? demolition.down : []).filter(
+        function (t) {
+          return !building.isDown(t);
+        },
+      ),
+    );
   }
 
   this.city.root.buildings.build(building);
@@ -527,6 +567,15 @@ CityBuildings.prototype.save = function () {
       look: building.look,
       //what it stands on (core/surface)
       surface: building.surface || undefined,
+      //when it was set on fire, if it was
+      fire: building.fire !== null ? building.fire : undefined,
+      //how sound it is, knocked about by a blast, and since when a heap of
+      //rubble has smouldered
+      health: building.health < 100 ? building.health : undefined,
+      smoke: building.smoke !== null ? building.smoke : undefined,
+      //parts of it down, and which tiles are only its yard
+      down: building.down !== null ? building.down : undefined,
+      yards: building.yards !== null ? building.yards : undefined,
       //being demolished, and how far down it has come
       demolition: building.demolishing
         ? { down: (building.down || []).slice() }
@@ -549,8 +598,88 @@ CityBuildings.prototype.load = function (list) {
       list[i].progress,
       list[i].look,
       list[i].surface,
+      list[i].fire,
+      list[i],
       list[i].demolition,
     );
+};
+
+/**
+ * Leaves a heap of rubble lying on tile (data/buildings rubble): of any kind
+ * of it, of pile - the one the heaps a building left are all of, which run
+ * on into each other and into no other pile's (client/rubble) - unpaid,
+ * there till it is cleared away or built over, and saved as anything
+ * standing is, its pile with it (look) - and what it is the rubble of, to
+ * be drawn as that come down (client/buildingview rubble of), and whether it
+ * was burnt out first.
+ *
+ * @param tile {number}
+ * @param pile {number} the pile it is a heap of
+ * @param [smoke] {number} the game's time it was left smouldering
+ * @param [of] {Building} what it is the rubble of
+ * @param [burnt] {boolean} whether that was burnt out when it came down
+ * @returns {Building}
+ */
+CityBuildings.prototype.leaveRubble = function (tile, pile, smoke, of, burnt) {
+  var look = { pile: pile };
+
+  //what it is the rubble of, to be drawn as that come down - burnt, if it
+  //was burnt out when it came down
+  if (of) {
+    look.of = {
+      code: of.buildingCode,
+      tile: of.tile,
+      rotation: of.rotation || 0,
+      look: of.look || undefined,
+    };
+    if (burnt) look.of.burnt = true;
+  }
+
+  return this.restore(
+    variantOf(BuildingCode.rubble),
+    tile,
+    0,
+    true,
+    look,
+    undefined,
+    undefined,
+    { smoke: smoke },
+  );
+};
+
+/**
+ * Leaves a tree knocked down lying on tile, the way it fell, till it is
+ * cleared away (client/buildingview fallen): a tree the world grew there,
+ * or one planted - which it was, how it was turned, and which way it fell.
+ *
+ * @param tile {number}
+ * @param tree {{code: number, rotation: number, world: boolean, way:
+ *        string}} way "x+", "x-", "y+" or "y-" (client/view headings)
+ */
+CityBuildings.prototype.leaveFallen = function (tile, tree) {
+  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true, {
+    fallen: tree,
+  });
+};
+
+/**
+ * Leaves what was a yard of building on tile - its car park, its playground,
+ * its garden, a park - wrecked, and nothing on it put up again (client/
+ * buildingview wreck): what it was kept for it to be drawn, wrecked, the
+ * way the rubble is (data/buildings rubble), but none of the heaps of it.
+ *
+ * @param tile {number}
+ * @param building {Building} what it was a yard of, as it stood
+ */
+CityBuildings.prototype.leaveWreck = function (tile, building) {
+  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true, {
+    wreck: {
+      code: building.buildingCode,
+      tile: building.tile,
+      rotation: building.rotation || 0,
+      look: building.look || undefined,
+    },
+  });
 };
 
 /**
@@ -677,11 +806,32 @@ function footprint(code, tile, rotation) {
  * Whatever was waiting for its ground (replaceLater) goes up, a building
  * site, on ground that is clear now: none of its tiles being cleared still,
  * nothing standing on any - the building it is to replace down to its last
- * tile.
+ * tile. And a building waiting for its ground to be cleared before it goes
+ * up (buildBuilding) goes up once it all is - one cleared away meanwhile let
+ * go of.
  */
 function settle(self) {
   var terrain = self.city.world.terrain,
     held = self.city.world.buildingService;
+
+  if (self._clearing.length > 0)
+    self._clearing = self._clearing.filter(function (site) {
+      var b = site.building;
+
+      //gone meanwhile, or being demolished: not to go up
+      if (held.get(b.tile) !== b || !b.clearing() || b.demolishing)
+        return false;
+
+      if (
+        site.tiles.some(function (t) {
+          return terrain.beingCleared(t);
+        })
+      )
+        return true;
+
+      b.cleared();
+      return false;
+    });
 
   if (self._replacing.length === 0) return;
 

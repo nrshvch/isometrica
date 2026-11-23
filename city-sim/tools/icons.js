@@ -111,6 +111,45 @@ function vertical(tail, tip) {
 
 /* --- signs -------------------------------------------------------------- */
 
+//a satellite: its body, a long solar panel either side of it on a strut,
+//and its antenna - drawn level, then turned an eighth of the way round, its
+//panels going up to the right
+function satellite() {
+  var a = -Math.PI / 4,
+    c = Math.cos(a),
+    s = Math.sin(a);
+
+  function turn(p) {
+    var dx = p[0] - 12,
+      dy = p[1] - 12;
+
+    return [12 + dx * c - dy * s, 12 + dx * s + dy * c];
+  }
+
+  function box(x0, y0, x1, y1) {
+    return shape(
+      [
+        [x0, y0],
+        [x1, y0],
+        [x1, y1],
+        [x0, y1],
+      ].map(turn),
+    );
+  }
+
+  return [
+    box(9.5, 9.5, 14.5, 14.5),
+    box(2.5, 7.5, 7.5, 16.5),
+    line(turn([5, 7.5]), turn([5, 16.5])),
+    box(16.5, 7.5, 21.5, 16.5),
+    line(turn([19, 7.5]), turn([19, 16.5])),
+    line(turn([7.5, 12]), turn([9.5, 12])),
+    line(turn([14.5, 12]), turn([16.5, 12])),
+    line(turn([12, 9.5]), turn([12, 6.5])),
+    dot.apply(null, turn([12, 5.25]).concat(1.25)),
+  ];
+}
+
 var SIGNS = {
   close: [line([6, 6], [18, 18]), line([18, 6], [6, 18])],
 
@@ -185,6 +224,9 @@ var SIGNS = {
     line([15, 6], [15, 20.5]),
   ],
 
+  //a satellite, its panels spread - the world seen from straight above
+  satellite: satellite(),
+
   //a house, its door - back to the city
   home: [
     shape([
@@ -241,6 +283,19 @@ var SIGNS = {
     line([8, 7], [12, 3], [16, 7]),
   ],
 
+  //put on the phone: an arrow down into one, its home bar under it
+  install: [
+    shape([
+      [6, 2.5],
+      [18, 2.5],
+      [18, 21.5],
+      [6, 21.5],
+    ]),
+    line([12, 6.5], [12, 12.5]),
+    line([9, 10.5], [12, 13.5], [15, 10.5]),
+    line([10.5, 18], [13.5, 18]),
+  ],
+
   //turned round, most of the way, the arrow's head where it has got to
   rotate: [
     path("M20 12a8 8 0 1 1-2.34-5.66L20 8"),
@@ -278,6 +333,34 @@ var WORLD = {
     line([14, 12], [14, 17]),
     line([18, 12], [18, 17]),
     line([3, 20], [21, 20]),
+  ],
+
+  //a burst: a star of eight points, longer and shorter by turns, and bits
+  //flung off it - blown up
+  explode: [
+    shape(
+      Array.apply(null, Array(16)).map(function (_, i) {
+        var a = -Math.PI / 2 + (i * Math.PI) / 8,
+          r = i % 2 === 0 ? (i % 4 === 0 ? 8.5 : 6.5) : 3.4;
+
+        return [12 + r * Math.cos(a), 12.5 + r * Math.sin(a)];
+      }),
+    ),
+    dot(4, 4.5, 1),
+    dot(20.5, 20, 1),
+  ],
+
+  //a flame, a smaller one licking up inside it - set on fire
+  fire: [
+    path(
+      "M12 21.5C8 21.5 5.5 18.75 5.5 15.25C5.5 11.25 9 9.5 9.25 5.25" +
+        "C11.75 7 12.25 9.25 12 11C13.5 10.25 14.25 8.5 14.25 7" +
+        "C16.75 9 18.5 12 18.5 15.25C18.5 18.75 16 21.5 12 21.5Z",
+    ),
+    path(
+      "M12 21.5C10.25 21.5 9.25 20.25 9.25 18.75C9.25 17 10.75 16 11.5 14" +
+        "C13.25 15.25 14.75 16.75 14.75 18.75C14.75 20.25 13.75 21.5 12 21.5Z",
+    ),
   ],
 
   //a house, two arrows going round it - put up again, as something else

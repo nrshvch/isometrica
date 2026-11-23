@@ -3,7 +3,8 @@
  * opens the city screen and puts it away again - and how it is doing, and
  * under it the city's name - back to it; the time, and the weather; the
  * view from above, and the menu: the sounds, the day and the night going
- * by, the grid over the ground, the city's address shared, a new city.
+ * by, the grid over the ground, the city's address shared, the game put on
+ * the home screen, a new city.
  * Under them, zooming in and out, and how close the camera is.
  *
  * On a phone the money and the time take the top, the city's name and the
@@ -15,11 +16,13 @@ import Events from "events";
 import engine from "engine";
 import Numeral from "numeral";
 import WorldView from "isometrica/client/view";
+import ClientConfig from "isometrica/client/config";
 import CameraControl from "isometrica/client/cameracontrol";
 import ResourceCode from "isometrica/core/resourcecode";
 import Game from "../../game";
 import { Container, HudButton, Icon, cx } from "../kit";
-import { setDebug, store, useGame } from "../store";
+import { setDebug, setWorldMap, store, useGame } from "../store";
+import { install } from "../install";
 import {
   bigCityName,
   getClient,
@@ -27,6 +30,7 @@ import {
   goWorld,
   reopen,
   startFresh,
+  startGenerated,
   worldScreen,
 } from "../session";
 
@@ -349,6 +353,24 @@ function Row({ icon, label, sub, on, disabled, className, onClick }) {
 
 //how long the menu says the city's address was copied
 var COPIED_MS = 1500;
+//how often the menu reads again where the camera is, while it is open, ms
+var WHERE_MS = 250;
+
+/**
+ * The tile the camera is over - under the middle of the screen - x and y,
+ * or null without a camera. A tile is drawn round its own x, y, so it is
+ * the nearest one.
+ */
+function cameraTile(client) {
+  if (!client || !client.camera) return null;
+
+  var p = client.camera.transform.getPosition();
+
+  return [
+    Math.round(p[0] / ClientConfig.tileSize),
+    Math.round(p[2] / ClientConfig.tileSize),
+  ];
+}
 //how many of the cities saved here the menu lists at most
 var CITIES = 5;
 
@@ -387,11 +409,38 @@ function savedCities(client, cityId) {
 }
 
 /**
- * The menu behind the button in the top right corner: what is switched on
- * and off for the whole game, the city's address shared - as the phone
- * shares things, or else copied - a new city: blank, the one a new
- * player starts on, or the big one - and, under them, the other cities
- * saved here, to go back to. Put away by a click anywhere else, or Escape.
+ * How the game is put on the home screen, where it is done by hand
+ * (install.js): from an iPhone's Share, or Safari's File menu on a Mac.
+ */
+function InstallHowTo({ how }) {
+  return (
+    <div className="border-y-[1.5px] border-inset bg-inset px-3 py-2.5 text-xs leading-relaxed font-semibold text-muted">
+      {how === "mac" ? (
+        <>
+          In Safari's menu bar, choose <b className="text-ink">File</b>, then{" "}
+          <b className="text-ink">Add to Dock</b>.
+        </>
+      ) : (
+        <>
+          Tap <b className="text-ink">Share</b>{" "}
+          <Icon name="share" size={14} className="inline align-[-2px]" /> - in
+          Safari, under <b className="text-ink">···</b> if it is not in sight -
+          then <b className="text-ink">Add to Home Screen</b>.
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The menu behind the button in the top right corner: the tile the camera
+ * is over, on top, then what is switched on and off for the whole game, the city's address shared - as the phone
+ * shares things, or else copied - the game put on the home screen, where
+ * it can be - a new city: blank, the one a new
+ * player starts on, the big one, or one generated afresh somewhere new -
+ * a small town, a city of Peepstown's size, or Peepsopolis, a megacity -
+ * and, under them, the other cities saved here, to go back to. Put away by
+ * a click anywhere else, or Escape.
  */
 function Menu({ client, world, cityId, address, busy }) {
   var [open, setOpen] = useState(false),
@@ -407,10 +456,26 @@ function Menu({ client, world, cityId, address, busy }) {
       [open, client, cityId],
     ),
     [copied, setCopied] = useState(false),
+    //where the camera is, read as the menu opens and then again and again
+    //while it is open - it can be panned with the keys meanwhile
+    [where, setWhere] = useState(null),
     debug = useGame(function (s) {
       return s.debug;
     }),
+    //how the game is put on the home screen here, if it is (install.js) -
+    //and, done by hand, whether the menu says how
+    installHow = useGame(function (s) {
+      return s.install;
+    }),
+    [howTo, setHowTo] = useState(false),
     box = useRef(null);
+
+  useEffect(
+    function () {
+      if (!open) setHowTo(false);
+    },
+    [open],
+  );
 
   useEffect(
     function () {
@@ -425,6 +490,31 @@ function Menu({ client, world, cityId, address, busy }) {
       };
     },
     [copied],
+  );
+
+  useEffect(
+    function () {
+      if (!open) return;
+
+      function read() {
+        var now = cameraTile(client);
+
+        setWhere(function (was) {
+          return was && now && was[0] === now[0] && was[1] === now[1]
+            ? was
+            : now;
+        });
+      }
+
+      read();
+
+      var every = setInterval(read, WHERE_MS);
+
+      return function () {
+        clearInterval(every);
+      };
+    },
+    [open, client],
   );
 
   function share() {
@@ -479,6 +569,17 @@ function Menu({ client, world, cityId, address, busy }) {
           role="menu"
           className="card absolute top-full right-0 z-30 mt-2 max-h-[calc(100svh-9rem-env(safe-area-inset-bottom))] w-64 overflow-y-auto overscroll-contain"
         >
+          {where && (
+            //the tile the camera is over, to be copied off - and a line
+            //under it, the switches after it
+            <div className="flex items-center gap-3 border-b-[1.5px] border-inset px-3 py-2.5">
+              <Icon name="map" size={20} className="text-muted" />
+              <span className="label">Location</span>
+              <span className="ml-auto font-mono text-sm font-bold select-text">
+                {where[0] + ", " + where[1]}
+              </span>
+            </div>
+          )}
           <Row
             icon={world.sounds ? "sound-on" : "sound-off"}
             label="Sounds"
@@ -522,6 +623,27 @@ function Menu({ client, world, cityId, address, busy }) {
               onClick={share}
             />
           )}
+          {installHow && (
+            <Row
+              icon="install"
+              label={
+                installHow === "mac"
+                  ? "Add to Dock"
+                  : installHow === "ios" ||
+                      window.matchMedia("(pointer: coarse)").matches
+                    ? "Add to Home Screen"
+                    : "Install as an app"
+              }
+              sub="Opens on its own, plays offline"
+              onClick={function () {
+                if (installHow === "prompt") {
+                  setOpen(false);
+                  install();
+                } else setHowTo(!howTo);
+              }}
+            />
+          )}
+          {howTo && installHow && <InstallHowTo how={installHow} />}
           <Row
             icon="found"
             label="Start a new city"
@@ -557,6 +679,36 @@ function Menu({ client, world, cityId, address, busy }) {
               }}
             />
           )}
+          <Row
+            icon="dice"
+            label="New random town"
+            sub="Small, along a road or two"
+            disabled={busy}
+            onClick={function () {
+              setOpen(false);
+              startGenerated("town");
+            }}
+          />
+          <Row
+            icon="dice"
+            label="New random city"
+            sub="Peepstown's size, built up"
+            disabled={busy}
+            onClick={function () {
+              setOpen(false);
+              startGenerated("city");
+            }}
+          />
+          <Row
+            icon="dice"
+            label="New Peepsopolis"
+            sub="A megacity, all built up"
+            disabled={busy}
+            onClick={function () {
+              setOpen(false);
+              startGenerated("metropolis");
+            }}
+          />
           {cities.length > 0 && (
             <div className="label border-t-4 border-inset px-3 pt-3 pb-1">
               Your other cities
@@ -592,6 +744,9 @@ export default function Hud() {
     }),
     busy = useGame(function (s) {
       return s.busy;
+    }),
+    worldMap = useGame(function (s) {
+      return s.worldMap;
     }),
     prompt = useGame(function (s) {
       return s.prompt;
@@ -635,7 +790,7 @@ export default function Hud() {
   }
 
   return (
-    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-2.5 [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_1fr_auto_auto] sm:gap-3 sm:pt-4 sm:[grid-template-areas:'funds_._time_tools'_'city_._._zoom']">
+    <Container className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 pt-[max(0.625rem,env(safe-area-inset-top))] [grid-template-areas:'funds_time'_'city_tools'_'._zoom'] sm:grid-cols-[auto_1fr_auto_auto] sm:gap-3 sm:pt-[max(1rem,env(safe-area-inset-top))] sm:[grid-template-areas:'funds_._time_tools'_'city_._._zoom']">
       {funds && (
         <div className="flex min-w-0 self-stretch [grid-area:funds] *:flex-1">
           <Funds world={world} onClick={openCity} />
@@ -653,11 +808,20 @@ export default function Hud() {
       )}
       <div className="flex gap-2 justify-self-end [grid-area:tools]">
         <HudButton
-          icon="map"
+          icon="satellite"
           label="View from above (T)"
           on={world.top}
           onClick={function () {
             if (client.setTopView) client.setTopView(!WorldView.top());
+          }}
+        />
+        {/* for debugging: players only ever pan (WorldMap) */}
+        <HudButton
+          icon="map"
+          label="World map"
+          on={worldMap}
+          onClick={function () {
+            setWorldMap();
           }}
         />
         <Menu

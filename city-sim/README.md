@@ -90,10 +90,11 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   is going up, or what it makes a tick, who lives or works in it and what
   it goes without (`src/ui/world/WorldHud.jsx`,
   `isometrica/src/client/worth.js`) - and the bar has only what can be done
-  to it, Replace and Demolish, its tools back once it is put away with a
-  tap anywhere else. The words over the world stay as they are, the tapped one's too:
-  how far along each site is, what each building goes without - in a word,
-  "no road", the card saying what road it wants, "no road (gravel)".
+  to it, Replace, Demolish, Blow up and Fire up, its tools back once it is
+  put away with a tap anywhere else. The words over the world stay as they
+  are, the tapped one's too: how far along each site is, what each building
+  goes without - in a word, "no road", the card saying what road it wants,
+  "no road (gravel)" - nothing over one on fire or burnt down.
 - Replace opens the catalogue on only what covers its ground, turned one
   way or another - a 1x2 for a 2x1 as well - each at what it would come
   to, clearing it away included, and the kind it is among them, for
@@ -123,6 +124,133 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   floor inside its glass walls. And a building going up shows the inside
   of its shell through the openings left in its walls
   (`isometrica/src/shared/gen/isobox.js` interiors).
+- Blow up blows the building up there and then, for nothing - no fence,
+  no bulldozer: the charges going off at its foot, flashing, it shakes and
+  goes up - a fireball bursting out of the building itself, not its yard,
+  and pieces torn off every floor flung out and high, to fall all round -
+  and what is left of it, blackened, comes down a tile at a time, one
+  after another, floor onto floor (`isometrica/src/client/explosion.js`,
+  `isometrica/src/client/collapse.js`). Any building at all - a church, a
+  water tower, the town hall. A cloud of dust rolls out of it over
+  everything round it and hangs there a while. The blast comes off the building itself, not
+  its yard, and hits a building round it a part at a time - a tile of what
+  is the building, not its yard (`isometrica/src/core/city.js` blast, hit):
+  a part next to it or across a road from it comes down, a moment later, the
+  nearest first, no fence, no bulldozer, to a heap of rubble in the
+  building's place, and a yard as near is wrecked; a part a tile further
+  off as likely as not (`isometrica/src/core/city.js` falls). The rest of
+  the building stands, open on its side where a part in front of it has
+  come down, its health down by as much as it lost - all of it down, with
+  less than half of it left standing. A building burnt out, a shell, comes
+  down altogether at anything that reaches it, its rubble charred. Further
+  off a building is only knocked about, its health down. Its lights
+  flicker as it goes, and go out.
+  The trees within two tiles of it go over, away from it, the way a
+  bulldozer pushes them, and lie there till they are cleared away
+  (`isometrica/src/core/city/citybuildings.js` leaveFallen). A heap of
+  rubble lies on every tile of what was a building - its heaps one pile,
+  running on into each other along their sides and over the corners where
+  four meet, but not into the pile of a building next to it, lying on the
+  ground as it slopes (`isometrica/src/client/rubble.js`,
+  `isometrica/src/shared/gen/stones.js` pile) - the blown-up one's
+  smouldering a while, flames among it and smoke, then wisps. What was only
+  a yard - a car park, a playground, a garden, a park all of it - is no
+  rubble but the wreck of itself: painted run down, its asphalt and paving
+  cracked and stained, its grass dried out, its trees dead, its swings and
+  benches broken or gone, its pond murky, lumps of what was blown over it
+  lying about, grey with the dust (`isometrica/src/shared/gen/isobox.js`
+  setWorn); burnt down, the same but black. Kept in the save, heaps, wrecks
+  and fallen trees are there till Clear has the bulldozers push them away
+  for the clearing fee - the heaps round one a pile without it from then
+  on - or anything is built over them (`isometrica/src/core/city.js`
+  explode, `isometrica/src/data/buildings.js` rubble). A heap of rubble of a
+  building put together a tile at a time is painted out of its own model
+  as it came down (`isometrica/src/client/ruin.js` "c"): its ground floor's
+  walls broken off, in its own colours, round a heap of what it was built
+  of, as high as there were storeys of it on that tile - its floors fallen
+  in on each other where it was concrete, beams across it - and the same
+  for a part of a building a blast took down, in its place. Where it stood
+  on a frame of concrete, a block of three storeys or more, the broken
+  stumps of its columns stand up out of the heap, the steel in them
+  sticking out.
+- Every building has its health, shown as a bar on its card, and how
+  many of its parts still stand (`isometrica/src/core/building.js`
+  getHealth, down): knocked out of it by a blast near it, burning away as
+  it burns. The less of it there is, the likelier it is to catch fire by
+  itself or to come down - with none left, within a few hours of the game's
+  time, unless it is demolished first: all of it there is left comes down
+  a tile at a time in its dust, no fence, no bulldozer (`hazards`,
+  `isometrica/src/core/city.js` collapse). Its parts down, its health and
+  which of its tiles are only yard are kept in the save.
+- A tile of a building that comes down before the one behind it - a
+  bulldozer at it, a blast, a fire - leaves that one open on its side:
+  empty rooms where the wall between them was, a bare concrete floor to
+  every storey, plastered walls, a wall across where it is wide - a
+  storey all of glass an open floor inside its glass walls. Painted
+  as the building is, not drawn over it: the generators paint a part open
+  on a side of its tile, its storeys hollow and the wall on that side gone
+  (`isometrica/src/shared/gen/isobox.js` setOpen, `@o` after its key), and
+  the demolition puts that in place of what stood as soon as it is painted,
+  having asked for it as soon as the building was to come down, and brings
+  it down in the same pictures, open as it falls
+  (`isometrica/src/client/demolition.js` open,
+  `isometrica/src/client/spritecache.js` openName). A building a blast has
+  taken parts off stands open so (`isometrica/src/client/buildingview.js`
+  damaged).
+- Fire up sets the building on fire, for nothing, and it burns through
+  most of a day of the game's time (`isometrica/src/client/fires.js`) -
+  the building only: its yard, its car park, its playground, the cars on
+  it, are as they were all through. It catches in a window of a floor low
+  down, glowing within, and the fire spreads the way it goes through a
+  building: along that floor of that tile first, window by window, then on
+  at once to the same floor of the tiles next to it and to the floor over
+  it, and on from each of those the same way - down only slowly - and out
+  of every window ablaze a flame licks up, as wide as the window and most
+  of a storey tall, white-hot at its root through yellow and orange to red
+  tongues; where the flames of windows side by side run into each other
+  they burn as one, and off its roof too where it is not concrete. A window
+  burns a while and dies down to a glow as the fire moves on - a floor of
+  concrete soon, one under a timber roof longer, a house of timber till it
+  falls in - so it burns through the building rather than all of it at
+  once. Its lights stay on where the fire has not got to, till it is burnt
+  out. The building chars as it goes on (`isometrica/src/client/burnt.js`
+  char), sparks fly, and black smoke rolls up off the top of it, too thick
+  to see through - thicker the more of it burns,
+  as big a column as the building is, billowing as it goes up and bending
+  off the way the wind blows high up, a stream of it across the sky over
+  the city (`isometrica/src/shared/gen/smoke.js` plume). After dark the
+  fire lights the ground round it and the smoke over it. Seven hours on
+  it is burnt out, and what is left of it goes by what it was built of
+  (`isometrica/src/core/burning.js`): a block of flats or offices, a
+  department store, the waterworks - a frame of concrete - is gutted, its
+  frame and floors and roof standing, charred black, black holes where its
+  windows were; and some hours later, most likely, it gives and comes down
+  of itself, floor onto floor, to charred rubble and the broken stumps of
+  its columns. A bungalow, a shop, a supermarket, a mall, a church, the
+  town hall - walls of brick or stone under a roof of timber or steel -
+  stands, its roof fallen in in a burst of sparks. A cottage, a farm, the
+  old town's houses, and a house of two storeys under a pitched roof of
+  tiles fall in, roof and floors, floor onto floor in a cloud of dust and
+  smoke. Most of a kind go its way, a few another. What is left of it is
+  painted so out of its own model (`isometrica/src/shared/gen/isobox.js`
+  setRuin, `isometrica/src/client/ruin.js`): gutted, all of it there,
+  roof and all; standing, every storey of it roofless, charred, darker up
+  it, black holes where its windows and doors were with soot up the wall
+  over them, ash and fallen beams inside; fallen in, its ground floor's
+  walls broken off any height up to a storey or so round a heap of
+  charred beams and rubble. It burns on among them,
+  the smoke thinning, then smoulders, embers glowing, and by the end of the
+  day is a cold ruin, there till it is cleared. It is out of service from
+  the moment it catches - no one lives or works in it, nothing is made of
+  it - and the card says it is on fire, then burnt down. Kept in the save,
+  the fire as far along after a reload as it would have been
+  (`isometrica/src/core/building.js` ignite, burn).
+- A building put up has its ground cleared first, bare or not - the trees,
+  stones or rubble on it standing till a bulldozer gets there - and only
+  then goes up. How far along it is counts on from the start all the same,
+  but no further than a tenth of the way till the bulldozers are done
+  (`isometrica/src/core/construction.js` awaitClearing). Demolished or
+  replaced before then, it is called off at once, for nothing.
 - Shaping the ground starts on the building that was being looked at, if
   any - its tiles picked rather than the one in the middle of the screen -
   and a building tapped while shaping picks the tiles it stands on.
@@ -170,6 +298,37 @@ Where it is going, and what has been settled on the way: [its design](docs/READM
   everything there is: nothing is drawn by hand. While a building is being
   placed, the dice next to turning it round picks another of the same kind
   for every footprint of the selection, the selection staying as it is.
+- A new city can be started on one generated afresh, from the menu: "New
+  random town", a small town along a road or two, mostly country, "New
+  random city", a town about Peepstown's size, or "New Peepsopolis", a
+  megacity five times that - built up all of it, somewhere about where a
+  blank city would go, a new one every time, out of a seed (isometrica's
+  `src/citygen`, see [generated cities](docs/cities.md#generated-cities);
+  the lab's city bench shows them on flat grass).
+  A small town is laid out the way villages are where they grew up by
+  themselves - along one road through it, round a crossroads, where a road
+  comes off another, or round a green the road parts round - its middle a
+  little town on cobbled streets, a square, the church, a market, the old
+  town, shops and town houses, now and then a town hall and a lane behind
+  them round a block or two; out along its roads a village's houses with a
+  gap between some, then farms. No flats, no offices.
+  Its streets are laid out the way a planned town's are: two main roads
+  through its middle and on out into the country as far as the land goes,
+  the land between them cut into blocks, smaller downtown and longer out in
+  the suburbs, their cross streets staggered into T-junctions; one of the
+  main roads a boulevard downtown - two one-way roads with a strip of park
+  between them - a roundabout or two where they come into town, its square
+  at its heart with the town hall, the church and the market round it, the
+  old town beside it. Every road is graded so that the roads side by side
+  meet level and the traffic drives everywhere, the ground levelled where
+  it has to be. The blocks are built up round their edges facing their
+  streets, with what that part of town is built of - offices, stores and
+  flats downtown and shops along the main roads, flats and terraces in
+  town, houses and villas in the suburbs, more villas by the water and up
+  on the hills, a park, farms out along the roads; pump stations by the
+  water and water towers on the high ground so that everything that wants
+  water has it; and as many jobs as there are people to work them, so
+  nothing says it goes without anything.
 - The weather changes over the days - clear, overcast, fog, rain, storms -
   shown by the time in the top right corner; W goes round the kinds of it to see
   each, and back to the game's own (`isometrica/src/client/weather.js`).
@@ -183,6 +342,9 @@ npm run dev          # in city-sim/ - or npm run dev:city-sim at the root
 npm run build        # into city-sim/dist, isometrica built first
 npm run dev:worker   # built, and served by the Worker with its saves, http://localhost:8787
 ```
+
+The generated cities are checked by isometrica's `npm run test:cities`
+(`npm run test:cities` at the root), and looked at on its city bench.
 
 ### Saves
 
@@ -202,8 +364,24 @@ chooses which to keep (`isometrica/src/core/persistence/citysync.js`); the
 same when it is opened. `npm run dev` has no Worker behind it, and saves in
 the browser only.
 
-The page is kept by a Service Worker (`public/sw.js`), so that it opens
-without a connection too, from whatever was fetched while there was one.
+It is an app to be put on the home screen, too (`public/manifest.webmanifest`,
+the icons out of its logo): opened from there, it is a window of its own,
+and plays offline. The page is kept by a Service Worker (`public/sw.js`),
+everything of the game, all of one build, the first time it is opened online
+(the build writes what that is into it, `tools/precache.js`): the page, its
+scripts, styles, fonts and icons, and isometrica's pictures at the addresses
+the game asks for them by. The page and `gfx/manifest.json` come from the
+network while there is one, so a new release is never held back, and from
+what was kept when there is not; the rest as it was kept, being asked for by
+its hash. Every release is a Service Worker of its own - `sw.js`, with its
+build and its version written in - which keeps its build when the browser
+finds it, and waits: a page of its own release, opened from the network,
+has it take over straight away; an older one, left open, says "Peepsland
+has been updated" over the world's buttons, to be reloaded on it, or put
+away for now (`src/ui/updates.js`, `src/ui/world/UpdateReady.jsx`). The
+page looks for a new release when it comes back in sight, if it has not
+for ten minutes, and every hour it stays in sight. Taking over, the new
+one throws away what the one before it kept.
 
 Its own: `src/main.jsx` starts it, `src/game.js` says what it is (five
 minutes a tick of the clock, its saves under `city-sim.v1.*` in
@@ -231,11 +409,15 @@ it the city's name and how many live there (back to the city), the time and
 the weather, the view from above and the menu (the sounds, the day and the
 night going by, the grid over the ground - kept off, if switched off,
 whatever a tap on the world puts away and brings back - the city's address
-at https://peeps.land shared, or copied, a new city on empty land, or
+at https://peeps.land shared, or copied, the game put on the home screen
+where the browser can do that (`src/ui/install.js`: asked of it in Chrome,
+Edge and the like; said how on an iPhone or an iPad, and in Safari on a
+Mac), a new city on empty land, or
 starting over on the city new players start on (`src/initialcity.js`,
-Peepsville) or on the big one (`src/peepstown.js`, the delivery game's,
-isometrica's `data/initialcity`, called Peepstown here) - each under an id
-of its own, the city left kept under its own - and under them the other cities
+Peepsville), on the big one (`src/peepstown.js`, the delivery game's,
+isometrica's `data/initialcity`, called Peepstown here), or on a city
+generated afresh (isometrica's `src/citygen`) - each under an id of its own, the city left
+kept under its own - and under them the other cities
 saved in the browser to go back to, the five played most lately), with
 zooming in and out under them; along the
 bottom, where a thumb is, the bar of the world's buttons - the city, the
@@ -276,13 +458,15 @@ Painted by a script, to be changed there and painted again - what it
 paints is checked in and goes into the build as it is:
 
 ```
-npm run generate:logo    # tools/genlogo.js → public/logo.png
+npm run generate:logo    # tools/genlogo.js → public/logo.png, public/icons/
 ```
 
 A little town out of the game's own pieces - a house, a pine, a water tower
 on a slab of ground, painted by isometrica's generators - in a ring, the
 tower too tall for it and breaking out through the top: 128 pixels square,
-the page's icon.
+the page's icon. And out of it, the game's icons on a home screen
+(`public/icons/`): the logo bigger, 192 and 512, and on navy, small enough
+for the round a phone cuts out of it (maskable), and for an iPhone, 180.
 
 ### Its icons
 

@@ -53,6 +53,15 @@ export var store = createStore(function () {
     welcome: null,
     //whether the debug panel is up over the world (DebugPanel)
     debug: debugWanted(),
+    //whether the map of the whole world is up over it, to look about and
+    //jump anywhere - for debugging, players only ever pan (WorldMap)
+    worldMap: false,
+    //how the game is put on the home screen here: "prompt", "ios", "mac",
+    //or null for not at all (install.js)
+    install: null,
+    //whether a new release of the game is ready, the page to be reloaded on
+    //it (updates.js)
+    update: false,
   };
 });
 
@@ -72,6 +81,18 @@ export function setDebug(on) {
   }
 
   store.setState({ debug: debug });
+}
+
+/**
+ * Puts the map of the world up or away - the other way round from now,
+ * unless told.
+ *
+ * @param [on] {boolean}
+ */
+export function setWorldMap(on) {
+  store.setState({
+    worldMap: on === undefined ? !store.getState().worldMap : on === true,
+  });
 }
 
 export function useGame(selector) {

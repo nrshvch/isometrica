@@ -5,7 +5,10 @@
  * world grows them on its own (core/ambient), in woods of their own
  * (core/woods) - and among them now and then a dead tree still standing, a
  * stump or a fallen trunk, which only the world puts down: a tree planted is
- * a live one.
+ * a live one. Where it is not green (core/climate), the world has kinds of
+ * its own: out in the cold the spruce and the pine snowed over, and the dead
+ * wood snowed over; in the desert dried-out dead trees, the dead wood dried
+ * out, and cacti - only the world puts those down either.
  *
  * The first oak and the first beech keep the codes the two trees drawn by hand
  * had, so a city that has those has these instead.
@@ -33,13 +36,57 @@ var KINDS = [
   "stump",
   "log",
   "logs",
+  "snowspruce",
+  "snowpine",
+  "snowsnag",
+  "snowstump",
+  "snowlog",
+  "snowlogs",
+  "deadtree",
+  "drystump",
+  "drylog",
+  "drylogs",
+  "cactus",
+  "pricklypear",
 ];
 var EACH = 2;
 
 //the kinds nobody plants, and what they are called where it is not their
 //kind's name
-var WILD = { snag: true, stump: true, log: true, logs: true };
-var NAMES = { snag: "dead tree", log: "fallen tree", logs: "fallen trees" };
+var WILD = {
+  snag: true,
+  stump: true,
+  log: true,
+  logs: true,
+  snowspruce: true,
+  snowpine: true,
+  snowsnag: true,
+  snowstump: true,
+  snowlog: true,
+  snowlogs: true,
+  deadtree: true,
+  drystump: true,
+  drylog: true,
+  drylogs: true,
+  cactus: true,
+  pricklypear: true,
+};
+var NAMES = {
+  snag: "dead tree",
+  log: "fallen tree",
+  logs: "fallen trees",
+  snowspruce: "snowy spruce",
+  snowpine: "snowy pine",
+  snowsnag: "snowy dead tree",
+  snowstump: "snowy stump",
+  snowlog: "snowy fallen tree",
+  snowlogs: "snowy fallen trees",
+  deadtree: "dried-out tree",
+  drystump: "dry stump",
+  drylog: "dry fallen tree",
+  drylogs: "dry fallen trees",
+  pricklypear: "prickly pear",
+};
 
 var TREES = [];
 
@@ -104,8 +151,9 @@ function turned(path, turns) {
   return path + "/r" + turns;
 }
 
-//the pictures painted from all four sides
-var TURNING = /^gen\/(trees|scenery\/(stone|rubble))/;
+//the pictures painted from all four sides - the stones of every zone of the
+//climate as well, "snowstone", "desertstone0"
+var TURNING = /^gen\/(trees|scenery\/[a-z]*(stone|rubble))/;
 
 /**
  * The codes of every tree of each kind, by kind.
@@ -120,10 +168,32 @@ function codesByKind() {
   return out;
 }
 
+/**
+ * Which way round a tree the world grew on a tile is, of its four: the same
+ * every time, and any of them as likely as the others, with nothing to tell
+ * from the next tile's (client/envman; standing, or lying knocked down,
+ * client/buildingview).
+ *
+ * @param tile {number}
+ * @returns {number} quarter turns, 0..3
+ */
+function tileTurns(tile) {
+  var h =
+    Math.imul(tile & 0xffff, 0x27d4eb2d) ^
+    Math.imul(tile >>> 16, 0x165667b1) ^
+    0x2545f491;
+
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+
+  return (h ^ (h >>> 16)) >>> 30;
+}
+
 export default {
   KINDS: KINDS,
   TREES: TREES,
   variants: variants,
   codesByKind: codesByKind,
   turned: turned,
+  tileTurns: tileTurns,
 };

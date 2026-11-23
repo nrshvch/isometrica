@@ -2,16 +2,17 @@
  * What goes over the world when no screen is up, along the bottom where a
  * thumb is: the bar of buttons - whatever holds them (bridge.js): the
  * building tools, or the action going on - and over it, on a card as wide,
- * a line of what to do. As wide as what is along the top on a phone; in
+ * a line of what to do, and over that a new release of the game ready to
+ * be reloaded on (UpdateReady). As wide as what is along the top on a phone; in
  * the middle on a desktop, where the top has the width of the screen.
  *
  * While a building is looked at - tapped, with nothing else going on - the
- * bar has only what can be done to it (Replace, Demolish), the tools back
+ * bar has only what can be done to it (Replace, Demolish, Blow up), the tools back
  * once it is put away with a tap anywhere else; and the card over it says
  * what it is and what it is worth: how far along it is going up, or the
  * money it makes a tick, who lives or works in it and what it goes without
- * - kept up to date as the city goes on, and nothing of it written over the
- * world (isometrica client/worth describe).
+ * - kept up to date as the city goes on, and nothing of it written over
+ * the world (isometrica client/worth describe).
  */
 import { useEffect, useState } from "react";
 import Events from "events";
@@ -22,8 +23,9 @@ import { describe } from "isometrica/client/worth";
 import Numeral from "numeral";
 import { displayName } from "../catalogue/buildings";
 import { BarButton, Container, Icon, cx } from "../kit";
-import { demolish, getClient, goReplace } from "../session";
+import { demolish, explode, fireUp, getClient, goReplace } from "../session";
 import { useGame } from "../store";
+import UpdateReady from "./UpdateReady";
 
 //what a button says under it, when what puts it up does not say - the
 //toggles of what is being done (isometrica client/buildman, terrainman),
@@ -128,36 +130,79 @@ function Figure({ label, icon, className, children }) {
 }
 
 /**
- * The building looked at: what it is, and what it is worth - going up, how
- * far along; standing, what it makes a tick, who lives or works in it and
- * what it goes without.
+ * How sound the building looked at is (isometrica core/building
+ * getHealth): a bar of it, green, gold as it gets low, red when it is
+ * nearly gone - knocked about by a blast, burning down.
+ */
+function Health({ value }) {
+  var v = Math.max(0, Math.min(100, value === undefined ? 100 : value));
+
+  return (
+    <span className="mt-0.5 flex items-center gap-1.5" title="Health">
+      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
+        <span
+          className={cx(
+            "block h-full rounded-full",
+            v >= 60 ? "bg-green" : v >= 30 ? "bg-gold" : "bg-red",
+          )}
+          style={{ width: v + "%" }}
+        />
+      </span>
+      <span className="text-[11px] font-bold text-muted tabular-nums">
+        {v + "%"}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * The building looked at: what it is, how sound it is, and what it is
+ * worth - going up, how far along; standing, what it makes a tick, who
+ * lives or works in it and what it goes without.
  */
 function Focus({ inspected, seen }) {
   var data = Data[Replacement.kindOf(inspected.code)],
-    going = seen.progress !== null;
+    going = seen.progress !== null,
+    fire = seen.fire;
 
   return (
     <div className="card flex items-center gap-3 p-2.5 pr-3">
-      <span className={cx("tile", going ? "tile-gold" : "tile-home")}>
+      <span
+        className={cx(
+          "tile",
+          fire ? "tile-red" : going ? "tile-gold" : "tile-home",
+        )}
+      >
         <Icon
           name={
-            going
-              ? "build"
-              : seen.classCode === BuildingClassCode.house
-                ? "home"
-                : "city"
+            fire
+              ? "fire"
+              : going
+                ? "build"
+                : seen.classCode === BuildingClassCode.house
+                  ? "home"
+                  : "city"
           }
           size={22}
         />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="label">{going ? "Going up" : "Building"}</span>
+        <span className="label">
+          {fire === "burning"
+            ? "On fire"
+            : fire === "ruin"
+              ? "Burnt down"
+              : going
+                ? "Going up"
+                : "Building"}
+        </span>
         <span className="truncate leading-snug font-extrabold">
           {data ? displayName(data) : seen.name}
         </span>
+        {!going && <Health value={seen.health} />}
       </div>
       <div className="flex max-w-[60%] flex-wrap justify-end gap-1.5">
-        {going ? (
+        {fire ? null : going ? (
           <Figure icon="clock">{Math.floor(seen.progress * 100) + "%"}</Figure>
         ) : (
           <>
@@ -167,6 +212,11 @@ function Focus({ inspected, seen }) {
             >
               <span title="A tick">{perTick(seen.income)}</span>
             </Figure>
+            {seen.parts > 0 && seen.standing < seen.parts && (
+              <Figure label="Standing" className="text-bad">
+                {seen.standing + "/" + seen.parts}
+              </Figure>
+            )}
             {seen.capacity > 0 && (
               <Figure icon="people">
                 {seen.residents + "/" + seen.capacity}
@@ -189,10 +239,15 @@ function Focus({ inspected, seen }) {
 
 /**
  * What can be done to the building looked at, in the bar in the place of
- * its tools: put something else up in its place, or clear it away - the
- * bulldozers bringing it down where it stands.
+ * its tools: put something else up in its place, clear it away - the
+ * bulldozers bringing it down where it stands - blow it up, or set it on
+ * fire; on fire or burnt down already, all but that; being demolished,
+ * only put something else up in its place or send the bulldozers again.
  */
-function focusButtons(inspected) {
+function focusButtons(inspected, seen) {
+  var demolishing = seen !== null && seen.demolishing === true,
+    standing = !demolishing && (!seen || !seen.fire);
+
   return [
     {
       icon: "replace",
@@ -208,12 +263,30 @@ function focusButtons(inspected) {
         demolish(inspected.tile);
       },
     },
-  ];
+    !demolishing && {
+      icon: "explode",
+      label: "Blow up",
+      action: function () {
+        explode(inspected.tile);
+      },
+    },
+    standing && {
+      icon: "fire",
+      label: "Fire up",
+      action: function () {
+        fireUp(inspected.tile);
+      },
+    },
+  ].filter(Boolean);
 }
 
 export default function WorldHud() {
   var hint = useGame(function (s) {
       return s.hint;
+    }),
+    //a new release ready, the page to be reloaded on it (ui/updates.js)
+    update = useGame(function (s) {
+      return s.update;
     }),
     buttons = useGame(function (s) {
       return s.buttons;
@@ -223,7 +296,7 @@ export default function WorldHud() {
       return s.busy ? null : s.inspected;
     }),
     seen = useDescribed(inspected),
-    shown = inspected ? focusButtons(inspected) : buttons.filter(Boolean),
+    shown = inspected ? focusButtons(inspected, seen) : buttons.filter(Boolean),
     on = shown.find(function (b) {
       return b.on;
     });
@@ -231,6 +304,7 @@ export default function WorldHud() {
   return (
     <Container className="flex flex-1 flex-col justify-end pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-4">
       <div className="mx-auto flex w-full flex-col gap-2 sm:max-w-xl">
+        {update && <UpdateReady />}
         {hint && <Hint text={hint} on={on} />}
         {inspected && seen && <Focus inspected={inspected} seen={seen} />}
         {shown.length > 0 && (

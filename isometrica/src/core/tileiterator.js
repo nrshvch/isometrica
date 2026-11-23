@@ -39,7 +39,11 @@ TileIterator.next = function (iterator) {
   var w = iterator.w;
   var y = (i / w) | 0;
   var x = i - y * w;
-  var tile = iterator.tile0 + x + y * TerrainDY;
+  //a tile's index is 32 bits, as Terrain.convertToIndex has it: from row
+  //32768 on - the middle of the world - it is below 0, so one worked out
+  //from a tile before that row has to wrap round the way it does, or it
+  //never is tile1 and the iterator never done
+  var tile = (iterator.tile0 + x + y * TerrainDY) | 0;
 
   if (tile === iterator.tile1) iterator.done = true;
 

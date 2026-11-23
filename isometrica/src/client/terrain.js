@@ -11,6 +11,7 @@ import View from "./view";
 import AnimatedSprite from "./animatedsprite";
 import TerrainGridRenderer from "./components/terraingridrenderer";
 import { changed } from "./looks";
+import Climate from "../core/climate";
 
 var TerrainType = Core.TerrainType;
 var TileIterator = Core.TileIterator;
@@ -71,8 +72,8 @@ function aroundNow() {
 }
 
 /**
- * The edges and corners of a tile of the shallows, as it is seen, that deep
- * water lies beyond.
+ * The edges and corners of a tile of the shallows, as it is seen, that open
+ * deep water lies beyond - not frozen over (iceEdges).
  */
 function spillsOf(x, y) {
   var terrain = vkaria.core.world.terrain;
@@ -80,17 +81,26 @@ function spillsOf(x, y) {
   return edgesOf(x, y, function (nx, ny) {
     return (
       terrain.getTerrainType(nx, ny) === TerrainType.water &&
-      waterDepth(nx, ny) >= DEEP_WATER
+      waterDepth(nx, ny) >= DEEP_WATER &&
+      !Climate.frozenAt(nx, ny)
     );
   });
 }
 
-//what the ground of a tile of land is: grass; the earth it was cleared down
-//to (core/terrain bareFor); or that earth with the grass growing back over
-//it
+//what the ground of a tile of land is: grown over - the ground of its zone
+//of the climate (core/climate), grass in the green one; the earth it was
+//cleared down to (core/terrain bareFor); or that earth with the grass growing
+//back over it
 var GRASS = 0,
   BARE = 1,
   REGROWING = 2;
+
+//the ground that grows back over the earth a tile was cleared down to, a
+//patch at a time (REGROWING): the grass. Elsewhere - the desert's sand, the
+//snow - the earth is the ground of its zone again once it is no longer bare
+//as it is, with no growing back in between; the earth still spills over the
+//edges of the ground round it while it is
+var REGROWS_AS = "grass";
 
 //how much of the while it takes the grass to grow back (core/terrain
 //REGROWS) the earth lies bare before it starts to - give or take so much of
@@ -122,16 +132,20 @@ function groundOf(x, y) {
   if (t < 0 || terrain.getTerrainType(x, y) === TerrainType.water) return GRASS;
   if (terrain.beingCleared(tile)) return GRASS;
 
-  return t <
+  if (
+    t <
     CoreTerrain.REGROWS * (BARE_SHARE + BARE_JITTER * (tileHash(x, y) - 0.5))
-    ? BARE
-    : REGROWING;
+  )
+    return BARE;
+
+  return Climate.groundAt(x, y) === REGROWS_AS ? REGROWING : GRASS;
 }
 
 //the grass on a tile, to spill over the earth growing back over next to it
 function grassAt(x, y) {
   return (
     groundOf(x, y) === GRASS &&
+    Climate.groundAt(x, y) === REGROWS_AS &&
     vkaria.core.world.terrain.getTerrainType(x, y) !== TerrainType.water
   );
 }
@@ -142,23 +156,88 @@ function bareAt(x, y) {
 }
 
 /**
- * How a tile of land is drawn where the ground was cleared, on it or next to
- * it (client/generated tileParts): the earth on a tile cleared, its edge
- * churned up over the grass round it; the grass growing back over it, the
- * grass round it spilling over its edges - or null, for grass with no earth
- * next to it.
+ * How a tile of land is drawn (client/generated tileParts): the ground of its
+ * zone of the climate - with the ground of any zone over it (shared/gen/
+ * terrain PRECEDENCE) next to it spilling over its edges, so that where two
+ * meet they run into each other, raggedly, rather than along the tiles' edges
+ * - or, where it was cleared, the earth it was cleared down to, or the grass
+ * growing back over that, the grass round it spilling over its edges; and the
+ * earth of a tile cleared next to it churned up over its edges, over
+ * everything else.
+ *
+ * @param terrain {Object} the data of gfx/generated/terrain.json
+ * @param own {string} the ground of the tile's zone (core/climate groundAt)
+ * @returns {{set: string, over: Object[]}}
  */
-function groundParts(x, y) {
-  var ground = groundOf(x, y),
-    earth = ground === BARE ? [] : edgesOf(x, y, bareAt);
+function groundParts(terrain, x, y, own) {
+  var ground = groundOf(x, y);
 
-  if (ground === GRASS && earth.length === 0) return null;
+  //the earth is over everything round it
+  if (ground === BARE) return { set: terrain.earth, over: [] };
+
+  var over = zoneEdges(terrain, x, y, own),
+    grass = ground === REGROWING ? edgesOf(x, y, grassAt) : [],
+    earth = edgesOf(x, y, bareAt);
+
+  if (grass.length > 0) over.push({ set: terrain.land, dirs: grass });
+  if (earth.length > 0) over.push({ set: terrain.earth, dirs: earth });
 
   return {
-    set: ground === BARE ? "earth" : ground === REGROWING ? "regrowing" : null,
-    grass: ground === REGROWING ? edgesOf(x, y, grassAt) : [],
-    earth: earth,
+    set: ground === REGROWING ? terrain.regrowing : own,
+    over: over,
   };
+}
+
+/**
+ * The ground of the zones of the climate next to a tile of land that spills
+ * over its edges and corners: that of every zone over its own, lowest first,
+ * where it lies beyond them - land, not water.
+ *
+ * @param own {string} the tile's own ground
+ * @returns {{set: string, dirs: string[]}[]}
+ */
+function zoneEdges(terrain, x, y, own) {
+  var grounds = terrain.grounds,
+    core = vkaria.core.world.terrain,
+    out = [];
+
+  for (var i = grounds.indexOf(own) + 1; i < grounds.length; i++) {
+    var ground = grounds[i],
+      dirs = edgesOf(x, y, function (nx, ny) {
+        return (
+          Climate.groundAt(nx, ny) === ground &&
+          core.getTerrainType(nx, ny) !== TerrainType.water
+        );
+      });
+
+    if (dirs.length > 0) out.push({ set: ground, dirs: dirs });
+  }
+
+  return out;
+}
+
+/**
+ * The ice spilling over the edges and corners of a tile of open water from
+ * the water frozen over next to it.
+ *
+ * @returns {{set: string, dirs: string[]}[]}
+ */
+function iceEdges(terrain, x, y) {
+  var core = vkaria.core.world.terrain,
+    out = [];
+
+  terrain.frozen.forEach(function (ice) {
+    var dirs = edgesOf(x, y, function (nx, ny) {
+      return (
+        Climate.zoneAt(nx, ny).water === ice &&
+        core.getTerrainType(nx, ny) === TerrainType.water
+      );
+    });
+
+    if (dirs.length > 0) out.push({ set: ice, dirs: dirs });
+  });
+
+  return out;
 }
 
 /**
@@ -182,39 +261,65 @@ function waterDepth(x, y) {
 
 /**
  * The sprite of a tile of that terrain type and slope - painted the first
- * time it is drawn, see client/generated and client/generator.
+ * time it is drawn, see client/generated and client/generator. What it is
+ * drawn as goes by its zone of the climate (core/climate) too: the ground of
+ * it, and the water frozen over where it is cold enough.
  */
 function tileSprite(x, y, type, slope) {
-  var terrain = vkaria.generated !== null ? vkaria.generated.terrain : null,
-    kind =
-      type === TerrainType.water
-        ? waterDepth(x, y) >= DEEP_WATER
-          ? "deep"
-          : "water"
-        : type === TerrainType.shore
-          ? "shore"
-          : "land";
+  var terrain = vkaria.generated !== null ? vkaria.generated.terrain : null;
 
   //nothing was painted: draws nothing, and says so once
   if (terrain === null) return vkaria.sprites.getSprite("gen/terrain");
 
-  var parts = Generated.tileParts(
-      terrain,
-      kind,
-      slope,
-      x,
-      y,
-      kind === "water" ? spillsOf(x, y) : null,
-      kind === "land" || kind === "shore" ? groundParts(x, y) : null,
-    ),
-    last = parts.length - 1;
+  var zone = Climate.zoneAt(x, y),
+    set,
+    over = [],
+    shore = null,
+    parts;
 
-  //the water moves: a tile of it, and the water up a shore over the ground
-  //- laid over it last
-  if ((kind === "water" || kind === "deep") && terrain.waves)
-    return waves(parts, terrain.waves, 0);
+  if (type === TerrainType.water) {
+    //frozen over: still, whatever is round it
+    if (zone.water !== null)
+      return composite(Generated.tileParts(terrain, zone.water, slope, x, y));
+
+    set = waterDepth(x, y) >= DEEP_WATER ? terrain.deep : terrain.water;
+
+    //deep water spilling over the shallows from beyond them, and the ice
+    //over either from the water frozen over next to it
+    if (set === terrain.water) {
+      var spills = spillsOf(x, y);
+
+      if (spills.length > 0) over.push({ set: terrain.deep, dirs: spills });
+    }
+    over = over.concat(iceEdges(terrain, x, y));
+
+    parts = Generated.tileParts(terrain, set, slope, x, y, over);
+
+    //the water moves: a tile of it, the ice over it as it is
+    return terrain.waves ? waves(parts, terrain.waves, 0) : composite(parts);
+  }
+
+  var ground = groundParts(terrain, x, y, zone.ground);
+
+  //the water up a shore is that of its zone - the shallows, or the ice
+  if (type === TerrainType.shore)
+    shore = zone.water !== null ? zone.water : terrain.water;
+
+  parts = Generated.tileParts(
+    terrain,
+    ground.set,
+    slope,
+    x,
+    y,
+    ground.over,
+    shore,
+  );
+
+  var last = parts.length - 1;
+
+  //the water up a shore moves - laid over it last; the ice does not
   if (
-    kind === "shore" &&
+    shore === terrain.water &&
     terrain.waves &&
     last > 0 &&
     /\/shore\//.test(parts[last])

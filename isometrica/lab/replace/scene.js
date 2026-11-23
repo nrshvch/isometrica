@@ -8,8 +8,8 @@
  * bench's clock - into another look of the same, or whatever was asked for.
  */
 import BuildingData from "../../src/data/buildings";
-import BuildingClassCode from "../../src/data/classcode";
 import Replacement from "../../src/core/replacement";
+import { kinds } from "../bench/world.js";
 import Rotation from "../../src/core/rotation";
 
 //the ground the scene stands on, tiles from the middle of the bench: its
@@ -22,39 +22,6 @@ var X = -5,
 
 //what stands to begin with: a town house
 var FIRST = 4112;
-
-/**
- * Every building the catalogue offers, by its size and then its name:
- * {value, label} each.
- */
-export function kinds() {
-  return Object.keys(BuildingData)
-    .filter(function (code) {
-      var b = BuildingData[code];
-
-      return (
-        !b.hidden &&
-        b.classCode !== BuildingClassCode.road &&
-        b.classCode !== BuildingClassCode.tree
-      );
-    })
-    .sort(function (a, b) {
-      var x = BuildingData[a],
-        y = BuildingData[b];
-
-      return (
-        x.sizeX * x.sizeY - y.sizeX * y.sizeY || x.name.localeCompare(y.name)
-      );
-    })
-    .map(function (code) {
-      var b = BuildingData[code];
-
-      return {
-        value: code,
-        label: b.name + " (" + b.sizeX + "×" + b.sizeY + ")",
-      };
-    });
-}
 
 /**
  * @param world {World} the bench's world (lab/bench/world)

@@ -9,6 +9,7 @@ import BuildingService from "./buildings";
 import Terrain from "./terrain";
 import Events from "events";
 import namespace from "namespace";
+import Climate from "./climate";
 
 var Core = namespace("Isometrica.Core");
 Core.EnvService = Ambient;
@@ -47,13 +48,31 @@ var LONE_ROCKS = 0.003;
 //and how much likelier, at the most, on a hillside that has some
 var SLOPE_ROCKS = 0.16;
 
-//the rock codes of either kind of picture, to pick one of
-var HEAPS = [],
-  STREWN = [];
+//the rock codes of either kind of picture, by the climate they lie in
+//(data/rocks), to pick one of
+var HEAPS = {},
+  STREWN = {};
 
 Rocks.forEach(function (rock, code) {
-  (rock.heap ? HEAPS : STREWN).push(code);
+  var kinds = rock.heap ? HEAPS : STREWN;
+
+  (kinds[rock.climate] = kinds[rock.climate] || []).push(code);
 });
+
+/**
+ * The stones of each zone of the climate (core/climate ZONES), by its id:
+ * which kind of them lie there (data/rocks climate), and how many to the
+ * green's - the savannah stony, sandstone and pale rock showing through its
+ * grass; the arctic's snowed over; in the north only a few of those, and in
+ * the desert nothing but sand.
+ */
+var ROCKS = {
+  desert: { kind: "hot", more: 0 },
+  savannah: { kind: "hot", more: 2 },
+  temperate: { kind: "temperate", more: 1 },
+  arctic: { kind: "cold", more: 1 },
+  polar: { kind: "cold", more: 0.1 },
+};
 
 //the height of the lowest corner of the tile
 function lowest(self, tile) {
@@ -175,16 +194,23 @@ function rockAt(self, tile) {
   //on the shore they would lie half in the water
   if (low <= 0) return null;
 
-  field = rockField(x, y);
-  density = 1 - (1 - field) * (1 - LONE_ROCKS);
+  var rocks = ROCKS[Climate.zoneAt(x, y).id] || ROCKS.temperate,
+    more = rocks.more;
+
+  if (more === 0) return null;
+
+  //where there are fewer, the rock fields thin out as well
+  field = rockField(x, y) * Math.min(1, more);
+  density = 1 - (1 - field) * (1 - LONE_ROCKS * more);
 
   if (a !== b || a !== c || a !== d)
-    density = 1 - (1 - density) * (1 - slopeRocks(x, y, low));
+    density = 1 - (1 - density) * (1 - slopeRocks(x, y, low) * more);
 
   if (hash(x, y, 1) >= density) return null;
 
-  //heaps where the field is thick, a few stones where it is thin
-  kinds = hash(x, y, 2) < field * 0.9 ? HEAPS : STREWN;
+  //heaps where the field is thick, a few stones where it is thin - of the
+  //zone's own kind
+  kinds = (hash(x, y, 2) < field * 0.9 ? HEAPS : STREWN)[rocks.kind];
 
   return kinds[Math.floor(hash(x, y, 3) * kinds.length)];
 }

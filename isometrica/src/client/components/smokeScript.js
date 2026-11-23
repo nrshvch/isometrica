@@ -27,7 +27,9 @@ function frames(kind) {
 /**
  * How a kind of smoke goes: its pictures, how long a puff lasts (ms), how
  * fast it rises as it comes out (world units a second), how far up its life
- * it is at its thickest, and how thick that is (0..1).
+ * it is at its thickest, and how thick that is (0..1) - or, for smoke too
+ * thick to see any light through (solid), how far up its life it is solid,
+ * not see-through at all, before it thins away.
  */
 //white, out of a chimney: lazy, slow, and see-through
 SmokeScript.steam = {
@@ -46,6 +48,7 @@ SmokeScript.soot = {
   rise: 16,
   peak: 0.06,
   thick: 1,
+  solid: 0.5,
 };
 
 //grey, the cloud a building comes down in (client/demolition): thick, rolling
@@ -66,6 +69,46 @@ SmokeScript.dust = {
   rise: 2.5,
   peak: 0.1,
   thick: 0.9,
+};
+
+//the black smoke of a building on fire (client/fires): rolling up out of it
+//hot and fast, too thick to see through, and on up high over the city,
+//levelling off up there, greying slowly, thinning away only at the end of
+//it - and the wind high up taking it off across
+//the sky, a stream of it over the city, however still it is down below
+//(aloft: as hard as that at the least, world units a second, the higher
+//the more)
+SmokeScript.plume = {
+  looks: frames("plume"),
+  ttl: 42000,
+  rise: 14,
+  cools: 0.9,
+  peak: 0.04,
+  thick: 1,
+  solid: 0.6,
+  aloft: 12,
+};
+
+//the dust a building blown up raises (client/explosion, client/collapse):
+//rolling out low and slow to rise, a cloud of it over where it stood -
+//and hanging there a while, thinning only slowly
+SmokeScript.cloud = {
+  looks: frames("cloud"),
+  ttl: 20000,
+  rise: 1.6,
+  cools: 0.6,
+  peak: 0.05,
+  thick: 0.96,
+};
+
+//a fireball, a building blown up (client/explosion): bursting out and gone
+//in a moment, going up fast as it goes
+SmokeScript.fire = {
+  looks: frames("fire"),
+  ttl: 1100,
+  rise: 18,
+  peak: 0.04,
+  thick: 1,
 };
 
 //what it is
@@ -146,12 +189,19 @@ SmokeScript.prototype.show = function (t) {
   }
 
   //thickening as it comes out, thinning away to nothing after - slowly at
-  //first, then faster as it spreads
-  sprite.opacity =
-    kind.thick *
-    (t < kind.peak
-      ? t / kind.peak
-      : 1 - Math.pow((t - kind.peak) / (1 - kind.peak), 1.6));
+  //first, then faster as it spreads; too thick to see through, solid till
+  //it thins away
+  if (kind.solid !== undefined)
+    sprite.opacity =
+      t < kind.solid
+        ? 1
+        : 1 - Math.pow((t - kind.solid) / (1 - kind.solid), 0.8);
+  else
+    sprite.opacity =
+      kind.thick *
+      (t < kind.peak
+        ? t / kind.peak
+        : 1 - Math.pow((t - kind.peak) / (1 - kind.peak), 1.6));
 };
 
 SmokeScript.prototype.tick = function (time) {
@@ -168,8 +218,23 @@ SmokeScript.prototype.tick = function (time) {
     w = Wind(now, blowing),
     //the higher, the slower it rises and the more the wind has it - and
     //the harder it blows, the lower it bends it over
-    rise = kind.rise * (1 - 0.65 * t) * (1 - 0.55 * Wind.strength(w)),
-    blown = 0.3 + t,
+    rise =
+      kind.rise *
+      (1 - (kind.cools || 0.65) * t) *
+      (1 - 0.55 * Wind.strength(w));
+
+  //up high, where the wind blows harder than down here
+  if (kind.aloft) {
+    var m = Math.hypot(w[0], w[1]) || 1,
+      aloft = Math.max(kind.aloft, m * 3) / m;
+
+    w[0] *= aloft;
+    w[1] *= aloft;
+  }
+
+  //and what goes up high goes up straight, then over, the stream of it
+  //bending away the higher it gets (aloft)
+  var blown = kind.aloft ? 0.1 + 1.8 * t * t : 0.3 + t,
     //thrown out, and slowing
     thrown = (1 - t) * (1 - t);
 
