@@ -81,6 +81,9 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
   road network, people, jobs, water, saves.
 - `citygen` - city generation: `src/citygen`, the cities bench,
   `test:cities`.
+- `traffic` - how the traffic drives: Driver, junctions, lanes, routes,
+  roundabouts, buses, how many cars and why; road speeds and costs; the
+  testbed and `test:traffic`.
 - `rendering` - how the world is drawn: WebGL and its one lit pass (sun,
   shadows, night lamps, windows), weather, wind, the sea, the camera turning
   and zooming, lines and words over the city, ground chunks.

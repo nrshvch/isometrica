@@ -1,43 +1,9 @@
 /**
- * How everything on the roads drives: in its lane, keeping its distance from
- * whatever is in front of it, taking its turn at a junction, pulling in to
- * the kerb and out again, and getting past a bus standing at its stop or
- * something slow driving on in front of it.
- *
- * Whatever drives - the traffic (client/carman), the courier's car
- * (games/delivery), a bus - is a Driver: a line of points through the lanes
- * it takes, and how fast it goes along them. Each frame it looks along that
- * line, a couple of tiles ahead, for anything on it:
- *
- *   - another vehicle - it brakes to keep a gap that grows with its speed,
- *     and speeds up again as the gap opens, a little at a time, so a queue
- *     sets off one car after another rather than all at once;
- *   - a junction it has not been given - it stops short of it.
- *
- * A junction - a road tile joined up three or four ways - is taken a turn at
- * a time. A driver asks for it on the way up to it and only goes in once it
- * is given it: when nothing in it now crosses the way it goes through - two
- * going straight across each other's way, one turning left across one coming
- * the other way - and nobody who has waited longer for a way that crosses it
- * is ready to go; and only when there is room on the far side for it to come
- * out into, so that nobody stops in the middle of a junction and locks it.
- * Junctions one after the other are asked for together. A queue that backs
- * up from one into the next is a jam - and it clears the way jams do.
- *
- * A route never turns back on itself in the middle of a street (route): only
- * at a junction, taking its turn there like anything else, or at the end of
- * a road. Turning round across the lane coming the other way is what locks
- * a small town's streets.
- *
- * A bus at its stop stands in its lane, and what comes up behind it waits -
- * or goes round it: the first of them to get to it goes through the other
- * lane, when that is clear far enough ahead and there is no junction in the
- * way, and the next one only when that one is back in its lane, one at a
- * time. A car broken down pulls over to the kerb instead, out of the way
- * (Driver#pullOver).
- *
- * Positions are in tiles, as in client/carman: the middle of tile (x, y) is
- * at (x, y).
+ * How everything on the roads drives: a Driver is a line of points through
+ * its lanes and a speed; it keeps its gap, takes junctions a turn at a time,
+ * changes lanes, pulls over, gets round a bus. Positions in tiles: the
+ * middle of tile (x, y) is (x, y).
+ * See isometrica/.claude/skills/traffic/driving.md.
  */
 import Terrain from "../core/terrain";
 import * as RoadRules from "../core/roadrules";

@@ -1,11 +1,8 @@
 /**
- * Runs every scenario of the traffic testbed (lab/trafficbed) headless and
- * says which hold and which do not - the game's own traffic, on the roads
- * and with the cars each scenario puts down (npm run test:traffic here).
+ * Runs every traffic testbed scenario headless; exits 1 if any does not hold.
  *
  *   node tools/traffictest.js [name ...] [--seed=N] [--seeds=N] [--verbose]
- *
- * Exits 1 if any does not hold.
+ * See isometrica/.claude/skills/traffic/SKILL.md (Testing).
  */
 import { createServer } from "vite";
 import path from "node:path";
