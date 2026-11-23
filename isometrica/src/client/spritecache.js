@@ -3,7 +3,7 @@ import CanvasCache from "./canvascache";
 import CachedSprite from "./cachedsprite";
 import Generator from "./generator";
 import Preloader from "./preloader";
-import Pixels from "./pixels";
+import Pixels from "shared/pixels";
 
 //Sits between the pictures the game has and the renderers that draw them.
 //
@@ -704,7 +704,7 @@ SpriteCache.prototype.want = function (sheet) {
  * Starts loading a sheet, unless it is loading or loaded already - for
  * whoever waits for it rather than asking every frame (see want).
  *
- * @returns {Promise} its picture, as pixels (client/pixels)
+ * @returns {Promise} its picture, as pixels (shared/pixels)
  */
 SpriteCache.prototype.loadSheet = function (sheet) {
   if (sheet.generated !== null) return this.generator.load(sheet);

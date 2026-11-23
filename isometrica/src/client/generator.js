@@ -16,7 +16,7 @@
 //drawn goes behind what is, and is let go of altogether once it has not been
 //asked for for a while (STALE) - never painted for nothing.
 //
-//The pictures come back as pixels (client/pixels), never on the GPU, for
+//The pictures come back as pixels (shared/pixels), never on the GPU, for
 //them to be put together on the CPU and handed over to the pages of the
 //canvas cache without a wait. They are kept here, but only so much of them:
 //past LIMIT the ones used longest ago are let go of, and asked for again if

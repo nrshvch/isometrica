@@ -22,7 +22,7 @@
 //
 //The cache knows nothing of what it holds. Whatever it holds - an entry - has
 //a width, a height and paint(pixels, w, x, y), which puts its picture at x, y
-//of pixels w wide (client/pixels) - and maybe finish(pixels, w, h), which
+//of pixels w wide (shared/pixels) - and maybe finish(pixels, w, h), which
 //works on the pixels painted
 //before they are handed over; the cache writes where it put it back onto it (slot, sourceImage -
 //the page - offsetX, offsetY), and sets slot to -1 when it takes the slot

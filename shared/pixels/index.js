@@ -3,9 +3,9 @@
 //together the way a 2d canvas would, without one.
 //
 //A canvas would keep them on the GPU, and every picture put together on one
-//would have to be read back off it to be handed over to a page of the canvas
-//cache (client/canvascache) - a wait for the GPU on the main thread, every
-//time. Kept as pixels, they never leave the CPU until they are uploaded.
+//would have to be read back off it to go anywhere else - a wait for the GPU
+//on the main thread, every time. Kept as pixels, they never leave the CPU
+//until they are uploaded.
 //
 //Every function puts w by h of src, from sx, sy, at dx, dy of dst - pixels dw
 //wide - whatever of it falls outside dst left out.

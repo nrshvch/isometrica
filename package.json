@@ -5,6 +5,7 @@
   "license": "MIT",
   "private": true,
   "workspaces": [
+    "shared",
     "engine",
     "engine/*",
     "isometrica",
@@ -20,6 +21,8 @@
     "build:food-rider": "npm run build -w food-rider",
     "build:lab": "npm run build:lab -w isometrica",
     "test:traffic": "npm run test:traffic -w isometrica",
+    "test": "npm test -w shared",
+    "bench": "npm run bench -w shared",
     "test:cities": "npm run test:cities -w isometrica",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

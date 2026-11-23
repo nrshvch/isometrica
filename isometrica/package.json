@@ -34,6 +34,7 @@
     "namespace": "file:../engine/namespace",
     "numeral": "1.5.6",
     "reactive-property": "file:../engine/reactive-property",
+    "shared": "file:../shared",
     "simplex-noise": "2.4.0",
     "underscore": "1.6.0",
     "yabh": "1.2.0"

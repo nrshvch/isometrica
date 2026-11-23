@@ -1,0 +1,16 @@
+{
+  "name": "shared",
+  "description": "Generic libraries any package can use - nothing here imports from engine, isometrica or the games",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./*/index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "bench": "vitest bench --run --reporter=verbose"
+  },
+  "devDependencies": {
+    "vitest": "5.1.1"
+  }
+}
