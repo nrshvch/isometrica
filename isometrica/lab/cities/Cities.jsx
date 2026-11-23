@@ -65,17 +65,30 @@ export default function Cities() {
     [seen, setSeen] = useState(null);
 
   useEffect(function () {
+    //this effect undone - as React's StrictMode does once, straight away,
+    //in development - and the world (the same one, bench/world open) left
+    //to the one that follows it
+    var gone = false;
+
     open(el.current).then(
       function (world) {
+        if (gone) return;
+
         bench.current = new Scene(world);
         window.bench.scene = bench.current;
         setReady(true);
       },
       function (e) {
+        if (gone) return;
+
         console.error(e);
         setFailed(String(e && e.message ? e.message : e));
       },
     );
+
+    return function () {
+      gone = true;
+    };
   }, []);
 
   useEffect(

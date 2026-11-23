@@ -55,8 +55,15 @@ export default function Climate() {
 
   //the world, up once
   useEffect(function () {
+    //this effect undone - as React's StrictMode does once, straight away,
+    //in development - and the world (the same one, bench/world open) left
+    //to the one that follows it
+    var gone = false;
+
     open(el.current).then(
       function (world) {
+        if (gone) return;
+
         //at the game's own pace: the water moving
         world.speed = 1;
         bench.current = new Scene(world);
@@ -70,10 +77,16 @@ export default function Climate() {
         setReady(true);
       },
       function (e) {
+        if (gone) return;
+
         console.error(e);
         setFailed(String(e && e.message ? e.message : e));
       },
     );
+
+    return function () {
+      gone = true;
+    };
   }, []);
 
   function scene() {

@@ -679,18 +679,30 @@ float shadowed(ivec2 px, vec3 n, float b) {
   return 0.0;
 }
 
-//a number 0..1 for a point, always the same for it
-float hash(vec2 p) {
-  vec3 q = fract(vec3(p.xyx) * 0.1031);
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.x + q.y) * q.z);
+//a number 0..1 for a point - a whole one, every caller's is - always the
+//same for it. Hashed as whole numbers, not by fract() of floats: a float
+//hash gives the corner a cell of noise shares with the next a different
+//number in each, wherever a GPU's compiler reorders the sums (as Intel's
+//Xe2 does - Core Ultra 200V), and the clouds come apart in hard straight
+//edges along the cells
+uint hashu(uvec3 v) {
+  v = v * 1664525u + 1013904223u;
+  v.x += v.y * v.z;
+  v.y += v.z * v.x;
+  v.z += v.x * v.y;
+  v ^= v >> 16u;
+  v.x += v.y * v.z;
+  v.y += v.z * v.x;
+  v.z += v.x * v.y;
+  return v.x ^ v.y ^ v.z;
 }
 
-//a number 0..1 for a point in three, always the same for it
 float hash3(vec3 p) {
-  vec3 q = fract(p * 0.1031);
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.x + q.y) * q.z);
+  return float(hashu(uvec3(ivec3(floor(p + 0.5)))) >> 8u) / 16777216.0;
+}
+
+float hash(vec2 p) {
+  return hash3(vec3(p, 0.0));
 }
 
 //smooth noise 0..1 over p, a whole number apart a cell - and the same

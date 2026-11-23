@@ -18,17 +18,24 @@
  * What the network brings is never kept: what was kept is all of one build,
  * the page and what it asks for, and stays so.
  *
- * Registered as sw.js?v=<version> (src/main.jsx): every release is a Service
- * Worker of its own, which keeps the whole of its build before it takes
- * over, and throws away what the one before it kept. The saves (/api) are
- * never kept - they are the browser's own (localStorage) and the server's.
+ * Every release is a Service Worker of its own - this file, written again
+ * with another build in it - which the browser puts in beside the one at
+ * work, as it finds it: as the page is opened, and as the page asks it to
+ * look (src/ui/updates.js). Put in, it waits for the page to tell it to take
+ * over - straight away, for a page of its own release, else once the player
+ * says so - or for every page of the one before to be closed: what the one
+ * at work kept is of the pages it serves, and they go on asking for it. It
+ * throws that away as it takes over. The saves (/api) are never kept - they
+ * are the browser's own (localStorage) and the server's.
  */
-var CACHE = "city-sim " + (new URL(self.location).searchParams.get("v") || "");
 
-//{entry, files}: the script the page starts with, and every file to keep,
-//by its address - written in by tools/precache.js; null where the game was
-//not built (npm run dev, which never registers this)
+//{version, entry, files}: the version of the game built, the script the
+//page starts with, and every file to keep, by its address - written in by
+//tools/precache.js; null where the game was not built (npm run dev, which
+//never registers this)
 var BUILT = null;
+
+var CACHE = "city-sim " + (BUILT === null ? "" : BUILT.version);
 
 var PAGE = "/",
   GFX_MANIFEST = "/gfx/manifest.json";
@@ -36,8 +43,8 @@ var PAGE = "/",
 /**
  * Keeps every file of the build, fetched afresh - all of them, or none: one
  * that does not come, and this Service Worker is not put in, the one before
- * it goes on, and the next time the page is opened it is tried again. So is
- * a page that is not of these files - another release put up meanwhile.
+ * it goes on, and the next time the page looks it is tried again. So is a
+ * page that is not of these files - another release put up meanwhile.
  */
 function keep() {
   if (BUILT === null) return Promise.resolve();
@@ -89,7 +96,6 @@ function networkFirst(request, fallback) {
 }
 
 self.addEventListener("install", function (event) {
-  self.skipWaiting();
   event.waitUntil(keep());
 });
 
@@ -112,6 +118,16 @@ self.addEventListener("activate", function (event) {
         return self.clients.claim();
       }),
   );
+});
+
+//what the page says (src/ui/updates.js): "version" - which release this
+//is, answered on the port it came with; "take-over" - now
+self.addEventListener("message", function (event) {
+  var data = event.data || {};
+
+  if (data.type === "version" && event.ports[0])
+    event.ports[0].postMessage(BUILT === null ? null : BUILT.version);
+  else if (data.type === "take-over") self.skipWaiting();
 });
 
 self.addEventListener("fetch", function (event) {
