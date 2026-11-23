@@ -65,10 +65,16 @@ export default function Explosion() {
 
   //the world, up once
   useEffect(function () {
-    var looking = null;
+    var looking = null,
+      //this effect undone - as React's StrictMode does once, straight away,
+      //in development - and the world (the same one, bench/world open)
+      //left to the one that follows it
+      gone = false;
 
     open(el.current).then(
       function (world) {
+        if (gone) return;
+
         world.speed = speed;
         bench.current = new Scene(world);
         window.bench.scene = bench.current;
@@ -85,12 +91,15 @@ export default function Explosion() {
         }, 250);
       },
       function (e) {
+        if (gone) return;
+
         console.error(e);
         setFailed(String(e && e.message ? e.message : e));
       },
     );
 
     return function () {
+      gone = true;
       if (looking !== null) clearInterval(looking);
     };
   }, []);

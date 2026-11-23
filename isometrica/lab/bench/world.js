@@ -139,13 +139,28 @@ export function kinds() {
     });
 }
 
+//the bench's world, once it is being brought up: one to a page, as the
+//client is - it puts itself up as the page's vkaria, which everything in it
+//goes by (client/vkaria) - and a second client brought up next to it would
+//have the first one's services find the second one's camera, not up yet
+//(client/tilesman start)
+var opened = null;
+
 /**
- * Brings a bench's world up in el, the camera over its middle.
+ * Brings a bench's world up in el, the camera over its middle - once: asked
+ * for again (as React's StrictMode does in development, mounting a page
+ * twice over), it is the same world, wherever it was brought up.
  *
  * @param el {HTMLElement}
  * @returns {Promise<World>}
  */
 export function open(el) {
+  if (opened === null) opened = up(el);
+
+  return opened;
+}
+
+function up(el) {
   Weather.override = "clear";
   Climate.setHeat(function () {
     return GREEN;
