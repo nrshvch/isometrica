@@ -5,15 +5,14 @@
 */
 
 define(function (require) {
-    var Octree = require('./lib/octree'),
-        EventManager = require("events"),
+    var EventManager = require("events"),
         Stats = require("./stats");
 
     /**
      * @param {Logic} logic
      * @constructor
      */
-    function World(logic, useOctree) {
+    function World(logic) {
         EventManager.call(this);
 
         this.logic = logic;
@@ -21,9 +20,6 @@ define(function (require) {
         this.tickers = [];
         this.slots = new Float64Array(0);
         this.stale = [];
-
-        if (useOctree === true)
-            q = this.octree = new Octree(64,1000,45)
     }
 
     /**
@@ -44,13 +40,6 @@ define(function (require) {
      * @type {Logic}
      */
     p.logic = null;
-
-    /**
-     * Reference to octree which will be used to partition space of the world
-     * @type {null}
-     * @private
-     */
-    p.octree = null;
 
     /**
      * @type {GameObject[]}
@@ -151,27 +140,6 @@ define(function (require) {
         reserveSlots(this, this.gameObjects.length);
         this.invalidate(gameObject);
 
-        if (this.octree !== null) {
-            var pos = gameObject.transform.getPosition();
-
-                var item = new Octree.Item(pos[0], pos[1], pos[2]);
-
-                gameObject.item = item;
-                item.gameObject = gameObject;
-
-
-                this.octree.insert(item);
-                var octree = this.octree;
-                gameObject.transform.addEventListener(gameObject.transform.events.update, function (transform) {
-                    octree.remove(item);
-                    var p = transform.getPosition();
-                    item.x = p[0];
-                    item.y = p[1];
-                    item.z = p[2];
-                    octree.insert(item);
-                });
-        }
-
         if(this._awaken)
             gameObject.awake();
 
@@ -226,9 +194,6 @@ define(function (require) {
         world._holes++;
         world.gameObjectsCount--;
         gameObject.world = null;
-
-        if (world.octree !== null)
-            world.octree.remove(gameObject.item);
     }
 
     function compact(world) {
@@ -325,14 +290,6 @@ define(function (require) {
     p.retrieve = function (gameObject) {
         compact(this);
 
-        if (this.octree !== null) {
-            var items = this.octree.retrieve(gameObject.item);
-            for (var i = 0; i < items.length; i++) {
-                var item = items[i];
-                items[i] = item.gameObject;
-            }
-            return items;
-        }
         return this.gameObjects;//.slice(0); //slice(0) pollutes heap and does a sawtooth with GC
     };
 

@@ -226,7 +226,7 @@ define(function (require) {
      * cullingTest.
      *
      * gameObjects is what the world retrieved for the camera: all of them,
-     * where slot i is gameObjects[i]'s own, or those the octree picked.
+     * where slot i is gameObjects[i]'s own.
      */
     function cull(world, gameObjects, viewport, self) {
         var slots = world.slots,
@@ -487,9 +487,6 @@ define(function (require) {
             context.drawImage(ctx.canvas, 0, 0);
         }
 
-        //if (config.renderOctree && config.useOctree && camera.world.octree.root !== null)
-        //self.renderOctreeNode(camera.world.octree.root, viewport.context);
-
     };
 
     Canvas2dRenderer.render = render;
@@ -696,9 +693,6 @@ define(function (require) {
             viewport.context.drawImage(ctx.canvas, 0, 0);
         }
 
-        //if (config.renderOctree && config.useOctree && camera.world.octree.root !== null)
-        //this.renderOctreeNode(camera.world.octree.root, viewport.context);
-
     };
     */
                            /*
@@ -756,110 +750,6 @@ define(function (require) {
         ctx.strokeStyle = '#0000ff';
         ctx.stroke();
     }
-
-    p.renderOctreeNode = function (node, ctx) {
-        if (node.type === 0)
-            this.renderBound(node.x, node.y, node.z, node.ex, node.ey, node.ez, ctx);
-
-        //render childs
-        if (node.type === 1) {
-            if (node.nodesMask & 1)
-                this.renderOctreeNode(node.subnode0, ctx);
-
-            if (node.nodesMask & 2)
-                this.renderOctreeNode(node.subnode1, ctx);
-
-            if (node.nodesMask & 4)
-                this.renderOctreeNode(node.subnode2, ctx);
-
-            if (node.nodesMask & 8)
-                this.renderOctreeNode(node.subnode3, ctx);
-
-            if (node.nodesMask & 16)
-                this.renderOctreeNode(node.subnode4, ctx);
-
-            if (node.nodesMask & 32)
-                this.renderOctreeNode(node.subnode5, ctx);
-
-            if (node.nodesMask & 64)
-                this.renderOctreeNode(node.subnode6, ctx);
-
-            if (node.nodesMask & 128)
-                this.renderOctreeNode(node.subnode7, ctx);
-        }
-    }
-
-
-    p.renderBound = function (x, y, z, ex, ey, ez, ctx) {
-        var min = [x - ex, y - ey, z - ez],
-            max = [x + ex, y + ey, z + ez],
-            w = max[0] - min[0],
-            h = max[1] - min[1],
-            d = max[2] - min[2];
-
-        var m1 = [min[0] + w, min[1], min[2]],
-            m2 = [min[0], min[1] + h , min[2]],
-            m3 = [min[0] + w, min[1] + h, min[2]];
-
-        var mx1 = [min[0], min[1], min[2] + d],
-            mx2 = [min[0] + w, min[1] , min[2] + d],
-            mx3 = [min[0], min[1] + h, min[2] + d];
-
-
-        var p = bufferVec3;
-
-        ctx.beginPath();
-        glMatrix.vec3.transformMat4(p, min, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, m1, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, m3, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, m2, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, min, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx1, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx2, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, max, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx3, this.M);
-        ctx.lineTo(p[0], p[1]);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx1, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        glMatrix.vec3.transformMat4(p, m1, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx2, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        glMatrix.vec3.transformMat4(p, m2, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, mx3, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        glMatrix.vec3.transformMat4(p, m3, this.M);
-        ctx.moveTo(p[0], p[1]);
-        glMatrix.vec3.transformMat4(p, max, this.M);
-        ctx.lineTo(p[0], p[1]);
-
-        var bound = {};
-        ctx.closePath();
-        //ctx.strokeStyle = bound.color || (bound.color = '#' + ((0xFFFFFF * Math.random()) | 0).toString(16));
-        ctx.stroke();
-
-    };
-
 
               */
     return Canvas2dRenderer;
