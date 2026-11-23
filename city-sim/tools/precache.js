@@ -1,23 +1,8 @@
 /**
- * What the Service Worker (public/sw.js) keeps of the game as it is put in
- * - everything the game is, of the build it comes with - written into it as
- * the build ends (vite.config.js), so that the game opens and plays offline
- * from the first time it was opened online, not only from the second:
- *
- * - the page, as / - whatever address it is opened at, it is the same page
- * - every file of the build but the Service Worker itself: the scripts,
- *   their workers, the styles, the fonts, the icons, the manifest
- * - isometrica's pictures, gfx/ - gfx/manifest.json, and every file it
- *   names at the address the game asks for it by: by its hash,
- *   generated/houses.json?v=<hash> (isometrica client/spritecache)
- *
- * and the script the page starts with, for the Service Worker to see that
- * the page it kept is the one these files are of - and the version of the
- * game they are (vite.config.js version), for the Service Worker to keep
- * them under, and to tell the page (src/ui/updates.js).
- *
- * sw.js has `var BUILT = null;` for it, to be put in; the build fails
- * without it.
+ * Writes what the Service Worker keeps into it as the build ends: the page
+ * as /, every file of the build, isometrica's gfx at their hashed addresses,
+ * the start script and the version. sw.js must have `var BUILT = null;`.
+ * See city-sim/.claude/skills/ui/offline-and-saves.md.
  */
 import fs from "node:fs";
 import path from "node:path";

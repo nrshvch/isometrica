@@ -1,16 +1,7 @@
 /**
- * How often the world is drawn: as often as the game draws it at most
- * (engine Game fps, 30 a second) while anything is going on, and fewer
- * times while less is - easier on a phone's battery. Whatever moves goes by
- * the time gone, not by the frames, so it moves as far in a second either
- * way, only less smoothly.
- *
- * What asks for fewer, each for its own reason (RATE), the fewest of them
- * kept to: a screen over the world, which is only seen dimmed and blurred
- * behind it; and the world left alone a while - no touch, click, key nor
- * wheel - though never while a finger or a button is still held down, an
- * edge of the screen panning the map under it; and a battery running low,
- * not charging, where the browser tells (navigator.getBattery).
+ * How often the world is drawn: 30 a second at most while anything goes on,
+ * fewer (RATE) behind a screen, left alone, or on a low battery.
+ * See city-sim/.claude/skills/ui/screens.md (Other screens).
  */
 
 //how many frames a second the world is drawn at, at most: as a rule, and

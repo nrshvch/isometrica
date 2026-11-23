@@ -49,8 +49,13 @@ it (`Hud.jsx`) and `session.js startGenerated`.
 - `npm run generate:logo`, `npm run generate:icons` - write checked-in files.
 - Deploy: `.github/workflows/city-sim.yml`.
 
+## Skills (`.claude/skills/`)
+
+- `ui` - the screens and how isometrica's client talks to them, the
+  border and ground shaping, offline play and releases, the saves Worker,
+  icons and logo.
+
 ## Docs
 
-`README.md` - what the player sees and how it is put together (grep it).
-`docs/` - the design (`README.md`), `cities.md`, `economy.md`,
-`multiplayer.md`, `references.md`.
+`README.md` - what the player can do, how to run it. `docs/` - the design
+(`README.md`), `cities.md`, `economy.md`, `multiplayer.md`, `references.md`.

@@ -1,32 +1,8 @@
 /**
- * Lets the game open, and play, without a connection - from the first time
- * it was opened with one: as it is put in, it keeps everything the game is
- * (BUILT: the page, its scripts, styles, fonts and icons, and isometrica's
- * pictures - written in by tools/precache.js as the game is built), all of
- * one build, and serves the game from there:
- *
- * - the page: from the network, so that a new release is never held back by
- *   what was kept of the one before - and when the network does not answer,
- *   the page kept, whatever address it is opened at (a city, a screen of it:
- *   all the same page), at / as a home screen opens it
- * - gfx/manifest.json the same, for it says which pictures the page is to
- *   ask for - the page's own, online, the kept page's offline
- * - everything else as it was kept, else from the network: the scripts and
- *   the pictures are asked for by their hash, so what is kept of them is
- *   never other than what is asked for
- *
- * What the network brings is never kept: what was kept is all of one build,
- * the page and what it asks for, and stays so.
- *
- * Every release is a Service Worker of its own - this file, written again
- * with another build in it - which the browser puts in beside the one at
- * work, as it finds it: as the page is opened, and as the page asks it to
- * look (src/ui/updates.js). Put in, it waits for the page to tell it to take
- * over - straight away, for a page of its own release, else once the player
- * says so - or for every page of the one before to be closed: what the one
- * at work kept is of the pages it serves, and they go on asking for it. It
- * throws that away as it takes over. The saves (/api) are never kept - they
- * are the browser's own (localStorage) and the server's.
+ * Lets the game open and play offline from the first time it was opened:
+ * keeps one build whole (BUILT, written in by tools/precache.js), the page
+ * and gfx/manifest.json network first, the rest by hash; never /api.
+ * See city-sim/.claude/skills/ui/offline-and-saves.md.
  */
 
 //{version, entry, files}: the version of the game built, the script the

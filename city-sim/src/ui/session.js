@@ -1,11 +1,7 @@
 /**
- * The game going: the world loaded and put together once, on the way up -
- * the engine, isometrica's client with the city builder's own part of it
- * (play.js), the city opened in it - and drawn on the canvas the world
- * screen puts up for it (WorldCanvas). And the ways round the game's
- * screens, by the address (router.jsx), for what is clicked over the world
- * and for isometrica's client, which sees them through the bridge
- * (bridge.js).
+ * The game going: the world put together once and drawn into WorldCanvas,
+ * and the ways round the screens by the address (router.jsx, bridge.js).
+ * See city-sim/.claude/skills/ui/SKILL.md (Where).
  */
 import ClientConfig from "isometrica/client/config";
 import Game from "../game";

@@ -1,15 +1,7 @@
 /**
- * The city a brand new player of the city builder starts on - the game's own,
- * in the place of the one the world has for every game (isometrica
- * data/initialcity), which the delivery game still starts on.
- *
- * It is a save like any other, and it is opened the way a save is: under a
- * fresh id of its own, so the moment the player changes anything it becomes
- * their own city in their own storage row, leaving this one untouched.
- *
- * To fill it in, build the city in the city builder and put its save over
- * this one - as it is kept (core/persistence snapshot). The "id" and
- * "savedAt" fields are ignored.
+ * The city a brand new player starts on (Peepsville), a save like any other,
+ * opened under a fresh id; to change it, put a save from the game over it.
+ * See city-sim/.claude/skills/ui/SKILL.md (Where).
  *
  * @type {Object}
  */
