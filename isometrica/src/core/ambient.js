@@ -71,7 +71,7 @@ var ROCKS = {
   savannah: { kind: "hot", more: 2 },
   temperate: { kind: "temperate", more: 1 },
   arctic: { kind: "cold", more: 1 },
-  polar: { kind: "cold", more: 0.3 },
+  polar: { kind: "cold", more: 0.1 },
 };
 
 //the height of the lowest corner of the tile
