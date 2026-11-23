@@ -1,15 +1,7 @@
 /**
- * Where food is picked up and where it goes, out of the buildings standing in
- * the city: the small shops are restaurants, the stores and markets sell
- * groceries, the old town bakes; the houses, the flats and the offices order.
- *
- * Each place is what it is because of the tile it stands on - its name, what
- * it cooks, who lives there - so the same building is always the same
- * restaurant, the same customer.
- *
- * A place is only somewhere to go if the car can get to it: it needs a road
- * alongside it that is joined to the one the car is on. The car pulls up on
- * that road - the one nearest the middle of the building.
+ * Restaurants and customers out of the city's buildings, each by the tile it
+ * stands on, only where a road joined to the car's runs alongside.
+ * See food-rider/.claude/skills/delivery/SKILL.md (How it plays).
  */
 import Terrain from "isometrica/core/terrain";
 import Surface from "isometrica/core/surface";

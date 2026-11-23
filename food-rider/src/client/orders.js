@@ -1,13 +1,7 @@
 /**
- * The orders on the board: what to pick up where, where to take it, how long
- * the whole run will take and what it pays.
- *
- * The courier's time is what they sell. An order pays for all of it - the
- * drive to the restaurant, the wait for the food, the drive over and the walk
- * up to the door - at a rate that goes up with the kind of order: a quick
- * bite is over in a minute or two, an office's lunch takes a quarter of an
- * hour to cook and pays the most for every minute of it, but only to a
- * courier who comes back for it.
+ * The orders on the board: what to pick up where, where to, how long, and
+ * what it pays - the courier's time, at a rate by the kind of order.
+ * See food-rider/.claude/skills/delivery/SKILL.md (How it plays).
  */
 import Courier from "./courier";
 import Places from "./places";

@@ -1,16 +1,7 @@
 /**
- * The courier's panel over the world: the board of orders to pick from while
- * the car stands free, and the order on - where to, what, how far along, and
- * the money to collect once it is handed over.
- *
- * What it shows moves on as the car drives and the clock goes round
- * (games/delivery/client/courier), so it is looked at a few times a second: the
- * bar and the times are moved along in place, and the whole of it drawn
- * again only when there is something else to show.
- *
- * When the car breaks down, a button goes up over it to call somebody out to
- * fix it (Deliveryman#fix) - kept over the car every frame
- * while it is up.
+ * The courier's panel: the board, or the order on - bars and times moved
+ * along in place - and the Fix button over a broken-down car.
+ * See food-rider/.claude/skills/delivery/SKILL.md (How it plays).
  */
 import Backbone from "backbone";
 import Handlebars from "handlebars";

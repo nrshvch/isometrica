@@ -1,26 +1,7 @@
 /**
- * The courier: the player, their car, their money and the order they are on.
- *
- * An order goes: drive to the restaurant, wait there for the food, load it,
- * drive it over, hand it over at the door. The driving is done for real, in
- * the city's traffic (Deliveryman): the car gets there when
- * it gets there - held up by queues at the junctions, a slow lorry in front,
- * a car broken down in the way, or its own engine giving out - and is told so
- * here (Courier#arrived). The rest goes by the clock on the wall: the food
- * cooks from the moment the order is taken, loading and handing over take as
- * long as they take, and a breakdown is over at a time on it - so those go
- * on while the game is closed, while the car only drives while it is open.
- *
- * What the panel shows ahead of the car - when it will get there, when the
- * whole order will be done - is worked out from how far it still has to go
- * at the speed it would drive on an empty road: a guess, which the traffic
- * makes come out later.
- *
- * Kept in a storage row of its own per city, next to the city's save
- * (core/persistence) - the city is the scene, this is the game played in it.
- *
- * Nothing in here knows about roads or buildings: an offer comes with its
- * route already found, as road tiles (games/delivery/client/orders).
+ * The courier: the player, their car, their money and the order they are on;
+ * the drive is real, the rest goes by the clock on the wall. Saved per city.
+ * See food-rider/.claude/skills/delivery/SKILL.md (How it plays).
  */
 
 //how many road tiles the car drives in a second

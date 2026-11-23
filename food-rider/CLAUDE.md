@@ -30,6 +30,11 @@ isometrica's: look there, and put such changes there.
   `dist/`.
 - Deploy: `.github/workflows/food-rider.yml` (`wrangler.jsonc`).
 
+## Skills (`.claude/skills/`)
+
+- `delivery` - the courier, orders and pay, places, the car in the traffic,
+  breakdowns, markers, the panel, the courier's save.
+
 ## Docs
 
-`README.md` - how the game plays and where each part is.
+`README.md` - how the game plays, how to run it.
