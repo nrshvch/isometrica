@@ -22,7 +22,7 @@ called after every chunk that comes in (`:191`). There is no margin and no
 delay, so the camera crossing a chunk's edge by one tile lets a whole row of
 chunks go, and crossing back makes it again from nothing. `chunkman` hands
 that on to `buildman` (building views made on a chunk coming in, destroyed
-on it going, `client/buildman.js:269`, `:281`) and `envman` (trees and
+on it going, `client/buildman.js:300`, `:312`) and `envman` (trees and
 stones).
 
 **The cars go with the chunks.** A car is taken off the roads the first
@@ -55,7 +55,7 @@ less often by keeping their own count of the time.
   `calcZ`, `core/ambient.js`), with only what was changed kept on top
   (`gridPoints`, `clearedTiles`, the trees taken away).
 - Much is worked out from a time rather than ticked: a building going up
-  (`core/construction.js:53`, `:157`), the grass growing back (`bareSince`,
+  (`core/construction.js:58`, `:221`), the grass growing back (`bareSince`,
   `bareFor`), ground being cleared, whether a chimney's fire is lit (a toss of
   the tile and the time, `client/components/smokesource.js:89`), where the
   road crews stand (from the road's progress), the weather, the water, the
@@ -91,7 +91,7 @@ is sent to a player, and, with many players, which server decides it.
 
 - A cell is found from a tile's x and y: `x >> 6`, `y >> 6`. Never by adding
   to a tile's index: `(y << 16) ^ x` goes negative from y = 32768, and x =
-  65535 plus one runs over into y (`core/terrain.js:164`, `:671`), so the
+  65535 plus one runs over into y (`core/terrain.js:164`, `:683`), so the
   neighbour of a tile can come out as another tile's key.
 - Every cell keeps, in typed arrays across all the cells: its version
   (counted up on every change), its tier, the time it is simulated up to
@@ -217,7 +217,7 @@ light blinking. What happens in the world happens in the systems.
   `Date.now` (building, clearing), `performance.now` (pictures that move),
   the engine's time (capped, stopped when the page is hidden) and the core's
   (`core/vtime.js`). A building going up, say, is timed by `Date.now` and a
-  `setTimeout` (`core/construction.js:53`, `:55`) where it should be timed by
+  `setTimeout` (`core/construction.js:58`, `:60`) where it should be timed by
   the game's clock.
 - **Seeded chance**: wherever the simulation tosses a coin, the toss comes
   from the cell, the record and the step (a hash, as the chimneys' fires
@@ -226,7 +226,7 @@ light blinking. What happens in the world happens in the systems.
   in the browser, after a catch-up as without one - and the traffic test
   stays the same to the byte.
 - **Names that last**: a building's and a city's ids are counted from 0 every
-  time the page opens (`core/construction.js:18`, `core/city.js:50`). A
+  time the page opens (`core/construction.js:23`, `core/city.js:50`). A
   record needs an id that is the same tomorrow and on another machine: its
   cell and a count kept in the cell, say.
 
@@ -252,8 +252,8 @@ above:
   its saving today), everything a player does must come to it as a command,
   not as a call into it, and nothing in it may wait on a browser to finish
   something: `terrain.endClearing` is called by the bulldozers' animation
-  (`client/clearworks.js:228`) and `city.tileDown` by a demolition's
-  (`client/buildman.js:240`).
+  (`client/clearworks.js:250`) and `city.tileDown` by a demolition's
+  (`client/buildman.js:271`).
 - **Tiers on the server**: the rings of every player subscribed. What nobody
   is near sleeps, costing nothing, and is brought up to date when somebody
   comes. What a world costs goes with how much of it is being watched, not
@@ -331,11 +331,11 @@ chunks made and let go of, as in `docs/performance.md`.
 ## Found on the way
 
 - A tile's neighbour worked out by adding to its index is wrong from y =
-  32768 and at x = 65535 (`core/terrain.js:164`, `:671`, `core/buildings.js:65`
+  32768 and at x = 65535 (`core/terrain.js:164`, `:683`, `core/buildings.js:68`
   and a few files more: `building.js`, `construction.js`, `ambient.js`,
   `city/cityroads.js`, `city/citybuildings.js`).
 - A building's view is made when it is built even when its chunk is not
-  loaded (`client/buildman.js:739`), and stays until that chunk has come in
+  loaded (`client/buildman.js:815`), and stays until that chunk has come in
   and gone again.
 - Bulldozers and demolitions go on out of sight with nothing to bound them;
   the bulldozers are not saved.
