@@ -885,10 +885,13 @@ dev`) plays them the way a game would - all three weathers together, the
   `isometrica/src/core/construction.js` awaitClearing): its tiles are being
   cleared from then on, whatever is on them - trees, stones, rubble -
   standing till the bulldozers get to it (`client/clearworks.js` sweep),
-  and nothing of it is drawn but how far along it is. That is the first
-  tenth of the way up, as much of it as is cleared, and the rest goes by its
-  time from when it all is; put up in the place of one that came down
-  (Replace), its ground is cleared already. Demolished or replaced while it
+  and nothing of it is drawn but how far along it is - which goes on by its
+  time from the start, as it would anyway, but no further than a tenth of
+  the way up till the bulldozers are done; it goes up the rest of the way
+  from there. What it cost floats up from over how far along it is
+  (`client/buildman.js` showConstructionCost), so as not to hide it from the
+  start. Put up in the place of one that came down (Replace), its ground is
+  cleared already, and it goes up from nothing. Demolished or replaced while it
   still waits, there is nothing of it to bring down: it is called off there
   and then, for nothing, and its ground cleared all the same (`city.js`
   demolitionOf). As with ground cleared, the bulldozers are not kept: after
