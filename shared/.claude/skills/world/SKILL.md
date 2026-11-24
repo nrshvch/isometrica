@@ -1,6 +1,6 @@
 ---
 name: world
-description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/draw (Pictures, DrawList, Visible), and shared/random's toss. Load before using or changing any of them.
+description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/interest (observers, rings, levels), shared/draw (Pictures, DrawList, Visible), and shared/random's toss. Load before using or changing any of them.
 ---
 
 # The world's libraries
@@ -83,6 +83,28 @@ store.cols.x`. Re-reading `store.count` off the object every pass keeps V8
   coming in coarse gets its first turn spread over the period by a hash of
   its key. Runs go by handle, so a region removed mid-run is skipped.
   `stats.time` / `stats.runs` are `[system * TIERS + tier]`.
+
+## interest
+
+- `Interest(partition, { rings, hold, keepAlive })`: `partition` is anything
+  with `within(box, out)` and `bounds(key, out)` - a Grid as it is, a
+  Quadtree with its level bound in. Observers are boxes (`observer()`,
+  `look`, `forget`); `update(t)` once a frame, after they have looked, then
+  `changes.key/from/to[0..count)`.
+- Levels `UNLOADED < KEEP < COARSE < NEAR < VIEW`. Distance is the gap
+  between a region's box and the observer's, the larger of x and z (a box
+  grown by d). A ring is entered at `enter` and left only beyond `leave`.
+  Up at once; down after `hold`, never below KEEP; KEEP is let go of after
+  `keepAlive`. One step down an update at most.
+- Cost: what is within the widest ring of an observer is looked at every
+  update; what has left it is never looked at again, only timed (a heap of
+  when each falls due, checked against the region's own `due` so old
+  entries are skipped). Asked a hair wider than the reach, as cells are
+  half-open.
+- Tested against looking at every region of a bounded world every update,
+  observers wandering and jumping, with three sets of times.
+- Not yet: raising a region for a record whose reach takes it in (the
+  design's Reach) - for when the first system has records.
 
 ## random's toss
 

@@ -50,10 +50,12 @@ shared/<lib>/
 - `schedule` - Clock (fixed steps, alpha between) and Scheduler (systems
   over regions by tier: full every step, coarse nearest first within a
   budget, counted by system and tier).
+- `interest` - observers and their rings: a level a region (view, near,
+  coarse, keep, unloaded), up at once, down after a while, what changed.
 - `draw` - Pictures (a table by number), DrawList (rows a system writes),
   Visible (culled by a world-to-screen matrix, sorted by layer then depth).
 
-How `typed`, `spatial`, `schedule` and `draw` work, and the rules they keep:
+How `typed`, `spatial`, `schedule`, `interest` and `draw` work, and the rules they keep:
 skill `world` (`.claude/skills/world/`).
 
 ## Commands (here, or at the root)

@@ -234,7 +234,7 @@ after (above), with the debug panel's `Stats` and the traffic test
      a record and a step. Done when its numbers are pinned. _Done._
    - 1e `shared/interest` and `shared/schedule`: rings, tiers, letting go after
      a while; a budget a frame. Done when tested on made-up observers and
-     regions, nothing of the game in them. _`shared/schedule` built._
+     regions, nothing of the game in them. _Done._
    - 1f `shared/draw`: draw lists and the table of pictures, and the ground
      drawn from them. Done when `world:compare` says IDENTICAL against the
      build before, and `world:bench`'s ground loop is no slower. _The
