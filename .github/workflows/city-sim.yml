@@ -8,7 +8,7 @@
 # - manual run                 → Actions → "city-sim" → Run workflow; on a city-sim/v* tag it
 #                                deploys that release to production again (a rollback)
 #
-# Branch pushes run only when city-sim, or what it is built on - isometrica, the engine - changes.
+# Branch pushes run only when city-sim, or what it is built on - isometrica, the engine, the shared libraries - changes.
 # Tag pushes always run: GitHub does not look at `paths` for tags.
 name: city-sim
 
@@ -20,6 +20,7 @@ on:
       - "city-sim/**"
       - "isometrica/**"
       - "engine/**"
+      - "shared/**"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"

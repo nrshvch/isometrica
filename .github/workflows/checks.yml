@@ -1,0 +1,33 @@
+# Checks every push, on every branch: the lint (ESLint - the recommended rules,
+# and the ways the packages may depend on each other: shared <- engine <-
+# isometrica <- the games, never game to game), the formatting (Prettier), and
+# the shared libraries' unit tests - and their benchmarks, printed for every
+# run so that how fast they are stays measured.
+name: checks
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Formatting
+        run: npm run format:check
+      - name: Unit tests
+        run: npm test
+      - name: Benchmarks
+        run: npm run bench
