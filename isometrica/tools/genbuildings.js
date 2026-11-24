@@ -1,35 +1,10 @@
 /**
- * Writes out the blocks src/shared/gen/flats and src/shared/gen/offices paint
- * the parts of - the same parts the game puts its blocks together out of - to
- * look at, and to try a change to the painting on before the game gets it.
+ * Writes the buildings the generators paint out as sheets to look at.
  *
- * buildings.png has every block standing on grass, put together from its
- * parts tile by tile the way the game draws it - back to front - a row per
- * kind and height, its palettes across, each from all four sides. The
- * details - storeys, roofs, yards - are a fixed pick for each palette; in the
- * game they are picked at random for every block built.
- *
- * sites.png has every kind going up: a row per kind, its stages across
- * (shared/gen/stacking stageOf) and the finished block last, each as it is
- * and turned a quarter turn - with what the game draws over a site, the
- * machines at rest and the crane's jib straight along its track. The last
- * row is the site of a building drawn by hand, 1x1, 2x1 and 2x2, each dealt
- * what stands on it two ways.
- *
- * shops.png has the shops of shared/gen/shops: a row for each footprint,
- * shops of it put together at random across - each as it is and turned a
- * quarter turn - and under each footprint's row the same shops going up.
- * houses.png has the houses of shared/gen/houses the same way, a row for
- * every kind of house and footprint; utilities.png the water tower and the
- * pump station; parks.png the parks, civic.png the church, the town hall and
- * the square, oldtown.png the old town.
- *
- * Usage:
- *   node tools/genbuildings.js [outDir] [sheet...]
- *
- * outDir is assets/previews unless given; with sheets named - buildings,
- * sites, shops, houses, utilities, parks, civic, oldtown - only those are
- * written.
+ * Usage: node tools/genbuildings.js [outDir] [sheet...]
+ * sheets: buildings, sites, shops, houses, utilities, parks, civic, oldtown;
+ * outDir assets/previews unless given.
+ * See isometrica/.claude/skills/generators/SKILL.md (Testing).
  */
 
 var fs = require("fs");

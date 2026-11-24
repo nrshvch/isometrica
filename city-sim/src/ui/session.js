@@ -1,11 +1,7 @@
 /**
- * The game going: the world loaded and put together once, on the way up -
- * the engine, isometrica's client with the city builder's own part of it
- * (play.js), the city opened in it - and drawn on the canvas the world
- * screen puts up for it (WorldCanvas). And the ways round the game's
- * screens, by the address (router.jsx), for what is clicked over the world
- * and for isometrica's client, which sees them through the bridge
- * (bridge.js).
+ * The game going: the world put together once and drawn into WorldCanvas,
+ * and the ways round the screens by the address (router.jsx, bridge.js).
+ * See city-sim/.claude/skills/ui/SKILL.md (Where).
  */
 import ClientConfig from "isometrica/client/config";
 import Game from "../game";
@@ -29,7 +25,7 @@ var generating = (function () {
   try {
     value = JSON.parse(window.sessionStorage.getItem(GENERATE_KEY));
     window.sessionStorage.removeItem(GENERATE_KEY);
-  } catch (e) {
+  } catch {
     //no storage, or nothing sensible in it: nothing was asked
   }
 
@@ -43,7 +39,7 @@ function asked(key, id) {
   try {
     value = window.sessionStorage.getItem(key);
     window.sessionStorage.removeItem(key);
-  } catch (e) {
+  } catch {
     //no storage: nothing was asked
   }
 
@@ -441,7 +437,7 @@ function startFreshCity(initial) {
         initial === "big" ? FROM_BIG_KEY : FROM_INITIAL_KEY,
         id,
       );
-    } catch (e) {
+    } catch {
       //no storage - a blank city, then
     }
   //a blank one is not dropped right where the player stands, but somewhere
@@ -459,7 +455,7 @@ function startFreshCity(initial) {
           z: pos[2] + (Math.random() - 0.5) * span,
         }),
       );
-    } catch (e) {
+    } catch {
       //no storage - the new city just opens where the camera defaults to
     }
   }
@@ -501,7 +497,7 @@ function startGeneratedCity(size) {
         near: near,
       }),
     );
-  } catch (e) {
+  } catch {
     //no storage - a blank city, then
   }
 

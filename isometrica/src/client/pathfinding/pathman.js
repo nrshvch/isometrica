@@ -76,9 +76,9 @@ Pathman.prototype.refinePath = function (nodePath) {
       //node0 = node0.host;
       //node1 = node1.host;
 
-      var path = node1.getPath(node0);
+      path = node1.getPath(node0);
 
-      for (var j = 0; j < path.length; j++) waypoints.push(path[j]);
+      for (j = 0; j < path.length; j++) waypoints.push(path[j]);
     }
   }
 
@@ -139,7 +139,7 @@ Pathman.prototype.findPath = function () {
   //});
 
   if (path) {
-    var path = this.refinePath(path);
+    path = this.refinePath(path);
   }
   //var path = this.findWaypoints(n1.host.gameObject.transform.getPosition(), n2.host.gameObject.transform.getPosition());
 

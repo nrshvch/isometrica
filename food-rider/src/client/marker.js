@@ -1,15 +1,7 @@
 /**
- * A mark floating over the world - drawn over everything, unlit, so it reads
- * by night as well as by day (client/lighting lights only the layers up to
- * the buildings):
- *
- * - a pin, bobbing over a place the courier is going to, with what the place
- *   is in it - a burger, a house; off the screen, it waits at the edge of it
- *   with a point to the way the place is;
- * - over the car, a small arrow down to it.
- *
- * Either can carry a small bar of how far along something is - the food
- * being cooked, the order being loaded or handed over.
+ * A mark over the world, unlit, over everything: a pin over a place (at the
+ * screen's edge when off it), an arrow over the car, either with a bar.
+ * See food-rider/.claude/skills/delivery/SKILL.md (How it plays).
  */
 import engine from "engine";
 import * as glMatrix from "gl-matrix";

@@ -1,18 +1,7 @@
 /**
- * What goes over the world when no screen is up, along the bottom where a
- * thumb is: the bar of buttons - whatever holds them (bridge.js): the
- * building tools, or the action going on - and over it, on a card as wide,
- * a line of what to do, and over that a new release of the game ready to
- * be reloaded on (UpdateReady). As wide as what is along the top on a phone; in
- * the middle on a desktop, where the top has the width of the screen.
- *
- * While a building is looked at - tapped, with nothing else going on - the
- * bar has only what can be done to it (Replace, Demolish, Blow up), the tools back
- * once it is put away with a tap anywhere else; and the card over it says
- * what it is and what it is worth: how far along it is going up, or the
- * money it makes a tick, who lives or works in it and what it goes without
- * - kept up to date as the city goes on, and nothing of it written over
- * the world (isometrica client/worth describe).
+ * What goes along the bottom: the bar of buttons, the card of what to do or
+ * of the building looked at, and a new release ready.
+ * See city-sim/.claude/skills/ui/screens.md (Bottom).
  */
 import { useEffect, useState } from "react";
 import Events from "events";

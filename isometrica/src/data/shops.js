@@ -1,40 +1,7 @@
 /**
- * The shops put together out of parts the game paints (see shared/gen/shops
- * and client/compoundbuilding): one to a tier and footprint in the
- * catalogue, and each put down as any of the shops there are for it, at
- * random. Three tiers of them, every one on every footprint - a tile or two
- * along the street and one deep (2x1, 3x1), end on to it (1x2, 1x3), or on a
- * lot both ways (2x2, 2x3, 3x2):
- *
- *   1. small shops: a corner shop, a parade of them, shops with car parks
- *      side by side;
- *   2. stores: supermarkets, superstores, department stores, a shopping
- *      centre or a market hall;
- *   3. farmers' markets - in the open, under a timber roof or by a glass
- *      hall - or else office blocks (data/offices).
- *
- * Like the other shops they make their money with the people who work in
- * them, the bigger the more of it for every tile; a market less of them for
- * what it makes, but on stalls rather than floors. What a shop employs, makes
- * and costs is its tier's and how many tiles it covers, and nothing else
- * (BY_TILES): the footprints of the same size are the same shop laid out
- * another way.
- *
- *              tiles   jobs   money    cost   money  payback
- *                                              /tile
- *  small         1      16     120     9000    120      75
- *                2      34     260    19000    130      73
- *                3      52     400    30000    133      75
- *                4      72     550    42000    138      76
- *                6     112     860    66000    143      77
- *  stores        2      56     410    38000    205      93
- *                3      86     630    59000    210      94
- *                4     118     860    81000    215      94
- *                6     182    1320   126000    220      95
- *  markets       2      20     280    12000    140      43
- *                3      31     435    18500    145      43
- *                4      42     595    25500    149      43
- *                6      66     915    40000    153      44
+ * Shops in the catalogue, one to a tier and footprint; what one employs,
+ * makes and costs goes by its tier and tiles (BY_TILES).
+ * See isometrica/.claude/skills/generators/buildings.md (Tiers and footprints).
  */
 import BuildingClassCode from "./classcode";
 

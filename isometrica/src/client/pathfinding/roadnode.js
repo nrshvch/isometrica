@@ -1,6 +1,5 @@
 import BuildingNode from "./buildingnode";
 import Node from "./node";
-import engine from "engine";
 
 function RoadNode(road) {
   BuildingNode.call(this, road);

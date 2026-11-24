@@ -1,12 +1,8 @@
 /**
- * The traffic testbed's scenarios (lab/trafficbed/bed.js): a few roads each,
- * the cars put on them, how long they run, and what has to hold by then -
- * tools/traffictest.js runs them all and says which do not; the lab page
- * (lab/traffic.html) shows any one of them going.
- *
- * Maps: # a road both ways, S one with a bus stop, < ^ > v a one-way road
- * going -x, -y, +x, +y; the first line is the lowest y, so on the page +y is
- * down. Tiles start at (1000, 1000), the first column and the first line.
+ * The testbed's scenarios: roads, cars, how long, and what has to hold.
+ * Maps: # both ways, S a bus stop, < ^ > v one-way going -x, -y, +x, +y;
+ * the first line is the lowest y; tiles start at (1000, 1000).
+ * See isometrica/.claude/skills/traffic/SKILL.md (Testing).
  */
 import { Bed, World } from "./bed.js";
 import CITY from "./city.json";

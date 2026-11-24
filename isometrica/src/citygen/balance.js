@@ -1,7 +1,7 @@
 /**
  * Turns lots into homes or work on the same footprint until
  * needBeds <= jobs <= needBeds + 0.8 * villageBeds: no noJobs / noWorkers.
- * See .claude/skills/citygen/engine.md (water, jobs, people).
+ * See isometrica/.claude/skills/citygen/engine.md (water, jobs, people).
  */
 import BuildingData from "../data/buildings";
 import * as RoadRules from "../core/roadrules";

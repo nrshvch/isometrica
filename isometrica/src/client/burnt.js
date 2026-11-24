@@ -1,29 +1,8 @@
 /**
- * What is left of a building brought down, painted out of its own pictures
- * as it stood - as `burnt` says of a picture's parts (SpriteCache
- * getComposite, burnt): one or more of these, ";" between them (spec).
- *
- * Done to a part's picture on its own, before it is put together with the
- * others (client/cachedsprite paint, burn), by how high every pixel of it
- * stands over the ground (its picture of that to be lit, shared/gen/looks
- * DEFERRED) - so a wall is broken off as high at its back as at its front -
- * or, a part with no such picture, by how far up the picture it is:
- *
- *   - "r:seed:keep", burnt down (core/building ruin, client/ruin): its walls
- *     charred black and broken off any which way `keep` pixels up at most,
- *     the posts of its frame standing on up out of them, and what is on the
- *     ground round it - its yard, its car park, its garden - grey with soot
- *     and strewn with what fell, charred wood, broken brick, ash, glass;
- *   - "y:seed", all of it ground, sooted.
- *
- * And done to the whole of a picture once it is put together (wholly, the
- * colours of it as it is to be lit as well as as it is painted):
- *
- *   - "c:seed:level", a building still burning (client/fires), or blown up
- *     (client/explosion), charred more and more as the fire goes on - level
- *     0..100 - its walls blackened with soot in patches, the more the
- *     higher up, where the heat goes, scorched brown where it is not black
- *     yet, and the ground round it sooted a little (char).
+ * A picture brought down, painted out of itself (SpriteCache getComposite
+ * burnt; specs joined by ";"): on a part, "r:seed:keep" burnt down,
+ * "y:seed" ground sooted; on the whole, "c:seed:level" charred 0..100.
+ * See isometrica/.claude/skills/buildings/coming-down.md (Ruins).
  */
 
 //charcoal, dark to less so; the brown of wood not burnt through; ash

@@ -1,24 +1,6 @@
 /**
- * Where city saves live in localStorage.
- *
- * Every city gets a row of its own - "isometrica.v3.city.<id>" - so that a
- * single save can be read, hand edited or thrown away without touching the
- * rest. One more row, "isometrica.v3.cities", is the directory of them: it
- * says which key each city id is stored under, and which city the game opens
- * when the url does not name one.
- *
- * Each game keeps its cities under a name of its own (games/*): the city
- * builder under "isometrica.v3" - where they always were - the delivery game
- * under its own, so that playing one never opens nor writes over the other's.
- *
- * Ids are twelve characters out of [0-9A-Za-z], short enough to carry around
- * in the address bar (/pA4b1cX9q2Rz) and too many to be guessed - the id is
- * all it takes to open a city off the server (CitySync). Cities from before
- * have six, and keep them.
- *
- * Where the game saves to a server too (CitySync), the index also says, for
- * every city, which of the server's revisions the save here was made on top
- * of, and whether it has changed since - what is still to go up.
+ * Where city saves live in localStorage: a row per city, and a directory.
+ * See isometrica/.claude/skills/buildings/city.md (Saves).
  */
 import namespace from "namespace";
 

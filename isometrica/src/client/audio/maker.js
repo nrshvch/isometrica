@@ -1,14 +1,7 @@
 /**
- * Makes the sounds and the music the game plays, in workers
- * (client/audio/audio.worker), as Web Audio buffers - each the first time
- * it is asked for, and kept. What is asked for first is made first; a
- * worker makes one at a time, so a piece of music being made does not keep
- * a horn waiting for long with two of them.
- *
- * The pictures come first: nothing is started - not even the workers -
- * while `clear` says the ones on screen are still being painted. What is
- * asked for meanwhile waits, and goes once they are in (pump, every frame).
- * One already being made goes on: a worker cannot be stopped halfway.
+ * Makes the sounds and the music in workers as Web Audio buffers, the first
+ * time each is asked for, and keeps them; nothing while pictures are painted.
+ * See isometrica/.claude/skills/sound/in-game.md.
  */
 var WORKERS = 2;
 
@@ -43,7 +36,7 @@ Maker.prototype.start = function () {
       w = new Worker(new URL("./audio.worker.js", import.meta.url), {
         type: "module",
       });
-    } catch (e) {
+    } catch {
       break;
     }
 

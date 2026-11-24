@@ -1,14 +1,7 @@
 /**
- * The game put on the home screen - or the dock, or a desktop's apps - to
- * be opened as an app of its own, and played offline (public/sw.js), from
- * the menu (ui/world/Hud): store install says how it is put there, here -
- *
- * - "prompt": the browser asks, as the menu says to (Chrome, Edge, Samsung
- *   Internet - their beforeinstallprompt, kept for when it does)
- * - "ios": by hand, from Share (an iPhone's or an iPad's every browser)
- * - "mac": by hand, from Safari's File menu
- * - null: not here - already opened as an app, put there already, or a
- *   browser that has no way to, or no way the page can tell of
+ * The game put on the home screen: store install says how here - "prompt",
+ * "ios", "mac", or null.
+ * See city-sim/.claude/skills/ui/offline-and-saves.md (Home screen).
  */
 import { store } from "./store";
 

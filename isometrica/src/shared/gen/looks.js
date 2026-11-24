@@ -1,12 +1,7 @@
 /**
- * What the painters that do not paint out of boxes (shared/gen/terrain,
- * trees, vehicles) share for painting a picture the ways the light is worked
- * out from as it is drawn - as shared/gen/isobox setMode has them:
- * "deferred", its colours with no light on them, which way every pixel of
- * it looks and how high it stands, side by side (DEFERRED); and "night", what of it shines with the
- * first of its lights on and with more of them, one way and another, the
- * whole of it in black, how high every pixel of it is and the whole of it in
- * white, side by side (NIGHT).
+ * What the painters not painting out of boxes share for the renderer's
+ * light: the "deferred" (DEFERRED) and "night" (NIGHT) layers of a picture.
+ * See isometrica/.claude/skills/generators/SKILL.md (Pipeline).
  */
 
 //how many pictures side by side the night is painted in: what shines with

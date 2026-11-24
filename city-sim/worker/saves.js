@@ -1,26 +1,10 @@
 /**
- * Where cities are saved: a Durable Object for every city, named by its id -
- * the one in the address bar, which is all it takes to load the city and to
- * save over it.
- *
- *   GET /api/cities/<id>   200 the save, as it was put; Save-Rev, Saved-At
- *                          404 nothing under that id
- *   PUT /api/cities/<id>   the save, gzipped JSON (application/gzip) or JSON
- *                          as it is (application/json), with Save-Base-Rev:
- *                          the revision it was made on top of, or "none" for
- *                          a city the server has not seen yet
- *                          200 {rev, savedAt}
- *                          409 {rev} - it was made on top of anything but
- *                          the latest: the city was saved from somewhere
- *                          else since (rev null - there is nothing there)
- *
- * The server does not look into a save: it is the player's device that plays
- * the city and knows what is in it. What it keeps is the order the saves came
- * in, so that no device saves over what another saved without knowing it -
- * and the last few of them, to go back to should one turn out broken.
- *
- * Every answer carries Saves-Api, so that the game can tell the server from a
- * page that merely answered (a dev server with no API behind it).
+ * Where cities are saved: a Durable Object per city, by its id.
+ *   GET /api/cities/<id> - 200 the save (Save-Rev, Saved-At), 404
+ *   PUT /api/cities/<id> - Save-Base-Rev: rev | none; 200 {rev, savedAt},
+ *       409 {rev} when not made on the latest
+ * Every answer carries Saves-Api.
+ * See city-sim/.claude/skills/ui/offline-and-saves.md (Saves).
  */
 import { DurableObject } from "cloudflare:workers";
 

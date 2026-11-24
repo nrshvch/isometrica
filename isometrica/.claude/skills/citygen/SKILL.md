@@ -12,8 +12,8 @@ game opens a new city on. Pure core/data code: no client, runs headless.
 
 All in `isometrica/src/citygen/` unless a path says otherwise:
 
-- `index.js` - entry, `SIZES`, pipeline; `random.js` - seeded RNG, `fork(n)`
-  per stage
+- `index.js` - entry, `SIZES`, pipeline; the seeded RNG is `shared/random`,
+  `fork(n)` per stage
 - `ground.js` - world terrain + earthworks, `Ground(flat)`; `plan.js` - the
   planning grid (window round the site); `site.js` - site search
 - `streets.js` - city/Peepsopolis streets, boulevards, roundabouts, square;

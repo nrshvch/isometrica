@@ -1,21 +1,7 @@
 /**
- * The city builder's icons, drawn: every one the game shows - its HUD, the
- * bar along the bottom, what a road is laid in and which ways it goes
- * (isometrica client/buildman), the ground's tools (client/terrainman), the
- * menu, the screens. tools/genicons.js writes them out, an SVG each and
- * src/ui/icons/index.js for the game to show them by name.
- *
- * Lines, one colour - currentColor - to be coloured by the page: on a 24
- * grid, within 2 of its edge, 1.5 wide, square at their ends and mitred at
- * their joins, to go with the world's pixels. What is of the world - a plot
- * of land, a road - is a flat tile of it, as the world has its tiles: twice
- * as wide as it is high. A road is nothing but its tile, so it is drawn on
- * a grid as wide but only 18 high, shown that much wider than the others -
- * and finer, its lines ROAD_LINE wide as the others' are 1.5, to have room
- * for what it is laid with.
- *
- * Each icon is {w, h, stroke, body}: its grid, how wide its lines are on it,
- * and what is drawn on it, SVG.
+ * The city builder's icons, drawn: each {w, h, stroke, body} - its grid, its
+ * line width, SVG; one colour, 24 grid, 1.5 wide (roads on 18, ROAD_LINE).
+ * See city-sim/.claude/skills/ui/icons-and-logo.md.
  */
 
 export var LINE = 1.5;

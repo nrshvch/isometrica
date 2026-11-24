@@ -450,7 +450,7 @@ var GRID_STORE = "isometrica.grid";
 function gridWanted() {
   try {
     return localStorage.getItem(GRID_STORE) !== "off";
-  } catch (e) {
+  } catch {
     return true;
   }
 }
@@ -570,7 +570,7 @@ Terrain.prototype.setGrid = function (on) {
 
   try {
     localStorage.setItem(GRID_STORE, this.gridOn ? "on" : "off");
-  } catch (e) {
+  } catch {
     //not kept: as it is now, then
   }
 

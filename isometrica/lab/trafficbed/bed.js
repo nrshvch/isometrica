@@ -1,21 +1,7 @@
 /**
- * The traffic testbed: the game's own traffic (src/client/traffic.js) - the
- * same Driver, the same junctions, lanes and routes - run on a few roads of
- * our choosing, with the cars we put on them, where we put them and where
- * they go; no city, no pictures. The lab page (lab/traffic.html) draws it
- * and lets you drive it by hand; tools/traffictest.js runs every scenario
- * (scenarios.js) headless and checks it.
- *
- * As it goes it keeps count of what goes wrong:
- *
- * - a car turning round where the road just goes on - not at a junction,
- *   not at a dead end;
- * - a car standing in the traffic (a queue, a junction, waiting to change
- *   lanes) - for how long, at most;
- * - cars each waiting on the next, round in a ring, all of them standing:
- *   locked;
- * - two cars on top of each other;
- * - a car with no way to where it is going.
+ * The traffic testbed: the game's own traffic.js on roads and cars of our
+ * choosing, no city, no pictures, counting what goes wrong.
+ * See isometrica/.claude/skills/traffic/SKILL.md (Testing).
  */
 import Traffic from "../../src/client/traffic.js";
 import Terrain from "../../src/core/terrain.js";

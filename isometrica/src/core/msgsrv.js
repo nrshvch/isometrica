@@ -24,7 +24,7 @@ var events = {
   tileMessage: 1,
 };
 
-function MessagingService(root) {}
+function MessagingService() {}
 
 MessagingService.events = events;
 

@@ -9,21 +9,9 @@ import SmokeScript from "./components/smokeScript";
 import { changed } from "./looks";
 
 /**
- * A building coming down by itself (core/city explode): no fence round it,
- * no bulldozer at it - the one blown up, and every one the blast took the
- * health out of round it. What it looks like stands in its place
- * (client/demolition), the world having let go of it, and comes down a tile
- * at a time - the nearest to whatever hit it first, the rest one after the
- * other a moment apart, every tile of it shaking, its floors falling onto
- * each other, each in a cloud of dust that hangs there - the tiles still
- * standing open where the ones in front of them have gone (Demolition
- * open). The heaps of rubble the world left on its ground come up under
- * the dust as each tile goes, and with the last of it, it is over. Its
- * yard stands as it was till the blast gets to it, and then it is the
- * wreck the world left there.
- *
- * And which tiles of a building are only its yard (yards), for the world
- * to know where to leave rubble and where only the wreck of a yard.
+ * A building coming down by itself - blown up, or brought down by a blast
+ * next to it - a tile at a time, no fence, no bulldozer; and which tiles are
+ * only its yard. See isometrica/.claude/skills/buildings/coming-down.md.
  */
 
 var Terrain = Core.Terrain,

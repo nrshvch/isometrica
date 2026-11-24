@@ -1,26 +1,7 @@
 /**
- * The weather over the city: one for all of it, worked out from the game's
- * clock alone, so it is the same whenever the game is opened at that time.
- *
- * The days go by in spells of SPELL hours, each of a kind - clear, overcast,
- * fog, rain or a storm - picked by a hash of when it is (KINDS, ODDS), the
- * one going over into the next over BLEND hours. In a spell of rain it comes
- * and goes in showers; and on some mornings of a clear or overcast spell a
- * fog lies over the city from before the sun is up until a while after.
- * What the rain leaves wet stays wet a while after it stops, drying off
- * over DRY hours.
- *
- * What it is, at any time (Weather.at): how much of the sky is cloud, how
- * thick the fog, how hard it rains, how stormy, how wet the ground, and how
- * hard the wind blows over all - a share of how it would blow (client/wind)
- * - for the city to be drawn by (client/lighting, client/glview LIT_FS).
- *
- * ?weather=clear|cloudy|fog|rain|storm holds it at one kind; W goes round
- * them, and back to the clock's.
- *
- * For now there is none of it but a clear sky, its few clouds drifting over
- * with the wind (WEATHER): no overcast, fog, rain or storms, nor the keys to
- * have them.
+ * The weather over the city, from the game's clock alone: spells of a kind
+ * picked by a hash of when it is (Weather.at). For now only a clear sky.
+ * See isometrica/.claude/skills/rendering/weather.md.
  */
 
 var HOUR = 3600000;

@@ -1,47 +1,7 @@
 /**
- * Stones lying about on the ground, a tile's worth of them to a picture -
- * the thick of a rock field ("stone": five grey boulders together) and its
- * thin edges ("stone0": three brownish ones strewn about) - and each the
- * other way round ("-m"), for the same few not to show twice the same. Each
- * of those is painted from its four sides as well - "stone/r1" a quarter
- * turn round, as the camera turning round (client/view) sees it, the way
- * the trees are (data/trees turned).
- *
- * Every stone is a lump: a rounded, flattish boulder, its top lumpy with
- * noise. A ray goes into the picture for every pixel, along the way the boxes
- * are looked at, and where it meets a stone the stone is lit there by the
- * boxes' sun - picking one of four tones outright, the way it would be drawn
- * by hand - its lower edge darkened a little to stand out against the grass.
- * Where the ray meets the ground in a stone's shadow, the shadow is laid
- * there as black, see-through; everywhere else there is nothing, so the
- * stones lie on whatever ground the tile is.
- *
- * Where the world is not green (core/climate) its stones are as well: out in
- * the cold, the same stones with snow lying on their tops ("snowstone",
- * "snowstone0"); in the desert, red-ochre sandstone and pale rock bleached by
- * the sun ("desertstone", "desertstone0").
- *
- * And what a building comes down to (client/demolition): a heap of rubble
- * on every tile of it till the bulldozer pushes it away - a low mound of
- * dusty grey debris ("rubble", "rubble0"), and on it, piled any which way,
- * slabs of concrete, broken brick and splintered timber: flat-topped and
- * sharp-edged, the lumps a stone is but squared off.
- *
- * And the heaps a building blown up leaves (client/explosion, data/buildings
- * rubble), which run on into the heaps on the tiles next to them as one
- * pile ("pile/<rubble>/<mask>"): its mound, a ridge on to every tile next
- * to it along a side with a heap of its own, and where four heaps meet at a
- * corner, a mound over it too - each tile's picture its own square of it,
- * so that tiles side by side meet where they join. A pile lies on the
- * ground as it is, not levelled: on a tile that slopes, its picture is of
- * it on that slope ("pile/<rubble>/<mask>/<slope>"), the corners of the
- * tile as high as they are and the tile folded along the diagonal the
- * ground's own picture is (shared/gen/terrain fold) - taller than a stone's
- * by as much as a tile can rise, PILE_RISE.
- *
- * Every picture is the size of a tile of the ground, its middle where the
- * tile's is (data/rocks: pivot 32, 24). It paints into plain pictures,
- * {width, height, data} with the pixels as RGBA, as it is asked for them.
+ * Stones on the ground by climate, and the rubble and blast piles a
+ * building leaves; a tile's worth to a picture, pivot 32, 24.
+ * See isometrica/.claude/skills/generators/ground.md (Woods, trees, stones).
  */
 
 //the picture: a tile's worth, and where the middle of the tile is on it - so

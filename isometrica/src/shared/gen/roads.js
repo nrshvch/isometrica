@@ -1,40 +1,8 @@
 /**
- * Roads, painted out of boxes the way the buildings are (shared/gen/isobox):
- * a piece for every way a tile of road joins up with the ones next to it,
- * and a ramp for every way the ground can slope under a straight one.
- *
- * Each comes four ways:
- *
- *   - plain: the asphalt and nothing else, a strip of gravel along its
- *     edges, a dashed line down the middle - a road out in the country;
- *   - paved: the same asphalt between kerbs, with a pavement along both sides
- *     and round the corners, and zebra crossings over a junction - a street
- *     with buildings on it (which piece a road gets is client/road's to say);
- *   - gravel: a track of gravel, packed paler where the wheels go, its edges
- *     darker - what the village's lanes are laid in;
- *   - cobble: setts of stone between a gutter of darker stone either side -
- *     the old town's lanes; and cobble-paved, the same between kerbs with a
- *     pavement along both sides, the way the asphalt street has - a cobbled
- *     street with buildings on it.
- *
- * A one-way road is laid the same, but with no line down the middle of a
- * straight piece: an arrow down it instead, the way the traffic goes - white
- * on the asphalt, in darker stones on gravel and paler ones among cobbles -
- * and no dashes up a ramp.
- *
- * And a street light, apart: a sprite of its own, for it is tall and has to
- * be drawn among the buildings and the cars rather than under them - over
- * the asphalt one on an arm, and along a cobbled street a lantern on an old
- * cast-iron post. And so is a bus stop's shelter: on the pavement of a paved
- * street, glass at the back, a bench in it and the stop's sign on a post at
- * the end of it, one on each side of the road for the buses going each way -
- * of cast iron, painted green, on a cobbled street, and on the verge of a
- * gravel lane a wooden one.
- *
- * Units as everywhere: a tile is 32 along the ground - about ten metres -
- * heights in pixels. The asphalt is 20 across, two lanes of the cars' width
- * and a bit, the way client/carman drives them; a step of the ground is 8
- * high.
+ * Roads out of boxes - a piece per way a tile joins up, a ramp per slope -
+ * plain, paved, gravel, cobble; one-way arrows; street lights, bus stops
+ * and town limit signs as sprites of their own.
+ * See isometrica/.claude/skills/generators/roads-vehicles-smoke.md (Roads).
  */
 import * as iso from "./isobox.js";
 import {

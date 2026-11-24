@@ -1,17 +1,7 @@
 /**
- * The lab, built to be put up somewhere (npm run build:lab here): every page
- * of it, into lab/dist - nothing but the pages and what they import, all of
- * it painted and played in the page. Deployed by
- * .github/workflows/isometrica.yml (wrangler.jsonc).
- *
- * Each page is an HTML file of its own, its UI in React, styled with
- * Tailwind (ui/lab.css). The benches draw with the game's own client - on a
- * stage of nothing but its drawing (bench/stage.js: buildings.html), or on
- * a world of its own (bench/world.js: demolition.html, replace.html,
- * explosion.html, fire.html,
- * climate.html) - which finds the pictures it paints listed in gfx/,
- * served and copied in as a game's build does (isometrica/vite.mjs), after
- * npm run build here.
+ * The lab built to be put up (npm run build:lab): every page into lab/dist.
+ * Deployed by .github/workflows/isometrica.yml (wrangler.jsonc).
+ * See isometrica/.claude/skills/lab/SKILL.md (Build and deploy).
  */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";

@@ -1,23 +1,6 @@
 /**
- * Who lives where.
- *
- * People live in houses: every house keeps how many live in it, and that is
- * what goes into the save. The city's people are those of the houses on its
- * roads (core/city/cityroads), and it is they who pay it their taxes.
- *
- * The city grows into its houses by itself, a few at a time - more the more
- * room there is, and only while it is pleasant enough to live in (Ecology) -
- * the oldest houses filling first. A house has room for as many as it has
- * beds, as long as it has what it needs - a road, water - and, for a house
- * whose people work in town, for as many of them as there are jobs: the jobs
- * go to the beds of the oldest houses first. Whoever is in a house with less
- * room than that moves out, one a tick, and is gone: the city fills the room
- * it has elsewhere with its own growth.
- *
- * A house cut off from the city's roads is abandoned: room for nobody. Its
- * people stay a while, paying nobody, and move out - one a tick out of each
- * part that is cut off - till it stands empty. Joined up again, it is the
- * city's once more, with whoever is still there.
+ * Who lives where: each house's count, growing into the room houses have.
+ * See isometrica/.claude/skills/buildings/city.md (People, jobs, water).
  */
 import Events from "events";
 /**

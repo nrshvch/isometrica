@@ -1,13 +1,7 @@
 /**
- * A stage for a bench to draw on (lab/buildings.html): the game's own
- * drawing - its engine, its pictures, its light and its camera (client/vkaria
- * prepare, start) - and of a world nothing but a patch of flat grass, drawn
- * the way the game draws ground (client/terrain), on ground of its own laid
- * flat the way a save lays it (core/terrain load). Nothing else runs: no
- * world ticking, no city, no bulldozers, no traffic - what is drawn on it is
- * whatever the bench puts there. The light is ten in the morning's, the
- * weather clear, nothing is heard; and it goes as fast or as slowly as
- * asked, or not at all.
+ * A stage for a bench: the game's own drawing over a patch of flat grass,
+ * nothing else running.
+ * See isometrica/.claude/skills/lab/SKILL.md (The two kinds of bench).
  */
 import Client from "../../src/client/main";
 import Config from "../../src/client/config";

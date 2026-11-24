@@ -1,7 +1,7 @@
 /**
  * Gives every road a surface so roads side by side meet level (traffic
  * drives only where they do), levelling the ground where none will.
- * See .claude/skills/citygen/engine.md (roads).
+ * See isometrica/.claude/skills/citygen/engine.md (roads).
  */
 import { SIDES } from "./plan";
 import Surface from "../core/surface";

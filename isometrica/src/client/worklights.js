@@ -2,26 +2,15 @@ import engine from "engine";
 import Lighting from "./lighting";
 
 /**
- * The lights of what is at work - a road being laid and a building going up,
- * and the machines at it: the amber lamps blinking on the road works
- * barriers, the amber beacon turning on the roof of a digger or a lorry, its
- * work lamps shining ahead of it after dark, and the floodlights on a
- * building site and up its crane.
- *
- * Each is a pixel or two of colour on whatever carries it, glowing whatever
- * the light (client/glview GLOW), hidden behind whatever stands in front of
- * it; and at night it lights what is round it (client/lighting workLight).
+ * The lights of what is at work: road works and building sites, and their
+ * machines. See isometrica/.claude/skills/buildings/going-up.md.
  *
  * A light is {x, y, z, color, [blink], [night], [reach], [peak], [aim],
- * [cone], [size]}: x, y on the screen from where what carries it is drawn
- * (the spot on the ground under it), z how high it is over that - a pixel a
- * unit; color, red, green and blue 0..255; blink, how long it is on, and
- * then off, ms - none for steady; night, only lit after dark (a work lamp,
- * a floodlight - a beacon and a barrier's lamp are on all day); reach and
- * peak, how far its light reaches and how bright it is close by - none for a
- * light too small to light anything; aim, the way it shines along the ground
- * as it is seen (client/lighting AIM), cone the cosine of half of how wide;
- * size, how many pixels across it shows, 1 unless said.
+ * [cone], [size]}: x, y on screen from where its carrier is drawn, z how high
+ * over that; color 0..255 each; blink on-then-off ms; night only after dark;
+ * reach, peak how far and how bright its light (none: lights nothing); aim
+ * along the ground (client/lighting AIM), cone cos of half its width; size
+ * in pixels, 1 unless said.
  */
 var WorkLights = {};
 

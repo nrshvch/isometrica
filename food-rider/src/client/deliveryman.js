@@ -1,18 +1,7 @@
 /**
- * The delivery game, in the world: the courier's car on the roads, the camera
- * following it, the restaurant and the customer marked out, and the board of
- * orders kept up while the car stands free.
- *
- * The car drives among the traffic, the way everything else does
- * (client/traffic): when the order says go - to the restaurant, then the
- * customer - it pulls out from the kerb as soon as the lane behind it is
- * clear, drives there as fast as the roads let it, and pulls in to the kerb
- * again there, out of the way of the traffic, while the food is cooked and
- * loaded or handed over. Every so often its engine gives out on the way: it
- * pulls over to the kerb, out of the traffic's way, and stands there smoking
- * until it is going again by itself a minute or so later - or the player
- * calls somebody out to it (Deliveryman#fix) and it is going in a few
- * seconds - then pulls out and goes on.
+ * The delivery game in the world: the courier's car among the traffic, the
+ * camera following it, the places marked, the board kept up; breakdowns, fix.
+ * See food-rider/.claude/skills/delivery/SKILL.md (How it plays).
  */
 import engine from "engine";
 import Events from "events";

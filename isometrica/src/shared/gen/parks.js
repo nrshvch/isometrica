@@ -1,32 +1,7 @@
 /**
- * Parks, put together the way the shops are (shared/gen/shops): one park
- * painted whole on its footprint and cut into its tiles (onTile). Every
- * footprint - 1x1, 1x2, 1x3, 2x2, 2x3, 3x3 - comes in three kinds, one of them
- * picked for each park when it is placed (client/compoundbuilding):
- *
- *   - sports: courts and a skate spot inside a wire fence - a basketball
- *     court, half a one on a single tile; a skate spot of ramps, a box and
- *     a rail; a tennis court on three tiles; on the bigger footprints two or
- *     three of them side by side - with benches and bushes round them. Not on
- *     3x3, the central park, which is one park all through (kindsOf);
- *   - garden: a formal garden laid out to a pattern - straight walks of
- *     paving crossing each other, a ring walk round the bigger ones, beds
- *     edged with low box hedges and full of flowers or with a small tree in
- *     each, a fountain where the walks cross, benches facing it;
- *   - city: a town park - gravel walks winding through it, trees all over,
- *     bushes, benches along the walks with a bin by each, lamps; on the
- *     bigger footprints a plaza with a big fountain, or a pond;
- *   - woods, on 3x3 only: trees thick on mossy ground, pines among them, a
- *     walk winding round in a loop, and a clearing in the middle with
- *     picnic tables, or a pond.
- *
- * Each kind comes in two variants (which court, which feature). While a park
- * is laid out its tiles are a building site like anybody's (shared/gen/sites),
- * then its ground graded with the walks laid out (stage 1), then grassed and
- * paved, the courts surfaced and the beds dug, nothing planted yet (stage 2).
- *
- * Units as everywhere: a tile is 32 along the ground, about ten metres;
- * heights in pixels, twelve to a storey.
+ * Parks - sports, garden, town park, woods - one painted whole per
+ * footprint and cut into tiles.
+ * See isometrica/.claude/skills/generators/buildings.md (Parks).
  */
 import * as iso from "./isobox.js";
 import {
@@ -48,7 +23,6 @@ import {
   random,
   round,
   tree,
-  hedge,
   wireFence,
   measureOnTile,
   onTile,
@@ -186,21 +160,6 @@ function cells(b, W, H, inside, z0, z1, color) {
         run = -1;
       }
     }
-  }
-}
-
-//a flower bed from x0 to x1, y0 to y1: dug over, and rows of flowers in it,
-//each row its own colour
-function flowerBed(b, x0, x1, y0, y1, rnd) {
-  b.push(box(x0, x1, y0, y1, 1, 1.1, SOIL));
-
-  var a = Math.floor(rnd() * FLOWERS.length);
-
-  for (var y = y0 + 1; y < y1 - 0.5; y += 2) {
-    var c = FLOWERS[(a + Math.floor((y - y0) / 2)) % FLOWERS.length];
-
-    for (var x = x0 + ((y - y0) % 4 === 1 ? 1 : 0); x < x1 - 0.5; x += 2)
-      b.push(box(x, x + 1, y, y + 1, 1, 2, c));
   }
 }
 

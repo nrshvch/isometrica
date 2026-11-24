@@ -1,45 +1,8 @@
 /**
- * What the game sounds like - every sound of it made, not recorded
- * (shared/gen/sounds, shared/gen/music; made in workers, client/audio/maker):
- *
- * - the music (client/audio/music): a piece for the kind of place on screen -
- *   the city, a small town, the country - by day or by night, going with the
- *   weather;
- * - the place itself, by what there is of it on screen, one into the next
- *   as the camera goes from the town out over the country and the sea - as
- *   real as the hum of the town (shared/gen/country): the woods and the
- *   fields - a breath of air in the trees and the birds of a wood singing
- *   by day, crickets and an owl at night; the sea - only a slight wind
- *   over it, stronger in a gale, no waves. Louder the closer the camera
- *   is;
- * - the old town's church (shared/gen/bells), and the town's own (shared/gen
- *   civic): now and then by day, while one is on screen, its one small
- *   bell, from where the church is - rung for a service, or tolled;
- * - the hum of the town heard from above (shared/gen/skyline): full over
- *   the busy middle of a town - its shops, offices and works, and the cars
- *   going about it - and faint and dull, far off, over the outskirts and
- *   the quieter streets of houses, or with the town just off the screen;
- *   gone in the woods. By day, at rush hour and by night;
- * - thunder with the lightning (client/weather), coming a moment before the
- *   flash;
- * - horns: a car stood in a jam a while honks, now and then, and every so
- *   often two cars give each other a toot going by - to the left or the
- *   right of where they are on screen, quieter further off;
- * - a building blown up (client/explosion): its blast (shared/gen/blast) -
- *   TNT, or a ripple of demolition charges and then it going, either -
- *   heard from up over the town, coming just as the pieces of it fly -
- *   however fast the game goes - to the left or the right of where it is
- *   on screen, quieter further off and zoomed out.
- *
- * For now only the hum of the town and the places are heard (QUIET): the
- * music, the thunder and the horns are kept quiet - the music with no way
- * to turn it on.
- *
- * Nothing plays until the page is first touched, clicked or typed at - a
- * browser plays nothing before. The sounds (the places, the hum of the
- * town, thunder, horns) are turned on and off with S, their button in the
- * top bar (Soundman#toggle), or ?sounds=off (?sound=off too); kept in the
- * browser for next time. It all stops while the page is out of sight.
+ * What the game sounds like: music, the place, the church, the hum of the
+ * town, thunder, horns, blasts - made in workers once the screen is painted.
+ * For now only the hum and the places are heard (QUIET).
+ * See isometrica/.claude/skills/sound/in-game.md.
  */
 import engine from "engine";
 import * as glMatrix from "gl-matrix";
@@ -190,7 +153,7 @@ function smooth(k) {
 function stored(key) {
   try {
     return localStorage.getItem(key);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -198,7 +161,7 @@ function stored(key) {
 function store(key, v) {
   try {
     localStorage.setItem(key, v);
-  } catch (e) {
+  } catch {
     //not kept: as it is now, then
   }
 }
@@ -948,8 +911,7 @@ Soundman.prototype.blast = function (e) {
  * stands still.
  */
 Soundman.prototype.blasts = function (wall) {
-  var ctx = this.context,
-    left = [],
+  var left = [],
     toViewport = null;
 
   for (var i = 0; i < this.blasting.length; i++) {

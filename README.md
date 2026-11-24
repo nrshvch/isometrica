@@ -5,6 +5,9 @@
 Games played in one isometric world, in one repository. Each top folder is a
 package of its own, with its own `package.json` and build:
 
+- [`shared/`](shared) - generic libraries any of the others may use, each
+  with its unit tests and benchmarks (`npm test`, `npm run bench`); it
+  imports from none of them.
 - [`engine/`](engine) - the engine everything is drawn with, and the small
   packages it and the games use (`events`, `namespace`,
   `reactive-property`). `npm run build` there builds them.
@@ -34,7 +37,7 @@ https://legacy.peeps.land.
 ### Lab
 
 Every sprite, sound and piece of music the generators
-make, painted and played in the page: 
+make, painted and played in the page:
 
 https://isometrica-lab-dev.isometrica.workers.dev/
 

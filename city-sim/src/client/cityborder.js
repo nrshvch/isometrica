@@ -1,27 +1,7 @@
 /**
- * The city's border: one line round the city's area - the area round each
- * of its buildings, and its roads where they join them, all of it together
- * (cityarea, isometrica core/city/cityroads AREA) - drawn along the tiles'
- * edges. What stands apart from the city has an area of its own, and none is
- * drawn round it - but while something is being put down (client/buildman,
- * #placing): then the border is drawn as it would be with it
- * (CityRoads#plan) - with it in it if it joins the city, and its area in
- * amber if it would stand apart; a road that would lead nowhere has none -
- * and every area that stands apart, faintly. And
- * while something that stands apart is looked at (client/serviceman,
- * #inspecting), the area of all that hangs together with it. Drawn again
- * whenever what hangs together changes, and as the ground under it moves;
- * put away with the words over the world (client/serviceman,
- * Cityman#namesHidden), but while something is being put down.
- *
- * And wherever a road crosses the border, out of the city's area, the signs
- * of a town's limits by it - on the last of the road inside the city's area,
- * at the side it goes on out at: signs of no
- * words, each on a post on the verge, the town to whoever comes in, on their
- * right, and struck through red to whoever leaves, on theirs (isometrica
- * shared/gen/roads townSign). They are the road's own, drawn with it
- * (client/roadview townSignsOf, #townSignsOn), and stay up with the words
- * put away.
+ * The city's border round its area, drawn as it would be while something is
+ * put down or looked at, and the town limit signs where roads cross it.
+ * See city-sim/.claude/skills/ui/screens.md (The border).
  */
 import engine from "engine";
 import Events from "events";

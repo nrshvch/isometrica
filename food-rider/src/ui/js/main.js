@@ -172,7 +172,7 @@ UIManager.prototype.startFreshCity = function () {
           z: pos[2] + (Math.random() - 0.5) * span,
         }),
       );
-    } catch (e) {
+    } catch {
       //no storage - the new city just opens where the camera defaults to
     }
   }

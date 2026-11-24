@@ -1,4 +1,3 @@
-import engine from "engine";
 import Config from "./config";
 import Events from "events";
 import Core from "../core/main";
@@ -8,7 +7,7 @@ var events = {
   tileRemove: 1,
 };
 
-function Tilesman(root) {
+function Tilesman() {
   this.chunkSize = Config.chunkSize;
 
   this.events = events;

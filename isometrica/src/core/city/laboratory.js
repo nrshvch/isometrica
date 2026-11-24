@@ -4,7 +4,6 @@ import Events from "events";
 import ResearchState from "../researchstate";
 import Direction from "../researchdirection";
 import BuildingData from "../../data/buildings";
-import VTime from "../vtime";
 import namespace from "namespace";
 
 var CityService = namespace("Isometrica.Core.CityService");
@@ -37,7 +36,7 @@ for (var code in BuildingData) {
   var dir = b.researchDirection || Direction.municipal;
   var lvl = b.researchLevel || 0;
   var a = DirectionData[dir];
-  var b = a.items[lvl] || (a.items[lvl] = []);
+  b = a.items[lvl] || (a.items[lvl] = []);
 
   b.push(parseInt(code, 10));
 }

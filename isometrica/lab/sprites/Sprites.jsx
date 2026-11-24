@@ -1,15 +1,7 @@
 /**
- * The sprite gallery: every picture the generators paint (shared/gen/
- * catalog), a generator at a time - painted in the page, off its thread
- * (painters.js), the way the game paints them, and only as they come into
- * sight. Filter by name, see them lit or at night, bigger, on another
- * ground; click one to see it big, with its name and size. The generator
- * open is in the address: sprites.html#trees.
- *
- * It has what the game does not as well: every kind of ground the terrain
- * painter has, the rock of the mountains, the tropics' and the north's
- * grass, the savannah, with all their edges and shores - marked "not in the
- * game", and to see on their own or not at all.
+ * The sprite gallery: every picture the generators paint, painted in the
+ * page as they come into sight, lit or at night; sprites.html#trees.
+ * See isometrica/.claude/skills/lab/SKILL.md (Pages).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Catalog from "../../src/shared/gen/catalog.js";

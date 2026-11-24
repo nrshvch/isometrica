@@ -261,10 +261,9 @@ BuildingView.prototype.setTileOpacity = function (tile, k) {
   }
 };
 
-//how a yard is run down (shared/gen/isobox setWorn): wrecked by a blast,
-//or burnt
-var WORN_BLAST = 1,
-  WORN_BURNT = 2;
+//how a yard is run down (shared/gen/isobox setWorn): wrecked by a blast (1),
+//or burnt (2)
+var WORN_BLAST = 1;
 
 //how charred the rubble of a building burnt out before it came down is
 //(client/burnt c)

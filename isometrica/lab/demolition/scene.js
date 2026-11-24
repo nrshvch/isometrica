@@ -1,11 +1,7 @@
 /**
- * The demolition bench (lab/demolition.html): a few buildings, a few trees
- * planted and a road along them, on a patch of flat grass and nothing else
- * (lab/bench/world) - and all of it cleared the way the game clears ground
- * (client/clearworks): fenced off, the bulldozers coming, a building
- * coming down a tile at a time as they get to it, the trees going over the
- * way they are pushed, the road broken up, and what it all came to floated
- * up once over the lot. Put up again as often as wanted.
+ * The demolition bench: a few buildings, trees and a road, cleared the way
+ * the game clears ground.
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 
 //the ground the scene stands on, tiles from the middle of the bench: its

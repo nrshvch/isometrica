@@ -5,7 +5,7 @@
  *   node tools/citytest.mjs [--size=town,city,metropolis] [--seed=N]
  *                           [--seeds=N] [--at=x,y] [--map]
  *
- * See .claude/skills/citygen.
+ * See isometrica/.claude/skills/citygen.
  */
 import { createServer } from "vite";
 import path from "node:path";

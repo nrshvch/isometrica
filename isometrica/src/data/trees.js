@@ -1,17 +1,7 @@
 /**
- * The trees of the grassland, painted by shared/gen/trees: oak, beech, ash,
- * alder, birch, pine and spruce, two of each - every one a building of its
- * own, of the tree class, the variants of the tree type (data/buildings). The
- * world grows them on its own (core/ambient), in woods of their own
- * (core/woods) - and among them now and then a dead tree still standing, a
- * stump or a fallen trunk, which only the world puts down: a tree planted is
- * a live one. Where it is not green (core/climate), the world has kinds of
- * its own: out in the cold the spruce and the pine snowed over, and the dead
- * wood snowed over; in the desert dried-out dead trees, the dead wood dried
- * out, and cacti - only the world puts those down either.
- *
- * The first oak and the first beech keep the codes the two trees drawn by hand
- * had, so a city that has those has these instead.
+ * The trees, each a building of the tree class; the first oak and beech keep
+ * the hand-drawn trees' codes.
+ * See isometrica/.claude/skills/generators/ground.md (Woods, trees, stones).
  */
 import BuildingCode from "./buildingcode";
 

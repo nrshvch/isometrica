@@ -30,7 +30,7 @@ import {
 } from "../shared/gen/stacking";
 import BuildingClassCode from "../data/classcode";
 import Core from "../core/main";
-import Pixels from "./pixels";
+import Pixels from "shared/pixels";
 import View from "./view";
 
 var Terrain = Core.Terrain;

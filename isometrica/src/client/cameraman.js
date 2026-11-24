@@ -10,7 +10,7 @@ CameraMan.prototype._main = null;
 CameraMan.prototype.mainCamera = function () {
   if (this._main !== null) return this._main;
 
-  var c = new engine.Camera("mainCamera");
+  var c = new Engine.Camera("mainCamera");
   c.addComponent(new CameraScript());
 
   this._main = c;

@@ -1,6 +1,6 @@
 /**
  * The plan as a save (core/persistence snapshot).
- * See .claude/skills/citygen/engine.md (save).
+ * See isometrica/.claude/skills/citygen/engine.md (save).
  */
 import Ground from "./ground";
 import { ROAD as ROAD_CODE } from "./catalogue";

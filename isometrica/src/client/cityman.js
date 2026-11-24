@@ -235,7 +235,7 @@ function startAtPicked(root) {
   try {
     at = JSON.parse(window.sessionStorage.getItem("isometrica.startAt"));
     window.sessionStorage.removeItem("isometrica.startAt");
-  } catch (e) {
+  } catch {
     return;
   }
 

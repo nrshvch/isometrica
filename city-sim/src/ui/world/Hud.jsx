@@ -1,14 +1,7 @@
 /**
- * What goes over the top of the world, on cards: the city's money - which
- * opens the city screen and puts it away again - and how it is doing, and
- * under it the city's name - back to it; the time, and the weather; the
- * view from above, and the menu: the sounds, the day and the night going
- * by, the grid over the ground, the city's address shared, the game put on
- * the home screen, a new city.
- * Under them, zooming in and out, and how close the camera is.
- *
- * On a phone the money and the time take the top, the city's name and the
- * buttons the line under it; on a desktop the rest goes along the top.
+ * What goes over the top of the world: money, name, time and weather, the
+ * view from above, zoom, and the menu.
+ * See city-sim/.claude/skills/ui/screens.md (Top).
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMatch } from "react-router";

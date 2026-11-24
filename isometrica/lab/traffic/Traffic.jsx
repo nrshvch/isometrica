@@ -1,12 +1,7 @@
 /**
- * The traffic testbed's page (lab/trafficbed): the game's own traffic on a
- * few roads, seen from above, going (view.js draws it). Pick a scenario, or
- * draw roads of your own; put cars on where you like, of the kind you like,
- * going where you like; follow one to see what it is doing and why; and see
- * what has gone wrong so far - turning round mid-road, standing too long,
- * locking up, driving into each other. "check" runs the scenario through as
- * the headless runner does (tools/traffictest.mjs). A scenario can be named
- * in the address: traffic.html#city.
+ * The traffic testbed's page: a scenario seen from above, going - cars put
+ * on by hand, one followed, "check" as the headless runner. traffic.html#city
+ * See isometrica/.claude/skills/traffic/SKILL.md (Testing).
  */
 import { useEffect, useRef, useState } from "react";
 import { TYPES } from "../trafficbed/bed.js";

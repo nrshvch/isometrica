@@ -1,11 +1,7 @@
 /**
- * The one AudioContext the game (client/audio) and the lab play through, woken in the tap or click that asks for sound
- * - the way iPhones and iPads want it. Safari there plays nothing from a
- * context made or resumed outside a tap (one made after the sound is, a
- * moment later, stays suspended), and plays Web Audio as the ringer does:
- * not at all with the silent switch on - unless the page says it plays
- * media (navigator.audioSession, Safari 16.4 on), or, before that, has an
- * <audio> element playing (silence, looped).
+ * The one AudioContext the game and the lab play through, woken in a tap and
+ * playing through an iPhone's silent switch.
+ * See isometrica/.claude/skills/sound/in-game.md (Waking, switching, quiet).
  */
 var context = null,
   quiet = null;
@@ -52,7 +48,7 @@ export function wake() {
   if (navigator.audioSession) {
     try {
       navigator.audioSession.type = "playback";
-    } catch (e) {
+    } catch {
       //not to be had: as it was
     }
   } else if (apple()) {

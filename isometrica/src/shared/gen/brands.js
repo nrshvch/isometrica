@@ -1,24 +1,7 @@
 /**
- * The firms whose colours turn up all over town - on the shops, the
- * superstores' bands and pole signs, the billboards up on the offices, the
- * sides of the delivery trucks and vans - so that the same few are seen
- * again and again, the way they are in a real town:
- *
- *   - bolt, the builders' merchant: orange and charcoal, hazard stripes;
- *   - orchard, the grocer: green and yellow, stripes leaning forward and a
- *     round fruit;
- *   - pillar, the bank: navy and gold, three columns on a step;
- *   - blaze, the burger bar: red and yellow, a round bun with its filling;
- *   - amber, the brewery: amber and cream, the sun going down over the sea.
- *
- * No firm has a name painted anywhere: letters a pixel or two high read as
- * nothing but noise. What says whose a sign is, is its colours and its
- * emblem - a pattern or a plain picture that reads at a few pixels across.
- *
- * A brand's panel(w, h) is a picture w cells across and h up, a colour for
- * every cell from the bottom left: the emblem on the brand's colour where
- * there is room for it, and on a band too low for one (h under 4), a
- * pattern of the brand's along it.
+ * The firms whose colours and emblems turn up all over town - no letters;
+ * panel(w, h) paints a brand's sign.
+ * See isometrica/.claude/skills/generators/buildings.md (Brands).
  */
 
 var WHITE = [246, 246, 242];
@@ -36,7 +19,7 @@ export var BRANDS = {
     main: [238, 118, 34],
     accent: [46, 48, 54],
     light: WHITE,
-    emblem: function (i, j, w, h) {
+    emblem: function (i, j) {
       return Math.floor((i + j) / 2) % 2 ? this.accent : this.main;
     },
     band: function (i, j) {
@@ -87,7 +70,7 @@ export var BRANDS = {
 
       return x % 3 === 0 ? this.accent : this.main;
     },
-    band: function (i, j) {
+    band: function (i) {
       return i % 6 === 2 ? this.accent : this.main;
     },
   },
@@ -114,7 +97,7 @@ export var BRANDS = {
 
       return this.main;
     },
-    band: function (i, j) {
+    band: function (i) {
       return i % 4 === 1 ? this.accent : this.main;
     },
   },

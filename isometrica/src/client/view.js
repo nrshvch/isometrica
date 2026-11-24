@@ -1,17 +1,7 @@
 /**
- * Which way round the camera looks at the world: turned a quarter turn at a
- * time about the ground in the middle of the screen, 0 to 3 times (see
- * Vkaria#turnView). Where anything is in the world stays where it is, and
- * the camera works out where that is on the screen, and which of two things
- * is in front (CameraComponent#depthAxes). What the turn changes is which
- * picture a thing shows - every one is painted from the one side the camera
- * looks from unturned - and so these say how something in the world looks
- * as seen from the side the camera is on now: which way a way along the
- * ground goes as it is seen, which corner of a tile is seen on its left, and
- * so on.
- *
- * "As seen" is in the camera's own terms: the way the world would have to go
- * unturned to look the same. Tiles are x, y as Terrain has them.
+ * Which way round the camera looks at the world (0 to 3 quarter turns), and
+ * how things look from that side, in the camera's own terms.
+ * See isometrica/.claude/skills/rendering/camera.md (Which side).
  */
 import Events from "events";
 

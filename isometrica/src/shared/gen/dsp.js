@@ -1,13 +1,8 @@
 /**
- * What the sounds and the music are made with (shared/gen/sounds,
- * shared/gen/music): the plain pieces every synthesis book has - chance that
- * comes out the same for the same seed; white, pink and brown noise; one-
- * and two-pole filters (Robert Bristow-Johnson's cookbook); band-limited saw
- * and square waves (polyBLEP); soft clipping; a little Schroeder reverb for
- * the space round a sound, and a longer, denser ring - Jot's feedback delay
- * network - for the streets of a city or the trees of a wood; and the ways
- * of laying sounds into two ears, of making what loops go round without a
- * seam, and of setting how loud it all is.
+ * The plain pieces the sounds and the music are made with: seeded chance,
+ * noises, filters, polyBLEP waves, clipping, reverb, ring (an FDN), panning,
+ * seamless loops, loudness.
+ * See isometrica/.claude/skills/sound/SKILL.md (Where).
  */
 
 export var TAU = Math.PI * 2;

@@ -1,29 +1,7 @@
 /**
- * The map of the world, for debugging (the HUD's map button): the ground of
- * as much of it as is asked for - all of it, 65536 tiles each way, down to a
- * few hundred tiles across - from straight above, north up the way the view
- * from above has it: x to the right, y up. The tiles' x and y along its
- * edges, and the tile under the pointer under it; the camera and the cities
- * marked on it.
- *
- * Coarse on purpose: a pixel of it is how high the ground is at a tile or
- * two (isometrica core/terrain, the noise and whatever was shaped), never
- * every tile it covers, so it costs much the same whatever it shows - a few
- * tiles averaged, zoomed out, to tell mostly land from mostly sea - in the
- * colour of the zone of the climate its middle tile is in (isometrica
- * core/climate): the desert in the middle of the world, the green round it,
- * the snow and the ice out at its edge, rings that shade into each other. Worked
- * out a few rows a frame, the game going on meanwhile. It opens over the
- * camera, a good way out.
- *
- * Floating over the world on a screen wide enough - beside the debug panel,
- * if that is up - or over the whole of a phone's, as the game's screens are;
- * put up and away by the map button in the HUD, by the view from above.
- *
- * Dragged, it moves about; turned with the wheel, or the buttons, it shows
- * more or less of the world; Go to puts it over the tile asked for. Clicked,
- * the camera is put over the tile clicked - which no player can do: they
- * only ever pan. It is not kept from them yet.
+ * The map of the world for debugging: the ground from above, coarse on
+ * purpose, a few rows a frame; a click puts the camera there.
+ * See city-sim/.claude/skills/ui/screens.md (Other screens).
  */
 import { useEffect, useRef, useState } from "react";
 import ClientConfig from "isometrica/client/config";

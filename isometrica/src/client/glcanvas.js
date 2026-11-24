@@ -1,18 +1,7 @@
 /**
- * What is drawn over the city as lines, shapes and words - the line round a
- * city, a tile picked out, a price over a building - drawn in WebGL as it
- * is: the part of a canvas's 2D context those drawers use (engine Renderer
- * render), drawn with into a layer of the frame (client/glview flush) in the
- * order it is drawn in, over the pictures of the layer.
- *
- * A shape is filled as the canvas fills it - wherever its outline goes round
- * a pixel more one way than the other - by counting round every pixel in the
- * stencil, and then covering what is not left at nothing; one that bulges
- * out everywhere, as a tile does, straight away. A line is drawn as a strip
- * along each of its edges, dashed as the canvas dashes it, every pixel of it
- * once however its strips cross at the corners. Words are written on a
- * canvas once - as they are, in their own font and colours - and drawn from
- * there for as long as they are written the same.
+ * Lines, shapes and words over the city, drawn in WebGL with a canvas's
+ * calls: stencil fills, line strips, words written once.
+ * See isometrica/.claude/skills/rendering/camera.md (Over the city).
  */
 
 import engine from "engine";

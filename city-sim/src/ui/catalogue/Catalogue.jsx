@@ -1,17 +1,7 @@
 /**
- * The catalogue: everything there is to build (buildings.js), a card each -
- * its picture, what it costs, who lives and works in it, what it needs and
- * what it gives. A card picked is built: back in the world, its selection
- * up to be dragged out. Before there is a city, the same - the first of
- * whatever is picked founds it (isometrica client/buildman).
- *
- * Or, replacing (/replace/<tile>), only what can go up in the place of the
- * building on that tile - whatever covers its ground, turned one way or
- * another (isometrica core/replacement) - each at what it would come to,
- * clearing the building away included; the kind it is among them, for
- * another look of it. A card picked goes up there: back in the world, the
- * building comes down as the bulldozers get to it, and the one picked goes
- * up on its ground once they are done (isometrica client/buildman replace).
+ * The catalogue - a card for everything there is to build - or, replacing,
+ * only what can go up in the place of the building on that tile.
+ * See city-sim/.claude/skills/ui/screens.md (Catalogue).
  */
 import { useMemo } from "react";
 import { useParams } from "react-router";

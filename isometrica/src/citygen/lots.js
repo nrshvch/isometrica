@@ -1,6 +1,6 @@
 /**
  * Builds the blocks up: zones, palettes, strips of lots facing their streets,
- * civic buildings round the squares, farms. See .claude/skills/citygen/layouts.md.
+ * civic buildings round the squares, farms. See isometrica/.claude/skills/citygen/layouts.md.
  */
 import { FREE, WATER } from "./plan";
 import { sideOf } from "./streets";

@@ -1,21 +1,7 @@
 /**
- * The game's new releases, found and taken up: the Service Worker
- * (public/sw.js) put in, and looked for again - whenever the game is back
- * in sight, if it has not looked for a while, and every hour it stays in
- * sight - for a page can stay open for days. One found is put in by the
- * browser beside the one at work, keeping the whole of its release, and
- * then waits to be told to take over (updates.js asks it which release it
- * is):
- *
- * - of this page's release - opened from the network, while the one before
- *   was still at work - straight away, nothing said
- * - another, newer: store update is set, for the world to say so
- *   (world/UpdateReady) - till the player reloads the page on it, or puts
- *   it away for now
- *
- * And one that takes over from somewhere else - another window of the game,
- * opened on a newer release - leaves this page on what it no longer keeps:
- * that is said too.
+ * New releases found and taken up: the Service Worker put in and looked for
+ * again; store update set for a newer one, till the player reloads.
+ * See city-sim/.claude/skills/ui/offline-and-saves.md (Releases).
  */
 import { store } from "./store";
 
