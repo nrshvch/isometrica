@@ -1,6 +1,6 @@
 // namespace - entry point
 // A convenience function for parsing string namespaces and automatically
-// generating nested namespaces on window.
+// generating nested namespaces on the global object (window in a page).
 define(function () {
     function extend(ns, nsString) {
         var parts = nsString.split(".");
@@ -19,10 +19,10 @@ define(function () {
     }
 
     return function namespace(nsString, f) {
-        var ns = extend(window, nsString);
+        var ns = extend(globalThis, nsString);
 
         if (f !== undefined) {
-            f.call(ns, ns, window);
+            f.call(ns, ns, globalThis);
         }
 
         return ns;

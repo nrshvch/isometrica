@@ -172,6 +172,12 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
 
   this._id = id;
 
+  //the world's chance (Logic#chance) from the save's seed - or, for a save
+  //from before it kept one and for a new city, from its id: the same every
+  //time it is opened, and kept from then on
+  this.world.seed =
+    data !== null && data.seed >= 0 ? data.seed >>> 0 : seedOf(id);
+
   //everything below has to hear about the city the restoring brings in
   this.watch();
 
@@ -222,8 +228,12 @@ CityPersistence.prototype.snapshot = function () {
   var data = {
     version: VERSION,
     id: this._id,
-    savedAt: Date.now(),
+    savedAt: this.world.realNow(),
     time: this.world.time.now,
+    //what the world's chance comes from, and the last name it gave
+    //(Logic#chance, #name)
+    seed: this.world.seed,
+    named: this.world.named,
     //the ground is the world's, whoever paid for shaping it
     terrain: this.world.terrain.save(),
     city: city.save(),
@@ -375,7 +385,7 @@ CityPersistence.prototype.remove = function (id) {
  *          the world goes on for meanwhile - or null, for nothing
  */
 function catchUp(self, data) {
-  var now = Date.now(),
+  var now = self.world.realNow(),
     away = now - (isFinite(data.savedAt) ? data.savedAt : now),
     server = self._sync !== null ? self._sync.awayFor(self._id) : null,
     resources = self._city.resources.getResources(),
@@ -385,7 +395,7 @@ function catchUp(self, data) {
   if (server !== null) away = Math.min(away, server);
 
   //what was going up stood still too, its progress kept in the save
-  ticks = self.world.catchUp(away, true);
+  ticks = self.world.catchUp(away);
 
   if (ticks === 0) return null;
 
@@ -400,9 +410,24 @@ function catchUp(self, data) {
   };
 }
 
+//a seed from a save's id (FNV-1a): a string to 32 bits
+function seedOf(id) {
+  var h = 0x811c9dc5,
+    s = String(id);
+
+  for (var i = 0; i < s.length; i++)
+    h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+
+  return h >>> 0;
+}
+
 function restore(self, data) {
   if (data.time !== undefined && data.time !== null)
     self.world.time.load(data.time);
+
+  //no name given after the last one the save gave (saves from before it
+  //kept them start on from what this page gave)
+  if (data.named > 0) self.world.keepName(data.named);
 
   //the ground goes back first - everything else stands on it
   if (data.terrain !== undefined && data.terrain !== null)
@@ -416,7 +441,7 @@ function restore(self, data) {
   if (self.world.works)
     self.world.works.load(
       data.works || null,
-      isFinite(data.savedAt) ? Date.now() - data.savedAt : 0,
+      isFinite(data.savedAt) ? self.world.realNow() - data.savedAt : 0,
     );
 
   //saves from before it was kept have none

@@ -8,7 +8,8 @@ to talk to. Nothing here may know about a particular game. Games import it as
 
 ## Where things are (`src/`)
 
-`core/` - the world's state and rules, headless (node tools run it too):
+`core/` - the world's state and rules, headless - nothing of the client nor
+a browser (`npm run test:core` plays it in node; skill `buildings`, core.md):
 
 - `city.js` + `city/` (buildings, roads, population, jobs, water, stats):
   a city and every change made to it - build, clear, explode, replace. Hub,
@@ -19,7 +20,9 @@ to talk to. Nothing here may know about a particular game. Games import it as
   `woods.js`, `ambient.js`. Also `rotation.js`, `roadrules.js`.
 - `works.js` - the bulldozers as records: clearing, sweeping, demolishing a
   tile at a time; stepped by any stretch at once, saved with the city.
-- `logic.js` (the tick, catching up), `vtime.js` (the clock),
+- `logic.js` (the world's clock - `advance`, ticks, catching up - seeded
+  chance, names that last), `commands.js` (what the player does, as plain
+  objects: `Logic#command`), `vtime.js` (the game's time of day),
   `persistence/` (saves: localStorage, server sync).
 
 `client/` - the world on screen:
@@ -59,7 +62,8 @@ to talk to. Nothing here may know about a particular game. Games import it as
   `bells.js`, `blast.js`.
 
 `data/` - what can stand in the world (`buildings.js`, `houses.js`,
-`shops.js`, ...). `initialcity.js` is Peepstown's save (179 KB, denied).
+`shops.js`, ...) and the layers it is drawn in (`renderlayer.js`).
+`initialcity.js` is Peepstown's save (179 KB, denied).
 
 `citygen/` - cities generated from a seed: skill `citygen`.
 
@@ -76,7 +80,8 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
 - `npm run build` - the engine, then `dist/gfx` (`tools/packsprites.js`).
   Run it again after changing a generator while a dev server runs.
 - `npm run dev` - the lab. `npm run build:lab` - into `lab/dist`.
-- `npm run test:traffic`, `npm run test:cities` - headless tests.
+- `npm run test:traffic`, `npm run test:cities`, `npm run test:core` -
+  headless tests (`test:core`: a town played in node, twice the same).
 - `npm run world:fingerprint|compare|bench|streams|chunks|traffic|smoke|works` - what
   the world costs and hands the GPU, against a game's build served
   (`tools/world/`, `docs/world.md` Measuring).
@@ -86,7 +91,8 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
 
 - `buildings` - buildings and roads going up and coming down (sites,
   clearing, roadworks, demolition, blasts, fire, ruins), and the city: area,
-  road network, people, jobs, water, saves.
+  road network, people, jobs, water, saves; the core's clock, chance, names
+  and commands (core.md).
 - `citygen` - city generation: `src/citygen`, the cities bench,
   `test:cities`.
 - `traffic` - how the traffic drives: Driver, junctions, lanes, routes,

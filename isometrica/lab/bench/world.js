@@ -364,7 +364,8 @@ World.prototype.ground = function (dx, dy, w, h, o) {
 };
 
 //the client's clock going speed times as fast as the real one - and the
-//building sites with it
+//world's with it (client/vkaria CoreClock), the building sites and the
+//bulldozers on it
 function pace(self) {
   var time = self.client.game.time;
 
@@ -382,11 +383,10 @@ function pace(self) {
 }
 
 /**
- * Whatever is going up goes up by the bench's clock, sitePace times as fast,
- * rather than by the real one the game times it by (core/construction) -
- * stood still with it - and is drawn a stage on as it gets to one
- * (client/buildingview drawSite), which it would otherwise be by the real
- * clock too.
+ * Whatever is going up goes up sitePace times as fast as the bench's clock
+ * - stood still with it - rather than as the world's clock alone would have
+ * it (core/construction; the client moves that on by the same frames), and
+ * is drawn a stage on as it gets to one (client/buildingview drawSite).
  */
 function sites(self, dt) {
   self.core.buildings.underConstruction().forEach(function (b) {
@@ -598,17 +598,15 @@ World.prototype.clear = function (tiles) {
     y1 = Math.max(y1, Terrain.extractY(tile));
   });
 
-  client.clearworks.clear(tiles, function (tile) {
-    var cleared = city.clearTile(tile);
-
-    count += cleared.length;
-    total +=
-      cleared.cost !== undefined
-        ? cleared.cost
-        : cleared.length * Core.Config.clearTileCost;
-
-    return cleared;
+  //the game's own way: a command to the world (core/commands clear)
+  var result = client.clearworks.clear({
+    type: "clear",
+    city: city.id(),
+    tiles: tiles,
   });
+
+  count = result.cleared.length;
+  total = result.cost;
 
   if (total > 0)
     client.buildman.showCost(

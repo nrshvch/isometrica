@@ -25,8 +25,10 @@ in the engine's `Stats` (`engine/engine/stats.js`, `Engine.Stats`).
   over the last 60 frames.
 - **Layers**: what drawing and submitting each layer takes, a line each, in
   the order they are drawn.
-- **Now and then**: what comes between frames - a pick, the city's tick and
-  catching up, the traffic saved, sprites painted, the HUD read and drawn.
+- **Now and then**: what comes now and then - a pick, the city's tick (in
+  the frame's update since the world's clock goes by the frames: skill
+  `buildings`, core.md) and catching up, the traffic saved, sprites
+  painted, the HUD read and drawn.
 - **Tickers**: what each kind of ticking component takes a frame (cars,
   traffic, tilesman...; the smoke ticks nothing: its section, `smoke`). Timing every ticker costs a little itself,
   so it is a switch.

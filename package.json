@@ -24,6 +24,7 @@
     "test": "npm test -w shared",
     "bench": "npm run bench -w shared",
     "test:cities": "npm run test:cities -w isometrica",
+    "test:core": "npm run test:core -w isometrica",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

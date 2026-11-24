@@ -71,13 +71,14 @@ next brings them back.
 
 ## Time, catching up, the start
 
-- `core/vtime.js`: the clock moves every second - five minutes a tick in
-  city-sim (a day in under five minutes), a minute in food-rider (a day in
-  24).
+- `core/vtime.js`: the game's time moves a tick every second of the world's
+  clock (`Logic#advance`, core.md) - five minutes a tick in city-sim (a day
+  in under five minutes), a minute in food-rider (a day in 24).
 - `core/logic.js` catchUp (city-sim only): opened again or back in sight,
   the world plays out the missed ticks at once - as many as seconds went by,
   a game day at most - by the shorter of the browser's and the server's
-  clock (`CitySync#awayFor`).
+  clock (`CitySync#awayFor`); back in sight, what was going up and the
+  bulldozers are brought on by all of it (core.md).
 - `data/initialcity.js` (Peepstown, denied for reading - 179 KB): built
   entirely of generated buildings, each facing its street.
 
@@ -94,8 +95,10 @@ next brings them back.
   fresh id; "start from the initial city" → under the named or a fresh id.
   `prepare` first settles server vs local. Saves every few ticks and on the
   way out; a city never founded is never written. A save holds the time,
-  the terrain, the city and the bulldozers out (`works`, `core/works` save:
-  opened again, brought on by the time since it was saved).
+  the world's `seed` and last name given (`named`), the terrain, the city
+  (its `id`, each building's `id`) and the bulldozers out (`works`,
+  `core/works` save: opened again, brought on by the time since it was
+  saved).
 - `citysync.js` (a game with a server): the browser save is still the one
   played; it goes up half a minute after a change, when the page is put
   away, and when back online, on top of the server revision it was made on,

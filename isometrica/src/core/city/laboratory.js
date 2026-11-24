@@ -130,19 +130,32 @@ Lab.prototype.research = function (direction) {
   var cost = lvl * data.cost;
 
   research.state = ResearchState.running;
-  research.startTime = Date.now();
+  //on the world's clock (core/logic advance), done on the first tick after
+  research.startTime = this.world.clock || 0;
   research.endTime = research.startTime + time;
+  research.next = lvl;
 
   this.city.resourcesService.subMoney(cost);
+};
 
+//whatever research is done by the world's clock, done (a tick of the world:
+//City#onTick)
+Lab.prototype.due = function () {
   var self = this;
 
-  setTimeout(function () {
-    research.state = ResearchState.available;
-    research.level = lvl;
+  for (var direction in self.dirData) {
+    var research = self.dirData[direction];
 
-    openItems(self, direction, lvl);
-  }, time);
+    if (
+      research.state !== ResearchState.running ||
+      research.endTime > (self.world.clock || 0)
+    )
+      continue;
+
+    research.state = ResearchState.available;
+    research.level = research.next;
+    openItems(self, direction, research.next);
+  }
 };
 
 Lab.prototype.getAvailableBuildings = function () {
@@ -152,7 +165,7 @@ Lab.prototype.getAvailableBuildings = function () {
 Lab.prototype.getResearchProgress = function (direction) {
   var research = this.dirData[direction];
   var time = research.endTime - research.startTime;
-  return (Date.now() - research.startTime) / time;
+  return ((this.world.clock || 0) - research.startTime) / time;
 };
 
 Lab.prototype.getResearchData = function () {

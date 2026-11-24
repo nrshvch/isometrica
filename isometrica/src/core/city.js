@@ -26,7 +26,9 @@ var Core = namespace("Isometrica.Core");
 
 Core.City = City;
 
-var id = 0;
+//what the chance of the pile a building's rubble is of is told apart by
+//(Logic#chance salt)
+var PILE = 4;
 
 var events =
   (City.events =
@@ -40,14 +42,16 @@ var events =
  *
  * @param world
  * @param tile
+ * @param [id] {number} its name, from a save: the world's next otherwise
+ *        (CityService#nameCity)
  * @constructor
  */
-function City(world, tile) {
+function City(world, tile, id) {
   this.update = Events.event(events.update);
   this.rename = Events.event(events.rename);
 
   this.root = this.world = world;
-  this._id = id++;
+  this._id = world.cities.nameCity(id);
   this._tile = tile;
   this.timeEstablished = world.time.milliseconds;
 
@@ -233,6 +237,8 @@ City.prototype.getMissingServices = function () {
 
 City.prototype.onTick = function (sender, args, meta) {
   var self = meta.self;
+  //research done by the world's clock, done
+  self.laboratoryService.due();
   Events.fire(self, self.events.update, self);
 };
 
@@ -583,7 +589,7 @@ function withoutMoney(cost) {
  *          as #quoteReplace, and the tiles cleared - none, for an error
  */
 City.prototype.replace = function (tile, code, rotation, look) {
-  code = CityBuildings.variantOf(parseInt(code, 10));
+  code = CityBuildings.variantIn(this.world, parseInt(code, 10), tile);
 
   var quote = this.quoteReplace(tile, code, rotation),
     tiles;
@@ -822,7 +828,12 @@ function bringDown(self, building, yard, smoke) {
     //a site going up has no yard yet to wreck: bare ground
     wrecks = building.getState() !== BuildingState.underConstruction,
     //which pile its heaps are, of all the piles there are
-    pile = 1 + Math.floor(Math.random() * 2147483646),
+    pile =
+      1 +
+      Math.floor(
+        self.world.chance(building.tile, building.id, self.world.clock, PILE) *
+          2147483646,
+      ),
     //burnt out, its rubble charred
     burnt = building.getState() === BuildingState.ruin;
 
@@ -1383,6 +1394,7 @@ function middleOf(buildings) {
  */
 City.prototype.save = function () {
   return {
+    id: this._id,
     name: this.name(),
     tile: this.tile(),
     established: this.timeEstablished,

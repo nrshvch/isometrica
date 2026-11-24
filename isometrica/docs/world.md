@@ -10,7 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Steps 1 to 5 are built (The way there); the
+what isometrica puts into it. Steps 1 to 6 are built (The way there); the
 rest is not yet.
 
 ## What there is now
@@ -42,11 +42,16 @@ cleared or a tile of a building down, is done by its record, seen or not;
 they are saved with the city and brought on by the time since. A
 bulldozer's game object, and a demolition's, is only its view, in sight.
 
-**The core keeps the whole world and ticks all of it.** `Logic`
+**The core keeps the whole world and ticks all of it**, on one clock, with
+no browser in it (step 6; skill `buildings`, core.md). `Logic`
 (`core/logic.js`) has one world in memory: the terrain, every building and
-road, the cities. A `setInterval` ticks all of it every second (`:119`),
-watched or not; after time away `catchUp` (`:154`) plays the ticks missed,
-a game day at most.
+road, the cities. Its clock goes on only by `advance` - a frame at a time,
+moved by the client, or as fast as a node tool likes (`npm run test:core`) -
+and the whole world ticks every second of it, watched or not; after time
+away `catchUp` plays the ticks missed, a game day at most. Building,
+clearing, research and the bulldozers go by that clock, chance by a toss of
+the world's seed, every building and bulldozer has a name that lasts, and
+what the player does goes in as a command (`core/commands.js`).
 
 **The smoke is worked out, not kept** (step 4; skill `rendering`,
 smoke.md): a puff is a function of its source, its seed and the time, its
@@ -69,7 +74,7 @@ less often by keeping their own count of the time.
   `calcZ`, `core/ambient.js`), with only what was changed kept on top
   (`gridPoints`, `clearedTiles`, the trees taken away).
 - Much is worked out from a time rather than ticked: a building going up
-  (`core/construction.js:58`, `:221`), the grass growing back (`bareSince`,
+  (`core/construction.js` start, getProgress, on the world's clock), the grass growing back (`bareSince`,
   `bareFor`), ground being cleared, whether a chimney's fire is lit (a toss of
   the tile and the time, `client/smoke.js` burning), where the
   road crews stand (from the road's progress), the weather, the water, the
@@ -329,7 +334,18 @@ after (above), with the debug panel's `Stats` and the traffic test
    (`core/construction.js:23`, `core/city.js:50`); the core with no browser in
    it; what the player does sent as commands; nothing in the core waiting on a
    browser - the bulldozers' clock moved on by the client's frames
-   (`client/clearworks.js`, `core/works.js` tick) among them.
+   (`client/clearworks.js`, `core/works.js` tick) among them. _Done: a town
+   played 36 game hours in node with a clearing, a demolition, a building
+   and a replace sent as commands comes out the same save twice, to the
+   byte, and opened again two minutes on catches up 120 ticks with all 217
+   names kept (`npm run test:core`); a save of the build before opens,
+   catches up and keeps its new names over a reload; `world:compare`
+   IDENTICAL, `test:cities` and `test:traffic` the same; a still frame 8.00
+   → 7.96 ms, update 0.48 → 0.50 (`world:bench`, middles of three); skill
+   `buildings`, core.md. Headless the world now goes at 0.4 of real time
+   (Found on the way), so fewer of the cars round the start are there after
+   twelve chunks away (71-77 of 88-96, was 75-90 of 80-96; 84 of 88 with the
+   clock moved by real time)._
 7. **The simulation on a worker**, as a local server: commands in, snapshots
    out. Before saving by region and the server, because it brings in the
    protocol they both use.
@@ -404,6 +420,24 @@ keeps only what is still to come.
   roads of where the camera had been, and nearly all taken off
   (`reconcile`). Now found again whenever a chunk is drawn or let go of
   (`Tilesman#version`).
+- Before step 6 a building went up on the real clock (`setTimeout`,
+  `Date.now`) while the world's ticks went by a timer of their own and the
+  bulldozers by the frames: hidden, the buildings went on going up, the
+  bulldozers stood still and the ticks were made up for after. Now all of it
+  goes by one clock, moved by the frames - so under 5 frames a second (the
+  engine's 200 ms cap; headless, 2 a second) the ticks too go slower than
+  real time, as the bulldozers always did.
+- The client asked for the city as `getCity(0)`: right only because the
+  first city a page made was numbered 0, counted per page. A city keeps its
+  number in the save now, counted per world (`CityService#nameCity`).
+- `namespace` hung everything on `window`, and `data/buildings` took its
+  layers from `client/renderlayer`: the core could not load in node without
+  a `window` made for it, nor without the client. Now `globalThis`, and the
+  layers are `data/renderlayer`.
+- `City#timeEstablished` is `world.time.milliseconds`, which is no field of
+  VTime: every city's founding time is saved as nothing.
+- A city's names and seed are kept with its save, not by region yet: two
+  players' cities would count from the same 0 (step 8).
 - A quarter turn and the view from above take the camera to the world's
   origin on the way (`client/components/camerascript.js:533`, `:345`): the chunks no longer follow it
   (worked out once a frame), but whatever else listens to the camera moving

@@ -147,11 +147,18 @@ function start(job) {
     var city = vkaria.core.cities.getCity(0),
       clear = function (t) {
         return city.clearTile(t);
+      },
+      //sent to the world as a command (core/commands) since step 6, the
+      //clearing done by a function handed over before
+      send = function (tiles) {
+        if (vkaria.core.command)
+          vkaria.clearworks.clear({ type: "clear", tiles: tiles });
+        else vkaria.clearworks.clear(tiles, clear);
       };
 
     city.resourcesModule.addResource("money", 1000000);
-    vkaria.clearworks.clear(job.ground, clear);
-    vkaria.clearworks.clear([job.building], clear);
+    send(job.ground);
+    send([job.building]);
 
     return vkaria.core.buildingService.get(job.building).demolishing === true;
   }, job);

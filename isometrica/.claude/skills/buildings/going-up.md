@@ -24,7 +24,8 @@
 
 ## Clearing ground
 
-- Ground cleared (`client/clearworks.js` clear, `core/city.js` clearTile)
+- Ground cleared (a `clear` command, `core/commands.js`, sent by
+  `client/clearworks.js` clear; `core/city.js` clearTile)
   is gone from the world as soon as it is paid for; what stood on it in
   sight - trees, stones, a planted tree, a road - stays standing
   (`client/envman.js`, `buildman.js` hold; roads keep joining, `roadman.js`
@@ -70,9 +71,10 @@
   a building, nothing for the rest; its blade getting there, the tile is
   done: `city.tileDown` for a building being demolished, `terrain.endClearing`
   - nobody needs to be looking.
-- The works' clock is the client's: `client/clearworks.js` moves it on a
-  frame at a time (`Works#tick`, which also brings any bulldozer not stepped
-  for a second up to date, `DUE_EVERY`) and steps them by region with
+- The works' clock is the world's (core.md): `Logic#advance` moves it on
+  (`Works#tick`, which also brings any bulldozer not stepped for a second up
+  to date, `DUE_EVERY`), in node as in the game; `client/clearworks.js`
+  steps them by region with
   `shared/schedule`, on tilesman's levels as the traffic does (traffic,
   agents.md): FULL in view and near, every frame; COARSE in the coarse ring,
   every 250 ms within half a ms a frame; DORMANT beyond - left to `tick`,

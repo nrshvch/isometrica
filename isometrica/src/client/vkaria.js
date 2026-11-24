@@ -68,6 +68,9 @@ function Vkaria(core, ui, play) {
   this.ui = ui;
   //and how long the world's ticks take, for a debug panel (engine Stats)
   core.timed = timedTick;
+  //the world's clock moved on a frame at a time, by the game's own time
+  //(start, CoreClock) - not by a timer of its own
+  if (typeof core.driveBy === "function") core.driveBy();
 
   //TODO there should be renderer layers and logical layers, and tags too
   //configure layers (render layers)
@@ -213,12 +216,38 @@ Vkaria.prototype.topView = function () {
 Vkaria.prototype.turnsBeforeTop = 0;
 
 Vkaria.prototype.start = function () {
+  //first of all, so that whatever is stepped a frame finds the world
+  //already on to it (client/clearworks)
+  if (typeof this.core.advance === "function") {
+    var clock = new engine.GameObject("coreclock");
+
+    clock.addComponent(new CoreClock(this.core));
+    this.game.scene.addGameObject(clock);
+  }
+
   this.camera = new engine.Camera("mainCamera");
   this.camera.addComponent(new CameraScript());
   this.game.scene.addGameObject(this.camera);
 
   this.game.run();
   pauseHidden(this);
+};
+
+/**
+ * Moves the world's clock on by the frame's time (core/logic advance): what
+ * goes up, the bulldozers and the world's ticks go as the game does - as
+ * fast, as slowly, or not at all.
+ */
+function CoreClock(core) {
+  engine.Component.call(this);
+  this.core = core;
+}
+
+CoreClock.prototype = Object.create(engine.Component.prototype);
+CoreClock.prototype.profileName = "coreclock";
+
+CoreClock.prototype.tick = function (time) {
+  this.core.advance(time.dt);
 };
 
 /**

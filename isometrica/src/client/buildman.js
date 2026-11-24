@@ -608,6 +608,16 @@ function createTag(self, tile, sizeX, sizeY, text, grey) {
  * Floats what it just cost over the middle of an area of sizeX by sizeY tiles
  * anchored at tile.
  */
+//a clearing sent to the world (core/commands), shown by the bulldozers'
+//view where there is one (client/clearworks)
+function send(self, command) {
+  var root = self.root;
+
+  return root.clearworks
+    ? root.clearworks.clear(command)
+    : root.core.command(command);
+}
+
 function showCost(self, tile, sizeX, sizeY, amount, height) {
   showText(
     self,
@@ -690,15 +700,15 @@ function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
             : null;
 
       tried++;
-      root.core.cities
-        .getCity(0)
-        .buildingService.buildBuilding(
-          codes[i],
-          anchors[i],
-          rotation,
-          looks[i],
-          surfaces ? surfaces[i] : undefined,
-        );
+      root.core.command({
+        type: "build",
+        city: 0,
+        code: codes[i],
+        tile: anchors[i],
+        rotation: rotation,
+        look: looks[i],
+        surface: surfaces ? surfaces[i] : undefined,
+      });
 
       //laid again: what it cost floats over it, as a new road's does
       if (was !== null && RoadRules.materialOf(there) !== was)
@@ -1038,14 +1048,16 @@ Buildman.prototype.replace = function (tile, code) {
     root.serviceman.hideInfo();
   }
 
-  function replace(t) {
-    result = city.replace(t, picked.code, rotation, picked.look);
-
-    return result.tiles;
-  }
-
-  if (root.clearworks) root.clearworks.clear([building.tile], replace);
-  else replace(building.tile);
+  //what stands there brought down for it, the bulldozers sent
+  //(core/commands replace)
+  result = send(this, {
+    type: "replace",
+    city: city.id(),
+    tile: building.tile,
+    code: picked.code,
+    rotation: rotation,
+    look: picked.look,
+  });
 
   if (result.error !== ErrorCode.NONE)
     showText(
@@ -1108,19 +1120,11 @@ Buildman.prototype.demolish = function (tile) {
     root.serviceman.hideInfo();
   }
 
-  function clear(t) {
-    var cleared = city.clearTile(t);
-
-    total +=
-      cleared.cost !== undefined
-        ? cleared.cost
-        : cleared.length * Core.Config.clearTileCost;
-
-    return cleared;
-  }
-
-  if (root.clearworks) root.clearworks.clear([building.tile], clear);
-  else clear(building.tile);
+  total = send(this, {
+    type: "clear",
+    city: city.id(),
+    tiles: [building.tile],
+  }).cost;
 
   if (total > 0) showCost(this, building.tile, sizeX, sizeY, total);
 
@@ -1255,7 +1259,12 @@ Buildman.prototype.explode = function (tile) {
       };
     });
 
-  result = city.explode(tile, isYard);
+  result = this.root.core.command({
+    type: "explode",
+    city: city.id(),
+    tile: tile,
+    yards: Object.keys(yard).map(Number),
+  });
   root.blasted = null;
 
   if (result.error !== ErrorCode.NONE) {
@@ -1328,7 +1337,7 @@ Buildman.prototype.fireUp = function (tile) {
     return ErrorCode.NOTHING_TO_CLEAR;
   }
 
-  error = city.fireUp(tile);
+  error = this.root.core.command({ type: "fire", city: city.id(), tile: tile });
 
   if (error !== ErrorCode.NONE) {
     this.showError(tile, error);
@@ -1879,7 +1888,7 @@ Buildman.prototype.build = function (code, options) {
       function (name) {
         //the money it starts out with comes up with it, in the game's own
         //screens - and what the house cost floats over the house
-        if (root.core.cities.establishCity(tile, name))
+        if (root.core.command({ type: "found", tile: tile, name: name }))
           buildSelection(
             self,
             code,

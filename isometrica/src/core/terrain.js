@@ -21,7 +21,8 @@ var events = {
 //that growing back (client/terrain): half a day
 var REGROWS = 43200000;
 
-//how long a tile is being cleared at the most, real time, ms - should
+//how long a tile is being cleared at the most, on the world's clock, ms -
+//should
 //whoever shows it being done never say it is (beingCleared)
 var CLEARING_MOST = 180000;
 
@@ -490,6 +491,13 @@ function now(self) {
   return time ? time.now : 0;
 }
 
+//the world's clock (core/logic advance), not the game's time of day
+function clock(self) {
+  var world = self.world;
+
+  return world && typeof world.clock === "number" ? world.clock : 0;
+}
+
 /**
  * Has the ground of a tile bare earth, the grass to grow back over it (as
  * #clear has it) - whatever stands there left standing: a tile of a
@@ -511,7 +519,16 @@ Terrain.prototype.bare = function (tile) {
  * @param tile {number}
  */
 Terrain.prototype.startClearing = function (tile) {
-  this.clearing[tile] = Date.now();
+  this.clearing[tile] = clock(this);
+};
+
+/**
+ * Every tile being cleared counted as being cleared from now (Logic#catchUp):
+ * the world's clock gone on at once, the bulldozers still on their way to
+ * them are not given up on.
+ */
+Terrain.prototype.restartClearing = function () {
+  for (var tile in this.clearing) this.clearing[tile] = clock(this);
 };
 
 //what was on a tile is gone now (startClearing) - and whoever waits for
@@ -534,7 +551,7 @@ Terrain.prototype.beingCleared = function (tile) {
   var since = this.clearing[tile];
 
   if (since === undefined) return false;
-  if (Date.now() - since < CLEARING_MOST) return true;
+  if (clock(this) - since < CLEARING_MOST) return true;
 
   delete this.clearing[tile];
   return false;

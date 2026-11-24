@@ -111,10 +111,8 @@ Building.SMOULDERS = 24 * HOUR;
  */
 Building.prototype.ignite = function (at) {
   this.fire = at;
-  //going up no further
-  this._run++;
-  clearTimeout(this._timer);
-  this._timer = null;
+  //going up no further (Buildings#due)
+  this._dueAt = -1;
   this._state = BuildingState.burning;
   Events.fire(this, Construction.events.stateChange, this._state);
 };
@@ -257,6 +255,12 @@ Building.prototype.knock = function (tiles) {
   return now;
 };
 
+//a chance of this tick for it, from the world's seed, where it stands, its
+//name and the game's time (Logic#chance): the same played again
+function chance(self, salt) {
+  return self.world.chance(self.tile, self.id, self.world.time.now, salt);
+}
+
 /**
  * Whether, so little health left, it comes down by itself or catches fire
  * this tick - more likely the less health it has, and none of it over
@@ -283,12 +287,12 @@ function hazards(self, hours) {
     collapse = health <= 0 ? 1 / COLLAPSES : (k * k * k) / (COLLAPSES * 6),
     fire = (k * k) / CATCHES;
 
-  if (city !== null && Math.random() < 1 - Math.exp(-collapse * hours)) {
+  if (city !== null && chance(self, 1) < 1 - Math.exp(-collapse * hours)) {
     city.collapse(self);
     return true;
   }
 
-  if (health > 0 && Math.random() < 1 - Math.exp(-fire * hours))
+  if (health > 0 && chance(self, 2) < 1 - Math.exp(-fire * hours))
     self.ignite(self.world.time.now);
 
   return false;
@@ -321,9 +325,7 @@ function fallsLater(self) {
  */
 Building.prototype.restoreFire = function (at) {
   this.fire = at;
-  this._run++;
-  clearTimeout(this._timer);
-  this._timer = null;
+  this._dueAt = -1;
   this._state =
     this.world.time.now - at >= Building.BURNS
       ? BuildingState.ruin

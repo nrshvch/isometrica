@@ -1,6 +1,6 @@
 ---
 name: buildings
-description: Buildings and roads going up and coming down - sites, clearing and bulldozers, roadworks, surfaces, demolition, blasts and health, fire, ruins, rubble, replace - and the city they make (area, road network, people, jobs, water, saves). Load before changing core/city*, core/building*, client/buildman, demolition, explosion, fires, clearworks or roadworks.
+description: Buildings and roads going up and coming down - sites, clearing and bulldozers, roadworks, surfaces, demolition, blasts and health, fire, ruins, rubble, replace - and the city they make (area, road network, people, jobs, water, saves); the core's one clock, seeded chance, names that last and commands, and test:core. Load before changing core/city*, core/building*, core/logic, core/commands, core/construction, client/buildman, demolition, explosion, fires, clearworks or roadworks.
 ---
 
 # Buildings and the city
@@ -32,6 +32,8 @@ saved.
   bringing a demolition down a tile at a time; stepped, saved, caught up.
 - `core/surface.js`, `core/rotation.js`, `core/terrain.js` (`beingCleared`,
   `REGROWS`, `bareFor`), `core/persistence/` (saves).
+- `core/logic.js` (the clock: `advance`, ticks, `catchUp`; `chance`, `name`,
+  `command`), `core/commands.js` (what the player does, as plain objects).
 - `client/buildman.js` - building views and their lifecycle on screen
   (`found`, `hold`, `demolitionOf`, `onDemolish`, `explode`, `fireUp`,
   `replace`, `showConstructionCost`). Hub: read in ranges.
@@ -48,13 +50,17 @@ saved.
 
 ## Must hold
 
-- core stays headless: nothing in `core/` imports the client (the cities
-  test runs it in node).
+- core stays headless: nothing in `core/` imports the client nor reaches for
+  a browser, and it goes on in node (`npm run test:core`; core.md).
+- One clock: what plays out over time goes by `Logic#clock` (or the game's
+  time it ticks), never `Date.now`; chance in the world by `Logic#chance`,
+  never `Math.random`; what the player does by `Logic#command` (core.md).
 - Being demolished, a building is the bulldozers' alone: no blast, no fire,
   no hazards; a fire on it is put out; only Replace and Demolish offered.
 - A building put up waits for its ground to be cleared (at most a tenth of
   the way up till then); one put up by Replace starts on cleared ground.
-- Saved: a building's `fire`, `health`, `smoke`, `down`, `yards`,
+- Saved: the world's `seed` and last name given (`named`); a building's `id`,
+  `fire`, `health`, `smoke`, `down`, `yards`,
   `demolishing`, `surface`, `look`; the terrain's `bareFor`; the bulldozers
   out and the tiles waiting for them (`works`). Not saved: the city's area
   and network (worked out again), anything only drawn.
@@ -72,7 +78,7 @@ saved.
   `/demolition.html`, `/replace.html`, `/explosion.html`, `/fire.html`, all
   on `lab/bench/world.js` - the game's own way, time as fast as asked.
 - `npm run test:cities` opens generated cities in the real core (cut off,
-  wants, network).
+  wants, network). `npm run test:core` plays one in node, twice the same.
 - In the game: city-sim, tap a building - Replace, Demolish, Blow up, Fire up.
 
 ## More
@@ -82,5 +88,7 @@ saved.
   shaping the ground, work lights.
 - [coming-down.md](coming-down.md) - demolition, blasts, collapse, fire,
   ruins and rubble, health.
+- [core.md](core.md) - the core in node: one clock, seeded chance, names
+  that last, commands; `test:core`.
 - [city.md](city.md) - founding, area and network, people, jobs, water,
   services, catching up, the clock, saves.

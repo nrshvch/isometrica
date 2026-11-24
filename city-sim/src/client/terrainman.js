@@ -248,25 +248,16 @@ Terrainman.prototype.enter = function () {
       return city().quoteClear(tiles);
     },
     apply: function (tiles) {
-      var c = city(),
-        where = area(),
-        total = 0;
-
-      //what stood on them stays standing until a bulldozer gets to it, and
-      //goes down in a cloud of dust - a building comes down a tile at a
-      //time (client/clearworks, client/demolition)
-      root.clearworks.clear(tiles, function (tile) {
-        var cleared = c.clearTile(tile);
-
-        //every tile is charged on its own - with the rest of a building on
-        //it
-        total +=
-          cleared.cost !== undefined
-            ? cleared.cost
-            : cleared.length * Core.Config.clearTileCost;
-
-        return cleared;
-      });
+      var where = area(),
+        //what stood on them stays standing until a bulldozer gets to it,
+        //and goes down in a cloud of dust - a building comes down a tile at
+        //a time (client/clearworks, client/demolition); every tile charged
+        //on its own (isometrica core/commands clear)
+        total = root.clearworks.clear({
+          type: "clear",
+          city: city().id(),
+          tiles: tiles,
+        }).cost;
 
       //and what it all came to goes up once, over the whole of the picked
       //ground
@@ -303,7 +294,12 @@ Terrainman.prototype.enter = function () {
         return city().quoteTerraform(tiles, direction);
       },
       apply: function (tiles) {
-        var result = city().terraform(tiles, direction),
+        var result = root.core.command({
+            type: "terraform",
+            city: city().id(),
+            tiles: tiles,
+            direction: direction,
+          }),
           where = area();
 
         //what stays is drawn again on the ground as it is now

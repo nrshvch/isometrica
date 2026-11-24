@@ -111,22 +111,25 @@ Clearworks.prototype.init = function () {
 };
 
 /**
- * Clears tiles - clear(tile) clearing each in the world, and saying which
- * tiles it cleared, every tile of a building on it - and has the bulldozers
- * out to them (core/works): what stood on them stays standing until one
- * gets there.
+ * Sends the world a clearing - a command (core/commands "clear" or
+ * "replace"): the tiles cleared in the world, every tile of a building on
+ * them, and the bulldozers out to them (core/works) - and shows it: what
+ * stood on them stays standing until one gets there.
  *
- * @param tiles {number[]}
- * @param clear {function(number): number[]}
+ * @param command {{type: string, tiles: number[]}}
+ * @returns {Object} what the world made of it (core/commands)
  */
-Clearworks.prototype.clear = function (tiles, clear) {
-  var self = this;
+Clearworks.prototype.clear = function (command) {
+  var self = this,
+    result = this.root.core.command(command);
 
-  this.works.clear(tiles, clear).forEach(function (t) {
+  result.cleared.forEach(function (t) {
     //nothing held - nothing of it in sight - so nothing a bulldozer has
     //to push over: in its dust, there and then
     if (self.held[t] === undefined) burst(self, t);
   });
+
+  return result;
 };
 
 /**
@@ -244,9 +247,9 @@ ClearworksScript.prototype.tick = function (time) {
   Stats.begin(TIME);
   man.stamp = (man.stamp + 1) >>> 0 || 1;
 
-  //the clock on, and those asleep brought up to date now and then
-  works.tick(time.dt);
-
+  //the works' clock is the world's, moved on before any of this
+  //(core/logic advance, client/vkaria): those asleep brought up to date
+  //there now and then
   //the regions with any out, by tier - with none out, nothing to step
   if (works.store.count > 0) {
     man.scheduler.full(time.dt);

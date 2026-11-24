@@ -5,8 +5,10 @@ import { NumMap, Store } from "shared/typed";
 /**
  * The bulldozers clearing ground and bringing down what is being
  * demolished, as records: a row a bulldozer, the tiles still to get to, and
- * every tile waiting for one. Stepped by whoever has the clock (client/
- * clearworks, by region and tier), by any stretch of time in one go; what a
+ * every tile waiting for one. On the world's clock (core/logic advance moves
+ * it on, #tick), stepped by any stretch of time in one go - by region and
+ * tier near the camera (client/clearworks), the rest a second at most
+ * behind; what a
  * bulldozer does - a tile cleared, a tile of a building down - is done here,
  * whether anyone sees it or not, and saved with the city.
  * See isometrica/.claude/skills/buildings/going-up.md (The bulldozers as
@@ -91,15 +93,17 @@ function key(tile) {
  */
 function Works(world) {
   this.world = world;
-  //the works' own time, ms - moved on by whoever steps them (#tick)
+  //the works' own count of the world's clock, ms - moved on with it
+  //(#tick), and on its own over a save opened again (#catchUp)
   this.clock = 0;
   this.looked = 0;
   //a row a bulldozer: where it is (tiles), its heading (HX), what it is
   //doing and how far into it, ms, how long it has been out, ms, the tile it
   //is on (shoving) and the one it got to last, and when it was last stepped
-  //(the clock)
+  //(the clock); and its name, which lasts (Logic#name)
   this.store = Store(
     {
+      name: Float64Array,
       x: Float64Array,
       y: Float64Array,
       heading: Uint8Array,
@@ -710,6 +714,12 @@ function add(self, d) {
   cols.on[slot] = d.on;
   cols.got[slot] = d.got;
   cols.at[slot] = self.clock;
+  cols.name[slot] =
+    typeof self.world.name !== "function"
+      ? 0
+      : d.name > 0
+        ? self.world.keepName(d.name)
+        : self.world.name();
   self.queues[slot] = d.queue;
 
   if (self.view !== null) self.view.added(slot);
@@ -754,6 +764,7 @@ Works.prototype.save = function () {
       cols.got[slot],
       this.queues[slot].slice(),
       cols.at[slot] - clock,
+      cols.name[slot],
     ]);
   }
 
@@ -798,6 +809,8 @@ Works.prototype.load = function (data, away) {
       on: d[6],
       got: d[7],
       queue: d[8].slice(),
+      //saves from before they had names have none: a new one
+      name: d[10],
     });
     //as far behind as it was
     if (d[9] < 0) self.store.cols.at[slot] += d[9];

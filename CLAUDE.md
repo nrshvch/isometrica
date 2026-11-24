@@ -85,7 +85,8 @@ Many files are 20-120 KB, a third of it comments.
 - `npm run dev:city-sim`, `dev:food-rider`, `dev:isometrica` (the lab).
 - `npm run build` (both games), `build:city-sim`, `build:food-rider`,
   `build:lab`. Each builds the engine and isometrica first.
-- `npm run test:traffic`, `npm run test:cities` - isometrica's headless tests.
+- `npm run test:traffic`, `npm run test:cities`, `npm run test:core` -
+  isometrica's headless tests.
 - `npm run lint`, `npm test` (shared's unit tests), `npm run bench`.
 - Deploys: `.github/workflows/*.yml` to Cloudflare Workers; main → dev,
   `<app>/vX.Y.Z` tag → production (see README, Deploying).

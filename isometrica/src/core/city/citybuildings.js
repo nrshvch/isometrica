@@ -90,19 +90,42 @@ CityBuildings.prototype.init = function () {
 };
 
 /**
- * What a building of a type goes up as: any of its variants, picked at random
- * (see variants in data/buildings) - and a building that is no type is itself.
+ * What a building of a type goes up as: any of its variants, picked by
+ * chance (see variants in data/buildings) - and a building that is no type
+ * is itself.
  *
  * @param code {number}
+ * @param [chance] {number} 0..1: Math.random's for a client picking it
  * @returns {number} the code of the building that goes up
  */
-function variantOf(code) {
+function variantOf(code, chance) {
   var variants = BuildingData[code] && BuildingData[code].variants;
 
   if (variants === undefined) return code;
 
-  return variants[Math.floor(Math.random() * variants.length)];
+  //picked by whoever is to send it, where nothing is said (client/buildman)
+  if (chance === undefined) chance = Math.random();
+
+  return variants[Math.floor(chance * variants.length)];
 }
+
+/**
+ * The variant that goes up on tile in a world, by the world's chance there
+ * and then (Logic#chance): the same played again.
+ *
+ * @param world {Logic}
+ * @param code {number}
+ * @param tile {number}
+ * @returns {number}
+ */
+function variantIn(world, code, tile) {
+  return variantOf(code, world.chance(tile, 0, world.clock, VARIANT));
+}
+
+//what a variant's chance is told apart by (Logic#chance salt)
+var VARIANT = 3;
+
+CityBuildings.variantIn = variantIn;
 
 CityBuildings.variantOf = variantOf;
 
@@ -211,7 +234,7 @@ CityBuildings.prototype.buildBuilding = function (
 
   //the catalogue hands codes over as the strings they are in the markup, and
   //"3" is not BuildingCode.cityHall however much it looks like it
-  code = variantOf(parseInt(code, 10));
+  code = variantIn(root, parseInt(code, 10), tile);
 
   //a road laid over a lesser one: that one laid again where it lies
   var road = upgradeOf(this, code, tile, look),
@@ -499,6 +522,9 @@ CityBuildings.prototype.restore = function (
 
   var building = new Building();
 
+  //its name, kept (saves from before buildings kept theirs: a new one)
+  if (more && more.id > 0) building.id = more.id;
+
   //one still going up when it was saved goes on from there - anything else
   //was up long ago
   building.init(
@@ -554,6 +580,7 @@ CityBuildings.prototype.save = function () {
     building = this._buildings[i];
 
     r.push({
+      id: building.id,
       code: building.buildingCode,
       tile: building.tile,
       rotation: building.rotation || 0,
@@ -636,7 +663,7 @@ CityBuildings.prototype.leaveRubble = function (tile, pile, smoke, of, burnt) {
   }
 
   return this.restore(
-    variantOf(BuildingCode.rubble),
+    variantIn(this.city.world, BuildingCode.rubble, tile),
     tile,
     0,
     true,
@@ -657,9 +684,15 @@ CityBuildings.prototype.leaveRubble = function (tile, pile, smoke, of, burnt) {
  *        string}} way "x+", "x-", "y+" or "y-" (client/view headings)
  */
 CityBuildings.prototype.leaveFallen = function (tile, tree) {
-  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true, {
-    fallen: tree,
-  });
+  return this.restore(
+    variantIn(this.city.world, BuildingCode.rubble, tile),
+    tile,
+    0,
+    true,
+    {
+      fallen: tree,
+    },
+  );
 };
 
 /**
@@ -672,14 +705,20 @@ CityBuildings.prototype.leaveFallen = function (tile, tree) {
  * @param building {Building} what it was a yard of, as it stood
  */
 CityBuildings.prototype.leaveWreck = function (tile, building) {
-  return this.restore(variantOf(BuildingCode.rubble), tile, 0, true, {
-    wreck: {
-      code: building.buildingCode,
-      tile: building.tile,
-      rotation: building.rotation || 0,
-      look: building.look || undefined,
+  return this.restore(
+    variantIn(this.city.world, BuildingCode.rubble, tile),
+    tile,
+    0,
+    true,
+    {
+      wreck: {
+        code: building.buildingCode,
+        tile: building.tile,
+        rotation: building.rotation || 0,
+        look: building.look || undefined,
+      },
     },
-  });
+  );
 };
 
 /**

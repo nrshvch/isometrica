@@ -25,6 +25,7 @@ import Terrain from "./terrain";
 import TerrainType from "./terraintype";
 import TileIterator from "./tileiterator";
 import "./tileiteratoraction";
+import { Heap } from "shared/typed";
 /**
  * @type {BuildingPositioning}
  */
@@ -210,6 +211,9 @@ function Buildings(world) {
   //the tiles kept for something to go up on once all of them are cleared
   //(reserve), by the tile
   this.held = Object.create(null);
+  //what is going up, by the name, soonest finished first: when on the
+  //world's clock (Construction start)
+  this.dueAt = Heap(64);
 }
 
 Buildings.events = events;
@@ -249,6 +253,34 @@ Buildings.prototype.build = function (building) {
   Events.once(building, "dispose", onBuildingDispose, [sub1]);
 
   Events.fire(this, events.buildingBuilt, building);
+};
+
+/**
+ * Has something going up finished at a time on the world's clock (due).
+ *
+ * @param building {Construction}
+ * @param at {number}
+ */
+Buildings.prototype.schedule = function (building, at) {
+  this.dueAt.push(at, building.id);
+};
+
+/**
+ * Finishes whatever is going up whose time is up by the world's clock
+ * (Logic#advance), soonest first - not one set going again, or waiting for
+ * its ground, since (Construction dueAt).
+ *
+ * @param clock {number}
+ */
+Buildings.prototype.due = function (clock) {
+  var heap = this.dueAt;
+
+  while (heap.size > 0 && heap.peekKey() <= clock) {
+    var at = heap.peekKey(),
+      building = this.buildings[heap.pop()];
+
+    if (building !== undefined && building.dueAt() === at) building.finish();
+  }
 };
 
 /**

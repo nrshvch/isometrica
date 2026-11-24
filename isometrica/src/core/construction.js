@@ -8,6 +8,7 @@ import Terrain from "./terrain";
 import ConstructionState from "./buildingstate";
 import Rotation from "./rotation";
 
+//names for constructions of a world that gives none (a bench's stand-in)
 var id = 0;
 
 var events = {
@@ -20,7 +21,12 @@ var events = {
 var CLEAR_SHARE = 0.1;
 
 function constructor(self) {
-  self.id = id++;
+  self.id = -1;
+}
+
+//the world's clock (Logic#advance), or 0 for a world without one
+function clockOf(world) {
+  return world !== null && typeof world.clock === "number" ? world.clock : 0;
 }
 
 /**
@@ -31,6 +37,10 @@ function constructor(self) {
 function init(self, world, code, tile, rot, done) {
   self.data = ConstructionData[code];
   self.world = world;
+  //its name, for good: one it had before (a save), or the world's next
+  if (world === null || typeof world.name !== "function") {
+    if (self.id < 0) self.id = id++;
+  } else self.id = self.id > 0 ? world.keepName(self.id) : world.name();
   self.tile = tile;
   self.buildingCode = code;
   self.rotation = Rotation.turns(rot);
@@ -40,33 +50,25 @@ function init(self, world, code, tile, rot, done) {
 
 /**
  * Sets it going up from progress, 0..1 - or finished, from 1 - and has it
- * finished once the rest of its construction time is up: only the last time
- * it was set going counts, so one built over again (rebuild) is not finished
- * early by the timer of the time before.
+ * finished once the rest of its construction time is up on the world's
+ * clock (Buildings#due): only the last time it was set going counts, so one
+ * built over again (rebuild) is not finished early by the time before.
  */
 function start(self, progress) {
-  var time = self.data.constructionTime,
-    run = (self._run = (self._run || 0) + 1);
+  var time = self.data.constructionTime;
 
   if (time === 0 || progress >= 1) {
     self._state = ConstructionState.ready;
+    self._dueAt = -1;
     return;
   }
 
   self._state = ConstructionState.underConstruction;
   //as if it had started that long ago, so that it is timed the same
-  self._startedAt = Date.now() - progress * time;
-  clearTimeout(self._timer);
-  self._timer = setTimeout(
-    function () {
-      self._timer = null;
-      if (self._run !== run) return;
-
-      self._state = ConstructionState.ready;
-      Events.fire(self, events.stateChange, self._state);
-    },
-    (1 - progress) * time,
-  );
+  self._startedAt = clockOf(self.world) - progress * time;
+  self._dueAt = self._startedAt + time;
+  if (self.world.buildings && self.world.buildings.schedule)
+    self.world.buildings.schedule(self, self._dueAt);
 }
 
 function Construction() {
@@ -85,12 +87,10 @@ Construction.prototype.data = null;
 Construction.prototype.world = null;
 Construction.prototype.buildingCode = -1;
 Construction.prototype._state = ConstructionState.none;
-//when it started going up, on the clock that times it (see init)
+//when it started going up, and when it is to be finished - -1 for not by
+//the clock - on the world's clock (start)
 Construction.prototype._startedAt = 0;
-//how many times it was set going up (start), for the timer of the last one
-Construction.prototype._run = 0;
-//the timer it is finished by
-Construction.prototype._timer = null;
+Construction.prototype._dueAt = -1;
 //waiting for its ground to be cleared before it goes up (awaitClearing)
 Construction.prototype._clearing = false;
 
@@ -119,10 +119,8 @@ Construction.prototype.rebuild = function () {
 Construction.prototype.awaitClearing = function () {
   if (this._state !== ConstructionState.underConstruction) return;
 
-  //not to be finished by its timer meanwhile
-  this._run++;
-  clearTimeout(this._timer);
-  this._timer = null;
+  //not to be finished by the clock meanwhile
+  this._dueAt = -1;
   this._clearing = true;
 };
 
@@ -148,12 +146,10 @@ Construction.prototype.cleared = function () {
 };
 
 /**
- * Has it go up as far as it would have in ms more - for time that went by
- * with the game closed, made up for at once (Logic#catchUp): the clock it is
- * timed by stood still meanwhile, the save keeping only how far it had got.
- * Finished, if that is far enough.
+ * Has it go up as far as it would have in ms more of the world's clock, at
+ * once - finished, if that is far enough.
  *
- * @param ms {number} real time
+ * @param ms {number}
  */
 Construction.prototype.advance = function (ms) {
   if (this._state !== ConstructionState.underConstruction || !(ms > 0)) return;
@@ -174,11 +170,29 @@ Construction.prototype.advance = function (ms) {
     return;
   }
 
-  this._run++;
-  clearTimeout(this._timer);
-  this._timer = null;
+  this.finish();
+};
+
+/**
+ * Finished, there and then - its time up on the world's clock
+ * (Buildings#due), or made up for (#advance) - and whoever draws it told.
+ */
+Construction.prototype.finish = function () {
+  if (this._state !== ConstructionState.underConstruction) return;
+
+  this._dueAt = -1;
   this._state = ConstructionState.ready;
   Events.fire(this, events.stateChange, this._state);
+};
+
+/**
+ * When it is to be finished on the world's clock: -1 for not by it
+ * (finished, or waiting for its ground).
+ *
+ * @returns {number}
+ */
+Construction.prototype.dueAt = function () {
+  return this._dueAt;
 };
 
 /**
@@ -195,7 +209,7 @@ Construction.prototype.setProgress = function (progress) {
   //finished by a timer (awaitClearing)
   if (this._clearing) {
     this._startedAt =
-      Date.now() -
+      clockOf(this.world) -
       Math.min(CLEAR_SHARE, Math.max(0, progress)) * this.data.constructionTime;
     return;
   }
@@ -218,7 +232,10 @@ Construction.prototype.getProgress = function () {
 
   var progress = Math.min(
     1,
-    Math.max(0, (Date.now() - this._startedAt) / this.data.constructionTime),
+    Math.max(
+      0,
+      (clockOf(this.world) - this._startedAt) / this.data.constructionTime,
+    ),
   );
 
   //no further than so far till its ground is cleared (awaitClearing)

@@ -28,6 +28,8 @@ function CityService(root) {
   this._citiesByName = {};
   this._citiesByTile = {};
   this._citiesById = {};
+  //the next name for a city of the world (nameCity)
+  this._named = 0;
 
   this.onNewCity = Events.event(events.cityNew);
 }
@@ -35,6 +37,20 @@ function CityService(root) {
 CityService.events = events;
 
 CityService.prototype.init = function () {};
+
+/**
+ * A city's name, for good: the one it had (a save), or the next - from 0,
+ * the world's first city's, which saves from before cities kept theirs are
+ * given too.
+ *
+ * @param [id] {number}
+ * @returns {number}
+ */
+CityService.prototype.nameCity = function (id) {
+  if (!(id >= 0)) id = this._named;
+  this._named = Math.max(this._named, id + 1);
+  return id;
+};
 
 CityService.prototype.establishCity = function (tile, name) {
   var city = City.establish(this.root, tile, name);
@@ -54,7 +70,7 @@ CityService.prototype.establishCity = function (tile, name) {
  * @returns {City}
  */
 CityService.prototype.restoreCity = function (data) {
-  var city = new City(this.root, data.tile);
+  var city = new City(this.root, data.tile, data.id);
 
   addCity(this, city);
   Events.fire(this, events.cityNew, city);
