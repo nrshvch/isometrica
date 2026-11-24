@@ -1,13 +1,14 @@
-# Checks every push, on every branch: the lint (ESLint - the recommended rules,
-# and the ways the packages may depend on each other: shared <- engine <-
-# isometrica <- the games, never game to game), the formatting (Prettier), and
-# the shared libraries' unit tests - and their benchmarks, printed for every
-# run so that how fast they are stays measured.
+# Checks every push, on every branch, and every pull request: the lint (ESLint -
+# the recommended rules, and the ways the packages may depend on each other:
+# shared <- engine <- isometrica <- the games, never game to game), the
+# formatting (Prettier), and the shared libraries' unit tests - and their
+# benchmarks, printed for every run so that how fast they are stays measured.
 name: checks
 
 on:
   push:
     branches: ["**"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
