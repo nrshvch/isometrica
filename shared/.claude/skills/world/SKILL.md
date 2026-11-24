@@ -1,6 +1,6 @@
 ---
 name: world
-description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/draw (Pictures, DrawList, Visible). Load before using or changing any of them.
+description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/draw (Pictures, DrawList, Visible), and shared/random's toss. Load before using or changing any of them.
 ---
 
 # The world's libraries
@@ -83,6 +83,14 @@ store.cols.x`. Re-reading `store.count` off the object every pass keeps V8
   coming in coarse gets its first turn spread over the period by a hash of
   its key. Runs go by handle, so a region removed mid-run is skipped.
   `stats.time` / `stats.runs` are `[system * TIERS + tier]`.
+
+## random's toss
+
+- `toss(seed, region, record, step, salt)` -> [0, 1): murmur3's mixing over
+  each number's low and high 32 bits. A pure function, so the same in any
+  order, thread or machine - what a simulated world tosses with, where a
+  stream (`Random`) would give other numbers whenever the order of work
+  changes. The numbers are pinned in `random.test.js`.
 
 ## draw
 

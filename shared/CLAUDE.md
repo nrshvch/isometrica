@@ -34,7 +34,8 @@ shared/<lib>/
 ## Libraries
 
 - `random` - a seeded random stream (mulberry32): next, int, range, chance,
-  pick, weighted, shuffle, fork(salt) for a stream of its own.
+  pick, weighted, shuffle, fork(salt) for a stream of its own; and
+  toss(seed, region, record, step) - a chance that does not depend on order.
 - `pixels` - pictures as RGBA pixels ({width, height, data}), put together
   the way a 2D canvas would, without one: over, silhouette, lighten,
   fromImage.

@@ -1,5 +1,5 @@
 import { test } from "vitest";
-import Random from "./index.js";
+import Random, { toss } from "./index.js";
 
 var N = 100000,
   out = new Float64Array(N),
@@ -11,6 +11,9 @@ test("Random", async function ({ bench }) {
       var random = Random(1);
 
       for (var i = 0; i < N; i++) out[i] = random.next();
+    }),
+    bench("toss, 100k, from region, record and step", function () {
+      for (var i = 0; i < N; i++) out[i] = toss(7, 9637, i, 1000);
     }),
     bench("int, 100k", function () {
       var random = Random(2);

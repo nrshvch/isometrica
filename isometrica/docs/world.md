@@ -231,7 +231,7 @@ after (above), with the debug panel's `Stats` and the traffic test
      everything and of `flatbush`/`kdbush` (in development only), and the
      benchmark puts them side by side. _Done._
    - 1d `shared/random`: a toss that does not depend on order, from a region,
-     a record and a step. Done when its numbers are pinned.
+     a record and a step. Done when its numbers are pinned. _Done._
    - 1e `shared/interest` and `shared/schedule`: rings, tiers, letting go after
      a while; a budget a frame. Done when tested on made-up observers and
      regions, nothing of the game in them. _`shared/schedule` built._
