@@ -1,30 +1,7 @@
 /**
- * How warm the world is where: hot in the middle of it and colder the further
- * out - the way the Earth is hot at the equator and frozen at the poles, only
- * the world is flat, so its equator is the middle of it and its poles all of
- * its rim. The climate rings round the middle, in five zones (ZONES): the
- * desert in the very middle, nothing but sand; the savannah round it, its
- * red earth showing through dry grass, cacti and dried-out trees on it; the
- * green world further out; then the arctic, snow and ice and the firs and
- * pines snowed over; and out at the edge the north, nothing but snow.
- *
- * It all goes by one number, TEMPERATURE - how warm it is in the very middle.
- * From there it gets colder by a degree every 1 / LAPSE tiles out, the
- * further out the colder, and every zone (ZONES) starts at a temperature of
- * its own, so warming the world pushes every zone out at once: the desert
- * spreads, the green ring moves further out - a longer ring, more room - and
- * the snow draws back to the edge of the world.
- *
- * The rings are not round: how warm it is wanders a couple of degrees either
- * way over a few thousand tiles (heat). Nor does one zone end along a line
- * where the next starts. The tiles of both are mixed over BLEND degrees
- * either side of where it changes, eight hundred tiles or so - first a
- * patch of the next zone here and there, then more and bigger ones that run
- * into each other, until there is nothing left of the first: the way the
- * woods shade into each other (core/woods), on the scale of the world.
- *
- * Nothing here is kept: it is worked out from where a tile is, the same every
- * time - like the lie of the land (core/terrain).
+ * How warm the world is where: hot in the middle, frozen at the rim, five
+ * zones (ZONES) by TEMPERATURE, LAPSE and BLEND. Never saved.
+ * See isometrica/.claude/skills/generators/ground.md (Climate).
  */
 import Simplex from "simplex-noise";
 

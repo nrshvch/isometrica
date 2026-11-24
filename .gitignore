@@ -7,6 +7,9 @@ test/temp
 **/.claude/*
 !/.claude/settings.json
 !/.claude/skills/
+!/.claude/rules/
+!/*/.claude/skills/
+!/*/.claude/rules/
 .claudeignore
 isometrica/assets/terrain/terraingen
 isometrica/assets/previews

@@ -10,7 +10,7 @@
 # - manual run                   → Actions → "food-rider" → Run workflow; on a food-rider/v* tag it
 #                                  deploys that release to production again (a rollback)
 #
-# Branch pushes run only when food-rider, or what it is built on - isometrica, the engine - changes.
+# Branch pushes run only when food-rider, or what it is built on - isometrica, the engine, the shared libraries - changes.
 # Tag pushes always run: GitHub does not look at `paths` for tags.
 name: food-rider
 
@@ -22,6 +22,7 @@ on:
       - "food-rider/**"
       - "isometrica/**"
       - "engine/**"
+      - "shared/**"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"

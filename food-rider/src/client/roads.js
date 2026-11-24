@@ -1,13 +1,7 @@
 /**
- * The city's roads as the courier drives them: every one there is, not just
- * those on screen - the client only keeps the roads of the chunks it has
- * loaded (client/roadman), and an order goes right across town.
- *
- * Two roads join where they meet level, at the same height all along the
- * edge between them (core/surface meets), and a one-way road is never
- * driven against the way it goes (client/road goes) - the same as the
- * traffic goes by (client/carman), so the courier's car takes no way the
- * rest could not.
+ * Every road in the city as the courier drives them, not just the loaded
+ * chunks': joined where they meet level, one-way never driven against.
+ * See food-rider/.claude/skills/delivery/SKILL.md (Where).
  */
 import Terrain from "isometrica/core/terrain";
 import Surface from "isometrica/core/surface";

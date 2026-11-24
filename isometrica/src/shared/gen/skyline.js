@@ -1,27 +1,7 @@
 /**
- * The city heard from high above it - from a tall roof, or the sky over it -
- * the way the city map of an old management game sounded (Pizza Tycoon's,
- * as remembered), and the way a real city does: a hum, not a cartoon.
- *
- * What makes it sound real is mostly how much of it there is and how far off
- * it all is. Thousands of engines and tyres too far off to tell apart add up
- * to a steady roar, loudest low down and falling off above, each octave of
- * it a little louder and quieter as the traffic moves, the top of it soaked
- * up by the air on the way up - further off than a couple of hundred metres
- * nothing stands out of it. Out of that, a few dozen nearer vehicles rise
- * over many seconds and sink back: cars mostly the rush of their tyres,
- * lorries and buses the thud of their engines, a bus pulling away through
- * its gears, the hiss of its brakes. And horns - real ones, a diaphragm
- * buzzing through a trumpet, often two a third apart, tapped, leaned on, or
- * answering each other in a jam - each coming back off the buildings. All of
- * it in the long echo of streets between tall walls: a feedback delay
- * network (Jot's, dsp.js ring), denser and longer than the little reverb of
- * the cartoon sounds.
- *
- * Nothing here is laid in from the other sounds - the cars and horns are
- * their own models - only the plain pieces (noise, filters, laying sounds
- * into the ears, seamless loops, the ring of the streets) come from dsp.js.
- * It loops, seamlessly, the way the forest and the sea do.
+ * The city heard from high above: the roar of the town, vehicles rising out
+ * of it, real horns, all in the ring of the streets. Loops.
+ * See isometrica/.claude/skills/sound/making.md (The real ones).
  */
 
 import {

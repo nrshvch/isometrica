@@ -1,13 +1,7 @@
 /**
- * What the game's screens are built of: the world and what goes over it as
- * layers (LayeredLayout), the width they keep to (Container), its icons,
- * the HUD's buttons and the bar's, and the screens - a card over the world,
- * dimmed behind it.
- *
- * Over the world nothing takes a click by default - the layer over it is
- * pointer-events-none, so a tap goes through to the world's canvas - and
- * whatever is to be clicked says so itself, pointer-events-auto: a button,
- * a screen that covers the world.
+ * What the screens are built of: LayeredLayout, Container, Icon, buttons,
+ * screens. Over the world nothing takes a click unless it says so.
+ * See city-sim/.claude/skills/ui/SKILL.md (Must hold).
  */
 import ICONS from "./icons/index";
 

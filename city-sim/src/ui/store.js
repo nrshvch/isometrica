@@ -17,7 +17,7 @@ function debugWanted() {
 
   try {
     return localStorage.getItem(DEBUG_STORE) === "on";
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -76,7 +76,7 @@ export function setDebug(on) {
 
   try {
     localStorage.setItem(DEBUG_STORE, debug ? "on" : "off");
-  } catch (e) {
+  } catch {
     //not kept: as it is now, then
   }
 

@@ -1,19 +1,7 @@
 /**
- * The grid over the ground: a line along every edge of every tile there is,
- * drawn as lines over the ground's pictures rather than painted into them -
- * so putting it away and bringing it back (client/terrain showGrid) paints
- * nothing, and every tile is drawn with the same picture either way.
- *
- * It goes where the tiles' outlines are painted: through their corners, at
- * the heights the tiles are drawn at - a tile of water flat at its surface -
- * on the same pixels as the pictures under it, by how high each tile's
- * corners were when it was last shaped (client/terrain shapeTile). A run of
- * edges that lines up is one line.
- *
- * The lines are worked out for the tiles on the screen and a way past its
- * edges (MARGIN), and drawn from there for as long as the camera has not
- * moved further than that, nor turned or zoomed, and none of those tiles has
- * changed - every frame they are only put where they are on the screen.
+ * The grid over the ground, drawn as lines over the tiles rather than
+ * painted into them; worked out for the screen and a MARGIN.
+ * See isometrica/.claude/skills/rendering/camera.md (Over the city).
  */
 import Engine from "engine";
 import Config from "../config";

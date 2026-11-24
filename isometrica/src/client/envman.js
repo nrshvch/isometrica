@@ -2,9 +2,7 @@
  * Created by denis on 8/27/14.
  */
 import Config from "./config";
-import Engine from "engine";
 import Events from "events";
-import Terrain from "./terrain";
 import Core from "../core/main";
 import Chunkman from "./chunkman";
 import Pool from "../shared/object-pool";

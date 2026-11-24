@@ -1,19 +1,6 @@
 /**
- * How far the water reaches.
- *
- * A water tower waters everything within so many tiles of itself - the radius
- * is on the tower's own building data, and the same radius is what the player
- * is shown while they are placing one. Beyond it there is no water, and a
- * house that wants water and has none holds nobody at all.
- *
- * Water is not something the city banks: there is no reservoir to fill and no
- * amount to run out of, only ground that is covered or ground that is not. So
- * a tower is bought and paid for by where it stands, and a compact city needs
- * fewer of them than a sprawling one.
- *
- * A building counts as covered by the tile it stands on, the one the player
- * put it down on, rather than by any part of its footprint - the same tile the
- * coverage highlight paints.
+ * How far the water reaches: coverage round each tower, nothing banked.
+ * See isometrica/.claude/skills/buildings/city.md (People, jobs, water).
  */
 import Events from "events";
 import BuildingData from "../../data/buildings";

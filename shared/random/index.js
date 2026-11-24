@@ -1,6 +1,7 @@
 /**
- * Seeded RNG (mulberry32): same seed, same city. fork(n) gives each
- * stage its own stream. See .claude/skills/citygen.
+ * Seeded random numbers (mulberry32): the same seed, the same numbers.
+ * fork(salt) gives a stream of its own, so drawing from one never shifts
+ * another. Not for anything secret.
  */
 export default function Random(seed) {
   var state = seed >>> 0;

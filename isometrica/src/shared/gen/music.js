@@ -1,60 +1,8 @@
 /**
- * Music, made the way the sounds are (shared/gen/sounds): slow, light, a
- * little smoky jazz to drive about to - a New York trio after hours, played
- * by a band of numbers. A Rhodes comps the chords, an upright bass walks
- * under them, brushes swish on the snare and a ride cymbal ticks, and over
- * it all a lead - a jazz guitar, a muted trumpet, a sax, a flute or a
- * vibraphone - says a few things and leaves a lot of room.
- *
- * There is a piece for each place - "town", the small town out in the
- * country; "city", the big city; "outside", the fields and woods beyond
- * them - and each comes by "day" and by "night", the way Minecraft's music
- * tells you the sun has gone down without saying so: by night slower,
- * darker in its keys, sparser, a pad of strings under it, further off in a
- * bigger room.
- *
- * And each of those comes three ways, for the weather: "clear"; "rain" -
- * lazy, the way a grey drizzly day is: half the notes, long ones, laid back
- * behind the beat, the drums down to a slow brush swirl, the whole of it
- * dulled and wobbling a little like an old tape; and "storm" - picked up:
- * the bass walking hard, the ride busy, crashes, toms, the Rhodes stabbing
- * the offbeats, strings shivering, the lead running fills between its
- * phrases. The three ways of a piece are the same tune at the same tempo,
- * bar for bar and sample for sample, as long as each other: a game plays
- * all three at once from the same moment and turns up whichever the
- * weather is, and the music picks up or slows down mid-phrase without a
- * seam. Every one loops without a seam too.
- *
- * How it is made, after the books:
- *
- *   - the harmony is a jazz standard's - ii-V-Is, turnarounds, a backdoor
- *     cadence here and there, a few modal pieces for the open country - in
- *     an AABA form of 32 bars; the Rhodes plays rootless voicings, the 3rd,
- *     7th, 9th and 13th, each chord's voices moving as little as they can
- *     from the last (Mark Levine, The Jazz Piano Book), comping on the
- *     Charleston and other off-the-beat rhythms;
- *   - the bass walks the way Ed Friedland's Building Walking Bass Lines has
- *     it: the root on the downbeat, chord tones and steps through the bar,
- *     and a chromatic approach into the next chord's root; by night it
- *     plays in two;
- *   - the melody is a motif and what is done with it - stated, answered,
- *     stated again over the new chords, and brought home on a long note -
- *     each note a step through the chord's own scale, landing on a chord
- *     tone on the strong beats (Mark Levine, The Jazz Theory Book; Gerhard
- *     Nierhaus, Algorithmic Composition);
- *   - the instruments are small models (Andy Farnell, Designing Sound;
- *     Curtis Roads, The Computer Music Tutorial): the Rhodes is John
- *     Chowning's FM, a sine bending a sine, with the click of its tine;
- *     the bass and the guitar are plucked strings, Karplus and Strong's
- *     delay line fed back through a little smoothing; the horns are saws
- *     through the formants of a bell and a mute; the vibraphone a few
- *     inharmonic bars and its motor's tremolo; the cymbals six square waves
- *     at odd ratios, the way the old drum machines made theirs.
- *
- * Everything comes out as two channels of numbers, -1..1, for Web Audio
- * (generate), tools/genmusic.js writes them out as .wav files, and
- * lab/music.html plays all three weathers of a piece together and fades
- * between them, the way a game would.
+ * Slow, smoky jazz made from numbers: a piece per place (town, city,
+ * outside), day and night, each in three weathers of one tune and length.
+ * generate("town/night/rain", rate), list().
+ * See isometrica/.claude/skills/sound/making.md (The music).
  */
 import {
   TAU,

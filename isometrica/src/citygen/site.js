@@ -1,6 +1,6 @@
 /**
  * Picks a site about a spot: dry, level land, by the water for most towns,
- * never across the y seam. See .claude/skills/citygen/engine.md (tiles and the seam).
+ * never across the y seam. See isometrica/.claude/skills/citygen/engine.md (tiles and the seam).
  */
 var TRIES = 90;
 var SPREADS = [900, 3000, 9000];

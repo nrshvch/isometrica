@@ -10,23 +10,8 @@ var Terrain = Core.Terrain,
   Surface = Core.Surface;
 
 /**
- * Roads being laid, and the machines laying them.
- *
- * A road takes a while to lay (data/buildings constructionTime), in two
- * stages: the earth dug out over the first half of it, and a bed of crushed
- * stone rolled in over the second (client/road stage, shared/gen/roads
- * works) - and nothing drives on it till it is finished (client/roadman).
- * Every stretch of road being laid that hangs together is a section, closed
- * off at its ends with barriers (client/roadview), and worked by a crew of
- * two machines going along the whole of it from one end to the other over
- * each stage: first the digger, stopping on every tile to turn and dig, a
- * lorry behind it to cart the earth away; then back the other way, the
- * lorry ahead tipping stone, the digger behind it spreading it. A long
- * section has a crew to every few tiles of it.
- *
- * Every machine has its amber beacon going on its roof, and after dark its
- * work lamps on (client/worklights). Where a machine is is worked out from
- * how far along the road is - the same after a reload as before it.
+ * Roads being laid, and the crews laying them, placed by how far along the
+ * road is. See isometrica/.claude/skills/buildings/going-up.md (Roads).
  */
 
 //from a tile to the next one at each side, -x, -y, +x, +y

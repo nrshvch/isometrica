@@ -1,10 +1,7 @@
 /**
- * Plays the music the generator makes (src/shared/gen/music.js) the way a
- * game would. The three weathers of a place and time are made - each in a
- * worker of its own, off the page's thread (worker.js) - and started
- * together from the same moment, looping; the weather sets which is heard,
- * and changing it fades one up and the others down over a few seconds, in
- * time. A new place or time fades over to its own three.
+ * Plays the music the way a game would: a place and time's three weathers
+ * made in workers, started together, the weather fading one up.
+ * See isometrica/.claude/skills/sound/SKILL.md (Testing).
  */
 import * as Music from "../../src/shared/gen/music.js";
 import { audio } from "../../src/client/audio/wake.js";

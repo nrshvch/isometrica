@@ -1,61 +1,7 @@
 /**
- * Paints the trees of the grassland - the ones the world grows on
- * its own, and the ones a city has planted - as pixel art in the manner of
- * the buildings: a tree's own shape, the way that kind grows, filled in with
- * three flat greens - in shade, in the light, and where the sun catches it
- * - and two browns or greys for the wood, lit by the boxes' sun
- * (shared/gen/isobox), with no grain, dithering or speckle over them.
- *
- *   - oak: a short thick trunk under a broad crown, wider than it is tall,
- *     heaped up out of big uneven lobes; dark green;
- *   - beech: a smooth grey trunk under a dense dome that comes down low;
- *     a fresher green;
- *   - ash: a tall open crown of small clumps on branches that show between
- *     them; grey-green, light;
- *   - alder: slim, a narrow crown tapering to a point; dark green;
- *   - birch: a slender white trunk flecked with black, leaning, under a
- *     light open crown of small clumps; a fresh yellow-green;
- *   - pine: a tall red-brown trunk with branches up the top of it, a tuft
- *     of needles at the end of each, and bare stubs under them; dark
- *     blue-green;
- *   - spruce: a cone of tiers down to the ground, narrowing to a spike;
- *     the darkest green.
- *
- * And the ones the world has where it is not green (core/climate): out in
- * the cold, the spruce and the pine with snow lying on their tiers and
- * branches, and the dead wood - a dead tree standing, a stump, a fallen
- * trunk or two - with snow on whatever of it looks up ("snowspruce",
- * "snowsnag"...). Each is the kind it is made from, grown the same way, in
- * colours of its own. In the desert, the dead wood dried out, bleached grey
- * by the sun, no moss on it ("drystump"...), the dead trees the
- * terrain-asset-generation branch had for its savannah, dried out and bare
- * ("deadtree"), and cacti: the tall ones with arms ("cactus"), ribbed up
- * their length, and prickly pears, a clump of flat pads ("pricklypear").
- *
- * Each comes in two, grown from different seeds, and each of those is
- * painted from its four sides - "gen/trees/oak-1", "gen/trees/oak-1/r1" - so
- * that the camera turning round (client/view) sees another side of it, and
- * two trees of the same seed side by side need not show the same one
- * (data/trees turned).
- *
- * One that stands tall enough to go over - not a stump, nor the wood lying
- * on the ground already - is painted going over too, for the bulldozer
- * clearing it (client/felling): from each of those sides, falling each of
- * the four ways it can be seen to - "gen/trees/oak-1/r1/x+/1" - a third of
- * the way over, two thirds, and lying on the ground (FALLS), in a bigger
- * picture round its foot (FALL_FRAME), for the whole of it to be in it.
- *
- * A tree is a trunk, a few branches and a crown of lobes, each a distance
- * from a point - the crown lumpy with a few big clumps of leaves, so its
- * outline is a tree's. A ray goes into it for every pixel, along the way the
- * boxes are looked at, and where it meets it the light there picks one of
- * the tones outright; a pixel of one tone alone among another is then given
- * the other, so every tone lies in patches, as drawn by hand. Where the ray
- * meets the ground instead it is in the tree's shadow, or nothing: the
- * shadow is short, the sun for it higher than the one for the light, so that
- * it stays under the tree rather than across the next tile. Painted to be
- * lit as it is drawn, it casts none of its own: the sun casts it, wherever
- * the sun is (client/glview shadowed).
+ * Trees as pixel art - every kind, its cold and desert kinds - two seeds,
+ * four sides each, and falling for the bulldozer (FALLS).
+ * See isometrica/.claude/skills/generators/ground.md (Woods, trees, stones).
  */
 import * as Looks from "./looks.js";
 

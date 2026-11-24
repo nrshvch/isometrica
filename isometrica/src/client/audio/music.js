@@ -1,12 +1,7 @@
 /**
- * The music under the game (shared/gen/music): the piece for where the eye
- * is and the time of day - "town/day", "city/night", ... - all three of its
- * weathers playing at once in time with each other, the weather there is
- * turning one up and the others down, so the music picks up into a storm
- * and goes lazy in the rain without missing a beat. A new place or time
- * fades over into its own piece once it is made - and only once it has
- * stayed that way a while, so a look over the edge of town does not change
- * the tune.
+ * The music for the place on screen and the time of day, its three weathers
+ * playing together, the weather turning one up.
+ * See isometrica/.claude/skills/sound/in-game.md (What plays).
  */
 import * as Music from "../../shared/gen/music.js";
 

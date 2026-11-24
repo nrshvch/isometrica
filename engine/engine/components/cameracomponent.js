@@ -43,7 +43,7 @@ define(function(require){
             cam.dispatchEvent(cam.events.update);
         };
 
-        this.viewportResizeEventHandler = function(viewport, args){
+        this.viewportResizeEventHandler = function(viewport){
             cam.setup(viewport.width, viewport.height, 100);
 
             glMatrix.mat4.mul(cam.worldToViewportMatrix, cam.projectionMatrix, cam.gameObject.transform.getWorldToLocal());
@@ -172,12 +172,12 @@ define(function(require){
             len = gs.length,
             V = this.getWorldToViewport(),
             vec3 = glMatrix.vec3,
-            pos, viewportPos;
+            viewportPos;
 
         for(var i = 0; i < len; i++){
             g = gs[i];
             if(g.renderer !== null){
-                pos = g.transform.getPosition(vec3Buffer1);
+                g.transform.getPosition(vec3Buffer1);
                 viewportPos = vec3.transformMat4(vec3Buffer1, vec3Buffer1, V);
 
                 if(viewportPos[0] >= -1 && viewportPos[0] < 1 && viewportPos[1] >= -1 && viewportPos[1] < 1)

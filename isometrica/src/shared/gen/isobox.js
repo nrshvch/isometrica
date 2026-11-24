@@ -1,31 +1,8 @@
 /**
- * Paints scenes made of boxes the way the game sees the world, for the
- * generators that paint buildings (shared/gen/flats).
- *
- * One ray per pixel goes straight into the scene; the pixel is the colour of
- * the first box it hits, shaded by which way the face it hits looks. Every
- * face looking the same way is the same flat colour - so everything painted
- * here is lit alike, the same as the vehicles - unless its box has a finish:
- * what it is made of, laid out on it a pixel at a time - brick courses,
- * panel joints, roof tiles, paving slabs, the speckle of asphalt (see
- * MATERIALS) - or the sky reflected in it, for glass (see finish).
- *
- * Every box is snapped to whole units before it is painted (see snap), the
- * way a picture drawn by hand keeps to its pixels: an edge along the ground
- * comes out a clean step of two pixels across for one down, a band a unit
- * high a line a pixel thick - never a line that is two pixels thick here and
- * one there, or broken into dots. A box can be cut by planes (see cut), for
- * a roof or a ramp: a slope, not a staircase of thin boxes.
- *
- * Units: one along the ground is one pixel across the screen - a tile is 32 of
- * them each way. Heights are in pixels. +x runs up and to the right on the
- * screen, +y up and to the left; only faces looking up, towards -x (down and
- * to the left) and towards -y (down and to the right) are ever seen.
- *
- * Or seen from straight above (setView "top"), for the map: +x to the right,
- * +y up, two pixels a unit - a tile 64 by 64 - and only what looks up seen.
- * A picture from above is always whole tiles, so that a part of something
- * standing on a tile is the tile's square whatever is on it (see render).
+ * Paints scenes made of boxes the way the game sees the world: a ray per
+ * pixel, faces shaded by which way they look, boxes snapped to whole units,
+ * materials, interiors and seams, ruins; a tile is 32 units each way.
+ * See isometrica/.claude/skills/generators/boxes.md (isobox).
  */
 
 var TILE = 32,
@@ -839,7 +816,7 @@ function jitter(i, j, k) {
  */
 var MATERIALS = {
   //smooth render, and painted concrete: the odd stain, faint
-  render: function (u, v, side, dark) {
+  render: function (u, v) {
     return jitter(u >> 1, v, 11) * 0.018 + (hash(u, v, 12) < 0.05 ? -0.035 : 0);
   },
 

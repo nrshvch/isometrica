@@ -1,14 +1,7 @@
 /**
- * The fire bench (lab/fire.html): one building on a patch of flat grass, a
- * road along its front and a few trees about it, and nothing else (lab/
- * bench/world) - set on fire the way the game sets one on fire (client/
- * buildman fireUp): it catches in a window low down, and the fire spreads
- * window by window, floor by floor, black smoke rolling up off it; it comes
- * down, and what is left of it burns on and smoulders - a burnt-out ruin
- * then (client/fires, client/ruin). All of it over a day of the game's
- * time, by a clock of the bench's own: as fast as the game's, or faster,
- * stood still, or put on an hour, or to just before it comes down - by day
- * or at night.
+ * The fire bench: one building set on fire (client/buildman fireUp), by a
+ * clock of the bench's own.
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import BuildingData from "../../src/data/buildings";
 import BuildingState from "../../src/core/buildingstate";

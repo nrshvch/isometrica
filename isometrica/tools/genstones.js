@@ -1,17 +1,8 @@
 /**
- * Writes out the stones src/shared/gen/stones.js paints, and the puffs of
- * smoke src/shared/gen/smoke.js does - the same ones the game paints for
- * itself as it starts - to look at, and to try a change to the painting on
- * before the game gets it.
+ * Writes the stones and the smoke out as pictures to look at.
  *
- * Writes <name>.png for every picture, as the game gets it, and preview.png:
- * the stones in a row on a plain grass tile, and under them the smoke, each
- * kind growing the way a puff does as it rises, four times the size.
- *
- * Usage:
- *   node tools/genstones.js [outDir]
- *
- * outDir is assets/previews/stones unless given.
+ * Usage: node tools/genstones.js [outDir] (assets/previews/stones)
+ * See isometrica/.claude/skills/generators/SKILL.md (Testing).
  */
 
 var fs = require("fs");

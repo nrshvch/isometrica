@@ -1,51 +1,7 @@
 /**
- * What holds the city together, and what its streets reach.
- *
- * Every building of the city has an area round it: what is within RADIUS of
- * it, two tiles - counted from the middle of one tile to the middle of the
- * other, and rounded, so along a row or a column two tiles out, and a tile to
- * either side of those, and corner to corner one: round, rather than a
- * diamond (AREA). Where two areas share a tile they are one: along a row, two
- * buildings with three tiles between them share the middle one, and hang
- * together; with four between, their areas only touch, and they do not
- * (REACH). The city's area is all of it that hangs together. A village holds
- * together by its houses standing near each other, the way families settle;
- * a road is what reaches out to whatever stands further off, and the
- * cheapest way to. It holds together once it is finished - a house still
- * going up, a road still being laid, not yet; a tree is the world's, not the
- * city's.
- *
- * A road has no area of its own: only where it joins buildings to each other
- * does it have one, each tile of it as a building's - where a way along it,
- * never over the same tile twice, goes from inside one building's area to
- * inside another's (prune). Roads join where their tiles are side by side,
- * not across a gap. A road that leads nowhere is just a road, abandoned: a
- * tile of it in the middle of nowhere stands apart from nothing, a loop only
- * leads back to where it left, and a lane running off into the country past
- * the last house is the city's to the edge of the house's area, and no
- * further - the city's area along it two tiles on from there. Two branches
- * from one village to another are both the city's; out in the country, a
- * road is the city's only where it is the shortest way from one village to
- * another, so a loop on the road between them, a way round, is not.
- *
- * What hangs together may come apart into parts. The city is the part its
- * town hall stands in, if one stands, and otherwise the bigger one, by
- * everything in it: its road tiles and the ground its buildings stand on. Of
- * two the same, the one more people live in, then the one with the oldest of
- * the city's buildings. It is worked out again whenever something goes up,
- * comes down or is finished - from what stands then, so nothing of it goes
- * into the save.
- *
- * Every building of the city wants to be part of it (#linked) - the water
- * tower as much as a house. One that is not is cut off from it - abandoned:
- * it costs the city nothing, earns it nothing, waters nothing, and its people
- * move out (core/city/citypopulation), till it is joined up again.
- *
- * The roads of the part that is the city are its road network. What wants a
- * road (data/buildings requires) wants one of them right alongside it, no
- * tile between - and may want more of a road than a gravel lane: a cobbled
- * street or asphalt. That is what makes a player lay streets for a town: a
- * house in town off them holds nobody (Building#citizenCapacity).
+ * What holds the city together - every building's area, the roads that join
+ * them, the part that is the city and its road network - and what is cut off.
+ * See isometrica/.claude/skills/buildings/city.md (Area and road network).
  */
 import Events from "events";
 import * as RoadRules from "../roadrules";
@@ -209,11 +165,7 @@ CityRoads.prototype.inNetwork = function (tile) {
 CityRoads.prototype.getNetworkSize = function () {
   update(this);
 
-  var n = 0;
-
-  for (var tile in this._network) n++;
-
-  return n;
+  return Object.keys(this._network).length;
 };
 
 /**

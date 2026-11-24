@@ -1,6 +1,6 @@
 /**
  * The planning grid: a window round the site, what each tile is to be, and
- * the roads and buildings on it, in window coordinates. See .claude/skills/citygen.
+ * the roads and buildings on it, in window coordinates. See isometrica/.claude/skills/citygen.
  */
 import Ground from "./ground";
 

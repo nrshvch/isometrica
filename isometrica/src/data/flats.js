@@ -1,16 +1,7 @@
 /**
- * The blocks of flats put together out of parts the game paints (see
- * shared/gen/flats and client/compoundbuilding): a tower of one section, a
- * wall of two or three, with no yard, a row of yard in front or two - or a
- * tower on the street with a yard or two beside it - two to four storeys
- * high - each of those a building of its own in the catalogue.
- * The town's housing at its densest: a lot of people on little ground, paying
- * little each. What a block looks
- * like, its colours and details, is picked for each one as it goes up.
- *
- * A block's code comes from what the block is - its layout and how many
- * storeys it has - and not from where it is listed here, so that cities built
- * out of them keep loading whatever is added later.
+ * Blocks of flats in the catalogue; a block's code comes from its layout and
+ * storeys, not from where it is listed.
+ * See isometrica/.claude/skills/generators/buildings.md (Tiers and footprints).
  */
 import BuildingClassCode from "./classcode";
 

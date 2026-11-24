@@ -1,23 +1,8 @@
 /**
- * Paints the game's logo, public/logo.png: a little town out of the game's
- * own pieces - a slab of ground, a house, a tree, a water tower - painted
- * the way the game paints them (isometrica's shared/gen), in a ring, as if
- * the town were seen through a round window. The tower is too tall for it
- * and breaks out through the top of the ring.
- *
- * The picture is SIZE pixels square, transparent round the ring - the
- * page's icon (index.html). What is in it, and where, is SCENE below; the
- * ring's colours are its own.
- *
- * And out of it, beside it in icons/, what the game is put on a home screen
- * with (public/manifest.webmanifest, index.html): the logo as it is, bigger
- * (icon-192, icon-512), and on the night's navy, small enough for the round
- * a phone cuts out of it (maskable-192, maskable-512) - and that, as an
- * iPhone has it (apple-touch-icon, 180).
- *
- * Usage:
- *   npm run generate:logo        (in city-sim/)
- *   node tools/genlogo.js [out.png]
+ * Paints the logo, public/logo.png (SIZE square, SCENE), and the home-screen
+ * icons in public/icons/.
+ * Usage: npm run generate:logo, or node tools/genlogo.js [out.png]
+ * See city-sim/.claude/skills/ui/icons-and-logo.md.
  */
 import fs from "node:fs";
 import path from "node:path";

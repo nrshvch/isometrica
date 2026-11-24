@@ -1,7 +1,7 @@
 /**
  * The world's terrain (the game's own noise) with the generator's earthworks
  * over it, saved as terrain.points; Ground(flat) for the lab bench.
- * See .claude/skills/citygen/engine.md (tiles, buildings, roads).
+ * See isometrica/.claude/skills/citygen/engine.md (tiles, buildings, roads).
  */
 import Terrain from "../core/terrain";
 import TerrainType from "../core/terraintype";

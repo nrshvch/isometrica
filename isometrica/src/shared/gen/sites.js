@@ -1,33 +1,7 @@
 /**
- * Building sites - the same for every building there is, whatever goes up on
- * them, hand-drawn houses and blocks alike: bare earth, and on each tile one
- * thing at work or waiting there. Which tile has what is picked for every
- * building (shared/gen/stacking siteTiles, lotTiles); here are the parts:
- *
- *   - lot: a tile of the site - with the digger at work on it (dig), a lorry
- *     come to cart the earth away (haul), a heap of sand (pile), the site
- *     office (cabin), materials stacked (materials), or the foot of the tower
- *     crane (crane);
- *   - mast: a storey of the tower crane's mast, stacked on its foot as high
- *     as the crane has to reach - which it does higher as the building goes
- *     up;
- *   - cranetop: the cab on top of the mast;
- *   - fence: the blue tarp on posts round the whole site, along the edges of
- *     a tile that are the site's edges - in two parts, the stretches at the
- *     back of the tile laid under everything else on it and the ones at the
- *     front over it, so that they hide and are hidden as they should. Which
- *     is which depends on which way the site is seen from, so each turn of
- *     them is painted with its own stretches (partBoxes);
- *   - rail: what a small site has round it instead (shared/gen/stacking
- *     siteTiles) - a low timber rail on posts, the same way round.
- *
- * What moves is not painted into the parts but drawn over them as the game
- * draws them (client/siterenderer): the digger and the lorry, which are the
- * vehicle generator's own (shared/gen/vehicles), and the crane's jib, which
- * turns from one side to the other and back, painted here a frame for each
- * way it points.
- *
- * Units and light as in shared/gen/blocks, whose parts these are laid with.
+ * Building sites, the same for every building: lot tiles, the crane's mast
+ * and cab, the tarp fence and a small site's rail.
+ * See isometrica/.claude/skills/generators/boxes.md (Building sites).
  */
 import * as iso from "./isobox.js";
 import * as Vehicles from "./vehicles.js";

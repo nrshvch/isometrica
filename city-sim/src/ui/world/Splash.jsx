@@ -1,15 +1,7 @@
 /**
- * What the game opens on, over it while it comes up: its name with its
- * maker's over it, the way the games of the nineties had them - Sid Meier's
- * Civilization, Chris Sawyer's Transport Tycoon - on the night's blue,
- * lighter in the middle - a circle as wide as the window is high, whatever
- * its shape - how far along it is under them, and along the bottom which
- * release it is, or "dev" and the commit (vite.config.js).
- *
- * Up till the world is drawn as it should be: the pictures of what is on
- * screen - the side the camera looks from, not the others, painted ahead
- * meanwhile - all painted and on the pages (isometrica client/spritecache
- * progress). Then it fades away, the game there under it.
+ * What the game opens on while it comes up: the maker's name over the
+ * game's, how far along, the release; fades once the screen is painted.
+ * See city-sim/.claude/skills/ui/screens.md (Other screens).
  */
 import { useEffect, useState } from "react";
 import { cx } from "../kit";

@@ -1,43 +1,8 @@
 /**
- * Paints blocks out of parts, the way shared/gen/vehicles paints cars out of
- * boxes: one light for everything, each surface made of what it is (iso
- * MATERIALS) rather than speckled at random. What is in a
- * block - flats (shared/gen/flats), offices (shared/gen/offices) - is a
- * style: its colours, its storeys, its roofs and yards. How a block is put
- * together out of them is the same for all of them, and is here.
- *
- * A block is put together like toy bricks, out of sections that each take one
- * tile, the same sections for every block of a style whatever its size: a
- * 1x1 tower is one section with both its ends, a two tile wall two sections
- * side by side. A section is built up of parts, each painted on its own:
- *
- *   - ground: the ground storey on its plinth, with the way in at the front,
- *     and the pavement in front of it;
- *   - upper: a storey stacked on that;
- *   - roof: the roof on top;
- *
- * and in front of the wall, for a block with one, a yard tile.
- *
- * While it goes up a block is a building site, put together out of parts of
- * the same shape:
- *
- *   - site: the plinth poured on bare earth, with the diggers and trucks
- *     that are at it (dig) or the materials stacked by it (build);
- *   - frame: one storey of bare structure, the section's own size - stacked
- *     on the site, or on the storeys finished under it;
- *   - siteyard: what stands where the yard will be - trucks and a heap of
- *     gravel, a tower crane, or the site office and stacked materials.
- *
- * Every part comes in every palette of its style, and its details in a few
- * variants. A part is painted standing on a tile of its own, its pivot the
- * middle of that tile on the ground, and the parts of one tile are put
- * together by laying them one over another (shared/gen/stacking) - which is
- * what whoever draws a block does (client/compoundbuilding), picking the parts
- * at random for every block built. Each is painted four ways: as it is, its
- * front looking towards -y, and turned one, two and three quarter turns.
- *
- * Units as in the vehicles: a tile is 32 along the ground each way, heights in
- * pixels. Colours are kept to 16 bits.
+ * Paints blocks of flats and offices out of one-tile sections and their
+ * parts - ground, upper, roof, yard, and the site, frame and siteyard going
+ * up - each in every palette, four ways round.
+ * See isometrica/.claude/skills/generators/boxes.md (Blocks).
  */
 import * as iso from "./isobox.js";
 import * as Vehicles from "./vehicles.js";

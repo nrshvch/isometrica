@@ -1,7 +1,7 @@
 /**
  * Small town: one road or two (street, crossroads, tee, green), a small
  * centre, the village and farms along the roads.
- * See .claude/skills/citygen/layouts.md (small town).
+ * See isometrica/.claude/skills/citygen/layouts.md (small town).
  */
 import { WATER, FREE } from "./plan";
 import { keepJoined } from "./streets";

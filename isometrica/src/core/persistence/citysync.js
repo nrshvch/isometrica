@@ -1,31 +1,7 @@
 /**
- * Keeps a city's save on the server as well as in the browser, for a game
- * that has one (city-sim's Worker, city-sim/worker/saves): the city can then
- * be opened anywhere by its address alone.
- *
- * The save in the browser (CityStore) is still the one played: it is written
- * as it always was, offline or not, and goes up from there - half a minute
- * after it changes, once more when the page is put away, and as soon as the
- * browser is back online after it was not. Nothing is lost for a save that
- * did not make it up: it is still here, and goes up next time.
- *
- * Every save goes up on top of the server's revision the one here was made
- * on, and the server takes it only while that is still its latest. When it is
- * not, the city was saved from somewhere else in the meantime - another tab,
- * another device - and the player is asked which of the two to keep.
- *
- * The same happens on the way in (#reconcile), before the city is opened:
- *
- *  - nothing here                         -> the server's, if it has one
- *  - here, the server has nothing         -> here, and it goes up as new
- *  - here made on the server's latest     -> here: the same, or newer
- *  - here unchanged, the server has moved -> the server's
- *  - both changed                         -> the player chooses
- *
- * But for the save that went up last from here without an answer coming
- * back - sent as the page closed, the browser quit before the server said it
- * had it. The server's latest is then this very save (#ours): the save here
- * was made on top of it, and nobody is asked anything.
+ * Keeps a city's save on the server as well as in the browser, and settles
+ * which wins when both changed (#reconcile).
+ * See isometrica/.claude/skills/buildings/city.md (Saves).
  */
 import namespace from "namespace";
 

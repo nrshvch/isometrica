@@ -1,23 +1,9 @@
 /**
- * Writes what the game finds its pictures by to dist/gfx (served to a game by
- * isometrica/vite.mjs): manifest.json, and for every generator the pictures
- * it will paint.
+ * Writes dist/gfx: manifest.json and, per generator, what it will paint
+ * (generated/<generator>.json); removes what it no longer writes.
  *
- * Nothing is drawn by hand any more: everything there is to see - the
- * ground, the buildings, the roads, the cars, the trees, the stones, the
- * smoke - the game paints for itself in the browser, a picture at a time as
- * it is first drawn (client/generator). What a generator will paint - every
- * picture by name with its size - and what else its painting works out is
- * worked out here, by shared/gen/catalog, without painting anything, and
- * written as generated/<generator>.json; the manifest has every one of those
- * files' hashes, which the game asks for them by, so a browser never reads a
- * stale one.
- *
- * Usage:
- *   node tools/packsprites.js
- *
- * Runs before `npm run dev`, `start` and `build`. What it writes is not
- * committed; files an earlier run wrote and this one did not are removed.
+ * Usage: node tools/packsprites.js (runs before dev, start and build)
+ * See isometrica/.claude/skills/generators/SKILL.md (Pipeline).
  */
 
 var fs = require("fs");

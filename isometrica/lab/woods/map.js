@@ -1,17 +1,7 @@
 /**
- * The woods map, drawn: the world's trees from straight above, a few pixels
- * a tile, the way core/ambient grows them - which kind on every tile
- * (core/woods treeAt), or which wood every tile is in (woodAt), on the ground
- * of core/terrain: the sea, the shore, and the land lighter the higher it is.
- *
- * The land is the colour of its zone of the climate (core/climate): sand in
- * the desert in the middle of the world, green round it, snow out at the
- * edge, where the water is frozen over - and so are the trees that grow
- * there.
- *
- * As in the game, nothing grows on the shore or in the water. What the map
- * leaves out is the stones the world strews about, which keep a tree off
- * the odd tile in the game, and whatever a city built.
+ * The woods map: the world's trees from straight above, which kind or wood
+ * on every tile, the land coloured by its climate zone.
+ * See isometrica/.claude/skills/lab/SKILL.md (Pages).
  */
 import Terrain from "../../src/core/terrain.js";
 import Woods from "../../src/core/woods.js";

@@ -4,7 +4,7 @@
 define(function (require) {
     var namespace = require("namespace");
     var config = require("./config");
-    var glMatrix = require("gl-matrix");
+    require("gl-matrix");
     var Transform = require("./components/transformcomponent");
     var Renderer = require("./components/renderer");
     var SpriteRenderer = require("./components/spriterenderer");

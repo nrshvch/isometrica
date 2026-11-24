@@ -7,7 +7,6 @@
  */
 import BuildingState from "./buildingstate";
 import Resources from "./resources";
-import Resource from "./resourcecode";
 import Events from "events";
 import VTime from "./vtime";
 import Burning from "./burning";
@@ -443,7 +442,7 @@ function checkFullfilRequirements(self) {
       sizeY + 2,
     );
     while (!iter.done) {
-      var tile = iter.next();
+      tile = iter.next();
       var b = world.buildings.get(tile);
 
       if (b === undefined && world.envService.hasTree(tile)) return true;
@@ -453,14 +452,14 @@ function checkFullfilRequirements(self) {
       }
     }
   } else if (data.requirement === GatherReq.nearWater) {
-    var iter = new TileIterator(
+    iter = new TileIterator(
       self.tile - Terrain.dx,
       self.tile - Terrain.dy,
       sizeX + 2,
       sizeY + 2,
     );
     while (!iter.done) {
-      var tile = iter.next();
+      tile = iter.next();
       var t = world.terrain.getTerrainType(tile);
       if (t === TerrainType.water || t === TerrainType.shore) {
         return true;

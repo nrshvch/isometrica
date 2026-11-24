@@ -35,7 +35,6 @@ import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
 var TileIterator = Core.TileIterator;
-var Terrain = Core.Terrain;
 var ConstructionService = Core.ConstructionService;
 
 function getBuilding(self, tile) {

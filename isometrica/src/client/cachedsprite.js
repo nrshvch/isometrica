@@ -1,7 +1,7 @@
 import Burnt from "./burnt";
 import Lighting from "./lighting";
 import GLView from "./glview";
-import Pixels from "./pixels";
+import Pixels from "shared/pixels";
 
 //A picture as the renderers draw it: one or more parts, each a sprite on some
 //sheet, laid over one another - a tile, or the tile with its shore on it, or

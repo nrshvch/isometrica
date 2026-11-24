@@ -1,29 +1,7 @@
 /**
- * The debug panel, over the world while it is asked for (the menu's Debug
- * panel, or ?debug=on): how many frames a second are drawn, and what the
- * script spends a frame on - the world going on, every part of drawing it,
- * every kind of ticker - and what comes now and then between frames, the
- * world's tick, a pick, the HUD read again; how many draw calls, pictures,
- * lamps and lines there are; the pictures painted; the heap, and how fast it
- * fills. Read off the engine's Stats a few times a second, never a frame.
- *
- * Every line stays where it is from one read to the next - in the order the
- * frame goes in, never by what costs most - and is there whether or not
- * anything was counted on it (a dash, dimmed), each figure in a column of
- * its own, so an eye kept on one line finds it where it was.
- *
- * A figure is green while it is easy on a phone, red once it is too much -
- * against what a frame has at 30 a second, 33 ms, the GPU, the browser and
- * the page's own work in it too (LIMITS) - and as it is between; only the
- * lines that say most are ever green, the rest only ever red.
- *
- * Only the script is timed. What the GPU does is not, but where the browser
- * can time it (the GPU lines), and the switches at the bottom draw the city
- * without its shadows, its lamps or what goes over it, or as often as the
- * screen can, to see what each of them takes - and as often as there is
- * anything going on, without saving the battery (city-sim client/pace), to
- * compare. Put away, everything is as it was: nothing kept, everything
- * drawn, at most 30 frames a second, fewer while less is going on.
+ * The debug panel (menu, or ?debug=on): frames a second, what a frame costs,
+ * draw calls, pictures, the heap - green easy on a phone, red too much.
+ * See city-sim/.claude/skills/ui/screens.md (Other screens).
  */
 import { useEffect, useState } from "react";
 import engine from "engine";

@@ -44,7 +44,7 @@ BuildingNode.prototype.connect = function (node) {
       y = data.y;
 
     var sData = this.building.staticData;
-    var data = this.building.data;
+    data = this.building.data;
     var entrances = sData.roadGates;
 
     if (entrances !== undefined) {

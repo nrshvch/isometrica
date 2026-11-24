@@ -1,42 +1,8 @@
 /**
- * The old town: the walled heart of a town as it was before the town grew
- * round it, painted out of boxes the way the houses are (shared/gen/houses)
- * - every one painted whole, each of its tiles what the whole shows on that
- * tile (onTile). It is what a village trades in from the start, next to its
- * cottages, and what the town keeps of its past later on: a medina.
- *
- * Narrow houses of three storeys and two, half-timbered or rendered in ochre,
- * rose, sky blue, sage or stone, their steep gables to the lanes; on their
- * ground floors the craftsmen's shops - the smith with his anvil, the baker,
- * the cooper with his barrels, the potter, the weaver - each with its sign
- * hanging out over the lane. A market square with stalls round a well or a
- * fountain; a church with its tower and spire in a churchyard; a guild hall
- * with an arcade. Cobbles everywhere, and narrow lanes between it all.
- *
- *   - 1x2, 1x3: a lane of craftsmen's houses, or a row of them along a
- *     yard with a smithy and a well;
- *   - 2x2: a market square with its stalls and houses round it, or a church
- *     with houses beside it;
- *   - 2x3: a square before a church, or a street of craftsmen with a well;
- *   - 3x3: all of it at once - the square and its fountain, the church, the
- *     guild hall and the craftsmen's lanes.
- *
- * Each comes either way round (side), in a scheme of colours and under
- * tiles or slates. Nothing tall stands within a margin of its edges: that
- * is lane, cobbled, and where an old town ends the wall goes along it (see
- * wall below) - so two of them side by side make one town, a lane between
- * them, and the wall goes round the both of them.
- *
- * It goes up on a building site of its own (site, LOTS): no diggers or
- * lorries, but a masons' yard - stone, oak, an ox cart, the lime pit, a
- * treadwheel crane - then footings of rubble, then oak frames on stone
- * ground floors in their scaffolding of poles.
- *
- * The town wall is put together by whoever draws the old town
- * (client/compoundbuilding walled), tile by tile, by which of a tile's edges
- * have old town beyond them and which do not: stone with battlements along
- * those that do not, a tower where two of them meet, a gatehouse where a
- * road comes up to it and in the middle of the front.
+ * The old town: craftsmen's lanes, squares, a church, a guild hall, painted
+ * whole and cut into tiles; its masons' yard going up. The wall is
+ * client/compoundbuilding's (walled).
+ * See isometrica/.claude/skills/generators/buildings.md (The old town).
  */
 import * as iso from "./isobox.js";
 import {
@@ -75,8 +41,7 @@ import {
 } from "./houses.js";
 import { stall, farmTrailer, COBBLES, GOODS, CANOPIES } from "./shops.js";
 
-var GLASS = [92, 126, 160],
-  STAINED = [70, 92, 150],
+var STAINED = [70, 92, 150],
   IRON = [46, 46, 54],
   GOLD = [214, 178, 64],
   STONE = madeOf([186, 178, 162], "stone"),

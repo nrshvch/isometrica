@@ -72,9 +72,8 @@ TileParamsMan.remove = function (self, key) {
 
   var tilesParams = self._records[key];
 
-  var params, tileRec;
+  var tileRec;
   for (var tile in tilesParams) {
-    params = tilesParams[tile];
     tileRec = self._tileRecords[tile];
     if (tileRec[key] === undefined)
       throw "Tile record with key: " + key + ", is not set";

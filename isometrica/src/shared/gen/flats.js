@@ -1,24 +1,6 @@
 /**
- * Blocks of flats, put together out of parts the way shared/gen/blocks puts
- * every block together:
- *
- *   - ground: the ground storey on its plinth, with the way in under a canopy
- *     at the front, and the pavement in front of it;
- *   - upper: a storey stacked on that, with windows and balconies;
- *   - roof: the roof on top, with its parapet, the way out onto it and vents;
- *   - frame: a storey going up - concrete columns and floor, the stairwell
- *     poured first, scaffolding along the front;
- *
- * and in front of the wall, for a block with one, a yard tile: a playground,
- * a car park with the same cars in it that drive the roads, or a lawn with
- * trees.
- *
- * Its walls have a faint grain to them, and its windows the sky in them
- * (blocks MATTE, GLASSY).
- *
- * Every part comes in every palette, and its details in a few variants: which
- * windows of a storey have balconies, front and back; where a roof's vents
- * are; how a yard is laid out.
+ * Blocks of flats: the parts and palettes of their style, on shared/gen/blocks.
+ * See isometrica/.claude/skills/generators/buildings.md (Blocks of flats and offices).
  */
 import {
   blocks,

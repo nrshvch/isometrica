@@ -1,11 +1,7 @@
 /**
- * The replacement bench (lab/replace.html): one building on a patch of flat
- * grass, a road along its front, and nothing else (lab/bench/world) - put
- * up in the place of itself, or of anything else that covers its ground, the
- * way the game does it (client/buildman replace): fenced off, the
- * bulldozers coming, coming down a tile at a time as they get to it, and a
- * building site on its ground as soon as they are done - going up by the
- * bench's clock - into another look of the same, or whatever was asked for.
+ * The replacement bench: one building replaced the game's way
+ * (client/buildman replace).
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import BuildingData from "../../src/data/buildings";
 import Replacement from "../../src/core/replacement";

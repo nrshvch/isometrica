@@ -1,10 +1,7 @@
 /**
- * The replacement bench's page (scene.js): one building on flat grass, a
- * road along its front, put up in the place of itself - another look of
- * the same - or of anything else that covers its ground, the way the game
- * does it: it comes down as the bulldozers get to it, and a building site
- * goes up on its ground once they are done. As slowly as wanted, the sites
- * faster than the game has them if asked, turned round or from above.
+ * The replacement bench's page: one building put up in the place of itself
+ * or of anything covering its ground, the game's way.
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import { useEffect, useRef, useState } from "react";
 import BuildingData from "../../src/data/buildings";

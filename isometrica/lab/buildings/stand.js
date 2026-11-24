@@ -1,12 +1,7 @@
 /**
- * The building bench (lab/buildings.html): one building, whole, put together
- * out of its parts the way the game puts it together (client/buildingview,
- * client/compoundbuilding), on a patch of flat grass a little bigger than it
- * and nothing else (lab/bench/stage) - looked at from any side, turned any
- * way, a look of its own picked afresh - and brought down at the push of a
- * button the way it comes down in the game (client/demolition Demolition):
- * fenced off, every tile of it told to come down at once, and nothing else
- * of the game about it; then put back up.
+ * The building bench: one building put together the game's way on a patch
+ * of grass, brought down by the game's own Demolition and put back up.
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import Events from "events";
 import BuildingView from "../../src/client/buildingview";

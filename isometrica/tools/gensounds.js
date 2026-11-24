@@ -1,17 +1,9 @@
 /**
- * Writes out every sound src/shared/gen/sounds.js makes - the same sounds
- * the game makes for itself - as .wav files to listen to, and to try a
- * change to a sound on before the game gets it.
+ * Writes every sound out as <sound>-<way>.wav, 16-bit stereo.
  *
- * Each is <sound>-<way>.wav - thunder-0.wav, siren-2.wav - 16-bit stereo, at
- * the generator's rate unless another is given. Those that loop go round
- * without a seam: a player set to loop plays them as the game would.
- *
- * Usage:
- *   node tools/gensounds.js [outDir] [rate] [name...]
- *
- * outDir is assets/previews/sounds unless given; name, "thunder/2" or just
- * "thunder", writes only those.
+ * Usage: node tools/gensounds.js [outDir] [rate] [name...]
+ * outDir assets/previews/sounds unless given; name "thunder/2" or "thunder".
+ * See isometrica/.claude/skills/sound/SKILL.md (Testing).
  */
 
 var fs = require("fs");

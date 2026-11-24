@@ -1,22 +1,7 @@
 /**
- * A bench for lighting the city as it is drawn rather than as it is painted,
- * two ways, against the town as painted today:
- *
- * - a map: every sprite painted by the generators (shared/gen/isobox
- *   setMode) as its colours with no light on them and a map of which way
- *   each pixel looks, black for -x, white for -y, grey for up - the map
- *   drawn into a canvas of its own in the same order as the sprites, then
- *   turned into light for wherever the sun is and multiplied over the frame;
- * - three faces: every sprite painted as what of it looks towards -x, -y
- *   and up, side by side in one picture, black where a pixel looks another
- *   way - each drawn onto a canvas of its own, times the light on that
- *   face, and added up.
- *
- * drawImage only: every flat colour is a 1x1 swatch stretched over the
- * canvas.
- *
- * Drawn into the page's canvas (Lighting.jsx), a frame at a time, as the
- * page's panel says.
+ * A bench for lighting the city as it is drawn rather than as painted, two
+ * canvas-only ways (a normal map, or three faces), drawImage only.
+ * See isometrica/.claude/skills/lab/SKILL.md (Pages).
  */
 import * as iso from "../../src/shared/gen/isobox.js";
 import * as Houses from "../../src/shared/gen/houses.js";

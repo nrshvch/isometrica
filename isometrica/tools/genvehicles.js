@@ -1,17 +1,9 @@
 /**
- * Writes out every vehicle src/shared/gen/vehicles.js paints - the same
- * pictures the game paints for itself as it starts - to look at, and to try a
- * change to the painting on before the game gets it.
+ * Writes every vehicle out: vehicles.png and vehicles.json (speeds, pivots,
+ * exhaust).
  *
- * vehicles.png has a row for every body type: each colour it comes in, each
- * way it drives (x+, x-, y+, y-, and half way between), and then the lit bits
- * laid over it, one picture per flash. vehicles.json is everything else the painting worked
- * out - speeds, pivots, where the smoke comes out - as the game gets it.
- *
- * Usage:
- *   node tools/genvehicles.js [outDir]
- *
- * outDir is assets/previews/vehicles unless given.
+ * Usage: node tools/genvehicles.js [outDir] (assets/previews/vehicles)
+ * See isometrica/.claude/skills/generators/SKILL.md (Testing).
  */
 
 var fs = require("fs");

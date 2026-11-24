@@ -1,60 +1,7 @@
 /**
- * Houses, put together out of parts the way the shops are (shared/gen/shops):
- * every house is painted whole - the house, its garden, its fences, what is
- * in the yard - and each of its tiles is what the whole shows on that tile
- * (onTile), so a house on two tiles is still one house.
- *
- * There are four kinds, each a building of its own for every footprint it
- * comes in - every one of 2x1, 3x1, 1x2, 1x3, 2x2, 2x3 and 3x2, the town's
- * kinds between them, and 3x3 a villa's - and every house of one picked at random among the
- * designs and options there are for it (client/compoundbuilding, see
- * describe footprints):
- *
- *   - village houses, for a village with no streets or water yet: a cottage
- *     on one tile - whitewashed under its beams, of logs, of stone or
- *     ochre, under thatch, red tiles or slate - with a vegetable patch and
- *     hens, an orchard and beehives, a well, a woodpile and a goat, or
- *     flowers; a farmstead on two, its farmyard behind it a pasture with
- *     a barn and cows, a field of wheat or a flock of sheep, and a croft on
- *     three, or along the street on three, facing a lane up its side; a
- *     hamlet of cottages or farmsteads side by side (beside), each its own; a longhouse along the street, house and byre under one roof;
- *     and a farm round its yard, the barn at the back, a paddock, a field or
- *     a flock behind the farmhouse. No fences: many of them together are a
- *     village;
- *   - town houses, with fences or hedges round them and a garden at best: a
- *     bungalow along the street with its garage - on two rows of tiles or
- *     three set back, its car on the drive and a back garden behind; a
- *     bungalow end on to the street, its drive along its side to a carport;
- *     a two-storey house end on to the street on two tiles, its drive along
- *     its side to a garage at the back and a garden there, and one on three,
- *     room enough on its drive for the car, and a long garden; and terraced
- *     houses under one roof along the street, with back gardens of their own
- *     on two rows of tiles;
- *   - semi-detached houses: a pair on four tiles, each half with its own
- *     parking space and gate and fence round it; and on six, two along the
- *     street and three deep, each half with its own back garden too;
- *   - villas: two storeys on a terrace up a flight of steps, behind a wrought
- *     iron gate between pillars in a high hedge or a wall, in a garden of
- *     lawns, cypresses and clipped box - in the middle of it with a fountain
- *     before it, or to one side of a pool; on one row of tiles straight up
- *     their steps from the gate, with no court before them; on nine tiles,
- *     an estate with a pool and a pool house in its grounds as well.
- *
- * The cars on the drives are not painted: they are the vehicle generator's,
- * different for every house (blocks baysOverlay) - and what of the house
- * stands in front of them is drawn again over them (cover), so a car behind
- * a hedge is behind it whichever way the house is turned.
- *
- * While a house goes up its tiles are the same building site as anybody's
- * (shared/gen/sites), then its walls going up on their slab (site).
- *
- * The scale is the cars' and the roads': a car is 13 long and 6 wide, about
- * 4.5 by 2 metres, and a road with its two lanes 20 across - so a unit along
- * the ground is about a third of a metre, a tile about ten metres across,
- * and a storey of three metres 12 high. A house is as big as a house of
- * that size would be: what does not fit on a footprint is left for a
- * bigger one - no car on a drive too short for it, no cow on a cottage's
- * patch of yard.
+ * Houses - village, town, semi-detached, villas - each painted whole with its
+ * garden and cut into tiles, picked at random among designs per footprint.
+ * See isometrica/.claude/skills/generators/buildings.md (Houses).
  */
 import * as iso from "./isobox.js";
 import {

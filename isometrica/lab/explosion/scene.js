@@ -1,20 +1,7 @@
 /**
- * The explosion bench (lab/explosion.html): one building on a patch of flat
- * grass, a road along its front and a few trees about it, and nothing else
- * (lab/bench/world) - blown up the way the game blows one up (client/
- * buildman explode): no fence, no bulldozer, the charges going off at its
- * foot and then all of it torn into pieces and thrown all round in a
- * fireball, the heaps of rubble it leaves lying there till they are
- * cleared away - by the bulldozers, as clearing them does in the game. Or
- * two of it side by side, blown up one after the other: a pile of rubble
- * each, not one pile of the two (client/rubble). And all of it on a
- * hillside, for the rubble to lie on it as it slopes.
- *
- * Or with its neighbours round it (setAround): a terrace of three houses
- * next to it, the nearest two of them close enough for the blast to bring
- * down, the third not; a park on its other side, wrecked; a house across
- * the road and one further along, knocked about but standing; and trees
- * round it, knocked over to lie there.
+ * The explosion bench: one building blown up the game's way (client/buildman
+ * explode); two side by side; or with its neighbours round it (setAround).
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import BuildingData from "../../src/data/buildings";
 import BuildingCode from "../../src/data/buildingcode";

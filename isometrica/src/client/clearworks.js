@@ -13,44 +13,9 @@ var Terrain = Core.Terrain,
   TerrainType = Core.TerrainType;
 
 /**
- * Ground being cleared, and the bulldozers clearing it.
- *
- * Whatever is cleared off the ground - the trees and the stones the world
- * put there, a tree somebody planted - is gone from the world the moment the
- * clearing is paid for (core/city clearTile), but it stays standing where it
- * was (client/envman, client/buildman hold), the grass under it, until a
- * bulldozer gets there: as its blade reaches it, it goes down in a cloud of
- * dust, and the tile is the bare earth the bulldozer leaves behind it
- * (client/terrain) - which the grass grows back over, in time. A building
- * is demolished, and stands, in the world as well, till a bulldozer comes up
- * to a tile of it: then that tile of it comes down (client/demolition,
- * knock), the bulldozer waiting a moment off it till it is down, and pushes
- * its rubble away - and the world is told that tile is down (core/city
- * tileDown), the building gone once its last tile is. Till a bulldozer has
- * been over a tile, it is being cleared still (core/terrain beingCleared):
- * nothing is built on it.
- *
- * The tiles cleared that hang together, corners touching, are a stretch of
- * ground worked as one, the way a road being laid is (client/roadworks):
- * swept a row at a time, along the longer way of it, back and forth, by a
- * bulldozer to every few tiles of it - each with its share of the sweep. One
- * gets to a tile, backs up a little and pushes on over it again, and drives
- * on to the next. Ground cleared next to ground still being cleared is more
- * of the same stretch: the bulldozers already at it share it out among them
- * afresh, from wherever each of them is, with more of them to it if it is
- * big enough to need more.
- *
- * A bulldozer kicks up dust as it goes, comes out of the dust as it gets to
- * work, and goes off into it once its share is done; its amber beacon turns
- * on its roof, and after dark its lamps are on (client/worklights). The
- * bulldozers are not kept: after a reload, ground cleared is bare, and a
- * building being demolished stands as far down as it had come, fenced off,
- * for them to be sent again to the rest of it (client/buildman
- * demolitionOf).
- *
- * And a building put up is not put up till its ground is cleared - bare or
- * not, whatever is on it held standing till then (sweep, core/city/
- * citybuildings buildBuilding): the bulldozers sent to it the same way.
+ * Ground being cleared, and the bulldozers clearing it - and bringing down
+ * buildings being demolished, and clearing ground for one to go up.
+ * See isometrica/.claude/skills/buildings/going-up.md (Clearing ground).
  */
 
 //how many tiles of a stretch a bulldozer takes on, at most

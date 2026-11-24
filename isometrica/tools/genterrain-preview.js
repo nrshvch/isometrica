@@ -1,17 +1,9 @@
 /**
- * Puts the tiles tools/genterrain.js wrote together the way the game is to,
- * to see how they look: every tileset's slopes and diffuse tiles side by side,
- * and a made-up stretch of land where all the kinds of ground and the water
- * meet.
+ * Lays the tiles tools/genterrain.js wrote out together, by its manifest
+ * alone (composeTile), into preview-tiles.png and preview-map.png.
  *
- * It goes by nothing but the manifest and the pictures it lists, so it is also
- * how a renderer is to go about it - see composeTile().
- *
- * Usage:
- *   node tools/genterrain-preview.js [outDir]
- *
- * Writes preview-tiles.png and preview-map.png to outDir,
- * assets/terrain/terraingen unless given.
+ * Usage: node tools/genterrain-preview.js [outDir] (assets/terrain/terraingen)
+ * See isometrica/.claude/skills/generators/ground.md (Terrain).
  */
 
 var fs = require("fs");

@@ -1,12 +1,7 @@
 /**
- * Writes the game's icons out of their drawings (tools/icons.js): an SVG
- * each, src/ui/icons/svg/<name>.svg - to be used anywhere icons are - and
- * src/ui/icons/index.js, every icon by name, for the game's screens to show
- * them by (ui/kit Icon). What was written before goes; run it again after
- * changing a drawing.
- *
- * Usage:
- *   npm run generate:icons       (in city-sim/)
+ * Writes the icons drawn in tools/icons.js: src/ui/icons/svg/<name>.svg and
+ * src/ui/icons/index.js. Usage: npm run generate:icons (in city-sim/)
+ * See city-sim/.claude/skills/ui/icons-and-logo.md.
  */
 import fs from "node:fs";
 import path from "node:path";

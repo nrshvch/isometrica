@@ -1,4 +1,3 @@
-import engine from "engine";
 import WorldCamera from "./components/camerascript";
 import Events from "events";
 import RProp from "reactive-property";

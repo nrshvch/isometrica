@@ -1,12 +1,6 @@
 /**
- * The parks put together out of parts the game paints (see shared/gen/parks
- * and client/compoundbuilding): one to a footprint in the catalogue, and
- * each laid out as any of the kinds of park there are, at random - courts
- * and a skate spot, a formal garden, or a town park with trees and a pond.
- *
- * A park earns nothing and needs nothing - no road, no water - but to stand
- * with the town, as everything does (core/city/cityroads): the town keeps it
- * up.
+ * Parks in the catalogue, one to a footprint; they need nothing, earn nothing.
+ * See isometrica/.claude/skills/generators/buildings.md (Parks).
  */
 import BuildingClassCode from "./classcode";
 

@@ -1,15 +1,6 @@
 /**
- * Who works where.
- *
- * Shops, banks and offices only make money with people behind the counter, and
- * the only people there are are the city's citizens - so a street of shops
- * with no houses around it earns nothing, and it is the houses that make the
- * commerce worth building.
- *
- * Jobs are a count, like money, not a reach, like water: every citizen can
- * work anywhere in the city. They take the jobs of the oldest businesses
- * first, so the city's shops fill up one after the other instead of all of
- * them standing half empty - the ones left without anybody are plain to see.
+ * Who works where: jobs are a count, the oldest businesses filling first.
+ * See isometrica/.claude/skills/buildings/city.md (People, jobs, water).
  */
 import namespace from "namespace";
 

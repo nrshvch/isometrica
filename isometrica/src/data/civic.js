@@ -1,15 +1,6 @@
 /**
- * The town's own buildings, put together out of parts the game paints (see
- * shared/gen/civic and client/compoundbuilding): a church and a town hall,
- * each on a tile across and two deep, end on to the street - and the town
- * hall along it too, on two across and one deep - and a square on one tile to fill a gap between the roads with - each put down as any of
- * the ones there are of it, at random.
- *
- * Like a park they earn nothing - the town keeps them up - but the church and
- * the town hall have people working in them. A square or a church wants only
- * to stand with the town, as everything does (core/city/cityroads) - squares
- * side by side make a bigger one; the town hall a cobbled street to it at
- * least (core/roadrules serves), and water.
+ * The town's own buildings in the catalogue: church, town hall, square.
+ * See isometrica/.claude/skills/generators/buildings.md (The town's own).
  */
 import BuildingClassCode from "./classcode";
 

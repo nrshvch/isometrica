@@ -4,6 +4,15 @@
     "pr": "",
     "sessionUrl": false
   },
+  "permissions": {
+    "deny": [
+      "Read(/package-lock.json)",
+      "Read(/public/*.gif)",
+      "Read(/isometrica/src/data/initialcity.js)",
+      "Read(/isometrica/assets/**)",
+      "Read(/city-sim/src/ui/icons/**)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

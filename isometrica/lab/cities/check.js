@@ -1,6 +1,6 @@
 /**
  * What test:cities checks: a map in letters, drivable roads, and each
- * building's wants in the real core. See .claude/skills/citygen.
+ * building's wants in the real core. See isometrica/.claude/skills/citygen.
  */
 import { ROAD, LOT, WATER, KEPT } from "../../src/citygen/plan";
 import { info } from "../../src/citygen/catalogue";

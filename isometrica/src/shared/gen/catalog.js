@@ -1,15 +1,7 @@
 /**
- * Every picture the game paints for itself rather than loads - the ground,
- * the cars, the stones - and how to paint each one of them on its own.
- *
- * describe() tells, for one generator, what it will paint - every picture's
- * name and size - and what else the painting works out: a car's pivot, where
- * its smoke comes out, which slopes have a shore. It runs at build time
- * (tools/packsprites.js) without painting anything, and what it says is
- * written out as gfx/generated/<generator>.json. So the game knows every
- * generated sprite and its size before any of it is painted, and paints a
- * picture only when something is about to draw it: createPainter() does
- * that, one picture at a time, in the generator worker (client/generator).
+ * Every picture the game paints for itself: describe() says what a generator
+ * will paint, with sizes, at build time; createPainter() paints them.
+ * See isometrica/.claude/skills/generators/SKILL.md (Pipeline).
  */
 import * as Terrain from "./terrain.js";
 import * as Vehicles from "./vehicles.js";
@@ -399,7 +391,7 @@ export function createPainter(loadPixels) {
   function painter(gen) {
     if (painters[gen] === undefined)
       painters[gen] = loadPixels(INPUTS[gen]).then(
-        function (pixels) {
+        function () {
           if (gen === "terrain") return Terrain.createPainter(null);
           if (gen === "stones") return { paint: Stones.paint };
           if (gen === "smoke") return { paint: Smoke.paint };

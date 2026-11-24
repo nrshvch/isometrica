@@ -1,19 +1,7 @@
 /**
- * The old town's church heard from above it, the way skyline.js has the
- * city and country.js the woods: a small church, with one small bell in its
- * tower - rung for a service, swung, ding ... ding, coming up as the swing
- * does and dying down as it is let go; or tolled, a few slow strokes. Not a
- * loop: played now and then (client/audio/soundman), wherever the church is.
- *
- * A church bell rings at many pitches at once, none of them a whole number
- * of times another: the hum an octave under its note, the prime, a minor
- * third over it, a fifth, the nominal an octave up, and on up (as the bell
- * founders name them) - each two close together, beating against each other
- * (the bell's warble). A small one high, its hum faint, and soon quiet - not
- * a cathedral's great bell booming on.
- *
- * Only the plain pieces (noise, filters, laying sounds somewhere off, the
- * ring round about) come from dsp.js.
+ * The old town's church bell from above, rung or tolled; played now and
+ * then, not looped.
+ * See isometrica/.claude/skills/sound/making.md (The real ones).
  */
 
 import {

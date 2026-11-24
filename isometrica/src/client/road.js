@@ -1,5 +1,4 @@
 import Core from "../core/main";
-import engine from "engine";
 import Building from "./building";
 import RoadNode from "./pathfinding/roadnode";
 import RoadView from "./roadview";

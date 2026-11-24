@@ -2,16 +2,9 @@ import Core from "../core/main";
 import BuildingCode from "../data/buildingcode";
 
 /**
- * The heaps of rubble a building blown up leaves (data/buildings rubble,
- * core/city explode), drawn as one pile: each tile's heap runs on into the
- * heaps of the same pile along its sides - what the same building left, not
- * what one next to it did, blown up as well - and where four meet at a
- * corner, over it too (shared/gen/stones pile). Which it does is its mask,
- * as the tiles round it are now. A heap the bulldozers are still to get to
- * is there still (client/buildman held). It lies on the ground as it is, not
- * levelled - its picture the one for its tile's slope, drawn from the
- * lowest corner of it - so that heaps on a hillside run on into each other
- * as they do on the flat.
+ * The heaps of rubble a building blown up leaves, drawn as one pile per
+ * building, lying on the slope as it is.
+ * See isometrica/.claude/skills/buildings/coming-down.md (Blown up).
  */
 
 var Terrain = Core.Terrain;

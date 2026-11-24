@@ -17,36 +17,9 @@ import SmokeScript from "./components/smokeScript";
 import { changed } from "./looks";
 
 /**
- * Buildings on fire (core/building ignite), as they burn down over a day of
- * the game's time.
- *
- * It catches in a window of a floor low down, and spreads from there the
- * way fire goes through a building: along that floor of that tile first,
- * window by window, then on at once to the same floor of the tiles next to
- * it and the floor over it, and on from each of those the same way - up
- * and across, down only slowly - till every window of it is ablaze
- * (Blaze). Flames lick up out of every
- * window that is (FireRenderer), from a white-hot root to orange and red
- * tongues, flickering, bright whatever the light and lighting what is round
- * them after dark; the wall over each is blackened with soot as it burns;
- * sparks fly up out of it. Smoke pours out of the windows, and black smoke
- * rolls up off the top of it, a column of it as big as the building is
- * (SmokeScript plume), on up high and off the way the wind blows, over the
- * city - thicker as more of it burns.
- *
- * Its people gone, its lights on still where the wires hold, it burns out in
- * the end (core/building BURNS), its lights with it - and stands gutted, or
- * a roofless shell, or comes down the way a building comes down (client/
- * demolition), its lights flickering out, no fence round it, no bulldozer:
- * floor onto floor in a cloud of dust and smoke (fall) - and what is left
- * of it (client/ruin) burns on, flames among the
- * charred walls, the smoke thinning (REMAINS), then smoulders a while, a
- * wisp of smoke here and there, embers glowing (SMOULDERS) - and then it
- * is a cold ruin, there till it is cleared away.
- *
- * All of it goes by the game's time from when it was set on fire, so it is
- * as far along after a reload as it would have been: only what is drawn of
- * it is the client's.
+ * Buildings on fire (core/building ignite), burning down over a day of game
+ * time, all of it worked out from when it was set on fire.
+ * See isometrica/.claude/skills/buildings/coming-down.md (Fire).
  */
 
 var Terrain = Core.Terrain,

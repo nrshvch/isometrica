@@ -1,23 +1,6 @@
 /**
- * What a building burns down to (core/building ignite, burn), by what it is
- * built of and how - as buildings do:
- *
- *   - "frame": built round a frame of concrete - a block of flats, an office
- *     block, a department store, the waterworks: the fire guts it, but its
- *     frame and its floors stand, its roof on it, charred black, black holes
- *     where its windows were. Weakened, it may come down some hours after,
- *     to rubble and the broken stumps of its frame (collapsesAt);
- *   - "walls": walls of brick or stone under a roof of timber or steel - a
- *     bungalow, a shop, a supermarket, a mall, a market hall, a church, the
- *     town hall: the roof burns and falls in, the walls stand, roofless;
- *   - "fallen": built of timber, or two storeys of house under a pitched
- *     roof of tiles - a cottage, a farm, a croft, the old town's houses, a
- *     town house, a terrace, a villa: its roof and its floors fall in on
- *     each other, the stumps of its ground floor's walls left round a heap
- *     of charred beams and rubble.
- *
- * Most of a kind go the way it goes, a few another way (WAYS) - the same
- * every time for the same building.
+ * What a building burns down to, by how it is built: "frame", "walls",
+ * "fallen" (WAYS). See isometrica/.claude/skills/buildings/coming-down.md.
  */
 import BuildingData from "../data/buildings";
 

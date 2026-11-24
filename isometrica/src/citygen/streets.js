@@ -1,7 +1,7 @@
 /**
  * Streets of a city: main roads, recursive block subdivision (an arterial
  * grid first for Peepsopolis), boulevards, roundabouts, the square.
- * See .claude/skills/citygen/layouts.md (city, Peepsopolis) and engine.md (roads).
+ * See isometrica/.claude/skills/citygen/layouts.md (city, Peepsopolis) and engine.md (roads).
  */
 import { ROAD, WATER, KEPT, SIDES } from "./plan";
 

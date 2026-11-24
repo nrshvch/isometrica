@@ -1,13 +1,7 @@
 /**
- * The explosion bench's page (scene.js): one building on flat grass, a road
- * along its front and a few trees about it, blown up the way the game blows
- * one up - no fence, no bulldozer: the charges at its foot, then all of it
- * torn off it in a fireball, what is left of it coming down a tile at a
- * time, heaps of rubble left where it stood and its yard wrecked, dust
- * hanging over it - as slowly as wanted, turned round or from above;
- * with its neighbours round it, the blast bringing down the near ones; the
- * rubble cleared away by the bulldozers, and all of it put up again. And
- * the boom of it (boom.js), as the pieces fly.
+ * The explosion bench's page: one building blown up the game's way, alone,
+ * two side by side, or among neighbours; and its boom (boom.js).
+ * See isometrica/.claude/skills/lab/benches.md.
  */
 import { useEffect, useRef, useState } from "react";
 import BuildingData from "../../src/data/buildings";

@@ -1,9 +1,9 @@
-import engine from "engine";
 import Core from "../core/main";
 import * as glMatrix from "gl-matrix";
 import BuildingClassCode from "../data/classcode";
 import BuildingWaypoints from "./buildingwaypoints";
 import BuildingNode from "./pathfinding/buildingnode";
+import RoadNode from "./pathfinding/roadnode";
 import BuildingView from "./buildingview";
 
 var buildingData = Core.BuildingData,

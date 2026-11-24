@@ -11,7 +11,8 @@
 # - manual run                 → Actions → "isometrica" → Run workflow; on a lab/v* tag it
 #                                deploys that release to production again (a rollback)
 #
-# Branch pushes run only when isometrica, or the engine it is built on, changes.
+# Branch pushes run only when isometrica, the engine it is built on, or the shared
+# libraries change.
 # Tag pushes always run: GitHub does not look at `paths` for tags.
 name: isometrica
 
@@ -22,6 +23,7 @@ on:
     paths:
       - "isometrica/**"
       - "engine/**"
+      - "shared/**"
       - "package.json"
       - "package-lock.json"
       - ".nvmrc"

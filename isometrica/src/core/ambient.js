@@ -102,11 +102,6 @@ function hasTree(self, tile) {
   return self._usedTiles[tile] === undefined && treeAt(self, tile) !== null;
 }
 
-function rareDistribution(x, y) {
-  if (simplex.noise2D(y / 64, x / 64) * 64 > 50)
-    return simplex.noise2D(y / 8, x / 8) * 64 > 50;
-}
-
 /**
  * A number in [0, 1) for every tile, as good as random and nothing like the
  * one next to it - which the noise is too smooth to be. Every salt gives

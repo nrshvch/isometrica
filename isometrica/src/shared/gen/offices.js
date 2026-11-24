@@ -1,24 +1,7 @@
 /**
- * Office blocks, put together out of parts the way shared/gen/blocks puts
- * every block together - the same sections as the flats, a little deeper,
- * and all glass:
- *
- *   - ground: the lobby on its plinth, glass all round, with a wide way in
- *     under a canopy and the company's sign over it;
- *   - upper: a storey of curtain wall - a grid of glass panes, or ribbons of
- *     glass between bands of spandrel - with no balconies;
- *   - roof: a flat roof behind its parapet, with the lift's machine room and
- *     either a row of air conditioning units or a telecom mast;
- *   - frame: a storey going up - a steel frame on a concrete floor round the
- *     lift shaft, poured first;
- *
- * and in front of it, a yard tile: a car park, or a plaza with a fountain or
- * a sculpture among planted trees.
- *
- * Nothing of it is quite flat colour: its glass has the sky in it, and
- * everything else a faint grain (blocks MATTE, GLASSY).
+ * Office blocks: the parts and palettes of their style, on shared/gen/blocks.
+ * See isometrica/.claude/skills/generators/buildings.md (Blocks of flats and offices).
  */
-import * as iso from "./isobox.js";
 import * as Brands from "./brands.js";
 import {
   blocks,

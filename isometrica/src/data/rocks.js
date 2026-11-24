@@ -1,17 +1,7 @@
 /**
- * The stones the world strews over the land, by rock code - what
- * Ambient#getRock hands out. They are only there to look at: nothing is got
- * out of them, and nobody can put one down.
- *
- * Every picture is a tile's worth of ground with the stones on it and their
- * shadows, drawn flat over the tile the way the tile itself is - same size,
- * same pivot. The game paints them as it starts, see shared/gen/stones.
- *
- * The climate (core/climate) has stones of three kinds, both sizes of each:
- * the grey and brown ones of the green ("temperate"), the same snowed over
- * out in the cold ("cold"), and sandstone and pale rock where it is hot
- * ("hot") - which of them lie in each zone, and how many, core/ambient ROCKS
- * says. A new one goes on the end, so the codes of the ones before it stay.
+ * The stones the world strews over the land, by rock code (Ambient#getRock);
+ * a new one goes on the end, so the codes before it stay.
+ * See isometrica/.claude/skills/generators/ground.md (Woods, trees, stones).
  *
  * @type {{heap: boolean, flat: boolean, climate: string, path: string, pivotX: number, pivotY: number}[]}
  */

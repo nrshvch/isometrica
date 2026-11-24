@@ -1,28 +1,7 @@
 /**
- * The concrete a building on uneven ground stands on, the way Transport
- * Tycoon put its buildings on a slope: the ground under the building is
- * built up to its highest corner, and the building stands on that, level. It
- * takes no more than one step - ground that falls further is too steep to
- * build on (core/buildings).
- *
- * A piece for a tile is the concrete between the ground and a level top: a
- * step deep under the corners that are one lower, nothing under the ones at
- * the top, cut along the ground between them the way the ground is folded
- * (shared/gen/terrain fold), so it sits on the tile's own slope. What shows of
- * it is its top - under the building, mostly - and the walls along the two
- * edges in front, from nothing where the ground is up at the top to a step
- * where it is not.
- *
- * On a shore tile the water is painted a little way up the ground
- * (shared/gen/terrain SHORE), so it looks higher there than it is. A shore
- * piece is the same shape as any other, down to the ground, and marked where
- * the water stands against it: darker, wet concrete up to that waterline, a
- * line of green weed along it, and a fainter tide mark a little above.
- *
- * Every piece is named by how far each corner of its tile is below the top,
- * as it is seen (client/view corner): W, N, E, S, each 0 or 1 -
- * "gen/foundations/0011", or on the shore "gen/foundations/shore/0011". Its
- * pivot is the middle of the tile at the top.
+ * The concrete a building or road stands on over uneven ground, named by
+ * which corners are a step down ("gen/foundations/0011", "/shore/0011").
+ * See isometrica/.claude/skills/generators/boxes.md (Foundations).
  */
 import * as iso from "./isobox.js";
 import {

@@ -41,7 +41,7 @@ define(function (require) {
         //When parent updates, our coords changes
         //so let's set flag to update out matrices
         var self = this;
-        this.onParentUpdate = function(parent){
+        this.onParentUpdate = function(){
             self.dirtyL = true;
             self.dirtyW = true;
             moved(self);

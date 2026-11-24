@@ -14,45 +14,9 @@ import { changed } from "./looks";
 var Terrain = Core.Terrain;
 
 /**
- * A building coming down. Demolished (core/city clearTile), it is fenced off
- * with blue tarp - every tile of it, till the last of it is down - and stays
- * standing, in the world as well, till a bulldozer comes up to a tile of it
- * (client/clearworks hold, knock): then that tile of it comes down, the
- * bulldozer waiting for it, and leaves a heap of rubble for it to push away,
- * the ground bare there - the world told it is down (core/city tileDown).
- * What is down stays down: after a reload it stands as far down as it had
- * come, fenced off still, the bulldozers to be sent again for the rest
- * (client/buildman demolitionOf).
- *
- * How it comes down is a thing of its own (Demolition), told when each tile
- * of it is to come down and when its rubble is pushed away by whoever has
- * it - the bulldozers, in the game; a button, on a bench (lab/buildings) -
- * and drawn with no more than the pictures, the world they are drawn in
- * and the ground under it.
- *
- * Fenced off, it stands as it stood - every tile of it the one picture it
- * was drawn as (client/buildingview), in the order things are drawn in and
- * with the shadow it had - only with all of its lights out. Every tile of it
- * is the parts it is put together out of - its ground storey, a storey on
- * that for every one more, its roof (client/compoundbuilding) - or painted
- * whole, a house; and once a tile is to come down it is taken apart into its
- * floors (slice), each still drawn where its tile is in the order things are
- * drawn in, however high up it is (seat): the parts, or for a picture
- * painted whole, bands of it a storey high cut out of it
- * (SpriteCache#getComposite clip), its foot - the bottom of it, round the
- * middle of its tile and in front - staying put on the ground. It shakes a
- * moment; then a floor some way up gives, and everything over it drops onto
- * the floor under it, which gives in turn as it comes down on it - and so on
- * down, every floor crushed, to the ground, where the floors that fell crush
- * one by one onto their foot; nothing of it goes down into the ground. A
- * floor crushed bursts into pieces of itself - bits of the picture of it,
- * flung out and up - that fall round the building, bounce, lie a while and
- * go; and goes in a puff of grey dust, dithered away. The dust goes up as it
- * shakes, wherever a floor gives, and rolls out over the heap of rubble it
- * leaves once it is down, the rubble coming up under it as its foot goes.
- *
- * Turned round, what is coming down is down at once, and what still stands
- * stands as it is seen from the new side. None of it is kept.
+ * A building being demolished, standing fenced off till a bulldozer reaches
+ * a tile of it, then that tile coming down floor onto floor into rubble.
+ * See isometrica/.claude/skills/buildings/coming-down.md (Demolition).
  */
 
 //how far up the world a pixel up the screen is (a step of the ground is

@@ -1,25 +1,7 @@
 /**
- * Paints the cars, vans, trucks, lorries and buses that drive about the
- * roads - and the machines that work on building sites and never drive them.
- *
- * Every vehicle is a handful of boxes - body, cabin, windows, wheels, lights -
- * and each picture is those boxes seen the way the game sees the world: one
- * ray per pixel, straight into the scene, coloured by the box it hits first and
- * shaded by which way the face it hits looks. So all of them are lit the same,
- * and every body type comes out in every colour without anybody drawing it.
- *
- * A vehicle is painted eight times, once for each way it can drive: along x
- * or y, towards + or -, and the four ways half way between, for cutting a
- * corner or pulling over. Unlike a mirrored picture, a truck driving away
- * still has its cab in front and the light still comes from the same side.
- *
- * Units: one along the ground is one pixel across the screen - a tile is 32 of
- * them each way, a road about 20 wide, a lane 10. Heights are in pixels.
- * +x runs up and to the right on the screen, +y up and to the left.
- *
- * It paints into plain pictures, {width, height, data} with the pixels as
- * RGBA: the game paints them as it starts (client/generated), and nothing is
- * shipped but this.
+ * Cars, vans, trucks, lorries, buses and site machines, out of boxes,
+ * painted eight ways round.
+ * See isometrica/.claude/skills/generators/roads-vehicles-smoke.md (Vehicles).
  */
 import * as Looks from "./looks.js";
 import { BRANDS, NAMES as BRAND_NAMES, panel as emblem } from "./brands.js";
@@ -721,7 +703,6 @@ function castDown(boxes, sx, sy) {
   }
 
   hitColor = hit === null ? null : hit.color;
-  hitFace = 2;
   hitNormal = [0, 0, 1];
   hitZ = hit === null ? 0 : top;
 
@@ -794,17 +775,15 @@ function cast(boxes, sx, sy) {
   }
 
   hitColor = hit === null ? null : hit.color;
-  hitFace = face;
   hitNormal = face === 0 ? [-1, 0, 0] : face === 1 ? [0, -1, 0] : [0, 0, 1];
   hitZ = hit === null ? 0 : z - best;
 
   return hit === null ? null : shade(hit.color, face);
 }
 
-//what the last ray cast hit: its colour, the face it went in through - and
-//which way that face looks in the world
+//what the last ray cast hit: its colour, and which way the face it went in
+//through looks in the world
 var hitColor = null,
-  hitFace = -1,
   hitNormal = [0, 0, 1],
   hitZ = 0;
 
@@ -884,7 +863,6 @@ function castTurned(boxes, sx, sy) {
   else normal = [0, 0, 1];
 
   hitColor = hit === null ? null : hit.color;
-  hitFace = axis === 2 ? 2 : normal[1] < normal[0] ? 1 : 0;
   hitNormal = normal;
   hitZ = hit === null ? 0 : z - best;
 
