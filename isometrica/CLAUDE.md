@@ -24,6 +24,10 @@ a browser (`npm run test:core` plays it in node; skill `buildings`, core.md):
   chance, names that last), `commands.js` (what the player does, as plain
   objects: `Logic#command`), `vtime.js` (the game's time of day),
   `persistence/` (saves: localStorage, server sync).
+- The world as a local server (skill `buildings`, server.md): `server.js`
+  (moves it on by real time in fixed steps, takes commands, writes frames:
+  shared/replica), `mirror.js` (a copy playing them), `serve.js` (the
+  server on a worker).
 
 `client/` - the world on screen:
 
@@ -44,6 +48,9 @@ a browser (`npm run test:core` plays it in node; skill `buildings`, core.md):
   `generator.js` + `generatorcore.js` (the painting worker), `preloader.js`,
   `groundchunk.js`, `terrain.js`, `chunkman.js`, `tilesman.js` (which
   chunks are drawn: the camera's rings, shared/interest).
+- Where the world runs: `host.js` (in the page by default, or on a worker,
+  `server.worker.js`: city-sim's `?worker=on`), the client's commands
+  through it; `vkaria.js` CoreClock gives it the real time a frame.
 - Camera and input: `view.js`, `turner.js` (turning),
   `components/camerascript.js`, `cameracontrol.js`, `areaselector.js`,
   `glcanvas.js` (lines and words over the city).
@@ -81,8 +88,9 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
   Run it again after changing a generator while a dev server runs.
 - `npm run dev` - the lab. `npm run build:lab` - into `lab/dist`.
 - `npm run test:traffic`, `npm run test:cities`, `npm run test:core` -
-  headless tests (`test:core`: a town played in node, twice the same).
-- `npm run world:fingerprint|compare|bench|streams|chunks|traffic|smoke|works` - what
+  headless tests (`test:core`: a town played in node, twice the same, and
+  over the local server's protocol, on a worker thread too).
+- `npm run world:fingerprint|compare|bench|streams|chunks|traffic|smoke|works|worker` - what
   the world costs and hands the GPU, against a game's build served
   (`tools/world/`, `docs/world.md` Measuring).
 - `npm run generate:*` - `tools/gen*.js`.
@@ -92,7 +100,7 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
 - `buildings` - buildings and roads going up and coming down (sites,
   clearing, roadworks, demolition, blasts, fire, ruins), and the city: area,
   road network, people, jobs, water, saves; the core's clock, chance, names
-  and commands (core.md).
+  and commands (core.md); the world as a local server (server.md).
 - `citygen` - city generation: `src/citygen`, the cities bench,
   `test:cities`.
 - `traffic` - how the traffic drives: Driver, junctions, lanes, routes,

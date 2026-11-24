@@ -832,6 +832,13 @@ function plume(self, share, high, dt) {
  * what is left of it (client/demolition), its view hidden meanwhile, the
  * ruin coming up under the dust. The core told, either way.
  */
+//burnt down, the core told - unless it is a copy, told by its frames
+//(core/mirror)
+function burnt(self) {
+  if (!self.root.core.follows)
+    self.model.burn(self.model.fire + CoreBuilding.BURNS);
+}
+
 Blaze.prototype.fall = function () {
   var self = this,
     view = this.building.view,
@@ -842,7 +849,7 @@ Blaze.prototype.fall = function () {
   this.down = true;
 
   if (kind !== "b") {
-    this.model.burn(this.model.fire + CoreBuilding.BURNS);
+    burnt(this);
     if (kind === "s") roofFalls(this);
     return;
   }
@@ -861,7 +868,7 @@ Blaze.prototype.fall = function () {
     view.setOpacity(0);
   }
 
-  this.model.burn(this.model.fire + CoreBuilding.BURNS);
+  burnt(this);
 
   //a burst of smoke and dust as it goes
   for (var i = 0; i < 18; i++) {

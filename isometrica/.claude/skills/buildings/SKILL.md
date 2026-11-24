@@ -1,6 +1,6 @@
 ---
 name: buildings
-description: Buildings and roads going up and coming down - sites, clearing and bulldozers, roadworks, surfaces, demolition, blasts and health, fire, ruins, rubble, replace - and the city they make (area, road network, people, jobs, water, saves); the core's one clock, seeded chance, names that last and commands, and test:core. Load before changing core/city*, core/building*, core/logic, core/commands, core/construction, client/buildman, demolition, explosion, fires, clearworks or roadworks.
+description: Buildings and roads going up and coming down - sites, clearing and bulldozers, roadworks, surfaces, demolition, blasts and health, fire, ruins, rubble, replace - and the city they make (area, road network, people, jobs, water, saves); the core's one clock, seeded chance, names that last and commands, and test:core; the world as a local server (core/server, mirror, serve, client/host, in the page or on a worker). Load before changing core/city*, core/building*, core/logic, core/commands, core/construction, core/server, core/mirror, client/host, client/buildman, demolition, explosion, fires, clearworks or roadworks.
 ---
 
 # Buildings and the city
@@ -32,8 +32,12 @@ saved.
   bringing a demolition down a tile at a time; stepped, saved, caught up.
 - `core/surface.js`, `core/rotation.js`, `core/terrain.js` (`beingCleared`,
   `REGROWS`, `bareFor`), `core/persistence/` (saves).
-- `core/logic.js` (the clock: `advance`, ticks, `catchUp`; `chance`, `name`,
-  `command`), `core/commands.js` (what the player does, as plain objects).
+- `core/logic.js` (the clock: `advance`, ticks, `catchUp`, `away`; `chance`,
+  `name`, `command`), `core/commands.js` (what the player does, as plain
+  objects).
+- `core/server.js`, `core/mirror.js`, `core/serve.js`, `client/host.js`,
+  `client/server.worker.js` - the world as a local server: commands in,
+  frames out, a copy the client reads (server.md).
 - `client/buildman.js` - building views and their lifecycle on screen
   (`found`, `hold`, `demolitionOf`, `onDemolish`, `explode`, `fireUp`,
   `replace`, `showConstructionCost`). Hub: read in ranges.
@@ -54,7 +58,9 @@ saved.
   a browser, and it goes on in node (`npm run test:core`; core.md).
 - One clock: what plays out over time goes by `Logic#clock` (or the game's
   time it ticks), never `Date.now`; chance in the world by `Logic#chance`,
-  never `Math.random`; what the player does by `Logic#command` (core.md).
+  never `Math.random`; what the player does by a command, through the
+  host (core.md) - the client never writes to the world itself
+  (server.md).
 - Being demolished, a building is the bulldozers' alone: no blast, no fire,
   no hazards; a fire on it is put out; only Replace and Demolish offered.
 - A building put up waits for its ground to be cleared (at most a tenth of
@@ -78,7 +84,8 @@ saved.
   `/demolition.html`, `/replace.html`, `/explosion.html`, `/fire.html`, all
   on `lab/bench/world.js` - the game's own way, time as fast as asked.
 - `npm run test:cities` opens generated cities in the real core (cut off,
-  wants, network). `npm run test:core` plays one in node, twice the same.
+  wants, network). `npm run test:core` plays one in node, twice the same,
+  and over the protocol (in this thread, and on a worker thread).
 - In the game: city-sim, tap a building - Replace, Demolish, Blow up, Fire up.
 
 ## More
@@ -90,5 +97,7 @@ saved.
   ruins and rubble, health.
 - [core.md](core.md) - the core in node: one clock, seeded chance, names
   that last, commands; `test:core`.
+- [server.md](server.md) - the world as a local server: the host in the
+  page or on a worker, frames, the copy the client reads; `world:worker`.
 - [city.md](city.md) - founding, area and network, people, jobs, water,
   services, catching up, the clock, saves.

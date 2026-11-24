@@ -304,7 +304,7 @@ library is laid out, written, tested and measured is in `shared/CLAUDE.md`.
 
 **The libraries.** Built: `typed`, `spatial` (the grid, the quadtree, a
 hashed grid index and a packed tree), `schedule`, `interest`, `draw`,
-`integral` - how they work is shared's skill `world`. Still to come: the octree, `replica`.
+`integral`, `replica` - how they work is shared's skill `world`. Still to come: the octree.
 
 - `shared/typed` - the containers everything is kept in: a store of records
   as typed columns, with handles, the count each slot has been used and the

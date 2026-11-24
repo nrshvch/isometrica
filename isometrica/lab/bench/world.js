@@ -161,6 +161,10 @@ function up(el) {
       },
     });
 
+  //the world goes by the bench's clock, speed and all (client/vkaria
+  //CoreClock), not the real one
+  client.frameClock = true;
+
   //nothing to hear
   client.sound.wants.music = client.sound.wants.sounds = false;
   client.sound.on = false;

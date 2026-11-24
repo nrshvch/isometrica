@@ -2597,10 +2597,13 @@ function ensureStops(root) {
     var b = roads.get(tile),
       road = root.roadman.getRoad(tile);
 
-    b.look = Object.assign({}, b.look || {}, { stop: true });
+    var look = Object.assign({}, b.look || {}, { stop: true });
+
+    //the world keeps it (core/commands look)
+    root.look(b, look);
 
     if (road !== null) {
-      if (road.data !== b) road.data.look = b.look;
+      if (road.data !== b) road.data.look = look;
       road.updateProfile();
     }
   });

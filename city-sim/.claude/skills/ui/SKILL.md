@@ -23,7 +23,9 @@ traffic...) - change those there, not here.
   the world, `/<id>/catalogue[/<code>]`, `/<id>/city`, `/<id>/replace/<tile>`.
   - `session.js` - puts the world together once (engine, isometrica's
     client, `play.js`, the city opened), draws it into `WorldCanvas`;
-    `startGenerated` for generated cities.
+    `startGenerated` for generated cities. `?worker=on` runs the world on a
+    worker (isometrica `client/host` OnWorker; its skill `buildings`,
+    server.md), in the page otherwise.
   - `bridge.js` + `store.js` - isometrica's client tells the screens what to
     show through the `ui` it was handed (`ui.gameScreen().worldScreen()`: a
     hint, the buttons of what it is doing, a word asked for, the world given

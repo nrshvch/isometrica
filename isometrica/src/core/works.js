@@ -408,7 +408,10 @@ function step(self, slot, time, dt) {
  * shows it says it takes, or KNOCK_MS for a building with nobody to.
  */
 function knock(self, tile, heading, time) {
-  var shown = self.view !== null ? self.view.knocked(tile, heading) : -1,
+  var told = self.view !== null ? self.view.knocked(tile, heading) : -1,
+    //a copy following another world's frames goes by what that world
+    //knows: nobody shows it there (core/mirror)
+    shown = self.world.follows ? -1 : told,
     b = self.world.buildingService.get(tile),
     takes =
       shown >= 0

@@ -28,6 +28,7 @@ import SpriteCache from "./spritecache";
 import Lighting from "./lighting";
 import Soundman from "./audio/soundman";
 import View from "./view";
+import Host from "./host";
 
 //how long the world's ticks take (core/logic timed), for a debug panel
 //(engine Stats): a tick of the clock, or the ticks made up for at once when
@@ -47,8 +48,10 @@ function timedTick(took, catchingUp) {
  *        managers hung on it - init(vkaria) as the services come up, before
  *        the camera goes onto the city, and start(vkaria) once they are all
  *        up
+ * @param [host] {Object} where the world runs (client/host): in the page
+ *        unless said
  */
-function Vkaria(core, ui, play) {
+function Vkaria(core, ui, play, host) {
   // Vkaria is not trully isometric, it's dimetric with 2:1 ratio (Transport Tycoon used this).
   // It means, that when point goes about 1px by X, it moves 1/2 pixel by Y.
   // We can calculate camera angle around X axis like this: Math.asin(1/2)*180/Math.PI = 30deg, where 1/2 is our
@@ -68,9 +71,23 @@ function Vkaria(core, ui, play) {
   this.ui = ui;
   //and how long the world's ticks take, for a debug panel (engine Stats)
   core.timed = timedTick;
-  //the world's clock moved on a frame at a time, by the game's own time
-  //(start, CoreClock) - not by a timer of its own
-  if (typeof core.driveBy === "function") core.driveBy();
+  //where the world runs (client/host): commands to it, its frames back -
+  //moved on by real time a frame at a time (start, CoreClock), or on a
+  //worker by its own
+  this.host =
+    host ||
+    (typeof core.advance === "function"
+      ? new Host.InThread(core)
+      : new Host.Still());
+
+  var self = this;
+
+  //a look picked for something of the world's, kept by it (core/commands
+  //look); a copy of a world on a worker has it at once, as it will be
+  this.look = function (building, look) {
+    self.host.command({ type: "look", tile: building.tile, look: look });
+    if (!self.host.inThread) building.look = look;
+  };
 
   //TODO there should be renderer layers and logical layers, and tags too
   //configure layers (render layers)
@@ -218,12 +235,13 @@ Vkaria.prototype.turnsBeforeTop = 0;
 Vkaria.prototype.start = function () {
   //first of all, so that whatever is stepped a frame finds the world
   //already on to it (client/clearworks)
-  if (typeof this.core.advance === "function") {
-    var clock = new engine.GameObject("coreclock");
+  this.host.open();
+  this.clock = new CoreClock(this);
 
-    clock.addComponent(new CoreClock(this.core));
-    this.game.scene.addGameObject(clock);
-  }
+  var clock = new engine.GameObject("coreclock");
+
+  clock.addComponent(this.clock);
+  this.game.scene.addGameObject(clock);
 
   this.camera = new engine.Camera("mainCamera");
   this.camera.addComponent(new CameraScript());
@@ -234,21 +252,36 @@ Vkaria.prototype.start = function () {
 };
 
 /**
- * Moves the world's clock on by the frame's time (core/logic advance): what
- * goes up, the bulldozers and the world's ticks go as the game does - as
- * fast, as slowly, or not at all.
+ * Moves the world on by the real time since the last frame, however few
+ * frames there are (client/host frame, core/server steps) - or, with
+ * frameClock (a bench's), by the game's own time, as fast, as slowly or not
+ * at all as it goes.
  */
-function CoreClock(core) {
+function CoreClock(root) {
   engine.Component.call(this);
-  this.core = core;
+  this.root = root;
+  //real ms when the last frame was, none since the game was held
+  this.last = -1;
 }
 
 CoreClock.prototype = Object.create(engine.Component.prototype);
 CoreClock.prototype.profileName = "coreclock";
 
 CoreClock.prototype.tick = function (time) {
-  this.core.advance(time.dt);
+  var now = performance.now(),
+    ms = this.root.frameClock ? time.dt : this.last < 0 ? 0 : now - this.last;
+
+  this.last = now;
+  this.root.host.frame(ms);
 };
+
+/**
+ * Whether the world goes by the game's time (time.dt: a bench's speed)
+ * rather than the real clock.
+ *
+ * @type {boolean}
+ */
+Vkaria.prototype.frameClock = false;
 
 /**
  * Holds the game while the page is out of sight - another tab, another app,
@@ -257,14 +290,13 @@ CoreClock.prototype.tick = function (time) {
  */
 function pauseHidden(self) {
   document.addEventListener("visibilitychange", function () {
-    var core = self.core;
-
     if (document.hidden) {
       self.game.pause();
-      if (core && core.pause) core.pause();
+      self.host.pause();
     } else {
       self.game.resume();
-      if (core && core.resume) core.resume();
+      if (self.clock) self.clock.last = -1;
+      self.host.resume();
     }
   });
 }

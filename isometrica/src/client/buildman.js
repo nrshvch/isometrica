@@ -609,13 +609,14 @@ function createTag(self, tile, sizeX, sizeY, text, grey) {
  * anchored at tile.
  */
 //a clearing sent to the world (core/commands), shown by the bulldozers'
-//view where there is one (client/clearworks)
-function send(self, command) {
+//view where there is one (client/clearworks); done told what it came to
+//(client/host: at once with the world in the page)
+function send(self, command, done) {
   var root = self.root;
 
   return root.clearworks
-    ? root.clearworks.clear(command)
-    : root.core.command(command);
+    ? root.clearworks.clear(command, done)
+    : root.host.command(command, done);
 }
 
 function showCost(self, tile, sizeX, sizeY, amount, height) {
@@ -678,10 +679,11 @@ function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
     data = BuildingData[code],
     messaging = root.core.messagingService,
     errors = [],
-    tried = 0,
-    i,
-    seen = {};
+    left = anchors.length,
+    i;
 
+  //what the world says as it does them - at once in the page, as their
+  //frame is played from a worker (client/host)
   var sub = Events.on(
     messaging,
     Core.MessagingService.events.tileMessage,
@@ -690,51 +692,66 @@ function buildSelection(self, code, anchors, rotation, codes, looks, surfaces) {
     },
   );
 
-  try {
-    for (i = 0; i < anchors.length; i++) {
-      //a road there, which a road laid in more may pave over
-      var there = root.core.buildingService.get(anchors[i]),
-        was =
-          there !== null && there.data.classCode === BuildingClassCode.road
-            ? RoadRules.materialOf(there)
-            : null;
+  function built(there, was) {
+    //laid again: what it cost floats over it, as a new road's does
+    if (was !== null && RoadRules.materialOf(there) !== was)
+      showConstructionCost(self, there);
 
-      tried++;
-      root.core.command({
-        type: "build",
-        city: 0,
-        code: codes[i],
-        tile: anchors[i],
-        rotation: rotation,
-        look: looks[i],
-        surface: surfaces ? surfaces[i] : undefined,
-      });
-
-      //laid again: what it cost floats over it, as a new road's does
-      if (was !== null && RoadRules.materialOf(there) !== was)
-        showConstructionCost(self, there);
-    }
-  } finally {
-    Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
+    if (--left === 0) said();
   }
 
-  for (i = 0; i < errors.length; i++) {
-    var reason = errors[i].text;
+  function said() {
+    var seen = {};
 
-    if (
-      seen[reason] ||
-      (reason === ErrorCode.TILE_TAKEN && errors.length < tried)
-    )
-      continue;
+    Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
 
-    seen[reason] = true;
-    showText(
-      self,
-      errors[i].tile,
-      Rotation.sizeX(data, rotation),
-      Rotation.sizeY(data, rotation),
-      errorText[reason] || "can't build",
-    );
+    for (var k = 0; k < errors.length; k++) {
+      var reason = errors[k].text;
+
+      if (
+        seen[reason] ||
+        (reason === ErrorCode.TILE_TAKEN && errors.length < anchors.length)
+      )
+        continue;
+
+      seen[reason] = true;
+      showText(
+        self,
+        errors[k].tile,
+        Rotation.sizeX(data, rotation),
+        Rotation.sizeY(data, rotation),
+        errorText[reason] || "can't build",
+      );
+    }
+  }
+
+  if (left === 0) return said();
+
+  for (i = 0; i < anchors.length; i++) {
+    //a road there, which a road laid in more may pave over
+    var there = root.core.buildingService.get(anchors[i]),
+      was =
+        there !== null && there.data.classCode === BuildingClassCode.road
+          ? RoadRules.materialOf(there)
+          : null;
+
+    try {
+      root.host.command(
+        {
+          type: "build",
+          city: 0,
+          code: codes[i],
+          tile: anchors[i],
+          rotation: rotation,
+          look: looks[i],
+          surface: surfaces ? surfaces[i] : undefined,
+        },
+        built.bind(null, there, was),
+      );
+    } catch (e) {
+      Events.off(messaging, Core.MessagingService.events.tileMessage, sub);
+      throw e;
+    }
   }
 }
 
@@ -826,11 +843,6 @@ function onBuildingBuilt(sender, building, self) {
   showConstructionCost(self, building);
   rewall(self, building);
   repile(self, tilesOf(building));
-
-  //one waiting for its ground to be cleared before it goes up: the
-  //bulldozers out to it (client/clearworks sweep)
-  if (building.clearing && building.clearing() && self.root.clearworks)
-    self.root.clearworks.sweep(tilesOf(building));
 }
 
 function onBuildingUpdated(sender, building, self) {
@@ -1014,7 +1026,6 @@ Buildman.prototype.replace = function (tile, code) {
     building = core.buildingService.get(tile),
     //the world's city, whatever it stands in (core/construction getCity)
     city = building !== null ? building.getCity() : null,
-    result = null,
     rotation,
     picked,
     sizeX,
@@ -1050,26 +1061,34 @@ Buildman.prototype.replace = function (tile, code) {
 
   //what stands there brought down for it, the bulldozers sent
   //(core/commands replace)
-  result = send(this, {
-    type: "replace",
-    city: city.id(),
-    tile: building.tile,
-    code: picked.code,
-    rotation: rotation,
-    look: picked.look,
-  });
+  var self = this,
+    error = ErrorCode.NONE;
 
-  if (result.error !== ErrorCode.NONE)
-    showText(
-      this,
-      result.tile,
-      sizeX,
-      sizeY,
-      errorText[result.error] || "can't build",
-    );
-  else showCost(this, result.tile, sizeX, sizeY, result.cost);
+  send(
+    this,
+    {
+      type: "replace",
+      city: city.id(),
+      tile: building.tile,
+      code: picked.code,
+      rotation: rotation,
+      look: picked.look,
+    },
+    function (result) {
+      error = result.error;
+      if (result.error !== ErrorCode.NONE)
+        showText(
+          self,
+          result.tile,
+          sizeX,
+          sizeY,
+          errorText[result.error] || "can't build",
+        );
+      else showCost(self, result.tile, sizeX, sizeY, result.cost);
+    },
+  );
 
-  return result.error;
+  return error;
 };
 
 /**
@@ -1120,13 +1139,20 @@ Buildman.prototype.demolish = function (tile) {
     root.serviceman.hideInfo();
   }
 
-  total = send(this, {
-    type: "clear",
-    city: city.id(),
-    tiles: [building.tile],
-  }).cost;
+  var self = this;
 
-  if (total > 0) showCost(this, building.tile, sizeX, sizeY, total);
+  send(
+    this,
+    {
+      type: "clear",
+      city: city.id(),
+      tiles: [building.tile],
+    },
+    function (result) {
+      total = result.cost;
+      if (total > 0) showCost(self, building.tile, sizeX, sizeY, total);
+    },
+  );
 
   return ErrorCode.NONE;
 };
@@ -1155,7 +1181,7 @@ Buildman.prototype.explode = function (tile) {
     seen,
     blast = null,
     falls = [],
-    result;
+    error = ErrorCode.NONE;
 
   if (!city || building === null || !Replacement.replaceable(building)) {
     this.showError(tile, ErrorCode.NOTHING_TO_CLEAR);
@@ -1259,29 +1285,36 @@ Buildman.prototype.explode = function (tile) {
       };
     });
 
-  result = this.root.core.command({
-    type: "explode",
-    city: city.id(),
-    tile: tile,
-    yards: Object.keys(yard).map(Number),
-  });
-  root.blasted = null;
+  //what the blast lets go of is held (root.blasted) till the world has
+  //done it - at once in the page, a frame on from a worker (client/host)
+  this.root.host.command(
+    {
+      type: "explode",
+      city: city.id(),
+      tile: tile,
+      yards: Object.keys(yard).map(Number),
+    },
+    function (result) {
+      root.blasted = null;
+      error = result.error;
 
-  if (result.error !== ErrorCode.NONE) {
-    if (blast !== null) blast.stop();
-    falls.forEach(function (f) {
-      f.stop();
-    });
-    this.showError(tile, result.error);
-    return result.error;
-  }
+      if (result.error !== ErrorCode.NONE) {
+        if (blast !== null) blast.stop();
+        falls.forEach(function (f) {
+          f.stop();
+        });
+        self.showError(tile, result.error);
+        return;
+      }
 
-  if (blast !== null) blast.light();
-  falls.forEach(function (f) {
-    f.start();
-  });
+      if (blast !== null) blast.light();
+      falls.forEach(function (f) {
+        f.start();
+      });
+    },
+  );
 
-  return ErrorCode.NONE;
+  return error;
 };
 
 /**
@@ -1337,12 +1370,18 @@ Buildman.prototype.fireUp = function (tile) {
     return ErrorCode.NOTHING_TO_CLEAR;
   }
 
-  error = this.root.core.command({ type: "fire", city: city.id(), tile: tile });
+  var self = this;
 
-  if (error !== ErrorCode.NONE) {
-    this.showError(tile, error);
-    return error;
-  }
+  error = ErrorCode.NONE;
+  this.root.host.command(
+    { type: "fire", city: city.id(), tile: tile },
+    function (result) {
+      error = result;
+      if (error !== ErrorCode.NONE) self.showError(tile, error);
+    },
+  );
+
+  if (error !== ErrorCode.NONE) return error;
 
   //looked at still, as it is now: what it gave the city it gives no more
   if (this.root.serviceman) this.root.serviceman.reinspect();
@@ -1888,16 +1927,21 @@ Buildman.prototype.build = function (code, options) {
       function (name) {
         //the money it starts out with comes up with it, in the game's own
         //screens - and what the house cost floats over the house
-        if (root.core.command({ type: "found", tile: tile, name: name }))
-          buildSelection(
-            self,
-            code,
-            anchors,
-            rotation,
-            anchors.map(variantAt),
-            anchors.map(lookAt),
-            null,
-          );
+        root.host.command(
+          { type: "found", tile: tile, name: name },
+          function (city) {
+            if (city)
+              buildSelection(
+                self,
+                code,
+                anchors,
+                rotation,
+                anchors.map(variantAt),
+                anchors.map(lookAt),
+                null,
+              );
+          },
+        );
 
         controls.onDiscard();
       },

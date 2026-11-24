@@ -75,7 +75,8 @@
   (`Works#tick`, which also brings any bulldozer not stepped for a second up
   to date, `DUE_EVERY`), in node as in the game; `client/clearworks.js`
   steps them by region with
-  `shared/schedule`, on tilesman's levels as the traffic does (traffic,
+  `shared/schedule` (not in a copy of a world on a worker, which its frames
+  move on: server.md), on tilesman's levels as the traffic does (traffic,
   agents.md): FULL in view and near, every frame; COARSE in the coarse ring,
   every 250 ms within half a ms a frame; DORMANT beyond - left to `tick`,
   so what one does out there is done within a second. A region woken has
@@ -100,7 +101,7 @@
 
 A building put up is not put up till its ground is cleared, bare or not
 (`core/city/citybuildings.js` buildBuilding, `core/construction.js`
-awaitClearing; bulldozers sent by `client/clearworks.js` sweep, `core/works`). Nothing of
+awaitClearing; bulldozers sent there too, `Works#sweep`). Nothing of
 it is drawn but how far along it is, which runs on by its time but stops at
 a tenth till the bulldozers are done. Put up by Replace, its ground is
 cleared already. Demolished or replaced while it waits, it is called off for

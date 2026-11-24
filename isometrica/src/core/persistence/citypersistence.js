@@ -29,6 +29,9 @@ function onTick(sender, args, self) {
   //what the world makes up for at once is saved once it has (catchUp)
   if (self.world.catchingUp) return;
 
+  //a copy of a world on a worker: saved by that world (core/serve)
+  if (self.world.follows) return;
+
   if (++self._ticks < SAVE_EVERY_TICKS) return;
 
   self._ticks = 0;
@@ -60,6 +63,11 @@ function CityPersistence(world, store, sync, initial) {
   //what the city did while the game was closed, made up for when it was
   //opened (#open): {ticks, money, away, capped} - or null, for nothing
   this.caughtUp = null;
+  //what the city was opened from (#open, #put), or null
+  this.opened = null;
+  //where saves go in place of the store, or null: a world on a worker
+  //hands them to the page (core/serve)
+  this.saver = null;
 }
 
 CityPersistence.VERSION = VERSION;
@@ -170,6 +178,33 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
     }
   }
 
+  //what it was opened from and when, real time: what a copy of the world
+  //is opened from as well, to come out the same (core/serve)
+  var opened = {
+    id: id,
+    data: data === null ? null : structuredClone(data),
+    saved: saved,
+    now: this.world.realNow(),
+  };
+
+  this.put(opened);
+  this.opened = opened;
+
+  return this._id;
+};
+
+/**
+ * Puts a city into the world as #open picked it ({id, data, saved, now}):
+ * the same city, the same way, wherever it is put - here, or in a copy of
+ * the world on a worker (core/serve) given what #open picked here.
+ *
+ * @param opened {{id: string, data: Object|null, saved: boolean, now: number}}
+ */
+CityPersistence.prototype.put = function (opened) {
+  var id = opened.id,
+    data = opened.data === null ? null : structuredClone(opened.data),
+    saved = opened.saved;
+
   this._id = id;
 
   //the world's chance (Logic#chance) from the save's seed - or, for a save
@@ -181,16 +216,14 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
   //everything below has to hear about the city the restoring brings in
   this.watch();
 
-  if (data !== null) restore(this, data);
+  if (data !== null) restore(this, data, opened.now);
 
   //a city of the player's goes on from when it was last saved, as far as
   //the world goes on while it is away (Logic#catchUp)
   if (saved && data !== null && this._city !== null)
-    this.caughtUp = catchUp(this, data);
+    this.caughtUp = catchUp(this, data, opened.now);
 
   if (this._sync !== null) this._sync.start(this._id);
-
-  return this._id;
 };
 
 /**
@@ -203,12 +236,37 @@ CityPersistence.prototype.save = function () {
 
   if (data === null) return false;
 
+  //a world on a worker hands its save to the page, which has the storage
+  //(core/serve, #writeText)
+  if (this.saver !== null) {
+    this.saver(data);
+    return true;
+  }
+
   if (!this._store.write(this._id, data, data.city.name)) return false;
 
   //a city is only really the player's once it has been written, so this is
   //where it becomes the one they come back to
   this._store.setActiveCityId(this._id);
 
+  if (this._sync !== null) this._sync.changed();
+
+  return true;
+};
+
+/**
+ * Writes a save made elsewhere - the world's on a worker (core/serve) -
+ * as #save would have: JSON already, so nothing of it is worked out here.
+ *
+ * @param text {string} the save, JSON
+ * @param name {string} the city's
+ * @returns {boolean} whether it went to storage
+ */
+CityPersistence.prototype.writeText = function (text, name) {
+  if (this._id === null || !this._store.writeText(this._id, text, name))
+    return false;
+
+  this._store.setActiveCityId(this._id);
   if (this._sync !== null) this._sync.changed();
 
   return true;
@@ -384,9 +442,8 @@ CityPersistence.prototype.remove = function (id) {
  *          long the game was away, real ms, and whether that was longer than
  *          the world goes on for meanwhile - or null, for nothing
  */
-function catchUp(self, data) {
-  var now = self.world.realNow(),
-    away = now - (isFinite(data.savedAt) ? data.savedAt : now),
+function catchUp(self, data, now) {
+  var away = now - (isFinite(data.savedAt) ? data.savedAt : now),
     server = self._sync !== null ? self._sync.awayFor(self._id) : null,
     resources = self._city.resources.getResources(),
     before = resources.money || 0,
@@ -421,7 +478,7 @@ function seedOf(id) {
   return h >>> 0;
 }
 
-function restore(self, data) {
+function restore(self, data, now) {
   if (data.time !== undefined && data.time !== null)
     self.world.time.load(data.time);
 
@@ -441,7 +498,7 @@ function restore(self, data) {
   if (self.world.works)
     self.world.works.load(
       data.works || null,
-      isFinite(data.savedAt) ? self.world.realNow() - data.savedAt : 0,
+      isFinite(data.savedAt) ? now - data.savedAt : 0,
     );
 
   //saves from before it was kept have none

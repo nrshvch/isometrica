@@ -46,6 +46,16 @@ function write(self, key, value) {
   }
 }
 
+function writeRaw(self, key, text) {
+  try {
+    self.storage.setItem(key, text);
+    return true;
+  } catch (e) {
+    console.warn("Could not write " + key + " to storage", e);
+    return false;
+  }
+}
+
 function drop(self, key) {
   try {
     self.storage.removeItem(key);
@@ -193,13 +203,30 @@ CityStore.prototype.read = function (id) {
  * @returns {boolean}
  */
 CityStore.prototype.write = function (id, data, name, rev) {
-  if (this.storage === null || !CityStore.isValidId(id)) return false;
+  return put(this, id, data, null, name, rev);
+};
 
-  var key = this.key(id);
+/**
+ * #write with the save as JSON already (CityPersistence#writeText).
+ *
+ * @param id {string}
+ * @param text {string}
+ * @param [name] {string}
+ * @returns {boolean}
+ */
+CityStore.prototype.writeText = function (id, text, name) {
+  return put(this, id, null, text, name);
+};
 
-  if (!write(this, key, data)) return false;
+function put(self, id, data, text, name, rev) {
+  if (self.storage === null || !CityStore.isValidId(id)) return false;
 
-  var index = this.index(),
+  var key = self.key(id);
+
+  if (!(text !== null ? writeRaw(self, key, text) : write(self, key, data)))
+    return false;
+
+  var index = self.index(),
     was = index.cities[id] || {},
     //every write is counted, so that an upload knows whether what it took
     //up is still all there is (#synced)
@@ -218,8 +245,8 @@ CityStore.prototype.write = function (id, data, name, rev) {
   //server's own copy, which settles it
   if (rev === undefined && was.pending) index.cities[id].pending = was.pending;
 
-  return writeIndex(this, index);
-};
+  return writeIndex(self, index);
+}
 
 /**
  * Where a city's save stands with the server.

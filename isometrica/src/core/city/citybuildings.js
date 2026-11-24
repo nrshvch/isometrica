@@ -261,7 +261,8 @@ CityBuildings.prototype.buildBuilding = function (
         ? 0
         : clearingCost(city.world, code, tile, rotate);
 
-    var building = new Building();
+    var building = new Building(),
+      site = null;
     if (look) building.look = look;
     building.init(city.world, code, tile, rotate);
     //a road laid as it was planned (client/road plan)
@@ -276,7 +277,7 @@ CityBuildings.prototype.buildBuilding = function (
       data.classCode !== BuildingClassCode.road &&
       building.getState() === BuildingState.underConstruction
     ) {
-      var site = {
+      site = {
         building: building,
         tiles: footprint(code, tile, rotate),
       };
@@ -293,6 +294,9 @@ CityBuildings.prototype.buildBuilding = function (
     building.expense = (cost[Resource.money] || 0) + clearing;
 
     root.buildings.build(building);
+
+    //the bulldozers out to the ground it waits for (core/works)
+    if (site !== null) city.world.works.sweep(site.tiles);
 
     city.resources.sub(cost);
 

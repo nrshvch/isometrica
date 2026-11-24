@@ -110,8 +110,8 @@ Construction.prototype.rebuild = function () {
 
 /**
  * Has it wait for its ground to be cleared before it goes up - the
- * bulldozers out to it (core/city/citybuildings buildBuilding, client/
- * clearworks sweep): how far along it is goes on by its time from the
+ * bulldozers out to it (core/city/citybuildings buildBuilding, Works
+ * sweep): how far along it is goes on by its time from the
  * start, as it would anyway, but no further than CLEAR_SHARE till its
  * ground is cleared (cleared) - and it goes up the rest of the way from
  * there. Nothing for one up at once.

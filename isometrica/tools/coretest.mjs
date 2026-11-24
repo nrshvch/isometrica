@@ -2,21 +2,21 @@
  * The core run headless, in node, with no browser: a generated town opened,
  * its clock moved on a frame at a time for some game hours, with commands
  * sent on the way (ground cleared, a building demolished, one put up, one
- * replaced) - twice, and the two saves the same to the byte. Exits 1 if the
- * core reaches for the client or a browser, does not go on, or comes out
- * different.
+ * replaced) - twice, and the two saves the same to the byte; then over the
+ * local server's protocol (core/server, mirror, serve), in this thread and
+ * with the server on a worker thread, the copy's save the server's. Exits 1
+ * if the core reaches for the client or a browser, does not go on, or comes
+ * out different.
  *
  *   node tools/coretest.mjs [--size=town] [--seed=3] [--hours=36]
  *
  * See isometrica/.claude/skills/buildings/core.md.
  */
-import { createServer } from "vite";
 import { createHash } from "node:crypto";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { Worker } from "node:worker_threads";
+import { loader } from "./coreloader.mjs";
 
-var here = path.dirname(fileURLToPath(import.meta.url)),
-  flag = function (name, dflt) {
+var flag = function (name, dflt) {
     var a = process.argv.find(function (x) {
       return x.indexOf("--" + name + "=") === 0;
     });
@@ -45,23 +45,7 @@ function check(ok, what) {
   },
 );
 
-var server = await createServer({
-  root: path.join(here, ".."),
-  configFile: false,
-  logLevel: "error",
-  appType: "custom",
-  server: { middlewareMode: true, hmr: false, watch: null },
-  optimizeDeps: { noDiscovery: true, include: [] },
-  resolve: {
-    alias: [
-      {
-        //the engine's "events", not node's
-        find: /^events$/,
-        replacement: path.join(here, "../../engine/events/dist/events.js"),
-      },
-    ],
-  },
-});
+var server = await loader();
 
 //a Storage kept in memory, for the saves (core/persistence/citystore)
 function memory() {
@@ -87,33 +71,13 @@ function memory() {
 }
 
 /**
- * The town opened in a world of its own, played for hours of game time a
- * frame at a time with the commands sent on the way: what it came to.
+ * What is sent to a town, and when: picked from it as it stands - and the
+ * money for it (a world's own, so done in each world that plays it).
  */
-function play(Logic, Replacement, save) {
-  var real = Date.UTC(2026, 0, 1),
-    world = new Logic({
-      tick: TICK,
-      saves: "coretest",
-      storage: memory(),
-      catchUp: true,
-      initialCity: null,
-      //the real clock, only for how long it was away: as the world's goes
-      now: function () {
-        return real + world.clock;
-      },
-    });
+function planOf(world, Replacement, funded) {
+  var city = world.cities.getCities()[0];
 
-  world.driveBy();
-  world.start();
-  world.persistence.open("coretest0001", save);
-
-  var city = world.cities.getCities()[0],
-    frames = Math.round((hours * 3600000) / TICK) * (1000 / FRAME),
-    sent = [],
-    log = { done: {} };
-
-  city.resourcesModule.addResource("money", 10000000);
+  if (!funded) city.resourcesModule.addResource("money", 10000000);
 
   //what is sent, and when: picked from the town as it stands
   var buildings = city.buildingService.getBuildings(),
@@ -162,6 +126,40 @@ function play(Logic, Replacement, save) {
       rotation: other.rotation,
     },
   ];
+
+  return { plan: plan, house: house, ground: ground };
+}
+
+/**
+ * The town opened in a world of its own, played for hours of game time a
+ * frame at a time with the commands sent on the way: what it came to.
+ */
+function play(Logic, Replacement, save) {
+  var real = Date.UTC(2026, 0, 1),
+    world = new Logic({
+      tick: TICK,
+      saves: "coretest",
+      storage: memory(),
+      catchUp: true,
+      initialCity: null,
+      //the real clock, only for how long it was away: as the world's goes
+      now: function () {
+        return real + world.clock;
+      },
+    });
+
+  world.driveBy();
+  world.start();
+  world.persistence.open("coretest0001", save);
+
+  var city = world.cities.getCities()[0],
+    frames = Math.round((hours * 3600000) / TICK) * (1000 / FRAME),
+    sent = [],
+    log = { done: {} },
+    made = planOf(world, Replacement),
+    plan = made.plan,
+    house = made.house,
+    ground = made.ground;
 
   var started = world.time.now,
     demolished = house.tile;
@@ -240,6 +238,190 @@ function reopen(Logic, save, away) {
   world.persistence.halt();
 
   return { ticks: caught ? caught.ticks : 0, names: names, named: world.named };
+}
+
+//the save with the plan's money in it: for worlds that must come out the
+//same from it, every one of them opened on it (served)
+function funded(save) {
+  var data = JSON.parse(JSON.stringify(save)),
+    city = data.city !== undefined ? data.city : data;
+
+  city.resources = Object.assign({}, city.resources);
+  city.resources.money = (city.resources.money || 0) + 10000000;
+
+  return data;
+}
+
+/**
+ * The town played over the protocol (core/server, core/mirror): a server's
+ * world moved on in its steps and sent the plan as JSON, and a copy opened
+ * the same way playing its frames - with the server in this thread, or on a
+ * thread of its own (worker_threads, core/serve, as the game has it on a
+ * Web Worker). What came of it: the copy's save against the server's.
+ */
+async function served(mods, save, threaded) {
+  var real = Date.UTC(2026, 0, 1),
+    data = funded(save);
+
+  function make() {
+    var w = new mods.Logic({
+      tick: TICK,
+      saves: "coretest",
+      storage: memory(),
+      catchUp: true,
+      initialCity: null,
+      now: function () {
+        return real + w.clock;
+      },
+    });
+
+    w.driveBy();
+    w.start();
+
+    return w;
+  }
+
+  function saveOf(w) {
+    var d = w.persistence.snapshot();
+
+    delete d.savedAt;
+
+    return JSON.stringify(d);
+  }
+
+  var copy = make();
+
+  copy.persistence.open("coretest0001", data);
+
+  var mirror = new mods.Mirror(copy, false),
+    plan = planOf(copy, mods.Replacement, true).plan,
+    frames = Math.round((hours * 3600000) / TICK) * (1000 / FRAME),
+    stats = { frames: 0, bytes: 0, answered: 0 },
+    ids = 0,
+    send,
+    run,
+    finish;
+
+  function played(bytes) {
+    stats.frames++;
+    stats.bytes += bytes.byteLength;
+    mirror.apply(bytes);
+  }
+
+  if (!threaded) {
+    var world = make();
+
+    world.persistence.put(copy.persistence.opened);
+
+    var server = new mods.Server(world),
+      flush = function () {
+        if (server.flush() !== null) played(server.writer.copy());
+      };
+
+    flush();
+    send = function (c) {
+      var id = ++ids;
+
+      mirror.waiting.set(id, function () {
+        stats.answered++;
+      });
+      server.receive(JSON.stringify(c), id);
+      flush();
+    };
+    run = function (ms) {
+      server.run(ms);
+      flush();
+    };
+    finish = function () {
+      return Promise.resolve(saveOf(world));
+    };
+  } else {
+    var worker = new Worker(new URL("./coreworker.mjs", import.meta.url)),
+      checked = null;
+
+    await new Promise(function (resolve, reject) {
+      worker.on("error", reject);
+      worker.on("message", function (m) {
+        if (m.type === "ready") resolve();
+        else if (m.type === "frame") played(m.bytes);
+        else if (m.type === "check") checked(m.save);
+      });
+    });
+    worker.postMessage({
+      type: "open",
+      options: { tick: TICK, saves: "coretest", catchUp: true },
+      opened: copy.persistence.opened,
+    });
+    send = function (c) {
+      var id = ++ids;
+
+      mirror.waiting.set(id, function () {
+        stats.answered++;
+      });
+      worker.postMessage({ type: "command", id: id, text: JSON.stringify(c) });
+    };
+    run = function (ms) {
+      worker.postMessage({ type: "run", ms: ms });
+    };
+    finish = function () {
+      return new Promise(function (resolve) {
+        checked = function (text) {
+          worker.postMessage({ type: "quit" });
+          resolve(JSON.parse(text) === null ? "" : text);
+        };
+        worker.postMessage({ type: "check", id: 0 });
+      });
+    };
+  }
+
+  var t0 = performance.now();
+
+  for (var f = 0; f < frames; f++) {
+    var second = (f * FRAME) / 1000;
+
+    plan.forEach(function (c) {
+      if (c.at === second) send(c);
+    });
+    run(FRAME);
+  }
+
+  var theirs = await finish(),
+    ours = saveOf(copy);
+
+  stats.ms = performance.now() - t0;
+  stats.same = ours === theirs;
+  stats.size = ours.length;
+  stats.hash = createHash("sha256").update(ours).digest("hex").slice(0, 16);
+  stats.diverged = mirror.diverged;
+  stats.dropped = mirror.dropped;
+  stats.sent = plan.length;
+
+  return stats;
+}
+
+function reportServed(how, r) {
+  check(
+    r.same && r.diverged === 0 && r.dropped === 0 && r.answered === r.sent,
+    "over the protocol, " +
+      how +
+      ": the copy's save the server's (" +
+      r.hash +
+      ", " +
+      r.size +
+      " bytes), " +
+      r.answered +
+      " of " +
+      r.sent +
+      " commands answered, " +
+      r.frames +
+      " frames, " +
+      Math.round(r.bytes / 1024) +
+      " KB, digests off " +
+      r.diverged +
+      ", " +
+      Math.round(r.ms) +
+      " ms",
+  );
 }
 
 try {
@@ -335,6 +517,19 @@ try {
       " of " +
       all +
       " names kept, none given twice",
+  );
+
+  var mods = {
+    Logic: Logic,
+    Replacement: Replacement,
+    Server: (await server.ssrLoadModule("/src/core/server.js")).default,
+    Mirror: (await server.ssrLoadModule("/src/core/mirror.js")).default,
+  };
+
+  reportServed("in this thread", await served(mods, out.save, false));
+  reportServed(
+    "the server on a worker thread",
+    await served(mods, out.save, true),
   );
 } catch (e) {
   console.error(e);

@@ -42,14 +42,19 @@ var Terrain = Core.Terrain;
  * @param sprites {SpriteCache}
  * @param building {Object} the core building, which keeps it
  * @param compound {Object} the building data's compound, see data/flats
+ * @param [keep] {function(Object, Object)} has the world keep a look picked
  * @returns {{tiles: Object[]}|null} null while there are no parts to pick
  */
-function lookOf(sprites, building, compound) {
+function lookOf(sprites, building, compound, keep) {
   if (building.look && drawable(sprites, building.look)) return building.look;
 
   var look = pick(sprites, compound, Math.random);
 
-  if (look !== null) building.look = look;
+  //kept by the world, sent it as a command (client/vkaria look)
+  if (look !== null) {
+    if (keep) keep(building, look);
+    else building.look = look;
+  }
 
   return look;
 }

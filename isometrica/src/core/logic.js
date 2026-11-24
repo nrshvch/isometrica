@@ -236,22 +236,19 @@ Logic.prototype.pause = function () {
 
 /**
  * Starts the world's ticks again - after making up for the time it was
- * stopped: everything going up and being cleared brought on by it, and the
- * ticks played out for a game whose city goes on while it is away
+ * stopped (#away): everything going up and being cleared brought on by it,
+ * and the ticks played out for a game whose city goes on while it is away
  * (#catchUp).
+ *
+ * @param [away] {number} how long it was stopped, ms - the real clock's
+ *        since #pause unless said (a copy told it: core/mirror)
  */
-Logic.prototype.resume = function () {
+Logic.prototype.resume = function (away) {
   var self = this;
 
-  if (this.paused && this.pausedAt !== null) {
-    var away = Math.max(0, this.realNow() - this.pausedAt),
-      played = this.catchUp(away);
-
-    //the rest of it, with no ticks: what was going up goes on as it did
-    //on the real clock, the bulldozers with it
-    move(this, Math.max(0, away - played * Config.tickDelay), false);
-    this.works.catchUp(away);
-    this.terrain.restartClearing();
+  if (this.paused && (this.pausedAt !== null || away !== undefined)) {
+    if (away === undefined) away = this.realNow() - this.pausedAt;
+    this.away(Math.max(0, away));
   }
   this.paused = false;
   this.pausedAt = null;
@@ -262,6 +259,31 @@ Logic.prototype.resume = function () {
     self.advance(Config.tickDelay);
   }, Config.tickDelay);
 };
+
+/**
+ * Makes up for ms the world was not moved on, at once: the ticks of it
+ * played out (#catchUp, as far as it goes), the clock moved on the rest
+ * with no ticks - what was going up goes on as it would have - and the
+ * bulldozers brought on (Works#catchUp). For a page back in sight
+ * (#resume), and a stretch too long for steps (core/server).
+ *
+ * @param away {number} ms
+ */
+Logic.prototype.away = function (away) {
+  var played = this.catchUp(away);
+
+  move(this, Math.max(0, away - played * Config.tickDelay), false);
+  this.works.catchUp(away);
+  this.terrain.restartClearing();
+};
+
+/**
+ * Whether this world is a copy that follows another's frames (core/mirror):
+ * nothing but they move it on, and whoever draws it does not write to it.
+ *
+ * @type {boolean}
+ */
+Logic.prototype.follows = false;
 
 /**
  * Told how long every tick took, ms - and whether it was the ticks made up

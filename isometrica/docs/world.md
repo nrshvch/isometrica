@@ -10,7 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Steps 1 to 6 are built (The way there); the
+what isometrica puts into it. Steps 1 to 7 are built (The way there); the
 rest is not yet.
 
 ## What there is now
@@ -45,13 +45,26 @@ bulldozer's game object, and a demolition's, is only its view, in sight.
 **The core keeps the whole world and ticks all of it**, on one clock, with
 no browser in it (step 6; skill `buildings`, core.md). `Logic`
 (`core/logic.js`) has one world in memory: the terrain, every building and
-road, the cities. Its clock goes on only by `advance` - a frame at a time,
-moved by the client, or as fast as a node tool likes (`npm run test:core`) -
-and the whole world ticks every second of it, watched or not; after time
-away `catchUp` plays the ticks missed, a game day at most. Building,
-clearing, research and the bulldozers go by that clock, chance by a toss of
-the world's seed, every building and bulldozer has a name that lasts, and
-what the player does goes in as a command (`core/commands.js`).
+road, the cities. Its clock goes on only by `advance` - by real time in
+fixed steps of 50 ms, or as fast as a node tool likes (`npm run test:core`)
+
+- and the whole world ticks every second of it, watched or not; after time
+  away `catchUp` plays the ticks missed, a game day at most. Building,
+  clearing, research and the bulldozers go by that clock, chance by a toss of
+  the world's seed, every building and bulldozer has a name that lasts, and
+  what the player does goes in as a command (`core/commands.js`).
+
+**The world is a local server** (step 7; skill `buildings`, server.md).
+Only `core/server.js` moves the world on and does commands; what it did -
+the steps, the commands as JSON, pauses, a digest after every tick - goes
+out as frames (`shared/replica`), which a copy plays (`core/mirror.js`).
+The client sends commands through a host (`client/host.js`) and reads the
+copy, a world of the same shape as before. In the page (the default) the
+copy is the server's own world; with city-sim's `?worker=on` the server runs
+on a Web Worker (`core/serve.js`), the page's world a copy playing its frames
+(a few hundred bytes to a kilobyte a second), the saves made there and
+written here. The copy plays every step, so the main thread still does the
+world's work; only the saving leaves it.
 
 **The smoke is worked out, not kept** (step 4; skill `rendering`,
 smoke.md): a puff is a function of its source, its seed and the time, its
@@ -162,12 +175,17 @@ What goes over everything now, and what each becomes:
 
 ## Workers
 
-isometrica already paints its pictures on a worker (`client/generator.worker.js`,
-on `OffscreenCanvas`) and makes its sounds on another (`client/audio/audio.worker.js`).
-The first jobs to join them: the heights and the trees of the regions coming
-into the near ring, from the noise; a waking region's traffic brought up to
-date; saves put together. Then the whole simulation, as the engine's local
-server.
+isometrica paints its pictures on a worker (`client/generator.worker.js`,
+on `OffscreenCanvas`), makes its sounds on another (`client/audio/audio.worker.js`),
+and can run the whole simulation on a third, as a local server
+(`client/server.worker.js`, `?worker=on`; step 7): the world there, the
+page's a copy playing its frames - commands in, frames out, the protocol
+the saves by region and the server will use. What is still to come there:
+a copy that takes state by region (typed tables, `Published` through shared
+memory) instead of playing every step, so that the simulation's work leaves
+the main thread; the bulldozers in sight stepped there with the camera's
+rings; the heights and trees of regions coming into the near ring, from the
+noise; a waking region's traffic brought up to date.
 
 ## Typed arrays, in isometrica
 
@@ -243,6 +261,13 @@ then `npx vite preview` in `city-sim`) - and know nothing of the game.
   game objects and tickers the works kept from eight seconds on; and saved
   and opened again (a reload) six seconds in, whether it goes on where it
   was and gets done.
+- `npm run world:worker -- <url>` - the world in the page against the
+  world on a worker (`?worker=on`): the main thread's ms on the world a
+  frame and a second (moving it on, or playing the worker's frames), the
+  bytes a second the frames come to, how long a command takes from sent to
+  seen in the page's copy (twenty, and a clearing), and after a while with
+  the bulldozers out whether the copy is the worker's world - both saved,
+  the same to the byte, no digest off (exits 1 if not).
 - `npm run world:smoke -- <url>` - on a generated town (`--city=town` by
   default): the game objects and tickers there are for smoke, what it costs
   a frame (its tickers, or since step 4 its section), the chimneys in reach
@@ -348,7 +373,20 @@ after (above), with the debug panel's `Stats` and the traffic test
    clock moved by real time)._
 7. **The simulation on a worker**, as a local server: commands in, snapshots
    out. Before saving by region and the server, because it brings in the
-   protocol they both use.
+   protocol they both use. _Done, the worker behind a flag (`?worker=on`):
+   the client sends commands and reads a copy through a host, in the page by
+   default; on a worker the copy is the worker's world after 40 s with the
+   bulldozers out, to the byte, at 1.1 KB a second (230 B in the page), a
+   command seen a page's frame later (478 ms headless), the main thread
+   0.49 ms a second on the world against 0.54 in the page (`world:worker`);
+   `test:core` the same over the protocol in a thread and on a worker
+   thread; the clock by real time in steps of 50 ms, so 92 of 96 cars round
+   the start found again (71 of 88 before); `world:compare` IDENTICAL; a
+   still frame 7.80 → 8.11 ms, update 0.51 → 0.62, the world ticking 2.5
+   times as often headless (`world:bench`, middles of three); a save of the
+   build before opens and plays in either; skill `buildings`, server.md. Not
+   on by default: the copy plays every step, so the work stays on the main
+   thread, and on a worker the bulldozers in sight go a second at a time._
 8. **Saving a region at a time**, and the cities' saves moved over.
 9. **Regions on the server**: a Durable Object for each server share, as the
    saves have one each today; subscribing, regions and their changes, agents
@@ -423,10 +461,28 @@ keeps only what is still to come.
 - Before step 6 a building went up on the real clock (`setTimeout`,
   `Date.now`) while the world's ticks went by a timer of their own and the
   bulldozers by the frames: hidden, the buildings went on going up, the
-  bulldozers stood still and the ticks were made up for after. Now all of it
-  goes by one clock, moved by the frames - so under 5 frames a second (the
-  engine's 200 ms cap; headless, 2 a second) the ticks too go slower than
-  real time, as the bulldozers always did.
+  bulldozers stood still and the ticks were made up for after. Step 6 put
+  all of it on one clock, moved by the frames - so under 5 frames a second
+  (the engine's 200 ms cap; headless, 2 a second) the world went slower
+  than real time. Since step 7 the clock goes by real time in fixed steps,
+  however few frames there are.
+- The client wrote to the world outside commands: a block's look picked as
+  it was first drawn (`compoundbuilding`) and the bus stops (`carman`) on
+  the building itself, a site's bulldozers sent by `buildman` on hearing it
+  was built (so in node nobody sent them), a fire's view burning its
+  building down, `clearworks` stepping the bulldozers near the camera, and
+  a demolition's view saying how long a tile takes to fall. A copy of the
+  world on a worker would come out different: now the first two are a
+  command (`look`), the sweep is the core's, and a copy (`Logic#follows`)
+  takes none of the rest - its bulldozers go a second at a time, as the
+  worker's frames have them.
+- Opening a save asked the real clock twice (the bulldozers brought on,
+  then the ticks caught up), a few ms apart; now once (`CityPersistence`
+  `opened.now`), so a copy opened from the same save at the same time is the
+  same world.
+- On a worker, a command is seen in the page's copy a frame of the page
+  later: headless, where the page draws two frames a second, about 460 ms;
+  the worker answers within a millisecond, the page is busy drawing.
 - The client asked for the city as `getCity(0)`: right only because the
   first city a page made was numbered 0, counted per page. A city keeps its
   number in the save now, counted per world (`CityService#nameCity`).

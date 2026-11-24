@@ -63,8 +63,9 @@ export function launch(extraArgs) {
  * its own id, in place of the one a new player starts on.
  *
  * @param [city] {{id, size, seed, near}}
+ * @param [query] {string} more of the address's query, "&worker=on"
  */
-export async function openWorld(browser, url, settle, city) {
+export async function openWorld(browser, url, settle, city, query) {
   var page = await browser.newPage({
     viewport: { width: WIDTH, height: HEIGHT },
   });
@@ -80,7 +81,10 @@ export async function openWorld(browser, url, settle, city) {
         ")",
     );
   await page.goto(
-    url.replace(/\/?$/, "/") + (city ? city.id : "") + "?debug=off",
+    url.replace(/\/?$/, "/") +
+      (city ? city.id : "") +
+      "?debug=off" +
+      (query || ""),
   );
   await page.waitForFunction(
     "window.vkaria && vkaria.terrain && vkaria.terrain.chunks && vkaria.terrain.chunks.length > 0",

@@ -248,21 +248,26 @@ Terrainman.prototype.enter = function () {
       return city().quoteClear(tiles);
     },
     apply: function (tiles) {
-      var where = area(),
-        //what stood on them stays standing until a bulldozer gets to it,
-        //and goes down in a cloud of dust - a building comes down a tile at
-        //a time (client/clearworks, client/demolition); every tile charged
-        //on its own (isometrica core/commands clear)
-        total = root.clearworks.clear({
-          type: "clear",
-          city: city().id(),
-          tiles: tiles,
-        }).cost;
+      var where = area();
 
-      //and what it all came to goes up once, over the whole of the picked
-      //ground
-      if (total > 0)
-        buildman.showCost(where.tile, where.sizeX, where.sizeY, total);
+      //what stood on them stays standing until a bulldozer gets to it,
+      //and goes down in a cloud of dust - a building comes down a tile at
+      //a time (client/clearworks, client/demolition); every tile charged
+      //on its own (isometrica core/commands clear)
+      root.clearworks.clear(
+        { type: "clear", city: city().id(), tiles: tiles },
+        function (result) {
+          //and what it all came to goes up once, over the whole of the
+          //picked ground
+          if (result.cost > 0)
+            buildman.showCost(
+              where.tile,
+              where.sizeX,
+              where.sizeY,
+              result.cost,
+            );
+        },
+      );
     },
   };
 
@@ -294,26 +299,35 @@ Terrainman.prototype.enter = function () {
         return city().quoteTerraform(tiles, direction);
       },
       apply: function (tiles) {
-        var result = root.core.command({
+        var where = area();
+
+        root.host.command(
+          {
             type: "terraform",
             city: city().id(),
             tiles: tiles,
             direction: direction,
-          }),
-          where = area();
+          },
+          function (result) {
+            //what stays is drawn again on the ground as it is now
+            if (result.error === ErrorCode.NONE) redraw(result.tiles);
 
-        //what stays is drawn again on the ground as it is now
-        if (result.error === ErrorCode.NONE) redraw(result.tiles);
-
-        if (result.error !== ErrorCode.NONE)
-          buildman.showText(
-            result.tile,
-            1,
-            1,
-            errorText[result.error] || "can't do that",
-          );
-        else if (result.cost > 0)
-          buildman.showCost(where.tile, where.sizeX, where.sizeY, result.cost);
+            if (result.error !== ErrorCode.NONE)
+              buildman.showText(
+                result.tile,
+                1,
+                1,
+                errorText[result.error] || "can't do that",
+              );
+            else if (result.cost > 0)
+              buildman.showCost(
+                where.tile,
+                where.sizeX,
+                where.sizeY,
+                result.cost,
+              );
+          },
+        );
       },
     };
   }

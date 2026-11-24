@@ -57,8 +57,13 @@ shared/<lib>/
 - `integral` - Integral: a function of time held a step at a time and
   summed as it goes, its integral and first two moments over any stretch of
   the last while in a few sums (a puff of smoke and the wind).
+- `replica` - a copy kept equal from another thread or a server: Writer and
+  Reader (frames of records, numbers and bytes, in one ArrayBuffer),
+  Replica (versions: a frame on top of the one a copy has, or a snapshot),
+  Table (rows whose changes go into frames), Published (the last whole copy,
+  through a SharedArrayBuffer and Atomics).
 
-How `typed`, `spatial`, `schedule`, `interest`, `draw` and `integral` work, and the rules they keep:
+How `typed`, `spatial`, `schedule`, `interest`, `draw`, `integral` and `replica` work, and the rules they keep:
 skill `world` (`.claude/skills/world/`).
 
 ## Commands (here, or at the root)

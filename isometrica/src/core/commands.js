@@ -108,6 +108,19 @@ var run = {
     return cityOf(world, c).terraform(c.tiles, c.direction);
   },
 
+  /**
+   * {type: "look", tile, look} - what stands on tile to look so from now on
+   * (kept with it, saved): a block's parts picked as it is first drawn
+   * (client/compoundbuilding), a road made a bus stop (client/carman).
+   */
+  look: function (world, c) {
+    var b = world.buildings.get(c.tile);
+
+    if (b !== null) b.look = c.look;
+
+    return b;
+  },
+
   /** {type: "found", tile, name} - a city founded (CityService). */
   found: function (world, c) {
     return world.cities.establishCity(c.tile, c.name);

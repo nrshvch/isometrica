@@ -283,7 +283,12 @@ BuildingView.prototype.update = function () {
     //a block put together out of parts is given its look the first time it
     //is seen - going up or standing - and keeps it, in the save as well
     var look = staticData.compound
-      ? CompoundBuilding.lookOf(vkaria.sprites, b.data, staticData.compound)
+      ? CompoundBuilding.lookOf(
+          vkaria.sprites,
+          b.data,
+          staticData.compound,
+          vkaria.look,
+        )
       : null;
 
     if (collecting === null) {

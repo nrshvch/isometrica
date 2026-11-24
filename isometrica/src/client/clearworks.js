@@ -117,29 +117,23 @@ Clearworks.prototype.init = function () {
  * stood on them stays standing until one gets there.
  *
  * @param command {{type: string, tiles: number[]}}
- * @returns {Object} what the world made of it (core/commands)
+ * @param [done] {function(Object)} told what the world made of it - at
+ *        once with the world in the page, later from a worker (client/host)
+ * @returns {Object|undefined} what the world made of it (core/commands),
+ *          with the world in the page
  */
-Clearworks.prototype.clear = function (command) {
-  var self = this,
-    result = this.root.core.command(command);
+Clearworks.prototype.clear = function (command, done) {
+  var self = this;
 
-  result.cleared.forEach(function (t) {
-    //nothing held - nothing of it in sight - so nothing a bulldozer has
-    //to push over: in its dust, there and then
-    if (self.held[t] === undefined) burst(self, t);
+  return this.root.host.command(command, function (result) {
+    result.cleared.forEach(function (t) {
+      //nothing held - nothing of it in sight - so nothing a bulldozer has
+      //to push over: in its dust, there and then
+      if (self.held[t] === undefined) burst(self, t);
+    });
+
+    if (done) done(result);
   });
-
-  return result;
-};
-
-/**
- * Has the bulldozers out to the tiles a building is to go up on, once they
- * are cleared (core/city/citybuildings buildBuilding).
- *
- * @param tiles {number[]}
- */
-Clearworks.prototype.sweep = function (tiles) {
-  this.works.sweep(tiles);
 };
 
 //how many bulldozers there are, and tiles waiting for one
@@ -251,7 +245,9 @@ ClearworksScript.prototype.tick = function (time) {
   //(core/logic advance, client/vkaria): those asleep brought up to date
   //there now and then
   //the regions with any out, by tier - with none out, nothing to step
-  if (works.store.count > 0) {
+  //- a copy of a world on a worker is moved on by its frames alone
+  //(core/mirror), so its bulldozers go by those, a second at a time
+  if (works.store.count > 0 && !man.root.core.follows) {
     man.scheduler.full(time.dt);
     man.scheduler.coarse(performance.now());
   }
@@ -339,7 +335,7 @@ function stepRegion(self, key) {
  */
 function levelChanged(self, key, to) {
   var tier = tierOf(to),
-    n = tier === DORMANT ? 0 : dozersIn(self, key);
+    n = tier === DORMANT || self.root.core.follows ? 0 : dozersIn(self, key);
 
   self.scheduler.set(key, tier, VIEW - to, performance.now());
 

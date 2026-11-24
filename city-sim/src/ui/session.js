@@ -243,20 +243,39 @@ function load() {
     generating !== null && Game.generator ? Game.generator() : null,
   ]).then(function (modules) {
     var Vkaria = modules[0].default.Vkaria,
+      Host = modules[0].default.Host,
       Core = modules[1].default;
 
     bigCity = modules[4] ? modules[4].default : null;
     generator = modules[5] || null;
 
-    core = new Core.Logic({
+    var options = {
       tick: Game.tick,
       saves: Game.saves,
       api: Game.api,
       catchUp: Game.catchUp,
       initialCity: modules[3] ? modules[3].default : undefined,
-    });
-    client = new Vkaria(core, bridge, modules[2] ? modules[2].default : null);
+    };
+
+    core = new Core.Logic(options);
+    client = new Vkaria(
+      core,
+      bridge,
+      modules[2] ? modules[2].default : null,
+      //the world on a worker, its copy here (isometrica client/host) -
+      //asked for with ?worker=on; in the page otherwise
+      onWorker() ? new Host.OnWorker(core, options) : null,
+    );
   });
+}
+
+//whether the world runs on a worker: ?worker=on in the address
+function onWorker() {
+  try {
+    return new URLSearchParams(location.search).get("worker") === "on";
+  } catch {
+    return false;
+  }
 }
 
 //the world drawn into the container - in the place of a canvas of its own,

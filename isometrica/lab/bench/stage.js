@@ -54,6 +54,8 @@ export function open(el) {
 
   core.world = core;
   client = new Client.Vkaria(core, null, null);
+  //the bench's clock, not the real one (client/vkaria CoreClock)
+  client.frameClock = true;
 
   //nothing to hear
   client.sound.wants.music = client.sound.wants.sounds = false;

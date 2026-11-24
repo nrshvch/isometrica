@@ -1,6 +1,6 @@
 ---
 name: world
-description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/interest (observers, rings, levels), shared/draw (Pictures, DrawList, Visible), shared/integral (Integral), and shared/random's toss. Load before using or changing any of them.
+description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/interest (observers, rings, levels), shared/draw (Pictures, DrawList, Visible), shared/integral (Integral), shared/replica (Writer, Reader, Replica, Table, Published), and shared/random's toss. Load before using or changing any of them.
 ---
 
 # The world's libraries
@@ -145,3 +145,35 @@ out)` the value held.
 - Tested against adding up each step on its own, in any order asked, over
   jumps and restarts. Used by isometrica's smoke for the wind (rendering
   skill, smoke.md).
+
+## replica
+
+- A frame: a header (its length, how many records, the version it goes on
+  top of - -1 for a snapshot - and the one it makes), then records, each
+  a kind (16 bits), how many numbers (Float64, 65535 at most) and bytes,
+  padded to 8. Little-endian through a DataView, so a frame reads the same
+  anywhere it is posted or sent.
+- `Writer(capacity)`: `begin(from)`, `record(kind, nums, n, bytes)`,
+  `text(kind, nums, n, string)` (UTF-8, `encodeInto`), `end(to)` -> a view
+  of its own buffer, good till the next `begin`; `copy()` -> an ArrayBuffer
+  to transfer. Its buffer grows by doubling and is kept: numbers-only
+  records make nothing.
+- `Reader()`: `open(bytes)` -> to; `next()` -> kind or -1, then `nums` (its
+  own Float64Array, kept), `n`, `length`, `bytes()`, `text()`.
+- `Replica()`: `accept(reader)` - a snapshot always, else only a frame from
+  the version it has; one missed leaves it `stale` (it wants a snapshot).
+- `Table(fields, rows)`: Float64 columns; `set` marks a row changed once
+  however often it is set (NaN no change from NaN); `snapshot` / `changes`
+  write rows [row, fields...] as records, `apply` takes one onto a copy.
+- `Published(bytes, shared)` / `Published.on(buffer)`: three copies traded
+  with `Atomics.exchange` (the one between, and a bit for "published
+  since"): the writer writes the copy it holds and publishes it, the reader
+  takes the last one published whole; neither waits, nor sees one half
+  written. Each copy keeps its length and version.
+- Tested: records given back as written, the same from a copy as from the
+  view, nothing made a frame once grown; a snapshot and the changes after
+  it the same table, frames lost on the way and a snapshot again;
+  Published read by the main thread while a worker_thread publishes
+  200,000 copies. Benchmarked beside JSON and structuredClone.
+- Used by isometrica's local server (its skill `buildings`, server.md): the
+  frames, their versions and a Table of the digest a copy is checked by.

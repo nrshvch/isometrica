@@ -8,12 +8,14 @@ twice, and the two saves the same to the byte - and fails if anything of
 
 ## One clock
 
-- `Logic#clock`, ms, moved on by `Logic#advance(ms)` and nothing else. It
-  goes as the game goes: `client/vkaria.js` CoreClock, the first thing
-  stepped every frame, hands it the engine's frame time (`time.dt`: at most
-  200 ms a frame, a bench's speed with it); with no client driving it
-  (`Logic#driveBy` not called) the world's own timer moves it a tick at a
-  time; a node tool moves it as fast as it likes.
+- `Logic#clock`, ms, moved on by `Logic#advance(ms)` and nothing else. In
+  the game only the server does (`core/server.js`, server.md): by real
+  time, in fixed steps of 50 ms, however few frames there are -
+  `client/vkaria.js` CoreClock, the first thing stepped every frame, hands
+  the host the real ms since the last (a lab bench, `frameClock`, the
+  engine's frame time and its speed); on a worker, its own timer. With
+  nobody driving it (`Logic#driveBy` not called) the world's own timer
+  moves it a tick at a time; a node tool moves it as fast as it likes.
 - On it: a building going up (`core/construction.js` `_startedAt`, `_dueAt`;
   finished by `Buildings#due`, a `shared/typed` Heap of when and the
   building's name - an entry for one set going again since is passed over);
@@ -34,9 +36,9 @@ twice, and the two saves the same to the byte - and fails if anything of
   the clock a tick at a time between them (`Logic#catchUp`), the bulldozers
   brought on by `Works#load`. Either way the tiles still being cleared are
   counted from then (`Terrain#restartClearing`).
-- Headless, the game draws two frames a second: the engine's 200 ms cap then
-  has the clock, ticks and all, go at 0.4 of real time (the bulldozers
-  always did). A frame rate under 5 a second slows the world the same way.
+- More than 5 s at once (a page held up) is made up for as time away is
+  (`Logic#away`: what `resume` does). Before step 7 the clock went by the
+  engine's frame time, capped at 200 ms: under 5 frames a second (headless, 2) the world went slower than real time.
 
 ## Chance
 
@@ -53,7 +55,7 @@ twice, and the two saves the same to the byte - and fails if anything of
   what the client picks and sends (a variant and a look for a building
   about to go up, `buildman`, `compoundbuilding`; a new city's name and
   spot, `cityman`); the save's id (`citystore` newId); the traffic
-  (`carman`: cars are the client's records still, step 7 moves them); and
+  (`carman`: cars are the client's records still, reading the world); and
   everything only drawn - dust, debris, sparks, fires, a demolition's
   falling floors, the delay of a fall after a blast, lamps' phases, sounds.
 
@@ -76,11 +78,16 @@ twice, and the two saves the same to the byte - and fails if anything of
   surface), `clear` (tiles: ground and buildings, the bulldozers sent;
   gives `{cleared, cost}`), `replace` (tile, code, rotation, look), `explode`
   (tile, yards: the tiles that are only yards, as drawn), `fire` (tile),
-  `terraform` (tiles, direction), `found` (tile, name); `city` names the
-  city, the first otherwise. Plain objects, done there and then, so a
-  worker or a server can be sent them later (step 7).
-- The client sends them: `buildman` (build, replace, demolish, explode,
-  fireUp, founding), `clearworks.clear(command)` (sends and lets out the
-  dust of what had no view), city-sim's `terrainman` (clear, terraform), the
-  lab's bench. What it asks of the world without changing it (quotes,
-  `blast`, `falls`) it still calls directly.
+  `terraform` (tiles, direction), `found` (tile, name), `look` (tile, look:
+  a block's parts picked, a bus stop); `city` names the city, the first
+  otherwise. Plain JSON, sent as such through the host (`client/host.js`,
+  server.md), done in the page there and then, on a worker a frame later.
+- The client sends them with `host.command(c, done)`: `buildman` (build,
+  replace, demolish, explode, fireUp, founding), `clearworks.clear(command,
+done)` (sends and lets out the dust of what had no view), `vkaria.look`
+  (compoundbuilding, carman), city-sim's `terrainman` (clear, terraform),
+  the lab's bench. What it asks of the world without changing it (quotes,
+  `blast`, `falls`) it reads off the world (on a worker, the page's copy).
+- A site waiting for its ground has the bulldozers sent by the core
+  (`citybuildings` buildBuilding sweeps; before step 7 buildman did, so in
+  node nobody did).

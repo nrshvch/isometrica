@@ -30,6 +30,7 @@
     "world:traffic": "node tools/world/traffic.mjs",
     "world:smoke": "node tools/world/smoke.mjs",
     "world:works": "node tools/world/works.mjs",
+    "world:worker": "node tools/world/worker.mjs",
     "generate:terrain": "node tools/genterrain.js",
     "generate:vehicles": "node tools/genvehicles.js",
     "generate:sounds": "node tools/gensounds.js",
