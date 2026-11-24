@@ -99,3 +99,5 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
 
 `README.md` - the overview and the index of the skills.
 `docs/performance.md` - where a frame and a tick go, the debug panel.
+`docs/world.md` - the design (not built yet) for a world far bigger than the
+screen: what isometrica puts into the engine's (`engine/docs/world.md`).

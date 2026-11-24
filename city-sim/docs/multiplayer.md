@@ -31,6 +31,12 @@ player game stands in its way.
 
 ## What has to change
 
+How the world is cut into regions, simulated as far as somebody is watching
+it, saved and sent, for one player or many: the mechanism in
+[the engine](../../engine/docs/world.md), and what isometrica puts into it in
+[isometrica](../../isometrica/docs/world.md). A server's share of the world is
+a region of the engine's partition, a few levels up.
+
 - The world runs on a server, ticking whether anybody is watching or not;
   players' browsers send what they do and draw what they are sent. The core
   (`isometrica/src/core`) needs almost no browser as it is: only its saves

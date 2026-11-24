@@ -178,7 +178,8 @@ What it says:
 - **Later.** What the cull still goes over is mostly the trees, 1,320 game
   objects. They are sorted by depth among the buildings, so a chunk of
   them cannot be drawn as one the way the ground is: the engine would have
-  to sort what a renderer draws, not only the renderer.
+  to sort what a renderer draws, not only the renderer. What is drawn of a
+  huge world, and what is simulated, is in [world](world.md).
 
 ### The GPU
 
@@ -212,8 +213,10 @@ What it says:
 - **Later.** Traffic as structs of typed arrays: the drivers, their way
   ahead, the index as a hashed grid, road ids instead of boxed tile keys
   (tiles are about 1.78e9, past a small integer), a typed A*.
+  How it fits a huge world: [world](world.md), the traffic.
 - **Later.** Smoke: a game object a puff, each working out the wind and a
   matrix a frame - one particle buffer.
+  Worked out from its source and the time, not kept: [world](world.md).
 - **Done.** Heights: `getGridPointHeight` worked eleven octaves of noise
   out every time it was asked (`calcZ`, its cache taken out, as it was kept
   in `gridPoints`, which is saved whole), and the ground, the trees, the
@@ -236,6 +239,8 @@ What it says:
   loaded, and nothing searches it.
 - **Later.** Chunks are made in the pointer's handler, all at once: a few a
   frame.
+  And kept a ring further than they are made, let go of only after a while:
+  [world](world.md).
 
 ## The game: city-sim
 

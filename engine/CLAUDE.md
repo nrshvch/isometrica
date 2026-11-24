@@ -14,9 +14,15 @@ the games, and nothing game- or world-specific belongs here.
     animated-sprite renderers).
   - `viewport.js`, `canvas2drenderer.js`, `graphics.js`, `spritemanager.js`,
     `time.js`, `coroutine.js`, `stats.js`.
-  - `lib/` - octree, AABB, bounding box, asset manager.
+  - `lib/` - AABB, bounding box, asset manager.
 - The WebGL renderer and the lighting are isometrica's (`client/glview.js`,
   `client/lighting.js`), not here.
+
+## Docs
+
+`docs/world.md` - the design (not built yet) for a world far bigger than the
+screen: regions with stable keys, records and views, rings and tiers, the
+scheduler, threads, and the `shared/` libraries it is built from.
 
 ## Commands
 
