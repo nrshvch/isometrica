@@ -16,22 +16,22 @@ what isometrica puts into it. None of it is built yet.
 
 **The camera decides what exists.** `tilesman` keeps a square of chunks
 (24×24 tiles, 12 on a small screen) around the chunk the camera is in, a ring
-or more of them (`chunkRadius`, `client/tilesman.js:59`). Whatever falls out
-of the square is let go of at once: `cleanChunks` (`:246`) drops it, and is
-called after every chunk that comes in (`:191`). There is no margin and no
+or more of them (`chunkRadius`, `client/tilesman.js:58`). Whatever falls out
+of the square is let go of at once: `cleanChunks` (`:245`) drops it, and is
+called after every chunk that comes in (`:190`). There is no margin and no
 delay, so the camera crossing a chunk's edge by one tile lets a whole row of
 chunks go, and crossing back makes it again from nothing. `chunkman` hands
 that on to `buildman` (building views made on a chunk coming in, destroyed
-on it going, `client/buildman.js:300`, `:312`) and `envman` (trees and
+on it going, `client/buildman.js:299`, `:311`) and `envman` (trees and
 stones).
 
 **The cars go with the chunks.** A car is taken off the roads the first
 frame the road under it, or the next one on its way, is in a chunk let go of
 (`client/carman.js:909`, `unloaded` `:962`), and nothing of it is kept.
-Cars are put on every half a second (`reconcile`, `:1840`), as many as the
+Cars are put on every half a second (`reconcile`, `:1839`), as many as the
 roads _loaded_ call for, wherever they like. So panning one chunk away and
 back loses every car there and puts others on in their place. The traffic
-itself (`client/traffic.js`, `Traffic` `:2691`, `Driver` `:950`) is plain
+itself (`client/traffic.js`, `Traffic` `:2658`, `Driver` `:917`) is plain
 data and runs with no game objects at all in the traffic test
 (`lab/trafficbed`, `tools/traffictest.mjs`); in the game, though, a driver
 only drives while its car's game object ticks it. The roads it finds its way
@@ -124,14 +124,14 @@ The engine's three kinds, in isometrica:
 What goes over everything now, and what each becomes:
 
 - Every building is subscribed to the core's tick on its own
-  (`core/building.js:374`), and asks its city whether it is missing anything
-  every tick (`city.missing`, `:392`, `:409`): the regions awake are ticked,
+  (`core/building.js:373`), and asks its city whether it is missing anything
+  every tick (`city.missing`, `:391`, `:408`): the regions awake are ticked,
   and what a building adds is kept as a rate and summed up the tree.
 - The road network is worked out again for the whole city whenever anything
-  in it changed (`core/city/cityroads.js:566`): a graph a region, kept up as
+  in it changed (`core/city/cityroads.js:518`): a graph a region, kept up as
   the region changes.
 - The sound goes through every building in the world for every survey
-  (`client/audio/soundman.js:579`): the regions in the near ring, through the
+  (`client/audio/soundman.js:542`): the regions in the near ring, through the
   index.
 - The renderer culls every game object and `World.tick` ticks every ticker:
   bounded by what is in sight, once views exist only there.
@@ -153,18 +153,18 @@ only, game objects views at most, the renderer handed typed draw lists - and
 where isometrica stands with it:
 
 - **Typed already**: the ground, a game object a chunk with its tiles in typed
-  arrays, culled from numbers alone (`client/groundchunk.js:74`); the heights
+  arrays, culled from numbers alone (`client/groundchunk.js:57`); the heights
   the noise gives, kept in two typed arrays (`core/terrain.js:125`,
   `noiseHeight` `:132`); and the engine's slots and what it draws a frame.
 - **Still objects, a frame at a time**: every picture is a `CachedSprite`
   (`client/cachedsprite.js:27`), handed to `Lighting.collect`
-  (`client/lighting.js:425`) and asked to write itself (`glQuad`,
+  (`client/lighting.js:394`) and asked to write itself (`glQuad`,
   `client/cachedsprite.js:492`) - a call a picture, reading fields of several
   objects; every tree, car and puff is a game object, and a car's driver
   another object besides; a building is a game object with its pieces as game
   objects under it.
 - **Still objects in the core**: buildings in dictionaries by id and by tile
-  (`core/buildings.js:210`, `:211`), and the ground's edits too
+  (`core/buildings.js:208`, `:209`), and the ground's edits too
   (`gridPoints`, `clearedTiles`, `bareSince`, `core/terrain.js:262`-`:267`).
 
 What they become: pictures by number, the atlas a typed table; the ground
@@ -181,8 +181,8 @@ Each step ships on its own, and is measured before and after: the debug
 panel's `Stats`, the traffic test (`npm run test:traffic`), and counting what
 is made and let go of, as in `docs/performance.md`.
 
-1. **The engine**, as libraries, each with its tests and its benchmark
-   ([the engine's world](../../engine/docs/world.md), libraries): partitions
+1. **The engine**, as libraries in `shared/`, each with its tests and its
+   benchmark ([the engine's world](../../engine/docs/world.md), libraries): partitions
    (grid, implicit quadtree), stores, the registry of systems, the scheduler,
    with `Stats` for each system; draw lists and the table of pictures by
    number, the ground drawn from them first. Nothing
@@ -210,8 +210,8 @@ is made and let go of, as in `docs/performance.md`.
    (`core/construction.js:23`, `core/city.js:50`); the core with no browser in
    it; what the player does sent as commands; nothing in the core waiting on a
    browser to finish (`terrain.endClearing`, called by the bulldozers'
-   animation, `client/clearworks.js:250`; `city.tileDown`, by a demolition's,
-   `client/buildman.js:271`).
+   animation, `client/clearworks.js:215`; `city.tileDown`, by a demolition's,
+   `client/buildman.js:270`).
 7. **The simulation on a worker**, as a local server: commands in, snapshots
    out. Before saving by region and the server, because it brings in the
    protocol they both use.
@@ -223,11 +223,11 @@ is made and let go of, as in `docs/performance.md`.
 ## Found on the way
 
 - A tile's neighbour worked out by adding to its index is wrong from y =
-  32768 and at x = 65535 (`core/terrain.js:164`, `:683`, `core/buildings.js:68`
+  32768 and at x = 65535 (`core/terrain.js:164`, `:684`, `core/buildings.js:67`
   and a few files more: `building.js`, `construction.js`, `ambient.js`,
   `city/cityroads.js`, `city/citybuildings.js`).
 - A building's view is made when it is built even when its chunk is not
-  loaded (`client/buildman.js:815`), and stays until that chunk has come in
+  loaded (`client/buildman.js:814`), and stays until that chunk has come in
   and gone again.
 - Bulldozers and demolitions go on out of sight with nothing to bound them;
   the bulldozers are not saved.
@@ -236,5 +236,5 @@ is made and let go of, as in `docs/performance.md`.
   every chunk round it is made again.
 - `tilesman` keeps its chunks in arrays by chunk number, emptied but never
   shortened, and goes through every number up to the furthest it has ever
-  loaded each time it lets any go (`client/tilesman.js:246`): it costs more
+  loaded each time it lets any go (`client/tilesman.js:245`): it costs more
   the further the camera has been.
