@@ -227,6 +227,8 @@ CityPersistence.prototype.snapshot = function () {
     //the ground is the world's, whoever paid for shaping it
     terrain: this.world.terrain.save(),
     city: city.save(),
+    //the bulldozers out, and the ground waiting for them (core/works)
+    works: this.world.works ? this.world.works.save() : null,
   };
 
   if (this._view !== null) data.view = this._view;
@@ -408,6 +410,14 @@ function restore(self, data) {
 
   if (data.city !== undefined && data.city !== null)
     self.world.cities.restoreCity(data.city);
+
+  //the bulldozers back at it, as far on as they would have got meanwhile
+  //- or sent to whatever a save from before they were kept left half down
+  if (self.world.works)
+    self.world.works.load(
+      data.works || null,
+      isFinite(data.savedAt) ? Date.now() - data.savedAt : 0,
+    );
 
   //saves from before it was kept have none
   self._view =

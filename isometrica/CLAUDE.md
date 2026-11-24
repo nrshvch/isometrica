@@ -17,6 +17,8 @@ to talk to. Nothing here may know about a particular game. Games import it as
   `burning.js`, `replacement.js`, `buildingstate.js`.
 - Ground: `terrain.js` (tile index, heights), `surface.js`, `climate.js`,
   `woods.js`, `ambient.js`. Also `rotation.js`, `roadrules.js`.
+- `works.js` - the bulldozers as records: clearing, sweeping, demolishing a
+  tile at a time; stepped by any stretch at once, saved with the city.
 - `logic.js` (the tick, catching up), `vtime.js` (the clock),
   `persistence/` (saves: localStorage, server sync).
 
@@ -25,7 +27,8 @@ to talk to. Nothing here may know about a particular game. Games import it as
 - Buildings: `buildman.js` (hub, 68 KB), `buildingview.js`,
   `compoundbuilding.js`, `siterenderer.js`, `worklights.js`, `yards.js`,
   `worth.js`, `serviceman.js`.
-- Clearing and coming down: `clearworks.js` (bulldozers), `demolition.js`,
+- Clearing and coming down: `clearworks.js` (the bulldozers stepped by
+  region and tier, their game objects views), `demolition.js`,
   `explosion.js`, `collapse.js`, `fires.js`, `rubble.js`, `ruin.js`,
   `burnt.js`, `felling.js`. Smoke: `smoke.js` (puffs worked out from their
   source and the time, drawn as particles), `wind.js`.
@@ -74,7 +77,7 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
   Run it again after changing a generator while a dev server runs.
 - `npm run dev` - the lab. `npm run build:lab` - into `lab/dist`.
 - `npm run test:traffic`, `npm run test:cities` - headless tests.
-- `npm run world:fingerprint|compare|bench|streams|chunks|traffic|smoke` - what
+- `npm run world:fingerprint|compare|bench|streams|chunks|traffic|smoke|works` - what
   the world costs and hands the GPU, against a game's build served
   (`tools/world/`, `docs/world.md` Measuring).
 - `npm run generate:*` - `tools/gen*.js`.

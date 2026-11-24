@@ -9,17 +9,23 @@ in rubble or a ruin that stands till it is cleared away.
 - `core/city.js` clearTile demolishes a building whole, whichever tile was
   picked, paid by the tile once. The world keeps it while it comes down:
   `building.demolishing` (out of service, nobody in it) and which tiles are
-  down, each told once its rubble is pushed away (`city.js` tileDown); gone
-  with its last tile. Both saved: a reload finds it as far down as it was,
-  and asking again sends bulldozers for the rest, for nothing.
+  down (`city.js` tileDown); gone with its last tile. Its tiles are the
+  bulldozers' (`core/works`, going-up.md Clearing ground): a tile comes down
+  as one comes up to it and is down once its blade gets there, the rubble
+  pushed away - in sight or not, and on after a reload where it was (the
+  bulldozers are saved). Asking again sends bulldozers for the rest, for
+  nothing.
 - Being demolished it is the bulldozers' alone (see SKILL.md, Must hold);
   `building.js` hazards and fallsLater skip it; a fire is put out
   (`client/fires.js` look), what it burnt to standing behind the fence.
-- `Demolition` (`client/demolition.js`) is told when each tile is to come
-  down and when its rubble is pushed away - by the bulldozers in the game
-  (`client/buildman.js` onDemolish, `client/clearworks.js` hold, knock), by
-  a button on a bench. It stands in for the building (demolitionOf), the
-  building's own view drawing nothing.
+- `Demolition` (`client/demolition.js`) shows it while it is in sight: made
+  as the building's view is (`client/buildman.js` demolitionOf), let go of
+  with it as its chunk goes (unshowDemolition), the tiles down by then gone
+  from it. It is told when a tile is to come down (`buildman.js`
+  knockDown, from `client/clearworks`) - how long it takes to fall is how
+  long the bulldozer waits; out of sight `core/works` KNOCK_MS - and when its
+  rubble is pushed away (pushedAway); or by a button on a bench. It stands
+  in for the building, the building's own view drawing nothing.
 - Fenced at once with the site's blue tarp (`shared/gen/sites.js` fence)
   along every edge, a gate mid-front; the back stretch of a tile drawn just
   behind it, the front just in front. It stands as drawn, shadow and all,

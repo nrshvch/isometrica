@@ -242,40 +242,27 @@ function demolitionOf(self, model) {
 }
 
 /**
- * A building to be demolished (core/city clearTile): the bulldozers sent to
- * its tiles still standing (client/clearworks) - each tile coming down as one
- * comes up to it, the world told it is down once its rubble is pushed away
- * (core/city tileDown); in sight or not, the demolition standing in for it
- * shown doing so whenever it is.
+ * A building to be demolished (core/city clearTile): the demolition standing
+ * in for it while it is in sight. The bulldozers sent to its tiles still
+ * standing are the world's (core/works): each tile comes down as one comes
+ * up to it (knockDown) and is down once its rubble is pushed away
+ * (pushedAway, core/city tileDown), in sight or not.
  */
 function onDemolish(sender, args, self) {
   var model = args.building,
-    city = model.getCity(),
-    works = self.root.clearworks,
     b = getBuilding(self, model.tile);
 
   demolitionOf(self, model);
   //nothing of its own drawn from now on: the demolition stands in for it
   if (b !== null && b.view) b.view.update();
+}
 
-  if (!works) return;
+//the demolition in sight of the building being demolished on a tile, if any
+function shownOn(self, tile) {
+  var model = self.root.core.buildingService.get(tile),
+    d = model !== null ? self.demolitions[model.tile] : undefined;
 
-  args.tiles.forEach(function (tile) {
-    works.hold(
-      tile,
-      function () {
-        var d = self.demolitions[model.tile];
-
-        if (d !== undefined) d.letGo(tile);
-        if (city !== null) city.tileDown(tile);
-      },
-      function () {
-        var d = self.demolitions[model.tile];
-
-        return d !== undefined && !d.over() ? d.knock(tile) : 0;
-      },
-    );
-  });
+  return d !== undefined && !d.over() ? d : null;
 }
 
 function updateBuilding(self, data) {
@@ -314,7 +301,20 @@ function onChunkRemove(sender, chunk, self) {
   while (!tiles.done) {
     tile = TileIterator.next(tiles);
     removeBuilding(self, tile);
+    unshowDemolition(self, tile);
   }
+}
+
+//a demolition out of sight with its building's view: gone with it, made
+//again as it comes back (demolitionOf) - the bulldozers go on all the same
+function unshowDemolition(self, tile) {
+  var d = self.demolitions[tile];
+
+  if (d === undefined || getBuilding(self, tile) !== null) return;
+
+  delete self.buildingByGO[d.go.instanceId];
+  delete self.demolitions[tile];
+  d.stop();
 }
 
 //from a tile to the next one at each side, -x, -y, +x, +y - the ways a
@@ -879,6 +879,25 @@ function Buildman(main) {
 Buildman.events = events;
 
 Buildman.prototype = Object.create(EventManager.prototype);
+
+/**
+ * A bulldozer has come up to a tile of a building being demolished
+ * (client/clearworks): the demolition in sight has it come down.
+ *
+ * @returns {number} how long till it is down, ms - -1 for none in sight
+ */
+Buildman.prototype.knockDown = function (tile) {
+  var d = shownOn(this, tile);
+
+  return d !== null ? d.knock(tile) : -1;
+};
+
+//and its rubble pushed away
+Buildman.prototype.pushedAway = function (tile) {
+  var d = shownOn(this, tile);
+
+  if (d !== null) d.letGo(tile);
+};
 
 /**
  * A see-through copy of code standing on tile, the way one being placed is

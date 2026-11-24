@@ -368,8 +368,8 @@ City.prototype.quoteClear = function (tiles) {
  * down (#tileDown) - asked again, after a reload say, it is only its tiles
  * still standing sent for again, for nothing (buildingDemolish). The tiles
  * cleared are being cleared from then on (Terrain#beingCleared) - nothing
- * built on them, nor the ground moved under them - until whoever shows it
- * being done says it is.
+ * built on them, nor the ground moved under them - until a bulldozer gets
+ * there (core/works).
  *
  * @param tile {number}
  * @returns {number[]} the tiles cleared - none where there was nothing to
@@ -391,7 +391,7 @@ City.prototype.clearTile = function (tile) {
   )
     return [];
 
-  //being cleared before any of it goes, for whoever shows it going
+  //being cleared before any of it goes, till a bulldozer gets there
   for (i = 0; i < tiles.length; i++) terrain.startClearing(tiles[i]);
   for (i = 0; i < tiles.length; i++) terrain.clear(tiles[i]);
 
@@ -454,7 +454,7 @@ function demolish(self, building) {
 
 /**
  * A tile of a building being demolished is down, its rubble pushed away
- * (client/demolition): the ground there bare - and the building gone once
+ * (core/works): the ground there bare - and the building gone once
  * its last tile is.
  *
  * @param tile {number}

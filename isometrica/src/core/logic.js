@@ -11,6 +11,7 @@ import CityService from "./citysrv";
 import CityPersistence from "./persistence/citypersistence";
 import CityStore from "./persistence/citystore";
 import CitySync from "./persistence/citysync";
+import Works from "./works";
 import namespace from "namespace";
 
 namespace("Isometrica.Core").Logic = Logic;
@@ -42,6 +43,8 @@ function Logic(options) {
   this.tileParams = new TileParamsMan(this);
   this.marketService = new MarketService(this);
   this.cities = new CityService(this);
+  //the bulldozers out, clearing and bringing down (core/works)
+  this.works = new Works(this);
 
   //the player's city goes to localStorage through here, and up to the
   //server - nothing starts until whoever knows the url asks it to open a city

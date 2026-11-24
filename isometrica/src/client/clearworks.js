@@ -1,141 +1,151 @@
 import engine from "engine";
 import Events from "events";
 import Core from "../core/main";
+import Works from "../core/works";
 import Config from "./config";
 import View from "./view";
 import RenderLayer from "./renderlayer";
 import Carman from "./carman";
 import WorkLights from "./worklights";
 import Smoke from "./smoke";
+import { NEAR, VIEW, COARSE as COARSE_LEVEL } from "shared/interest";
+import { COARSE, DORMANT, FULL, Scheduler } from "shared/schedule";
+import { GridIndex } from "shared/spatial";
 
-var Terrain = Core.Terrain,
-  TerrainType = Core.TerrainType;
+var Terrain = Core.Terrain;
 
 /**
- * Ground being cleared, and the bulldozers clearing it - and bringing down
- * buildings being demolished, and clearing ground for one to go up.
- * See isometrica/.claude/skills/buildings/going-up.md (Clearing ground).
+ * The bulldozers on screen. They are the world's records (core/works),
+ * stepped here by region and tier - every frame near the camera, a few
+ * times a second further off, asleep beyond (brought up to date by the
+ * works themselves) - and drawn only in view: a game object each, its
+ * dust, and what stands on a tile held standing till one gets there.
+ * See isometrica/.claude/skills/buildings/going-up.md (The bulldozers as
+ * records).
  */
-
-//how many tiles of a stretch a bulldozer takes on, at most
-var SHARE = 6;
-
-//how fast a bulldozer drives, tiles a second; and on every tile it gets to,
-//how far it backs up and pushes on over it again, tiles, and how long that
-//takes, ms
-var DRIVE = 0.9,
-  SHOVE = 0.3,
-  SHOVE_MS = 1400;
-
-//how far ahead of its middle its blade is, tiles: what is on a tile goes as
-//the blade gets there; and how far off a tile's middle it is when it comes
-//up to it, for a building there to come down (hold knock)
-var BLADE = 0.25,
-  KNOCK = 0.85;
-
-//how long a bulldozer takes to come out of its dust, and to go off into it,
-//ms
-var FADE_MS = 600;
 
 //how often a bulldozer at work kicks up dust, ms; and how many puffs go up
 //where what stood on a tile goes down
 var DUST_EVERY = 120,
   BURST = 9;
 
-//how often the tiles waiting are looked over for anything built on them
-//meanwhile, which has whatever stood there go at once, ms
+//how often what is held is looked over for a tile no bulldozer is coming
+//to any more, ms
 var LOOK_EVERY = 500;
 
-//the tiles round a tile, sides and corners
-var AROUND = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-  [1, 1],
-  [1, -1],
-  [-1, 1],
-  [-1, -1],
-];
+//a coarse region's turn comes this often, ms, and coarse turns may take
+//this long a frame (shared/schedule Scheduler)
+var COARSE_EVERY = 250,
+  COARSE_BUDGET = 0.5;
 
 var events = {
   //a bulldozer got to a tile: it is free to build on again
   reached: 0,
 };
 
+var DOZERS = engine.Stats.counter("dozers", true),
+  DOZER_VIEWS = engine.Stats.counter("dozer views", true),
+  TIME = engine.Stats.section("clearworks");
+
 function Clearworks(root) {
+  var self = this;
+
   this.root = root;
-  //the tiles cleared no bulldozer has got to yet, by the tile - each with
-  //what is to go from it once one does, what is to be done as one comes up
-  //to it, and till when on clock none may drive onto it (hold)
-  this.waiting = {};
-  this.dozers = [];
+  //the world's bulldozers and the ground waiting for them
+  this.works = root.core.works;
+  //what is held standing on a tile till a bulldozer gets there (hold), by
+  //the tile: told as one comes up to it (knock) and as it gets there
+  //(letGo)
+  this.held = {};
+  //the views of the bulldozers in view, by their row
+  this.views = [];
+  //where each is, by its row, cells a chunk across: a region's are a cell's
+  this.index = null;
+  this.found = new Int32Array(16);
+  this.scheduler = Scheduler({ period: COARSE_EVERY, budget: COARSE_BUDGET });
+  this.scheduler.system("clearworks", function (key) {
+    stepRegion(self, key);
+  });
+  this.stamp = 0;
+  this.stamps = new Uint32Array(16);
   this.looked = 0;
-  //how long the works have been going, ms
-  this.clock = 0;
 }
 
 Clearworks.events = events;
 
 Clearworks.prototype.init = function () {
-  var go = new engine.GameObject("clearworks");
+  var go = new engine.GameObject("clearworks"),
+    self = this;
 
+  this.index = GridIndex(this.root.tilesman.chunkSize, 16);
   go.addComponent(new ClearworksScript(this));
   this.root.game.logic.world.addGameObject(go);
+
+  //told what is done, to show it
+  this.works.view = {
+    added: function (slot) {
+      appear(self, slot);
+    },
+    leaving: function (slot) {
+      appear(self, slot);
+    },
+    removed: function (slot) {
+      unshow(self, slot);
+      self.index.remove(slot);
+    },
+    knocked: function (tile, heading) {
+      return knocked(self, tile, Works.HEADINGS[heading]);
+    },
+    reaching: function (tile, heading) {
+      reaching(self, tile, heading < 0 ? undefined : Works.HEADINGS[heading]);
+    },
+    reached: function (tile) {
+      reached(self, tile);
+    },
+  };
+
+  //the regions round the camera, as their levels change
+  this.root.tilesman.listen(function (key, from, to) {
+    levelChanged(self, key, to);
+  });
 };
 
 /**
  * Clears tiles - clear(tile) clearing each in the world, and saying which
  * tiles it cleared, every tile of a building on it - and has the bulldozers
- * out to them: what stood on them stays standing until one gets there.
+ * out to them (core/works): what stood on them stays standing until one
+ * gets there.
  *
  * @param tiles {number[]}
  * @param clear {function(number): number[]}
  */
 Clearworks.prototype.clear = function (tiles, clear) {
-  var cleared = [],
-    self = this;
+  var self = this;
 
-  tiles.forEach(function (tile) {
-    clear(tile).forEach(function (t) {
-      //held as it went, or nothing was (hold)
-      var held = waitOn(self, t);
-
-      cleared.push(t);
-
-      //nothing held - nothing of it in sight - so nothing a bulldozer has
-      //to push over: in its dust, there and then
-      if (held.letGo.length === 0) burst(self, t);
-    });
+  this.works.clear(tiles, clear).forEach(function (t) {
+    //nothing held - nothing of it in sight - so nothing a bulldozer has
+    //to push over: in its dust, there and then
+    if (self.held[t] === undefined) burst(self, t);
   });
-
-  if (cleared.length > 0) crew(this, cleared);
 };
-
-//what is held on a tile being cleared, waiting for a bulldozer
-function waitOn(self, tile) {
-  return (
-    self.waiting[tile] ||
-    (self.waiting[tile] = { letGo: [], knock: [], until: self.clock })
-  );
-}
 
 /**
  * Has the bulldozers out to the tiles a building is to go up on, once they
- * are cleared (core/city/citybuildings buildBuilding): being cleared, and
- * whatever stood on them held standing till one gets there (hold) - every
- * one of them swept, bare or not, before it goes up.
+ * are cleared (core/city/citybuildings buildBuilding).
  *
  * @param tiles {number[]}
  */
 Clearworks.prototype.sweep = function (tiles) {
-  var self = this;
+  this.works.sweep(tiles);
+};
 
-  tiles.forEach(function (tile) {
-    waitOn(self, tile);
-  });
+//how many bulldozers there are, and tiles waiting for one
+Clearworks.prototype.dozers = function () {
+  return this.works.count();
+};
 
-  if (tiles.length > 0) crew(this, tiles);
+Clearworks.prototype.waiting = function () {
+  return this.works.waitingCount();
 };
 
 /**
@@ -144,8 +154,8 @@ Clearworks.prototype.sweep = function (tiles) {
  * bulldozer pushed it over, in the world ("x+", "y-" - client/view
  * headingOf), or none for gone without one - if the tile is being cleared
  * at all. As the bulldozer comes up to it, pushing on the way push goes,
- * knock(push) says so - a building there comes down then - and how long to
- * wait before driving onto it, ms.
+ * knock(push) says so, and how long what stands there takes to come down,
+ * ms.
  *
  * @param tile {number}
  * @param letGo {function(string=)}
@@ -153,19 +163,70 @@ Clearworks.prototype.sweep = function (tiles) {
  * @returns {boolean} whether it is held
  */
 Clearworks.prototype.hold = function (tile, letGo, knock) {
-  if (
-    this.waiting[tile] === undefined &&
-    !this.root.core.terrain.beingCleared(tile)
-  )
+  if (!this.works.waits(tile) && !this.root.core.terrain.beingCleared(tile))
     return false;
 
-  var held = waitOn(this, tile);
+  var held = this.held[tile] || (this.held[tile] = { letGo: [], knock: [] });
 
   held.letGo.push(letGo);
   if (knock) held.knock.push(knock);
 
   return true;
 };
+
+/**
+ * A bulldozer has come up to a tile, pushing on the way push goes: whatever
+ * is held there told, and a building being demolished there brought down
+ * (client/buildman knockDown) - how long it takes, ms, or -1 for nothing
+ * shown.
+ */
+function knocked(self, tile, push) {
+  var held = self.held[tile],
+    takes = self.root.buildman ? self.root.buildman.knockDown(tile) : -1;
+
+  if (held !== undefined) {
+    held.knock.forEach(function (knock) {
+      takes = Math.max(takes, knock(push) || 0);
+    });
+    held.knock = [];
+  }
+
+  return takes;
+}
+
+//a bulldozer's blade got to a tile: whatever is held there let go of - a
+//tree out of view just gone, not pushed over - and the rubble of a building
+//being demolished pushed away
+function reaching(self, tile, push) {
+  var held = self.held[tile];
+
+  if (!inView(self, tile)) push = undefined;
+
+  if (held !== undefined) {
+    delete self.held[tile];
+    held.letGo.forEach(function (letGo) {
+      letGo(push);
+    });
+  }
+  if (self.root.buildman) self.root.buildman.pushedAway(tile);
+}
+
+//and gone: the tile bare, in a cloud of dust
+function reached(self, tile) {
+  self.root.terrain.redraw([tile]);
+  burst(self, tile);
+  Events.fire(self, events.reached, tile);
+}
+
+/**
+ * Let go of whatever is held on a tile no bulldozer is coming to, nor being
+ * cleared any more - gone the way it would have gone.
+ */
+function unheld(self) {
+  for (var tile in self.held)
+    if (!self.works.waits(+tile) && !self.root.core.terrain.beingCleared(+tile))
+      reaching(self, +tile);
+}
 
 function ClearworksScript(man) {
   engine.Component.call(this);
@@ -177,455 +238,220 @@ ClearworksScript.prototype.profileName = "clearworks";
 
 ClearworksScript.prototype.tick = function (time) {
   var man = this.man,
-    dozers = man.dozers;
+    works = man.works,
+    Stats = engine.Stats;
 
-  man.clock += time.dt;
+  Stats.begin(TIME);
+  man.stamp = (man.stamp + 1) >>> 0 || 1;
+
+  //the clock on, and those asleep brought up to date now and then
+  works.tick(time.dt);
+
+  //the regions with any out, by tier - with none out, nothing to step
+  if (works.store.count > 0) {
+    man.scheduler.full(time.dt);
+    man.scheduler.coarse(performance.now());
+  }
+
   man.looked += time.dt;
   if (man.looked >= LOOK_EVERY) {
     man.looked = 0;
-    builtOver(man);
+    unheld(man);
   }
 
-  for (var i = 0; i < dozers.length; i++) work(man, dozers[i], time.dt);
+  //where each is now, and seen there
+  var store = works.store,
+    views = 0;
 
-  //the ones done and gone
-  man.dozers = dozers.filter(function (d) {
-    return d.go !== null;
-  });
+  for (var i = store.count - 1; i >= 0; i--) {
+    var slot = store.live[i];
+
+    if (track(man, slot)) {
+      views++;
+      place(man, slot, time.dt);
+    }
+  }
+  Stats.end(TIME);
+
+  Stats.gauge(DOZERS, store.count);
+  Stats.gauge(DOZER_VIEWS, views);
 };
 
-/**
- * A bulldozer got to a tile, pushing on the way `push` - or something was
- * built on it meanwhile, and there is no push: whatever stood on it goes
- * down in a cloud of dust, and the tile is the bare earth left
- * (client/terrain).
- */
-function reach(self, tile, push) {
-  var held = self.waiting[tile];
-
-  if (held === undefined) return;
-
-  delete self.waiting[tile];
-  held.letGo.forEach(function (letGo) {
-    letGo(push);
-  });
-
-  //gone: the tile is free to build on again, and bare
-  self.root.core.terrain.endClearing(tile);
-  self.root.terrain.redraw([tile]);
-  burst(self, tile);
-  Events.fire(self, events.reached, tile);
+//what a region's level (shared/interest) makes it to the bulldozers
+function tierOf(level) {
+  return level >= NEAR ? FULL : level === COARSE_LEVEL ? COARSE : DORMANT;
 }
 
-//a cloud of dust going up all over a tile
+function levelOf(self, slot) {
+  var tm = self.root.tilesman,
+    cols = self.works.store.cols;
+
+  return tm.levelOf(
+    tm.regionOf(Math.round(cols.x[slot]), Math.round(cols.y[slot])),
+  );
+}
+
+//the bulldozers in a region, into found
+function dozersIn(self, key) {
+  var tm = self.root.tilesman,
+    s = tm.chunkSize,
+    x = tm.cornerX(key),
+    y = tm.cornerY(key),
+    n = self.index.query(x, y, x + s - 0.5, y + s - 0.5, self.found);
+
+  if (n > self.found.length) {
+    self.found = new Int32Array(n * 2);
+    n = self.index.query(x, y, x + s - 0.5, y + s - 0.5, self.found);
+  }
+
+  return n;
+}
+
+/**
+ * Brings the bulldozers of a region up to the works' clock (the
+ * scheduler's system) - each once a frame, whichever region it is in.
+ */
+function stepRegion(self, key) {
+  var n = dozersIn(self, key),
+    works = self.works;
+
+  for (var i = 0; i < n; i++) {
+    var slot = self.found[i];
+
+    if (self.stamps.length <= slot) {
+      var s = new Uint32Array(Math.max(slot + 1, self.stamps.length * 2));
+
+      s.set(self.stamps);
+      self.stamps = s;
+    }
+    if (self.stamps[slot] === self.stamp) continue;
+    self.stamps[slot] = self.stamp;
+    works.advance(slot, works.clock);
+  }
+}
+
+/**
+ * A region's level changed (client/tilesman listen): its tier, and its
+ * bulldozers brought up to date as it wakes.
+ */
+function levelChanged(self, key, to) {
+  var tier = tierOf(to),
+    n = tier === DORMANT ? 0 : dozersIn(self, key);
+
+  self.scheduler.set(key, tier, VIEW - to, performance.now());
+
+  for (var i = 0; i < n; i++)
+    self.works.advance(self.found[i], self.works.clock);
+}
+
+/**
+ * Where a bulldozer is now: under its tile in the index, and with a view
+ * while it is in view, none while not.
+ *
+ * @returns {boolean} whether it has a view
+ */
+function track(self, slot) {
+  var cols = self.works.store.cols;
+
+  self.index.set(slot, Math.round(cols.x[slot]), Math.round(cols.y[slot]));
+
+  if (levelOf(self, slot) === VIEW) {
+    if (!self.views[slot]) self.views[slot] = show();
+    return true;
+  }
+
+  unshow(self, slot);
+  return false;
+}
+
+//a view: a game object with the picture of a bulldozer and its lights
+function show() {
+  var go = new engine.GameObject("clearworks"),
+    renderer = new WorkLights.Renderer();
+
+  renderer.layer = RenderLayer.buildingsLayer;
+  go.addComponent(renderer);
+
+  return { go: go, renderer: renderer, seen: null, dusted: 0 };
+}
+
+function unshow(self, slot) {
+  var v = self.views[slot];
+
+  if (!v) return;
+
+  if (v.go.world !== null) v.go.world.removeGameObject(v.go);
+  self.views[slot] = null;
+}
+
+//a bulldozer coming out of its dust, or going off into it: a few puffs of
+//it, if it is in view
+function appear(self, slot) {
+  var cols = self.works.store.cols;
+
+  self.index.set(slot, Math.round(cols.x[slot]), Math.round(cols.y[slot]));
+  if (levelOf(self, slot) !== VIEW) return;
+
+  for (var k = 0; k < 3; k++)
+    dust(
+      self,
+      cols.x[slot] + (Math.random() - 0.5) * 0.6,
+      cols.y[slot] + (Math.random() - 0.5) * 0.6,
+      2,
+    );
+}
+
+//whether a tile's region is in view
+function inView(self, tile) {
+  var tm = self.root.tilesman;
+
+  return (
+    tm.levelOf(tm.regionOf(Terrain.extractX(tile), Terrain.extractY(tile))) ===
+    VIEW
+  );
+}
+
+//a cloud of dust going up all over a tile, if it is in view
 function burst(self, tile) {
+  var x = Terrain.extractX(tile),
+    y = Terrain.extractY(tile);
+
+  if (!inView(self, tile)) return;
+
   for (var k = 0; k < BURST; k++)
     dust(
       self,
-      Terrain.extractX(tile) + (Math.random() - 0.5) * 0.8,
-      Terrain.extractY(tile) + (Math.random() - 0.5) * 0.8,
+      x + (Math.random() - 0.5) * 0.8,
+      y + (Math.random() - 0.5) * 0.8,
       Math.random() * 6,
     );
 }
 
 /**
- * Whatever stood on a tile waiting goes at once once anything is built on it
- * - a building site, a road - rather than stand in the middle of it till the
- * bulldozer gets there; and the bulldozer leaves that tile out. A building
- * being demolished is no such thing: it stands there till it is down; nor
- * is one waiting for this very ground to be cleared before it goes up.
+ * Kicks up a little dust now and then, as it drives or pushes on over a
+ * tile, where its blade is.
  */
-function builtOver(self) {
-  var buildings = self.root.core.buildingService;
+function kick(self, slot, v, dt) {
+  var cols = self.works.store.cols,
+    phase = cols.phase[slot];
 
-  for (var tile in self.waiting) {
-    var b = buildings.get(+tile);
-
-    if (b !== null && !b.demolishing && !(b.clearing && b.clearing()))
-      reach(self, +tile);
-  }
-}
-
-/**
- * Has bulldozers out to the stretches of ground the tiles just cleared are
- * in - each the whole of what is waiting that hangs together with them.
- */
-function crew(self, fresh) {
-  var seen = {};
-
-  fresh.forEach(function (tile) {
-    if (seen[tile] !== true) share(self, stretchOf(self, tile, seen));
-  });
-}
-
-//every tile waiting that hangs together with start, corners touching
-function stretchOf(self, start, seen) {
-  var tiles = [start],
-    open = [start];
-
-  seen[start] = true;
-
-  while (open.length > 0) {
-    var tile = open.pop(),
-      x = Terrain.extractX(tile),
-      y = Terrain.extractY(tile);
-
-    AROUND.forEach(function (d) {
-      var t = Terrain.convertToIndex(x + d[0], y + d[1]);
-
-      if (self.waiting[t] === undefined || seen[t] === true) return;
-
-      seen[t] = true;
-      tiles.push(t);
-      open.push(t);
-    });
-  }
-
-  return tiles;
-}
-
-/**
- * The way a stretch is swept: a row at a time along the longer way of it,
- * every other row back the other way.
- */
-function sweep(tiles) {
-  var x0 = Infinity,
-    x1 = -Infinity,
-    y0 = Infinity,
-    y1 = -Infinity;
-
-  tiles.forEach(function (tile) {
-    var x = Terrain.extractX(tile),
-      y = Terrain.extractY(tile);
-
-    x0 = Math.min(x0, x);
-    x1 = Math.max(x1, x);
-    y0 = Math.min(y0, y);
-    y1 = Math.max(y1, y);
-  });
-
-  //rows along x, or along y: a and b along and across them
-  var alongX = x1 - x0 >= y1 - y0;
-
-  function a(tile) {
-    return alongX ? Terrain.extractX(tile) : Terrain.extractY(tile);
-  }
-
-  function b(tile) {
-    return alongX ? Terrain.extractY(tile) : Terrain.extractX(tile);
-  }
-
-  return tiles.slice().sort(function (p, q) {
-    var row = b(p) - b(q);
-
-    if (row !== 0) return row;
-
-    //back the other way every other row
-    return (b(p) - (alongX ? y0 : x0)) % 2 === 0 ? a(p) - a(q) : a(q) - a(p);
-  });
-}
-
-/**
- * Shares a stretch out among the bulldozers: the way it is swept cut into
- * as many shares as it needs - or as there are at it already - each to the
- * one nearest to it of those already at it, who leave off wherever they
- * were, and to a new one for each share left.
- */
-function share(self, tiles) {
-  var path = sweep(tiles),
-    inStretch = {},
-    shares = [],
-    pairs = [],
-    at,
-    n,
-    i;
-
-  tiles.forEach(function (tile) {
-    inStretch[tile] = true;
-  });
-
-  //at it already: with any of its tiles still to get to
-  at = self.dozers.filter(function (d) {
-    return (
-      d.leaving === false &&
-      d.queue.some(function (tile) {
-        return inStretch[tile] === true;
-      })
-    );
-  });
-
-  n = Math.max(at.length, Math.ceil(path.length / SHARE));
-
-  for (i = 0; i < n; i++)
-    shares.push(
-      path.slice(
-        Math.round((i * path.length) / n),
-        Math.round(((i + 1) * path.length) / n),
-      ),
-    );
-
-  shares = shares.filter(function (s) {
-    return s.length > 0;
-  });
-
-  //the nearest of them first, each to one share
-  at.forEach(function (d) {
-    shares.forEach(function (s, k) {
-      pairs.push({ dozer: d, share: k, far: farTo(d, s) });
-    });
-  });
-  pairs.sort(function (p, q) {
-    return p.far - q.far;
-  });
-
-  var given = {},
-    busy = [];
-
-  pairs.forEach(function (p) {
-    if (given[p.share] === true || busy.indexOf(p.dozer) !== -1) return;
-
-    var s = shares[p.share],
-      //whatever it had to get to besides, off this stretch, after it
-      rest = p.dozer.queue.filter(function (tile) {
-        return inStretch[tile] !== true;
-      });
-
-    given[p.share] = true;
-    busy.push(p.dozer);
-    p.dozer.queue = nearEndFirst(p.dozer, s).concat(rest);
-  });
-
-  //any at it with no share - fewer shares than tiles - off to whatever else
-  //it had, or done
-  at.forEach(function (d) {
-    if (busy.indexOf(d) === -1)
-      d.queue = d.queue.filter(function (tile) {
-        return inStretch[tile] !== true;
-      });
-  });
-
-  shares.forEach(function (s, k) {
-    if (given[k] !== true) self.dozers.push(dozer(self, s));
-  });
-}
-
-//how far a bulldozer is from the nearer end of a share
-function farTo(d, s) {
-  return Math.min(far(d, s[0]), far(d, s[s.length - 1]));
-}
-
-function far(d, tile) {
-  return Math.hypot(Terrain.extractX(tile) - d.x, Terrain.extractY(tile) - d.y);
-}
-
-//a share, from whichever end of it the bulldozer is nearer
-function nearEndFirst(d, s) {
-  return far(d, s[s.length - 1]) < far(d, s[0]) ? s.slice().reverse() : s;
-}
-
-/**
- * A new bulldozer for a share, coming out of its dust a tile off where it
- * starts - on the side away from where it goes next, on land - to drive on
- * to it.
- */
-function dozer(self, queue) {
-  var tile = queue[0],
-    x = Terrain.extractX(tile),
-    y = Terrain.extractY(tile),
-    next = queue.length > 1 ? queue[1] : tile,
-    away = [
-      Math.sign(x - Terrain.extractX(next)),
-      Math.sign(y - Terrain.extractY(next)),
-    ],
-    terrain = self.root.core.terrain,
-    from = [x, y],
-    go = new engine.GameObject("clearworks"),
-    renderer = new WorkLights.Renderer(),
-    tries = [away].concat(AROUND.slice(0, 4));
-
-  //coming the way the sweep goes - or from any side of it there is land on
-  for (var i = 0; i < tries.length; i++) {
-    var w = tries[i];
-
-    if (w[0] === 0 && w[1] === 0) continue;
-
-    if (
-      terrain.getTerrainType(x + w[0], y + w[1]) !== TerrainType.water &&
-      self.waiting[Terrain.convertToIndex(x + w[0], y + w[1])] === undefined
-    ) {
-      from = [x + w[0], y + w[1]];
-      break;
-    }
-  }
-
-  renderer.layer = RenderLayer.buildingsLayer;
-  go.addComponent(renderer);
-
-  var d = {
-    go: go,
-    x: from[0],
-    y: from[1],
-    queue: queue,
-    heading: View.headingOf(x - from[0], y - from[1]) || "x+",
-    //the tile it is on, and how far into backing up and pushing on over
-    //it, ms - -1 while it drives
-    on: -1,
-    shove: -1,
-    //the tile it got to last
-    got: -1,
-    //how long it has been out, and going off; and since it last kicked up
-    //dust, ms
-    age: 0,
-    leaving: false,
-    gone: 0,
-    dusted: 0,
-    //the picture it has, as it is seen
-    seen: null,
-  };
-
-  for (var k = 0; k < 3; k++)
-    dust(
-      self,
-      d.x + (Math.random() - 0.5) * 0.6,
-      d.y + (Math.random() - 0.5) * 0.6,
-      2,
-    );
-
-  return d;
-}
-
-/**
- * Moves a bulldozer on by dt: on to the next tile of its share, the tile
- * going as its blade gets there; backing up on it and pushing on over it
- * again; or, its share done, going off into its dust.
- */
-function work(self, d, dt) {
-  d.age += dt;
-
-  if (d.leaving) {
-    d.gone += dt;
-    if (d.gone >= FADE_MS) {
-      if (d.go.world !== null) d.go.world.removeGameObject(d.go);
-      d.go = null;
-      return;
-    }
-  } else if (d.shove >= 0) {
-    var k = (d.shove += dt) / SHOVE_MS,
-      v = View.headingVector(d.heading),
-      back = SHOVE * Math.sin(Math.PI * Math.min(1, k));
-
-    d.x = Terrain.extractX(d.on) - v[0] * back;
-    d.y = Terrain.extractY(d.on) - v[1] * back;
-
-    if (k >= 1) d.shove = -1;
-    //pushing on into it, the dust going up in front of it
-    if (k > 0.5) kick(self, d, dt, BLADE);
-  } else if (ahead(self, d)) {
-    var next = d.queue[0],
-      dx = Terrain.extractX(next) - d.x,
-      dy = Terrain.extractY(next) - d.y,
-      left = Math.hypot(dx, dy),
-      step = (DRIVE * dt) / 1000;
-
-    if (left > 0.01) d.heading = View.headingOf(dx, dy);
-
-    //come up to it: whatever is to come down there comes down
-    if (left <= KNOCK) knock(self, next, d.heading);
-
-    //a tile off whatever is still coming down there, it waits
-    if (left <= 1.05 && notYet(self, next)) {
-      place(self, d);
-      return;
-    }
-
-    //the blade gets to what stands there
-    if (left <= BLADE) got(self, d, next);
-
-    if (left <= step) {
-      d.x += dx;
-      d.y += dy;
-      got(self, d, next);
-      d.queue.shift();
-      d.on = next;
-      d.shove = 0;
-    } else {
-      d.x += (dx / left) * step;
-      d.y += (dy / left) * step;
-      kick(self, d, dt, BLADE);
-    }
-  } else {
-    d.leaving = true;
-    for (var p = 0; p < 3; p++)
-      dust(
-        self,
-        d.x + (Math.random() - 0.5) * 0.6,
-        d.y + (Math.random() - 0.5) * 0.6,
-        2,
-      );
-  }
-
-  place(self, d);
-}
-
-/**
- * Whether a bulldozer has a tile to go on to - leaving out those of its
- * share that were got to meanwhile some other way (builtOver).
- */
-function ahead(self, d) {
-  var queue = d.queue;
-
-  while (
-    queue.length > 0 &&
-    self.waiting[queue[0]] === undefined &&
-    d.got !== queue[0]
+  if (
+    phase !== Works.DRIVING &&
+    !(phase === Works.SHOVING && cols.t[slot] / Works.SHOVE_MS > 0.5)
   )
-    queue.shift();
+    return;
 
-  return queue.length > 0;
-}
+  v.dusted += dt;
+  if (v.dusted < DUST_EVERY) return;
+  v.dusted = 0;
 
-//a bulldozer has come up to a tile, pushing on the way push goes: it is
-//told, and waits as long as it says (hold)
-function knock(self, tile, push) {
-  var held = self.waiting[tile];
-
-  if (held === undefined || held.knock.length === 0) return;
-
-  held.knock.forEach(function (knock) {
-    held.until = Math.max(held.until, self.clock + knock(push));
-  });
-  held.knock = [];
-}
-
-//whether a tile is not to be driven onto yet (hold)
-function notYet(self, tile) {
-  var held = self.waiting[tile];
-
-  return held !== undefined && held.until > self.clock;
-}
-
-//a bulldozer's blade got to a tile, pushing on the way it goes
-function got(self, d, tile) {
-  d.got = tile;
-  reach(self, tile, d.heading);
-}
-
-/**
- * Kicks up a little dust now and then, `ahead` of the bulldozer's middle -
- * where its blade is - or wherever its tracks are.
- */
-function kick(self, d, dt, ahead) {
-  d.dusted += dt;
-  if (d.dusted < DUST_EVERY) return;
-  d.dusted = 0;
-
-  var v = View.headingVector(d.heading),
+  var h = View.headingVector(Works.HEADINGS[cols.heading[slot]]),
     side = (Math.random() - 0.5) * 0.5;
 
   dust(
     self,
-    d.x + v[0] * ahead - v[1] * side,
-    d.y + v[1] * ahead + v[0] * side,
+    cols.x[slot] + h[0] * Works.BLADE - h[1] * side,
+    cols.y[slot] + h[1] * Works.BLADE + h[0] * side,
     Math.random() * 3,
   );
 }
@@ -642,16 +468,26 @@ function dust(self, x, y, up) {
 }
 
 /**
- * Puts a bulldozer where it is, facing the way it does as it is seen - its
- * picture and its lights - coming out of its dust or going off into it.
+ * Puts a bulldozer's view where it is, facing the way it does as it is seen
+ * - its picture and its lights - coming out of its dust or going off into
+ * it.
  */
-function place(self, d) {
-  var go = d.go,
-    heading = View.heading(d.heading),
-    renderer = go.spriteRenderer,
-    fading = d.leaving ? 1 - d.gone / FADE_MS : Math.min(1, d.age / FADE_MS);
+function place(self, slot, dt) {
+  var v = self.views[slot],
+    cols = self.works.store.cols,
+    go = v.go,
+    heading = View.heading(Works.HEADINGS[cols.heading[slot]]),
+    renderer = v.renderer,
+    x = cols.x[slot],
+    y = cols.y[slot],
+    fading =
+      cols.phase[slot] === Works.LEAVING
+        ? 1 - cols.t[slot] / Works.FADE_MS
+        : Math.min(1, cols.age[slot] / Works.FADE_MS);
 
-  if (d.seen !== heading) {
+  kick(self, slot, v, dt);
+
+  if (v.seen !== heading) {
     var vehicles = self.root.generated ? self.root.generated.vehicles : null,
       look =
         vehicles && vehicles.bulldozer
@@ -663,7 +499,7 @@ function place(self, d) {
     renderer.setSprite(self.root.sprites.getSprite(look.sprite));
     renderer.pivotX = look.pivotX;
     renderer.pivotY = look.pivotY;
-    d.seen = heading;
+    v.seen = heading;
   }
 
   //its lights on only once it is all there
@@ -672,9 +508,9 @@ function place(self, d) {
   renderer.opacity = Math.max(0, fading);
 
   go.transform.setPosition(
-    d.x * Config.tileSize,
-    Carman.groundHeight(self.root, d.x, d.y) * Config.tileZStep,
-    d.y * Config.tileSize,
+    x * Config.tileSize,
+    Carman.groundHeight(self.root, x, y) * Config.tileZStep,
+    y * Config.tileSize,
   );
 
   if (go.world === null) self.root.game.logic.world.addGameObject(go);

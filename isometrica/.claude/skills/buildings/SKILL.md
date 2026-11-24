@@ -8,8 +8,10 @@ description: Buildings and roads going up and coming down - sites, clearing and 
 The world (`core/`) decides what stands, what state it is in and what is
 saved; the client (`client/`) draws it going up and coming down. Everything
 that plays out over time is worked out from the game's time and a start kept
-in the save, so a reload lands where it would have been. What is only drawn -
-bulldozers, crews, debris, dust - is never saved.
+in the save, so a reload lands where it would have been. The bulldozers are
+the world's records (`core/works.js`), saved and brought up to date; what is
+only drawn - crews, debris, dust, a demolition's falling floors - is never
+saved.
 
 ## Where
 
@@ -26,6 +28,8 @@ bulldozers, crews, debris, dust - is never saved.
   `damage`, `hazards`, `fallsLater`. `core/burning.js` - what it burns down
   to. `core/construction.js` - going up, `awaitClearing`.
   `core/replacement.js` - what may go up in its place and turned which way.
+- `core/works.js` - the bulldozers as records: clearing, sweeping a site,
+  bringing a demolition down a tile at a time; stepped, saved, caught up.
 - `core/surface.js`, `core/rotation.js`, `core/terrain.js` (`beingCleared`,
   `REGROWS`, `bareFor`), `core/persistence/` (saves).
 - `client/buildman.js` - building views and their lifecycle on screen
@@ -51,8 +55,12 @@ bulldozers, crews, debris, dust - is never saved.
 - A building put up waits for its ground to be cleared (at most a tenth of
   the way up till then); one put up by Replace starts on cleared ground.
 - Saved: a building's `fire`, `health`, `smoke`, `down`, `yards`,
-  `demolishing`, `surface`, `look`; the terrain's `bareFor`. Not saved: the
-  city's area and network (worked out again), anything only drawn.
+  `demolishing`, `surface`, `look`; the terrain's `bareFor`; the bulldozers
+  out and the tiles waiting for them (`works`). Not saved: the city's area
+  and network (worked out again), anything only drawn.
+- What a bulldozer does - a tile cleared, a tile of a building down - is
+  done by its record (`core/works`), seen or not; a view may only say how
+  long what it shows takes.
 - A surface: flat for a building, flat or a ramp for a road; concrete under
   it a step deep at most, never under the ground, never in the water, flat
   on the shore. Roads join only where they meet level.
@@ -69,7 +77,8 @@ bulldozers, crews, debris, dust - is never saved.
 
 ## More
 
-- [going-up.md](going-up.md) - sites, clearing, roads being laid, surfaces,
+- [going-up.md](going-up.md) - sites, clearing and the bulldozers as
+  records (core/works), roads being laid, surfaces,
   shaping the ground, work lights.
 - [coming-down.md](coming-down.md) - demolition, blasts, collapse, fire,
   ruins and rubble, health.

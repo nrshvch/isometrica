@@ -27,6 +27,7 @@
     "world:chunks": "node tools/world/chunks.mjs",
     "world:traffic": "node tools/world/traffic.mjs",
     "world:smoke": "node tools/world/smoke.mjs",
+    "world:works": "node tools/world/works.mjs",
     "generate:terrain": "node tools/genterrain.js",
     "generate:vehicles": "node tools/genvehicles.js",
     "generate:sounds": "node tools/gensounds.js",

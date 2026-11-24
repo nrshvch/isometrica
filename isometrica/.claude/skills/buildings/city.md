@@ -93,7 +93,9 @@ next brings them back.
   city under it; no id → the active city, else the initial city under a
   fresh id; "start from the initial city" → under the named or a fresh id.
   `prepare` first settles server vs local. Saves every few ticks and on the
-  way out; a city never founded is never written.
+  way out; a city never founded is never written. A save holds the time,
+  the terrain, the city and the bulldozers out (`works`, `core/works` save:
+  opened again, brought on by the time since it was saved).
 - `citysync.js` (a game with a server): the browser save is still the one
   played; it goes up half a minute after a change, when the page is put
   away, and when back online, on top of the server revision it was made on,

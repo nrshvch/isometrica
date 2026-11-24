@@ -669,8 +669,8 @@ World.prototype.busy = function () {
   var works = this.client.clearworks;
 
   return (
-    works.dozers.length > 0 ||
-    Object.keys(works.waiting).length > 0 ||
+    works.dozers() > 0 ||
+    works.waiting() > 0 ||
     this.city.buildings.replacing().length > 0 ||
     explosions(this).length > 0 ||
     collapses(this).length > 0 ||
@@ -711,8 +711,8 @@ World.prototype.status = function () {
   });
 
   return {
-    dozers: works.dozers.length,
-    waiting: Object.keys(works.waiting).length,
+    dozers: works.dozers(),
+    waiting: works.waiting(),
     coming: named.demolition || 0,
     falling: named.felling || 0,
     rubble: named.rubble || 0,

@@ -24,13 +24,14 @@
 
 ## Clearing ground
 
-- Ground cleared (`client/clearworks.js`) is gone from the world as soon as
-  it is paid for (`core/city.js` clearTile); what stood on it - trees,
-  stones, a planted tree, a road - stays standing (`client/envman.js`,
-  `buildman.js` hold; roads keep joining, `roadman.js` seenRoad) till a
-  bulldozer gets there (`shared/gen/vehicles.js` bulldozer): then it goes
-  in a cloud of dust (`shared/gen/smoke.js` dust) and the tile is bare
-  earth. Not kept: after a reload the ground is bare.
+- Ground cleared (`client/clearworks.js` clear, `core/city.js` clearTile)
+  is gone from the world as soon as it is paid for; what stood on it in
+  sight - trees, stones, a planted tree, a road - stays standing
+  (`client/envman.js`, `buildman.js` hold; roads keep joining, `roadman.js`
+  seenRoad) till a bulldozer gets there (`shared/gen/vehicles.js`
+  bulldozer): then it goes in a cloud of dust (`shared/gen/smoke.js` dust)
+  and the tile is bare earth. Out of view it just goes, pushed over by
+  nobody.
 - Tiles that hang together (corners touching) are one stretch, swept a row
   at a time along the longer way, a bulldozer to every six tiles or so,
   each backing up and pushing on over every tile; ground cleared next to
@@ -51,11 +52,53 @@
   never black (`client/terrain.js` Meanwhile).
 - What clearing cost floats up once, over all the ground picked.
 
+## The bulldozers as records
+
+- `core/works.js` keeps them: a row a bulldozer in a `shared/typed` Store
+  (where it is, its heading, what it is doing - driving, waiting a tile off
+  what is coming down, pushing over a tile, going off - and how far into
+  it, how long it has been out, the tile it is on and the one it got to
+  last, when it was last stepped), the tiles each has still to get to (a
+  list by its row), and every tile waiting for one in a NumMap (till when
+  none may drive onto it, once one has come up to it).
+- `advance(slot, to)` brings one up to a time on the works' clock in one
+  go, however long: each thing it does taken to where it ends, so stepping
+  a frame at a time or a minute at once comes to the same place. What it
+  does is done there and then: coming up to a tile (`KNOCK` off), what
+  stands there comes down - the view in sight says how long it takes
+  (`buildman` knockDown, a demolition's fall), else `KNOCK_MS` for a tile of
+  a building, nothing for the rest; its blade getting there, the tile is
+  done: `city.tileDown` for a building being demolished, `terrain.endClearing`
+  - nobody needs to be looking.
+- The works' clock is the client's: `client/clearworks.js` moves it on a
+  frame at a time (`Works#tick`, which also brings any bulldozer not stepped
+  for a second up to date, `DUE_EVERY`) and steps them by region with
+  `shared/schedule`, on tilesman's levels as the traffic does (traffic,
+  agents.md): FULL in view and near, every frame; COARSE in the coarse ring,
+  every 250 ms within half a ms a frame; DORMANT beyond - left to `tick`,
+  so what one does out there is done within a second. A region woken has
+  its bulldozers brought up to date at once. A GridIndex of them by tile
+  (cells a chunk) gives a region's. With none out, nothing is stepped.
+- Views: a bulldozer's game object is made only while its region is in view
+  and put where its record is each frame (`place`); its dust, the puffs as
+  it comes and goes, and a tile's burst are only let out in view. Debug
+  panel: `clearworks` (section), `dozers`, `dozer views`.
+- Saved with the city (`works`: every bulldozer not leaving, and the tiles
+  waiting with how long till they may be driven onto); opened again, the
+  tiles waiting are being cleared again and the works brought on by the
+  time since the save (a day at most), any tile no bulldozer is on its way
+  to any more cleared; a building being demolished with tiles no bulldozer
+  is coming to (a save from before they were kept) has them sent. A
+  building site waiting for its ground is not kept
+  waiting after a reload, so its tiles are let go of at once (builtOver).
+- `npm run world:works` (docs/world.md, Measuring): a job watched, one with
+  the camera away, one saved and opened again halfway.
+
 ## A building waits for its ground
 
 A building put up is not put up till its ground is cleared, bare or not
 (`core/city/citybuildings.js` buildBuilding, `core/construction.js`
-awaitClearing; bulldozers sent by `client/clearworks.js` sweep). Nothing of
+awaitClearing; bulldozers sent by `client/clearworks.js` sweep, `core/works`). Nothing of
 it is drawn but how far along it is, which runs on by its time but stops at
 a tenth till the bulldozers are done. Put up by Replace, its ground is
 cleared already. Demolished or replaced while it waits, it is called off for

@@ -10,7 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Steps 1 to 4 are built (The way there); the
+what isometrica puts into it. Steps 1 to 5 are built (The way there); the
 rest is not yet.
 
 ## What there is now
@@ -33,6 +33,15 @@ date as it wakes. Its game object is only its view, made in the view ring.
 Panning away and back finds the same cars. How many there are still goes by
 the city's roads in the chunks drawn, and new ones are put on there.
 
+**The bulldozers are agents too** (step 5; skill `buildings`, going-up.md):
+records of the world's (`core/works.js`), each with the tiles it has still
+to get to, stepped by region as the cars are - every frame near the camera,
+a few times a second in the coarse ring, beyond it brought up to date once a
+second - and in one go however long it has been. What one does, a tile
+cleared or a tile of a building down, is done by its record, seen or not;
+they are saved with the city and brought on by the time since. A
+bulldozer's game object, and a demolition's, is only its view, in sight.
+
 **The core keeps the whole world and ticks all of it.** `Logic`
 (`core/logic.js`) has one world in memory: the terrain, every building and
 road, the cities. A `setInterval` ticks all of it every second (`:119`),
@@ -50,7 +59,8 @@ and when; when they are let out is still their emitter's.
 **Every ticker runs every frame**, far or near: the engine's `World.tick`
 (`engine/engine/world.js:381`) goes through every game object with something
 to tick (the cars are stepped by the traffic system, by region, since step
-3, and chimneys and puffs tick no more since step 4). A few scripts tick
+3, chimneys and puffs tick no more since step 4, and the bulldozers are
+stepped by region since step 5). A few scripts tick
 less often by keeping their own count of the time.
 
 **What is already done right**, and is the pattern for the rest:
@@ -94,9 +104,10 @@ The engine's three kinds, in isometrica:
   coming down. What is procedural - the heights from the noise, the trees and
   stones - is not kept at all but worked out for a region when it is wanted;
   only what was done to it is.
-- **Agents**: the traffic first, then the bulldozers and the demolitions -
-  today they go on out of sight with nothing to bound them, and the bulldozers
-  are not saved.
+- **Agents**: the traffic (step 3), and the bulldozers bringing ground and
+  buildings down (step 5) - records by region, saved, brought up to date.
+  A demolition is no agent of its own: the building keeps how far down it
+  is, the bulldozers bring it the rest of the way, its view only shows it.
 - **Effects**: smoke from chimneys, from broken-down cars, the bulldozers'
   dust, a demolition's debris. A puff is a function of its source, its seed
   and the time, its drift the wind's (since step 4); a chimney is a source
@@ -220,6 +231,13 @@ then `npx vite preview` in `city-sim`) - and know nothing of the game.
   chunks off, twelve, and sixty out in the country. It opens the game on
   that city through city-sim's own way of starting one (a session key), the
   only tool that knows a thing of the game.
+- `npm run world:works -- <url>` - on the town a new player starts on: a
+  building of two to six tiles demolished and the trees of a patch by it
+  cleared, the game's own way, three times - watched, for how long it takes;
+  with the camera twelve chunks away for a minute, when it got done and the
+  game objects and tickers the works kept from eight seconds on; and saved
+  and opened again (a reload) six seconds in, whether it goes on where it
+  was and gets done.
 - `npm run world:smoke -- <url>` - on a generated town (`--city=town` by
   default): the game objects and tickers there are for smoke, what it costs
   a frame (its tickers, or since step 4 its section), the chimneys in reach
@@ -297,14 +315,21 @@ after (above), with the debug panel's `Stats` and the traffic test
    (`world:smoke`, middles of three); `world:compare` IDENTICAL; skill
    `rendering`, smoke.md._
 5. **Bulldozers and demolitions as agents**, saved and brought up to date.
+   _Done: with the camera twelve chunks away a demolition and the trees by
+   it are done in 26 and 15 s as before (28.7 and 16), the works keeping no
+   game object nor ticker from 8 s on (were 10 and 3); saved 6 s in and
+   opened again, the bulldozers go on and are done in 15 and 20 s (before,
+   the building stood half down for good) (`world:works`); idle, the works
+   take 0.008 ms a frame; `world:compare` IDENTICAL; a still frame 8.64 →
+   8.43 ms, update 0.63 → 0.50, 1548 game objects and 33.5 MB both
+   (`world:bench`, middles of three); skill `buildings`, going-up.md._
 6. **One clock, seeded chance, names that last**: building timed by the
    game's clock, not `Date.now` (`core/construction.js:58`, `:60`); ids that
    are not counted from 0 every time the page opens
    (`core/construction.js:23`, `core/city.js:50`); the core with no browser in
    it; what the player does sent as commands; nothing in the core waiting on a
-   browser to finish (`terrain.endClearing`, called by the bulldozers'
-   animation, `client/clearworks.js:215`; `city.tileDown`, by a demolition's,
-   `client/buildman.js:270`).
+   browser - the bulldozers' clock moved on by the client's frames
+   (`client/clearworks.js`, `core/works.js` tick) among them.
 7. **The simulation on a worker**, as a local server: commands in, snapshots
    out. Before saving by region and the server, because it brings in the
    protocol they both use.
@@ -334,8 +359,8 @@ keeps only what is still to come.
   once it is running - the same town grows other buildings - so tools that
   run a while compare like with like only on the same build.
 - A burning building's smoke is let out by its view (`client/fires.js`),
-  the bulldozers' and demolitions' by theirs: none out of sight (steps 5 and
-  after).
+  a demolition's by its own: none out of sight. The bulldozers' dust is let
+  out in view only, by design.
 
 - A tile's neighbour worked out by adding to its index is wrong from y =
   32768 and at x = 65535 (`core/terrain.js:164`, `:684`, `core/buildings.js:67`
@@ -344,8 +369,23 @@ keeps only what is still to come.
 - A building's view is made when it is built even when its chunk is not
   loaded (`client/buildman.js:814`), and stays until that chunk has come in
   and gone again.
-- Bulldozers and demolitions go on out of sight with nothing to bound them;
-  the bulldozers are not saved.
+- Before step 5 a demolition opened again stood half down for good, the
+  bulldozers gone with the page, till it was demolished again; and out of
+  sight a tile of it came down in no time, with no view to say how long its
+  fall took (now `KNOCK_MS`, 2.4 s, in sight the fall's own). A
+  demolition's view was never let go of once made; now it goes with its
+  chunk.
+- A building site waiting for its ground is not kept waiting over a reload
+  (`Construction#clearing` is not saved), so the bulldozers brought back
+  let its tiles go at once.
+- `world:fingerprint`'s second side (a quarter turn from the start) is not
+  steady: run to run, on the same build, its quads come out one of three
+  ways (1402, 1406 or 1409, the shore drawn from tiles a little apart), so
+  a compare is IDENTICAL only against a run that came out the same way.
+  The other three views always are.
+- Bulldozers brought up to date in one go each do all they did in that
+  stretch before the next does any: what two of them did within the same
+  stretch is done in the order of their rows, not of when.
 - The traffic is saved whole every five seconds (`Carman#save`): every car
   of every region visited, asleep or not, so it grows with the world seen,
   until saving goes by region (step 8).

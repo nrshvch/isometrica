@@ -266,7 +266,7 @@ function Terrain(world) {
   //moved, for as long as it lies bare (REGROWS)
   this.bareSince = Object.create(null);
   //the tiles being cleared, and since when, real time (startClearing) -
-  //not kept: a save has them cleared
+  //not kept: the bulldozers' save puts them back (core/works load)
   this.clearing = Object.create(null);
 }
 
@@ -503,11 +503,10 @@ Terrain.prototype.bare = function (tile) {
 };
 
 /**
- * Has a tile being cleared - from before whatever is on it goes until
- * whoever shows it going says it is gone (endClearing): nothing is built on
- * it, nor the ground under it moved, meanwhile. A building takes a while to
- * come down, and a bulldozer to get to it (client/clearworks); with nobody
- * to show it, it is done after CLEARING_MOST.
+ * Has a tile being cleared - from before whatever is on it goes until a
+ * bulldozer gets there (endClearing, core/works): nothing is built on it,
+ * nor the ground under it moved, meanwhile. Should none ever come, it is
+ * done after CLEARING_MOST.
  *
  * @param tile {number}
  */
