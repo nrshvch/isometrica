@@ -10,8 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. None of it is built yet; step 1's libraries
-are (The way there).
+what isometrica puts into it. Being built: step 1 (The way there).
 
 ## What there is now
 
@@ -176,27 +175,76 @@ as structs of typed arrays, the smoke as one buffer of particles
 buildings as typed tables: heights by grid point, cleared ground as bits,
 buildings as rows with a kind number.
 
+## Measuring
+
+Every step below is measured before and after, on the same world every run:
+a fresh profile, `Math.random` seeded, looked at headless through Playwright
+(`tools/world/`). The tools need a page running isometrica's client, served -
+a game's build (the numbers here are city-sim's: `npm run build:city-sim`,
+then `npx vite preview` in `city-sim`) - and know nothing of the game.
+
+- `npm run world:fingerprint -- <url> <out.json>` - every quad the ground
+  hands the GPU in a frame, the tile a pick finds at every 8th pixel, and the
+  grid, from the side turned three ways and from above;
+  `npm run world:compare -- <a.json> <b.json>` says IDENTICAL, or where the
+  two first differ (and exits 1).
+- `npm run world:bench -- <url> <out.json>` - a still frame's sections, the
+  heap, a pass over the slots, a tile picked, the ground's own loop, chunks
+  made and let go of on a pan, a quarter turn held and direct, what four turns
+  allocate.
+- `npm run world:streams -- <url>` - chunks made and let go of crossing a
+  chunk's edge and back, on a quarter turn (direct and held) and on the view
+  from above and back. Now: 3 and 3 on every crossing, 13 and 13 on a direct
+  turn and on the view from above, none held.
+- `npm run world:chunks -- <url>` - chunks kept straight through clearing and
+  drawing again (exits 1 if not).
+
+To compare two builds: build one, copy its `dist` aside, build the other,
+and serve both - one with `npx vite preview --port 4173`, the copy beside it
+with `--port 4174 --outDir <the copy>`. Then three runs of each, turn about,
+and the middle of the three: a software GPU shares the processor, so one run
+says little, and three alternating ones agree.
+
+Playwright is not one of the repository's dependencies - its browsers are a
+download of their own. Cloud sessions have it; elsewhere,
+`npm install -g playwright` and `npx playwright install chromium`.
+
 ## The way there
 
-Each step ships on its own, and is measured before and after: the debug
-panel's `Stats`, the traffic test (`npm run test:traffic`), and counting what
-is made and let go of, as in `docs/performance.md`.
+Each step ships on its own, as a pull request of its own, measured before and
+after (above), with the debug panel's `Stats` and the traffic test
+(`npm run test:traffic`).
 
-1. **The engine**, as libraries in `shared/`, each with its tests and its
-   benchmark ([the engine's world](../../engine/docs/world.md), libraries): partitions
-   (grid, implicit quadtree), stores, the registry of systems, the scheduler,
-   with `Stats` for each system; draw lists and the table of pictures by
-   number, the ground drawn from them first. Nothing
-   looks or plays different: what the ground hands the GPU is compared quad
-   for quad, as when it became chunks.
-   _Done: the libraries - `shared/typed`, `shared/spatial`,
-   `shared/schedule`, `shared/draw`. Next: the ground drawn from a draw
-   list, then `Stats` for each system._
+1. **The engine's parts, as libraries in `shared/`**, each with its tests and
+   its benchmark ([the engine's world](../../engine/docs/world.md),
+   libraries) - a pull request each:
+   - 1a `shared/typed`: the store of records, the dense list, the heap, the
+     ring, the bits, the map of numbers, the radix sort. Done when each is
+     tested against the plain way (an array, `Map`, `Array.prototype.sort`)
+     on seeded random cases and benchmarked beside it. _Built but the ring._
+   - 1b `shared/spatial`, the partitions: a grid and an implicit quadtree.
+     Done when the contract tests hold (same position, same key; inside its
+     bounds; `within` as looking at everything; parents and children) and
+     keys are pinned. _Done._
+   - 1c `shared/spatial`, the indexes: a hashed grid for what moves, a packed
+     tree for what stays put. Done when their answers are those of looking at
+     everything and of `flatbush`/`kdbush` (in development only), and the
+     benchmark puts them side by side. _The hashed grid built, against
+     looking at everything._
+   - 1d `shared/random`: a toss that does not depend on order, from a region,
+     a record and a step. Done when its numbers are pinned.
+   - 1e `shared/interest` and `shared/schedule`: rings, tiers, letting go after
+     a while; a budget a frame. Done when tested on made-up observers and
+     regions, nothing of the game in them. _`shared/schedule` built._
+   - 1f `shared/draw`: draw lists and the table of pictures, and the ground
+     drawn from them. Done when `world:compare` says IDENTICAL against the
+     build before, and `world:bench`'s ground loop is no slower. _The
+     library built; the ground not yet._
 2. **isometrica's quadtree and rings that hold**, in place of `tilesman`'s
    square: a ring more kept than drawn, let go of only after a while, worked
-   out once a frame from where the camera ended up. Done when going to and
-   fro over an edge makes and lets go of nothing, and a quarter turn or the
-   view from above makes nothing again (13 chunks now).
+   out once a frame from where the camera ended up. Done when `world:streams`
+   shows nothing made or let go of crossing an edge and back, nor on a
+   quarter turn or the view from above, and `world:chunks` holds.
 3. **The traffic, the first agents.** Drivers become records in regions,
    driven by the traffic system, not by their cars' game objects; the roads
    they drive on come from the core, not from what is drawn, as far as the
@@ -223,6 +271,15 @@ is made and let go of, as in `docs/performance.md`.
 9. **Regions on the server**: a Durable Object for each server share, as the
    saves have one each today; subscribing, regions and their changes, agents
    handed over, drawing a little behind.
+
+**Left open, to settle when building**, not before: how long the fixed step
+is; how far each ring reaches, how long a region is kept once left and how
+long before it goes down a tier; whether a leaf is 64 tiles across (where to
+start); what the libraries are called.
+
+**Once built**, how a part works is written in the skill of the package it is
+in (`<package>/.claude/skills/`), as the repository does it, and this design
+keeps only what is still to come.
 
 ## Found on the way
 

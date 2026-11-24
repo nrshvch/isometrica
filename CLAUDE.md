@@ -50,8 +50,8 @@ belongs:
   (`<lib>.test.js`, `<lib>.bench.js`, Vitest): the tests say it works, the
   benchmark keeps how fast it is measured. A change to a library runs both.
 - `npm run lint`, `npm run format:check`, `npm test`, `npm run bench` - CI
-  (`.github/workflows/checks.yml`) runs them all on every push. Lint must stay
-  clean: fix what it finds rather than switching rules off.
+  (`.github/workflows/checks.yml`) runs them all on every push and pull
+  request. Lint must stay clean: fix what it finds rather than switching rules off.
 
 ## Reading
 
