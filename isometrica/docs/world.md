@@ -10,7 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Steps 1 to 3 are built (The way there); the
+what isometrica puts into it. Steps 1 to 4 are built (The way there); the
 rest is not yet.
 
 ## What there is now
@@ -39,10 +39,18 @@ road, the cities. A `setInterval` ticks all of it every second (`:119`),
 watched or not; after time away `catchUp` (`:154`) plays the ticks missed,
 a game day at most.
 
+**The smoke is worked out, not kept** (step 4; skill `rendering`,
+smoke.md): a puff is a function of its source, its seed and the time, its
+drift the wind's integral; the chimneys round the view are found by region
+with their reach, and every puff alive is a row of one draw list, drawn in
+one batch after the buildings. Nothing of it ticks or is a game object.
+Puffs let out once (a car, a fire, a blast, a bulldozer) are rows of where
+and when; when they are let out is still their emitter's.
+
 **Every ticker runs every frame**, far or near: the engine's `World.tick`
 (`engine/engine/world.js:381`) goes through every game object with something
-to tick. Chimneys and smoke puffs are most of them (the cars are stepped by
-the traffic system, by region, since step 3). A few scripts tick
+to tick (the cars are stepped by the traffic system, by region, since step
+3, and chimneys and puffs tick no more since step 4). A few scripts tick
 less often by keeping their own count of the time.
 
 **What is already done right**, and is the pattern for the rest:
@@ -53,7 +61,7 @@ less often by keeping their own count of the time.
 - Much is worked out from a time rather than ticked: a building going up
   (`core/construction.js:58`, `:221`), the grass growing back (`bareSince`,
   `bareFor`), ground being cleared, whether a chimney's fire is lit (a toss of
-  the tile and the time, `client/components/smokesource.js:89`), where the
+  the tile and the time, `client/smoke.js` burning), where the
   road crews stand (from the road's progress), the weather, the water, the
   lights blinking.
 
@@ -90,9 +98,11 @@ The engine's three kinds, in isometrica:
   today they go on out of sight with nothing to bound them, and the bulldozers
   are not saved.
 - **Effects**: smoke from chimneys, from broken-down cars, the bulldozers'
-  dust, a demolition's debris. A chimney's fire is already a toss of its tile
-  and the time; a puff becomes a function of its chimney, its seed and the
-  time, its drift the wind's.
+  dust, a demolition's debris. A puff is a function of its source, its seed
+  and the time, its drift the wind's (since step 4); a chimney is a source
+  by region, its fire a toss of its tile and the time. A burning building's
+  smoke is let out by the fire's view, so only in sight: its fire as a
+  source with its reach is still to come.
 
 ## The cases
 
@@ -152,12 +162,15 @@ where isometrica stands with it:
 - **Typed already**: the ground, a game object a chunk with its tiles in typed
   arrays, culled from numbers alone (`client/groundchunk.js:57`); the heights
   the noise gives, kept in two typed arrays (`core/terrain.js:125`,
-  `noiseHeight` `:132`); and the engine's slots and what it draws a frame.
+  `noiseHeight` `:132`); the engine's slots and what it draws a frame; and
+  the smoke, its chimneys a store by region and its puffs rows of one draw
+  list (step 4) - though each still goes to the GPU through `Lighting`, a
+  call a puff.
 - **Still objects, a frame at a time**: every picture is a `CachedSprite`
   (`client/cachedsprite.js:27`), handed to `Lighting.collect`
   (`client/lighting.js:394`) and asked to write itself (`glQuad`,
   `client/cachedsprite.js:492`) - a call a picture, reading fields of several
-  objects; every tree and puff is a game object, and so is every car in
+  objects; every tree is a game object, and so is every car in
   view (only its view, since step 3: the traffic keeps a row a car - its
   region, when it was stepped - but its driver and its errand are objects
   still); a building is a game object with its pieces as game objects under
@@ -168,9 +181,9 @@ where isometrica stands with it:
 
 What they become: pictures by number, the atlas a typed table; the ground
 writing rows into a draw list instead of handing pictures over one by one;
-trees, cars and puffs rows in draw lists and records in stores - the traffic
-as structs of typed arrays, the smoke as one buffer of particles
-(`docs/performance.md`, Later); and in the core, every region's edits and
+trees and cars rows in draw lists and records in stores - the traffic as
+structs of typed arrays, as the smoke is one draw list of particles already
+(step 4); and in the core, every region's edits and
 buildings as typed tables: heights by grid point, cleared ground as bits,
 buildings as rows with a kind number.
 
@@ -207,6 +220,12 @@ then `npx vite preview` in `city-sim`) - and know nothing of the game.
   chunks off, twelve, and sixty out in the country. It opens the game on
   that city through city-sim's own way of starting one (a session key), the
   only tool that knows a thing of the game.
+- `npm run world:smoke -- <url>` - on a generated town (`--city=town` by
+  default): the game objects and tickers there are for smoke, what it costs
+  a frame (its tickers, or since step 4 its section), the chimneys in reach
+  and the puffs alive and on the screen, over the town, twelve chunks off
+  and sixty out in the country; and whether the same time gives the same
+  puffs, asked twice and again after going twelve chunks away and back.
 
 To compare two builds: build one, copy its `dist` aside, build the other,
 and serve both - one with `npx vite preview --port 4173`, the copy beside it
@@ -271,7 +290,12 @@ after (above), with the debug panel's `Stats` and the traffic test
    IDENTICAL; skill `traffic`, agents.md._
 4. **Smoke worked out, not kept**, drawn as one buffer of particles
    (`docs/performance.md`, Later); sources brought in by their reach;
-   chimneys no longer tick.
+   chimneys no longer tick. _Done: over the town no game objects nor tickers
+   for smoke (were 250 and 254), 0.27 ms a frame for all of it (its tickers
+   0.48 before, its drawing besides), 0.01 away; the same puffs at the same
+   time, asked again and after going twelve chunks away and back
+   (`world:smoke`, middles of three); `world:compare` IDENTICAL; skill
+   `rendering`, smoke.md._
 5. **Bulldozers and demolitions as agents**, saved and brought up to date.
 6. **One clock, seeded chance, names that last**: building timed by the
    game's clock, not `Date.now` (`core/construction.js:58`, `:60`); ids that
@@ -300,6 +324,18 @@ in (`<package>/.claude/skills/`), as the repository does it, and this design
 keeps only what is still to come.
 
 ## Found on the way
+
+- Puffs were sorted in among the buildings by where they were; drawn as one
+  batch after them they are hidden by the depth buffer instead, all of a
+  puff as near as its middle and half its height more (`glview.js`
+  billboard), so what is in front of it is told a pixel at a time.
+- Smoke took numbers off `Math.random` every frame. With it gone, a world
+  opened seeded (`tools/world/page.mjs`) goes on differently from before
+  once it is running - the same town grows other buildings - so tools that
+  run a while compare like with like only on the same build.
+- A burning building's smoke is let out by its view (`client/fires.js`),
+  the bulldozers' and demolitions' by theirs: none out of sight (steps 5 and
+  after).
 
 - A tile's neighbour worked out by adding to its index is wrong from y =
   32768 and at x = 65535 (`core/terrain.js:164`, `:684`, `core/buildings.js:67`

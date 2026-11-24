@@ -1,6 +1,6 @@
 ---
 name: rendering
-description: How isometrica's world is drawn - the WebGL renderer and its one lighting pass (sun, shadows, night lamps, windows, beacons, dithering), weather (clouds, fog, rain, wet), wind, the sea, the camera (turning a quarter at a time, the smooth turn, pinch zoom, edge drag), lines and words over the city, the grid, ground chunks, frame rate. Load before changing client/glview, lighting, weather, wind, turner, view, cameracontrol, glcanvas or canvascache.
+description: How isometrica's world is drawn - the WebGL renderer and its one lighting pass (sun, shadows, night lamps, windows, beacons, dithering), weather (clouds, fog, rain, wet), wind, smoke worked out from its source and the time and drawn as particles, the sea, the camera (turning a quarter at a time, the smooth turn, pinch zoom, edge drag), lines and words over the city, the grid, ground chunks, frame rate. Load before changing client/glview, lighting, weather, wind, smoke, turner, view, cameracontrol, glcanvas or canvascache.
 ---
 
 # Rendering
@@ -21,7 +21,9 @@ shines at night.
   windows (windowLights, windowsOn), street lights (cityOn), car lamps
   (lampsOn, blinkers, brakeLights), beacons, work lights (workLight),
   weatherSky, clouds (CLOUDS, unturned), setDayNight, STILL, onFrame, calm.
-- `weather.js` (Weather.at, WEATHER, LIGHTNING), `wind.js` (Wind.factor).
+- `weather.js` (Weather.at, WEATHER, LIGHTNING), `wind.js` (Wind.factor),
+  `smoke.js` (puffs worked out, drawn as particles: Lighting particles,
+  GLView particles).
 - `canvascache.js` (pages = layers of one texture), `spritecache.js`,
   `cachedsprite.js` (Layers: heights; topOf, footOf, glQuad).
 - Camera: `view.js` (how the world looks from the camera's side), `turner.js`
@@ -71,6 +73,8 @@ shines at night.
 - [light.md](light.md) - the lit pass, heights, shadows, night, lamps,
   windows, beacons.
 - [weather.md](weather.md) - weather, clouds, fog, rain, wind, the sea.
+- [smoke.md](smoke.md) - smoke worked out from its source, its seed and the
+  time; chimneys by region with their reach; one batch of particles.
 - [camera.md](camera.md) - turning, zoom, edge drag, what is drawn over the
   city, ground chunks, frame rate.
 - [chunks.md](chunks.md) - which chunks of ground are drawn: the quadtree,

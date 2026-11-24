@@ -6,8 +6,7 @@ import View from "./view";
 import RenderLayer from "./renderlayer";
 import Carman from "./carman";
 import WorkLights from "./worklights";
-import SmokeSource from "./components/smokesource";
-import SmokeScript from "./components/smokeScript";
+import Smoke from "./smoke";
 
 var Terrain = Core.Terrain,
   TerrainType = Core.TerrainType;
@@ -633,12 +632,12 @@ function kick(self, d, dt, ahead) {
 
 //a puff of dust at x, y in tiles, `up` over the ground there
 function dust(self, x, y, up) {
-  SmokeSource.puff(
+  Smoke.puff(
     self.root.game.logic.world,
     x * Config.tileSize,
     (Carman.groundHeight(self.root, x, y) * Config.tileZStep || 0) + up,
     y * Config.tileSize,
-    SmokeScript.dust,
+    Smoke.dust,
   );
 }
 

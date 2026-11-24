@@ -12,8 +12,7 @@ import Carman from "isometrica/client/carman";
 import Traffic from "isometrica/client/traffic";
 import Lighting from "isometrica/client/lighting";
 import Terrain from "isometrica/core/terrain";
-import SmokeSource from "isometrica/client/components/smokesource";
-import SmokeScript from "isometrica/client/components/smokeScript";
+import Smoke from "isometrica/client/smoke";
 import Marker from "./marker";
 import Courier from "./courier";
 import Roads from "./roads";
@@ -528,12 +527,12 @@ function smoke(self, dt) {
   var at = frame.engine,
     off = View.unvector(at[0], at[2]);
 
-  SmokeSource.puff(
+  Smoke.puff(
     self.car.world,
     position[0] + off[0] * Config.tileSize,
     position[1] + at[1] * Config.tileZStep,
     position[2] + off[1] * Config.tileSize,
-    SmokeScript.soot,
+    Smoke.soot,
   );
 }
 

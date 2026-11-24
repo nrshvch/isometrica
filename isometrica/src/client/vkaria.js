@@ -10,6 +10,7 @@ import HiliteMan from "./hiliteman";
 import PathMan from "./pathfinding/pathman";
 import CameraScript from "./components/camerascript";
 import RenderLayer from "./renderlayer";
+import Smoke from "./smoke";
 import Terrain from "./terrain";
 import EnvMan from "./envman";
 import ChunkMan from "./chunkman";
@@ -94,6 +95,9 @@ function Vkaria(core, ui, play) {
   //the light the city is drawn in, by the hour (client/lighting)
   this.lighting = new Lighting(this, this.sprites.cache);
   this.lighting.install();
+  //the smoke, worked out a frame at a time and drawn after the buildings
+  this.smoke = Smoke;
+  this.lighting.particles = Smoke;
   //what was worked out painting the pictures the game paints for itself
   this.generated = null;
 

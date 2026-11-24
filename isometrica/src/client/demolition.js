@@ -7,8 +7,7 @@ import RenderLayer from "./renderlayer";
 import BuildingView from "./buildingview";
 import BuildingState from "../core/buildingstate";
 import Trees from "../data/trees";
-import SmokeSource from "./components/smokesource";
-import SmokeScript from "./components/smokeScript";
+import Smoke from "./smoke";
 import { changed } from "./looks";
 
 var Terrain = Core.Terrain;
@@ -1509,12 +1508,12 @@ function debris(self, x, z, up, out) {
     dz = wz - self.mz,
     l = Math.hypot(dx, dz) || 1;
 
-  SmokeSource.puff(
+  Smoke.puff(
     self.root.game.logic.world,
     wx,
     g[1] + up,
     wz,
-    SmokeScript.debris,
+    Smoke.debris,
     (dx / l) * out,
     (dz / l) * out,
   );

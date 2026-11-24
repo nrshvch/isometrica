@@ -48,10 +48,13 @@
 
 ## Wind (`client/wind.js`)
 
-One wind for the whole city, every puff of smoke going with it at once.
-Which way it comes from wanders over a few minutes, how hard rises and falls
-over a minute or so, gusts every few seconds - each a few slow waves added
-together, so it changes smoothly. By the world's clock (holds while paused).
+One wind for the whole city, every puff of smoke going with it at once
+(integrated over a puff's life: smoke.md) and the clouds. Which way it
+comes from wanders over a few minutes, how hard rises and falls over a
+minute or so, gusts every few seconds - each a few slow waves added
+together, so it changes smoothly. A function of the world's clock
+(`time.now`, a date: the same wind for everyone at the same moment; holds
+while paused).
 The weather sets how hard (`Wind.factor`): hardly a breath in fog, a little
 when clear, a gale in a storm.
 

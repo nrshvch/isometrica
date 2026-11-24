@@ -4,7 +4,9 @@
 
 - The engine hands every layer to the renderer (`engine/engine`
   Canvas2dRenderer renderGL); each layer is one batch of squares, a picture
-  each, in the engine's order (`client/glview.js` collect). Lit layers draw
+  each, in the engine's order (`client/glview.js` collect) - and the
+  buildings' a second, the puffs of smoke, against the depth buffer
+  (smoke.md). Lit layers draw
   into several pictures of the screen at once (colour, normal, height, and at
   night what shines and the light thrown round a foot - `cachedsprite.js`
   glQuad), so whatever is in front hides what is behind in all of them. Then

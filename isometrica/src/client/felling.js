@@ -3,8 +3,7 @@ import Events from "events";
 import Config from "./config";
 import View from "./view";
 import Carman from "./carman";
-import SmokeSource from "./components/smokesource";
-import SmokeScript from "./components/smokeScript";
+import Smoke from "./smoke";
 
 /**
  * A tree pushed over by the bulldozer clearing it (client/clearworks).
@@ -253,13 +252,13 @@ function landed(self) {
       px = x + v[0] * d - v[1] * side,
       py = y + v[1] * d + v[0] * side;
 
-    SmokeSource.puff(
+    Smoke.puff(
       self.root.game.logic.world,
       px * Config.tileSize,
       (Carman.groundHeight(self.root, px, py) * Config.tileZStep || at[1]) +
         Math.random() * 4,
       py * Config.tileSize,
-      SmokeScript.dust,
+      Smoke.dust,
       -v[1] * side * 16,
       v[0] * side * 16,
     );

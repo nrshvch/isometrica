@@ -305,6 +305,10 @@ Lighting.prototype.begin = function (viewport, M) {
   if (!this.plain) weatherSky(this, this.sky, this.weather, viewport);
   this.night = !this.plain && within(hourNow, SHINE_FROM, SHINE_TO);
   this.M = M;
+  this.width = viewport.width;
+  this.height = viewport.height;
+  //which layer is drawn: counted from the first (layer)
+  this.layerIndex = -1;
   this.view.lampCount = 0;
   this.view.bare = this.calm;
   //for the dither of what is drawn see-through to stay put with the lamps'
@@ -323,6 +327,7 @@ Lighting.prototype.begin = function (viewport, M) {
 
 //the layer drawn next: lit, flat ground
 Lighting.prototype.layer = function (lit, flat) {
+  this.layerIndex++;
   this.lit = lit;
   this.flat = flat;
   this.inSight.count = 0;
@@ -382,6 +387,38 @@ var UP = Math.cos(Math.PI / 6);
 function upOf(M) {
   return View.top() ? UP : -M[5];
 }
+
+/**
+ * What draws particles into a layer, after the rest of it: {layer,
+ * draw(lighting)} - the smoke (client/smoke), which hands each to particle.
+ */
+Lighting.prototype.particles = null;
+
+/**
+ * A particle - a puff of smoke - at x, y on the screen, w by h, as see-
+ * through as alpha, dithered: standing as high as height in the world and
+ * over the ground by over, its pictures where src (16 floats from at, as
+ * client/cachedsprite glQuad fills them in) says.
+ */
+Lighting.prototype.particle = function (
+  x,
+  y,
+  w,
+  h,
+  alpha,
+  height,
+  over,
+  src,
+  at,
+) {
+  var view = this.view,
+    up = this.lit ? upOf(this.M) : 0,
+    d = view.add(x, y, w, h, alpha, up * height, true, up * over),
+    o = view.offset;
+
+  for (var i = 0; i < 16; i++) d[o + i] = src[at + i];
+  view.keep();
+};
 
 /**
  * A picture drawn by renderer at x0, y0 (engine SpriteRenderer picture):
@@ -469,6 +506,12 @@ function keepInSight(sight, d, from) {
 //the layer's batch drawn, what is kept in sight where it is hidden, and
 //over them what it drew as lines, shapes and words (context)
 Lighting.prototype.flush = function () {
+  //the particles of the layer, after the rest of it (client/smoke)
+  if (this.particles !== null && this.layerIndex === this.particles.layer) {
+    this.view.particles();
+    this.particles.draw(this);
+  }
+
   if (this.tops.size > 0) {
     beacons(this, this.context, this.tops);
     this.tops.clear();
@@ -1353,7 +1396,7 @@ function weatherSky(self, sky, w, viewport) {
   //rain to slant by, and as it would be seen unturned, for the clouds
   var now =
       viewport.camera && viewport.camera.world
-        ? viewport.camera.world.logic.time.time
+        ? viewport.camera.world.logic.time.now
         : wall,
     blown = Wind(now, blowing),
     seen = View.vector(blown[0], blown[1]),

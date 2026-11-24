@@ -4,8 +4,7 @@ import Config from "./config";
 import Demolition from "./demolition";
 import Yards from "./yards";
 import BuildingCode from "../data/buildingcode";
-import SmokeSource from "./components/smokesource";
-import SmokeScript from "./components/smokeScript";
+import Smoke from "./smoke";
 import { changed } from "./looks";
 
 /**
@@ -226,12 +225,12 @@ function cloud(self, tile) {
     var a = Math.random() * Math.PI * 2,
       v = DUST_OUT[0] + Math.random() * (DUST_OUT[1] - DUST_OUT[0]);
 
-    SmokeSource.puff(
+    Smoke.puff(
       world,
       (x + (Math.random() - 0.5) * 0.8) * TILE,
       ground + 2 + Math.random() * 10,
       (y + (Math.random() - 0.5) * 0.8) * TILE,
-      SmokeScript.cloud,
+      Smoke.cloud,
       Math.cos(a) * v,
       Math.sin(a) * v,
     );

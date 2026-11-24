@@ -7,8 +7,7 @@ import Traffic from "./traffic";
 import Road from "./road";
 import RenderLayer from "./renderlayer";
 import Pathfinder from "./pathfinding/pathfinder";
-import SmokeSource from "./components/smokesource";
-import SmokeScript from "./components/smokeScript";
+import Smoke from "./smoke";
 import VTime from "../core/vtime";
 import CoreConfig from "../core/config";
 import BuildingClassCode from "../data/classcode";
@@ -1460,12 +1459,12 @@ CarAgent.prototype.smoke = function (dt) {
   //off the car as its picture has it, the camera turned (see client/view)
   var off = View.unvector(at[0], at[2]);
 
-  SmokeSource.puff(
+  Smoke.puff(
     this.man.root.game.logic.world,
     position[0] + off[0] * Config.tileSize,
     position[1] + at[1] * Config.tileZStep,
     position[2] + off[1] * Config.tileSize,
-    engine ? SmokeScript.soot : SmokeScript.steam,
+    engine ? Smoke.soot : Smoke.steam,
   );
 };
 

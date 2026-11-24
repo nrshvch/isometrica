@@ -71,6 +71,9 @@ function Tilesman() {
   this.made = NumMap(64);
   this.list = List(Float64Array, 64);
   this.camera = null;
+  //what of the ground the camera saw when it last moved, x and z, min then
+  //max (footprint) - for what is found by its reach (client/smoke)
+  this.seen = new Float64Array(4);
   //told of every region's level changing (listen)
   this.listeners = [];
   //counted up whenever a chunk is drawn or let go of: what was found in
@@ -225,6 +228,7 @@ Tilesman.prototype.update = function (now) {
 
   if (this.moved || interest.count === 0) {
     footprint(this.camera, box);
+    this.seen.set(box);
     interest.look(this.observer, box[0], box[1], box[2], box[3]);
     this.moved = false;
   }

@@ -54,12 +54,12 @@ in rubble or a ruin that stands till it is cleared away.
   itself later: under HAZARD (50) it may (`building.js` hazards,
   fallsLater), the less health the sooner.
 - Drawn (`client/explosion.js`): charges flash at its foot, it shakes, a
-  fireball out of the building (not its yard; SmokeScript fire), pieces torn
+  fireball out of the building (not its yard; client/smoke fire), pieces torn
   off every floor flung any way and high, falling all round; what is left
   stands blackened an instant (`client/burnt.js` "c"), then comes down a
   tile at a time, floor onto floor, tiles behind left open, rubble coming up
   under the dust, smouldering a while (`client/fires.js`). A cloud of dust
-  rolls out and hangs (SmokeScript cloud) while what the blast took the
+  rolls out and hangs (client/smoke cloud) while what the blast took the
   health out of comes down too, nearest first (`client/buildman.js`
   explode, `client/collapse.js`). Turned round, it is down at once.
 - Rubble heaps (`client/rubble.js`) are one pile per building: each runs on
@@ -81,7 +81,7 @@ in rubble or a ruin that stands till it is cleared away.
   (`client/fires.js` Blaze). Flames out of every burning window
   (FireRenderer: white-hot root to orange and red, flickering, lighting
   round at night), soot over each, sparks; smoke out of the windows and a
-  black column off the top as big as the building (SmokeScript plume),
+  black column off the top as big as the building (client/smoke plume),
   thicker as more burns, drifting with the wind.
 - Lights stay on where the wires hold and go out as it burns out; then it
   stands gutted or as a roofless shell, or falls floor onto floor in dust

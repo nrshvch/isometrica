@@ -6,8 +6,7 @@ import View from "./view";
 import Demolition from "./demolition";
 import Collapse from "./collapse";
 import Felling from "./felling";
-import SmokeSource from "./components/smokesource";
-import SmokeScript from "./components/smokeScript";
+import Smoke from "./smoke";
 import { changed } from "./looks";
 
 /**
@@ -296,7 +295,7 @@ function fuse(self, dt) {
     var x = (Terrain.extractX(tile) + (Math.random() - 0.5) * 0.8) * TILE,
       z = (Terrain.extractY(tile) + (Math.random() - 0.5) * 0.8) * TILE;
 
-    puff(self, SmokeScript.fire, x - g[0], z - g[2], 2, 6);
+    puff(self, Smoke.fire, x - g[0], z - g[2], 2, 6);
     P.debris(self, x - g[0], z - g[2], Math.random() * 3, 10);
   });
 }
@@ -349,7 +348,7 @@ function blast(self) {
     for (k = 0; k < FIRE_EACH; k++)
       puff(
         self,
-        SmokeScript.fire,
+        Smoke.fire,
         x + (Math.random() - 0.5) * TILE * 0.8,
         z + (Math.random() - 0.5) * TILE * 0.8,
         Math.random() * Math.max(8, top),
@@ -361,7 +360,7 @@ function blast(self) {
   for (var i = 0; i < FIRE_MIDDLE; i++)
     puff(
       self,
-      SmokeScript.fire,
+      Smoke.fire,
       self.mx - g[0] + (Math.random() - 0.5) * TILE * 0.5,
       self.mz - g[2] + (Math.random() - 0.5) * TILE * 0.5,
       Math.max(8, high) * (0.2 + Math.random() * 0.5),
@@ -389,12 +388,12 @@ function ring(self) {
       var a = Math.random() * Math.PI * 2,
         v = RING[0] + Math.random() * (RING[1] - RING[0]);
 
-      SmokeSource.puff(
+      Smoke.puff(
         world,
         (x + (Math.random() - 0.5) * 0.7) * TILE,
         ground + Math.random() * 14,
         (y + (Math.random() - 0.5) * 0.7) * TILE,
-        SmokeScript.cloud,
+        Smoke.cloud,
         Math.cos(a) * v,
         Math.sin(a) * v,
       );
@@ -442,7 +441,7 @@ function puff(self, kind, x, z, up, out) {
     dz = wz - self.mz,
     l = Math.hypot(dx, dz) || 1;
 
-  SmokeSource.puff(
+  Smoke.puff(
     self.root.game.logic.world,
     wx,
     g[1] + up,

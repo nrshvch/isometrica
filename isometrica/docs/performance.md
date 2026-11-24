@@ -28,7 +28,7 @@ in the engine's `Stats` (`engine/engine/stats.js`, `Engine.Stats`).
 - **Now and then**: what comes between frames - a pick, the city's tick and
   catching up, the traffic saved, sprites painted, the HUD read and drawn.
 - **Tickers**: what each kind of ticking component takes a frame (cars,
-  traffic, smoke, chimneys...). Timing every ticker costs a little itself,
+  traffic, tilesman...; the smoke ticks nothing: its section, `smoke`). Timing every ticker costs a little itself,
   so it is a switch.
 - **A frame**: game objects, tickers, what is drawn, draw calls, sprites
   batched, overlay ops and corners, lamps, pixels read back, cars.
@@ -218,9 +218,13 @@ What it says:
   ahead, the index as a hashed grid, road ids instead of boxed tile keys
   (tiles are about 1.78e9, past a small integer), a typed A*.
   How it fits a huge world: [world](world.md), the traffic.
-- **Later.** Smoke: a game object a puff, each working out the wind and a
-  matrix a frame - one particle buffer.
-  Worked out from its source and the time, not kept: [world](world.md).
+- **Done.** Smoke: a game object a puff, each working out the wind and a
+  matrix a frame, and a ticking one a chimney. Now worked out from its
+  source and the time (`client/smoke.js`, rendering skill smoke.md): the
+  chimneys round the view found by region, every puff alive a row of one
+  draw list, drawn in one batch after the buildings - over a town, 0 game
+  objects and tickers for smoke where there were 250 and 254
+  (`npm run world:smoke`).
 - **Done.** Heights: `getGridPointHeight` worked eleven octaves of noise
   out every time it was asked (`calcZ`, its cache taken out, as it was kept
   in `gridPoints`, which is saved whole), and the ground, the trees, the
@@ -328,7 +332,9 @@ Already so:
   have not moved: kept from frame to frame, with the cars' own drawn over.
 - **Later.** The city that stands still drawn once into a texture while the
   camera does not move, and only what moves drawn over it every frame.
-- **Later.** Smoke as one buffer of particles, not a game object a puff.
+- **Done.** Smoke as one buffer of particles, not a game object a puff
+  (The tick, above): the buildings' squares less the puffs, then the puffs
+  in a batch of their own.
 - **Later.** Fewer render targets: normal and height in one.
 
 ## Keeping the frame light

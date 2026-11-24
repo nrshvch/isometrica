@@ -58,11 +58,11 @@ red going to soot), "plume<f>" (black smoke off a burning building),
 "cloud<f>" (the dust a blast raises, rolling down the streets). A soft round
 lump, lumpy edge, lit from above-left, darker underneath, its edge broken up
 every other pixel - thinner as it grows. Fading is not painted:
-`client/components/smokeScript.js` fades it, grows it slower and slower and
-drifts it with the wind (higher, more); a car's exhaust puff is bigger, out
-three or more times as often, rising twice as fast. Chimneys
-(`client/components/smokesource.js`) smoke only while a fire is going in the
-house - most houses mornings and evenings, few at midday or in the small
+`client/smoke.js` fades it, grows it slower and slower and
+drifts it with the wind (higher, more), worked out from where and when it
+came out (rendering skill, smoke.md); a car's exhaust puff is bigger, out
+three or more times as often, rising twice as fast. Chimneys smoke only
+while a fire is going in the house - most houses mornings and evenings, few at midday or in the small
 hours, each deciding every few minutes - one thin wisp at a time. Smoke is
 dithered, not blended (a 4x4 pattern from the world's origin, the sprite
 renderer's `dither`), and lit where it is in the air, by the sun and at night

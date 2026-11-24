@@ -269,6 +269,10 @@ vec4 tall(vec4 src, ivec2 at, float shape) {
 
 uniform bool colours;
 uniform vec4 albedoSrc;
+//a puff of smoke, drawn after what it is among (GLView particles): as near
+//as its middle is, a little nearer by half its height, all of it - hidden
+//where what is drawn before it stands nearer
+uniform bool billboard;
 
 const float BAYER[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0,
   3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
@@ -295,7 +299,9 @@ void main() {
 
   if (shape <= 0.0) discard;
 
-  gl_FragDepth = gl_FragCoord.z;
+  gl_FragDepth = billboard
+    ? depthOf(vRect.y + 0.5 * vRect.w, vElev + 0.5 * vRect.w)
+    : gl_FragCoord.z;
 
   if (colours) {
     out0 = vec4(c.rgb, shape);
@@ -306,7 +312,7 @@ void main() {
         : tall(vSrc2, at, shape));
     //how near it is, for what is drawn over the city to be hidden behind it
     //(the pictures are still drawn in the order the engine sorts them)
-    gl_FragDepth = depthOf(size.y - gl_FragCoord.y, height(at));
+    if (!billboard) gl_FragDepth = depthOf(size.y - gl_FragCoord.y, height(at));
   } else {
     out0 = drawn(vSrc1, at, shape);
     out1 = drawn(vSrc2, at, shape);
@@ -1486,6 +1492,16 @@ GLView.prototype.resize = function (w, h, margin) {
   );
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   attach(gl, this.second, [t[SHINE]]);
+  //what shines is hidden behind what stands nearer too, for the particles
+  //drawn into it after everything else of their layer (particles)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, this.second);
+  gl.framebufferRenderbuffer(
+    gl.FRAMEBUFFER,
+    gl.DEPTH_STENCIL_ATTACHMENT,
+    gl.RENDERBUFFER,
+    this.stencil,
+  );
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   attach(gl, this.lightFrame, [this.lightTex]);
   //made again, it is clear, not black
   this.lightBlack = false;
@@ -1538,6 +1554,19 @@ GLView.prototype.keep = function () {
   this.count++;
 };
 
+//where the squares of the layer's particles start, -1 for none (particles)
+GLView.prototype.particlesFrom = -1;
+
+/**
+ * The squares added from now until the layer is drawn are particles - puffs
+ * of smoke (client/smoke): drawn after the rest of the layer, in one batch,
+ * each as near as its middle (the shader's billboard) and hidden behind what
+ * of the layer stands nearer, rather than sorted in among it.
+ */
+GLView.prototype.particles = function () {
+  this.particlesFrom = this.count;
+};
+
 /**
  * Draws the squares added since, and over them what was drawn as lines,
  * shapes and words (client/glcanvas) - into the pictures of the screen of
@@ -1546,9 +1575,11 @@ GLView.prototype.keep = function () {
  */
 GLView.prototype.flush = function (lit, flat, sight) {
   var gl = this.gl,
-    n = this.count;
+    all = this.count,
+    n = this.particlesFrom >= 0 ? this.particlesFrom : all;
 
   this.count = 0;
+  this.particlesFrom = -1;
 
   if (n > 0) {
     Stats.count(SQUARES, n);
@@ -1572,6 +1603,8 @@ GLView.prototype.flush = function (lit, flat, sight) {
     //and by day, what they stand over - nothing on flat ground
     if (lit && !flat && this.shadows) this.stamp(n);
   }
+
+  if (all > n) this.drawParticles(lit, flat, n, all - n);
 
   //what is kept in sight, where anything stands in front of it
   if (lit && sight && sight.count > 0) this.xray(sight);
@@ -1655,6 +1688,39 @@ GLView.prototype.stamp = function (n) {
   gl.viewport(0, 0, this.width, this.height);
 };
 
+/**
+ * The layer's particles, n squares from from (particles): one batch into
+ * each picture of the screen, nearer than what is there already or not drawn
+ * at all; and by day, as the rest, what they stand over.
+ */
+GLView.prototype.drawParticles = function (lit, flat, from, n) {
+  var gl = this.gl;
+
+  Stats.count(SQUARES, n);
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.spriteBuffer);
+  gl.bufferData(
+    gl.ARRAY_BUFFER,
+    this.sprites,
+    gl.STREAM_DRAW,
+    from * FLOATS,
+    n * FLOATS,
+  );
+
+  if (lit) {
+    this.billboard = true;
+    this.batch(this.first, this.spriteProgram, this.vaos[0][0], true, n, 3);
+    if (this.night)
+      this.batch(this.second, this.spriteProgram, this.vaos[1][0], false, n, 1);
+    this.billboard = false;
+  } else if (!this.bare)
+    this.batch(null, this.plainProgram, this.vaos[0][1], true, n, 1);
+
+  if (lit && !flat && this.shadows) this.stamp(n);
+};
+
+//whether the batch drawn is of particles (drawParticles)
+GLView.prototype.billboard = false;
+
 GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
   var gl = this.gl;
 
@@ -1671,11 +1737,20 @@ GLView.prototype.batch = function (frame, p, vao, colours, n, outputs) {
   if (loc !== null) gl.uniform1i(loc, colours ? 1 : 0);
   loc = uniform(gl, p, "origin");
   if (loc !== null) gl.uniform2f(loc, this.origin[0], this.origin[1]);
+  loc = uniform(gl, p, "billboard");
+  if (loc !== null) gl.uniform1i(loc, this.billboard ? 1 : 0);
   gl.bindVertexArray(vao);
 
+  //particles: only where they are nearer than what is there, and how near
+  //they are kept where they are drawn into the lit city
+  if (this.billboard && frame !== null) {
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.depthMask(frame === this.first);
+  }
   //into the lit city, how near every pixel drawn is too: the nearest of
   //what is seen, the pictures drawn over each other in their order
-  if (frame === this.first) {
+  else if (frame === this.first) {
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.ALWAYS);
     gl.depthMask(true);

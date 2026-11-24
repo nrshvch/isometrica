@@ -1,6 +1,6 @@
 ---
 name: world
-description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/interest (observers, rings, levels), shared/draw (Pictures, DrawList, Visible), and shared/random's toss. Load before using or changing any of them.
+description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/interest (observers, rings, levels), shared/draw (Pictures, DrawList, Visible), shared/integral (Integral), and shared/random's toss. Load before using or changing any of them.
 ---
 
 # The world's libraries
@@ -128,3 +128,20 @@ store.cols.x`. Re-reading `store.count` off the object every pass keeps V8
   range, the layer above it, one stable radix sort - ties keep cull order.
 - Used by isometrica's ground (`client/groundchunk.js`): a draw list and a
   table of pictures a chunk, `Visible.cull` without the sort.
+
+## integral
+
+- `Integral(channels, step, window, sample, rebase)`: `sample(t, out)` is f
+  at t, held over its step (sampled in the middle of `[k step, (k + 1)
+step)`), so a step is the same whenever it is filled in. `over(a, b, out)`
+  -> `out[c * 3 + n]` = the integral of `(τ - a)^n f_c` over `[a, b]`; `at(t,
+out)` the value held.
+- Running sums at every step boundary in a ring as far back as `window`; a
+  stretch starting further back starts where the ring does. A jump longer
+  than the ring, a time before it, or `rebase` steps since the sums started
+  (by default the larger of 16 rings and 4096 steps) start them again from
+  there, so that `τ³` sums stay exact: the same stretch then gives the same
+  numbers to the last few bits, not to the bit.
+- Tested against adding up each step on its own, in any order asked, over
+  jumps and restarts. Used by isometrica's smoke for the wind (rendering
+  skill, smoke.md).

@@ -54,8 +54,11 @@ shared/<lib>/
   coarse, keep, unloaded), up at once, down after a while, what changed.
 - `draw` - Pictures (a table by number), DrawList (rows a system writes),
   Visible (culled by a world-to-screen matrix, sorted by layer then depth).
+- `integral` - Integral: a function of time held a step at a time and
+  summed as it goes, its integral and first two moments over any stretch of
+  the last while in a few sums (a puff of smoke and the wind).
 
-How `typed`, `spatial`, `schedule`, `interest` and `draw` work, and the rules they keep:
+How `typed`, `spatial`, `schedule`, `interest`, `draw` and `integral` work, and the rules they keep:
 skill `world` (`.claude/skills/world/`).
 
 ## Commands (here, or at the root)

@@ -7,7 +7,7 @@
  */
 import engine from "engine";
 import RenderLayer from "./renderlayer";
-import SmokeSource from "./components/smokesource";
+import Smoke from "./smoke";
 import Config from "./config";
 import BuildingState from "../core/buildingstate";
 import Core from "../core/main";
@@ -299,9 +299,14 @@ BuildingView.prototype.update = function () {
     //as it is seen, the camera turned the way it is (see drawnAt)
     var at = drawnAt(staticData, b.data.tile, b.data.rotation, b.data.surface);
 
+    //its chimneys' tops, put in again below if it has any (client/smoke)
+    var tops = null;
+
     //clear old GOs - each one lets go of the view as it is destroyed, so
-    //off a copy of the list
+    //off a copy of the list - and its chimneys
     if (collecting === null) {
+      Smoke.release(this);
+
       var children = this.gameObject.transform.children.slice();
       for (var i = 0; i < children.length; i++)
         children[i].gameObject.destroy();
@@ -422,18 +427,12 @@ BuildingView.prototype.update = function () {
           look,
           staticData.compound,
           at.rotation,
-        ).forEach(function (top, k) {
-          var source = new engine.GameObject();
+        ).forEach(function (top) {
+          var w = View.unvector(top[0] * tileSize, top[2] * tileSize);
 
-          setSeenPosition(
-            source,
-            top[0] * tileSize,
-            top[1] * tileZStep,
-            top[2] * tileSize,
-          );
-          source.addComponent(new SmokeSource(b.data, k));
-          this.gameObject.transform.addChild(source.transform);
-        }, this);
+          tops = tops || [];
+          tops.push([w[0], top[1] * tileZStep, w[1]]);
+        });
     }
 
     if (collecting !== null) {
@@ -466,6 +465,16 @@ BuildingView.prototype.update = function () {
       at.z * tileZStep,
       at.y * tileSize,
     );
+
+    //its chimneys' tops in the world, as they stand on it
+    if (tops !== null) {
+      tops.forEach(function (top) {
+        top[0] += at.x * tileSize;
+        top[1] += at.z * tileZStep;
+        top[2] += at.y * tileSize;
+      });
+      Smoke.chimneys(this, b.data, tops);
+    }
 
     //a part of it to be open, not painted yet: drawn again soon
     if (this.retry === true && collecting === null) {
@@ -753,6 +762,7 @@ function drawSite(self, staticData, look, turns) {
  * Lets go of what it was waiting to do, for a building that is gone.
  */
 BuildingView.prototype.dispose = function () {
+  Smoke.release(this);
   clearTimeout(this.stageTimer);
   this.stageTimer = null;
 };

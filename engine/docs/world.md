@@ -303,8 +303,8 @@ may import it, and puts the libraries together - it does not own them. How a
 library is laid out, written, tested and measured is in `shared/CLAUDE.md`.
 
 **The libraries.** Built: `typed`, `spatial` (the grid, the quadtree, a
-hashed grid index and a packed tree), `schedule`, `interest`, `draw` - how
-they work is shared's skill `world`. Still to come: the octree, `replica`.
+hashed grid index and a packed tree), `schedule`, `interest`, `draw`,
+`integral` - how they work is shared's skill `world`. Still to come: the octree, `replica`.
 
 - `shared/typed` - the containers everything is kept in: a store of records
   as typed columns, with handles, the count each slot has been used and the
@@ -320,6 +320,9 @@ they work is shared's skill `world`. Still to come: the octree, `replica`.
   out.
 - `shared/draw` - draw lists and the table of pictures, culled and sorted;
   how they get onto the GPU stays the renderer's.
+- `shared/integral` - a function of time (a wind) integrated as it goes, its
+  moments over any stretch of the last while in a few sums: what an effect
+  worked out from its start and the time needs of what changed meanwhile.
 - `shared/replica` - a region's version, its state and its changes packed
   and unpacked, copies published with `Atomics`.
 - `shared/random` is there already: seeded streams, a stream of its own for

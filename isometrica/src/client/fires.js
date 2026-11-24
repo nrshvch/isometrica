@@ -12,8 +12,7 @@ import Demolition from "./demolition";
 import Ruin from "./ruin";
 import Yards from "./yards";
 import Carman from "./carman";
-import SmokeSource from "./components/smokesource";
-import SmokeScript from "./components/smokeScript";
+import Smoke from "./smoke";
 import { changed } from "./looks";
 
 /**
@@ -752,7 +751,7 @@ function burning(self, h, dt) {
 
     //pouring out of it over its flames, billowing up to join what rolls up
     //off the top of it
-    SmokeSource.puff(
+    Smoke.puff(
       world,
       at[0],
       at[1] + over,
@@ -776,7 +775,7 @@ function burning(self, h, dt) {
 /**
  * The black smoke rolling up off it as big as it is: off a house a thinner
  * column of it, not so high and gone sooner, than off a block of flats
- * (SmokeScript plume) - by its ground and how tall it stands.
+ * (Smoke plume) - by its ground and how tall it stands.
  */
 function plumeOf(self) {
   var size = Math.sqrt(self.built.length) * (0.6 + self.high / 50),
@@ -785,9 +784,9 @@ function plumeOf(self) {
 
   if (self.plumeKey !== key) {
     self.plumeKey = key;
-    self.plumeKind = Object.assign({}, SmokeScript.plume, {
-      ttl: SmokeScript.plume.ttl * (0.45 + 0.55 * (key / 10)),
-      rise: SmokeScript.plume.rise * (0.55 + 0.45 * (key / 10)),
+    self.plumeKind = Object.assign({}, Smoke.plume, {
+      ttl: Smoke.plume.ttl * (0.45 + 0.55 * (key / 10)),
+      rise: Smoke.plume.rise * (0.55 + 0.45 * (key / 10)),
     });
   }
 
@@ -812,7 +811,7 @@ function plume(self, share, high, dt) {
       y = Terrain.extractY(t) + (Math.random() - 0.5) * 0.8,
       ground = Carman.groundHeight(self.root, x, y) * Config.tileZStep;
 
-    SmokeSource.puff(
+    Smoke.puff(
       self.root.game.logic.world,
       x * TILE,
       ground + high * PER_PIXEL * (0.75 + Math.random() * 0.4),
@@ -868,14 +867,14 @@ Blaze.prototype.fall = function () {
   for (var i = 0; i < 18; i++) {
     var t = self.built[i % self.built.length];
 
-    SmokeSource.puff(
+    Smoke.puff(
       this.root.game.logic.world,
       (Terrain.extractX(t) + (Math.random() - 0.5)) * TILE,
       Carman.groundHeight(this.root, Terrain.extractX(t), Terrain.extractY(t)) *
         Config.tileZStep +
         Math.random() * 10,
       (Terrain.extractY(t) + (Math.random() - 0.5)) * TILE,
-      i % 3 === 0 ? SmokeScript.plume : SmokeScript.debris,
+      i % 3 === 0 ? Smoke.plume : Smoke.debris,
       (Math.random() - 0.5) * 30,
       (Math.random() - 0.5) * 30,
     );
@@ -893,12 +892,12 @@ function roofFalls(self) {
       g = Carman.groundHeight(self.root, x, y) * Config.tileZStep;
 
     for (var i = 0; i < 6; i++)
-      SmokeSource.puff(
+      Smoke.puff(
         world,
         (x + (Math.random() - 0.5) * 0.8) * TILE,
         g + self.high * PER_PIXEL * (0.6 + Math.random() * 0.4),
         (y + (Math.random() - 0.5) * 0.8) * TILE,
-        i % 2 === 0 ? plumeOf(self) : SmokeScript.debris,
+        i % 2 === 0 ? plumeOf(self) : Smoke.debris,
         (Math.random() - 0.5) * 20,
         (Math.random() - 0.5) * 20,
       );
@@ -1021,12 +1020,12 @@ function remains(self, h, dt) {
       var e = self.embers[Math.floor(Math.random() * self.embers.length)],
         ground = Carman.groundHeight(self.root, e.x, e.y) * Config.tileZStep;
 
-      SmokeSource.puff(
+      Smoke.puff(
         world,
         e.x * TILE,
         ground + 2,
         e.y * TILE,
-        cool < 0.4 ? plumeOf(self) : SmokeScript.steam,
+        cool < 0.4 ? plumeOf(self) : Smoke.steam,
         0,
         0,
       );

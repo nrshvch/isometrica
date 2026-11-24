@@ -28,7 +28,8 @@ its way somewhere.
   four, draws nothing: it is the traffic's (traffic skill, agents.md).
   `listen(fn)` tells whoever asks of every level change, and `regionOf`,
   `levelOf`, `drawn` and `list` say where a tile's region is and how it
-  stands; `version` counts up as a chunk is drawn or let go of.
+  stands, `seen` what of the ground the camera saw (the smoke's reach is
+  taken from it: smoke.md); `version` counts up as a chunk is drawn or let go of.
 - **Once a frame**: a camera move only notes that it moved; a ticker
   (`tilesman` in the debug panel) looks again from where the camera ended up
   and settles the levels, which costs what is round the camera. A quarter turn
