@@ -221,7 +221,7 @@ after (above), with the debug panel's `Stats` and the traffic test
    - 1a `shared/typed`: the store of records, the dense list, the heap, the
      ring, the bits, the map of numbers, the radix sort. Done when each is
      tested against the plain way (an array, `Map`, `Array.prototype.sort`)
-     on seeded random cases and benchmarked beside it. _Built but the ring._
+     on seeded random cases and benchmarked beside it. _Done (skill `world` in `shared/`)._
    - 1b `shared/spatial`, the partitions: a grid and an implicit quadtree.
      Done when the contract tests hold (same position, same key; inside its
      bounds; `within` as looking at everything; parents and children) and

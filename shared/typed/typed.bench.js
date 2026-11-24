@@ -1,6 +1,6 @@
 import { test } from "vitest";
 import Random from "../random/index.js";
-import { NumMap, RadixSort, Store } from "./index.js";
+import { NumMap, RadixSort, Ring, Store } from "./index.js";
 
 var N = 100000,
   random = Random(1),
@@ -105,5 +105,39 @@ test("Store beside objects", async function ({ bench }) {
         }
       },
     ),
+  );
+});
+
+test("Ring beside an array", async function ({ bench }) {
+  var ring = Ring(1024),
+    shared = Ring(1024, Float64Array, true),
+    batch = new Float64Array(1000),
+    plain = [];
+
+  await bench.compare(
+    bench("Ring, 100k pushed and shifted, 1k at a time", function () {
+      for (var r = 0; r < 100; r++) {
+        for (var i = 0; i < 1000; i++) ring.push(i);
+        while (ring.size) ring.shift();
+      }
+    }),
+    bench("Ring on shared memory, the same", function () {
+      for (var r = 0; r < 100; r++) {
+        for (var i = 0; i < 1000; i++) shared.push(i);
+        while (shared.size) shared.shift();
+      }
+    }),
+    bench("Ring, the same a batch of 1k at a time", function () {
+      for (var r = 0; r < 100; r++) {
+        ring.write(batch, 1000);
+        ring.read(batch, 1000);
+      }
+    }),
+    bench("an array, push and shift, the same", function () {
+      for (var r = 0; r < 100; r++) {
+        for (var i = 0; i < 1000; i++) plain.push(i);
+        while (plain.length) plain.shift();
+      }
+    }),
   );
 });

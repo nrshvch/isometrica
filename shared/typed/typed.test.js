@@ -6,6 +6,7 @@ import {
   List,
   NumMap,
   RadixSort,
+  Ring,
   Store,
   grow,
   slotOf,
@@ -258,5 +259,86 @@ describe("RadixSort", function () {
     RadixSort().sort(keys, values, 3);
     expect(Array.from(keys)).toEqual([1, 2, 3, 0]);
     expect(Array.from(values)).toEqual([1, 2, 0, 3]);
+  });
+});
+
+describe("Ring", function () {
+  it("does what an array pushed and shifted does, full and empty included", function () {
+    var ring = Ring(5, Int32Array),
+      plain = [],
+      random = Random(12);
+
+    expect(ring.capacity).toBe(8);
+
+    for (var step = 0; step < 20000; step++) {
+      if (random.chance(0.5)) {
+        var v = random.int(-1000, 1000);
+
+        expect(ring.push(v)).toBe(plain.length < 8);
+        if (plain.length < 8) plain.push(v);
+      } else expect(ring.shift()).toBe(plain.shift());
+
+      expect(ring.size).toBe(plain.length);
+    }
+  });
+
+  it("writes and reads batches as pushing and shifting one by one would", function () {
+    var ring = Ring(16, Int32Array),
+      plain = [],
+      random = Random(13),
+      src = new Int32Array(40),
+      dst = new Int32Array(40);
+
+    for (var step = 0; step < 3000; step++) {
+      var k = random.int(0, 40);
+
+      if (random.chance(0.5)) {
+        for (var i = 0; i < k; i++) src[i] = random.int(0, 1e6);
+
+        var wrote = ring.write(src, k);
+
+        expect(wrote).toBe(Math.min(k, 16 - plain.length));
+        for (i = 0; i < wrote; i++) plain.push(src[i]);
+      } else {
+        var got = ring.read(dst, k);
+
+        expect(Array.from(dst.subarray(0, got))).toEqual(plain.splice(0, k));
+      }
+      expect(ring.size).toBe(plain.length);
+    }
+  });
+
+  it("goes on past the counts wrapping round", function () {
+    var ring = Ring(4),
+      counts = new Int32Array(ring.buffer, 0, 2);
+
+    counts[0] = counts[1] = 2147483646;
+    for (var i = 0; i < 10; i++) {
+      expect(ring.push(i + 0.5)).toBe(true);
+      expect(ring.size).toBe(1);
+      expect(ring.shift()).toBe(i + 0.5);
+    }
+    expect(ring.shift()).toBe(undefined);
+  });
+
+  it("is the same ring seen from another thread's side, on shared memory", function () {
+    var a = Ring(16, Float64Array, true),
+      b = Ring.on(a.buffer, Float64Array);
+
+    expect(a.buffer).toBeInstanceOf(SharedArrayBuffer);
+    a.push(1.25);
+    a.push(2.5);
+    expect(b.size).toBe(2);
+    expect(b.shift()).toBe(1.25);
+    expect(a.size).toBe(1);
+    b.push(3);
+    expect(a.shift()).toBe(2.5);
+    expect(a.shift()).toBe(3);
+  });
+
+  it("will not open a buffer that is not a power of two long", function () {
+    expect(function () {
+      Ring.on(new ArrayBuffer(8 + 3 * 8));
+    }).toThrow();
   });
 });

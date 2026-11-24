@@ -39,7 +39,8 @@ shared/<lib>/
   fromImage.
 - `typed` - the containers: Store (records as typed columns, handles that
   tell a removed record from its slot's next one), List, Heap, BitSet,
-  NumMap (numbers to numbers, no objects), RadixSort, grow.
+  NumMap (numbers to numbers, no objects), RadixSort, Ring (two threads),
+  grow.
 - `spatial` - space cut up: Grid and Quadtree (implicit, Morton keys that
   never change: keyOf, bounds, within, neighbours, parent, children), and
   GridIndex (a hashed grid of points that move).
@@ -49,8 +50,8 @@ shared/<lib>/
 - `draw` - Pictures (a table by number), DrawList (rows a system writes),
   Visible (culled by a world-to-screen matrix, sorted by layer then depth).
 
-The containers grow by doubling: re-read a column after anything that may
-add. In a hot loop, read counts and columns into locals first.
+How `typed`, `spatial`, `schedule` and `draw` work, and the rules they keep:
+skill `world` (`.claude/skills/world/`).
 
 ## Commands (here, or at the root)
 

@@ -1,7 +1,7 @@
 /**
  * The containers everything is kept in, as typed arrays: a store of records
  * with handles, a list, a min-heap, a set of bits, a map from numbers to
- * numbers and a radix sort. Nothing here makes objects per item; arrays grow
+ * numbers, a radix sort, and a ring two threads can share. Nothing here makes objects per item; arrays grow
  * by doubling, so a caller re-reads a column after anything that may add.
  * The design is engine/docs/world.md, Typed arrays.
  */
@@ -552,3 +552,112 @@ export function RadixSort(capacity) {
 
   return { sort: sort };
 }
+
+/*
+ * Ring: a queue of numbers, first in first out, of a fixed size (a power of
+ * two). Its head and tail are counts kept in the buffer itself and read and
+ * written with Atomics, so one thread may push while another shifts when
+ * the buffer is a SharedArrayBuffer; on a plain ArrayBuffer it is the same.
+ * The buffer: two Int32 counts, 8 bytes, then the numbers.
+ */
+var RING_HEAD = 0,
+  RING_TAIL = 1;
+
+/**
+ * Ring(capacity, Type, shared) - a new ring of Type (Float64Array) on a
+ * SharedArrayBuffer when shared; Ring.on(buffer, Type) - the same ring seen
+ * from another thread. push(v) -> false when full; shift() -> the oldest,
+ * undefined when empty; write(src, n) and read(dst, max) for a batch at a
+ * time; size; buffer, to hand to a worker.
+ */
+export function Ring(capacity, Type, shared) {
+  Type = Type || Float64Array;
+
+  var n = 1;
+
+  while (n < capacity) n *= 2;
+
+  var bytes = 8 + n * Type.BYTES_PER_ELEMENT,
+    buffer = shared ? new SharedArrayBuffer(bytes) : new ArrayBuffer(bytes);
+
+  return Ring.on(buffer, Type);
+}
+
+Ring.on = function (buffer, Type) {
+  Type = Type || Float64Array;
+
+  var counts = new Int32Array(buffer, 0, 2),
+    items = new Type(buffer, 8),
+    n = items.length,
+    mask = n - 1;
+
+  if (n & mask) throw new Error("Ring: the capacity must be a power of two");
+
+  var ring = {
+    buffer: buffer,
+    capacity: n,
+
+    get size() {
+      return (
+        (Atomics.load(counts, RING_TAIL) - Atomics.load(counts, RING_HEAD)) >>>
+        0
+      );
+    },
+
+    push: function (v) {
+      var tail = Atomics.load(counts, RING_TAIL);
+
+      if ((tail - Atomics.load(counts, RING_HEAD)) >>> 0 >= n) return false;
+      items[tail & mask] = v;
+      //the number written before the count that says it is there
+      Atomics.store(counts, RING_TAIL, (tail + 1) | 0);
+
+      return true;
+    },
+
+    shift: function () {
+      var head = Atomics.load(counts, RING_HEAD);
+
+      if (head === Atomics.load(counts, RING_TAIL)) return undefined;
+
+      var v = items[head & mask];
+
+      Atomics.store(counts, RING_HEAD, (head + 1) | 0);
+
+      return v;
+    },
+
+    //as many of src[0..count) as there is room for, one count written for
+    //them all; how many went in
+    write: function (src, count) {
+      var tail = Atomics.load(counts, RING_TAIL),
+        room = n - ((tail - Atomics.load(counts, RING_HEAD)) >>> 0),
+        k = Math.min(count, room);
+
+      for (var i = 0; i < k; i++) items[(tail + i) & mask] = src[i];
+      Atomics.store(counts, RING_TAIL, (tail + k) | 0);
+
+      return k;
+    },
+
+    //up to max of the oldest into dst, one count written for them all; how
+    //many came out
+    read: function (dst, max) {
+      var head = Atomics.load(counts, RING_HEAD),
+        k = Math.min(max, (Atomics.load(counts, RING_TAIL) - head) >>> 0);
+
+      for (var i = 0; i < k; i++) dst[i] = items[(head + i) & mask];
+      Atomics.store(counts, RING_HEAD, (head + k) | 0);
+
+      return k;
+    },
+
+    //only while nobody pushes or shifts
+    clear: function () {
+      Atomics.store(counts, RING_HEAD, 0);
+      Atomics.store(counts, RING_TAIL, 0);
+    },
+  };
+
+  return ring;
+};
