@@ -30,8 +30,9 @@ to talk to. Nothing here may know about a particular game. Games import it as
   `burnt.js`, `felling.js`. Smoke: `components/smokeScript.js`,
   `components/smokesource.js`, `wind.js`.
 - Roads: `roadman.js`, `road.js`, `roadview.js`, `roadworks.js`.
-- Traffic: `traffic.js` (driving, 91 KB), `carman.js` (vehicles, 80 KB),
-  `pathfinding/`.
+- Traffic: `traffic.js` (driving, 91 KB), `carman.js` (the cars as records
+  by region and tier, their game objects views; 80 KB), `coreroads.js` (the
+  core's roads, which they drive on), `pathfinding/`.
 - Drawing: `glview.js` (WebGL), `lighting.js` (sun, shadows, night),
   `weather.js`, `spritecache.js`, `cachedsprite.js`, `canvascache.js`,
   `generator.js` + `generatorcore.js` (the painting worker), `preloader.js`,
@@ -73,9 +74,9 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
   Run it again after changing a generator while a dev server runs.
 - `npm run dev` - the lab. `npm run build:lab` - into `lab/dist`.
 - `npm run test:traffic`, `npm run test:cities` - headless tests.
-- `npm run world:fingerprint|compare|bench|streams|chunks` - what the world
-  costs and hands the GPU, against a game's build served (`tools/world/`,
-  `docs/world.md` Measuring).
+- `npm run world:fingerprint|compare|bench|streams|chunks|traffic` - what
+  the world costs and hands the GPU, against a game's build served
+  (`tools/world/`, `docs/world.md` Measuring).
 - `npm run generate:*` - `tools/gen*.js`.
 
 ## Skills (`.claude/skills/`)
@@ -86,8 +87,8 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
 - `citygen` - city generation: `src/citygen`, the cities bench,
   `test:cities`.
 - `traffic` - how the traffic drives: Driver, junctions, lanes, routes,
-  roundabouts, buses, how many cars and why; road speeds and costs; the
-  testbed and `test:traffic`.
+  roundabouts, buses, how many cars and why; the cars by region and tier;
+  road speeds and costs; the testbed and `test:traffic`.
 - `rendering` - how the world is drawn: WebGL and its one lit pass (sun,
   shadows, night lamps, windows), weather, wind, the sea, the camera turning
   and zooming, lines and words over the city, ground chunks.

@@ -10,7 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Steps 1 and 2 are built (The way there); the
+what isometrica puts into it. Steps 1 to 3 are built (The way there); the
 rest is not yet.
 
 ## What there is now
@@ -24,18 +24,14 @@ regions of a quadtree whose leaves are the chunks, worked out once a frame
 in, destroyed on it going, `client/buildman.js:299`, `:311`) and `envman`
 (trees and stones), and a chunk let go of takes them with it.
 
-**The cars go with the chunks.** A car is taken off the roads the first
-frame the road under it, or the next one on its way, is in a chunk let go of
-(`client/carman.js:909`, `unloaded` `:962`), and nothing of it is kept.
-Cars are put on every half a second (`reconcile`, `:1839`), as many as the
-roads _loaded_ call for, wherever they like. So panning one chunk away and
-back loses every car there and puts others on in their place. The traffic
-itself (`client/traffic.js`, `Traffic` `:2658`, `Driver` `:917`) is plain
-data and runs with no game objects at all in the traffic test
-(`lab/trafficbed`, `tools/traffictest.mjs`); in the game, though, a driver
-only drives while its car's game object ticks it. The roads it finds its way
-on are the loaded ones only (`client/roadman.js`), though the core knows
-every road (`core/city/cityroads.js`).
+**The cars are agents by region** (step 3; skill `traffic`, agents.md).
+Each is a record kept by its chunk, stepped by one traffic system on the
+core's roads (`client/coreroads.js`) - every frame in the view and near
+rings, a few times a second within a budget in a coarse ring three to four
+chunks further out, not at all beyond, where it sleeps and is brought up to
+date as it wakes. Its game object is only its view, made in the view ring.
+Panning away and back finds the same cars. How many there are still goes by
+the city's roads in the chunks drawn, and new ones are put on there.
 
 **The core keeps the whole world and ticks all of it.** `Logic`
 (`core/logic.js`) has one world in memory: the terrain, every building and
@@ -45,7 +41,8 @@ a game day at most.
 
 **Every ticker runs every frame**, far or near: the engine's `World.tick`
 (`engine/engine/world.js:381`) goes through every game object with something
-to tick. Cars, chimneys and smoke puffs are most of them. A few scripts tick
+to tick. Chimneys and smoke puffs are most of them (the cars are stepped by
+the traffic system, by region, since step 3). A few scripts tick
 less often by keeping their own count of the time.
 
 **What is already done right**, and is the pattern for the rest:
@@ -160,9 +157,11 @@ where isometrica stands with it:
   (`client/cachedsprite.js:27`), handed to `Lighting.collect`
   (`client/lighting.js:394`) and asked to write itself (`glQuad`,
   `client/cachedsprite.js:492`) - a call a picture, reading fields of several
-  objects; every tree, car and puff is a game object, and a car's driver
-  another object besides; a building is a game object with its pieces as game
-  objects under it.
+  objects; every tree and puff is a game object, and so is every car in
+  view (only its view, since step 3: the traffic keeps a row a car - its
+  region, when it was stepped - but its driver and its errand are objects
+  still); a building is a game object with its pieces as game objects under
+  it.
 - **Still objects in the core**: buildings in dictionaries by id and by tile
   (`core/buildings.js:208`, `:209`), and the ground's edits too
   (`gridPoints`, `clearedTiles`, `bareSince`, `core/terrain.js:262`-`:267`).
@@ -199,6 +198,15 @@ then `npx vite preview` in `city-sim`) - and know nothing of the game.
   above; now 3 and 0 the first time over the edge, nothing else.
 - `npm run world:chunks -- <url>` - chunks kept straight through clearing and
   drawing again (exits 1 if not).
+- `npm run world:traffic -- <url>` - on a city generated from a fixed seed
+  (`--city=town|city|metropolis`; `none` for the town a new player starts
+  on, which has few cars): the cars round where the camera starts, and how
+  many of the same ones (by driver) are there after it has gone twelve
+  chunks away and come back; and what the traffic's tickers take a frame,
+  with the cars awake, stepped full and coarse, and seen, over the town, six
+  chunks off, twelve, and sixty out in the country. It opens the game on
+  that city through city-sim's own way of starting one (a session key), the
+  only tool that knows a thing of the game.
 
 To compare two builds: build one, copy its `dist` aside, build the other,
 and serve both - one with `npx vite preview --port 4173`, the copy beside it
@@ -255,7 +263,12 @@ after (above), with the debug panel's `Stats` and the traffic test
    coarse ring; a car's game object is only its view; coarse and dormant
    tiers, with `advance`. Done when panning away and back finds the same
    cars, the traffic test is the same to the byte in full, and what the
-   traffic costs goes with the regions watched.
+   traffic costs goes with the regions watched. _Done: 86 of 88 cars round
+   the start found again twelve chunks away and back (was 0); the traffic
+   3.8 ms a frame over the town (3.3 before), 0.7 six chunks off, 0.08
+   twelve and sixty off with every car asleep (`world:traffic`, middles of
+   three); `test:traffic` the same but its `[n ms]`; `world:compare`
+   IDENTICAL; skill `traffic`, agents.md._
 4. **Smoke worked out, not kept**, drawn as one buffer of particles
    (`docs/performance.md`, Later); sources brought in by their reach;
    chimneys no longer tick.
@@ -277,9 +290,10 @@ after (above), with the debug panel's `Stats` and the traffic test
    handed over, drawing a little behind.
 
 **Left open, to settle when building**, not before: how long the fixed step
-is; how far the coarse ring reaches and how long a region is kept once left
-when there is something in it to keep (the ground's rings and hold are
-tilesman's: chunks.md).
+is (the traffic steps by the frame, as before); how long a region is kept
+once left when there is something in it to keep (the ground's rings and hold
+are tilesman's: chunks.md; the traffic's coarse ring reaches three to four
+chunks beyond the view, and its cars are kept asleep for good).
 
 **Once built**, how a part works is written in the skill of the package it is
 in (`<package>/.claude/skills/`), as the repository does it, and this design
@@ -296,6 +310,24 @@ keeps only what is still to come.
   and gone again.
 - Bulldozers and demolitions go on out of sight with nothing to bound them;
   the bulldozers are not saved.
+- The traffic is saved whole every five seconds (`Carman#save`): every car
+  of every region visited, asleep or not, so it grows with the world seen,
+  until saving goes by region (step 8).
+- A region woken has its cars where they were left: only what they were
+  waiting out goes on (`CarAgent#advance`); their driving is not played
+  over, and they did not drive while asleep.
+- Headless, the game draws two frames a second, so every coarse region is
+  due every frame: the coarse budget (1 ms) is what bounds them there. The
+  regions round the camera cost the traffic about 0.08 ms a frame when no
+  car is awake.
+- The bus stops and the lorries' starts are still the loaded roads
+  (`client/roadman.js` getStops, getRoadTiles), the same tiles as the
+  chunks drawn.
+- What carman found in the chunks drawn was kept two seconds whatever was
+  drawn meanwhile: coming back to a town, its cars were counted against the
+  roads of where the camera had been, and nearly all taken off
+  (`reconcile`). Now found again whenever a chunk is drawn or let go of
+  (`Tilesman#version`).
 - A quarter turn and the view from above take the camera to the world's
   origin on the way (`client/components/camerascript.js:533`, `:345`): the chunks no longer follow it
   (worked out once a frame), but whatever else listens to the camera moving

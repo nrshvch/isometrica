@@ -1743,14 +1743,17 @@ function moveOf(p) {
  * Drives on for dt ms: keeping its distance, taking its turn at junctions,
  * going round a car broken down if it can - a long frame a few short steps
  * at a time, so that it drives as far in a second however many frames there
- * are in it.
+ * are in it. Steps of most ms at a time, if given, in place of MAX_DT: the
+ * game's cars out of sight, stepped coarsely (client/carman).
  */
-Driver.prototype.update = function (dt) {
+Driver.prototype.update = function (dt, most) {
+  var step = most || MAX_DT;
+
   dt = Math.min(dt, MAX_FRAME);
 
   do {
-    this.step(Math.min(dt, MAX_DT));
-    dt -= MAX_DT;
+    this.step(Math.min(dt, step));
+    dt -= step;
   } while (dt > 0 && this.alive && this.wps.length > 0);
 };
 
@@ -2681,6 +2684,22 @@ Traffic.prototype.add = function (driver) {
   this.drivers.push(driver);
 
   return driver;
+};
+
+/**
+ * Out of the traffic for now, kept as it is - its region asleep, beyond
+ * where anything is driven (client/carman): nothing sees it nor waits on
+ * it, and the junctions it had are let go of. wake puts it back where it
+ * was.
+ */
+Traffic.prototype.sleep = function (driver) {
+  this.remove(driver);
+  driver.asked = -1;
+};
+
+Traffic.prototype.wake = function (driver) {
+  this.add(driver);
+  if (driver.wps.length > 0) index(this, driver);
 };
 
 Traffic.prototype.remove = function (driver) {

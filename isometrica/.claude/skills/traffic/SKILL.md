@@ -1,6 +1,6 @@
 ---
 name: traffic
-description: How isometrica's traffic drives - Driver, lanes, gaps, junctions taken a turn at a time, routes and turning round, one-way roads and lane changes, roundabouts, buses and stops, overtaking, breakdowns, detours and lost cars; how many cars, why they are out, parking to leave; road speeds and costs (roadrules); the traffic testbed and test:traffic. Load before changing client/traffic.js, carman.js, pathfinding or core/roadrules.
+description: How isometrica's traffic drives - Driver, lanes, gaps, junctions taken a turn at a time, routes and turning round, one-way roads and lane changes, roundabouts, buses and stops, overtaking, breakdowns, detours and lost cars; how many cars, why they are out, parking to leave; road speeds and costs (roadrules); the cars as records by region and tier (full, coarse, asleep), their views, the core's roads; the traffic testbed and test:traffic. Load before changing client/traffic.js, carman.js, coreroads.js, pathfinding or core/roadrules.
 ---
 
 # Traffic
@@ -21,17 +21,22 @@ middle of tile (x, y) is (x, y).
   Driver#putOffMerge, Driver#keepLane), roundabouts (mayEnter,
   Traffic#loopOf), pulling over (Driver#pullOver), signals (Driver signal).
   91 KB: read in ranges.
-- `client/carman.js` - the cars: how many (GRAVEL_SHARE), why they are out
-  (PURPOSES, CarScript#purpose), detours (detour, Driver jammedAt), keeping
-  their way (findWay), parking to leave (parkToLeave, leave), buses,
-  breakdowns, `Carman.groundHeight`. 80 KB: read in ranges.
+- `client/carman.js` - the cars: records by region stepped by the traffic
+  system, their game objects only views (CarAgent, stepRegion, track;
+  agents.md); how many (GRAVEL_SHARE), why they are out (PURPOSES,
+  CarAgent#purpose), detours (detour, Driver jammedAt), keeping their way
+  (findWay), parking to leave (parkToLeave, leave), buses, breakdowns,
+  `Carman.groundHeight`. 80 KB: read in ranges.
+- `client/coreroads.js` - the roads the traffic drives on: the core's,
+  every one, loaded or not.
 - `client/pathfinding/` - routes over the road graph.
 - `core/roadrules.js` - the rules alone, no pictures, no world: where two
   roads join, which way a one-way road goes, paceOf, costShare, serves. Used
   by `client/road.js` and `core/surface.js` too, and so the testbed loads
   `traffic.js` with nothing of the game round it.
-- `client/road.js` (wayOf, goes, isStop, materialAt), `client/roadman.js`,
-  `core/city/cityroads.js` inNetwork (which roads are the city's).
+- `client/road.js` (wayOf, goes, isStop, materialAt), `client/roadman.js`
+  (the loaded roads: bus stops, lorries' starts), `core/city/cityroads.js`
+  inNetwork, networkTiles (which roads are the city's).
 - Testbed: `lab/trafficbed/bed.js`, `scenarios.js`, `city.json`;
   `lab/traffic.html` (`lab/traffic/Traffic.jsx`, `view.js`);
   `tools/traffictest.mjs`.
@@ -50,6 +55,10 @@ middle of tile (x, y) is (x, y).
 - No city, no traffic: cars only ever go somewhere in the city.
 - `traffic.js` must load with nothing of the game round it (the testbed);
   road rules belong in `core/roadrules.js`.
+- The game's traffic changes nothing the testbed runs: `test:traffic` gives
+  the same output to the byte (but its `[n ms]` timings).
+- A car is never taken off for being out of sight: it goes coarse, then
+  asleep, and is the same car when the camera comes back (agents.md).
 
 ## Testing
 
@@ -74,3 +83,5 @@ middle of tile (x, y) is (x, y).
   buses and overtaking, indicators.
 - [cars.md](cars.md) - how many, why, where they go and leave, getting lost,
   breaking down, speeds and costs.
+- [agents.md](agents.md) - the cars as records by region: tiers (full,
+  coarse, asleep), waking, views, the core's roads; `world:traffic`.

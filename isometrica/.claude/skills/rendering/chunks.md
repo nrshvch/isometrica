@@ -24,6 +24,11 @@ its way somewhere.
   takes `HOLD` (2 s) each, so a chunk is let go of 4 s at the soonest after
   the camera has gone more than two chunks beyond it. Crossing an edge and
   back, turning and the view from above make and let go of nothing.
+- **A coarse ring**, entered three chunks beyond the view and left beyond
+  four, draws nothing: it is the traffic's (traffic skill, agents.md).
+  `listen(fn)` tells whoever asks of every level change, and `regionOf`,
+  `levelOf`, `drawn` and `list` say where a tile's region is and how it
+  stands; `version` counts up as a chunk is drawn or let go of.
 - **Once a frame**: a camera move only notes that it moved; a ticker
   (`tilesman` in the debug panel) looks again from where the camera ended up
   and settles the levels, which costs what is round the camera. A quarter turn

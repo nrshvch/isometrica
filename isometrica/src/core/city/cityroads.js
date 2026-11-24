@@ -84,6 +84,7 @@ function CityRoads(city) {
   this.city = city;
   //road tile -> true, for the city's road network
   this._network = {};
+  this._tiles = [];
   //building id -> the part it is in, and which part is the city's
   this._partOf = {};
   this._main = -1;
@@ -157,6 +158,17 @@ CityRoads.prototype.inNetwork = function (tile) {
   update(this);
 
   return this._network[tile] === true;
+};
+
+/**
+ * @returns {number[]} the network's road tiles, every one, loaded or not -
+ *          the list itself, the same until version() changes (the traffic
+ *          sorts them by region: client/coreroads)
+ */
+CityRoads.prototype.networkTiles = function () {
+  update(this);
+
+  return this._tiles;
 };
 
 /**
@@ -524,11 +536,16 @@ function update(self) {
   var things = holders(self.city),
     hung = workOut(things),
     network = {},
+    tiles = [],
     i;
 
   for (i = 0; i < things.length; i++)
-    if (things[i].road && hung.partOf[things[i].id] === hung.main)
+    if (things[i].road && hung.partOf[things[i].id] === hung.main) {
+      if (network[things[i].tile] !== true) tiles.push(things[i].tile);
       network[things[i].tile] = true;
+    }
+
+  self._tiles = tiles;
 
   self._partOf = hung.partOf;
   self._main = hung.main;

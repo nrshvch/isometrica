@@ -998,8 +998,8 @@ Soundman.prototype.kind = function (d, wall) {
 
   if (wall - this.kindsAt > 2000) {
     this.kindsAt = wall;
-    for (var i = 0; i < carman.cars.length; i++) {
-      var car = carman.cars[i].car;
+    for (var i = 0; i < carman.agents.length; i++) {
+      var car = carman.agents[i];
 
       if (car && car.driver) this.kinds.set(car.driver, car.type.name);
     }

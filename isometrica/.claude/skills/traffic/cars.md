@@ -2,9 +2,10 @@
 
 ## How many (`client/carman.js`)
 
-A car for every four of the city's road tiles loaded through the day - the
-roads joining its buildings and out to its villages, not those leading
-nowhere (`core/city/cityroads.js` inNetwork) - more in the rush hours: about
+A car for every four of the city's road tiles in the chunks drawn through
+the day - the roads joining its buildings and out to its villages, not those
+leading nowhere (`core/city/cityroads.js` inNetwork), the core's - counted
+against the cars in those chunks (agents.md) - more in the rush hours: about
 one for every two and a half at eight in the morning and five in the evening.
 A gravel lane counts for a quarter of a road and is a quarter as likely to be
 set out from (GRAVEL_SHARE), so village lanes stay quiet. No city, no traffic.

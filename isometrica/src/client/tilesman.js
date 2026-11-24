@@ -8,7 +8,7 @@ import engine from "engine";
 import Config from "./config";
 import Events from "events";
 import Core from "../core/main";
-import { Interest, NEAR, VIEW } from "shared/interest";
+import { Interest, NEAR, UNLOADED, VIEW } from "shared/interest";
 import { Quadtree } from "shared/spatial";
 import { List, NumMap } from "shared/typed";
 
@@ -21,6 +21,11 @@ var events = {
 //hold), ms: a chunk left goes down to near after it, and is let go of after
 //it once more
 var HOLD = 2000;
+
+//how far out the coarse ring reaches, in chunks: entered at three beyond the
+//view, left beyond four
+var COARSE_ENTER = 3,
+  COARSE_LEAVE = 4;
 
 //a tile is this many pixels across on screen from the side, and half as many
 //down; from above, a unit of the world is this many (camerascript TOP_SCALE)
@@ -42,7 +47,8 @@ function Tilesman() {
   this.tree = tree;
   this.depth = depth;
   //drawn in the view ring, kept in the near one: a chunk a frame's footprint
-  //touches is drawn, and let go of only once a chunk and more beyond it
+  //touches is drawn, and let go of only once a chunk and more beyond it; the
+  //coarse ring is the traffic's (client/carman), nothing drawn in it
   this.interest = Interest(
     {
       within: function (minX, minZ, maxX, maxZ, out) {
@@ -54,6 +60,7 @@ function Tilesman() {
       rings: {
         view: { enter: 0, leave: size },
         near: { enter: size, leave: 2 * size },
+        coarse: { enter: COARSE_ENTER * size, leave: COARSE_LEAVE * size },
       },
       hold: HOLD,
       keepAlive: HOLD,
@@ -64,6 +71,11 @@ function Tilesman() {
   this.made = NumMap(64);
   this.list = List(Float64Array, 64);
   this.camera = null;
+  //told of every region's level changing (listen)
+  this.listeners = [];
+  //counted up whenever a chunk is drawn or let go of: what was found in
+  //the chunks drawn is found again (client/carman)
+  this.version = 0;
 
   var self = this;
 
@@ -83,6 +95,53 @@ Tilesman.prototype.moved = false;
 //once nothing more moves, how long until nothing more changes, ms - for the
 //tools that count what is made and let go of (tools/world/streams)
 Tilesman.prototype.settle = 2 * HOLD + 100;
+
+/**
+ * The region (a leaf: a chunk) tile x, y is in, -1 outside the world.
+ */
+Tilesman.prototype.regionOf = function (x, y) {
+  var s = this.chunkSize;
+
+  return this.tree.key(Math.floor(x / s), Math.floor(y / s), this.depth);
+};
+
+//the tile at a region's corner, x and y
+Tilesman.prototype.cornerX = function (key) {
+  return this.tree.cellX(key) * this.chunkSize;
+};
+
+Tilesman.prototype.cornerY = function (key) {
+  return this.tree.cellZ(key) * this.chunkSize;
+};
+
+/**
+ * The level of a region (shared/interest VIEW, NEAR, COARSE, KEEP or
+ * UNLOADED).
+ */
+Tilesman.prototype.levelOf = function (key) {
+  return this.interest.levelOf(key);
+};
+
+//whether a region's chunk is drawn
+Tilesman.prototype.drawn = function (key) {
+  return this.made.has(key);
+};
+
+/**
+ * fn(key, from, to) for every region whose level changes, once a frame -
+ * told at once of every region that has a level already, as from UNLOADED.
+ */
+Tilesman.prototype.listen = function (fn) {
+  var regions = this.interest.regions;
+
+  this.listeners.push(fn);
+  for (var i = 0; i < regions.count; i++) {
+    var slot = regions.live[i],
+      level = regions.cols.level[slot];
+
+    if (level !== UNLOADED) fn(regions.cols.key[slot], UNLOADED, level);
+  }
+};
 
 /**
  * Holds the chunks as they are while on - none drawn nor let go of however
@@ -171,7 +230,8 @@ Tilesman.prototype.update = function (now) {
   }
 
   var n = interest.update(now),
-    changes = interest.changes;
+    changes = interest.changes,
+    listeners = this.listeners;
 
   for (var i = 0; i < n; i++) {
     var key = changes.key[i],
@@ -179,6 +239,9 @@ Tilesman.prototype.update = function (now) {
 
     if (to === VIEW && !this.made.has(key)) load(this, key);
     else if (to < NEAR && this.made.has(key)) unload(this, key);
+
+    for (var k = 0; k < listeners.length; k++)
+      listeners[k](key, changes.from[i], to);
   }
 };
 
@@ -189,6 +252,7 @@ function load(self, key) {
 
   self.made.set(key, 1);
   self.list.push(key);
+  self.version++;
   Events.fire(self, events.tileLoad, { meta: { x: x, y: y, w: s, h: s } });
   vkaria.terrain.draw(x, y, s, s);
 }
@@ -200,6 +264,7 @@ function unload(self, key) {
 
   self.made.delete(key);
   self.list.remove(key);
+  self.version++;
   Events.fire(self, events.tileRemove, { x: x, y: y, w: s, h: s });
   vkaria.terrain.clear(x, y, s, s);
 }

@@ -58,9 +58,13 @@ export function launch(extraArgs) {
 /**
  * The game at url (a city-sim build, served - vite preview), on a fresh
  * profile, once its ground is drawn and settle ms more have gone by.
- * Errors the page throws are printed.
+ * Errors the page throws are printed. With a city, a generated one
+ * (city-sim's session, citygen) of that size, seed and place, opened under
+ * its own id, in place of the one a new player starts on.
+ *
+ * @param [city] {{id, size, seed, near}}
  */
-export async function openWorld(browser, url, settle) {
+export async function openWorld(browser, url, settle, city) {
   var page = await browser.newPage({
     viewport: { width: WIDTH, height: HEIGHT },
   });
@@ -69,7 +73,15 @@ export async function openWorld(browser, url, settle) {
     console.log("[page error]", e.message);
   });
   await page.addInitScript(SEED);
-  await page.goto(url.replace(/\/?$/, "/") + "?debug=off");
+  if (city)
+    await page.addInitScript(
+      "sessionStorage.setItem('isometrica.generate', " +
+        JSON.stringify(JSON.stringify(city)) +
+        ")",
+    );
+  await page.goto(
+    url.replace(/\/?$/, "/") + (city ? city.id : "") + "?debug=off",
+  );
   await page.waitForFunction(
     "window.vkaria && vkaria.terrain && vkaria.terrain.chunks && vkaria.terrain.chunks.length > 0",
     null,
