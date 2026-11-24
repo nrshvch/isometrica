@@ -360,8 +360,11 @@ change that makes a library slower shows in the run that made it.
 
 A game's own checks stay as well - a whole world run through and compared -
 and a change to what is drawn is checked by comparing what is handed to the
-GPU, quad for quad, before and after, with a harness kept in the repository
-for it.
+GPU, quad for quad, before and after, with the tools the game keeps for it.
+
+**Once built**, how a part works is written in the skill of the package it is
+in (`<package>/.claude/skills/`), as the repository does it, and this design
+keeps only what is still to come.
 
 ## Time, chance and names
 

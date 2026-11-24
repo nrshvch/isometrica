@@ -72,6 +72,9 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
   Run it again after changing a generator while a dev server runs.
 - `npm run dev` - the lab. `npm run build:lab` - into `lab/dist`.
 - `npm run test:traffic`, `npm run test:cities` - headless tests.
+- `npm run world:fingerprint|compare|bench|streams|chunks` - what the world
+  costs and hands the GPU, against a game's build served (`tools/world/`,
+  `docs/world.md` Measuring).
 - `npm run generate:*` - `tools/gen*.js`.
 
 ## Skills (`.claude/skills/`)

@@ -61,6 +61,10 @@ ring; `snapshot()` is what the panel reads. All of it is typed arrays.
 
 ## Measured
 
+What the world itself costs - the ground, chunks coming and going, turns,
+what is handed to the GPU - is measured with `tools/world/` (`npm run
+world:*`, [world](world.md), Measuring).
+
 Scripted runs in headless Chromium on a software GPU (SwiftShader,
 1280x800): a still camera for 8 s, a pan, a water tower dragged about while
 placing it (240 moves), a road dragged out (300 moves). Before: the commit
