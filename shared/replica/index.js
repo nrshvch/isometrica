@@ -61,7 +61,7 @@ export function Writer(capacity) {
       var at = head(kind, n, length);
 
       if (length > 0) u8.set(bytes.subarray(0, length), at);
-      w.length = pad8(at + length);
+      w.length = padded(at + length);
       w.count++;
       if (n > 0) numbers(nums, n);
     },
@@ -78,7 +78,7 @@ export function Writer(capacity) {
         ).written;
 
       write(start, kind, n, written);
-      w.length = pad8(at + written);
+      w.length = padded(at + written);
       w.count++;
       if (n > 0) numbers(nums, n, start);
     },
@@ -113,6 +113,16 @@ export function Writer(capacity) {
     }
 
     return start;
+  }
+
+  //the end of a record, padded to 8 with zeros - not whatever an earlier
+  //frame left there - so the same records are the same bytes
+  function padded(end) {
+    var to = pad8(end);
+
+    if (to > end) u8.fill(0, end, to);
+
+    return to;
   }
 
   function write(start, kind, n, length) {

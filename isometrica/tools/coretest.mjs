@@ -2,15 +2,17 @@
  * The core run headless, in node, with no browser: a generated town opened,
  * its clock moved on a frame at a time for some game hours, with commands
  * sent on the way (ground cleared, a building demolished, one put up, one
- * replaced) - twice, and the two saves the same to the byte; then over the
- * local server's protocol (core/server, mirror, serve), in this thread and
- * with the server on a worker thread, the copy's save the server's. Exits 1
- * if the core reaches for the client or a browser, does not go on, or comes
- * out different.
+ * replaced) - twice, and the two saves the same to the byte; saved by
+ * region on the way, what storage holds put together and compared with the
+ * world, opened again from its regions, and a save of one row moved over
+ * (core/persistence/regions); then over the local server's protocol
+ * (core/server, mirror, serve), in this thread and with the server on a
+ * worker thread, the copy's save the server's. Exits 1 if the core reaches
+ * for the client or a browser, does not go on, or comes out different.
  *
  *   node tools/coretest.mjs [--size=town] [--seed=3] [--hours=36]
  *
- * See isometrica/.claude/skills/buildings/core.md.
+ * See isometrica/.claude/skills/buildings/core.md, saves.md.
  */
 import { createHash } from "node:crypto";
 import { Worker } from "node:worker_threads";
@@ -47,15 +49,21 @@ function check(ok, what) {
 
 var server = await loader();
 
-//a Storage kept in memory, for the saves (core/persistence/citystore)
+//a Storage kept in memory, for the saves (core/persistence/citystore):
+//what is written to it counted
 function memory() {
   var items = new Map();
 
   return {
+    rows: 0,
+    bytes: 0,
+    items: items,
     getItem: function (k) {
       return items.has(k) ? items.get(k) : null;
     },
     setItem: function (k, v) {
+      this.rows++;
+      this.bytes += String(v).length;
       items.set(k, String(v));
     },
     removeItem: function (k) {
@@ -162,10 +170,39 @@ function play(Logic, Replacement, save) {
     ground = made.ground;
 
   var started = world.time.now,
-    demolished = house.tile;
+    demolished = house.tile,
+    p = world.persistence,
+    storage = p.store().storage,
+    whole = 0,
+    saves = 0,
+    off = 0,
+    checked = 0;
+
+  //every save by region counted, against the whole save it would have been
+  var saveOnce = p.save;
+
+  p.save = function () {
+    var r = saveOnce.apply(this, arguments);
+
+    saves++;
+    whole += JSON.stringify(p.snapshot()).length;
+
+    return r;
+  };
 
   for (var f = 0; f < frames; f++) {
     var second = (f * FRAME) / 1000;
+
+    //what storage holds, put together, against the world: every so often
+    if (f % 211 === 0 && f > 0) {
+      saveOnce.call(p);
+      checked++;
+      if (
+        JSON.stringify(p.store().read(p.cityId())) !==
+        JSON.stringify(p.snapshot())
+      )
+        off++;
+    }
 
     plan.forEach(function (c) {
       if (c.at === second) {
@@ -196,6 +233,15 @@ function play(Logic, Replacement, save) {
   log.save = JSON.stringify(world.persistence.snapshot());
   log.named = world.named;
   log.buildings = city.buildingService.getBuildings().length;
+  log.saves = saves;
+  log.rows = storage.rows;
+  log.written = storage.bytes;
+  log.whole = whole;
+  log.checked = checked;
+  log.off = off;
+  p.save();
+  log.storage = storage;
+  log.savedAt = world.persistence.header().savedAt;
 
   world.pause();
   world.persistence.halt();
@@ -238,6 +284,83 @@ function reopen(Logic, save, away) {
   world.persistence.halt();
 
   return { ticks: caught ? caught.ticks : 0, names: names, named: world.named };
+}
+
+/**
+ * The save by region opened again from the storage it was written to, at
+ * the moment it was saved: the same world, to the byte; and saved again
+ * there and then, nothing of it written again but its header. And a save
+ * of the shape before step 8 (one row) opened: moved over by region,
+ * nothing lost, not counted as a change.
+ */
+function byRegion(Logic, storage, at, save) {
+  function open(store, now) {
+    var world = new Logic({
+      tick: TICK,
+      saves: "coretest",
+      storage: store,
+      catchUp: true,
+      initialCity: null,
+      now: function () {
+        return now;
+      },
+    });
+
+    world.driveBy();
+    world.start();
+    world.persistence.open("coretest0001");
+
+    return world;
+  }
+
+  var world = open(storage, at),
+    out = { regions: 0 },
+    data = world.persistence.snapshot(),
+    rows = storage.rows,
+    bytes = storage.bytes;
+
+  out.same = JSON.stringify(data) === save;
+  world.persistence.save();
+  out.rows = storage.rows - rows;
+  out.bytes = storage.bytes - bytes;
+  out.regions = world.persistence.store().regions("coretest0001").length;
+  world.pause();
+  world.persistence.halt();
+
+  //one row, as builds before kept it
+  var old = memory(),
+    index = {
+      version: 1,
+      activeCityId: "coretest0001",
+      cities: {
+        coretest0001: {
+          key: "coretest.city.coretest0001",
+          name: "",
+          updatedAt: 0,
+          rev: 4,
+          writes: 3,
+          syncedWrites: 3,
+        },
+      },
+    };
+
+  old.setItem("coretest.cities", JSON.stringify(index));
+  old.setItem("coretest.city.coretest0001", save);
+
+  var moved = open(old, at),
+    store = moved.persistence.store(),
+    state = store.syncState("coretest0001");
+
+  out.moved = store.byRegion("coretest0001");
+  out.movedSame =
+    JSON.stringify(moved.persistence.snapshot()) === save &&
+    JSON.stringify(store.read("coretest0001")) ===
+      JSON.stringify(moved.persistence.snapshot());
+  out.unchanged = state.writes === 3 && !state.dirty;
+  moved.pause();
+  moved.persistence.halt();
+
+  return out;
 }
 
 //the save with the plan's money in it: for worlds that must come out the
@@ -494,6 +617,43 @@ try {
       " (" +
       a.save.length +
       " bytes)",
+  );
+
+  check(
+    a.off === 0,
+    "saved by region every 5 ticks (" +
+      a.saves +
+      " saves): what storage holds, put together, the world to the byte " +
+      (a.checked - a.off) +
+      " of " +
+      a.checked +
+      " times; " +
+      Math.round(a.written / 1024) +
+      " KB and " +
+      a.rows +
+      " rows written in all (" +
+      Math.round(a.written / a.saves) +
+      " bytes a save), where whole saves would have been " +
+      Math.round(a.whole / 1024) +
+      " KB",
+  );
+
+  var regions = byRegion(Logic, a.storage, a.savedAt, a.save);
+
+  check(
+    regions.same && regions.rows === 2,
+    "opened again from its " +
+      regions.regions +
+      " regions: the same world to the byte; saved again, " +
+      regions.rows +
+      " rows written (the header and the directory, " +
+      regions.bytes +
+      " bytes)",
+  );
+  check(
+    regions.moved && regions.movedSame && regions.unchanged,
+    "a save of one row, as before: opened, moved over by region, the same " +
+      "to the byte, not a change for the server",
   );
 
   var again = reopen(Logic, a.save, 120000),

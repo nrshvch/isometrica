@@ -20,8 +20,8 @@ var NOWHERE = {
  * what the player does; its frames, and its saves, posted to the page
  * (client/host OnWorker). Messages in: open {options, opened, view}, command
  * {id, text}, pause, resume, view {view}, check {id}, run {ms} (a tool's
- * own time, with timer off). Out: frame {bytes} (transferred), save {text,
- * name}, check {id, version, save}. See
+ * own time, with timer off). Out: frame {bytes} (transferred), save
+ * {batch}, check {id, version, save}. See
  * isometrica/.claude/skills/buildings/server.md.
  *
  * @param post {function(Object, Array=)} postMessage
@@ -69,12 +69,9 @@ export default function serve(post, timer) {
     );
     world.driveBy();
     world.start();
-    world.persistence.saver = function (data) {
-      post({
-        type: "save",
-        text: JSON.stringify(data),
-        name: data.city ? data.city.name : "",
-      });
+    //the regions changed and the header (core/persistence/regions)
+    world.persistence.saver = function (batch) {
+      post({ type: "save", batch: batch });
     };
     if (m.view) world.persistence.setView(m.view);
 

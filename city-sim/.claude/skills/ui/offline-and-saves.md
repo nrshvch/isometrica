@@ -39,8 +39,12 @@ HUD keeping clear of the notch and home bar by `env(safe-area-inset-*)`.
 ## Saves
 
 - Played from localStorage (isometrica `core/persistence`, see its buildings
-  skill, city.md Saves), kept on the server too: half a minute after a
-  change, when the page is put away, and when back online. A save made on top
+  skill, city.md and saves.md): there a city is kept a region at a time,
+  only the regions changed written. Kept on the server too, as one whole
+  save - the regions put together - half a minute after a change, when the
+  page is put away, and when back online; one that comes down is taken
+  apart into regions. So the server's saves, and this Worker, are as they
+  were (saving by region there is isometrica's step 9). A save made on top
   of anything but the server's latest means it was saved elsewhere: the
   player chooses which to keep; the same when opened. The address `/<id>`
   opens a city anywhere (an old `/#/<id>` is taken as `/<id>`); the id is 12
@@ -54,7 +58,8 @@ HUD keeping clear of the notch and home bar by `env(safe-area-inset-*)`.
     `{rev, savedAt}`, or 409 `{rev}` (not on the latest; rev null: nothing
     there).
   - Every answer carries `Saves-Api`, to tell the server from a page that
-    merely answered. The server never looks into a save.
+    merely answered. The server never looks into a save: saves of any
+    build, whole or put together from regions, are the same JSON.
 - Catching up: opened again or back in sight, the world plays out what it
   missed, up to a game day (`src/game.js` catchUp, isometrica `Logic`), by
   the shorter of the browser's and server's clocks.

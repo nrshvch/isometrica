@@ -65,7 +65,17 @@ and `Driver` themselves, and must give the same output to the byte.
   would lose its cars to the rule that takes off more than the roads take.
 - Panning away and back finds the same cars: those left behind go coarse,
   then asleep where they were, and wake as the camera comes back. The cars
-  of every region visited stay, asleep, and are all saved.
+  of every region visited stay, asleep.
+
+## Kept
+
+By the save's regions (skill `buildings`, saves.md), not the chunks: a
+car's in its row (`kept`), marked whenever it is stepped, put down or taken
+off - so `Carman#save` (every 5 s, when the page has a moment) writes only
+the regions whose cars drove, never those asleep. A region's cars are a
+frame (`shared/replica`): a car's numbers, the rest JSON, its way packed.
+Restored all at once, waiting for their roads; a save of before (one row of
+every car) is put back and kept by region from then on.
 
 ## Measuring
 

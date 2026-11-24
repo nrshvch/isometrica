@@ -17,6 +17,16 @@ import CoreRoads from "./coreroads";
 import { NEAR, VIEW, COARSE as COARSE_LEVEL } from "shared/interest";
 import { COARSE, DORMANT, FULL, Scheduler } from "shared/schedule";
 import { Store } from "shared/typed";
+import { Reader, Writer } from "shared/replica";
+import { Records } from "shared/records";
+import {
+  SIZE as SAVED,
+  cornerX as savedX,
+  cornerY as savedY,
+  readRow,
+  regionOf as savedRegionOf,
+  rowOf,
+} from "../core/persistence/regions";
 import { GridIndex } from "shared/spatial";
 
 var Terrain = Core.Terrain;
@@ -2045,6 +2055,14 @@ Carman.prototype.track = function (car) {
   this.index.set(car.slot, x, y);
   this.store.cols.region[car.slot] = key;
 
+  //driven, or put down: its region is kept again, and the one it left
+  var kept = savedRegionOf(x, y),
+    was = this.store.cols.kept[car.slot];
+
+  if (was !== kept && was >= 0) this.kept.mark(was);
+  this.store.cols.kept[car.slot] = kept;
+  this.kept.mark(kept);
+
   if (tierOf(level) === DORMANT) this.sleep(car);
   if (level === VIEW) this.show(car);
   else this.hide(car);
@@ -2062,6 +2080,7 @@ Carman.prototype.admit = function (car) {
   this.bySlot[slot] = car;
   this.store.cols.at[slot] = this.clock;
   this.store.cols.stamp[slot] = this.stamp;
+  this.store.cols.kept[slot] = -1;
   this.agents.push(car);
   this.track(car);
 };
@@ -2238,9 +2257,19 @@ function Carman(root) {
   //and on which frame - the car itself by its slot, and an index of where
   //they are by tile, cells a chunk across, so a region's cars are a cell's
   this.store = Store(
-    { region: Float64Array, at: Float64Array, stamp: Uint32Array },
+    {
+      region: Float64Array,
+      at: Float64Array,
+      stamp: Uint32Array,
+      //the region it is saved in (core/persistence/regions), not the
+      //chunk's: the same whatever the screen
+      kept: Float64Array,
+    },
     64,
   );
+  //the cars kept by that region: those whose cars drove, or came or went,
+  //since the traffic was last kept are written again, no others (#save)
+  this.kept = Records(64);
   this.bySlot = [];
   this.index = GridIndex(root.tilesman.chunkSize, 64);
   this.found = new Int32Array(64);
@@ -2319,9 +2348,158 @@ Carman.prototype.init = function () {
 
 /* --- Kept ------------------------------------------------------------- */
 
-//how often the traffic is kept, ms - and on the way out
+//how often the traffic is kept, ms - and on the way out. Kept by region
+//since step 8 (SAVE_VERSION 2): "<saves>.traffic.<id>" lists the regions,
+//{version, keys}, each "<saves>.traffic.<id>.<key>" a frame of its cars
+//(shared/replica, a CAR record each); version 1 was every car in that row
 var SAVE_EVERY = 5000,
-  SAVE_VERSION = 1;
+  SAVE_VERSION = 2,
+  //a car: its numbers, and the rest as JSON; then its way, packed (WAY) -
+  //or as JSON, for a way of another shape (WAY_JSON)
+  CAR = 1,
+  WAY = 2,
+  WAY_JSON = 3;
+
+var writer = Writer(4096),
+  reader = Reader(),
+  //what of a kept car (keep) goes as numbers, in this order
+  NUMS = [
+    "x",
+    "y",
+    "hx",
+    "hy",
+    "v",
+    "v0",
+    "target",
+    "speed",
+    "lamps",
+    "dwelt",
+    "stalled",
+    "driven",
+    "stop",
+  ],
+  nums = new Float64Array(NUMS.length),
+  //a waypoint's fields, as traffic.js makes them
+  WP = ["tile", "x", "y", "din", "dout", "li", "lo"],
+  NO = -128;
+
+//a kept car into the writer (keep has it as an object)
+function writeCar(k) {
+  var rest = {},
+    i;
+
+  for (i = 0; i < NUMS.length; i++)
+    nums[i] = typeof k[NUMS[i]] === "number" ? k[NUMS[i]] : NaN;
+  for (var name in k)
+    if (name !== "wps" && NUMS.indexOf(name) === -1) rest[name] = k[name];
+  writer.text(CAR, nums, NUMS.length, JSON.stringify(rest));
+
+  var way = packWay(k.wps);
+
+  if (way !== null) writer.record(WAY, nums, 0, way);
+  else writer.text(WAY_JSON, nums, 0, JSON.stringify(k.wps));
+}
+
+//a way as columns - tiles (Int32), x and y (Float64), the ways in and out
+//(Int8, NO for none), the lanes (Int8, NO for none) - or null for one that
+//does not fit them
+function packWay(wps) {
+  var n = wps.length,
+    buffer = new ArrayBuffer(n * 4 + n * 16 + n * 4 + n * 2),
+    xy = new Float64Array(buffer, 0, n * 2),
+    tiles = new Int32Array(buffer, n * 16, n),
+    dirs = new Int8Array(buffer, n * 20, n * 4),
+    lanes = new Int8Array(buffer, n * 24, n * 2);
+
+  for (var i = 0; i < n; i++) {
+    var wp = wps[i];
+
+    for (var key in wp) if (WP.indexOf(key) === -1) return null;
+    if (
+      (wp.tile | 0) !== wp.tile ||
+      typeof wp.x !== "number" ||
+      typeof wp.y !== "number"
+    )
+      return null;
+    tiles[i] = wp.tile;
+    xy[2 * i] = wp.x;
+    xy[2 * i + 1] = wp.y;
+    if (!small(wp.din, dirs, 4 * i) || !small(wp.dout, dirs, 4 * i + 2))
+      return null;
+    if (!lane(wp, "li", lanes, 2 * i) || !lane(wp, "lo", lanes, 2 * i + 1))
+      return null;
+  }
+
+  return new Uint8Array(buffer);
+}
+
+function small(d, out, at) {
+  if (d === null) {
+    out[at] = out[at + 1] = NO;
+    return true;
+  }
+  if (!Array.isArray(d) || d.length !== 2) return false;
+  out[at] = d[0];
+  out[at + 1] = d[1];
+
+  return out[at] === d[0] && out[at + 1] === d[1] && d[0] !== NO && d[1] !== NO;
+}
+
+function lane(wp, name, out, at) {
+  if (!(name in wp)) {
+    out[at] = NO;
+    return true;
+  }
+  out[at] = wp[name];
+
+  return out[at] === wp[name] && wp[name] !== NO;
+}
+
+function unpackWay(bytes) {
+  var b = bytes.slice(),
+    n = b.length / 26,
+    xy = new Float64Array(b.buffer, 0, n * 2),
+    tiles = new Int32Array(b.buffer, n * 16, n),
+    dirs = new Int8Array(b.buffer, n * 20, n * 4),
+    lanes = new Int8Array(b.buffer, n * 24, n * 2),
+    out = [];
+
+  for (var i = 0; i < n; i++) {
+    var wp = {
+      tile: tiles[i],
+      x: xy[2 * i],
+      y: xy[2 * i + 1],
+      din: dirs[4 * i] === NO ? null : [dirs[4 * i], dirs[4 * i + 1]],
+      dout: dirs[4 * i + 2] === NO ? null : [dirs[4 * i + 2], dirs[4 * i + 3]],
+    };
+
+    if (lanes[2 * i] !== NO) wp.li = lanes[2 * i];
+    if (lanes[2 * i + 1] !== NO) wp.lo = lanes[2 * i + 1];
+    out.push(wp);
+  }
+
+  return out;
+}
+
+//the cars of a region's frame, as keep had them
+function readCars(bytes, out) {
+  var car = null;
+
+  reader.open(bytes);
+  while (reader.next() >= 0) {
+    if (reader.kind === CAR) {
+      car = JSON.parse(reader.text());
+      for (var i = 0; i < NUMS.length; i++)
+        if (!isNaN(reader.nums[i])) car[NUMS[i]] = reader.nums[i];
+      out.push(car);
+    } else if (car !== null && reader.kind === WAY)
+      car.wps = unpackWay(reader.bytes());
+    else if (car !== null && reader.kind === WAY_JSON)
+      car.wps = JSON.parse(reader.text());
+  }
+
+  return out;
+}
 
 /**
  * Where the traffic of the city being played is kept, beside its save
@@ -2374,32 +2552,67 @@ function keep(s) {
 }
 
 /**
- * Keeps every car on the roads where it is, beside the city's save - so the
- * traffic is found where it was left, jams and all, not put out afresh.
+ * Keeps the cars on the roads where they are, beside the city's save - so
+ * the traffic is found where it was left, jams and all, not put out afresh:
+ * by region (core/persistence/regions), and only the regions whose cars
+ * drove, came or went since - not those asleep out of sight.
  */
 Carman.prototype.save = function () {
   var at = trafficKey(this);
 
   if (at === null || !this.restored) return;
 
-  var cars = [];
-
-  //every car, asleep out of sight as much as awake
-  for (var i = 0; i < this.agents.length; i++) {
-    var k = keep(this.agents[i]);
-
-    if (k !== null) cars.push(k);
-  }
+  var self = this,
+    storage = at.storage;
 
   try {
-    at.storage.setItem(
-      at.key,
-      JSON.stringify({ version: SAVE_VERSION, cars: cars }),
+    this.kept.collect(
+      function (key) {
+        return keptIn(self, key);
+      },
+      function (key, version, bytes) {
+        if (bytes === null) storage.removeItem(at.key + "." + key);
+        else storage.setItem(at.key + "." + key, rowOf(version, bytes));
+      },
     );
+    if (this.kept.keysChanged) {
+      storage.setItem(
+        at.key,
+        JSON.stringify({ version: SAVE_VERSION, keys: this.kept.keys() }),
+      );
+      this.kept.keysChanged = false;
+    }
   } catch (e) {
     console.warn("Could not keep the traffic", e);
   }
 };
+
+//the cars kept in a region, as a frame - or null for none
+function keptIn(self, key) {
+  var x = savedX(key),
+    y = savedY(key),
+    n = self.index.query(x, y, x + SAVED - 1, y + SAVED - 1, self.found),
+    cols = self.store.cols,
+    any = false;
+
+  if (n > self.found.length) {
+    self.found = new Int32Array(n * 2);
+    n = self.index.query(x, y, x + SAVED - 1, y + SAVED - 1, self.found);
+  }
+
+  writer.begin(-1);
+  for (var i = 0; i < n; i++) {
+    var slot = self.found[i],
+      car = self.bySlot[slot],
+      k = car ? keep(car) : null;
+
+    if (k === null || cols.kept[slot] !== key) continue;
+    writeCar(k);
+    any = true;
+  }
+
+  return any ? writer.end(0) : null;
+}
 
 //how many times, half a second apart, the roads the kept traffic was on
 //are waited for before it is put back without those not there
@@ -2426,7 +2639,32 @@ function restore(self, last) {
     kept = null;
   }
 
-  if (kept === null || kept.version !== SAVE_VERSION) return true;
+  if (kept === null) return true;
+
+  //by region: every region's cars - each known to be written already, and
+  //made again at the next save (one whose cars cannot be put back goes)
+  var rows = [];
+
+  if (kept.version === SAVE_VERSION && Array.isArray(kept.keys)) {
+    var cars = [];
+
+    kept.keys.forEach(function (key) {
+      var row = null;
+
+      try {
+        row = readRow(at.storage.getItem(at.key + "." + key));
+      } catch {
+        row = null;
+      }
+      if (row === null) return;
+      rows.push([key, row[0], row[1]]);
+      readCars(row[1], cars);
+    });
+    kept = { cars: cars };
+  }
+  //version 1 kept every car in the one row: put back, and kept by region
+  //from the next save on, which writes the list over it
+  else if (kept.version !== 1) return true;
 
   var byName = {},
     roadman = self.roads;
@@ -2502,6 +2740,13 @@ function restore(self, last) {
     self.traffic.enter(d);
     self.admit(s);
   });
+
+  rows.forEach(function (r) {
+    self.kept.known(r[0], r[1], r[2]);
+    self.kept.mark(r[0]);
+  });
+  //what was one row is a list of regions from now on
+  if (rows.length === 0) self.kept.keysChanged = true;
 
   return true;
 }
@@ -2720,6 +2965,9 @@ Carman.prototype.remove = function (car) {
   this.hide(car);
 
   if (car.slot >= 0) {
+    //gone from the region it is kept in
+    if (this.store.cols.kept[car.slot] >= 0)
+      this.kept.mark(this.store.cols.kept[car.slot]);
     this.index.remove(car.slot);
     this.store.remove(this.store.handle(car.slot));
     this.bySlot[car.slot] = null;

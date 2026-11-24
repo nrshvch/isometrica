@@ -150,7 +150,7 @@ function receive(self, m) {
       self.stats.bytes += m.bytes.byteLength;
       break;
     case "save":
-      self.world.persistence.writeText(m.text, m.name);
+      self.world.persistence.writeBatch(m.batch);
       break;
     case "check":
       var done = self.checks.get(m.id);

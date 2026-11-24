@@ -577,44 +577,51 @@ CityBuildings.prototype.restore = function (
  * @returns {Object[]} what stands in the city, as it goes into a save
  */
 CityBuildings.prototype.save = function () {
-  var r = [],
-    building;
+  var r = [];
 
-  for (var i = 0; i < this._buildings.length; i++) {
-    building = this._buildings[i];
-
-    r.push({
-      id: building.id,
-      code: building.buildingCode,
-      tile: building.tile,
-      rotation: building.rotation || 0,
-      //how far along it is, for one still going up
-      progress:
-        building.getState() === BuildingState.underConstruction
-          ? building.getProgress()
-          : undefined,
-      //what it looks like, for one put together out of parts picked for it
-      //- and for a road, what it is laid in and, one-way, the way it goes
-      look: building.look,
-      //what it stands on (core/surface)
-      surface: building.surface || undefined,
-      //when it was set on fire, if it was
-      fire: building.fire !== null ? building.fire : undefined,
-      //how sound it is, knocked about by a blast, and since when a heap of
-      //rubble has smouldered
-      health: building.health < 100 ? building.health : undefined,
-      smoke: building.smoke !== null ? building.smoke : undefined,
-      //parts of it down, and which tiles are only its yard
-      down: building.down !== null ? building.down : undefined,
-      yards: building.yards !== null ? building.yards : undefined,
-      //being demolished, and how far down it has come
-      demolition: building.demolishing
-        ? { down: (building.down || []).slice() }
-        : undefined,
-    });
-  }
+  for (var i = 0; i < this._buildings.length; i++)
+    r.push(this.row(this._buildings[i]));
 
   return r;
+};
+
+/**
+ * A building as it goes into a save (#save; a region's, core/persistence
+ * regions).
+ *
+ * @param building {Building}
+ * @returns {Object}
+ */
+CityBuildings.prototype.row = function (building) {
+  return {
+    id: building.id,
+    code: building.buildingCode,
+    tile: building.tile,
+    rotation: building.rotation || 0,
+    //how far along it is, for one still going up
+    progress:
+      building.getState() === BuildingState.underConstruction
+        ? building.getProgress()
+        : undefined,
+    //what it looks like, for one put together out of parts picked for it
+    //- and for a road, what it is laid in and, one-way, the way it goes
+    look: building.look,
+    //what it stands on (core/surface)
+    surface: building.surface || undefined,
+    //when it was set on fire, if it was
+    fire: building.fire !== null ? building.fire : undefined,
+    //how sound it is, knocked about by a blast, and since when a heap of
+    //rubble has smouldered
+    health: building.health < 100 ? building.health : undefined,
+    smoke: building.smoke !== null ? building.smoke : undefined,
+    //parts of it down, and which tiles are only its yard
+    down: building.down !== null ? building.down : undefined,
+    yards: building.yards !== null ? building.yards : undefined,
+    //being demolished, and how far down it has come
+    demolition: building.demolishing
+      ? { down: (building.down || []).slice() }
+      : undefined,
+  };
 };
 
 /**

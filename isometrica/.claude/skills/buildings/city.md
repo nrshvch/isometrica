@@ -84,23 +84,26 @@ next brings them back.
 
 ## Saves (`core/persistence/`)
 
-- `citystore.js`: a localStorage row per city, `<prefix>.city.<id>`, and a
-  directory row `<prefix>.cities` (which key per id, which city opens when
-  the address names none). Each game has its own prefix, so one never opens
-  the other's. Ids are 12 chars of [0-9A-Za-z] (older ones 6). With a
-  server, the directory also keeps the server revision each save was made on
-  and whether it changed since.
+- `citystore.js`: a city kept by region - a header row
+  `<prefix>.city.<id>`, a row a region, the list of them (saves.md) - and
+  a directory row `<prefix>.cities` (which key per id, which city opens
+  when the address names none). Each game has its own prefix, so one never
+  opens the other's. Ids are 12 chars of [0-9A-Za-z] (older ones 6). With
+  a server, the directory also keeps the server revision each save was
+  made on and whether it changed since.
 - `citypersistence.js` `open`: a saved id → load it; an unknown id → blank
   city under it; no id → the active city, else the initial city under a
   fresh id; "start from the initial city" → under the named or a fresh id.
   `prepare` first settles server vs local. Saves every few ticks and on the
-  way out; a city never founded is never written. A save holds the time,
-  the world's `seed` and last name given (`named`), the terrain, the city
-  (its `id`, each building's `id`) and the bulldozers out (`works`,
-  `core/works` save: opened again, brought on by the time since it was
-  saved).
+  way out - the regions changed since, and the header (saves.md); a city
+  never founded is never written. A save holds the time, the world's
+  `seed` and last name given (`named`), the terrain, the city (its `id`,
+  each building's `id`) and the bulldozers out (`works`, `core/works`
+  save: opened again, brought on by the time since it was saved). A save
+  of one row, from a build before, is moved over by region as it opens.
 - `citysync.js` (a game with a server): the browser save is still the one
-  played; it goes up half a minute after a change, when the page is put
+  played; it goes up whole (the regions put together, `CityStore#read`)
+  half a minute after a change, when the page is put
   away, and when back online, on top of the server revision it was made on,
   taken only if that is still the latest; otherwise the player picks.
   `reconcile` on the way in: nothing here → server's; server empty → here,

@@ -473,6 +473,8 @@ City.prototype.tileDown = function (tile) {
     return;
 
   building.down.push(tile);
+  //a tile of it down: its region is saved again (Logic#touch)
+  if (this.world.touch) this.world.touch(building.tile);
   terrain.bare(tile);
 
   if (building.tilesLeft().length === 0)
@@ -1403,6 +1405,25 @@ City.prototype.save = function () {
     research: this.laboratoryService.save(),
     buildings: this.buildingService.save(),
     //what is to go up where something is coming down for it
+    replacing: this.buildingService.saveReplacing(),
+  };
+};
+
+/**
+ * The city's own part of a save by region (core/persistence/regions): all
+ * of #save but its buildings and who lives in which - those go by region.
+ *
+ * @returns {Object}
+ */
+City.prototype.saveHead = function () {
+  return {
+    id: this._id,
+    name: this.name(),
+    tile: this.tile(),
+    established: this.timeEstablished,
+    resources: this.resourcesService.save(),
+    population: { joining: this.populationService.getJoining() },
+    research: this.laboratoryService.save(),
     replacing: this.buildingService.saveReplacing(),
   };
 };

@@ -1,6 +1,6 @@
 ---
 name: world
-description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/interest (observers, rings, levels), shared/draw (Pictures, DrawList, Visible), shared/integral (Integral), shared/replica (Writer, Reader, Replica, Table, Published), and shared/random's toss. Load before using or changing any of them.
+description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/interest (observers, rings, levels), shared/draw (Pictures, DrawList, Visible), shared/integral (Integral), shared/replica (Writer, Reader, Replica, Table, Published), shared/records (Records, toText, fromText), and shared/random's toss. Load before using or changing any of them.
 ---
 
 # The world's libraries
@@ -151,7 +151,8 @@ out)` the value held.
 - A frame: a header (its length, how many records, the version it goes on
   top of - -1 for a snapshot - and the one it makes), then records, each
   a kind (16 bits), how many numbers (Float64, 65535 at most) and bytes,
-  padded to 8. Little-endian through a DataView, so a frame reads the same
+  padded to 8 with zeros: the same records are the same bytes, whatever the
+  writer held before. Little-endian through a DataView, so a frame reads the same
   anywhere it is posted or sent.
 - `Writer(capacity)`: `begin(from)`, `record(kind, nums, n, bytes)`,
   `text(kind, nums, n, string)` (UTF-8, `encodeInto`), `end(to)` -> a view
@@ -177,3 +178,25 @@ out)` the value held.
   200,000 copies. Benchmarked beside JSON and structuredClone.
 - Used by isometrica's local server (its skill `buildings`, server.md): the
   frames, their versions and a Table of the digest a copy is checked by.
+
+## records
+
+- `Records(capacity)`: by key (a number, a region's), each record's last
+  written bytes (a copy) and its version, counted up on every write.
+  `mark(key)` - changed (a NumMap and a list: marked twice, made once).
+  `collect(make, write)` - each key marked, in the order marked: `make(key)`
+  gives its bytes now (null: none), and `write(key, version, bytes|null)`
+  is called only when they differ from the last written (compared four
+  bytes at a time where aligned); a key marked while it runs is left for
+  the next. `known(key, version, bytes)` - what the storage holds already,
+  on opening: made again and found the same, it is not written.
+  `keysChanged` - a key came or went (for a list of them, written only
+  then). `has`, `version`, `bytes`, `keys()`, `size`, `pending`.
+- `toText(bytes)` / `fromText(text)` - base64, padded, as `Buffer` has it
+  (tested against it); `fromText` gives an aligned array of its own, null
+  for what is not base64.
+- Tested against a Map on seeded random changes: what reaches the storage
+  is the world, versions counted by writes. Benchmarked: a save of 40
+  marked, 10 changed, of 2000 records of 2 KB, against the whole as JSON.
+- Used by isometrica's saves by region and the cars' (its skill
+  `buildings`, saves.md).

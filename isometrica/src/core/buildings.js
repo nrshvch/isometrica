@@ -34,6 +34,7 @@ import BuildingPositioning from "./buildingpositioning";
 import Namespace from "namespace";
 import Surface from "./surface";
 import Rotation from "./rotation";
+import { regionOfTile } from "./persistence/regions";
 
 var Core = Namespace("Isometrica.Core");
 Core.ConstructionService = Buildings;
@@ -155,6 +156,7 @@ function onTileCleared(terrain, tile, self) {
 }
 
 function onBuildingStateChange(building, state, self) {
+  touch(self, building);
   Events.fire(self, self.events.buildingUpdated, building);
   Events.fire(self, events.buildingStateChange, building);
 }
@@ -189,6 +191,8 @@ function remove(self, building) {
     }
 
     delete self.buildings[id];
+    unlist(self, building);
+    touch(self, building);
 
     building.dispose();
 
@@ -197,6 +201,31 @@ function remove(self, building) {
     return true;
   }
   return false;
+}
+
+//the buildings by the region of the tile they stand on (#inRegion)
+function list(self, building) {
+  var key = regionOfTile(building.tile),
+    l = self.regions.get(key);
+
+  if (l === undefined) self.regions.set(key, (l = []));
+  l.push(building);
+}
+
+function unlist(self, building) {
+  var key = regionOfTile(building.tile),
+    l = self.regions.get(key),
+    i = l === undefined ? -1 : l.indexOf(building);
+
+  if (i < 0) return;
+  l[i] = l[l.length - 1];
+  l.pop();
+  if (l.length === 0) self.regions.delete(key);
+}
+
+//something of a building changed: its region is saved again (Logic#touch)
+function touch(self, building) {
+  if (self.world.touch !== undefined) self.world.touch(building.tile);
 }
 
 /**
@@ -208,6 +237,8 @@ function Buildings(world) {
   this.world = world;
   this.buildings = Object.create(null);
   this.byTile = Object.create(null);
+  //the buildings of each region (core/persistence/regions), by its key
+  this.regions = new Map();
   //the tiles kept for something to go up on once all of them are cleared
   //(reserve), by the tile
   this.held = Object.create(null);
@@ -225,6 +256,19 @@ Buildings.prototype.init = function () {
   Events.on(terrain, Terrain.events.tileCleared, onTileCleared, this);
 };
 
+/**
+ * The buildings standing in a region (core/persistence/regions regionOf),
+ * by the tile they were put down on - in no order.
+ *
+ * @param key {number}
+ * @returns {Building[]}
+ */
+Buildings.prototype.inRegion = function (key) {
+  return this.regions.get(key) || NONE;
+};
+
+var NONE = [];
+
 Buildings.prototype.get = function (idx, y) {
   if (arguments.length === 2) idx = Terrain.convertToIndex(idx, y);
 
@@ -236,6 +280,8 @@ Buildings.prototype.build = function (building) {
     iter = building.occupiedTiles();
 
   this.buildings[building.id] = building;
+  list(this, building);
+  touch(this, building);
 
   while (!iter.done) {
     tile = TileIterator.next(iter);

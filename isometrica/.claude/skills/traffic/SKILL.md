@@ -84,4 +84,5 @@ middle of tile (x, y) is (x, y).
 - [cars.md](cars.md) - how many, why, where they go and leave, getting lost,
   breaking down, speeds and costs.
 - [agents.md](agents.md) - the cars as records by region: tiers (full,
-  coarse, asleep), waking, views, the core's roads; `world:traffic`.
+  coarse, asleep), waking, views, the core's roads, kept by region;
+  `world:traffic`.

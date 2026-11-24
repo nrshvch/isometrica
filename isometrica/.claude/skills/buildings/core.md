@@ -3,8 +3,11 @@
 `core/` is the world with no browser in it: `npm run test:core`
 (`tools/coretest.mjs`) runs it in node - a generated town opened, the clock
 moved on a frame at a time for game hours with commands sent on the way,
-twice, and the two saves the same to the byte - and fails if anything of
-`client/`, or `window`, `document`, `localStorage`, is reached for.
+twice, and the two saves the same to the byte; saved by region on the way
+and put together again the world to the byte, opened again from its
+regions the same, a save of one row moved over (saves.md) - and fails if
+anything of `client/`, or `window`, `document`, `localStorage`, is reached
+for.
 
 ## One clock
 

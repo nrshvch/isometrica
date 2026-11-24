@@ -10,7 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Steps 1 to 7 are built (The way there); the
+what isometrica puts into it. Steps 1 to 8 are built (The way there); the
 rest is not yet.
 
 ## What there is now
@@ -65,6 +65,16 @@ on a Web Worker (`core/serve.js`), the page's world a copy playing its frames
 (a few hundred bytes to a kilobyte a second), the saves made there and
 written here. The copy plays every step, so the main thread still does the
 world's work; only the saving leaves it.
+
+**A city is saved a region at a time** (step 8; skill `buildings`,
+saves.md): a small header (the time, the seed, the last name, the city's
+own totals) and a record a region of 24 tiles - its ground's edits, what
+stands there, who lives in it, the bulldozers - packed with
+`shared/replica`, written only when it changed (`shared/records`: whatever
+changes it marks its region, `Logic#touch`). The cars are kept by the same
+regions, only those whose cars drove. Opening reads all of it at once, as
+the city's sums are of the whole city; the server is still sent the whole
+save, put together from the regions.
 
 **The smoke is worked out, not kept** (step 4; skill `rendering`,
 smoke.md): a puff is a function of its source, its seed and the time, its
@@ -171,7 +181,9 @@ What goes over everything now, and what each becomes:
   index.
 - The renderer culls every game object and `World.tick` ticks every ticker:
   bounded by what is in sight, once views exist only there.
-- A city is saved whole: a region at a time, those changed.
+- A city was saved whole every five seconds: now a region at a time,
+  those changed (step 8) - but put together whole to go to the server, and
+  opened whole.
 
 ## Workers
 
@@ -268,6 +280,16 @@ then `npx vite preview` in `city-sim`) - and know nothing of the game.
   seen in the page's copy (twenty, and a clearing), and after a while with
   the bulldozers out whether the copy is the worker's world - both saved,
   the same to the byte, no digest off (exits 1 if not).
+- `npm run world:saves -- <url>` - on a generated town: what saving writes
+  to localStorage (the city's saves and the traffic's), bytes and rows a
+  save and a minute, with the camera still for a minute and panning twenty
+  chunks away and back over another; how long a save holds up the main
+  thread; reading the save back whole, and the ground drawn after a
+  reload; and whether what storage holds is the world, to the byte, before
+  and after a reload (exits 1 if not). `--dump=<file>` saves the town
+  mid-demolition with its cars, `--migrate=<file>` opens that save (made
+  by another build) five seconds on: the same city, buildings and names,
+  the demolition going on and done, the cars, and over a reload again.
 - `npm run world:smoke -- <url>` - on a generated town (`--city=town` by
   default): the game objects and tickers there are for smoke, what it costs
   a frame (its tickers, or since step 4 its section), the chimneys in reach
@@ -388,6 +410,22 @@ after (above), with the debug panel's `Stats` and the traffic test
    on by default: the copy plays every step, so the work stays on the main
    thread, and on a worker the bulldozers in sight go a second at a time._
 8. **Saving a region at a time**, and the cities' saves moved over.
+   _Done: a header and a record a region of 24 tiles (`shared/replica`,
+   `shared/records`), only the regions changed written, the cars kept by
+   the same regions; a town's save 32 KB every 5 s → 0.5 KB with nothing
+   changed, all saving 474 → 56 KB a minute with the camera still and
+   491 → 35 panning twenty chunks and back, the cars 24.6 → 12.7 KB a save
+   still and 26.6 → 5.7 panning, the city's save 0.8 → 0.3 ms on the main
+   thread (the cars' 0.5 → 1.1), read back whole 0.1 → 0.5 ms, what
+   storage holds the world to the byte (`world:saves`); in node 36 game
+   hours write 253 KB where whole saves were 2261, opened again from its
+   regions the same and saved again writing only the header
+   (`test:core`); a save of the build before opens moved over by region,
+   148 of 148 names, the demolition going on and done in 14 s, 11 of 11
+   cars, as before; the server still sent the whole save, put together;
+   `world:compare` IDENTICAL, a still frame 8.35 → 8.20 ms, update 0.75
+   → 0.81 (`world:bench`, middles of three); skill `buildings`, saves.md.
+   Opened whole, not lazily: the city's sums are of all of it._
 9. **Regions on the server**: a Durable Object for each server share, as the
    saves have one each today; subscribing, regions and their changes, agents
    handed over, drawing a little behind.
@@ -440,9 +478,9 @@ keeps only what is still to come.
 - Bulldozers brought up to date in one go each do all they did in that
   stretch before the next does any: what two of them did within the same
   stretch is done in the order of their rows, not of when.
-- The traffic is saved whole every five seconds (`Carman#save`): every car
-  of every region visited, asleep or not, so it grows with the world seen,
-  until saving goes by region (step 8).
+- The traffic was saved whole every five seconds (`Carman#save`): every
+  car of every region visited, asleep or not, so it grew with the world
+  seen. Since step 8 only the regions whose cars drove are written.
 - A region woken has its cars where they were left: only what they were
   waiting out goes on (`CarAgent#advance`); their driving is not played
   over, and they did not drive while asleep.
@@ -492,8 +530,19 @@ keeps only what is still to come.
   layers are `data/renderlayer`.
 - `City#timeEstablished` is `world.time.milliseconds`, which is no field of
   VTime: every city's founding time is saved as nothing.
-- A city's names and seed are kept with its save, not by region yet: two
-  players' cities would count from the same 0 (step 8).
+- A city's names and seed are kept with its save, in its header, not by
+  region: two players' cities would count from the same 0 (step 9).
+- `shared/replica`'s Writer padded a record with whatever an earlier frame
+  had left in its buffer: the same records were not the same bytes, so a
+  region made again always looked changed. It pads with zeros now.
+- `Terrain#save` and the people by house went in the order of a JS object's
+  keys: ascending for tiles below y 32768, the order they came in beyond
+  (their index is negative there), so a save put together from regions
+  could not be told to be the same. Both are sorted by the tile, as
+  unsigned, now - as before for every tile but those.
+- Every five seconds the city wrote its whole save, 32 KB for a town, with
+  nothing in it changed; now a header of 500 bytes and the regions
+  changed.
 - A quarter turn and the view from above take the camera to the world's
   origin on the way (`client/components/camerascript.js:533`, `:345`): the chunks no longer follow it
   (worked out once a frame), but whatever else listens to the camera moving

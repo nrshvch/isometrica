@@ -62,8 +62,11 @@ shared/<lib>/
   Replica (versions: a frame on top of the one a copy has, or a snapshot),
   Table (rows whose changes go into frames), Published (the last whole copy,
   through a SharedArrayBuffer and Atomics).
+- `records` - Records: versioned records kept somewhere slow by key, the
+  set of keys marked changed, written only when they came out different;
+  toText / fromText (base64, for a Storage of strings).
 
-How `typed`, `spatial`, `schedule`, `interest`, `draw`, `integral` and `replica` work, and the rules they keep:
+How `typed`, `spatial`, `schedule`, `interest`, `draw`, `integral`, `replica` and `records` work, and the rules they keep:
 skill `world` (`.claude/skills/world/`).
 
 ## Commands (here, or at the root)

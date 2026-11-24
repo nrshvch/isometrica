@@ -77,8 +77,9 @@ same results at the same moments as before.
   its bulldozers (the frames' `Works#tick` does, so they move a second at a
   time), `Works` knock takes no view's time (`KNOCK_MS`, as the worker has no
   view), a fire's view does not burn a building down (the tick does).
-- Saves: the worker's world saves (`persistence.saver`) and posts the JSON;
-  the page writes it (`writeText`, its storage, its server sync). The
+- Saves: the worker's world saves (`persistence.saver`) and posts the
+  regions changed and the header (saves.md); the page writes them
+  (`writeBatch`, its storage, its server sync). The
   camera's view (`setView`) is sent to the worker for its saves.
 - A command's `done` comes as its frame is played, a frame later: callers
   pass `done` (buildman build, replace, demolish, explode, fireUp, found;
@@ -104,7 +105,7 @@ same results at the same moments as before.
 ## Not yet
 
 - The copy plays every step, so the main thread does the world's work all
-  the same; what leaves it is saving (the JSON every 5 ticks). Frames of
+  the same; what leaves it is saving (the regions changed, every 5 ticks). Frames of
   state by region (a Table a region, `Published`) are for when the regions
   hold their state in typed tables (steps 8, 9).
 - Cars are the client's still (traffic, agents.md): they read the copy.

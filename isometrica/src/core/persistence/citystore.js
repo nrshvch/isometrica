@@ -3,6 +3,16 @@
  * See isometrica/.claude/skills/buildings/city.md (Saves).
  */
 import namespace from "namespace";
+import {
+  FORM,
+  assemble,
+  decode,
+  encode,
+  readRow,
+  rowOf,
+  split,
+  splittable,
+} from "./regions";
 
 var Core = namespace("Isometrica.Core");
 Core.CityStore = CityStore;
@@ -136,6 +146,78 @@ CityStore.prototype.sideKey = function (kind, id) {
 var SIDES = ["traffic"];
 
 /**
+ * The row a region of a city's save is kept in (core/persistence/regions):
+ * "<saves>.region.<id>.<key>"; and the row listing the regions there are,
+ * "<saves>.regions.<id>". They go when the city does.
+ *
+ * @param id {string}
+ * @param key {number}
+ * @returns {string}
+ */
+CityStore.prototype.regionKey = function (id, key) {
+  return this.saves + ".region." + id + "." + key;
+};
+
+CityStore.prototype.regionsKey = function (id) {
+  return this.saves + ".regions." + id;
+};
+
+//the regions a city's save has, by their keys
+function regionKeys(self, id) {
+  var keys = read(self, self.regionsKey(id));
+
+  return Array.isArray(keys) ? keys : [];
+}
+
+//a row of something kept by region - [version, bytes] - or null
+function readRegion(self, key) {
+  try {
+    return readRow(self.storage.getItem(key));
+  } catch (e) {
+    console.warn("Could not read " + key + " from storage", e);
+    return null;
+  }
+}
+
+/**
+ * Whether a city's save is kept by region (core/persistence/regions), not
+ * as one row - as builds before step 8 kept it, and opened that way still.
+ *
+ * @param id {string}
+ * @returns {boolean}
+ */
+CityStore.prototype.byRegion = function (id) {
+  if (this.storage === null || !CityStore.isValidId(id)) return false;
+
+  var row = read(this, this.key(id));
+
+  return row !== null && row.form === FORM;
+};
+
+/**
+ * The region rows of a city's save as they are: [key, version, bytes] -
+ * for the world that opens it to know what is written already.
+ *
+ * @param id {string}
+ * @returns {Array[]}
+ */
+CityStore.prototype.regions = function (id) {
+  var out = [];
+
+  if (!this.byRegion(id)) return out;
+
+  var keys = regionKeys(this, id);
+
+  for (var i = 0; i < keys.length; i++) {
+    var row = readRegion(this, this.regionKey(id, keys[i]));
+
+    if (row !== null) out.push([keys[i], row[0], row[1]]);
+  }
+
+  return out;
+};
+
+/**
  * @returns {{version: number, activeCityId: string|null, cities: Object}}
  */
 CityStore.prototype.index = function () {
@@ -188,7 +270,22 @@ CityStore.prototype.has = function (id) {
 CityStore.prototype.read = function (id) {
   if (this.storage === null || !CityStore.isValidId(id)) return null;
 
-  return read(this, this.key(id));
+  var row = read(this, this.key(id));
+
+  if (row === null || row.form !== FORM) return row;
+
+  //kept by region: the header and every region, put together
+  var keys = regionKeys(this, id),
+    parts = [];
+
+  for (var i = 0; i < keys.length; i++) {
+    var region = readRegion(this, this.regionKey(id, keys[i]));
+
+    if (region !== null) parts.push(decode(region[1]));
+    else console.warn("A region of city " + id + " is missing: " + keys[i]);
+  }
+
+  return assemble(row, parts);
 };
 
 /**
@@ -203,22 +300,112 @@ CityStore.prototype.read = function (id) {
  * @returns {boolean}
  */
 CityStore.prototype.write = function (id, data, name, rev) {
+  if (this.storage === null || !CityStore.isValidId(id)) return false;
+
+  //of the shape a world saves today: by region, the rows that came out
+  //different written
+  if (splittable(data)) {
+    var parts = split(data),
+      was = new Map(),
+      rows = [],
+      keys = [];
+
+    this.regions(id).forEach(function (r) {
+      was.set(r[0], r);
+    });
+    parts.regions.forEach(function (p, key) {
+      var bytes = encode(p),
+        old = was.get(key),
+        version = old ? old[1] : 0;
+
+      was.delete(key);
+      if (bytes === null) return;
+      keys.push(key);
+      if (old && rowOf(version, old[2]) === rowOf(version, bytes)) return;
+      rows.push([key, rowOf(version + 1, bytes)]);
+    });
+    was.forEach(function (r, key) {
+      rows.push([key, null]);
+    });
+
+    return this.writeRegions(
+      id,
+      { header: parts.header, rows: rows, keys: keys },
+      name,
+      rev,
+    );
+  }
+
+  //of an older shape: whole, as it was - a world opening it saves it by
+  //region (CityPersistence#open)
+  dropRegions(this, id);
+
   return put(this, id, data, null, name, rev);
 };
 
 /**
- * #write with the save as JSON already (CityPersistence#writeText).
+ * Writes a save by region (core/persistence/regions CityRegions#save): the
+ * regions that changed, then the list of them where it changed, then the
+ * header - which makes it the city's save.
  *
  * @param id {string}
- * @param text {string}
+ * @param batch {{header: Object, rows: Array[], keys: number[]|null}}
+ *        rows [key, row text | null]
  * @param [name] {string}
- * @returns {boolean}
+ * @param [rev] {number|boolean} the server's revision this is a copy of
+ *        (#write) - or true for the same save in another form: written,
+ *        but not as a change (an older save moved over)
+ * @returns {boolean} false when any of it could not be written
  */
-CityStore.prototype.writeText = function (id, text, name) {
-  return put(this, id, null, text, name);
+CityStore.prototype.writeRegions = function (id, batch, name, rev) {
+  if (this.storage === null || !CityStore.isValidId(id)) return false;
+
+  var ok = true,
+    wasWhole = !this.byRegion(id),
+    i;
+
+  for (i = 0; i < batch.rows.length; i++) {
+    var key = this.regionKey(id, batch.rows[i][0]);
+
+    if (batch.rows[i][1] === null) drop(this, key);
+    else ok = writeRaw(this, key, batch.rows[i][1]) && ok;
+  }
+
+  if (batch.keys !== null && batch.keys !== undefined)
+    ok = write(this, this.regionsKey(id), batch.keys) && ok;
+  //what was one row is now its header: its regions all written above
+  else if (wasWhole && batch.rows.length > 0)
+    ok =
+      write(
+        this,
+        this.regionsKey(id),
+        batch.rows.map(function (r) {
+          return r[0];
+        }),
+      ) && ok;
+
+  if (!ok) return false;
+
+  return put(
+    this,
+    id,
+    batch.header,
+    null,
+    name,
+    rev === true ? undefined : rev,
+    rev === true,
+  );
 };
 
-function put(self, id, data, text, name, rev) {
+//a city's regions, gone
+function dropRegions(self, id) {
+  var keys = regionKeys(self, id);
+
+  for (var i = 0; i < keys.length; i++) drop(self, self.regionKey(id, keys[i]));
+  drop(self, self.regionsKey(id));
+}
+
+function put(self, id, data, text, name, rev, same) {
   if (self.storage === null || !CityStore.isValidId(id)) return false;
 
   var key = self.key(id);
@@ -229,8 +416,9 @@ function put(self, id, data, text, name, rev) {
   var index = self.index(),
     was = index.cities[id] || {},
     //every write is counted, so that an upload knows whether what it took
-    //up is still all there is (#synced)
-    writes = (was.writes || 0) + 1;
+    //up is still all there is (#synced) - but the same save moved over
+    //into another form
+    writes = (was.writes || 0) + (same ? 0 : 1);
 
   index.cities[id] = {
     key: key,
@@ -363,7 +551,17 @@ CityStore.prototype.remove = function (id) {
   if (this.storage === null || !CityStore.isValidId(id)) return false;
 
   drop(this, this.key(id));
-  for (var k = 0; k < SIDES.length; k++) drop(this, this.sideKey(SIDES[k], id));
+  dropRegions(this, id);
+  for (var k = 0; k < SIDES.length; k++) {
+    //kept by region too (client/carman): {version, keys}, the rows
+    //"<saves>.<kind>.<id>.<key>"
+    var side = read(this, this.sideKey(SIDES[k], id));
+
+    if (side !== null && Array.isArray(side.keys))
+      for (var j = 0; j < side.keys.length; j++)
+        drop(this, this.sideKey(SIDES[k], id) + "." + side.keys[j]);
+    drop(this, this.sideKey(SIDES[k], id));
+  }
 
   var index = this.index();
 

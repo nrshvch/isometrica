@@ -116,6 +116,17 @@ Logic.prototype.keepName = function (name) {
 };
 
 /**
+ * Something on a tile changed - the ground, what stands there, who lives
+ * there: its region is saved again at the next save, and only the regions
+ * so marked are (core/persistence/regions).
+ *
+ * @param tile {number}
+ */
+Logic.prototype.touch = function (tile) {
+  if (this.persistence) this.persistence.regions.mark(tile);
+};
+
+/**
  * A chance, 0..1, from the world's seed, where (a tile, a region), what (a
  * record's name) and when (a step, a time): the same whatever order things
  * are worked out in, and on another machine (shared/random toss).

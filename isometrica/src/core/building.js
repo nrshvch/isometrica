@@ -572,4 +572,36 @@ function demand(self) {
   }
 }
 
+//what of a building goes into its save, kept behind a setter that marks its
+//region changed (Logic#touch), whoever sets it - so that a save by region
+//writes the regions changed, not the world (core/persistence/regions)
+[
+  "look",
+  "fire",
+  "health",
+  "smoke",
+  "down",
+  "yards",
+  "demolishing",
+  "surface",
+].forEach(function (name) {
+  var own = "_" + name;
+
+  Building.prototype[own] = Building.prototype[name];
+  Object.defineProperty(Building.prototype, name, {
+    configurable: true,
+    enumerable: true,
+    get: function () {
+      return this[own];
+    },
+    set: function (value) {
+      this[own] = value;
+
+      var world = this.world;
+
+      if (world !== null && world.touch !== undefined) world.touch(this.tile);
+    },
+  });
+});
+
 export default Building;

@@ -74,6 +74,25 @@ describe("Writer and Reader", function () {
     expect(records(a)).toEqual(records(b));
   });
 
+  it("writes the same records as the same bytes, whatever was written before", function () {
+    var w = Writer(64),
+      frame = function () {
+        w.begin(-1);
+        w.record(1, [1.5], 1, Uint8Array.from([1, 2, 3]));
+        w.text(2, [], 0, "abc");
+
+        return Array.from(w.end(0));
+      },
+      first = frame();
+
+    w.begin(-1);
+    w.record(9, [], 0, new Uint8Array(40).fill(255));
+    w.text(9, [], 0, "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz");
+    w.end(0);
+
+    expect(frame()).toEqual(first);
+  });
+
   it("grows, and keeps its buffer once grown: nothing made a frame", function () {
     var w = Writer(64),
       nums = new Float64Array(8),

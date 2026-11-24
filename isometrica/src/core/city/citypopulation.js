@@ -116,15 +116,31 @@ CityPopulation.prototype.getPopulation = function () {
 CityPopulation.prototype.save = function () {
   var buildings = this.city.buildingService.getBuildings(),
     residents = {},
+    houses = [],
     n,
     i;
 
   for (i = 0; i < buildings.length; i++) {
     n = this._residents[buildings[i].id];
-    if (n > 0) residents[buildings[i].tile] = n;
+    if (n > 0) houses.push([buildings[i].tile, n]);
   }
 
+  //by the tile as unsigned, as a save by region puts them back together
+  //(core/persistence/regions) - the order an object keeps them in anyway,
+  //but for tiles from y 32768 on
+  houses.sort(function (a, b) {
+    return (a[0] >>> 0) - (b[0] >>> 0);
+  });
+  for (i = 0; i < houses.length; i++) residents[houses[i][0]] = houses[i][1];
+
   return { residents: residents, joining: this._joining };
+};
+
+/**
+ * @returns {number} who is on their way in (or out, below 0), as saved
+ */
+CityPopulation.prototype.getJoining = function () {
+  return this._joining;
 };
 
 /**
@@ -365,6 +381,7 @@ function settle(self, buildings, n) {
     if (room <= 0) continue;
 
     self._residents[id] = (self._residents[id] || 0) + room;
+    touch(self, buildings[i]);
     n -= room;
   }
 
@@ -390,10 +407,20 @@ function evict(self, buildings, n) {
 function take(self, id, n) {
   var left = (self._residents[id] || 0) - n;
 
+  touch(self, self.city.world.buildingService.buildings[id]);
+
   if (left > 0) self._residents[id] = left;
   else delete self._residents[id];
 
   self._counted = null;
+}
+
+//who lives in a house changed: its region is saved again (Logic#touch)
+function touch(self, building) {
+  var world = self.city.world;
+
+  if (building !== undefined && world.touch !== undefined)
+    world.touch(building.tile);
 }
 
 function payTaxes(self) {

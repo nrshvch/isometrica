@@ -23,7 +23,8 @@ a browser (`npm run test:core` plays it in node; skill `buildings`, core.md):
 - `logic.js` (the world's clock - `advance`, ticks, catching up - seeded
   chance, names that last), `commands.js` (what the player does, as plain
   objects: `Logic#command`), `vtime.js` (the game's time of day),
-  `persistence/` (saves: localStorage, server sync).
+  `persistence/` (saves: by region - `regions.js` - in localStorage, a
+  whole save for the server sync; skill `buildings`, saves.md).
 - The world as a local server (skill `buildings`, server.md): `server.js`
   (moves it on by real time in fixed steps, takes commands, writes frames:
   shared/replica), `mirror.js` (a copy playing them), `serve.js` (the
@@ -88,9 +89,10 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
   Run it again after changing a generator while a dev server runs.
 - `npm run dev` - the lab. `npm run build:lab` - into `lab/dist`.
 - `npm run test:traffic`, `npm run test:cities`, `npm run test:core` -
-  headless tests (`test:core`: a town played in node, twice the same, and
-  over the local server's protocol, on a worker thread too).
-- `npm run world:fingerprint|compare|bench|streams|chunks|traffic|smoke|works|worker` - what
+  headless tests (`test:core`: a town played in node, twice the same, saved
+  by region and put together the world to the byte, and over the local
+  server's protocol, on a worker thread too).
+- `npm run world:fingerprint|compare|bench|streams|chunks|traffic|smoke|works|worker|saves` - what
   the world costs and hands the GPU, against a game's build served
   (`tools/world/`, `docs/world.md` Measuring).
 - `npm run generate:*` - `tools/gen*.js`.
@@ -99,8 +101,9 @@ A new page is an HTML file, its folder, and an entry in `lab/ui/pages.js`.
 
 - `buildings` - buildings and roads going up and coming down (sites,
   clearing, roadworks, demolition, blasts, fire, ruins), and the city: area,
-  road network, people, jobs, water, saves; the core's clock, chance, names
-  and commands (core.md); the world as a local server (server.md).
+  road network, people, jobs, water; the core's clock, chance, names and
+  commands (core.md); the world as a local server (server.md); saves a
+  region at a time (saves.md).
 - `citygen` - city generation: `src/citygen`, the cities bench,
   `test:cities`.
 - `traffic` - how the traffic drives: Driver, junctions, lanes, routes,

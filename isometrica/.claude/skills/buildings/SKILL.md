@@ -1,6 +1,6 @@
 ---
 name: buildings
-description: Buildings and roads going up and coming down - sites, clearing and bulldozers, roadworks, surfaces, demolition, blasts and health, fire, ruins, rubble, replace - and the city they make (area, road network, people, jobs, water, saves); the core's one clock, seeded chance, names that last and commands, and test:core; the world as a local server (core/server, mirror, serve, client/host, in the page or on a worker). Load before changing core/city*, core/building*, core/logic, core/commands, core/construction, core/server, core/mirror, client/host, client/buildman, demolition, explosion, fires, clearworks or roadworks.
+description: Buildings and roads going up and coming down - sites, clearing and bulldozers, roadworks, surfaces, demolition, blasts and health, fire, ruins, rubble, replace - and the city they make (area, road network, people, jobs, water, saves by region); the core's one clock, seeded chance, names that last and commands, and test:core; the world as a local server (core/server, mirror, serve, client/host, in the page or on a worker). Load before changing core/city*, core/building*, core/logic, core/commands, core/construction, core/server, core/mirror, core/persistence, client/host, client/buildman, demolition, explosion, fires, clearworks or roadworks.
 ---
 
 # Buildings and the city
@@ -31,7 +31,8 @@ saved.
 - `core/works.js` - the bulldozers as records: clearing, sweeping a site,
   bringing a demolition down a tile at a time; stepped, saved, caught up.
 - `core/surface.js`, `core/rotation.js`, `core/terrain.js` (`beingCleared`,
-  `REGROWS`, `bareFor`), `core/persistence/` (saves).
+  `REGROWS`, `bareFor`), `core/persistence/` (saves, by region:
+  saves.md).
 - `core/logic.js` (the clock: `advance`, ticks, `catchUp`, `away`; `chance`,
   `name`, `command`), `core/commands.js` (what the player does, as plain
   objects).
@@ -68,8 +69,9 @@ saved.
 - Saved: the world's `seed` and last name given (`named`); a building's `id`,
   `fire`, `health`, `smoke`, `down`, `yards`,
   `demolishing`, `surface`, `look`; the terrain's `bareFor`; the bulldozers
-  out and the tiles waiting for them (`works`). Not saved: the city's area
-  and network (worked out again), anything only drawn.
+  out and the tiles waiting for them (`works`) - by region, so whatever
+  changes any of it marks its region (`Logic#touch`; saves.md). Not saved:
+  the city's area and network (worked out again), anything only drawn.
 - What a bulldozer does - a tile cleared, a tile of a building down - is
   done by its record (`core/works`), seen or not; a view may only say how
   long what it shows takes.
@@ -85,7 +87,8 @@ saved.
   on `lab/bench/world.js` - the game's own way, time as fast as asked.
 - `npm run test:cities` opens generated cities in the real core (cut off,
   wants, network). `npm run test:core` plays one in node, twice the same,
-  and over the protocol (in this thread, and on a worker thread).
+  saved by region and put together the world to the byte, and over the
+  protocol (in this thread, and on a worker thread).
 - In the game: city-sim, tap a building - Replace, Demolish, Blow up, Fire up.
 
 ## More
@@ -101,3 +104,6 @@ saved.
   page or on a worker, frames, the copy the client reads; `world:worker`.
 - [city.md](city.md) - founding, area and network, people, jobs, water,
   services, catching up, the clock, saves.
+- [saves.md](saves.md) - a save a region at a time: the header and the
+  regions' records, what marks a region changed, the rows, the cars, an
+  older save moved over, the server's whole save; `world:saves`.

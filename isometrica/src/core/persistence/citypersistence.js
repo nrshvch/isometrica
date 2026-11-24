@@ -5,6 +5,7 @@
  */
 import Events from "events";
 import CityStore from "./citystore";
+import { CityRegions } from "./regions";
 import CityService from "../citysrv";
 import Config from "../config";
 import InitialCity from "../../data/initialcity";
@@ -68,6 +69,9 @@ function CityPersistence(world, store, sync, initial) {
   //where saves go in place of the store, or null: a world on a worker
   //hands them to the page (core/serve)
   this.saver = null;
+  //the regions of the world changed since they were last saved, and what
+  //was written of each (core/persistence/regions; Logic#touch marks them)
+  this.regions = new CityRegions();
 }
 
 CityPersistence.VERSION = VERSION;
@@ -179,16 +183,22 @@ CityPersistence.prototype.open = function (requestedId, fromInitial) {
   }
 
   //what it was opened from and when, real time: what a copy of the world
-  //is opened from as well, to come out the same (core/serve)
+  //is opened from as well, to come out the same (core/serve) - and what of
+  //it is written by region already, not to be written again
   var opened = {
     id: id,
     data: data === null ? null : structuredClone(data),
     saved: saved,
     now: this.world.realNow(),
+    regions: saved ? store.regions(id) : [],
   };
 
   this.put(opened);
   this.opened = opened;
+
+  //a save of a build before step 8, one row: by region from now on - the
+  //same save, so nothing for the server (CityStore#writeRegions)
+  if (saved && this._city !== null && !store.byRegion(id)) this.save(true);
 
   return this._id;
 };
@@ -206,6 +216,13 @@ CityPersistence.prototype.put = function (opened) {
     saved = opened.saved;
 
   this._id = id;
+
+  //what is written already, by region: made again from the world at the
+  //first save, and written only if it came out different
+  this.regions = new CityRegions();
+  (opened.regions || []).forEach(function (r) {
+    this.regions.known(r[0], r[1], r[2]);
+  }, this);
 
   //the world's chance (Logic#chance) from the save's seed - or, for a save
   //from before it kept one and for a new city, from its id: the same every
@@ -227,49 +244,93 @@ CityPersistence.prototype.put = function (opened) {
 };
 
 /**
- * Writes the city out. Does nothing until there is a city to write.
+ * Writes the city out, by region: the regions changed since the last save,
+ * and the header (core/persistence/regions). Does nothing until there is a
+ * city to write.
  *
+ * @param [same] {boolean} the save opened, moved over from an older form:
+ *        not a change (CityStore#writeRegions)
  * @returns {boolean} whether it went to storage
  */
-CityPersistence.prototype.save = function () {
-  var data = this.snapshot();
+CityPersistence.prototype.save = function (same) {
+  var city = this._city;
 
-  if (data === null) return false;
+  if (city === null || this._id === null) return false;
+
+  var batch = this.regions.save(this.world, city, this.header());
 
   //a world on a worker hands its save to the page, which has the storage
-  //(core/serve, #writeText)
+  //(core/serve, #writeBatch)
   if (this.saver !== null) {
-    this.saver(data);
+    this.saver(batch);
     return true;
   }
 
-  if (!this._store.write(this._id, data, data.city.name)) return false;
+  return this.writeBatch(batch, same === true);
+};
+
+/**
+ * Writes a save by region made here or elsewhere - the world's on a worker
+ * (core/serve) - to the storage.
+ *
+ * @param batch {{header: Object, rows: Array[], keys: number[]|null}}
+ * @param [same] {boolean} see #save
+ * @returns {boolean} whether it went to storage
+ */
+CityPersistence.prototype.writeBatch = function (batch, same) {
+  if (
+    this._id === null ||
+    !this._store.writeRegions(
+      this._id,
+      batch,
+      batch.header.city.name,
+      same === true ? true : undefined,
+    )
+  ) {
+    //written again, whole, at the next save
+    var regions = this.regions;
+
+    batch.rows.forEach(function (r) {
+      regions.forget(r[0]);
+    });
+
+    return false;
+  }
 
   //a city is only really the player's once it has been written, so this is
   //where it becomes the one they come back to
   this._store.setActiveCityId(this._id);
 
-  if (this._sync !== null) this._sync.changed();
+  if (this._sync !== null && same !== true) this._sync.changed();
 
   return true;
 };
 
 /**
- * Writes a save made elsewhere - the world's on a worker (core/serve) -
- * as #save would have: JSON already, so nothing of it is worked out here.
+ * What of a save is not by region (core/persistence/regions): the time,
+ * the seed, the last name, the city's own totals.
  *
- * @param text {string} the save, JSON
- * @param name {string} the city's
- * @returns {boolean} whether it went to storage
+ * @returns {Object|null} null until there is a city
  */
-CityPersistence.prototype.writeText = function (text, name) {
-  if (this._id === null || !this._store.writeText(this._id, text, name))
-    return false;
+CityPersistence.prototype.header = function () {
+  var city = this._city;
 
-  this._store.setActiveCityId(this._id);
-  if (this._sync !== null) this._sync.changed();
+  if (city === null || this._id === null) return null;
 
-  return true;
+  var data = {
+    version: VERSION,
+    id: this._id,
+    savedAt: this.world.realNow(),
+    time: this.world.time.now,
+    seed: this.world.seed,
+    named: this.world.named,
+    city: city.saveHead(),
+    works: this.world.works ? true : null,
+  };
+
+  if (this._view !== null) data.view = this._view;
+
+  return data;
 };
 
 /**

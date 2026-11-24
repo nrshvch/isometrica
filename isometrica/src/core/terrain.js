@@ -432,9 +432,13 @@ Terrain.prototype.modify = function (plan, keep) {
 
     //and the earth that was moved lies bare, whatever stood on it
     this.bareSince[tiles[i]] = now(this);
+    touch(this, tiles[i]);
   }
 
-  for (var p in plan.points) this.gridPoints[p] = plan.points[p];
+  for (var p in plan.points) {
+    this.gridPoints[p] = plan.points[p];
+    touch(this, +p);
+  }
 
   Events.fire(this, events.gridUpdate, {
     points: plan.points,
@@ -469,6 +473,7 @@ Terrain.prototype.after = function (plan) {
 Terrain.prototype.clear = function (tile) {
   this.clearedTiles[tile] = true;
   this.bareSince[tile] = now(this);
+  touch(this, tile);
   this.clearTile(tile);
 };
 
@@ -481,6 +486,7 @@ Terrain.prototype.clear = function (tile) {
  */
 Terrain.prototype.fell = function (tile) {
   this.clearedTiles[tile] = true;
+  touch(this, tile);
   this.clearTile(tile);
 };
 
@@ -508,6 +514,7 @@ function clock(self) {
 Terrain.prototype.bare = function (tile) {
   this.clearedTiles[tile] = true;
   this.bareSince[tile] = now(this);
+  touch(this, tile);
 };
 
 /**
@@ -596,8 +603,28 @@ Terrain.prototype.save = function () {
     if (this.bareFor(+k) >= 0) bare.push([+k, this.bareSince[k]]);
     else delete this.bareSince[k];
 
+  //by the tile as unsigned, as a save by region puts them back together
+  //(core/persistence/regions): an object's own order, but for tiles from
+  //y 32768 on, which it keeps in the order they came
+  points.sort(firstByTile);
+  cleared.sort(function (a, b) {
+    return (a >>> 0) - (b >>> 0);
+  });
+  bare.sort(firstByTile);
+
   return { points: points, cleared: cleared, bare: bare };
 };
+
+function firstByTile(a, b) {
+  return (a[0] >>> 0) - (b[0] >>> 0);
+}
+
+//the ground of a tile changed: its region is saved again (Logic#touch)
+function touch(self, tile) {
+  var world = self.world;
+
+  if (world && world.touch !== undefined) world.touch(tile);
+}
 
 /**
  * Puts the ground back the way Terrain#save left it. Nothing is drawn yet
@@ -613,14 +640,20 @@ Terrain.prototype.load = function (data) {
     bare = data.bare || [],
     i;
 
-  for (i = 0; i < points.length; i++)
+  for (i = 0; i < points.length; i++) {
     this.gridPoints[points[i][0]] = points[i][1];
+    touch(this, points[i][0]);
+  }
 
-  for (i = 0; i < bare.length; i++) this.bareSince[bare[i][0]] = bare[i][1];
+  for (i = 0; i < bare.length; i++) {
+    this.bareSince[bare[i][0]] = bare[i][1];
+    touch(this, bare[i][0]);
+  }
 
   for (i = 0; i < cleared.length; i++) {
     this.clearedTiles[cleared[i]] = true;
     this.clearTile(cleared[i]);
+    touch(this, cleared[i]);
   }
 };
 
