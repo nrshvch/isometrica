@@ -10,20 +10,19 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Step 1 is built (The way there); the rest is not yet.
+what isometrica puts into it. Steps 1 and 2 are built (The way there); the
+rest is not yet.
 
 ## What there is now
 
-**The camera decides what exists.** `tilesman` keeps a square of chunks
-(24×24 tiles, 12 on a small screen) around the chunk the camera is in, a ring
-or more of them (`chunkRadius`, `client/tilesman.js:58`). Whatever falls out
-of the square is let go of at once: `cleanChunks` (`:245`) drops it, and is
-called after every chunk that comes in (`:190`). There is no margin and no
-delay, so the camera crossing a chunk's edge by one tile lets a whole row of
-chunks go, and crossing back makes it again from nothing. `chunkman` hands
-that on to `buildman` (building views made on a chunk coming in, destroyed
-on it going, `client/buildman.js:299`, `:311`) and `envman` (trees and
-stones).
+**The camera decides what exists.** `tilesman` draws the chunks (24×24
+tiles, 12 on a small screen) that come into the camera's view ring and lets
+them go only once they have been beyond its near ring for a while - the
+regions of a quadtree whose leaves are the chunks, worked out once a frame
+(step 2; skill `rendering`, chunks.md). What is drawn is still all there is:
+`chunkman` hands it on to `buildman` (building views made on a chunk coming
+in, destroyed on it going, `client/buildman.js:299`, `:311`) and `envman`
+(trees and stones), and a chunk let go of takes them with it.
 
 **The cars go with the chunks.** A car is taken off the roads the first
 frame the road under it, or the next one on its way, is in a chunk let go of
@@ -65,9 +64,10 @@ less often by keeping their own count of the time.
 
 **A quadtree over the ground.** The engine's implicit quadtree, over x and z
 in world units; height is not cut, the ground being one layer with things
-standing on it. A leaf is 64 tiles across - `64 × tileSize` world units - so
-a few leaves cover the screen. The server's share of the world, later, is a
-node three levels up: 8×8 leaves, 512 tiles across.
+standing on it. A leaf is a chunk, 24 tiles across - `24 × tileSize` world
+units, the root at the world's origin (`client/tilesman.js`) - so a few
+leaves cover the screen. The server's share of the world, later, is a node a
+few levels up: 16×16 leaves, 384 tiles across.
 
 **Tiles are isometrica's.** A tile x, y is at `x × tileSize, height ×
 tileZStep, y × tileSize` in the world (`client/terrain.js:762`), and its
@@ -75,10 +75,10 @@ region is the engine's `keyOf` that - never worked out from a tile's index.
 The index, `(y << 16) ^ x`, stays what it is inside isometrica, with its edge
 (below).
 
-**The chunks the ground is drawn in** (24 tiles, `client/groundchunk.js`) stay
-a way of drawing and nothing more. What is loaded, simulated and drawn
-follows the regions and their tiers; the ground of a region is drawn when the
-region comes into the view ring.
+**The chunks the ground is drawn in** (24 tiles, `client/groundchunk.js`) are
+the quadtree's leaves, so a region's ground is one chunk, drawn when the
+region comes into the view ring. What is loaded, simulated and drawn follows
+the regions and their tiers.
 
 ## What is what
 
@@ -194,8 +194,9 @@ then `npx vite preview` in `city-sim`) - and know nothing of the game.
   allocate.
 - `npm run world:streams -- <url>` - chunks made and let go of crossing a
   chunk's edge and back, on a quarter turn (direct and held) and on the view
-  from above and back. Now: 3 and 3 on every crossing, 13 and 13 on a direct
-  turn and on the view from above, none held.
+  from above and back, counted until nothing more changes. Before step 2: 3
+  and 3 on every crossing, 13 and 13 on a direct turn and on the view from
+  above; now 3 and 0 the first time over the edge, nothing else.
 - `npm run world:chunks -- <url>` - chunks kept straight through clearing and
   drawing again (exits 1 if not).
 
@@ -244,7 +245,10 @@ after (above), with the debug panel's `Stats` and the traffic test
    square: a ring more kept than drawn, let go of only after a while, worked
    out once a frame from where the camera ended up. Done when `world:streams`
    shows nothing made or let go of crossing an edge and back, nor on a
-   quarter turn or the view from above, and `world:chunks` holds.
+   quarter turn or the view from above, and `world:chunks` holds. _Done:
+   only the 3 chunks ahead made the first time over (was 3/3 every way, 13/13
+   on a turn and from above), `world:compare` IDENTICAL; skill `rendering`,
+   chunks.md._
 3. **The traffic, the first agents.** Drivers become records in regions,
    driven by the traffic system, not by their cars' game objects; the roads
    they drive on come from the core, not from what is drawn, as far as the
@@ -273,9 +277,9 @@ after (above), with the debug panel's `Stats` and the traffic test
    handed over, drawing a little behind.
 
 **Left open, to settle when building**, not before: how long the fixed step
-is; how far each ring reaches, how long a region is kept once left and how
-long before it goes down a tier; whether a leaf is 64 tiles across (where to
-start); what the libraries are called.
+is; how far the coarse ring reaches and how long a region is kept once left
+when there is something in it to keep (the ground's rings and hold are
+tilesman's: chunks.md).
 
 **Once built**, how a part works is written in the skill of the package it is
 in (`<package>/.claude/skills/`), as the repository does it, and this design
@@ -293,9 +297,6 @@ keeps only what is still to come.
 - Bulldozers and demolitions go on out of sight with nothing to bound them;
   the bulldozers are not saved.
 - A quarter turn and the view from above take the camera to the world's
-  origin on the way (`client/components/camerascript.js:533`, `:345`), and
-  every chunk round it is made again.
-- `tilesman` keeps its chunks in arrays by chunk number, emptied but never
-  shortened, and goes through every number up to the furthest it has ever
-  loaded each time it lets any go (`client/tilesman.js:245`): it costs more
-  the further the camera has been.
+  origin on the way (`client/components/camerascript.js:533`, `:345`): the chunks no longer follow it
+  (worked out once a frame), but whatever else listens to the camera moving
+  hears it there (`cityman` keepWhere).

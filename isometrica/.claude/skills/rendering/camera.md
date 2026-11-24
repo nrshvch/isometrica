@@ -31,7 +31,8 @@ shaping too: what is being placed is drawn again from the new side.
   ground outweighs a picture's drawn-out edge, all blurred, so where one has
   nothing the other shows. Each side taken once, again if some of it was
   still to be painted.
-- Chunks are held while it turns (`Tilesman#hold`), caught up after. Done,
+- Chunks are held while it turns (`Tilesman#hold`), caught up the frame
+  after (chunks.md). Done,
   the camera is on the new side, the spot where it was on screen, and the
   picture fades into the game. Q and E turn quickly then ease out, and add
   up. Only hooks into the game: told when a frame is drawn, the city drawn
@@ -82,8 +83,8 @@ shaping too: what is being placed is drawn again from the new side.
 
 ## Ground and frames
 
-- `groundchunk.js`: a stretch of ground drawn at once (a chunk as the camera
-  brings it in) is one gameObject with its tiles in typed arrays, like a
+- `groundchunk.js`: a stretch of ground drawn at once (a chunk as it comes
+  into view, chunks.md) is one gameObject with its tiles in typed arrays, like a
   tilemap: off screen one test, on screen each tile culled and drawn as a
   sprite would be, in the same order (the ground is not depth-sorted; what
   is drawn over what on a hillside goes by that order). What a tile shows is

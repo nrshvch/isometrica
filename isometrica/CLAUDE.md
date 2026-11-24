@@ -35,7 +35,8 @@ to talk to. Nothing here may know about a particular game. Games import it as
 - Drawing: `glview.js` (WebGL), `lighting.js` (sun, shadows, night),
   `weather.js`, `spritecache.js`, `cachedsprite.js`, `canvascache.js`,
   `generator.js` + `generatorcore.js` (the painting worker), `preloader.js`,
-  `groundchunk.js`, `terrain.js`, `chunkman.js`, `tilesman.js`.
+  `groundchunk.js`, `terrain.js`, `chunkman.js`, `tilesman.js` (which
+  chunks are drawn: the camera's rings, shared/interest).
 - Camera and input: `view.js`, `turner.js` (turning),
   `components/camerascript.js`, `cameracontrol.js`, `areaselector.js`,
   `glcanvas.js` (lines and words over the city).

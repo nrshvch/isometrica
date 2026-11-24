@@ -2,8 +2,10 @@
  * How many chunks of ground are made and let go of, and how long it takes,
  * as the camera: crosses a chunk's edge and comes back (three times), turns
  * a quarter directly and with the chunks held (as the animated turn holds
- * them), and goes over to the view from above and back. Rings that hold
- * (isometrica/docs/world.md, the way there) make the first and the last none.
+ * them), and goes over to the view from above and back. Counted through the
+ * frames after each move until nothing more changes (tilesman's settle, the
+ * time its rings hold for), and the time is the move's and the frames'
+ * chunk work (tilesman update) together.
  *
  *   node tools/world/streams.mjs <url>
  */
@@ -30,6 +32,10 @@ var rows = await page.evaluate(async function () {
     clear = T.clear,
     made = 0,
     gone = 0,
+    spent = 0,
+    tm = vkaria.tilesman,
+    update = tm.update,
+    settle = tm.settle || 0,
     out = [],
     frame = function () {
       return new Promise(function (r) {
@@ -55,20 +61,35 @@ var rows = await page.evaluate(async function () {
     return r;
   };
 
+  //the chunks worked out once a frame: that time counted with the move's
+  if (update)
+    tm.update = function () {
+      var t = performance.now(),
+        r = update.apply(this, arguments);
+
+      spent += performance.now() - t;
+      return r;
+    };
+
   async function measure(name, fn) {
-    made = gone = 0;
+    made = gone = spent = 0;
 
     var t = performance.now();
 
     fn();
+    spent += performance.now() - t;
+    await frame();
+    await frame();
+    var ms = spent;
+
+    t = performance.now();
+    while (performance.now() - t < settle) await frame();
     out.push({
       what: name,
-      ms: +(performance.now() - t).toFixed(1),
+      ms: +ms.toFixed(1),
       made: made,
       gone: gone,
     });
-    await frame();
-    await frame();
   }
 
   for (k = 0; k < 3; k++) {
@@ -100,6 +121,7 @@ var rows = await page.evaluate(async function () {
 
   T.draw = draw;
   T.clear = clear;
+  if (update) tm.update = update;
 
   return out;
 });

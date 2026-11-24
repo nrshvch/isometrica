@@ -32,7 +32,8 @@ shines at night.
   `components/terraingridrenderer.js` (the grid), `tileoutline.js`,
   `components/tileareaborderrenderer.js`, `serviceman.js` (words).
 - Ground: `terrain.js` (shapeTile, showGrid), `groundchunk.js`,
-  `chunkman.js`, `tilesman.js` (Tilesman#hold), `animatedsprite.js` (the sea).
+  `chunkman.js`, `tilesman.js` (which chunks are drawn: rings that hold;
+  Tilesman#hold), `animatedsprite.js` (the sea).
 - Engine side: `engine/engine/canvas2drenderer.js` (renderGL, cull),
   `viewport.js` (Viewport#restRect), `components/cameracomponent.js`
   (depthAxes), `game.js` (30 fps at most).
@@ -72,3 +73,5 @@ shines at night.
 - [weather.md](weather.md) - weather, clouds, fog, rain, wind, the sea.
 - [camera.md](camera.md) - turning, zoom, edge drag, what is drawn over the
   city, ground chunks, frame rate.
+- [chunks.md](chunks.md) - which chunks of ground are drawn: the quadtree,
+  the camera's rings, drawing and letting go of once a frame.
