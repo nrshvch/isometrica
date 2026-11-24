@@ -37,6 +37,20 @@ shared/<lib>/
 - `pixels` - pictures as RGBA pixels ({width, height, data}), put together
   the way a 2D canvas would, without one: over, silhouette, lighten,
   fromImage.
+- `typed` - the containers: Store (records as typed columns, handles that
+  tell a removed record from its slot's next one), List, Heap, BitSet,
+  NumMap (numbers to numbers, no objects), RadixSort, grow.
+- `spatial` - space cut up: Grid and Quadtree (implicit, Morton keys that
+  never change: keyOf, bounds, within, neighbours, parent, children), and
+  GridIndex (a hashed grid of points that move).
+- `schedule` - Clock (fixed steps, alpha between) and Scheduler (systems
+  over regions by tier: full every step, coarse nearest first within a
+  budget, counted by system and tier).
+- `draw` - Pictures (a table by number), DrawList (rows a system writes),
+  Visible (culled by a world-to-screen matrix, sorted by layer then depth).
+
+The containers grow by doubling: re-read a column after anything that may
+add. In a hot loop, read counts and columns into locals first.
 
 ## Commands (here, or at the root)
 

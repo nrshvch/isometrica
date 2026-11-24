@@ -1,0 +1,286 @@
+import { describe, expect, it } from "vitest";
+import Random from "../random/index.js";
+import {
+  Grid,
+  GridIndex,
+  Quadtree,
+  morton,
+  mortonX,
+  mortonZ,
+} from "./index.js";
+
+var box = new Float64Array(4),
+  out = new Float64Array(4096);
+
+function inside(b, x, z) {
+  return x >= b[0] && x < b[2] && z >= b[1] && z < b[3];
+}
+
+function overlaps(b, minX, minZ, maxX, maxZ) {
+  return b[0] <= maxX && b[2] > minX && b[1] <= maxZ && b[3] > minZ;
+}
+
+function sorted(a, n) {
+  return Array.from(a.subarray(0, n)).sort(function (p, q) {
+    return p - q;
+  });
+}
+
+describe("morton", function () {
+  it("round-trips every coordinate up to 2^24", function () {
+    var random = Random(1);
+
+    for (var i = 0; i < 20000; i++) {
+      var x = random.int(0, 16777215),
+        z = random.int(0, 16777215),
+        m = morton(x, z);
+
+      expect(mortonX(m)).toBe(x);
+      expect(mortonZ(m)).toBe(z);
+      expect(m).toBeLessThan(Math.pow(2, 48));
+    }
+  });
+
+  it("takes the bits in turn, x's lowest first", function () {
+    expect(morton(1, 0)).toBe(1);
+    expect(morton(0, 1)).toBe(2);
+    expect(morton(3, 3)).toBe(15);
+    expect(morton(4096, 0)).toBe(16777216);
+  });
+});
+
+describe("Grid", function () {
+  var grid = Grid(10);
+
+  it("keeps its keys (saves and servers are keyed by them)", function () {
+    expect(grid.keyOf(0, 0)).toBe(2251799847239680);
+    expect(grid.keyOf(-0.5, 25)).toBe(2251799780130818);
+    expect(grid.keyOf(1e6, -1e6)).toBe(2258510733539680);
+  });
+
+  it("puts a position inside the bounds of its key, and decodes the cell", function () {
+    var random = Random(2);
+
+    for (var i = 0; i < 5000; i++) {
+      var x = random.range(-1e7, 1e7),
+        z = random.range(-1e7, 1e7),
+        k = grid.keyOf(x, z);
+
+      expect(inside(grid.bounds(k, box), x, z)).toBe(true);
+      expect(grid.key(grid.cellX(k), grid.cellZ(k))).toBe(k);
+    }
+  });
+
+  it("within gives what looking at every cell would", function () {
+    var random = Random(3);
+
+    for (var t = 0; t < 200; t++) {
+      var minX = random.range(-60, 60),
+        minZ = random.range(-60, 60),
+        maxX = minX + random.range(0, 40),
+        maxZ = minZ + random.range(0, 40),
+        expected = [];
+
+      for (var ix = -12; ix <= 12; ix++)
+        for (var iz = -12; iz <= 12; iz++) {
+          var k = grid.key(ix, iz);
+
+          if (overlaps(grid.bounds(k, box), minX, minZ, maxX, maxZ))
+            expected.push(k);
+        }
+
+      var n = grid.within(minX, minZ, maxX, maxZ, out);
+
+      expect(sorted(out, n)).toEqual(expected.sort((p, q) => p - q));
+    }
+  });
+
+  it("gives eight neighbours, each one cell away", function () {
+    var k = grid.keyOf(5, 5),
+      n = grid.neighbours(k, out);
+
+    expect(n).toBe(8);
+    for (var i = 0; i < n; i++) {
+      expect(
+        Math.max(
+          Math.abs(grid.cellX(out[i]) - grid.cellX(k)),
+          Math.abs(grid.cellZ(out[i]) - grid.cellZ(k)),
+        ),
+      ).toBe(1);
+    }
+  });
+});
+
+describe("Quadtree", function () {
+  var tree = Quadtree(-512, -512, 1024, 5);
+
+  it("keeps its keys (saves and servers are keyed by them)", function () {
+    expect(tree.keyOf(-512, -512, 0)).toBe(0);
+    expect(tree.keyOf(0, 0)).toBe(24581);
+    expect(tree.keyOf(100.5, -300)).toBe(9637);
+    expect(tree.keyOf(511.9, 511.9)).toBe(32741);
+  });
+
+  it("has no key outside its root", function () {
+    expect(tree.keyOf(512, 0)).toBe(-1);
+    expect(tree.keyOf(0, -512.01)).toBe(-1);
+    expect(tree.key(32, 0, 5)).toBe(-1);
+  });
+
+  it("every node at every level: a unique key, its cell back, its parent's children, inside its parent", function () {
+    var seen = new Set(),
+      kids = new Float64Array(4),
+      parentBox = new Float64Array(4);
+
+    for (var l = 0; l <= 5; l++) {
+      var across = Math.pow(2, l);
+
+      for (var ix = 0; ix < across; ix++)
+        for (var iz = 0; iz < across; iz++) {
+          var k = tree.key(ix, iz, l);
+
+          expect(seen.has(k)).toBe(false);
+          seen.add(k);
+          expect(k).toBeLessThan(Math.pow(2, 53));
+          expect(tree.level(k)).toBe(l);
+          expect(tree.cellX(k)).toBe(ix);
+          expect(tree.cellZ(k)).toBe(iz);
+
+          tree.bounds(k, box);
+          expect(tree.keyOf(box[0], box[1], l)).toBe(k);
+          expect(
+            tree.keyOf((box[0] + box[2]) / 2, (box[1] + box[3]) / 2, l),
+          ).toBe(k);
+
+          if (l > 0) {
+            var p = tree.parent(k);
+
+            expect(tree.children(p, kids)).toBe(4);
+            expect(Array.from(kids)).toContain(k);
+            tree.bounds(p, parentBox);
+            expect(box[0]).toBeGreaterThanOrEqual(parentBox[0]);
+            expect(box[2]).toBeLessThanOrEqual(parentBox[2]);
+          } else expect(tree.parent(k)).toBe(-1);
+        }
+    }
+
+    expect(tree.children(tree.key(0, 0, 5), kids)).toBe(0);
+  });
+
+  it("puts a position inside the bounds of its key at every level", function () {
+    var random = Random(4);
+
+    for (var i = 0; i < 2000; i++) {
+      var x = random.range(-512, 512),
+        z = random.range(-512, 512);
+
+      for (var l = 0; l <= 5; l++)
+        expect(inside(tree.bounds(tree.keyOf(x, z, l), box), x, z)).toBe(true);
+    }
+  });
+
+  it("within gives what looking at every node of the level would", function () {
+    var random = Random(5);
+
+    for (var t = 0; t < 300; t++) {
+      var l = random.int(0, 5),
+        minX = random.range(-700, 600),
+        minZ = random.range(-700, 600),
+        maxX = minX + random.range(0, 300),
+        maxZ = minZ + random.range(0, 300),
+        across = Math.pow(2, l),
+        expected = [];
+
+      for (var ix = 0; ix < across; ix++)
+        for (var iz = 0; iz < across; iz++) {
+          var k = tree.key(ix, iz, l);
+
+          if (overlaps(tree.bounds(k, box), minX, minZ, maxX, maxZ))
+            expected.push(k);
+        }
+
+      var n = tree.within(minX, minZ, maxX, maxZ, l, out);
+
+      expect(sorted(out, n)).toEqual(expected.sort((p, q) => p - q));
+    }
+  });
+
+  it("gives the neighbours inside the root only", function () {
+    expect(tree.neighbours(tree.key(0, 0, 5), out)).toBe(3);
+    expect(tree.neighbours(tree.key(3, 3, 5), out)).toBe(8);
+    expect(tree.neighbours(0, out)).toBe(0);
+  });
+
+  it("goes as deep as 23 levels with keys still whole numbers", function () {
+    var deep = Quadtree(0, 0, Math.pow(2, 23), 23),
+      k = deep.keyOf(Math.pow(2, 23) - 0.5, Math.pow(2, 23) - 0.5);
+
+    expect(Number.isSafeInteger(k)).toBe(true);
+    expect(deep.cellX(k)).toBe(Math.pow(2, 23) - 1);
+    expect(deep.parent(k)).toBe(
+      deep.keyOf(Math.pow(2, 23) - 1, Math.pow(2, 23) - 1, 22),
+    );
+    expect(function () {
+      Quadtree(0, 0, 1, 24);
+    }).toThrow();
+  });
+});
+
+describe("GridIndex", function () {
+  it("finds what looking at every point would, as points come, move and go", function () {
+    var index = GridIndex(16, 4),
+      random = Random(6),
+      xs = new Float64Array(500),
+      zs = new Float64Array(500),
+      present = new Uint8Array(500),
+      ids = new Float64Array(500);
+
+    for (var step = 0; step < 4000; step++) {
+      var id = random.int(0, 499);
+
+      if (random.chance(0.2)) {
+        expect(index.remove(id)).toBe(present[id] === 1);
+        present[id] = 0;
+      } else {
+        xs[id] = random.range(-200, 200);
+        zs[id] = random.range(-200, 200);
+        present[id] = 1;
+        index.set(id, xs[id], zs[id]);
+      }
+
+      if (step % 50) continue;
+
+      var minX = random.range(-220, 200),
+        minZ = random.range(-220, 200),
+        maxX = minX + random.range(0, 120),
+        maxZ = minZ + random.range(0, 120),
+        expected = [];
+
+      for (var i = 0; i < 500; i++)
+        if (
+          present[i] &&
+          xs[i] >= minX &&
+          xs[i] <= maxX &&
+          zs[i] >= minZ &&
+          zs[i] <= maxZ
+        )
+          expected.push(i);
+
+      var n = index.query(minX, minZ, maxX, maxZ, ids);
+
+      expect(sorted(ids, n)).toEqual(expected);
+    }
+
+    var total = 0;
+
+    for (i = 0; i < 500; i++) total += present[i];
+    expect(index.size).toBe(total);
+  });
+
+  it("counts past what out has room for", function () {
+    var index = GridIndex(1);
+
+    for (var i = 0; i < 10; i++) index.set(i, 0.5, 0.5);
+    expect(index.query(0, 0, 1, 1, new Float64Array(3))).toBe(10);
+  });
+});

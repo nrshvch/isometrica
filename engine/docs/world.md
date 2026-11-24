@@ -6,7 +6,8 @@ off, not at all where nobody is near - and with nothing ever lost, and
 whatever is just out of sight there the moment it comes into it. For one
 player, and for many at once, each somewhere else.
 
-None of it is built yet. It is the design: the mechanism is the engine's,
+Its libraries are being built in `shared/` (below, Libraries); the rest is
+not built yet. It is the design: the mechanism is the engine's,
 the same for every kind of thing (vehicles, smoke, machines, people,
 whatever a game has), and a game only says how its world is cut up, how big
 the pieces are, and what its kinds of things do.
@@ -301,7 +302,10 @@ depends on nothing but the platform (`npm run lint` holds both); the engine
 may import it, and puts the libraries together - it does not own them. How a
 library is laid out, written, tested and measured is in `shared/CLAUDE.md`.
 
-**The libraries** (names to be settled):
+**The libraries.** Built: `typed`, `spatial` (the grid, the quadtree and a
+hashed grid index), `schedule`, `draw`. Still to come: the octree, a packed
+tree for what stays put, the ring in a `SharedArrayBuffer`, `interest`,
+`replica`.
 
 - `shared/typed` - the containers everything is kept in: a store of records
   as typed columns, with handles, the count each slot has been used and the

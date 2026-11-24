@@ -10,7 +10,8 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. None of it is built yet.
+what isometrica puts into it. None of it is built yet; step 1's libraries
+are (The way there).
 
 ## What there is now
 
@@ -188,6 +189,9 @@ is made and let go of, as in `docs/performance.md`.
    number, the ground drawn from them first. Nothing
    looks or plays different: what the ground hands the GPU is compared quad
    for quad, as when it became chunks.
+   _Done: the libraries - `shared/typed`, `shared/spatial`,
+   `shared/schedule`, `shared/draw`. Next: the ground drawn from a draw
+   list, then `Stats` for each system._
 2. **isometrica's quadtree and rings that hold**, in place of `tilesman`'s
    square: a ring more kept than drawn, let go of only after a while, worked
    out once a frame from where the camera ended up. Done when going to and
