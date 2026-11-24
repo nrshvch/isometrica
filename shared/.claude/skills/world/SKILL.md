@@ -116,8 +116,9 @@ store.cols.x`. Re-reading `store.count` off the object every pass keeps V8
 
 ## draw
 
-- `Pictures`: size, pivot, page and place by number; width 0 = not ready,
-  never drawn.
+- `Pictures`: size, pivot, page and place by number. One with no size yet
+  (not painted) is culled by its spot alone and handed on all the same: the
+  renderer may want it, to have it painted.
 - `DrawList`: rows of x, y, z, picture, layer, alpha, tag (the caller's).
 - `Visible`: `clear()`, `cull(list, pictures, M, width, height, pad)` per
   list (255 lists a frame at most), `sort(D, layers)`. The cull is the
@@ -125,3 +126,5 @@ store.cols.x`. Re-reading `store.count` off the object every pass keeps V8
   terms, the same rounding (`floor(... + 0.5)`) and edges. The sort is the
   engine's too: depth `D · position`, made 16 bits over each layer's own
   range, the layer above it, one stable radix sort - ties keep cull order.
+- Used by isometrica's ground (`client/groundchunk.js`): a draw list and a
+  table of pictures a chunk, `Visible.cull` without the sort.

@@ -24,7 +24,7 @@ var steps = await page.evaluate(function () {
   var T = vkaria.terrain,
     world = vkaria.game.logic.world,
     c = T.chunks[Math.min(4, T.chunks.length - 1)],
-    first = c.tile[0],
+    first = c.list.tag[0],
     //tile index (y << 16) ^ x: core/terrain convertToIndex
     x0 = first & 0xffff,
     y0 = first >>> 16,
@@ -43,10 +43,10 @@ var steps = await page.evaluate(function () {
       s = T.slots[k];
       if (
         s >= chunk.count ||
-        chunk.tile[s] !== +k ||
+        chunk.list.tag[s] !== +k ||
         chunk.view[s] === 0 ||
         chunk.sprites[s] === null ||
-        chunk.w[s] !== chunk.sprites[s].width
+        chunk.pictures.width[s] !== chunk.sprites[s].width
       )
         wrong++;
     }

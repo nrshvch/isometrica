@@ -18,7 +18,8 @@ import { RadixSort, grow } from "../typed/index.js";
 /**
  * Pictures by number: their size, their pivot (the spot drawn at the
  * position), and where they are (a page of an atlas and a place on it, the
- * renderer's to fill in). A picture of width 0 is not ready and not drawn.
+ * renderer's to fill in). One with no size yet is culled by its spot alone,
+ * and handed on: what to do with a picture not ready is the renderer's.
  */
 export function Pictures(capacity) {
   var n = Math.max(capacity || 64, 1);
@@ -191,11 +192,8 @@ export function Visible(capacity) {
 
       for (var row = 0, rowCount = list.count; row < rowCount; row++) {
         var p = pics[row],
-          w = pw[p];
-
-        if (w === 0) continue;
-
-        var x = xs[row],
+          w = pw[p],
+          x = xs[row],
           y = ys[row],
           z = zs[row],
           //to the nearest pixel, as the engine's own cull: cut towards 0, a

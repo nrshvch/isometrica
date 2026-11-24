@@ -32,8 +32,6 @@ function plain(lists, pictures, M, width, height, pad, D) {
         w = pictures.width[p],
         h = pictures.height[p];
 
-      if (!w) continue;
-
       var x = list.x[row],
         y = list.y[row],
         z = list.z[row],
@@ -189,14 +187,17 @@ describe("Visible", function () {
     );
   });
 
-  it("never draws a picture that is not ready", function () {
+  it("culls a picture with no size yet by its spot alone, and hands it on", function () {
     var pictures = Pictures(),
       list = DrawList(),
-      visible = Visible();
+      visible = Visible(),
+      unsized = pictures.add(0, 0);
 
-    list.add(0, 0, 0, pictures.add(0, 10));
+    list.add(10, 0, 0, unsized);
+    list.add(-10, 0, 0, unsized);
     visible.clear();
-    expect(visible.cull(list, pictures, iso(1, 0, 0), 100, 100, 0)).toBe(0);
+    expect(visible.cull(list, pictures, iso(1, 0, 0), 100, 100, 0)).toBe(1);
+    expect(visible.rows[0]).toBe(0);
   });
 
   it("rounds a spot a hair under a whole pixel up, as the engine does", function () {

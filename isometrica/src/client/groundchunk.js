@@ -1,9 +1,12 @@
 /**
  * A stretch of the ground drawn as one gameObject, its tiles in typed arrays:
- * culled, drawn and picked like sprites, in the order they were put.
+ * a draw list (where each is) and a table of pictures (how big each is,
+ * shared/draw), culled by shared/draw's Visible and drawn and picked like
+ * sprites, in the order they were put.
  * See isometrica/.claude/skills/rendering/camera.md (Ground and frames).
  */
 import engine from "engine";
+import { DrawList, Pictures, Visible } from "shared/draw";
 import RenderLayer from "./renderlayer";
 import CameraScript from "./components/camerascript";
 
@@ -33,15 +36,13 @@ var X0 = 0,
 //way than its box, for the rounding of every tile's spot to the pixel
 var spread = new Float64Array(4);
 
-//the arrays a tile is kept in, a number each, by name and kind - what grows
-//and closes up a slot at a time (grow, close); heights is four a tile
+//what of a stretch is on the screen, one stretch drawn at a time
+var onScreen = Visible(1024);
+
+//the arrays a tile's shape is kept in, a number each, by name and kind -
+//what grows and closes up a slot at a time (grow, close); heights is four a
+//tile; where it is and how big its picture is are in list and pictures
 var PER_TILE = {
-  tile: Int32Array,
-  x: Float32Array,
-  y: Float32Array,
-  z: Float32Array,
-  w: Uint16Array,
-  h: Uint16Array,
   kind: Uint8Array,
   slope: Int16Array,
   level: Int16Array,
@@ -59,20 +60,19 @@ function GroundChunk(capacity) {
 
   capacity = Math.max(capacity, 1);
   this.count = 0;
-  //what each tile is, by its slot: its index (core Terrain); where it is in
-  //the world - kept as a Transform keeps it, to the float, for each to be
-  //put on the very pixel it was as a gameObject; how big its picture is
-  //(w, h), 0 by 0 till the picture comes in; the shape it was last drawn
-  //in (shape) - its terrain type, slope, how high its left corner is, and
-  //which way it was seen from, 0 for a slot with no tile in it; and how
-  //high its corners are drawn (heights: as TerrainGridRenderer reads them,
-  //x, y; x + 1, y; x, y + 1; x + 1, y + 1)
-  this.tile = new Int32Array(capacity);
-  this.x = new Float32Array(capacity);
-  this.y = new Float32Array(capacity);
-  this.z = new Float32Array(capacity);
-  this.w = new Uint16Array(capacity);
-  this.h = new Uint16Array(capacity);
+  //each tile by its slot, a row of the draw list: where it is in the world
+  //(x, y, z) - to the float, as a Transform keeps it, for each to be put on
+  //the very pixel it was as a gameObject - and its index (core Terrain) as
+  //the row's tag. Its picture is the one of the same number in pictures:
+  //how big (0 by 0 till it comes in) and where it is drawn from. A slot's
+  //sprite may be its own (Meanwhile, client/terrain), so the table is the
+  //stretch's, a picture a slot.
+  this.list = DrawList(capacity);
+  this.pictures = Pictures(capacity);
+  //the shape it was last drawn in (shape) - its terrain type, slope, how
+  //high its left corner is, and which way it was seen from, 0 for a slot
+  //with no tile in it; and how high its corners are drawn (heights: as
+  //TerrainGridRenderer reads them, x, y; x + 1, y; x, y + 1; x + 1, y + 1)
   this.kind = new Uint8Array(capacity);
   this.slope = new Int16Array(capacity);
   this.level = new Int16Array(capacity);
@@ -103,11 +103,12 @@ GroundChunk.prototype = Object.create(engine.GameObject.prototype);
  * tile drawn after them was - and returns it.
  */
 GroundChunk.prototype.add = function (tile) {
-  if (this.count === this.tile.length) grow(this, this.count * 2);
+  if (this.count === this.view.length) grow(this, this.count * 2);
 
   var s = this.count++;
 
-  this.tile[s] = tile;
+  this.list.add(0, 0, 0, s, 0, tile);
+  this.pictures.add(0, 0, this.pivotX, this.pivotY);
   this.view[s] = 0;
   this.measured = false;
 
@@ -123,6 +124,7 @@ function grow(self, capacity) {
     self[NAMES[i]] = more;
   }
 
+  //list and pictures grow by themselves, as rows are added
   more = new Int8Array(capacity * 4);
   more.set(self.heights);
   self.heights = more;
@@ -134,12 +136,15 @@ function grow(self, capacity) {
  * Puts the tile in slot s where it is drawn, as the picture sprite.
  */
 GroundChunk.prototype.set = function (s, x, y, z, sprite) {
-  this.x[s] = x;
-  this.y[s] = y;
-  this.z[s] = z;
+  var list = this.list;
+
+  //to the float, as it was kept in a Float32Array: the same pixel
+  list.x[s] = Math.fround(x);
+  list.y[s] = Math.fround(y);
+  list.z[s] = Math.fround(z);
   this.sprites[s] = sprite;
-  this.w[s] = sprite.width;
-  this.h[s] = sprite.height;
+  this.pictures.width[s] = sprite.width;
+  this.pictures.height[s] = sprite.height;
   this.measured = false;
 };
 
@@ -151,6 +156,8 @@ GroundChunk.prototype.setPivot = function (x, y) {
 
   this.pivotX = x;
   this.pivotY = y;
+  this.pictures.pivotX.fill(x, 0, this.count);
+  this.pictures.pivotY.fill(y, 0, this.count);
   this.measured = false;
 };
 
@@ -200,6 +207,8 @@ GroundChunk.prototype.close = function (slots) {
   var count = this.count,
     view = this.view,
     heights = this.heights,
+    list = this.list,
+    pictures = this.pictures,
     n = 0,
     a,
     s,
@@ -215,7 +224,14 @@ GroundChunk.prototype.close = function (slots) {
       }
       for (k = 0; k < 4; k++) heights[4 * n + k] = heights[4 * s + k];
       this.sprites[n] = this.sprites[s];
-      slots[this.tile[n]] = n;
+      //the row's picture stays its own number
+      list.x[n] = list.x[s];
+      list.y[n] = list.y[s];
+      list.z[n] = list.z[s];
+      list.tag[n] = list.tag[s];
+      pictures.width[n] = pictures.width[s];
+      pictures.height[n] = pictures.height[s];
+      slots[list.tag[n]] = n;
     }
 
     n++;
@@ -223,7 +239,7 @@ GroundChunk.prototype.close = function (slots) {
 
   for (s = n; s < count; s++) this.sprites[s] = null;
 
-  this.count = n;
+  this.count = list.count = pictures.count = n;
   this.gone = 0;
 };
 
@@ -234,11 +250,11 @@ GroundChunk.prototype.close = function (slots) {
 function measure(self) {
   var b = self.box,
     count = self.count,
-    xs = self.x,
-    ys = self.y,
-    zs = self.z,
-    ws = self.w,
-    hs = self.h,
+    xs = self.list.x,
+    ys = self.list.y,
+    zs = self.list.z,
+    ws = self.pictures.width,
+    hs = self.pictures.height,
     sprites = self.sprites,
     sized = true,
     w,
@@ -352,53 +368,33 @@ GroundChunk.prototype.visible = function (M, width, height, pad) {
 /**
  * Draws every tile of it on a screen width by height, or within pad of it,
  * into layer: culled and put on the pixel as the engine culls and puts a
- * sprite (Canvas2dRenderer cull - the two have to stay in step), and drawn
- * the last first, as they were when the last one put in the world was drawn
- * first. Returns how many were drawn.
+ * sprite (shared/draw Visible, the engine's cull - the two have to stay in
+ * step), and drawn the last first, as they were when the last one put in
+ * the world was drawn first. Returns how many were drawn.
  */
 GroundChunk.prototype.draw = function (layer, renderer, M, width, height, pad) {
-  var m0 = M[0],
-    m1 = M[1],
-    m4 = M[4],
-    m5 = M[5],
-    m8 = M[8],
-    m9 = M[9],
-    m12 = M[12],
-    m13 = M[13],
-    px = this.pivotX,
-    py = this.pivotY,
-    xs = this.x,
-    ys = this.y,
-    zs = this.z,
-    ws = this.w,
-    hs = this.h,
-    right = width + pad,
-    bottom = height + pad,
-    drawn = 0,
-    x,
-    y,
-    z,
-    sx,
-    sy,
-    s;
+  var seen = onScreen,
+    sprites = this.sprites,
+    ys = this.list.y,
+    rows,
+    sxs,
+    sys,
+    s,
+    i;
 
-  for (s = this.count - 1; s >= 0; s--) {
-    x = xs[s];
-    y = ys[s];
-    z = zs[s];
-    //added up in the engine's order, to the bit: the spot rounded to the
-    //pixel is the engine's to the pixel
-    sx = Math.floor(m0 * x + m4 * y + m8 * z + m12 - px + 0.5);
-    sy = Math.floor(m1 * x + m5 * y + m9 * z + m13 - py + 0.5);
+  seen.clear();
+  seen.cull(this.list, this.pictures, M, width, height, pad);
 
-    if (sx > right || sx + ws[s] < -pad || sy > bottom || sy + hs[s] < -pad)
-      continue;
+  rows = seen.rows;
+  sxs = seen.sx;
+  sys = seen.sy;
 
-    picture(layer, renderer, this.sprites[s], sx, sy, y);
-    drawn++;
+  for (i = seen.count - 1; i >= 0; i--) {
+    s = rows[i];
+    picture(layer, renderer, sprites[s], sxs[i], sys[i], ys[s]);
   }
 
-  return drawn;
+  return seen.count;
 };
 
 /**
@@ -419,11 +415,12 @@ GroundChunk.prototype.tileAt = function (M, x, y) {
     m13 = M[13],
     px = this.pivotX,
     py = this.pivotY,
-    xs = this.x,
-    ys = this.y,
-    zs = this.z,
-    ws = this.w,
-    hs = this.h,
+    xs = this.list.x,
+    ys = this.list.y,
+    zs = this.list.z,
+    ws = this.pictures.width,
+    hs = this.pictures.height,
+    tiles = this.list.tag,
     layer = this.renderer.layer,
     sx,
     sy,
@@ -450,7 +447,7 @@ GroundChunk.prototype.tileAt = function (M, x, y) {
         Math.floor(y - sy),
       )
     )
-      return this.tile[s];
+      return tiles[s];
   }
 
   return -1;

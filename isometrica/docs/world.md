@@ -10,7 +10,7 @@ The mechanism is the engine's, and is in
 addresses, records and their views, observers and the rings round them,
 tiers, the scheduler, effects worked out from their source and the time, one
 clock, seeded chance, and saving, sending and deciding by region. This is
-what isometrica puts into it. Being built: step 1 (The way there).
+what isometrica puts into it. Step 1 is built (The way there); the rest is not yet.
 
 ## What there is now
 
@@ -237,8 +237,9 @@ after (above), with the debug panel's `Stats` and the traffic test
      regions, nothing of the game in them. _Done._
    - 1f `shared/draw`: draw lists and the table of pictures, and the ground
      drawn from them. Done when `world:compare` says IDENTICAL against the
-     build before, and `world:bench`'s ground loop is no slower. _The
-     library built; the ground not yet._
+     build before, and `world:bench`'s ground loop is no slower. _Done:
+     IDENTICAL, the ground loop 0.0404 → 0.0394 ms (the middle of six runs
+     each)._
 2. **isometrica's quadtree and rings that hold**, in place of `tilesman`'s
    square: a ring more kept than drawn, let go of only after a while, worked
    out once a frame from where the camera ended up. Done when `world:streams`

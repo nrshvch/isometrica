@@ -6,8 +6,8 @@ off, not at all where nobody is near - and with nothing ever lost, and
 whatever is just out of sight there the moment it comes into it. For one
 player, and for many at once, each somewhere else.
 
-Its libraries are being built in `shared/` (below, Libraries); the rest is
-not built yet. It is the design: the mechanism is the engine's,
+Its libraries are built in `shared/` (below, Libraries); the rest is not
+built yet. It is the design: the mechanism is the engine's,
 the same for every kind of thing (vehicles, smoke, machines, people,
 whatever a game has), and a game only says how its world is cut up, how big
 the pieces are, and what its kinds of things do.

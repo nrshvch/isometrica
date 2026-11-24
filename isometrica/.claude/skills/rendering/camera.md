@@ -88,6 +88,12 @@ shaping too: what is being placed is drawn again from the new side.
   sprite would be, in the same order (the ground is not depth-sorted; what
   is drawn over what on a hillside goes by that order). What a tile shows is
   `terrain.js` shapeTile's to say.
+- Its tiles are a `shared/draw` draw list (where, to the float as a
+  Float32Array kept it; the tile's index as the tag) and a table of pictures
+  of its own, one a slot (a slot may show its own `Meanwhile`); the cull is
+  `Visible`'s, the engine's to the pixel, and what is on screen is handed
+  to the engine's `picture` the last first. A change to it is checked with
+  `world:fingerprint`/`world:compare` (IDENTICAL) and `world:chunks`.
 - Frame rate: at most 30 a second (`engine/engine/game.js`); the clock and
   the drawing hold still while the page is out of sight (`vkaria.js`). A game
   may draw fewer (city-sim's pace).
