@@ -11,6 +11,8 @@
     "bench": "vitest bench --run --reporter=verbose"
   },
   "devDependencies": {
+    "flatbush": "4.7.0",
+    "kdbush": "4.1.0",
     "vitest": "5.1.1"
   }
 }

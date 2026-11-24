@@ -1,6 +1,6 @@
 ---
 name: world
-description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex), shared/schedule (Clock, Scheduler), shared/draw (Pictures, DrawList, Visible). Load before using or changing any of them.
+description: The libraries a world far bigger than the screen is built from - shared/typed (Store, List, Heap, BitSet, NumMap, RadixSort, Ring), shared/spatial (Grid, Quadtree, GridIndex, PackedTree), shared/schedule (Clock, Scheduler), shared/draw (Pictures, DrawList, Visible). Load before using or changing any of them.
 ---
 
 # The world's libraries
@@ -59,6 +59,16 @@ store.cols.x`. Re-reading `store.count` off the object every pass keeps V8
 - `GridIndex(cellSize)`: points that move, by id (a store's slot): a hashed
   grid, cells in a `NumMap`, each cell a doubly linked list in typed arrays.
   `set` moves a point between cells only when it changes cell.
+- `PackedTree(n, nodeSize = 16)`: boxes that stay put (points are boxes of
+  no size). `add` n times, `finish`, then `search(box, out)` and
+  `around(x, z, r, out)`. A static R-tree, flatbush's layout: items sorted
+  by the `hilbert` place of their middles (our radix sort), the levels one
+  after another in one `Float64Array`, a node's index where its first child
+  is. Never changed: built again when what is in it changes.
+- Both are tested against looking at everything and against `flatbush` /
+  `kdbush` - development dependencies, for the tests and the benchmark only;
+  nothing in a library imports them. They make a new array per search, ours
+  write into `out`.
 
 ## schedule
 

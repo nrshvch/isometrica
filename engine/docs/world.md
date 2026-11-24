@@ -302,10 +302,9 @@ depends on nothing but the platform (`npm run lint` holds both); the engine
 may import it, and puts the libraries together - it does not own them. How a
 library is laid out, written, tested and measured is in `shared/CLAUDE.md`.
 
-**The libraries.** Built: `typed`, `spatial` (the grid, the quadtree and a
-hashed grid index), `schedule`, `draw`. Still to come: the octree, a packed
-tree for what stays put, the ring in a `SharedArrayBuffer`, `interest`,
-`replica`.
+**The libraries.** Built: `typed`, `spatial` (the grid, the quadtree, a
+hashed grid index and a packed tree), `schedule`, `draw` - how they work is
+shared's skill `world`. Still to come: the octree, `interest`, `replica`.
 
 - `shared/typed` - the containers everything is kept in: a store of records
   as typed columns, with handles, the count each slot has been used and the

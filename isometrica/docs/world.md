@@ -229,8 +229,7 @@ after (above), with the debug panel's `Stats` and the traffic test
    - 1c `shared/spatial`, the indexes: a hashed grid for what moves, a packed
      tree for what stays put. Done when their answers are those of looking at
      everything and of `flatbush`/`kdbush` (in development only), and the
-     benchmark puts them side by side. _The hashed grid built, against
-     looking at everything._
+     benchmark puts them side by side. _Done._
    - 1d `shared/random`: a toss that does not depend on order, from a region,
      a record and a step. Done when its numbers are pinned.
    - 1e `shared/interest` and `shared/schedule`: rings, tiers, letting go after

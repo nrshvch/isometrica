@@ -1,9 +1,13 @@
+import Flatbush from "flatbush";
+import KDBush from "kdbush";
 import { describe, expect, it } from "vitest";
 import Random from "../random/index.js";
 import {
   Grid,
   GridIndex,
+  PackedTree,
   Quadtree,
+  hilbert,
   morton,
   mortonX,
   mortonZ,
@@ -283,4 +287,166 @@ describe("GridIndex", function () {
     for (var i = 0; i < 10; i++) index.set(i, 0.5, 0.5);
     expect(index.query(0, 0, 1, 1, new Float64Array(3))).toBe(10);
   });
+});
+
+describe("hilbert", function () {
+  it("keeps its numbers, and visits every cell of a small grid once", function () {
+    expect([hilbert(0, 0), hilbert(1, 0), hilbert(65535, 65535)]).toEqual([
+      0, 1, 2863311530,
+    ]);
+
+    var seen = new Set();
+
+    for (var x = 0; x < 64; x++)
+      for (var y = 0; y < 64; y++) seen.add(hilbert(x * 1024, y * 1024));
+    expect(seen.size).toBe(4096);
+  });
+});
+
+describe("PackedTree", function () {
+  function boxesOf(random, n, spread, big) {
+    var b = new Float64Array(n * 4);
+
+    for (var i = 0; i < n; i++) {
+      var x = random.range(-spread, spread),
+        z = random.range(-spread, spread);
+
+      b[i * 4] = x;
+      b[i * 4 + 1] = z;
+      b[i * 4 + 2] = x + random.range(0, big);
+      b[i * 4 + 3] = z + random.range(0, big);
+    }
+
+    return b;
+  }
+
+  function build(b, n, nodeSize) {
+    var tree = PackedTree(n, nodeSize);
+
+    for (var i = 0; i < n; i++)
+      tree.add(b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]);
+
+    return tree.finish();
+  }
+
+  it("finds what looking at every box, and flatbush, would", function () {
+    var random = Random(7),
+      ids = new Uint32Array(20000);
+
+    [0, 1, 5, 16, 17, 300, 5000].forEach(function (n) {
+      [4, 16].forEach(function (nodeSize) {
+        var b = boxesOf(random, n, 500, 30),
+          tree = build(b, n, nodeSize),
+          flat = n ? new Flatbush(n, nodeSize) : null;
+
+        for (var i = 0; i < n; i++)
+          flat.add(b[i * 4], b[i * 4 + 1], b[i * 4 + 2], b[i * 4 + 3]);
+        if (flat) flat.finish();
+
+        for (var q = 0; q < 50; q++) {
+          var x0 = random.range(-600, 500),
+            z0 = random.range(-600, 500),
+            x1 = x0 + random.range(0, 200),
+            z1 = z0 + random.range(0, 200),
+            expected = [];
+
+          for (i = 0; i < n; i++)
+            if (
+              b[i * 4] <= x1 &&
+              b[i * 4 + 1] <= z1 &&
+              b[i * 4 + 2] >= x0 &&
+              b[i * 4 + 3] >= z0
+            )
+              expected.push(i);
+
+          var got = sorted(ids, tree.search(x0, z0, x1, z1, ids));
+
+          expect(got).toEqual(expected);
+          if (flat)
+            expect(got).toEqual(
+              flat.search(x0, z0, x1, z1).sort(function (p, r) {
+                return p - r;
+              }),
+            );
+        }
+      });
+    });
+  });
+
+  it("around finds the boxes within a distance, as looking at every one would", function () {
+    var random = Random(8),
+      n = 3000,
+      b = boxesOf(random, n, 1000, 20),
+      tree = build(b, n),
+      ids = new Uint32Array(n);
+
+    for (var q = 0; q < 100; q++) {
+      var x = random.range(-1000, 1000),
+        z = random.range(-1000, 1000),
+        r = random.range(0, 150),
+        expected = [];
+
+      for (var i = 0; i < n; i++) {
+        var dx = Math.max(b[i * 4] - x, 0, x - b[i * 4 + 2]),
+          dz = Math.max(b[i * 4 + 1] - z, 0, z - b[i * 4 + 3]);
+
+        if (dx * dx + dz * dz <= r * r) expected.push(i);
+      }
+
+      expect(sorted(ids, tree.around(x, z, r, ids))).toEqual(expected);
+    }
+  });
+
+  it("holds points, and finds what kdbush finds", function () {
+    var random = Random(9),
+      n = 4000,
+      tree = PackedTree(n),
+      kd = new KDBush(n),
+      index = GridIndex(32),
+      ids = new Uint32Array(n);
+
+    for (var i = 0; i < n; i++) {
+      var x = random.range(0, 1000),
+        z = random.range(0, 1000);
+
+      tree.add(x, z, x, z);
+      kd.add(x, z);
+      index.set(i, x, z);
+    }
+    tree.finish();
+    kd.finish();
+
+    for (var q = 0; q < 100; q++) {
+      var x0 = random.range(-50, 1000),
+        z0 = random.range(-50, 1000),
+        x1 = x0 + random.range(0, 120),
+        z1 = z0 + random.range(0, 120),
+        expected = kd.range(x0, z0, x1, z1).sort(function (p, r) {
+          return p - r;
+        });
+
+      expect(sorted(ids, tree.search(x0, z0, x1, z1, ids))).toEqual(expected);
+      expect(sorted(ids, index.query(x0, z0, x1, z1, ids))).toEqual(expected);
+    }
+  });
+
+  it("says so when used before it is finished, or filled wrong", function () {
+    var tree = PackedTree(2);
+
+    tree.add(0, 0, 1, 1);
+    expect(function () {
+      tree.search(0, 0, 1, 1, ids4());
+    }).toThrow();
+    expect(function () {
+      tree.finish();
+    }).toThrow();
+    tree.add(0, 0, 1, 1);
+    expect(function () {
+      tree.add(0, 0, 1, 1);
+    }).toThrow();
+  });
+
+  function ids4() {
+    return new Uint32Array(4);
+  }
 });

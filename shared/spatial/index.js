@@ -1,11 +1,11 @@
 /**
  * Space cut up: partitions that give every region a key that never changes
- * (a uniform grid, an implicit quadtree over x and z), and an index of points
- * that move (a hashed grid). Keys are whole numbers below 2^53, kept in typed
+ * (a uniform grid, an implicit quadtree over x and z), and indexes: of points
+ * that move (a hashed grid), of boxes that stay put (a packed tree). Keys are whole numbers below 2^53, kept in typed
  * arrays, never strings. Boxes are four numbers, minX, minZ, maxX, maxZ,
  * edges included. The design is engine/docs/world.md, Space.
  */
-import { NumMap, grow } from "../typed/index.js";
+import { NumMap, RadixSort, grow } from "../typed/index.js";
 
 /*
  * Grid: a cell is floor(x / size), floor(z / size), each from -2^25 to
@@ -374,4 +374,273 @@ export function GridIndex(cellSize, capacity) {
       return found;
     },
   };
+}
+
+/*
+ * The place along a Hilbert curve of a point on a 65536 x 65536 grid: points
+ * near each other on the curve are near each other in space, so items sorted
+ * by it fill the tree's nodes with neighbours.
+ */
+export function hilbert(x, y) {
+  var a = x ^ y,
+    b = 0xffff ^ a,
+    c = 0xffff ^ (x | y),
+    d = x & (y ^ 0xffff),
+    A = a | (b >>> 1),
+    B = (a >>> 1) ^ a,
+    C = (c >>> 1) ^ (b & (d >>> 1)) ^ c,
+    D = (a & (c >>> 1)) ^ (d >>> 1) ^ d;
+
+  a = A;
+  b = B;
+  c = C;
+  d = D;
+  A = (a & (a >>> 2)) ^ (b & (b >>> 2));
+  B = (a & (b >>> 2)) ^ (b & ((a ^ b) >>> 2));
+  C ^= (a & (c >>> 2)) ^ (b & (d >>> 2));
+  D ^= (b & (c >>> 2)) ^ ((a ^ b) & (d >>> 2));
+
+  a = A;
+  b = B;
+  c = C;
+  d = D;
+  A = (a & (a >>> 4)) ^ (b & (b >>> 4));
+  B = (a & (b >>> 4)) ^ (b & ((a ^ b) >>> 4));
+  C ^= (a & (c >>> 4)) ^ (b & (d >>> 4));
+  D ^= (b & (c >>> 4)) ^ ((a ^ b) & (d >>> 4));
+
+  a = A;
+  b = B;
+  c = C;
+  d = D;
+  C ^= (a & (c >>> 8)) ^ (b & (d >>> 8));
+  D ^= (b & (c >>> 8)) ^ ((a ^ b) & (d >>> 8));
+
+  a = C ^ (C >>> 1);
+  b = D ^ (D >>> 1);
+
+  var i0 = x ^ y,
+    i1 = b | (0xffff ^ (i0 | a));
+
+  i0 = (i0 | (i0 << 8)) & 0x00ff00ff;
+  i0 = (i0 | (i0 << 4)) & 0x0f0f0f0f;
+  i0 = (i0 | (i0 << 2)) & 0x33333333;
+  i0 = (i0 | (i0 << 1)) & 0x55555555;
+  i1 = (i1 | (i1 << 8)) & 0x00ff00ff;
+  i1 = (i1 | (i1 << 4)) & 0x0f0f0f0f;
+  i1 = (i1 | (i1 << 2)) & 0x33333333;
+  i1 = (i1 | (i1 << 1)) & 0x55555555;
+
+  return ((i1 << 1) | i0) >>> 0;
+}
+
+/**
+ * An index of boxes that stay put, packed into typed arrays: PackedTree(n),
+ * add(minX, minZ, maxX, maxZ) n times (an item is its number in the order
+ * added), finish(), then search(minX, minZ, maxX, maxZ, out) and around(x,
+ * z, radius, out) -> how many, written into out as far as it goes. Built
+ * again, not changed, when what is in it changes. A static R-tree: items
+ * sorted along a Hilbert curve, nodeSize to a node, built from the leaves up.
+ */
+export function PackedTree(numItems, nodeSize) {
+  nodeSize = Math.min(Math.max(nodeSize || 16, 2), 65535);
+
+  var n = Math.max(numItems, 0),
+    count = n,
+    numNodes = n,
+    levelBounds = [n * 4];
+
+  do {
+    count = Math.ceil(count / nodeSize);
+    numNodes += count;
+    levelBounds.push(numNodes * 4);
+  } while (count > 1);
+
+  var boxes = new Float64Array(numNodes * 4),
+    indices = new Uint32Array(numNodes),
+    added = 0,
+    built = false,
+    stack = new Uint32Array(levelBounds.length * nodeSize * 2 + 2),
+    minX = Infinity,
+    minZ = Infinity,
+    maxX = -Infinity,
+    maxZ = -Infinity;
+
+  var tree = {
+    get size() {
+      return n;
+    },
+
+    add: function (x0, z0, x1, z1) {
+      if (added >= n) throw new Error("PackedTree: more added than said");
+
+      var i = added++,
+        p = i * 4;
+
+      indices[i] = i;
+      boxes[p] = x0;
+      boxes[p + 1] = z0;
+      boxes[p + 2] = x1;
+      boxes[p + 3] = z1;
+      if (x0 < minX) minX = x0;
+      if (z0 < minZ) minZ = z0;
+      if (x1 > maxX) maxX = x1;
+      if (z1 > maxZ) maxZ = z1;
+
+      return i;
+    },
+
+    finish: function () {
+      if (added !== n)
+        throw new Error("PackedTree: " + added + " of " + n + " added");
+      built = true;
+      if (n === 0) return tree;
+
+      if (n <= nodeSize) {
+        boxes[n * 4] = minX;
+        boxes[n * 4 + 1] = minZ;
+        boxes[n * 4 + 2] = maxX;
+        boxes[n * 4 + 3] = maxZ;
+        indices[n] = 0;
+
+        return tree;
+      }
+
+      //the items sorted by where their middles fall on the curve
+      var keys = new Uint32Array(n),
+        order = new Uint32Array(n),
+        w = maxX - minX || 1,
+        h = maxZ - minZ || 1,
+        i;
+
+      for (i = 0; i < n; i++) {
+        var p = i * 4;
+
+        keys[i] = hilbert(
+          Math.floor((65535 * ((boxes[p] + boxes[p + 2]) / 2 - minX)) / w),
+          Math.floor((65535 * ((boxes[p + 1] + boxes[p + 3]) / 2 - minZ)) / h),
+        );
+        order[i] = i;
+      }
+      RadixSort(n).sort(keys, order, n);
+
+      var sorted = new Float64Array(n * 4);
+
+      for (i = 0; i < n; i++) {
+        var from = order[i] * 4;
+
+        sorted[i * 4] = boxes[from];
+        sorted[i * 4 + 1] = boxes[from + 1];
+        sorted[i * 4 + 2] = boxes[from + 2];
+        sorted[i * 4 + 3] = boxes[from + 3];
+        indices[i] = order[i];
+      }
+      boxes.set(sorted);
+
+      //every level's nodes, each the box round nodeSize of the level below;
+      //a node's index is where its first child is, in boxes
+      for (var l = 0, pos = 0, at = n * 4; l < levelBounds.length - 1; l++) {
+        var end = levelBounds[l];
+
+        while (pos < end) {
+          var first = pos,
+            x0 = Infinity,
+            z0 = Infinity,
+            x1 = -Infinity,
+            z1 = -Infinity;
+
+          for (var k = 0; k < nodeSize && pos < end; k++, pos += 4) {
+            if (boxes[pos] < x0) x0 = boxes[pos];
+            if (boxes[pos + 1] < z0) z0 = boxes[pos + 1];
+            if (boxes[pos + 2] > x1) x1 = boxes[pos + 2];
+            if (boxes[pos + 3] > z1) z1 = boxes[pos + 3];
+          }
+
+          indices[at >> 2] = first;
+          boxes[at++] = x0;
+          boxes[at++] = z0;
+          boxes[at++] = x1;
+          boxes[at++] = z1;
+        }
+      }
+
+      return tree;
+    },
+
+    search: function (x0, z0, x1, z1, out) {
+      return walk(x0, z0, x1, z1, out, NaN, 0, 0);
+    },
+
+    //items whose box comes within radius of (x, z)
+    around: function (x, z, radius, out) {
+      return walk(
+        x - radius,
+        z - radius,
+        x + radius,
+        z + radius,
+        out,
+        radius * radius,
+        x,
+        z,
+      );
+    },
+  };
+
+  //how far (squared) a point is from a box: 0 inside it
+  function distance2(p, x, z) {
+    var dx =
+        x < boxes[p] ? boxes[p] - x : x > boxes[p + 2] ? x - boxes[p + 2] : 0,
+      dz =
+        z < boxes[p + 1]
+          ? boxes[p + 1] - z
+          : z > boxes[p + 3]
+            ? z - boxes[p + 3]
+            : 0;
+
+    return dx * dx + dz * dz;
+  }
+
+  function walk(x0, z0, x1, z1, out, r2, x, z) {
+    if (!built) throw new Error("PackedTree: finish() first");
+    if (n === 0) return 0;
+
+    var found = 0,
+      top = 0,
+      root = boxes.length - 4,
+      level = levelBounds.length - 1;
+
+    var node = root;
+
+    for (;;) {
+      var start = indices[node >> 2],
+        end = Math.min(start + nodeSize * 4, levelBounds[level - 1]);
+
+      for (var pos = start; pos < end; pos += 4) {
+        if (
+          boxes[pos] > x1 ||
+          boxes[pos + 1] > z1 ||
+          boxes[pos + 2] < x0 ||
+          boxes[pos + 3] < z0
+        )
+          continue;
+
+        if (level - 1 === 0) {
+          if (r2 === r2 && distance2(pos, x, z) > r2) continue;
+          if (found < out.length) out[found] = indices[pos >> 2];
+          found++;
+        } else {
+          stack[top++] = pos;
+          stack[top++] = level - 1;
+        }
+      }
+
+      if (top === 0) break;
+      level = stack[--top];
+      node = stack[--top];
+    }
+
+    return found;
+  }
+
+  return tree;
 }

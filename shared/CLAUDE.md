@@ -13,7 +13,8 @@ shared/<lib>/
   <lib>.bench.js    its benchmark
 ```
 
-- Plain ES modules, no dependencies but the platform. Pure where it can be:
+- Plain ES modules, no dependencies but the platform (a library known to be
+  right may be a development dependency, to test and measure against). Pure where it can be:
   data in, data out; no globals, no singletons.
 - Data-oriented: take and give typed arrays where the data is many of a kind,
   loop over them, allocate nothing in the hot loop.
@@ -43,7 +44,8 @@ shared/<lib>/
   grow.
 - `spatial` - space cut up: Grid and Quadtree (implicit, Morton keys that
   never change: keyOf, bounds, within, neighbours, parent, children), and
-  GridIndex (a hashed grid of points that move).
+  indexes: GridIndex (a hashed grid of points that move), PackedTree (a
+  static R-tree of boxes that stay put).
 - `schedule` - Clock (fixed steps, alpha between) and Scheduler (systems
   over regions by tier: full every step, coarse nearest first within a
   budget, counted by system and tier).
